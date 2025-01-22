@@ -406,6 +406,7 @@ fun fullMediaInformation(id: Int) = """
     externalLinks {
       url
       site
+      language
     }
   }
   Page(page: 1) {

@@ -9,6 +9,7 @@ import ani.dantotsu.connections.anilist.Anilist.executeQuery
 import ani.dantotsu.connections.anilist.api.FeedResponse
 import ani.dantotsu.connections.anilist.api.FuzzyDate
 import ani.dantotsu.connections.anilist.api.MediaEdge
+import ani.dantotsu.connections.anilist.api.MediaExternalLink
 import ani.dantotsu.connections.anilist.api.MediaList
 import ani.dantotsu.connections.anilist.api.NotificationResponse
 import ani.dantotsu.connections.anilist.api.Page
@@ -329,6 +330,26 @@ class AnilistQueries {
                                 )
                             }
                         }
+
+                        // put all external links in the media object, with the crunchyroll link being the first if it exists
+                        fetchedMedia.externalLinks?.forEach { i ->
+                            if (i.language == "English" || i.language.isNullOrBlank()) {
+                                when (i.site.lowercase()) {
+                                    "crunchyroll" -> media.externalLinks.add(
+                                        0,
+                                        arrayListOf(i.site, i.url)
+                                    )
+
+                                    else -> media.externalLinks.add(
+                                        arrayListOf(
+                                            i.site,
+                                            i.url
+                                        )
+                                    )
+                                }
+                            }
+                        }
+
                         media.shareLink = fetchedMedia.siteUrl
                     }
 
