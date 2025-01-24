@@ -510,6 +510,8 @@ data class MediaExternalLink(
 
     // isDisabled: Boolean
     @SerialName("notes") var notes: String?,
+
+    @SerialName("isDisabled") var isDisabled: Boolean?,
 ) : java.io.Serializable
 
 @Serializable

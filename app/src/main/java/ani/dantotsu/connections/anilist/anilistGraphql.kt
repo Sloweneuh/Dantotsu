@@ -404,9 +404,12 @@ fun fullMediaInformation(id: Int) = """
       }
     }
     externalLinks {
-      url
       site
+      type
       language
+      icon
+      isDisabled
+      url
     }
   }
   Page(page: 1) {

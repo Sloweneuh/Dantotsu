@@ -6,6 +6,7 @@ import ani.dantotsu.checkGenreTime
 import ani.dantotsu.checkId
 import ani.dantotsu.connections.anilist.Anilist.authorRoles
 import ani.dantotsu.connections.anilist.Anilist.executeQuery
+import ani.dantotsu.connections.anilist.api.ExternalLinkType
 import ani.dantotsu.connections.anilist.api.FeedResponse
 import ani.dantotsu.connections.anilist.api.FuzzyDate
 import ani.dantotsu.connections.anilist.api.MediaEdge
@@ -331,24 +332,18 @@ class AnilistQueries {
                             }
                         }
 
-                        // put all external links in the media object, with the crunchyroll link being the first if it exists
+                        val streamingLinks = arrayListOf<ArrayList<String?>>()
+                        val otherLinks = arrayListOf<ArrayList<String?>>()
+                        // put all external links in the media object
                         fetchedMedia.externalLinks?.forEach { i ->
-                            if (i.language == "English" || i.language.isNullOrBlank()) {
-                                when (i.site.lowercase()) {
-                                    "crunchyroll" -> media.externalLinks.add(
-                                        0,
-                                        arrayListOf(i.site, i.url)
-                                    )
-
-                                    else -> media.externalLinks.add(
-                                        arrayListOf(
-                                            i.site,
-                                            i.url
-                                        )
-                                    )
+                            if (i.language == "English" || i.language.isNullOrBlank() || i.isDisabled == true) {
+                                when (i.type) {
+                                    ExternalLinkType.STREAMING -> streamingLinks.add(arrayListOf(i.site, i.url))
+                                    else -> otherLinks.add(arrayListOf(i.site, i.url))
                                 }
                             }
                         }
+                        media.externalLinks = (streamingLinks + otherLinks) as ArrayList<ArrayList<String?>>
 
                         media.shareLink = fetchedMedia.siteUrl
                     }
