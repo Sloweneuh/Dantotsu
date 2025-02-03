@@ -323,15 +323,38 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                 }
 
                 binding.mediaNotify.setOnClickListener {
+                    openLinkInBrowser(media.shareLink)
+                }
+                binding.mediaNotify.setOnLongClickListener {
                     val i = Intent(Intent.ACTION_SEND)
                     i.type = "text/plain"
                     i.putExtra(Intent.EXTRA_TEXT, media.shareLink)
                     startActivity(Intent.createChooser(i, media.userPreferredName))
-                }
-                binding.mediaNotify.setOnLongClickListener {
-                    openLinkInBrowser(media.shareLink)
                     true
                 }
+
+                if (media.idMAL != null) {
+                    binding.mediaNotify2?.visibility = View.VISIBLE
+
+                    val malLink = media.idMAL?.let { "https://myanimelist.net/${if (media.anime != null) "anime" else "manga"}/$it" }
+                    binding.mediaNotify2?.setOnClickListener {
+                        openLinkInBrowser(malLink)
+                    }
+
+                    binding.mediaNotify2?.setOnLongClickListener {
+                        val i = Intent(Intent.ACTION_SEND)
+                        i.type = "text/plain"
+                        i.putExtra(Intent.EXTRA_TEXT, malLink)
+                        startActivity(Intent.createChooser(i, media.userPreferredName))
+                        true
+                    }
+                }
+                else {
+                    binding.mediaNotify2?.visibility = View.GONE
+                }
+
+
+
                 binding.mediaCover.setOnClickListener {
                     openLinkInBrowser(media.shareLink)
                 }
