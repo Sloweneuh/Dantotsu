@@ -334,14 +334,14 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                 }
 
                 if (media.idMAL != null) {
-                    binding.mediaNotify2?.visibility = View.VISIBLE
+                    binding.mediaNotify2.visibility = View.VISIBLE
 
                     val malLink = media.idMAL?.let { "https://myanimelist.net/${if (media.anime != null) "anime" else "manga"}/$it" }
-                    binding.mediaNotify2?.setOnClickListener {
+                    binding.mediaNotify2.setOnClickListener {
                         openLinkInBrowser(malLink)
                     }
 
-                    binding.mediaNotify2?.setOnLongClickListener {
+                    binding.mediaNotify2.setOnLongClickListener {
                         val i = Intent(Intent.ACTION_SEND)
                         i.type = "text/plain"
                         i.putExtra(Intent.EXTRA_TEXT, malLink)
@@ -350,7 +350,7 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                     }
                 }
                 else {
-                    binding.mediaNotify2?.visibility = View.GONE
+                    binding.mediaNotify2.visibility = View.GONE
                 }
 
 
