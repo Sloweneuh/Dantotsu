@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.anilist.api.FuzzyDate
 import ani.dantotsu.connections.anilist.api.MediaEdge
+import ani.dantotsu.connections.anilist.api.MediaExternalLink
 import ani.dantotsu.connections.anilist.api.MediaList
 import ani.dantotsu.connections.anilist.api.MediaStreamingEpisode
 import ani.dantotsu.connections.anilist.api.MediaType
@@ -80,6 +81,7 @@ data class Media(
     var users: ArrayList<User>? = null,
     var vrvId: String? = null,
     var crunchySlug: String? = null,
+    var externalLinks: ArrayList<ArrayList<String?>> = arrayListOf(),
 
     var nameMAL: String? = null,
     var shareLink: String? = null,

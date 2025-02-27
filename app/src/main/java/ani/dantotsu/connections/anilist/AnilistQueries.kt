@@ -6,9 +6,11 @@ import ani.dantotsu.checkGenreTime
 import ani.dantotsu.checkId
 import ani.dantotsu.connections.anilist.Anilist.authorRoles
 import ani.dantotsu.connections.anilist.Anilist.executeQuery
+import ani.dantotsu.connections.anilist.api.ExternalLinkType
 import ani.dantotsu.connections.anilist.api.FeedResponse
 import ani.dantotsu.connections.anilist.api.FuzzyDate
 import ani.dantotsu.connections.anilist.api.MediaEdge
+import ani.dantotsu.connections.anilist.api.MediaExternalLink
 import ani.dantotsu.connections.anilist.api.MediaList
 import ani.dantotsu.connections.anilist.api.NotificationResponse
 import ani.dantotsu.connections.anilist.api.Page
@@ -329,6 +331,20 @@ class AnilistQueries {
                                 )
                             }
                         }
+
+                        val streamingLinks = arrayListOf<ArrayList<String?>>()
+                        val otherLinks = arrayListOf<ArrayList<String?>>()
+                        // put all external links in the media object
+                        fetchedMedia.externalLinks?.forEach { i ->
+                            if (i.language == "English" || i.language.isNullOrBlank() || i.isDisabled == true) {
+                                when (i.type) {
+                                    ExternalLinkType.STREAMING -> streamingLinks.add(arrayListOf(i.site, i.url))
+                                    else -> otherLinks.add(arrayListOf(i.site, i.url))
+                                }
+                            }
+                        }
+                        media.externalLinks = (streamingLinks + otherLinks) as ArrayList<ArrayList<String?>>
+
                         media.shareLink = fetchedMedia.siteUrl
                     }
 

@@ -14,6 +14,7 @@ import android.widget.FrameLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import androidx.core.text.HtmlCompat
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
@@ -233,6 +234,34 @@ class MediaInfoFragment : Fragment() {
                 displayTimer(media, binding.mediaInfoContainer)
                 val parent = _binding?.mediaInfoContainer!!
                 val screenWidth = resources.displayMetrics.run { widthPixels / density }
+
+                if (media.externalLinks.isNotEmpty()) {
+                    val bind = ItemTitleChipgroupBinding.inflate(
+                        LayoutInflater.from(context),
+                        parent,
+                        false
+                    )
+                    bind.itemTitle.setText(R.string.external_links)
+                    for (position in media.externalLinks.indices) {
+                        val chip = ItemChipBinding.inflate(
+                            LayoutInflater.from(context),
+                            bind.itemChipGroup,
+                            false
+                        ).root
+                        chip.text = media.externalLinks[position][0]
+                        chip.setSafeOnClickListener {
+                            startActivity(
+                                Intent(
+                                    Intent.ACTION_VIEW,
+                                    media.externalLinks[position][1]?.toUri()
+                                )
+                            )
+                        }
+                        chip.setOnLongClickListener { copyToClipboard(media.externalLinks[position][1]!!);true }
+                        bind.itemChipGroup.addView(chip)
+                    }
+                    parent.addView(bind.root)
+                }
 
                 if (media.synonyms.isNotEmpty()) {
                     val bind = ItemTitleChipgroupBinding.inflate(
