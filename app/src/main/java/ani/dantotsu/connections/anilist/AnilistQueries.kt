@@ -336,7 +336,7 @@ class AnilistQueries {
                         val otherLinks = arrayListOf<ArrayList<String?>>()
                         // put all external links in the media object
                         fetchedMedia.externalLinks?.forEach { i ->
-                            if (i.language == "English" || i.language.isNullOrBlank() || i.isDisabled == true) {
+                            if ((i.language == "English" || i.language.isNullOrBlank()) && i.isDisabled == false) {
                                 when (i.type) {
                                     ExternalLinkType.STREAMING -> streamingLinks.add(arrayListOf(i.site, i.url))
                                     else -> otherLinks.add(arrayListOf(i.site, i.url))
