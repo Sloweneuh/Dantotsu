@@ -54,6 +54,11 @@ class MediaListViewActivity : AppCompatActivity() {
         val mediaList =
             passedMedia ?: intent.getSerialized("media") as? ArrayList<Media> ?: ArrayList()
         if (passedMedia != null) passedMedia = null
+
+        // Store unread info locally for use in changeView
+        val localUnreadInfo = passedUnreadInfo
+        if (passedUnreadInfo != null) passedUnreadInfo = null
+
         val view = PrefManager.getCustomVal("mediaView", 0)
         var mediaView: View = when (view) {
             1 -> binding.mediaList
@@ -66,7 +71,13 @@ class MediaListViewActivity : AppCompatActivity() {
             mediaView = current
             current.alpha = 1f
             PrefManager.setCustomVal("mediaView", mode)
-            binding.mediaRecyclerView.adapter = MediaAdaptor(mode, mediaList, this)
+
+            // Use custom adapter if we have unread info
+            if (localUnreadInfo != null) {
+                binding.mediaRecyclerView.adapter = ani.dantotsu.home.UnreadChaptersAdapter(mediaList, localUnreadInfo)
+            } else {
+                binding.mediaRecyclerView.adapter = MediaAdaptor(mode, mediaList, this)
+            }
             binding.mediaRecyclerView.layoutManager = GridLayoutManager(
                 this,
                 if (mode == 1) 1 else (screenWidth / 120f).toInt()
@@ -80,7 +91,15 @@ class MediaListViewActivity : AppCompatActivity() {
         }
         val text = "${intent.getStringExtra("title")} (${mediaList.count()})"
         binding.listTitle.text = text
-        binding.mediaRecyclerView.adapter = MediaAdaptor(view, mediaList, this)
+
+        // Check if we have unread chapter info to display
+        if (localUnreadInfo != null) {
+            // Use custom adapter for unread chapters
+            binding.mediaRecyclerView.adapter = ani.dantotsu.home.UnreadChaptersAdapter(mediaList, localUnreadInfo)
+        } else {
+            // Use standard adapter
+            binding.mediaRecyclerView.adapter = MediaAdaptor(view, mediaList, this)
+        }
         binding.mediaRecyclerView.layoutManager = GridLayoutManager(
             this,
             if (view == 1) 1 else (screenWidth / 120f).toInt()
@@ -89,5 +108,6 @@ class MediaListViewActivity : AppCompatActivity() {
 
     companion object {
         var passedMedia: ArrayList<Media>? = null
+        var passedUnreadInfo: Map<Int, ani.dantotsu.connections.malsync.UnreadChapterInfo>? = null
     }
 }

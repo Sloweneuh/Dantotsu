@@ -346,6 +346,7 @@ class HomeFragment : Fragment() {
                                 )
                                 binding.homeUnreadChaptersMore.setOnClickListener { i ->
                                     MediaListViewActivity.passedMedia = unreadList
+                                    MediaListViewActivity.passedUnreadInfo = unreadInfo
                                     ContextCompat.startActivity(
                                         i.context, Intent(i.context, MediaListViewActivity::class.java)
                                             .putExtra("title", getString(R.string.unread_chapters)),
