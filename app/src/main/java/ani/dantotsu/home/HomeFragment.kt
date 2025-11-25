@@ -304,6 +304,78 @@ class HomeFragment : Fragment() {
             bottomBar.selectTabAt(0)
         }
 
+        // Unread Chapters Section
+        binding.homeUnreadChaptersContainer.visibility = View.VISIBLE
+        binding.homeUnreadChaptersProgressBar.visibility = View.VISIBLE
+        binding.homeUnreadChaptersRecyclerView.visibility = View.GONE
+        binding.homeUnreadChaptersEmpty.visibility = View.GONE
+        binding.homeUnreadChapters.visibility = View.INVISIBLE
+        binding.homeUnreadChaptersMore.visibility = View.INVISIBLE
+
+        model.getUnreadChapters().observe(viewLifecycleOwner) { unreadList ->
+            binding.homeUnreadChaptersRecyclerView.visibility = View.GONE
+            binding.homeUnreadChaptersEmpty.visibility = View.GONE
+            if (unreadList != null) {
+                if (unreadList.isNotEmpty()) {
+                    // Fetch MalSync data for each manga
+                    scope.launch {
+                        val unreadInfo = mutableMapOf<Int, ani.dantotsu.connections.malsync.UnreadChapterInfo>()
+
+                        withContext(Dispatchers.IO) {
+                            for (media in unreadList) {
+                                val result = ani.dantotsu.connections.malsync.MalSyncApi.getLastChapter(media.id, media.idMAL)
+                                if (result != null && result.lastEp != null) {
+                                    unreadInfo[media.id] = ani.dantotsu.connections.malsync.UnreadChapterInfo(
+                                        mediaId = media.id,
+                                        lastChapter = result.lastEp.total,
+                                        source = result.source,
+                                        userProgress = media.userProgress ?: 0
+                                    )
+                                }
+                            }
+                        }
+
+                        withContext(Dispatchers.Main) {
+                            if (unreadInfo.isNotEmpty()) {
+                                binding.homeUnreadChaptersRecyclerView.adapter =
+                                    UnreadChaptersAdapter(unreadList, unreadInfo)
+                                binding.homeUnreadChaptersRecyclerView.layoutManager = LinearLayoutManager(
+                                    requireContext(),
+                                    LinearLayoutManager.HORIZONTAL,
+                                    false
+                                )
+                                binding.homeUnreadChaptersMore.setOnClickListener { i ->
+                                    MediaListViewActivity.passedMedia = unreadList
+                                    ContextCompat.startActivity(
+                                        i.context, Intent(i.context, MediaListViewActivity::class.java)
+                                            .putExtra("title", getString(R.string.unread_chapters)),
+                                        null
+                                    )
+                                }
+                                binding.homeUnreadChaptersRecyclerView.visibility = View.VISIBLE
+                                binding.homeUnreadChaptersRecyclerView.layoutAnimation =
+                                    LayoutAnimationController(setSlideIn(), 0.25f)
+                            } else {
+                                binding.homeUnreadChaptersEmpty.visibility = View.VISIBLE
+                            }
+                            binding.homeUnreadChaptersMore.visibility = View.VISIBLE
+                            binding.homeUnreadChapters.visibility = View.VISIBLE
+                            binding.homeUnreadChaptersMore.startAnimation(setSlideUp())
+                            binding.homeUnreadChapters.startAnimation(setSlideUp())
+                            binding.homeUnreadChaptersProgressBar.visibility = View.GONE
+                        }
+                    }
+                } else {
+                    binding.homeUnreadChaptersEmpty.visibility = View.VISIBLE
+                    binding.homeUnreadChaptersMore.visibility = View.VISIBLE
+                    binding.homeUnreadChapters.visibility = View.VISIBLE
+                    binding.homeUnreadChaptersMore.startAnimation(setSlideUp())
+                    binding.homeUnreadChapters.startAnimation(setSlideUp())
+                    binding.homeUnreadChaptersProgressBar.visibility = View.GONE
+                }
+            }
+        }
+
         initRecyclerView(
             model.getMangaContinue(),
             binding.homeContinueReadingContainer,
@@ -443,6 +515,7 @@ class HomeFragment : Fragment() {
             "AnimeContinue",
             "AnimeFav",
             "AnimePlanned",
+            "UnreadChapters",
             "MangaContinue",
             "MangaFav",
             "MangaPlanned",
@@ -454,6 +527,7 @@ class HomeFragment : Fragment() {
             binding.homeContinueWatchingContainer,
             binding.homeFavAnimeContainer,
             binding.homePlannedAnimeContainer,
+            binding.homeUnreadChaptersContainer,
             binding.homeContinueReadingContainer,
             binding.homeFavMangaContainer,
             binding.homePlannedMangaContainer,
@@ -504,6 +578,13 @@ class HomeFragment : Fragment() {
                     val initUserStatus = async(Dispatchers.IO) { model.initUserStatus() }
                     initHomePage.await()
                     initUserStatus.await()
+
+                    // Initialize unread chapters after manga continue is loaded
+                    if (homeLayoutShow.getOrNull(3) == true) {
+                        withContext(Dispatchers.IO) {
+                            model.initUnreadChapters()
+                        }
+                    }
 
                     withContext(Dispatchers.Main) {
                         model.empty.postValue(empty)

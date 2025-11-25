@@ -79,7 +79,7 @@ enum class PrefName(val data: Pref) {
         Pref(
             Location.UI,
             List::class,
-            listOf(true, false, false, true, false, false, true, true)
+            listOf(true, false, false, true, true, false, false, true, true)
         )
     ),
     BannerAnimations(Pref(Location.UI, Boolean::class, true)),

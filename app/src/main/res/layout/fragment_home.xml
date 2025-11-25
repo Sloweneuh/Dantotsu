@@ -703,6 +703,93 @@
             </LinearLayout>
 
             <LinearLayout
+                android:id="@+id/homeUnreadChaptersContainer"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    tools:ignore="UseCompoundDrawables">
+
+                    <TextView
+                        android:id="@+id/homeUnreadChapters"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="24dp"
+                        android:layout_weight="1"
+                        android:fontFamily="@font/poppins_bold"
+                        android:padding="8dp"
+                        android:text="@string/unread_chapters"
+                        android:textSize="16sp" />
+
+                    <ImageView
+                        android:id="@+id/homeUnreadChaptersMore"
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:layout_marginEnd="16dp"
+                        android:fontFamily="@font/poppins_bold"
+                        android:padding="8dp"
+                        android:src="@drawable/arrow_mark"
+                        android:textSize="16sp"
+                        tools:ignore="ContentDescription" />
+                </LinearLayout>
+
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="250dp">
+
+                    <LinearLayout
+                        android:id="@+id/homeUnreadChaptersEmpty"
+                        android:layout_width="match_parent"
+                        android:layout_height="250dp"
+                        android:gravity="center"
+                        android:orientation="vertical"
+                        android:visibility="gone">
+
+                        <ImageView
+                            android:layout_width="match_parent"
+                            android:layout_height="32dp"
+                            android:alpha="0.58"
+                            android:src="@drawable/ic_round_import_contacts_24"
+                            tools:ignore="ContentDescription" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:alpha="0.58"
+                            android:text="@string/no_unread_chapters" />
+
+                    </LinearLayout>
+
+                    <ProgressBar
+                        android:id="@+id/homeUnreadChaptersProgressBar"
+                        style="?android:attr/progressBarStyle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:layout_margin="90dp" />
+
+                    <ani.dantotsu.FadingEdgeRecyclerView
+                        android:id="@+id/homeUnreadChaptersRecyclerView"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:clipToPadding="false"
+                        android:paddingStart="20dp"
+                        android:paddingEnd="20dp"
+                        android:requiresFadingEdge="horizontal"
+                        tools:itemCount="4"
+                        tools:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                        tools:listitem="@layout/item_unread_chapter"
+                        tools:orientation="horizontal" />
+                </FrameLayout>
+            </LinearLayout>
+
+            <LinearLayout
                 android:id="@+id/homeContinueReadingContainer"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"

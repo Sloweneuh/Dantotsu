@@ -91,6 +91,33 @@ class AnilistHomeViewModel : ViewModel() {
 
     fun getHidden(): LiveData<ArrayList<Media>> = hidden
 
+    private val unreadChapters: MutableLiveData<ArrayList<Media>> =
+        MutableLiveData<ArrayList<Media>>(null)
+
+    fun getUnreadChapters(): LiveData<ArrayList<Media>> = unreadChapters
+
+    suspend fun initUnreadChapters() {
+        val currentManga = mangaContinue.value ?: return
+        if (currentManga.isEmpty()) return
+
+        val unreadList = ArrayList<Media>()
+        val malSyncApi = ani.dantotsu.connections.malsync.MalSyncApi
+
+        for (media in currentManga) {
+            val userProgress = media.userProgress ?: 0
+            val result = malSyncApi.getLastChapter(media.id, media.idMAL)
+
+            if (result != null && result.lastEp != null) {
+                val lastChapter = result.lastEp.total
+                if (lastChapter > userProgress) {
+                    unreadList.add(media)
+                }
+            }
+        }
+
+        unreadChapters.postValue(unreadList)
+    }
+
     suspend fun initHomePage() {
         val res = Anilist.query.initHomePage()
         res["currentAnime"]?.let { animeContinue.postValue(it) }
