@@ -317,13 +317,20 @@ class HomeFragment : Fragment() {
             binding.homeUnreadChaptersEmpty.visibility = View.GONE
             if (unreadList != null) {
                 if (unreadList.isNotEmpty()) {
-                    // Fetch MalSync data for each manga
+                    // Fetch MalSync data using batch endpoint (much faster)
                     scope.launch {
                         val unreadInfo = mutableMapOf<Int, ani.dantotsu.connections.malsync.UnreadChapterInfo>()
 
                         withContext(Dispatchers.IO) {
+                            // Collect pairs of (anilistId, malId) - prefer MAL ID, fallback to AniList ID
+                            val mediaIds = unreadList.map { media ->
+                                Pair(media.id, media.idMAL)
+                            }
+                            val batchResults = ani.dantotsu.connections.malsync.MalSyncApi.getBatchProgressByMedia(mediaIds)
+
+                            // Map results back to media IDs
                             for (media in unreadList) {
-                                val result = ani.dantotsu.connections.malsync.MalSyncApi.getLastChapter(media.id, media.idMAL)
+                                val result = batchResults[media.id]
                                 if (result != null && result.lastEp != null) {
                                     unreadInfo[media.id] = ani.dantotsu.connections.malsync.UnreadChapterInfo(
                                         mediaId = media.id,

@@ -4,9 +4,13 @@ import ani.dantotsu.util.Logger
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
 object MalSyncApi {
@@ -79,6 +83,98 @@ object MalSyncApi {
 
         // Only return English entries - don't show other languages
         return top
+    }
+
+    /**
+     * Batch fetch progress data for multiple manga using the POST endpoint
+     * Fetches up to 50 manga at once to reduce API calls
+     * Supports both numeric MAL IDs and "anilist:ID" format
+     * @param mediaList List of pairs containing (anilistId, malId)
+     * @return Map of AniList IDs to MalSyncResponse
+     */
+    suspend fun getBatchProgressByMedia(mediaList: List<Pair<Int, Int?>>): Map<Int, MalSyncResponse> = withContext(Dispatchers.IO) {
+        if (mediaList.isEmpty()) return@withContext emptyMap()
+
+        val resultMap = mutableMapOf<Int, MalSyncResponse>()
+
+        // Create cache keys - prefer MAL ID (numeric), fallback to "anilist:ID" (string)
+        val cacheKeyMap = mutableMapOf<String, Int>() // cacheKey -> anilistId
+        val cacheKeys = mediaList.map { (anilistId, malId) ->
+            val key = if (malId != null) {
+                malId.toString()  // Numeric: "5114"
+            } else {
+                "anilist:$anilistId"  // String: "anilist:173188"
+            }
+            cacheKeyMap[key] = anilistId
+            key
+        }
+
+        // Batch fetch all manga (up to 50 at a time)
+        cacheKeys.chunked(50).forEach { chunk ->
+            try {
+                // Wait 5 seconds between requests (rate limiting, matching web extension)
+                if (resultMap.isNotEmpty()) {
+                    delay(5000)
+                }
+
+                // Send cache keys (can be numeric or "anilist:ID" format)
+                val jsonArray = org.json.JSONArray(chunk)
+                val jsonBody = JSONObject().apply {
+                    put("malids", jsonArray)
+                }.toString()
+
+                Logger.log("MalSync batch request: $jsonBody")
+
+                val requestBody = jsonBody.toRequestBody("application/json".toMediaType())
+                val request = Request.Builder()
+                    .url("https://api.malsync.moe/nc/mal/manga/POST/pr")
+                    .post(requestBody)
+                    .build()
+
+                val response = client.newCall(request).execute()
+                val body = response.body?.string()
+
+                if (!response.isSuccessful) {
+                    Logger.log("MalSync batch API error: ${response.code} - Body: $body")
+                    return@forEach
+                }
+
+                if (body == null || body.isEmpty()) {
+                    Logger.log("MalSync batch API returned empty response")
+                    return@forEach
+                }
+
+                Logger.log("MalSync batch response (first 500 chars): ${body.take(500)}")
+
+                try {
+                    // The batch POST endpoint returns an array of result objects
+                    // Each object has: { "malid": "123" or "anilist:456", "data": [...] }
+                    val type = object : TypeToken<List<BatchProgressResult>>() {}.type
+                    val batchResults: List<BatchProgressResult> = gson.fromJson(body, type)
+
+                    Logger.log("Parsed ${batchResults.size} results from batch")
+
+                    // Process each manga's results
+                    batchResults.forEach { result ->
+                        val cacheKey = result.malid ?: return@forEach
+                        val anilistId = cacheKeyMap[cacheKey] ?: return@forEach
+                        val progress = getProgress(result.data ?: emptyList())
+                        if (progress != null) {
+                            resultMap[anilistId] = progress
+                        }
+                    }
+                } catch (parseError: Exception) {
+                    Logger.log("Error parsing batch response: ${parseError.message}")
+                    Logger.log("Response body: $body")
+                }
+
+            } catch (e: Exception) {
+                Logger.log("Error fetching batch progress for chunk: ${e.message}")
+                e.printStackTrace()
+            }
+        }
+
+        resultMap
     }
 
     suspend fun getUnreadChapters(mangaList: List<Int>): Map<Int, MalSyncResponse> = withContext(Dispatchers.IO) {

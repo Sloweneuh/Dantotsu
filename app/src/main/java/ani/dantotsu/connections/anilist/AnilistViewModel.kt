@@ -103,9 +103,19 @@ class AnilistHomeViewModel : ViewModel() {
         val unreadList = ArrayList<Media>()
         val malSyncApi = ani.dantotsu.connections.malsync.MalSyncApi
 
+        // Collect pairs of (anilistId, malId) - prefer MAL ID, fallback to AniList ID
+        val mediaIds = currentManga.map { media ->
+            Pair(media.id, media.idMAL)
+        }
+
+        // Use batch endpoint to fetch all manga at once (much faster)
+        // Returns map of anilistId -> MalSyncResponse
+        val batchResults = malSyncApi.getBatchProgressByMedia(mediaIds)
+
+        // Check each manga against the batch results
         for (media in currentManga) {
             val userProgress = media.userProgress ?: 0
-            val result = malSyncApi.getLastChapter(media.id, media.idMAL)
+            val result = batchResults[media.id]
 
             if (result != null && result.lastEp != null) {
                 val lastChapter = result.lastEp.total

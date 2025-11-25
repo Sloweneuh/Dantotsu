@@ -33,3 +33,8 @@ data class UnreadChapterInfo(
     val userProgress: Int
 ) : Serializable
 
+data class BatchProgressResult(
+    val malid: String?,  // Can be numeric "5114" or "anilist:173188"
+    val data: List<MalSyncResponse>?
+) : Serializable
+
