@@ -74,7 +74,7 @@ class MediaListViewActivity : AppCompatActivity() {
 
             // Use custom adapter if we have unread info
             if (localUnreadInfo != null) {
-                binding.mediaRecyclerView.adapter = ani.dantotsu.home.UnreadChaptersAdapter(mediaList, localUnreadInfo)
+                binding.mediaRecyclerView.adapter = ani.dantotsu.home.UnreadChaptersAdapter(mediaList, localUnreadInfo, mode)
             } else {
                 binding.mediaRecyclerView.adapter = MediaAdaptor(mode, mediaList, this)
             }
@@ -95,7 +95,7 @@ class MediaListViewActivity : AppCompatActivity() {
         // Check if we have unread chapter info to display
         if (localUnreadInfo != null) {
             // Use custom adapter for unread chapters
-            binding.mediaRecyclerView.adapter = ani.dantotsu.home.UnreadChaptersAdapter(mediaList, localUnreadInfo)
+            binding.mediaRecyclerView.adapter = ani.dantotsu.home.UnreadChaptersAdapter(mediaList, localUnreadInfo, view)
         } else {
             // Use standard adapter
             binding.mediaRecyclerView.adapter = MediaAdaptor(view, mediaList, this)

@@ -52,12 +52,33 @@ object MalSyncApi {
             val type = object : TypeToken<List<MalSyncResponse>>() {}.type
             val results: List<MalSyncResponse> = gson.fromJson(body, type)
 
-            // Find the English language entry
-            results.firstOrNull { it.lang == "en" }
+            // Use the same logic as the web extension's getProgress function
+            // Priority: en/sub -> any entry with lang "en" -> first available
+            getProgress(results)
         } catch (e: Exception) {
             Logger.log("Error fetching MalSync data: ${e.message}")
             null
         }
+    }
+
+    /**
+     * Implements the same progress selection logic as the web extension
+     * Prioritizes entries based on ID and language with fallback logic
+     * Only returns English language entries to avoid showing other languages
+     */
+    private fun getProgress(results: List<MalSyncResponse>): MalSyncResponse? {
+        if (results.isEmpty()) return null
+
+        // Primary: Look for "en/sub" (standard for manga)
+        var top = results.firstOrNull { it.id == "en/sub" }
+
+        // Fallback: Look for any English language entry
+        if (top == null) {
+            top = results.firstOrNull { it.lang == "en" }
+        }
+
+        // Only return English entries - don't show other languages
+        return top
     }
 
     suspend fun getUnreadChapters(mangaList: List<Int>): Map<Int, MalSyncResponse> = withContext(Dispatchers.IO) {
