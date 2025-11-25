@@ -36,14 +36,26 @@ class UserInterfaceSettingsActivity : AppCompatActivity() {
         }
 
         binding.uiSettingsHomeLayout.setOnClickListener {
-            val set = PrefManager.getVal<List<Boolean>>(PrefName.HomeLayout).toMutableList()
             val views = resources.getStringArray(R.array.home_layouts)
+            val savedLayout = PrefManager.getVal<List<Boolean>>(PrefName.HomeLayout)
+
+            // Ensure the list has the correct size (handle old preferences with fewer items)
+            val set = if (savedLayout.size < views.size) {
+                // Pad with 'true' for new items
+                savedLayout.toMutableList().apply {
+                    while (size < views.size) {
+                        add(true)
+                    }
+                }
+            } else {
+                savedLayout.toMutableList()
+            }
+
             customAlertDialog().apply {
                 setTitle(getString(R.string.home_layout_show))
                 multiChoiceItems(
                     items = views,
-                    checkedItems = PrefManager.getVal<List<Boolean>>(PrefName.HomeLayout)
-                        .toBooleanArray()
+                    checkedItems = set.toBooleanArray()
                 ) { selectedItems ->
                     for (i in selectedItems.indices) {
                         set[i] = selectedItems[i]
