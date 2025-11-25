@@ -18,6 +18,8 @@ import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.snackString
 import ani.dantotsu.tryWithSuspend
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -83,7 +85,8 @@ class AnilistHomeViewModel : ViewModel() {
     fun getUserStatus(): LiveData<ArrayList<User>> = userStatus
     suspend fun initUserStatus() {
         val res = Anilist.query.getUserStatus()
-        res?.let { userStatus.postValue(it) }
+        // Always post a value (even if empty) to ensure UI updates and hides progress bar
+        userStatus.postValue(res ?: arrayListOf())
     }
 
     private val hidden: MutableLiveData<ArrayList<Media>> =
@@ -97,35 +100,44 @@ class AnilistHomeViewModel : ViewModel() {
     fun getUnreadChapters(): LiveData<ArrayList<Media>> = unreadChapters
 
     suspend fun initUnreadChapters() {
-        val currentManga = mangaContinue.value ?: return
-        if (currentManga.isEmpty()) return
-
-        val unreadList = ArrayList<Media>()
-        val malSyncApi = ani.dantotsu.connections.malsync.MalSyncApi
-
-        // Collect pairs of (anilistId, malId) - prefer MAL ID, fallback to AniList ID
-        val mediaIds = currentManga.map { media ->
-            Pair(media.id, media.idMAL)
+        val currentManga = mangaContinue.value
+        if (currentManga == null || currentManga.isEmpty()) {
+            // Always post a value (even if empty) to ensure UI updates and hides progress bar
+            unreadChapters.postValue(arrayListOf())
+            return
         }
 
-        // Use batch endpoint to fetch all manga at once (much faster)
-        // Returns map of anilistId -> MalSyncResponse
-        val batchResults = malSyncApi.getBatchProgressByMedia(mediaIds)
+        try {
+            val unreadList = ArrayList<Media>()
+            val malSyncApi = ani.dantotsu.connections.malsync.MalSyncApi
 
-        // Check each manga against the batch results
-        for (media in currentManga) {
-            val userProgress = media.userProgress ?: 0
-            val result = batchResults[media.id]
+            // Collect pairs of (anilistId, malId) - prefer MAL ID, fallback to AniList ID
+            val mediaIds = currentManga.map { media ->
+                Pair(media.id, media.idMAL)
+            }
 
-            if (result != null && result.lastEp != null) {
-                val lastChapter = result.lastEp.total
-                if (lastChapter > userProgress) {
-                    unreadList.add(media)
+            // Use batch endpoint to fetch all manga at once (much faster)
+            // Returns map of anilistId -> MalSyncResponse
+            val batchResults = malSyncApi.getBatchProgressByMedia(mediaIds)
+
+            // Check each manga against the batch results
+            for (media in currentManga) {
+                val userProgress = media.userProgress ?: 0
+                val result = batchResults[media.id]
+
+                if (result != null && result.lastEp != null) {
+                    val lastChapter = result.lastEp.total
+                    if (lastChapter > userProgress) {
+                        unreadList.add(media)
+                    }
                 }
             }
-        }
 
-        unreadChapters.postValue(unreadList)
+            unreadChapters.postValue(unreadList)
+        } catch (e: Exception) {
+            // On error, post empty list to ensure UI updates and hides progress bar
+            unreadChapters.postValue(arrayListOf())
+        }
     }
 
     suspend fun initHomePage() {
@@ -138,6 +150,46 @@ class AnilistHomeViewModel : ViewModel() {
         res["currentMangaPlanned"]?.let { mangaPlanned.postValue(it) }
         res["recommendations"]?.let { recommendation.postValue(it) }
         res["hidden"]?.let { hidden.postValue(it) }
+    }
+
+    suspend fun initHomePageWithUserStatus() {
+        try {
+            // Fetch both in parallel using coroutineScope
+            coroutineScope {
+                val homePageDeferred = async {
+                    Anilist.query.initHomePage()
+                }
+                val userStatusDeferred = async {
+                    Anilist.query.getUserStatus()
+                }
+
+                // Wait for both to complete
+                val res = homePageDeferred.await()
+                val statusRes = userStatusDeferred.await()
+
+                // Post all values together
+                res["currentAnime"]?.let { animeContinue.postValue(it) }
+                res["favoriteAnime"]?.let { animeFav.postValue(it) }
+                res["currentAnimePlanned"]?.let { animePlanned.postValue(it) }
+                res["currentManga"]?.let { mangaContinue.postValue(it) }
+                res["favoriteManga"]?.let { mangaFav.postValue(it) }
+                res["currentMangaPlanned"]?.let { mangaPlanned.postValue(it) }
+                res["recommendations"]?.let { recommendation.postValue(it) }
+                res["hidden"]?.let { hidden.postValue(it) }
+                userStatus.postValue(statusRes ?: arrayListOf())
+            }
+        } catch (e: Exception) {
+            // On error, post empty lists to ensure UI updates properly
+            animeContinue.postValue(arrayListOf())
+            animeFav.postValue(arrayListOf())
+            animePlanned.postValue(arrayListOf())
+            mangaContinue.postValue(arrayListOf())
+            mangaFav.postValue(arrayListOf())
+            mangaPlanned.postValue(arrayListOf())
+            recommendation.postValue(arrayListOf())
+            hidden.postValue(arrayListOf())
+            userStatus.postValue(arrayListOf())
+        }
     }
 
     suspend fun loadMain(context: FragmentActivity) {

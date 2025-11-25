@@ -449,7 +449,7 @@ class AnilistQueries {
     suspend fun getUserStatus(): ArrayList<User>? {
         val toShow: List<Boolean> =
             PrefManager.getVal(PrefName.HomeLayout)
-        if (toShow.getOrNull(7) != true) return null
+        if (toShow.getOrNull(8) != true) return null
         val query = """{Page1:${status(1)}Page2:${status(2)}}"""
         val response = executeQuery<Query.HomePageMedia>(query)
         val list = mutableListOf<User>()
@@ -541,11 +541,11 @@ class AnilistQueries {
                 )
             }"""
         )
-        if (toShow.getOrNull(3) == true) {
+        if (toShow.getOrNull(4) == true) {
             queries.add("""currentManga: ${continueMediaQuery("MANGA", "CURRENT")}""")
             queries.add("""repeatingManga: ${continueMediaQuery("MANGA", "REPEATING")}""")
         }
-        if (toShow.getOrNull(4) == true) queries.add(
+        if (toShow.getOrNull(5) == true) queries.add(
             """favoriteManga: ${
                 favMediaQuery(
                     false,
@@ -553,7 +553,7 @@ class AnilistQueries {
                 )
             }"""
         )
-        if (toShow.getOrNull(5) == true) queries.add(
+        if (toShow.getOrNull(6) == true) queries.add(
             """plannedManga: ${
                 continueMediaQuery(
                     "MANGA",
@@ -561,7 +561,7 @@ class AnilistQueries {
                 )
             }"""
         )
-        if (toShow.getOrNull(6) == true) {
+        if (toShow.getOrNull(7) == true) {
             queries.add("""recommendationQuery: ${recommendationQuery()}""")
             queries.add("""recommendationPlannedQueryAnime: ${recommendationPlannedQuery("ANIME")}""")
             queries.add("""recommendationPlannedQueryManga: ${recommendationPlannedQuery("MANGA")}""")
