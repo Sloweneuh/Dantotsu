@@ -46,6 +46,7 @@ enum class PrefName(val data: Pref) {
     CommentNotificationInterval(Pref(Location.General, Int::class, 0)),
     AnilistNotificationInterval(Pref(Location.General, Int::class, 3)),
     SubscriptionNotificationInterval(Pref(Location.General, Int::class, 2)),
+    UnreadChapterNotificationInterval(Pref(Location.General, Long::class, 60L)), // 60 minutes = 1 hour
     LastAnilistNotificationId(Pref(Location.General, Int::class, 0)),
     AnilistFilteredTypes(Pref(Location.General, Set::class, setOf<String>())),
     UseAlarmManager(Pref(Location.General, Boolean::class, false)),

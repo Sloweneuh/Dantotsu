@@ -63,6 +63,7 @@
     <string name="recommended">Recommended</string>
     <string name="unread_chapters">Unread Chapters</string>
     <string name="no_unread_chapters">No unread chapters</string>
+    <string name="error_fetching_unread_chapters">Couldn\'t fetch unread chapters</string>
 
     <string name="get_recommendations">Watch/Read some Anime or Manga to get Recommendations</string>
     <string name="empty">All caught up, when New?</string>
@@ -830,6 +831,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="anilist_notification_filters">Filter Notifications</string>
     <string name="anilist_notifications_checking_time">Anilist notifications update frequency : %1$s</string>
     <string name="comment_notification_checking_time">Comment notifications update frequency : %1$s</string>
+    <string name="unread_chapter_notification_checking_time">Unread chapter check interval : %1$s</string>
     <string name="activities">Activities</string>
     <string name="enable_rpc">Enable Discord RPC</string>
     <string name="enable_rpc_desc">Display your taste to plebs on Discord!</string>
@@ -984,6 +986,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="anilist_notification_filters_desc">Choose category to Ignore</string>
     <string name="anilist_notifications_checking_time_desc">Set the frequency you want the app to check for Anilist notifications</string>
     <string name="comment_notification_checking_time_desc">Set the frequency you want the app to check for Comment notifications</string>
+    <string name="unread_chapter_notification_checking_time_desc">Set how often to check for new unread chapters in your manga list</string>
     <string name="notification_for_checking_subscriptions_desc">Show notification for checking Subscriptions</string>
     <string name="use_alarm_manager_reliable_desc">Use to bypass the phone\'s battery optimizer</string>
     <string name="oled_theme_variant_desc">As dark as it gets</string>

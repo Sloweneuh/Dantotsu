@@ -4,6 +4,7 @@ import android.content.Context
 import ani.dantotsu.notifications.anilist.AnilistNotificationWorker
 import ani.dantotsu.notifications.comment.CommentNotificationWorker
 import ani.dantotsu.notifications.subscription.SubscriptionNotificationWorker
+import ani.dantotsu.notifications.unread.UnreadChapterNotificationWorker
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 
@@ -31,6 +32,10 @@ interface TaskScheduler {
                 TaskType.SUBSCRIPTION_NOTIFICATION -> SubscriptionNotificationWorker.checkIntervals[PrefManager.getVal(
                     PrefName.SubscriptionNotificationInterval
                 )]
+
+                TaskType.UNREAD_CHAPTER_NOTIFICATION -> PrefManager.getVal(
+                    PrefName.UnreadChapterNotificationInterval
+                )
             }
             scheduleRepeatingTask(taskType, interval)
         }
@@ -65,13 +70,20 @@ interface TaskScheduler {
                 androidx.work.OneTimeWorkRequest.Builder(SubscriptionNotificationWorker::class.java)
                     .build()
             )
+            workManager.enqueueUniqueWork(
+                UnreadChapterNotificationWorker.WORK_NAME + "_single",
+                androidx.work.ExistingWorkPolicy.REPLACE,
+                androidx.work.OneTimeWorkRequest.Builder(UnreadChapterNotificationWorker::class.java)
+                    .build()
+            )
         }
     }
 
     enum class TaskType {
         COMMENT_NOTIFICATION,
         ANILIST_NOTIFICATION,
-        SUBSCRIPTION_NOTIFICATION
+        SUBSCRIPTION_NOTIFICATION,
+        UNREAD_CHAPTER_NOTIFICATION
     }
 }
 

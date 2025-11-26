@@ -312,6 +312,15 @@ class HomeFragment : Fragment() {
         binding.homeUnreadChapters.visibility = View.INVISIBLE
         binding.homeUnreadChaptersMore.visibility = View.INVISIBLE
 
+        // Observe error state to show appropriate message
+        model.getUnreadChaptersError().observe(viewLifecycleOwner) { hasError ->
+            if (hasError) {
+                binding.homeUnreadChaptersEmptyText.text = getString(R.string.error_fetching_unread_chapters)
+            } else {
+                binding.homeUnreadChaptersEmptyText.text = getString(R.string.no_unread_chapters)
+            }
+        }
+
         model.getUnreadChapters().observe(viewLifecycleOwner) { unreadList ->
             binding.homeUnreadChaptersRecyclerView.visibility = View.GONE
             binding.homeUnreadChaptersEmpty.visibility = View.GONE

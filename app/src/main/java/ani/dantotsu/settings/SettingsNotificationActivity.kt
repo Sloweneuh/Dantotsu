@@ -67,6 +67,18 @@ class SettingsNotificationActivity : AppCompatActivity() {
                 if (it > 0) "${if (hours > 0) "$hours hrs " else ""}${if (mins > 0) "$mins mins" else ""}"
                 else getString(R.string.do_not_update)
             }
+
+            // Unread chapter notification intervals (in minutes)
+            val uIntervals = listOf(0L, 60L, 120L, 180L, 360L, 720L, 1440L) // Off, 1h, 2h, 3h, 6h, 12h, 24h
+            val uItems = uIntervals.map {
+                val mins = (it % 60).toInt()
+                val hours = (it / 60).toInt()
+                if (it > 0L) "${if (hours > 0) "$hours hrs " else ""}${if (mins > 0) "$mins mins" else ""}"
+                else getString(R.string.do_not_update)
+            }
+            val currentUInterval = PrefManager.getVal<Long>(PrefName.UnreadChapterNotificationInterval)
+            val currentUIndex = uIntervals.indexOf(currentUInterval).let { if (it == -1) 1 else it }
+
             settingsRecyclerView.adapter = SettingsAdapter(
                 arrayListOf(
                     Settings(
@@ -192,6 +204,34 @@ class SettingsNotificationActivity : AppCompatActivity() {
                                             R.string.comment_notification_checking_time,
                                             cItems[i]
                                         )
+                                    TaskScheduler.create(
+                                        context, PrefManager.getVal(PrefName.UseAlarmManager)
+                                    ).scheduleAllTasks(context)
+                                }
+                                show()
+                            }
+                        }
+                    ),
+                    Settings(
+                        type = 1,
+                        name = getString(
+                            R.string.unread_chapter_notification_checking_time,
+                            uItems[currentUIndex]
+                        ),
+                        desc = getString(R.string.unread_chapter_notification_checking_time_desc),
+                        icon = R.drawable.ic_round_notifications_none_24,
+                        onClick = {
+                            context.customAlertDialog().apply {
+                                setTitle(R.string.subscriptions_checking_time)
+                                singleChoiceItems(
+                                    uItems.toTypedArray(),
+                                    currentUIndex
+                                ) { i ->
+                                    PrefManager.setVal(PrefName.UnreadChapterNotificationInterval, uIntervals[i])
+                                    it.settingsTitle.text = getString(
+                                        R.string.unread_chapter_notification_checking_time,
+                                        uItems[i]
+                                    )
                                     TaskScheduler.create(
                                         context, PrefManager.getVal(PrefName.UseAlarmManager)
                                     ).scheduleAllTasks(context)

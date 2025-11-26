@@ -69,6 +69,23 @@ class WorkManagerScheduler(private val context: Context) : TaskScheduler {
                     recurringWork
                 )
             }
+
+            TaskType.UNREAD_CHAPTER_NOTIFICATION -> {
+                val recurringWork = PeriodicWorkRequest.Builder(
+                    ani.dantotsu.notifications.unread.UnreadChapterNotificationWorker::class.java,
+                    interval,
+                    java.util.concurrent.TimeUnit.MINUTES,
+                    PeriodicWorkRequest.MIN_PERIODIC_FLEX_MILLIS,
+                    java.util.concurrent.TimeUnit.MINUTES
+                )
+                    .setConstraints(constraints)
+                    .build()
+                androidx.work.WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+                    ani.dantotsu.notifications.unread.UnreadChapterNotificationWorker.WORK_NAME,
+                    androidx.work.ExistingPeriodicWorkPolicy.UPDATE,
+                    recurringWork
+                )
+            }
         }
     }
 
@@ -87,6 +104,11 @@ class WorkManagerScheduler(private val context: Context) : TaskScheduler {
             TaskType.SUBSCRIPTION_NOTIFICATION -> {
                 androidx.work.WorkManager.getInstance(context)
                     .cancelUniqueWork(SubscriptionNotificationWorker.WORK_NAME)
+            }
+
+            TaskType.UNREAD_CHAPTER_NOTIFICATION -> {
+                androidx.work.WorkManager.getInstance(context)
+                    .cancelUniqueWork(ani.dantotsu.notifications.unread.UnreadChapterNotificationWorker.WORK_NAME)
             }
         }
     }

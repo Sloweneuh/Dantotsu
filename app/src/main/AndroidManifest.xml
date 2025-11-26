@@ -420,6 +420,7 @@
         <receiver android:name=".notifications.anilist.AnilistNotificationReceiver" />
         <receiver android:name=".notifications.comment.CommentNotificationReceiver" />
         <receiver android:name=".notifications.subscription.SubscriptionNotificationReceiver" />
+        <receiver android:name=".notifications.unread.UnreadChapterNotificationReceiver" />
 
         <meta-data
             android:name="preloaded_fonts"

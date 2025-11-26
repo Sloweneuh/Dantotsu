@@ -99,11 +99,16 @@ class AnilistHomeViewModel : ViewModel() {
 
     fun getUnreadChapters(): LiveData<ArrayList<Media>> = unreadChapters
 
+    private val unreadChaptersError: MutableLiveData<Boolean> = MutableLiveData(false)
+
+    fun getUnreadChaptersError(): LiveData<Boolean> = unreadChaptersError
+
     suspend fun initUnreadChapters() {
         val currentManga = mangaContinue.value
         if (currentManga == null || currentManga.isEmpty()) {
             // Always post a value (even if empty) to ensure UI updates and hides progress bar
             unreadChapters.postValue(arrayListOf())
+            unreadChaptersError.postValue(false)
             return
         }
 
@@ -120,6 +125,14 @@ class AnilistHomeViewModel : ViewModel() {
             // Returns map of anilistId -> MalSyncResponse
             val batchResults = malSyncApi.getBatchProgressByMedia(mediaIds)
 
+            // If we have manga but got zero results, the API likely failed (503, network error, etc.)
+            if (mediaIds.isNotEmpty() && batchResults.isEmpty()) {
+                ani.dantotsu.util.Logger.log("MalSync returned empty results for ${mediaIds.size} manga - API likely failed")
+                unreadChapters.postValue(arrayListOf())
+                unreadChaptersError.postValue(true)
+                return
+            }
+
             // Check each manga against the batch results
             for (media in currentManga) {
                 val userProgress = media.userProgress ?: 0
@@ -134,9 +147,11 @@ class AnilistHomeViewModel : ViewModel() {
             }
 
             unreadChapters.postValue(unreadList)
+            unreadChaptersError.postValue(false)
         } catch (e: Exception) {
-            // On error, post empty list to ensure UI updates and hides progress bar
+            // On error, post empty list and set error flag
             unreadChapters.postValue(arrayListOf())
+            unreadChaptersError.postValue(true)
         }
     }
 
