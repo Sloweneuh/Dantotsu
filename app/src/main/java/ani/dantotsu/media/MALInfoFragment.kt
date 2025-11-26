@@ -152,10 +152,8 @@ class MALInfoFragment : Fragment() {
         binding.mediaInfoSource.text = formatSource(malData.source)
 
         // Dates
-        @Suppress("SetTextI18n")
-        binding.mediaInfoStart.text = malData.startDate ?: "??"
-        @Suppress("SetTextI18n")
-        binding.mediaInfoEnd.text = malData.endDate ?: "??"
+        binding.mediaInfoStart.text = formatDate(malData.startDate)
+        binding.mediaInfoEnd.text = formatDate(malData.endDate)
 
         // Popularity
         binding.mediaInfoPopularity.text = malData.numListUsers?.toString() ?: "??"
@@ -166,8 +164,23 @@ class MALInfoFragment : Fragment() {
         // Episode Duration
         if (malData.averageEpisodeDuration != null) {
             val durationInMinutes = malData.averageEpisodeDuration / 60
-            @Suppress("SetTextI18n")
-            binding.mediaInfoDuration.text = "$durationInMinutes min"
+            val hours = durationInMinutes / 60
+            val minutes = durationInMinutes % 60
+
+            val formattedDuration = buildString {
+                if (hours > 0) {
+                    append("$hours hour")
+                    if (hours > 1) append("s")
+                }
+
+                if (minutes > 0) {
+                    if (hours > 0) append(", ")
+                    append("$minutes min")
+                    if (minutes > 1) append("s")
+                }
+            }
+
+            binding.mediaInfoDuration.text = formattedDuration.ifEmpty { "Unknown" }
             binding.mediaInfoDurationContainer.visibility = View.VISIBLE
         }
 
@@ -322,10 +335,8 @@ class MALInfoFragment : Fragment() {
         binding.mediaInfoSource.text = "Manga"
 
         // Dates
-        @Suppress("SetTextI18n")
-        binding.mediaInfoStart.text = malData.startDate ?: "??"
-        @Suppress("SetTextI18n")
-        binding.mediaInfoEnd.text = malData.endDate ?: "??"
+        binding.mediaInfoStart.text = formatDate(malData.startDate)
+        binding.mediaInfoEnd.text = formatDate(malData.endDate)
 
         // Popularity
         binding.mediaInfoPopularity.text = malData.numListUsers?.toString() ?: "??"
@@ -478,6 +489,32 @@ class MALInfoFragment : Fragment() {
             "novel" -> "Novel"
             "web_manga" -> "Web Manga"
             else -> source?.replaceFirstChar { it.uppercase() } ?: "Unknown"
+        }
+    }
+
+    private fun formatDate(dateString: String?): String {
+        if (dateString == null) return "??"
+
+        return try {
+            // MAL dates are in format: YYYY-MM-DD
+            val parts = dateString.split("-")
+            if (parts.size != 3) return dateString
+
+            val year = parts[0]
+            val monthNum = parts[1].toIntOrNull() ?: return dateString
+            val day = parts[2].toIntOrNull()?.toString() ?: return dateString
+
+            // Convert month number to month name
+            val monthNames = arrayOf(
+                "January", "February", "March", "April", "May", "June",
+                "July", "August", "September", "October", "November", "December"
+            )
+            val month = if (monthNum in 1..12) monthNames[monthNum - 1] else return dateString
+
+            // Format as "Day Month Year" (e.g., "25 August 1989")
+            "$day $month $year"
+        } catch (e: Exception) {
+            dateString
         }
     }
 }
