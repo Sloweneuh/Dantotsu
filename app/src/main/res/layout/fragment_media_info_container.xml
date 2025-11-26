@@ -12,8 +12,11 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="?android:colorBackground"
-        app:tabMode="scrollable"
-        app:tabTextColor="?attr/colorOnBackground" />
+        app:tabMode="fixed"
+        app:tabGravity="center"
+        app:tabMaxWidth="0dp"
+        app:tabTextColor="?attr/colorOnBackground"
+        app:tabIconTint="?attr/colorOnBackground" />
 
     <androidx.viewpager2.widget.ViewPager2
         android:id="@+id/mediaInfoViewPager"

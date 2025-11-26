@@ -49,10 +49,9 @@ class MediaInfoFragment : Fragment() {
 
                 // Setup TabLayout
                 TabLayoutMediator(binding.mediaInfoTabLayout, binding.mediaInfoViewPager) { tab, position ->
-                    tab.text = when (position) {
-                        0 -> "AniList"
-                        1 -> "MyAnimeList"
-                        else -> ""
+                    when (position) {
+                        0 -> tab.setIcon(ani.dantotsu.R.drawable.ic_anilist)
+                        1 -> tab.setIcon(ani.dantotsu.R.drawable.ic_myanimelist)
                     }
                 }.attach()
 
