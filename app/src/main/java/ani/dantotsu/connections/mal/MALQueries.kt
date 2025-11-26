@@ -87,4 +87,33 @@ class MALQueries {
         }
     }
 
+    suspend fun getAnimeDetails(malId: Int): MALAnimeResponse? {
+        return tryWithSuspend {
+            val fields = "id,title,main_picture,alternative_titles,start_date,end_date,synopsis," +
+                    "mean,rank,popularity,num_list_users,num_scoring_users,nsfw,created_at,updated_at," +
+                    "media_type,status,genres,num_episodes,start_season,broadcast,source," +
+                    "average_episode_duration,rating,pictures,background,related_anime,related_manga," +
+                    "recommendations,studios,statistics"
+
+            client.get(
+                "$apiUrl/anime/$malId?fields=$fields",
+                authHeader ?: emptyMap()
+            ).parsed<MALAnimeResponse>()
+        }
+    }
+
+    suspend fun getMangaDetails(malId: Int): MALMangaResponse? {
+        return tryWithSuspend {
+            val fields = "id,title,main_picture,alternative_titles,start_date,end_date,synopsis," +
+                    "mean,rank,popularity,num_list_users,num_scoring_users," +
+                    "media_type,status,genres,num_volumes,num_chapters,authors{first_name,last_name}," +
+                    "recommendations,serialization{name}"
+
+            client.get(
+                "$apiUrl/manga/$malId?fields=$fields",
+                authHeader ?: emptyMap()
+            ).parsed<MALMangaResponse>()
+        }
+    }
+
 }
