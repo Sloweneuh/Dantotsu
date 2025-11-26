@@ -344,15 +344,25 @@ class HomeFragment : Fragment() {
 
                         withContext(Dispatchers.Main) {
                             if (unreadInfo.isNotEmpty()) {
+                                // Sort by unread chapters (least unread first)
+                                val sortedList = unreadList.sortedBy { media ->
+                                    val info = unreadInfo[media.id]
+                                    if (info != null) {
+                                        info.lastChapter - info.userProgress // Calculate unread count
+                                    } else {
+                                        Int.MAX_VALUE // Put items without info at the end
+                                    }
+                                }
+
                                 binding.homeUnreadChaptersRecyclerView.adapter =
-                                    UnreadChaptersAdapter(unreadList, unreadInfo)
+                                    UnreadChaptersAdapter(sortedList, unreadInfo)
                                 binding.homeUnreadChaptersRecyclerView.layoutManager = LinearLayoutManager(
                                     requireContext(),
                                     LinearLayoutManager.HORIZONTAL,
                                     false
                                 )
                                 binding.homeUnreadChaptersMore.setOnClickListener { i ->
-                                    MediaListViewActivity.passedMedia = unreadList
+                                    MediaListViewActivity.passedMedia = ArrayList(sortedList)
                                     MediaListViewActivity.passedUnreadInfo = unreadInfo
                                     ContextCompat.startActivity(
                                         i.context, Intent(i.context, MediaListViewActivity::class.java)

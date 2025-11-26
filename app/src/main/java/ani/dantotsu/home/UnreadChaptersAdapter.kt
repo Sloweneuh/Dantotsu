@@ -59,6 +59,7 @@ class UnreadChaptersAdapter(
         }
     }
 
+    @android.annotation.SuppressLint("SetTextI18n")
     private fun bindCompactView(binding: ItemUnreadChapterBinding, media: Media, info: UnreadChapterInfo) {
         binding.apply {
             // Load cover image
@@ -101,6 +102,7 @@ class UnreadChaptersAdapter(
         }
     }
 
+    @android.annotation.SuppressLint("SetTextI18n")
     private fun bindLargeView(binding: ItemMediaLargeBinding, media: Media, info: UnreadChapterInfo) {
         binding.apply {
             // Load cover and banner images
