@@ -69,14 +69,31 @@ class SettingsNotificationActivity : AppCompatActivity() {
             }
 
             // Unread chapter notification intervals (in minutes)
-            val uIntervals = listOf(0L, 60L, 120L, 180L, 360L, 720L, 1440L) // Off, 1h, 2h, 3h, 6h, 12h, 24h
-            val uItems = uIntervals.map {
+            val uIntervals = mutableListOf(0L, 60L, 120L, 180L, 360L, 720L, 1440L) // Off, 1h, 2h, 3h, 6h, 12h, 24h
+            val currentUInterval = PrefManager.getVal<Long>(PrefName.UnreadChapterNotificationInterval)
+
+            // Add custom interval if it's not in the predefined list
+            var customIntervalIndex = -1
+            if (currentUInterval > 0L && !uIntervals.contains(currentUInterval)) {
+                customIntervalIndex = uIntervals.size
+                uIntervals.add(currentUInterval)
+            }
+
+            val uItems = uIntervals.mapIndexed { index, it ->
                 val mins = (it % 60).toInt()
                 val hours = (it / 60).toInt()
-                if (it > 0L) "${if (hours > 0) "$hours hrs " else ""}${if (mins > 0) "$mins mins" else ""}"
-                else getString(R.string.do_not_update)
-            }
-            val currentUInterval = PrefManager.getVal<Long>(PrefName.UnreadChapterNotificationInterval)
+                if (it > 0L) {
+                    if (index == customIntervalIndex) {
+                        "Custom: ${if (hours > 0) "$hours hrs " else ""}${if (mins > 0) "$mins mins" else ""}"
+                    } else {
+                        "${if (hours > 0) "$hours hrs " else ""}${if (mins > 0) "$mins mins" else ""}"
+                    }
+                } else getString(R.string.do_not_update)
+            }.toMutableList()
+
+            // Add "Custom..." option at the end
+            uItems.add(getString(R.string.custom))
+
             val currentUIndex = uIntervals.indexOf(currentUInterval).let { if (it == -1) 1 else it }
 
             settingsRecyclerView.adapter = SettingsAdapter(
@@ -227,14 +244,19 @@ class SettingsNotificationActivity : AppCompatActivity() {
                                     uItems.toTypedArray(),
                                     currentUIndex
                                 ) { i ->
-                                    PrefManager.setVal(PrefName.UnreadChapterNotificationInterval, uIntervals[i])
-                                    it.settingsTitle.text = getString(
-                                        R.string.unread_chapter_notification_checking_time,
-                                        uItems[i]
-                                    )
-                                    TaskScheduler.create(
-                                        context, PrefManager.getVal(PrefName.UseAlarmManager)
-                                    ).scheduleAllTasks(context)
+                                    if (i == uItems.size - 1) {
+                                        // Custom option selected
+                                        showCustomIntervalDialog(context, it)
+                                    } else {
+                                        PrefManager.setVal(PrefName.UnreadChapterNotificationInterval, uIntervals[i])
+                                        it.settingsTitle.text = getString(
+                                            R.string.unread_chapter_notification_checking_time,
+                                            uItems[i]
+                                        )
+                                        TaskScheduler.create(
+                                            context, PrefManager.getVal(PrefName.UseAlarmManager)
+                                        ).scheduleAllTasks(context)
+                                    }
                                 }
                                 show()
                             }
@@ -298,6 +320,39 @@ class SettingsNotificationActivity : AppCompatActivity() {
                 layoutManager = LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false)
                 setHasFixedSize(true)
             }
+        }
+    }
+
+    private fun showCustomIntervalDialog(context: Context, binding: ani.dantotsu.databinding.ItemSettingsBinding) {
+        context.customAlertDialog().apply {
+            setTitle(R.string.custom_interval_title)
+            setMessage(R.string.custom_interval_desc)
+
+            val input = android.widget.NumberPicker(context)
+            input.minValue = 1
+            input.maxValue = 1440 // Max 24 hours (1440 minutes)
+            input.value = 60 // Default to 60 minutes
+            input.wrapSelectorWheel = false
+
+            setCustomView(input)
+            setPosButton(R.string.ok) {
+                val customMinutes = input.value.toLong()
+                PrefManager.setVal(PrefName.UnreadChapterNotificationInterval, customMinutes)
+
+                val mins = (customMinutes % 60).toInt()
+                val hours = (customMinutes / 60).toInt()
+                val displayText = "Custom: ${if (hours > 0) "$hours hrs " else ""}${if (mins > 0) "$mins mins" else ""}"
+
+                binding.settingsTitle.text = getString(
+                    R.string.unread_chapter_notification_checking_time,
+                    displayText
+                )
+                TaskScheduler.create(
+                    context, PrefManager.getVal(PrefName.UseAlarmManager)
+                ).scheduleAllTasks(context)
+            }
+            setNegButton(R.string.cancel)
+            show()
         }
     }
 }

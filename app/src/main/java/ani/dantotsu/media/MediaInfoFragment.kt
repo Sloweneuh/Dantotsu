@@ -47,6 +47,9 @@ class MediaInfoFragment : Fragment() {
                 )
                 binding.mediaInfoViewPager.adapter = adapter
 
+                // Disable swipe gestures to allow horizontal scrolling inside fragments
+                binding.mediaInfoViewPager.isUserInputEnabled = false
+
                 // Setup TabLayout
                 TabLayoutMediator(binding.mediaInfoTabLayout, binding.mediaInfoViewPager) { tab, position ->
                     when (position) {

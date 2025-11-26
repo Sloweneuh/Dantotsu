@@ -8,8 +8,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.core.text.HtmlCompat
-import androidx.core.view.isGone
-import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -59,8 +57,6 @@ class MALInfoFragment : Fragment() {
         val offline: Boolean =
             PrefManager.getVal(PrefName.OfflineMode) || !isOnline(requireContext())
 
-        binding.mediaInfoProgressBar.isGone = loaded
-        binding.mediaInfoContainer.isVisible = loaded
         binding.mediaInfoContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> {
             bottomMargin += 128f.px + navBarHeight
         }
@@ -69,43 +65,76 @@ class MALInfoFragment : Fragment() {
             if (it) binding.mediaInfoScroll.scrollTo(0, 0)
         }
 
-        model.getMedia().observe(viewLifecycleOwner) { media ->
-            if (media != null && !loaded && media.idMAL != null) {
-                lifecycleScope.launch {
-                    try {
-                        val malData = withContext(Dispatchers.IO) {
-                            if (media.anime != null) {
-                                MAL.query.getAnimeDetails(media.idMAL!!)
-                            } else {
-                                MAL.query.getMangaDetails(media.idMAL!!)
+        // Check if MAL is logged in
+        lifecycleScope.launch {
+            val isLoggedIn = withContext(Dispatchers.IO) {
+                MAL.getSavedToken()
+            }
+
+            if (!isLoggedIn) {
+                showNotLoggedIn()
+                return@launch
+            }
+
+            model.getMedia().observe(viewLifecycleOwner) { media ->
+                if (media != null && !loaded && media.idMAL != null) {
+                    lifecycleScope.launch {
+                        try {
+                            binding.mediaInfoProgressBar.visibility = View.VISIBLE
+                            binding.mediaInfoContainer.visibility = View.GONE
+
+                            val malData = withContext(Dispatchers.IO) {
+                                if (media.anime != null) {
+                                    MAL.query.getAnimeDetails(media.idMAL!!)
+                                } else {
+                                    MAL.query.getMangaDetails(media.idMAL!!)
+                                }
                             }
+
+                            if (malData == null) {
+                                showError("Failed to load MAL data")
+                                return@launch
+                            }
+
+                            loaded = true
+                            binding.mediaInfoProgressBar.visibility = View.GONE
+                            binding.mediaInfoContainer.visibility = View.VISIBLE
+
+                            val parent = _binding?.mediaInfoContainer ?: return@launch
+                            val screenWidth = resources.displayMetrics.run { widthPixels / density }
+
+                            // Display MAL data
+                            if (media.anime != null) {
+                                displayAnimeInfo(malData as ani.dantotsu.connections.mal.MALAnimeResponse, parent, screenWidth, offline)
+                            } else {
+                                displayMangaInfo(malData as ani.dantotsu.connections.mal.MALMangaResponse, parent, screenWidth, offline)
+                            }
+
+                        } catch (e: Exception) {
+                            showError("Error loading MAL data: ${e.message}")
                         }
-
-                        if (malData == null) {
-                            showError("Failed to load MAL data")
-                            return@launch
-                        }
-
-                        loaded = true
-                        binding.mediaInfoProgressBar.visibility = View.GONE
-                        binding.mediaInfoContainer.visibility = View.VISIBLE
-
-                        val parent = _binding?.mediaInfoContainer ?: return@launch
-                        val screenWidth = resources.displayMetrics.run { widthPixels / density }
-
-                        // Display MAL data
-                        if (media.anime != null) {
-                            displayAnimeInfo(malData as ani.dantotsu.connections.mal.MALAnimeResponse, parent, screenWidth, offline)
-                        } else {
-                            displayMangaInfo(malData as ani.dantotsu.connections.mal.MALMangaResponse, parent, screenWidth, offline)
-                        }
-
-                    } catch (e: Exception) {
-                        showError("Error loading MAL data: ${e.message}")
                     }
                 }
             }
         }
+    }
+
+    private fun showNotLoggedIn() {
+        binding.mediaInfoProgressBar.visibility = View.GONE
+        binding.mediaInfoContainer.visibility = View.GONE
+
+        val frameLayout = binding.mediaInfoContainer.parent as ViewGroup
+        val notLoggedInView = layoutInflater.inflate(
+            R.layout.fragment_mal_not_logged_in,
+            frameLayout,
+            false
+        )
+
+        notLoggedInView.findViewById<View>(R.id.connectMalButton)?.setOnClickListener {
+            MAL.loginIntent(requireContext())
+        }
+
+        frameLayout.addView(notLoggedInView)
     }
 
     private fun showError(message: String) {

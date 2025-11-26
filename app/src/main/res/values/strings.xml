@@ -411,6 +411,9 @@
     <string name="accounts">Accounts</string>
     <string name="addons">Add-ons</string>
     <string name="myanimelist">MyAnimeList</string>
+    <string name="mal_not_logged_in_title">MyAnimeList Not Connected</string>
+    <string name="mal_not_logged_in_desc">Connect your MyAnimeList account to view information from MAL</string>
+    <string name="connect_to_mal">Connect to MyAnimeList</string>
     <string name="login_with_anilist">Login with Anilist!</string>
     <string name="anilist">Anilist</string>
     <string name="account_help">How does this work\?</string>
@@ -832,6 +835,9 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="anilist_notifications_checking_time">Anilist notifications update frequency : %1$s</string>
     <string name="comment_notification_checking_time">Comment notifications update frequency : %1$s</string>
     <string name="unread_chapter_notification_checking_time">Unread chapter check interval : %1$s</string>
+    <string name="custom">Custom…</string>
+    <string name="custom_interval_title">Custom Interval</string>
+    <string name="custom_interval_desc">Enter the interval in minutes (1-1440)</string>
     <string name="activities">Activities</string>
     <string name="enable_rpc">Enable Discord RPC</string>
     <string name="enable_rpc_desc">Display your taste to plebs on Discord!</string>
