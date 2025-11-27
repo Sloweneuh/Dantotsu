@@ -150,20 +150,20 @@ class MALInfoFragment : Fragment() {
         @Suppress("UNUSED_PARAMETER") screenWidth: Float,
         offline: Boolean
     ) {
-        // Title
-        binding.mediaInfoName.text = tripleTab + malData.title
+        // Title - MAL title is romaji, so show English/Japanese as main title if available
+        val mainTitle = malData.alternativeTitles?.en ?: malData.alternativeTitles?.ja ?: malData.title
+        binding.mediaInfoName.text = tripleTab + mainTitle
         binding.mediaInfoName.setOnLongClickListener {
-            copyToClipboard(malData.title)
+            copyToClipboard(mainTitle)
             true
         }
 
-        // Romaji/English title
+        // Romaji title (MAL's default title is in romaji)
         if (malData.alternativeTitles?.en != null || malData.alternativeTitles?.ja != null) {
             binding.mediaInfoNameRomajiContainer.visibility = View.VISIBLE
-            val altTitle = malData.alternativeTitles.en ?: malData.alternativeTitles.ja ?: ""
-            binding.mediaInfoNameRomaji.text = tripleTab + altTitle
+            binding.mediaInfoNameRomaji.text = tripleTab + malData.title
             binding.mediaInfoNameRomaji.setOnLongClickListener {
-                copyToClipboard(altTitle)
+                copyToClipboard(malData.title)
                 true
             }
         }
@@ -228,7 +228,7 @@ class MALInfoFragment : Fragment() {
 
         // Total Episodes
         binding.mediaInfoTotalTitle.setText(R.string.total_eps)
-        binding.mediaInfoTotal.text = malData.numEpisodes?.toString() ?: "~"
+        binding.mediaInfoTotal.text = if (malData.numEpisodes == null || malData.numEpisodes == 0) "~" else malData.numEpisodes.toString()
 
         // Description
         val desc = HtmlCompat.fromHtml(
@@ -333,20 +333,20 @@ class MALInfoFragment : Fragment() {
         @Suppress("UNUSED_PARAMETER") screenWidth: Float,
         offline: Boolean
     ) {
-        // Title
-        binding.mediaInfoName.text = tripleTab + malData.title
+        // Title - MAL title is romaji, so show English/Japanese as main title if available
+        val mainTitle = malData.alternativeTitles?.en ?: malData.alternativeTitles?.ja ?: malData.title
+        binding.mediaInfoName.text = tripleTab + mainTitle
         binding.mediaInfoName.setOnLongClickListener {
-            copyToClipboard(malData.title)
+            copyToClipboard(mainTitle)
             true
         }
 
-        // Romaji/English title
+        // Romaji title (MAL's default title is in romaji)
         if (malData.alternativeTitles?.en != null || malData.alternativeTitles?.ja != null) {
             binding.mediaInfoNameRomajiContainer.visibility = View.VISIBLE
-            val altTitle = malData.alternativeTitles.en ?: malData.alternativeTitles.ja ?: ""
-            binding.mediaInfoNameRomaji.text = tripleTab + altTitle
+            binding.mediaInfoNameRomaji.text = tripleTab + malData.title
             binding.mediaInfoNameRomaji.setOnLongClickListener {
-                copyToClipboard(altTitle)
+                copyToClipboard(malData.title)
                 true
             }
         }
@@ -360,8 +360,8 @@ class MALInfoFragment : Fragment() {
         // Format/Media Type
         binding.mediaInfoFormat.text = formatMediaType(malData.mediaType)
 
-        // Source (hide for manga)
-        binding.mediaInfoSource.text = "Manga"
+        // Source (MAL doesn't provide source for manga)
+        binding.mediaInfoSourceContainer.visibility = View.GONE
 
         // Dates
         binding.mediaInfoStart.text = formatDate(malData.startDate)
@@ -373,17 +373,18 @@ class MALInfoFragment : Fragment() {
         // Favorites (using num_scoring_users as proxy)
         binding.mediaInfoFavorites.text = malData.numScoringUsers?.toString() ?: "??"
 
-        // Author
+        // Author - prefer the one with "Story" in their role
         if (malData.authors.isNotEmpty()) {
             binding.mediaInfoAuthorContainer.visibility = View.VISIBLE
-            val author = malData.authors.first().node
+            val authorWithStory = malData.authors.find { it.role?.contains("Story", ignoreCase = true) == true }
+            val author = (authorWithStory ?: malData.authors.first()).node
             val authorName = "${author.firstName ?: ""} ${author.lastName ?: ""}".trim()
             binding.mediaInfoAuthor.text = authorName
         }
 
         // Total Chapters
         binding.mediaInfoTotalTitle.setText(R.string.total_chaps)
-        binding.mediaInfoTotal.text = malData.numChapters?.toString() ?: "~"
+        binding.mediaInfoTotal.text = if (malData.numChapters == null || malData.numChapters == 0) "~" else malData.numChapters.toString()
 
         // Description
         val desc = HtmlCompat.fromHtml(
@@ -492,32 +493,43 @@ class MALInfoFragment : Fragment() {
 
     private fun formatMediaType(mediaType: String?): String {
         return when (mediaType?.lowercase()) {
+            "unknown" -> "UNKNOWN"
             "tv" -> "TV"
             "ova" -> "OVA"
             "ona" -> "ONA"
-            "movie" -> "Movie"
-            "special" -> "Special"
-            "manga" -> "Manga"
-            "novel" -> "Novel"
-            "one_shot" -> "One Shot"
-            "doujinshi" -> "Doujinshi"
-            "manhwa" -> "Manhwa"
-            "manhua" -> "Manhua"
-            else -> mediaType?.uppercase() ?: "Unknown"
+            "movie" -> "MOVIE"
+            "special" -> "SPECIAL"
+            "music" -> "MUSIC"
+            "manga" -> "MANGA"
+            "novel" -> "NOVEL"
+            "light_novel" -> "LIGHT NOVEL"
+            "one_shot" -> "ONE SHOT"
+            "doujinshi" -> "DOUJINSHI"
+            "manhwa" -> "MANHWA"
+            "manhua" -> "MANHUA"
+            "oel" -> "OEL"
+            else -> mediaType?.uppercase()?.replace("_", " ") ?: "UNKNOWN"
         }
     }
 
     private fun formatSource(source: String?): String {
         return when (source?.lowercase()) {
-            "original" -> "Original"
-            "manga" -> "Manga"
-            "light_novel" -> "Light Novel"
-            "visual_novel" -> "Visual Novel"
-            "video_game" -> "Video Game"
-            "other" -> "Other"
-            "novel" -> "Novel"
-            "web_manga" -> "Web Manga"
-            else -> source?.replaceFirstChar { it.uppercase() } ?: "Unknown"
+            "other" -> "OTHER"
+            "original" -> "ORIGINAL"
+            "manga" -> "MANGA"
+            "4_koma_manga" -> "4 KOMA MANGA"
+            "web_manga" -> "WEB MANGA"
+            "digital_manga" -> "DIGITAL MANGA"
+            "novel" -> "NOVEL"
+            "light_novel" -> "LIGHT NOVEL"
+            "visual_novel" -> "VISUAL NOVEL"
+            "game" -> "GAME"
+            "card_game" -> "CARD GAME"
+            "book" -> "BOOK"
+            "picture_book" -> "PICTURE BOOK"
+            "radio" -> "RADIO"
+            "music" -> "MUSIC"
+            else -> source?.uppercase()?.replace("_", " ") ?: "UNKNOWN"
         }
     }
 

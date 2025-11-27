@@ -165,6 +165,7 @@
                     </TableRow>
 
                     <TableRow
+                        android:id="@+id/mediaInfoSourceContainer"
                         android:layout_width="match_parent"
                         android:layout_height="24dp"
                         android:orientation="horizontal">
