@@ -163,6 +163,9 @@ class App : MultiDexApplication() {
     inner class FTActivityLifecycleCallbacks : ActivityLifecycleCallbacks {
         var currentActivity: Activity? = null
         var lastActivity: String? = null
+        private var lastUnreadChapterCheck = 0L
+        private var resumeCount = 0
+
         override fun onActivityCreated(p0: Activity, p1: Bundle?) {
             lastActivity = p0.javaClass.simpleName
         }
@@ -173,6 +176,36 @@ class App : MultiDexApplication() {
 
         override fun onActivityResumed(p0: Activity) {
             currentActivity = p0
+            resumeCount++
+
+            // Check for unread chapters when app comes to foreground
+            // Only check if:
+            // 1. It's been more than the configured interval since last check
+            // 2. This isn't the very first activity resume (skip initial app launch)
+            val now = System.currentTimeMillis()
+            val timeSinceLastCheck = now - lastUnreadChapterCheck
+
+            // Get user's configured interval (in minutes), with a minimum of 15 minutes
+            val intervalMinutes = kotlin.math.max(
+                PrefManager.getVal<Long>(PrefName.UnreadChapterNotificationInterval),
+                15L
+            )
+            val intervalMillis = intervalMinutes * 60 * 1000L
+
+            if (resumeCount > 1 && timeSinceLastCheck > intervalMillis) {
+                lastUnreadChapterCheck = now
+                Logger.log("FTActivityLifecycleCallbacks: Triggering unread chapter check (${intervalMinutes}min interval)")
+
+                // Run the check in background
+                GlobalScope.launch(Dispatchers.IO) {
+                    try {
+                        ani.dantotsu.notifications.unread.UnreadChapterNotificationTask()
+                            .execute(this@App)
+                    } catch (e: Exception) {
+                        Logger.log("FTActivityLifecycleCallbacks: Error checking unread chapters: ${e.message}")
+                    }
+                }
+            }
         }
 
         override fun onActivityPaused(p0: Activity) {}

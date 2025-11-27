@@ -39,6 +39,7 @@ import ani.dantotsu.copyToClipboard
 import ani.dantotsu.databinding.ActivityMediaBinding
 import ani.dantotsu.getThemeColor
 import ani.dantotsu.initActivity
+import ani.dantotsu.isOnline
 import ani.dantotsu.loadImage
 import ani.dantotsu.media.anime.AnimeWatchFragment
 import ani.dantotsu.media.comments.CommentsFragment
@@ -276,10 +277,53 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                         append(" / ")
                     }
                     bold { color(white) { append("${media.anime!!.totalEpisodes ?: "??"}") } }
-                } else
+                } else {
+                    // For manga, initially show just total chapters
                     bold { color(white) { append("${media.manga!!.totalChapters ?: "??"}") } }
+                }
             }
             binding.mediaTotal.text = text
+
+            // Fetch MalSync data for manga to show latest available chapter
+            if (media.manga != null && isOnline(this)) {
+                lifecycleScope.launch(Dispatchers.IO) {
+                    try {
+                        val malSyncResult = ani.dantotsu.connections.malsync.MalSyncApi.getLastChapter(media.id, media.idMAL)
+                        if (malSyncResult != null && malSyncResult.lastEp != null) {
+                            val lastChapter = malSyncResult.lastEp.total
+                            val userProgress = media.userProgress ?: 0
+
+                            // Only update if there are unread chapters
+                            if (lastChapter > userProgress) {
+                                withContext(Dispatchers.Main) {
+                                    val updatedText = SpannableStringBuilder().apply {
+                                        val white = this@MediaDetailsActivity.getThemeColor(
+                                            com.google.android.material.R.attr.colorOnBackground
+                                        )
+                                        if (media.userStatus != null) {
+                                            append(getString(R.string.read_num))
+                                            val colorSecondary = getThemeColor(
+                                                com.google.android.material.R.attr.colorSecondary
+                                            )
+                                            bold { color(colorSecondary) { append("${media.userProgress}") } }
+                                            append(getString(R.string.chapters_out_of))
+                                        } else {
+                                            append(getString(R.string.chapters_total_of))
+                                        }
+                                        // Show latest available chapter (similar to nextAiringEpisode for anime)
+                                        bold { color(white) { append("$lastChapter") } }
+                                        append(" / ")
+                                        bold { color(white) { append("${media.manga!!.totalChapters ?: "??"}") } }
+                                    }
+                                    binding.mediaTotal.text = updatedText
+                                }
+                            }
+                        }
+                    } catch (_: Exception) {
+                        // Silently fail - just keep showing the original text
+                    }
+                }
+            }
         }
 
         fun progress() {

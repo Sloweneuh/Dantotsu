@@ -196,6 +196,7 @@ class AniListInfoFragment : Fragment() {
                     type = "MANGA"
                     binding.mediaInfoTotalTitle.setText(R.string.total_chaps)
                     binding.mediaInfoTotal.text = (media.manga.totalChapters ?: "~").toString()
+
                     if (media.manga.author != null) {
                         binding.mediaInfoAuthorContainer.visibility = View.VISIBLE
                         binding.mediaInfoAuthor.text = media.manga.author!!.name

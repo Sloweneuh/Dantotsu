@@ -1,7 +1,10 @@
 package ani.dantotsu.notifications.unread
 
 import android.annotation.SuppressLint
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
+import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import ani.dantotsu.App
@@ -10,17 +13,18 @@ import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.malsync.MalSyncApi
 import ani.dantotsu.connections.malsync.UnreadChapterInfo
 import ani.dantotsu.media.Media
+import ani.dantotsu.media.MediaDetailsActivity
 import ani.dantotsu.notifications.Task
+import eu.kanade.tachiyomi.data.notification.Notifications
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.util.Logger
-import eu.kanade.tachiyomi.data.notification.Notifications
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.Serializable
 
 class UnreadChapterNotificationTask : Task {
     private var currentlyPerforming = false
 
-    @SuppressLint("MissingPermission")
     override suspend fun execute(context: Context): Boolean {
         if (currentlyPerforming) {
             Logger.log("UnreadChapterNotificationTask: already running")
@@ -128,33 +132,40 @@ class UnreadChapterNotificationTask : Task {
         newChapters.forEachIndexed { index, (media, info) ->
             val unreadCount = info.lastChapter - info.userProgress
             val title = "New Chapter Available"
-            val text = "${media.userPreferredName}: Chapter ${info.lastChapter} ($unreadCount unread)"
 
-            val builder = NotificationCompat.Builder(context, Notifications.CHANNEL_NEW_CHAPTERS_EPISODES)
-                .setSmallIcon(R.drawable.ic_round_notifications_active_24)
+            // Show unread count only if more than 1
+            val text = if (unreadCount == 1) {
+                "${media.userPreferredName}: Chapter ${info.lastChapter}"
+            } else {
+                "${media.userPreferredName}: Chapter ${info.lastChapter} ($unreadCount unread)"
+            }
+
+            // Create intent to open the media page
+            val intent = Intent(context, MediaDetailsActivity::class.java).apply {
+                putExtra("media", media as Serializable)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+
+            val pendingIntent = PendingIntent.getActivity(
+                context,
+                media.id, // Unique request code for each media
+                intent,
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                } else {
+                    PendingIntent.FLAG_UPDATE_CURRENT
+                }
+            )
+
+            val notification = NotificationCompat.Builder(context, Notifications.CHANNEL_NEW_CHAPTERS_EPISODES)
+                .setSmallIcon(R.drawable.notification_icon)
                 .setContentTitle(title)
                 .setContentText(text)
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setContentIntent(pendingIntent)
                 .setAutoCancel(true)
-                .setGroup(Notifications.GROUP_NEW_CHAPTERS)
+                .build()
 
-            // Use unique notification ID per media
-            val notificationId = Notifications.ID_NEW_CHAPTERS + media.id
-            notificationManager.notify(notificationId, builder.build())
-        }
-
-        // Summary notification if multiple chapters
-        if (newChapters.size > 1) {
-            val summaryBuilder = NotificationCompat.Builder(context, Notifications.CHANNEL_NEW_CHAPTERS_EPISODES)
-                .setSmallIcon(R.drawable.ic_round_notifications_active_24)
-                .setContentTitle("New Chapters Available")
-                .setContentText("${newChapters.size} manga have new chapters")
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-                .setGroup(Notifications.GROUP_NEW_CHAPTERS)
-                .setGroupSummary(true)
-                .setAutoCancel(true)
-
-            notificationManager.notify(Notifications.ID_NEW_CHAPTERS, summaryBuilder.build())
+            notificationManager.notify(media.id, notification)
         }
     }
 
