@@ -7,10 +7,12 @@ import android.os.Build
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebChromeClient
 import android.widget.FrameLayout
+import android.widget.HorizontalScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
@@ -24,6 +26,7 @@ import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
 import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.anilist.GenresViewModel
@@ -65,6 +68,39 @@ class AniListInfoFragment : Fragment() {
     private val genreModel: GenresViewModel by activityViewModels()
 
     private val tripleTab = "\t\t\t"
+
+    /**
+     * Prevents parent ViewPager2 from intercepting touch events for horizontal scrolling
+     */
+    private fun setupNestedScrolling(recyclerView: RecyclerView) {
+        recyclerView.addOnItemTouchListener(object : RecyclerView.OnItemTouchListener {
+            override fun onInterceptTouchEvent(rv: RecyclerView, e: MotionEvent): Boolean {
+                when (e.action) {
+                    MotionEvent.ACTION_DOWN -> rv.parent?.requestDisallowInterceptTouchEvent(true)
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL ->
+                        rv.parent?.requestDisallowInterceptTouchEvent(false)
+                }
+                return false
+            }
+
+            override fun onTouchEvent(rv: RecyclerView, e: MotionEvent) {}
+            override fun onRequestDisallowInterceptTouchEvent(disallowIntercept: Boolean) {}
+        })
+    }
+
+    /**
+     * Prevents parent ViewPager2 from intercepting touch events for horizontal scrolling
+     */
+    private fun setupNestedScrolling(scrollView: HorizontalScrollView) {
+        scrollView.setOnTouchListener { v, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> v.parent?.requestDisallowInterceptTouchEvent(true)
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL ->
+                    v.parent?.requestDisallowInterceptTouchEvent(false)
+            }
+            false
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
