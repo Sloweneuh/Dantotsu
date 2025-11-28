@@ -182,19 +182,40 @@
                     android:paddingStart="32dp"
                     android:paddingEnd="32dp">
 
-                    <TextView
-                        android:id="@+id/mediaTotal"
+                    <LinearLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:ellipsize="end"
-                        android:fontFamily="@font/poppins_family"
-                        android:lineSpacingExtra="-8sp"
-                        android:marqueeRepeatLimit="marquee_forever"
-                        android:maxLines="2"
-                        android:textColor="?attr/colorOnBackground"
-                        android:textSize="16sp"
-                        tools:text="Watched 10 out of 10" />
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/mediaTotal"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:ellipsize="end"
+                            android:fontFamily="@font/poppins_family"
+                            android:lineSpacingExtra="-8sp"
+                            android:marqueeRepeatLimit="marquee_forever"
+                            android:maxLines="2"
+                            android:textColor="?attr/colorOnBackground"
+                            android:textSize="16sp"
+                            tools:text="Watched 10 out of 10" />
+
+                        <TextView
+                            android:id="@+id/mediaUnreadSource"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:ellipsize="end"
+                            android:fontFamily="@font/poppins_family"
+                            android:marqueeRepeatLimit="marquee_forever"
+                            android:maxLines="1"
+                            android:textColor="?attr/colorOnBackground"
+                            android:textSize="12sp"
+                            android:alpha="0.66"
+                            android:visibility="gone"
+                            tools:text="Source: MangaSource" />
+
+                    </LinearLayout>
 
                     <ImageView
                         android:id="@+id/mediaFav"

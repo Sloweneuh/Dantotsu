@@ -65,6 +65,13 @@
     <string name="no_unread_chapters">No unread chapters</string>
     <string name="error_fetching_unread_chapters">Couldn\'t fetch unread chapters</string>
 
+    <!-- Notification strings for unread chapters -->
+    <string name="notification_new_chapter_title">New Chapter Available</string>
+    <string name="notification_unknown_source">Unknown source</string>
+    <string name="notification_new_chapter_text_single">%1$s: Chapter %2$d</string>
+    <string name="notification_new_chapter_text_multiple">%1$s: Chapter %2$d (%3$d unread)</string>
+    <string name="notification_source_subtext">Source: %1$s</string>
+
     <string name="get_recommendations">Watch/Read some Anime or Manga to get Recommendations</string>
     <string name="empty">All caught up, when New?</string>
     <string name="action_settings">Settings</string>

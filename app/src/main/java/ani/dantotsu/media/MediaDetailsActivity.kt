@@ -284,6 +284,13 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
             }
             binding.mediaTotal.text = text
 
+            // show source passed from notification if present
+            val passedSource = intent.getStringExtra("source")
+            if (!passedSource.isNullOrBlank()) {
+                binding.mediaUnreadSource?.text = getString(R.string.notification_source_subtext, passedSource)
+                binding.mediaUnreadSource?.visibility = View.VISIBLE
+            }
+
             // Fetch MalSync data for manga to show latest available chapter
             if (media.manga != null && isOnline(this)) {
                 lifecycleScope.launch(Dispatchers.IO) {
@@ -316,6 +323,13 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                                         bold { color(white) { append("${media.manga!!.totalChapters ?: "??"}") } }
                                     }
                                     binding.mediaTotal.text = updatedText
+
+                                    // Show source from MalSync result if available
+                                    val malSource = malSyncResult.source
+                                    if (!malSource.isNullOrBlank()) {
+                                        binding.mediaUnreadSource?.text = getString(R.string.notification_source_subtext, malSource)
+                                        binding.mediaUnreadSource?.visibility = View.VISIBLE
+                                    }
                                 }
                             }
                         }

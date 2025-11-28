@@ -131,18 +131,26 @@ class UnreadChapterNotificationTask : Task {
 
         newChapters.forEachIndexed { index, (media, info) ->
             val unreadCount = info.lastChapter - info.userProgress
-            val title = "New Chapter Available"
+            // Use localized title
+            val title = context.getString(R.string.notification_new_chapter_title)
 
-            // Show unread count only if more than 1
+            // Prepare source display (fallback if blank)
+            val sourceDisplay = if (info.source.isBlank()) context.getString(R.string.notification_unknown_source) else info.source
+
+            // Show unread count only if more than 1, use string resources
             val text = if (unreadCount == 1) {
                 "${media.userPreferredName}: Chapter ${info.lastChapter}"
             } else {
                 "${media.userPreferredName}: Chapter ${info.lastChapter} ($unreadCount unread)"
             }
 
+            // Use subText for source only (short), keep main text without source for better layout
+            val subText = context.getString(R.string.notification_source_subtext, sourceDisplay)
+
             // Create intent to open the media page
             val intent = Intent(context, MediaDetailsActivity::class.java).apply {
                 putExtra("media", media as Serializable)
+                putExtra("source", info.source)
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             }
 
@@ -161,6 +169,8 @@ class UnreadChapterNotificationTask : Task {
                 .setSmallIcon(R.drawable.notification_icon)
                 .setContentTitle(title)
                 .setContentText(text)
+                .setSubText(subText)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(text))
                 .setContentIntent(pendingIntent)
                 .setAutoCancel(true)
                 .build()
@@ -179,4 +189,3 @@ class UnreadChapterNotificationTask : Task {
         prefs.edit().putStringSet(key, notified).apply()
     }
 }
-
