@@ -4,7 +4,6 @@ import android.graphics.Bitmap
 import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.anilist.api.FuzzyDate
 import ani.dantotsu.connections.anilist.api.MediaEdge
-import ani.dantotsu.connections.anilist.api.MediaExternalLink
 import ani.dantotsu.connections.anilist.api.MediaList
 import ani.dantotsu.connections.anilist.api.MediaStreamingEpisode
 import ani.dantotsu.connections.anilist.api.MediaType
@@ -119,7 +118,12 @@ data class Media(
         ) else null,
         manga = if (apiMedia.type == MediaType.MANGA) Manga(totalChapters = apiMedia.chapters) else null,
         format = apiMedia.format?.toString(),
-    )
+    ) {
+        // Ensure synonyms from Anilist ApiMedia are copied so local searches (e.g. in lists) can match them
+        apiMedia.synonyms?.let { list ->
+            synonyms = ArrayList(list)
+        }
+    }
 
     constructor(mediaList: MediaList) : this(mediaList.media!!) {
         this.userProgress = mediaList.progress
