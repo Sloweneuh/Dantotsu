@@ -41,6 +41,8 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
     var i: Int? = null
     var id: Int? = null
     var media: Media? = null
+    private var searchJob: kotlinx.coroutines.Job? = null
+    private var searchWatchdog: Runnable? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -64,7 +66,8 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
                 binding.mediaListLayout.visibility = View.VISIBLE
 
                 binding.searchRecyclerView.visibility = View.GONE
-                binding.searchProgress.visibility = View.VISIBLE
+                // searchProgress should stay hidden until a search starts
+                binding.searchProgress.visibility = View.GONE
 
                 i = media!!.selected!!.sourceIndex
 
@@ -75,67 +78,133 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
                     (if (media!!.isAdult) HMangaSources else MangaSources)[i!!]
                 }
 
-                // Build a list of candidate titles/synonyms to show in a dropdown dialog.
-                // We try a few common properties on the Media object; if they don't exist,
-                // fall back to the existing mangaName() helper value.
+                // Build a deterministic list of candidate titles/synonyms for the dropdown.
+                // Prefer AniList-style fields: english, userPreferred, romaji, native (from either a nested `title` object
+                // or top-level fields), then append synonyms. Preserve order and dedupe.
                 val titleOptions: List<String> = run {
                     val list = mutableListOf<String>()
-                    try {
-                        // Common Media properties used across the app: title, romaji, english, synonyms
-                        // Use reflection defensively because Media's exact shape may vary.
-                        media?.let { m ->
-                            // Primary titles
-                            list.addAll(listOfNotNull(
-                                getStringProp(m, "title"),
-                                getStringProp(m, "romaji"),
-                                getStringProp(m, "english"),
-                                getStringProp(m, "native")
-                            ).map { it.trim() }.filter { it.isNotEmpty() })
 
-                            // Alternative titles/synonyms arrays/maps
-                            // Try common fields that might hold synonyms: alternativeTitles, synonyms, otherTitles
+                    fun addIfNotBlank(s: String?) {
+                        if (!s.isNullOrBlank()) list.add(s.trim())
+                    }
+
+                    // Helper to read a string field from an arbitrary object (reflection or Map)
+                    fun readStringField(obj: Any?, field: String): String? {
+                        if (obj == null) return null
+                        try {
+                            // If it's a Map-like (JSONObject / Map), try keys
+                            if (obj is Map<*, *>) return (obj[field] as? String)?.takeIf { it.isNotBlank() }
+                            // try reflection
+                            val f = obj::class.java.getDeclaredField(field)
+                            f.isAccessible = true
+                            return (f.get(obj) as? String)?.takeIf { it.isNotBlank() }
+                        } catch (_: Throwable) {
+                        }
+                        return null
+                    }
+
+                    try {
+                        media?.let { m ->
+                            // 1) If there's a nested `title` object, prefer its fields (AniList-style)
+                            val titleObj = getAnyProp(m, "title")
+                            if (titleObj != null) {
+                                addIfNotBlank(readStringField(titleObj, "english") ?: readStringField(titleObj, "en"))
+                                addIfNotBlank(readStringField(titleObj, "userPreferred") ?: readStringField(titleObj, "userPreferredName"))
+                                addIfNotBlank(readStringField(titleObj, "romaji") ?: readStringField(titleObj, "jaRomaji"))
+                                addIfNotBlank(readStringField(titleObj, "native") ?: readStringField(titleObj, "nativeName") )
+                            }
+
+                            // 2) Also try common top-level fields (fallbacks)
+                            addIfNotBlank(getStringProp(m, "name") ?: getStringProp(m, "english"))
+                            addIfNotBlank(getStringProp(m, "userPreferredName") ?: getStringProp(m, "userPreferred"))
+                            addIfNotBlank(getStringProp(m, "nameRomaji") ?: getStringProp(m, "romaji"))
+                            addIfNotBlank(getStringProp(m, "nameMAL") ?: getStringProp(m, "native"))
+
+                            // 3) Synonyms - try common fields
+                            val synAny = getAnyProp(m, "synonyms")
+                            if (synAny is Collection<*>) {
+                                synAny.forEach { if (it is String && it.isNotBlank()) list.add(it.trim()) }
+                            }
+
+                            // Also check alternativeTitles object (may hold en/ja etc.)
                             val alt = getAnyProp(m, "alternativeTitles")
                             if (alt is Map<*, *>) {
-                                // values might include strings or lists
-                                alt.values.forEach { v ->
-                                    when (v) {
-                                        is String -> if (v.isNotBlank()) list.add(v)
-                                        is Collection<*> -> v.forEach { if (it is String && it.isNotBlank()) list.add(it) }
-                                    }
-                                }
-                            }
-                            val syn = getAnyProp(m, "synonyms")
-                            if (syn is Collection<*>) {
-                                syn.forEach { if (it is String && it.isNotBlank()) list.add(it) }
-                            }
-                            // Some Media implementations expose a list of titles under `titles`
-                            val titlesAny = getAnyProp(m, "titles")
-                            if (titlesAny is Collection<*>) {
-                                titlesAny.forEach { if (it is String && it.isNotBlank()) list.add(it) }
+                                // collect english/romaji/native entries if present
+                                list.addAll(listOfNotNull(
+                                    (alt["en"] as? String)?.takeIf { it.isNotBlank() },
+                                    (alt["english"] as? String)?.takeIf { it.isNotBlank() },
+                                    (alt["romaji"] as? String)?.takeIf { it.isNotBlank() },
+                                    (alt["native"] as? String)?.takeIf { it.isNotBlank() }
+                                ))
                             }
 
-                            // finally, fallback helper
+                            // 4) finally, fallback helper
                             val fallback = try { m.mangaName() } catch (_: Throwable) { null }
                             if (!fallback.isNullOrBlank()) list.add(fallback)
                         }
                     } catch (_: Throwable) {
                     }
+
                     // dedupe while keeping original order
                     val seen = linkedSetOf<String>()
                     list.map { it.trim() }.filterTo(mutableListOf()) { seen.add(it) }
                 }
 
-                fun search() {
+                fun search(queryOverride: String? = null) {
+                    // prevent concurrent searches
+                    if (searchJob?.isActive == true) return
                     binding.searchBarText.clearFocus()
                     imm.hideSoftInputFromWindow(binding.searchBarText.windowToken, 0)
-                    scope.launch {
-                        model.responses.postValue(
-                            withContext(Dispatchers.IO) {
-                                tryWithSuspend {
-                                    source.search(binding.searchBarText.text.toString())
+                    searchJob = scope.launch {
+                        val query = queryOverride ?: binding.searchBarText.text.toString()
+                        binding.searchProgress.visibility = View.VISIBLE
+                        binding.searchRecyclerView.visibility = View.GONE
+
+                        // Start a UI watchdog to ensure spinner is hidden even if an extension blocks
+                        searchWatchdog?.let { binding.searchProgress.removeCallbacks(it) }
+                        searchWatchdog = Runnable {
+                            binding.searchProgress.visibility = View.GONE
+                            binding.searchRecyclerView.visibility = View.VISIBLE
+                            binding.searchRecyclerView.adapter = null
+                            searchJob?.cancel()
+                        }
+                        binding.searchProgress.postDelayed(searchWatchdog, 16_000L)
+
+                        var results: List<ani.dantotsu.parsers.ShowResponse>? = null
+                        try {
+                            results = withContext(Dispatchers.IO) {
+                                try {
+                                    kotlinx.coroutines.withTimeoutOrNull(15_000L) {
+                                        tryWithSuspend {
+                                            source.search(query)
+                                        }
+                                    }
+                                } catch (_: Throwable) {
+                                    null
                                 }
                             }
-                        )
+                        } catch (_: Throwable) {
+                            results = null
+                        } finally {
+                            // cancel watchdog and reset job
+                            searchWatchdog?.let { binding.searchProgress.removeCallbacks(it) }
+                            searchWatchdog = null
+                            searchJob = null
+                            binding.searchProgress.visibility = View.GONE
+                            if (results != null && results.isNotEmpty()) {
+                                binding.searchRecyclerView.visibility = View.VISIBLE
+                                binding.searchRecyclerView.adapter =
+                                    if (anime) AnimeSourceAdapter(results, model, i!!, media!!.id, this@SourceSearchDialogFragment, requireActivity().lifecycleScope)
+                                    else MangaSourceAdapter(results, model, i!!, media!!.id, this@SourceSearchDialogFragment, requireActivity().lifecycleScope)
+                                binding.searchRecyclerView.layoutManager = GridLayoutManager(
+                                    requireActivity(),
+                                    clamp(requireActivity().resources.displayMetrics.widthPixels / 124f.px, 1, 4)
+                                )
+                            } else {
+                                binding.searchRecyclerView.visibility = View.VISIBLE
+                                binding.searchRecyclerView.adapter = null
+                            }
+                        }
                     }
                 }
 
@@ -167,7 +236,7 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
                         binding.searchBarText.setText(selected)
                         popup.dismiss()
                         // automatically perform the search for convenience
-                        search()
+                        search(selected)
                     }
                 }
 
@@ -182,23 +251,21 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
                     }
                 }
                 // end icon is used as dropdown trigger; searching is done via IME or the search end icon inside TextInputLayout if desired
-                if (!searched) search()
-                searched = true
-                model.responses.observe(viewLifecycleOwner) { j ->
-                    if (j != null) {
-                        binding.searchRecyclerView.visibility = View.VISIBLE
-                        binding.searchProgress.visibility = View.GONE
-                        binding.searchRecyclerView.adapter =
-                            if (anime) AnimeSourceAdapter(j, model, i!!, media!!.id, this, scope)
-                            else MangaSourceAdapter(j, model, i!!, media!!.id, this, scope)
-                        binding.searchRecyclerView.layoutManager = GridLayoutManager(
-                            requireActivity(),
-                            clamp(
-                                requireActivity().resources.displayMetrics.widthPixels / 124f.px,
-                                1,
-                                4
-                            )
-                        )
+                // Auto-search once using the first title option if the search field is empty
+                // or still contains the default fallback (media.mangaName()). This avoids requiring
+                // the user to manually pick the dropdown when a better title is available.
+                if (!searched) {
+                    // mark searched early so we don't schedule more than once
+                    searched = true
+                    val first = titleOptions.firstOrNull()
+                    val currentText = binding.searchBarText.text?.toString() ?: ""
+                    val defaultFallback = try { media?.mangaName() ?: "" } catch (_: Throwable) { "" }
+                    if (!first.isNullOrBlank() && (currentText.isBlank() || currentText == defaultFallback)) {
+                        // Post to the view to ensure layout/IME updates settled before starting the search
+                        binding.searchBar.post {
+                            binding.searchBarText.setText(first)
+                            search(first)
+                        }
                     }
                 }
             }
@@ -206,12 +273,15 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
     }
 
     override fun onDestroyView() {
+        // Cancel pending search and watchdog to avoid UI leaks
+        try { searchJob?.cancel() } catch (_: Throwable) {}
+        try { searchWatchdog?.let { binding.searchProgress.removeCallbacks(it) } } catch (_: Throwable) {}
+        searchWatchdog = null
         super.onDestroyView()
         _binding = null
     }
 
     override fun dismiss() {
-        model.responses.value = null
         super.dismiss()
     }
 
