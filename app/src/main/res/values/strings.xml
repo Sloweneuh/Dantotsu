@@ -181,6 +181,8 @@
     <string name="prequel">Prequel</string>
     <string name="sequel">Sequel</string>
 
+    <string name="titles">Titles</string>
+
     <string name="anilist_settings">Anilist Settings</string>
     <string name="extension_settings">Extensions</string>
     <string name="downloads">Downloads</string>
@@ -189,7 +191,7 @@
     <string name="extensions">Extensions</string>
     <string name="extension_updates_available">Extension updates available</string>
     <string name="player_settings">Player Settings</string>
-    <string name="recentlyListOnly">Only show my content in \"Recently Updated\"</string>
+    <string name="recentlyListOnly">Only show my content in "Recently Updated"</string>
     <string name="download_manager_select">Download Manager</string>
     <string name="downloadInSd">Download in SD card</string>
     <string name="noSdFound">No SD card was Found.</string>
@@ -294,7 +296,7 @@
     <string name="skip_time">Skip Time</string>
     <string name="skip_time_info">Setting to 0, hides the Skip Button.</string>
     <string name="show_cast_button">Show Cast Button</string>
-    <string name="show_cast_button_info">Requires \"Web Video Caster\" app to cast.</string>
+    <string name="show_cast_button_info">Requires "Web Video Caster" app to cast.</string>
     <string name="picture_in_picture">Picture in Picture</string>
     <string name="always_minimize">Always Minimize</string>
     <string name="always_minimize_info">Requires PiP to be enabled, makes the player behave like Youtube Player but better.\nAlso hides the PiP button.</string>
@@ -499,7 +501,7 @@
     <string name="logging_in_mal">Logging into MAL</string>
     <string name="getting_user_data">Getting User Data</string>
     <string name="no_next_episode">No next episode found!</string>
-    <string name="enable_banner_animations">Try enabling \"Banner Animations\" in settings</string>
+    <string name="enable_banner_animations">Try enabling "Banner Animations" in settings</string>
     <string name="please_login_anilist">Please Login with Anilist!</string>
     <string name="auto_update_reset">Auto Update progress has now been reset-ed</string>
     <string name="cant_wait">Can\'t wait, huh? fine X(</string>
