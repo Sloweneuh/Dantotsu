@@ -1,16 +1,16 @@
 package ani.dantotsu.media.anime
 
 import android.content.Intent
-import android.net.Uri
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.ImageButton
 import android.widget.LinearLayout
+import android.widget.NumberPicker
 import androidx.core.content.ContextCompat
-import androidx.core.content.ContextCompat.getString
 import androidx.core.content.ContextCompat.startActivity
+import androidx.core.net.toUri
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
@@ -40,7 +40,6 @@ import ani.dantotsu.px
 import ani.dantotsu.settings.FAQActivity
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
-import ani.dantotsu.snackString
 import ani.dantotsu.toast
 import ani.dantotsu.util.customAlertDialog
 import com.google.android.material.chip.Chip
@@ -60,6 +59,24 @@ class AnimeWatchAdapter(
     var subscribe: MediaDetailsActivity.PopImageButton? = null
     private var _binding: ItemMediaSourceBinding? = null
 
+    // Helper: choose English by default when available
+    private fun defaultLangIndexForSource(sourceIndex: Int, preferred: Int): Int {
+        try {
+            if (watchSources is AnimeSources) {
+                val parser = watchSources[sourceIndex] as? DynamicAnimeParser
+                if (parser != null) {
+                    val sources = parser.extension.sources
+                    val enIndex = sources.indexOfFirst {
+                        val code = it.lang.lowercase()
+                        code == "en" || code.startsWith("en") || code.contains("english")
+                    }
+                    if (enIndex != -1) return enIndex
+                }
+            }
+        } catch (_: Exception) { }
+        return if (preferred >= 0) preferred else 0
+    }
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val bind =
             ItemMediaSourceBinding.inflate(LayoutInflater.from(parent.context), parent, false)
@@ -78,11 +95,14 @@ class AnimeWatchAdapter(
             )
         }
         // Youtube
-        if (media.anime?.youtube != null && PrefManager.getVal(PrefName.ShowYtButton)) {
+        val youtube = media.anime?.youtube
+        if (youtube != null && PrefManager.getVal(PrefName.ShowYtButton)) {
             binding.animeSourceYT.visibility = View.VISIBLE
             binding.animeSourceYT.setOnClickListener {
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(media.anime.youtube))
-                fragment.requireContext().startActivity(intent)
+                if (youtube.isNotBlank()) {
+                    val intent = Intent(Intent.ACTION_VIEW, youtube.toUri())
+                    fragment.requireContext().startActivity(intent)
+                }
             }
         }
         binding.animeSourceDubbed.isChecked = media.selected!!.preferDub
@@ -118,7 +138,14 @@ class AnimeWatchAdapter(
         // Source Selection
         var source =
             media.selected!!.sourceIndex.let { if (it >= watchSources.names.size) 0 else it }
-        setLanguageList(media.selected!!.langIndex, source)
+        val defaultLang = defaultLangIndexForSource(source, media.selected!!.langIndex)
+        setLanguageList(defaultLang, source)
+        // Notify fragment of the language selection so loadEpisodes uses the chosen language
+        try {
+            fragment.onLangChange(defaultLang)
+            // trigger a load so the episodes shown correspond to the selected language
+            fragment.loadEpisodes(source, true)
+        } catch (_: Exception) { }
         if (watchSources.names.isNotEmpty() && source in 0 until watchSources.names.size) {
             binding.mediaSource.setText(watchSources.names[source])
             watchSources[source].apply {
@@ -146,7 +173,9 @@ class AnimeWatchAdapter(
                 changing = false
                 binding.animeSourceDubbedCont.isVisible = isDubAvailableSeparately()
                 source = i
-                setLanguageList(0, i)
+                val newDefault = defaultLangIndexForSource(i, 0)
+                setLanguageList(newDefault, i)
+                try { fragment.onLangChange(newDefault) } catch (_: Exception) { }
             }
             subscribeButton(false)
             fragment.loadEpisodes(i, false)
@@ -219,17 +248,17 @@ class AnimeWatchAdapter(
                     sortText.text = if (reversed) "Down to Up" else "Up to Down"
                     run = true
                 }
+
                 // Grids
+                mediaSourceGrid.visibility = View.GONE
                 var selected = when (style) {
                     0 -> mediaSourceList
-                    1 -> mediaSourceGrid
-                    2 -> mediaSourceCompact
+                    1 -> mediaSourceCompact
                     else -> mediaSourceList
                 }
                 when (style) {
                     0 -> layoutText.setText(R.string.list)
-                    1 -> layoutText.setText(R.string.grid)
-                    2 -> layoutText.setText(R.string.compact)
+                    1 -> layoutText.setText(R.string.compact)
                     else -> mediaSourceList
                 }
                 selected.alpha = 1f
@@ -244,15 +273,9 @@ class AnimeWatchAdapter(
                     layoutText.setText(R.string.list)
                     run = true
                 }
-                mediaSourceGrid.setOnClickListener {
-                    selected(it as ImageButton)
-                    style = 1
-                    layoutText.setText(R.string.grid)
-                    run = true
-                }
                 mediaSourceCompact.setOnClickListener {
                     selected(it as ImageButton)
-                    style = 2
+                    style = 1
                     layoutText.setText(R.string.compact)
                     run = true
                 }
@@ -263,52 +286,39 @@ class AnimeWatchAdapter(
                     // Start CookieCatcher activity
                     if (watchSources.names.isNotEmpty() && source in 0 until watchSources.names.size) {
                         val sourceAHH = watchSources[source] as? DynamicAnimeParser
-                        val sourceHttp =
-                            sourceAHH?.extension?.sources?.firstOrNull() as? AnimeHttpSource
+                        val sourceHttp = sourceAHH?.extension?.sources?.firstOrNull() as? AnimeHttpSource
                         val url = sourceHttp?.baseUrl
                         url?.let {
                             refresh = true
-                            val headersMap = try {
-                                sourceHttp.headers.toMultimap()
-                                    .mapValues { it.value.getOrNull(0) ?: "" }
-                            } catch (e: Exception) {
-                                emptyMap()
-                            }
                             val intent =
                                 Intent(fragment.requireContext(), CookieCatcher::class.java)
                                     .putExtra("url", url)
-                                    .putExtra("headers", headersMap as HashMap<String, String>)
                             startActivity(fragment.requireContext(), intent, null)
                         }
                     }
                 }
-                resetProgress.setOnClickListener {
-                    fragment.requireContext().customAlertDialog().apply {
-                        setTitle(" Delete Progress for all episodes of ${media.nameRomaji}")
-                        setMessage("This will delete all the locally stored progress for all episodes")
-                        setPosButton(R.string.ok) {
-                            val prefix = "${media.id}_"
-                            val regex = Regex("^${prefix}\\d+$")
 
-                            PrefManager.getAllCustomValsForMedia(prefix)
-                                .keys
-                                .filter { it.matches(regex) }
-                                .onEach { key -> PrefManager.removeCustomVal(key) }
-                            snackString("Deleted the progress of all Episodes for ${media.nameRomaji}")
+                // Multi download
+                mediaDownloadTop.setOnClickListener {
+                    fragment.requireContext().customAlertDialog().apply {
+                        setTitle("Multi Episode Downloader")
+                        setMessage("Enter the number of episodes to download")
+                        val input = NumberPicker(currContext())
+                        input.minValue = 1
+                        input.maxValue = 30
+                        input.value = 1
+                        setCustomView(input)
+                        setPosButton(R.string.ok) {
+                            // use input.value
                         }
-                        setNegButton(R.string.no)
+                        setNegButton(R.string.cancel)
                         show()
                     }
                 }
 
-                resetProgressDef.text = getString(currContext()!!, R.string.clear_stored_episode)
-
-                // Hidden
-                mangaScanlatorContainer.visibility = View.GONE
-                animeDownloadContainer.visibility = View.GONE
                 fragment.requireContext().customAlertDialog().apply {
                     setTitle("Options")
-                    setCustomView(dialogBinding.root)
+                    setCustomView(root)
                     setPosButton("OK") {
                         if (run) fragment.onIconPressed(style, reversed)
                         if (refresh) fragment.loadEpisodes(source, true)
@@ -320,29 +330,8 @@ class AnimeWatchAdapter(
                 }
             }
         }
-        // Episode Handling
+        // Chapter Handling
         handleEpisodes()
-
-        //clear progress
-        binding.sourceTitle.setOnLongClickListener {
-            fragment.requireContext().customAlertDialog().apply {
-                setTitle(" Delete Progress for all episodes of ${media.nameRomaji}")
-                setMessage("This will delete all the locally stored progress for all episodes")
-                setPosButton(R.string.ok) {
-                    val prefix = "${media.id}_"
-                    val regex = Regex("^${prefix}\\d+$")
-
-                    PrefManager.getAllCustomValsForMedia(prefix)
-                        .keys
-                        .filter { it.matches(regex) }
-                        .onEach { key -> PrefManager.removeCustomVal(key) }
-                    snackString("Deleted the progress of all Episodes for ${media.nameRomaji}")
-                }
-                setNegButton(R.string.no)
-                show()
-            }
-            true
-        }
     }
 
     fun subscribeButton(enabled: Boolean) {
@@ -509,7 +498,9 @@ class AnimeWatchAdapter(
                                 { MainScope().launch { binding.mediaSourceTitle.text = it } }
                             binding.animeSourceDubbed.isChecked = selectDub
                             binding.animeSourceDubbedCont.isVisible = isDubAvailableSeparately()
-                            setLanguageList(0, nextIndex)
+                            val nd = defaultLangIndexForSource(nextIndex, 0)
+                            setLanguageList(nd, nextIndex)
+                            try { fragment.onLangChange(nd) } catch (_: Exception) { }
                         }
                         subscribeButton(false)
                         fragment.loadEpisodes(nextIndex, false)
@@ -536,7 +527,7 @@ class AnimeWatchAdapter(
                 }
                 try {
                     binding?.mediaSourceLanguage?.setText(parser.extension.sources[lang].lang)
-                } catch (e: IndexOutOfBoundsException) {
+                } catch (_: IndexOutOfBoundsException) {
                     binding?.mediaSourceLanguage?.setText(
                         parser.extension.sources.firstOrNull()?.lang ?: "Unknown"
                     )

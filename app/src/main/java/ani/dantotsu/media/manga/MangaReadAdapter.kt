@@ -73,6 +73,24 @@ class MangaReadAdapter(
         }
     }
 
+    // Helper: choose English by default when available
+    private fun defaultLangIndexForSource(sourceIndex: Int, preferred: Int): Int {
+        try {
+            if (mangaReadSources is MangaSources) {
+                val parser = mangaReadSources[sourceIndex] as? DynamicMangaParser
+                if (parser != null) {
+                    val sources = parser.extension.sources
+                    val enIndex = sources.indexOfFirst {
+                        val code = it.lang.lowercase()
+                        code == "en" || code.startsWith("en") || code.contains("english")
+                    }
+                    if (enIndex != -1) return enIndex
+                }
+            }
+        } catch (ignored: Exception) { }
+        return if (preferred >= 0) preferred else 0
+    }
+
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val bind =
@@ -122,7 +140,15 @@ class MangaReadAdapter(
         // Source Selection
         var source =
             media.selected!!.sourceIndex.let { if (it >= mangaReadSources.names.size) 0 else it }
-        setLanguageList(media.selected!!.langIndex, source)
+        // prefer English if available
+        val defaultLang = defaultLangIndexForSource(source, media.selected!!.langIndex)
+        // set language UI and inform fragment so chapter loading uses the chosen language
+        (mangaReadSources[source] as? DynamicMangaParser)?.let { ext ->
+            setLanguageList(defaultLang, source)
+            try { fragment.onLangChange(defaultLang, ext.saveName) } catch (_: Exception) { }
+        } ?: run {
+            setLanguageList(defaultLang, source)
+        }
         if (mangaReadSources.names.isNotEmpty() && source in 0 until mangaReadSources.names.size) {
             binding.mediaSource.setText(mangaReadSources.names[source])
             mangaReadSources[source].apply {
@@ -146,7 +172,12 @@ class MangaReadAdapter(
                 binding.mediaSourceTitle.text = showUserText
                 showUserTextListener = { MainScope().launch { binding.mediaSourceTitle.text = it } }
                 source = i
-                setLanguageList(0, i)
+                // prefer English when switching sources
+                val newDefault = defaultLangIndexForSource(i, 0)
+                (mangaReadSources[i] as? DynamicMangaParser)?.let { ext ->
+                    setLanguageList(newDefault, i)
+                    try { fragment.onLangChange(newDefault, ext.saveName) } catch (_: Exception) { }
+                } ?: setLanguageList(newDefault, i)
             }
             subscribeButton(false)
             // Invalidate if it's the last source
@@ -569,7 +600,14 @@ class MangaReadAdapter(
                             binding.mediaSourceTitle.text = showUserText
                             showUserTextListener =
                                 { MainScope().launch { binding.mediaSourceTitle.text = it } }
-                            setLanguageList(0, nextIndex)
+                            // prefer English when auto-switching
+                            val nd = defaultLangIndexForSource(nextIndex, 0)
+                            (mangaReadSources[nextIndex] as? DynamicMangaParser)?.let { ext ->
+                                setLanguageList(nd, nextIndex)
+                                try { fragment.onLangChange(nd, ext.saveName) } catch (_: Exception) { }
+                                // trigger a reload so chapters for the selected language are fetched
+                                try { fragment.loadChapters(nextIndex, true) } catch (_: Exception) { }
+                            } ?: setLanguageList(nd, nextIndex)
                         }
                         subscribeButton(false)
                         // Invalidate if it's the last source
@@ -597,7 +635,7 @@ class MangaReadAdapter(
                 }
                 try {
                     binding?.mediaSourceLanguage?.setText(parser.extension.sources[lang].lang)
-                } catch (e: IndexOutOfBoundsException) {
+                } catch (_: IndexOutOfBoundsException) {
                     binding?.mediaSourceLanguage?.setText(
                         parser.extension.sources.firstOrNull()?.lang ?: "Unknown"
                     )
