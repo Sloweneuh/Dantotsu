@@ -17,6 +17,8 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
+import android.app.AlertDialog
+import android.net.Uri
 import androidx.core.text.HtmlCompat
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
@@ -55,9 +57,10 @@ import io.noties.markwon.SoftBreakAddsNewLinePlugin
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.Serializable
 import java.net.URLEncoder
-
+import ani.dantotsu.connections.malsync.MalSyncApi
 
 class AniListInfoFragment : Fragment() {
     private var _binding: FragmentMediaInfoBinding? = null
@@ -297,7 +300,89 @@ class AniListInfoFragment : Fragment() {
                         chip.setOnLongClickListener { copyToClipboard(media.externalLinks[position][1]!!);true }
                         bind.itemChipGroup.addView(chip)
                     }
+                    // Tag the external links block so quicklinks can be inserted right after it
+                    bind.root.tag = "external_links"
                     parent.addView(bind.root)
+                }
+
+                // Quicklinks: for manga only show Comick (API links or fallback search) and MangaUpdates search
+                lifecycleScope.launch(Dispatchers.IO) {
+                    try {
+                        if (media.manga != null) {
+                            val quick = MalSyncApi.getQuicklinks(media.id, media.idMAL, mediaType = "manga")
+                            val siteMap = quick?.Sites
+                            withContext(Dispatchers.Main) {
+                                if (parent.findViewWithTag<View>("quicklinks_anilist") == null) {
+                                    val bind = ItemTitleChipgroupBinding.inflate(LayoutInflater.from(context), parent, false)
+                                    bind.itemTitle.setText(R.string.quicklinks)
+
+                                    // Comick: prefer API-provided entries
+                                    val comickEntries = siteMap?.entries?.firstOrNull { it.key.equals("Comick", true) || it.key.contains("comick", true) }?.value?.values?.toList()
+                                    if (comickEntries != null && comickEntries.isNotEmpty()) {
+                                        val entryList = comickEntries
+                                        val chip = ItemChipBinding.inflate(LayoutInflater.from(context), bind.itemChipGroup, false).root
+                                        chip.text = "Comick"
+                                        chip.setOnClickListener {
+                                            if (entryList.size == 1) {
+                                                val url = entryList[0].url
+                                                if (!url.isNullOrBlank()) startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                                            } else {
+                                                val names = entryList.map { it.title ?: it.identifier ?: it.page ?: it.url ?: "Link" }.toTypedArray()
+                                                AlertDialog.Builder(requireContext()).apply {
+                                                    setTitle("Comick")
+                                                    setSingleChoiceItems(names, 0) { dialog, which ->
+                                                        val url = entryList[which].url
+                                                        if (!url.isNullOrBlank()) startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                                                        dialog.dismiss()
+                                                    }
+                                                    show()
+                                                }
+                                            }
+                                        }
+                                        chip.setOnLongClickListener { copyToClipboard(entryList.firstOrNull()?.url ?: ""); true }
+                                        bind.itemChipGroup.addView(chip)
+                                    } else {
+                                        // Fallback Comick search
+                                        val titleForSearch = (media.name ?: media.nameRomaji ?: "").takeIf { it.isNotBlank() } ?: ""
+                                        if (titleForSearch.isNotBlank()) {
+                                            val encoded = URLEncoder.encode(titleForSearch, "utf-8").replace("+", "%20")
+                                            val searchUrl = "https://comick.dev/search?q=$encoded"
+                                            val chip = ItemChipBinding.inflate(LayoutInflater.from(context), bind.itemChipGroup, false).root
+                                            chip.text = "Comick ⌕"
+                                            chip.setOnClickListener { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(searchUrl))) }
+                                            chip.setOnLongClickListener { copyToClipboard(searchUrl); true }
+                                            bind.itemChipGroup.addView(chip)
+                                        }
+                                    }
+
+                                    // MangaUpdates search link
+                                    val titleForMU = (media.name ?: media.nameRomaji ?: "").takeIf { it.isNotBlank() } ?: ""
+                                    if (titleForMU.isNotBlank()) {
+                                        val encodedMU = URLEncoder.encode(titleForMU, "utf-8").replace("+", "%20")
+                                        val muUrl = "https://www.mangaupdates.com/series?search=$encodedMU"
+                                        val muChip = ItemChipBinding.inflate(LayoutInflater.from(context), bind.itemChipGroup, false).root
+                                        muChip.text = "MangaUpdates ⌕"
+                                        muChip.setOnClickListener { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(muUrl))) }
+                                        muChip.setOnLongClickListener { copyToClipboard(muUrl); true }
+                                        bind.itemChipGroup.addView(muChip)
+                                    }
+
+                                    // Insert right after external links when present, otherwise after description
+                                    val extView = parent.findViewWithTag<View>("external_links")
+                                    val descIndex = parent.indexOfChild(binding.mediaInfoDescription)
+                                    val insertIndex = when {
+                                        extView != null -> parent.indexOfChild(extView) + 1
+                                        descIndex >= 0 -> descIndex + 1
+                                        else -> parent.childCount
+                                    }
+                                    bind.root.tag = "quicklinks_anilist"
+                                    parent.addView(bind.root, insertIndex)
+                                }
+                            }
+                        }
+                    } catch (e: Exception) {
+                        // Ignore quicklinks errors silently
+                    }
                 }
 
                 if (media.synonyms.isNotEmpty()) {

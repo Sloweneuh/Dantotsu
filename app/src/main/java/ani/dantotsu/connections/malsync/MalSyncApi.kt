@@ -193,5 +193,53 @@ object MalSyncApi {
 
         unreadMap
     }
-}
 
+    /**
+     * Fetch quicklinks for a media. Try MAL endpoint first (if malId provided), then AniList endpoint as a fallback.
+     * Returns a QuicklinksResponse or null on failure.
+     */
+    // mediaType should be either "manga" or "anime". Defaults to "manga" to remain backward-compatible.
+    suspend fun getQuicklinks(anilistId: Int, malId: Int? = null, mediaType: String = "manga"): QuicklinksResponse? = withContext(Dispatchers.IO) {
+        try {
+            // mediaType expected to be "manga" or "anime"; build endpoint accordingly
+            val typeSegment = if (mediaType.equals("anime", ignoreCase = true)) "anime" else "manga"
+
+            // If malId is provided, try MAL endpoint first
+            var url = if (malId != null) "https://api.malsync.moe/mal/$typeSegment/$malId" else "https://api.malsync.moe/mal/$typeSegment/anilist:$anilistId"
+            var request = Request.Builder().url(url).build()
+            var response = client.newCall(request).execute()
+            var body = response.body?.string()
+
+            // If MAL request failed or returned empty and malId was provided, fallback to AniList endpoint
+            if ((!response.isSuccessful || body == null || body.isEmpty()) && malId != null) {
+                Logger.log("MalSync quicklinks: MAL id $malId failed, trying AniList id $anilistId")
+                url = "https://api.malsync.moe/mal/$typeSegment/anilist:$anilistId"
+                request = Request.Builder().url(url).build()
+                response = client.newCall(request).execute()
+                body = response.body?.string()
+            }
+
+            if (!response.isSuccessful) {
+                Logger.log("MalSync quicklinks API error: ${response.code}")
+                return@withContext null
+            }
+
+            if (body == null || body.isEmpty() || body == "{}") {
+                Logger.log("MalSync quicklinks: empty response for Anilist $anilistId" + (malId?.let { " or MAL $it" } ?: ""))
+                return@withContext null
+            }
+
+            // Parse into QuicklinksResponse using Gson
+            return@withContext try {
+                gson.fromJson(body, QuicklinksResponse::class.java)
+            } catch (e: Exception) {
+                Logger.log("Error parsing quicklinks JSON: ${e.message}")
+                null
+            }
+        } catch (e: Exception) {
+            Logger.log("Error fetching MalSync quicklinks: ${e.message}")
+            null
+        }
+    }
+
+}

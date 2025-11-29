@@ -7,6 +7,9 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import android.app.AlertDialog
+import android.content.Intent
+import android.net.Uri
 import androidx.core.text.HtmlCompat
 import androidx.core.view.updateLayoutParams
 import androidx.fragment.app.Fragment
@@ -29,6 +32,8 @@ import ani.dantotsu.settings.saving.PrefName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import ani.dantotsu.connections.malsync.MalSyncApi
+import java.net.URLEncoder
 
 class MALInfoFragment : Fragment() {
     private var _binding: FragmentMediaInfoBinding? = null
@@ -77,17 +82,18 @@ class MALInfoFragment : Fragment() {
             }
 
             model.getMedia().observe(viewLifecycleOwner) { media ->
-                if (media != null && !loaded && media.idMAL != null) {
+                val m = media ?: return@observe
+                if (!loaded && m.idMAL != null) {
                     lifecycleScope.launch {
                         try {
                             binding.mediaInfoProgressBar.visibility = View.VISIBLE
                             binding.mediaInfoContainer.visibility = View.GONE
 
                             val malData = withContext(Dispatchers.IO) {
-                                if (media.anime != null) {
-                                    MAL.query.getAnimeDetails(media.idMAL!!)
+                                if (m.anime != null) {
+                                    MAL.query.getAnimeDetails(m.idMAL!!)
                                 } else {
-                                    MAL.query.getMangaDetails(media.idMAL!!)
+                                    MAL.query.getMangaDetails(m.idMAL!!)
                                 }
                             }
 
@@ -104,10 +110,10 @@ class MALInfoFragment : Fragment() {
                             val screenWidth = resources.displayMetrics.run { widthPixels / density }
 
                             // Display MAL data
-                            if (media.anime != null) {
-                                displayAnimeInfo(malData as ani.dantotsu.connections.mal.MALAnimeResponse, parent, screenWidth, offline)
+                            if (m.anime != null) {
+                                displayAnimeInfo(malData as ani.dantotsu.connections.mal.MALAnimeResponse, parent, screenWidth, offline, m.id, m.idMAL!!)
                             } else {
-                                displayMangaInfo(malData as ani.dantotsu.connections.mal.MALMangaResponse, parent, screenWidth, offline)
+                                displayMangaInfo(malData as ani.dantotsu.connections.mal.MALMangaResponse, parent, screenWidth, offline, m.id, m.idMAL!!)
                             }
 
                         } catch (e: Exception) {
@@ -148,7 +154,9 @@ class MALInfoFragment : Fragment() {
         malData: ani.dantotsu.connections.mal.MALAnimeResponse,
         parent: ViewGroup,
         @Suppress("UNUSED_PARAMETER") screenWidth: Float,
-        offline: Boolean
+        offline: Boolean,
+        anilistId: Int,
+        malId: Int
     ) {
         // Title - MAL title is romaji, so show English/Japanese as main title if available
         val mainTitle = malData.alternativeTitles?.en ?: malData.alternativeTitles?.ja ?: malData.title
@@ -324,6 +332,7 @@ class MALInfoFragment : Fragment() {
                 }
             }
         }
+
     }
 
     @Suppress("SetTextI18n")
@@ -331,7 +340,9 @@ class MALInfoFragment : Fragment() {
         malData: ani.dantotsu.connections.mal.MALMangaResponse,
         parent: ViewGroup,
         @Suppress("UNUSED_PARAMETER") screenWidth: Float,
-        offline: Boolean
+        offline: Boolean,
+        anilistId: Int,
+        malId: Int
     ) {
         // Title - MAL title is romaji, so show English/Japanese as main title if available
         val mainTitle = malData.alternativeTitles?.en ?: malData.alternativeTitles?.ja ?: malData.title
@@ -480,6 +491,78 @@ class MALInfoFragment : Fragment() {
                 }
             }
         }
+
+        // Quicklinks (MALSync) - insert under synopsis; show only installed extensions + Comick
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val quick = MalSyncApi.getQuicklinks(anilistId, malId, mediaType = "manga")
+                val siteMap = quick?.Sites
+                withContext(Dispatchers.Main) {
+                    if (parent.findViewWithTag<View>("quicklinks_mal") == null) {
+                        val bind = ItemTitleChipgroupBinding.inflate(LayoutInflater.from(context), parent, false)
+                        bind.itemTitle.setText(R.string.quicklinks)
+
+                        // Comick: prefer API-provided entries
+                        val comickEntries = siteMap?.entries?.firstOrNull { it.key.equals("Comick", true) || it.key.contains("comick", true) }?.value?.values?.toList()
+                        if (comickEntries != null && comickEntries.isNotEmpty()) {
+                            val entryList = comickEntries
+                            val chip = ItemChipBinding.inflate(LayoutInflater.from(context), bind.itemChipGroup, false).root
+                            chip.text = "Comick"
+                            chip.setOnClickListener {
+                                if (entryList.size == 1) {
+                                    val url = entryList[0].url
+                                    if (!url.isNullOrBlank()) startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                                } else {
+                                    val names = entryList.map { it.title ?: it.identifier ?: it.page ?: it.url ?: "Link" }.toTypedArray()
+                                    AlertDialog.Builder(requireContext()).apply {
+                                        setTitle("Comick")
+                                        setSingleChoiceItems(names, 0) { dialog, which ->
+                                            val url = entryList[which].url
+                                            if (!url.isNullOrBlank()) startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                                            dialog.dismiss()
+                                        }
+                                        show()
+                                    }
+                                }
+                            }
+                            chip.setOnLongClickListener { copyToClipboard(entryList.firstOrNull()?.url ?: ""); true }
+                            bind.itemChipGroup.addView(chip)
+                        } else {
+                            // Fallback Comick search
+                            val titleForSearch = (binding.mediaInfoName.text?.toString()?.trim() ?: "").takeIf { it.isNotBlank() } ?: ""
+                            if (titleForSearch.isNotBlank()) {
+                                val encoded = URLEncoder.encode(titleForSearch, "utf-8").replace("+", "%20")
+                                val searchUrl = "https://comick.dev/search?q=$encoded"
+                                val chip = ItemChipBinding.inflate(LayoutInflater.from(context), bind.itemChipGroup, false).root
+                                chip.text = "Comick ⌕"
+                                chip.setOnClickListener { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(searchUrl))) }
+                                chip.setOnLongClickListener { copyToClipboard(searchUrl); true }
+                                bind.itemChipGroup.addView(chip)
+                            }
+                        }
+
+                        // MangaUpdates search link
+                        val titleForMU = (binding.mediaInfoName.text?.toString()?.trim() ?: "").takeIf { it.isNotBlank() } ?: ""
+                        if (titleForMU.isNotBlank()) {
+                            val encodedMU = URLEncoder.encode(titleForMU, "utf-8").replace("+", "%20")
+                            val muUrl = "https://www.mangaupdates.com/series?search=$encodedMU"
+                            val muChip = ItemChipBinding.inflate(LayoutInflater.from(context), bind.itemChipGroup, false).root
+                            muChip.text = "MangaUpdates ⌕"
+                            muChip.setOnClickListener { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(muUrl))) }
+                            muChip.setOnLongClickListener { copyToClipboard(muUrl); true }
+                            bind.itemChipGroup.addView(muChip)
+                        }
+
+                        val descIndex = parent.indexOfChild(binding.mediaInfoDescription)
+                        val insertIndex = if (descIndex >= 0) descIndex + 1 else parent.childCount
+                        bind.root.tag = "quicklinks_mal"
+                        parent.addView(bind.root, insertIndex)
+                    }
+                }
+            } catch (_: Exception) {
+                // ignore quicklinks errors silently
+            }
+        }
     }
 
     private fun formatStatus(status: String?): String {
@@ -559,4 +642,3 @@ class MALInfoFragment : Fragment() {
         }
     }
 }
-

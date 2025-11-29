@@ -1,6 +1,5 @@
 package ani.dantotsu.connections.malsync
 
-import com.google.gson.annotations.SerializedName
 import java.io.Serializable
 
 data class MalSyncResponse(
@@ -38,3 +37,27 @@ data class BatchProgressResult(
     val data: List<MalSyncResponse>?
 ) : Serializable
 
+// Quicklinks models for Malsync's quicklinks API responses
+// Example response contains a top-level object with Sites: { SiteName: { identifier: {...}, ... }, ... }
+
+data class QuicklinksResponse(
+    val id: Int?,
+    val type: String?,
+    val title: String?,
+    val url: String?,
+    val total: Int?,
+    val image: String?,
+    val Sites: Map<String, Map<String, QuicklinkEntry>>?
+) : Serializable
+
+data class QuicklinkEntry(
+    val id: Int?,
+    val identifier: String?,
+    val image: String?,
+    val malId: Int?,
+    val aniId: Int?,
+    val page: String?,
+    val title: String?,
+    val type: String?,
+    val url: String?
+) : Serializable
