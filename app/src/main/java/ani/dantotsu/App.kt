@@ -14,6 +14,8 @@ import ani.dantotsu.aniyomi.anime.custom.PreferenceModule
 import ani.dantotsu.connections.comments.CommentsAPI
 import ani.dantotsu.connections.crashlytics.CrashlyticsInterface
 import ani.dantotsu.notifications.TaskScheduler
+import ani.dantotsu.notifications.WorkManagerScheduler
+import ani.dantotsu.notifications.AlarmManagerScheduler
 import ani.dantotsu.others.DisabledReports
 import ani.dantotsu.parsers.AnimeSources
 import ani.dantotsu.parsers.MangaSources
@@ -144,6 +146,24 @@ class App : MultiDexApplication() {
             val scheduler = TaskScheduler.create(this@App, useAlarmManager)
             try {
                 scheduler.scheduleAllTasks(this@App)
+                // Ensure unread chapter checks are scheduled on both mechanisms
+                // to improve reliability: WorkManager (periodic, survives reboots) and
+                // AlarmManager (can wake device and run during Doze with setExactAndAllowWhileIdle).
+                try {
+                    val unreadInterval = PrefManager.getVal<Long>(PrefName.UnreadChapterNotificationInterval)
+                    // Schedule on WorkManager
+                    WorkManagerScheduler(this@App).scheduleRepeatingTask(TaskScheduler.TaskType.UNREAD_CHAPTER_NOTIFICATION, unreadInterval)
+                    // Schedule on AlarmManager
+                    AlarmManagerScheduler(this@App).scheduleRepeatingTask(TaskScheduler.TaskType.UNREAD_CHAPTER_NOTIFICATION, unreadInterval)
+                } catch (e: Exception) {
+                    Logger.log("Failed to schedule unread checks on both schedulers: ${e.message}")
+                }
+                // Trigger a single immediate run at startup to ensure user gets timely notifications
+                try {
+                    TaskScheduler.scheduleSingleWork(this@App)
+                } catch (e: Exception) {
+                    Logger.log("Failed to enqueue single work at startup: ${e.message}")
+                }
             } catch (e: IllegalStateException) {
                 Logger.log("Failed to schedule tasks")
                 Logger.log(e)
