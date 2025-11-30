@@ -68,7 +68,8 @@ object MediaNameAdapter {
         val seasonMatcher: Matcher = seasonPattern.matcher(text)
 
         return if (seasonMatcher.find()) {
-            seasonMatcher.group(2)?.toInt()
+            // Safely parse possible unicode digits (like 𝟷) and variants
+            seasonMatcher.group(2)?.let { parseIntSafe(it) }
         } else {
             text.toIntOrNull()
         }
@@ -80,20 +81,20 @@ object MediaNameAdapter {
 
         return if (episodeMatcher.find()) {
             if (episodeMatcher.group(2) != null) {
-                episodeMatcher.group(2)?.toFloat()
+                parseFloatSafe(episodeMatcher.group(2))
             } else {
                 val failedEpisodeNumberPattern: Pattern =
                     Pattern.compile(REGEX_PART_NUMBER, Pattern.CASE_INSENSITIVE)
                 val failedEpisodeNumberMatcher: Matcher =
                     failedEpisodeNumberPattern.matcher(text)
                 if (failedEpisodeNumberMatcher.find()) {
-                    failedEpisodeNumberMatcher.group(1)?.toFloat()
+                    parseFloatSafe(failedEpisodeNumberMatcher.group(1))
                 } else {
                     null
                 }
             }
         } else {
-            text.toFloatOrNull()
+            parseFloatSafe(text)
         }
     }
 
@@ -130,17 +131,62 @@ object MediaNameAdapter {
         val matcher: Matcher = pattern.matcher(text)
 
         return if (matcher.find()) {
-            matcher.group(2)?.toFloat()
+            parseFloatSafe(matcher.group(2))
         } else {
             val failedChapterNumberPattern: Pattern =
                 Pattern.compile(REGEX_PART_NUMBER, Pattern.CASE_INSENSITIVE)
             val failedChapterNumberMatcher: Matcher =
                 failedChapterNumberPattern.matcher(text)
             if (failedChapterNumberMatcher.find()) {
-                failedChapterNumberMatcher.group(1)?.toFloat()
+                parseFloatSafe(failedChapterNumberMatcher.group(1))
             } else {
-                text.toFloatOrNull()
+                parseFloatSafe(text)
             }
         }
+    }
+
+    // Helpers to safely parse numbers which may contain unicode digits
+    private fun parseFloatSafe(input: String?): Float? {
+        if (input == null) return null
+        val norm = normalizeNumberString(input) ?: return null
+        return try {
+            norm.toFloatOrNull()
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun parseIntSafe(input: String?): Int? {
+        if (input == null) return null
+        val norm = normalizeNumberString(input) ?: return null
+        return try {
+            // Try integer first
+            norm.toIntOrNull() ?: norm.toFloatOrNull()?.toInt()
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun normalizeNumberString(input: String): String? {
+        val sb = StringBuilder()
+        var foundDigit = false
+        var i = 0
+        while (i < input.length) {
+            // Use fully-qualified java.lang.Character to access codePointAt (avoids collision with kotlin.Char)
+            val cp = java.lang.Character.codePointAt(input, i)
+            val digit = java.lang.Character.getNumericValue(cp)
+            if (digit in 0..9) {
+                sb.append(('0'.code + digit).toChar())
+                foundDigit = true
+            } else if (cp == '.'.code || cp == '\uFF0E'.code || cp == '·'.code || cp == ','.code) {
+                // normalize various decimal separators to '.'
+                sb.append('.')
+                foundDigit = true
+            } else if (cp == '-'.code || cp == '+'.code) {
+                sb.appendCodePoint(cp)
+            }
+            i += java.lang.Character.charCount(cp)
+        }
+        return if (foundDigit) sb.toString() else null
     }
 }
