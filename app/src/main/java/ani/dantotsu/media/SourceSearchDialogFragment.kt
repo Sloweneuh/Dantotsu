@@ -70,12 +70,19 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
                 binding.searchProgress.visibility = View.GONE
 
                 i = media!!.selected!!.sourceIndex
+                val langIndex = media!!.selected!!.langIndex
 
                 val source = if (media!!.anime != null) {
-                    (if (media!!.isAdult) HAnimeSources else AnimeSources)[i!!]
+                    val src = (if (media!!.isAdult) HAnimeSources else AnimeSources)[i!!]
+                    // Set the language index for the parser if it's a dynamic parser
+                    (src as? ani.dantotsu.parsers.DynamicAnimeParser)?.sourceLanguage = langIndex
+                    src
                 } else {
                     anime = false
-                    (if (media!!.isAdult) HMangaSources else MangaSources)[i!!]
+                    val src = (if (media!!.isAdult) HMangaSources else MangaSources)[i!!]
+                    // Set the language index for the parser if it's a dynamic parser
+                    (src as? ani.dantotsu.parsers.DynamicMangaParser)?.sourceLanguage = langIndex
+                    src
                 }
 
                 // Build a deterministic list of candidate titles/synonyms for the dropdown.

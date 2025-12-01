@@ -63,9 +63,23 @@ abstract class BaseParser {
      * Isn't necessary to override, but recommended, if you want to improve auto search results
      * **/
     open suspend fun autoSearch(mediaObj: Media): ShowResponse? {
-        (this as? DynamicMangaParser)?.let { ext ->
-            mediaObj.selected?.langIndex?.let {
-                ext.sourceLanguage = it
+        // Set the source language to English before searching
+        when (this) {
+            is DynamicMangaParser -> {
+                val sources = this.extension.sources
+                val enIndex = sources.indexOfFirst {
+                    val code = it.lang.lowercase()
+                    code == "en" || code.startsWith("en") || code.contains("english")
+                }
+                this.sourceLanguage = if (enIndex != -1) enIndex else (mediaObj.selected?.langIndex ?: 0)
+            }
+            is DynamicAnimeParser -> {
+                val sources = this.extension.sources
+                val enIndex = sources.indexOfFirst {
+                    val code = it.lang.lowercase()
+                    code == "en" || code.startsWith("en") || code.contains("english")
+                }
+                this.sourceLanguage = if (enIndex != -1) enIndex else (mediaObj.selected?.langIndex ?: 0)
             }
         }
         var response: ShowResponse? = loadSavedShowResponse(mediaObj.id)
