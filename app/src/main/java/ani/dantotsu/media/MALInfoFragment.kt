@@ -7,7 +7,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
-import android.app.AlertDialog
 import android.content.Intent
 import android.net.Uri
 import androidx.core.text.HtmlCompat
@@ -502,33 +501,36 @@ class MALInfoFragment : Fragment() {
                         val bind = ItemTitleChipgroupBinding.inflate(LayoutInflater.from(context), parent, false)
                         bind.itemTitle.setText(R.string.quicklinks)
 
-                        // Comick: prefer API-provided entries
+                        // Comick: prefer API-provided entries, fallback to search
                         val comickEntries = siteMap?.entries?.firstOrNull { it.key.equals("Comick", true) || it.key.contains("comick", true) }?.value?.values?.toList()
-                        if (comickEntries != null && comickEntries.isNotEmpty()) {
-                            val entryList = comickEntries
+
+                        val comickSlug: String? = if (comickEntries != null && comickEntries.isNotEmpty()) {
+                            // Use MalSync provided slug
+                            comickEntries.firstOrNull()?.identifier
+                        } else {
+                            // Try to find via search
+                            val titleForSearch = binding.mediaInfoName.text?.toString()?.trim()
+                            if (!titleForSearch.isNullOrBlank()) {
+                                ani.dantotsu.connections.comick.ComickApi.searchAndMatchComic(
+                                    titleForSearch,
+                                    anilistId,
+                                    malId
+                                )
+                            } else {
+                                null
+                            }
+                        }
+
+                        if (comickSlug != null) {
+                            // Direct Comick link
+                            val comickUrl = "https://comick.dev/comic/$comickSlug"
                             val chip = ItemChipBinding.inflate(LayoutInflater.from(context), bind.itemChipGroup, false).root
                             chip.text = "Comick"
-                            chip.setOnClickListener {
-                                if (entryList.size == 1) {
-                                    val url = entryList[0].url
-                                    if (!url.isNullOrBlank()) startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                                } else {
-                                    val names = entryList.map { it.title ?: it.identifier ?: it.page ?: it.url ?: "Link" }.toTypedArray()
-                                    AlertDialog.Builder(requireContext()).apply {
-                                        setTitle("Comick")
-                                        setSingleChoiceItems(names, 0) { dialog, which ->
-                                            val url = entryList[which].url
-                                            if (!url.isNullOrBlank()) startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                                            dialog.dismiss()
-                                        }
-                                        show()
-                                    }
-                                }
-                            }
-                            chip.setOnLongClickListener { copyToClipboard(entryList.firstOrNull()?.url ?: ""); true }
+                            chip.setOnClickListener { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(comickUrl))) }
+                            chip.setOnLongClickListener { copyToClipboard(comickUrl); true }
                             bind.itemChipGroup.addView(chip)
                         } else {
-                            // Fallback Comick search
+                            // Final fallback: search link
                             val titleForSearch = (binding.mediaInfoName.text?.toString()?.trim() ?: "").takeIf { it.isNotBlank() } ?: ""
                             if (titleForSearch.isNotBlank()) {
                                 val encoded = URLEncoder.encode(titleForSearch, "utf-8").replace("+", "%20")
@@ -541,9 +543,28 @@ class MALInfoFragment : Fragment() {
                             }
                         }
 
-                        // MangaUpdates search link
+                        // MangaUpdates - try to get direct link from Comick first
+                        var muDirectLink: String? = null
+                        if (comickSlug != null) {
+                            try {
+                                val comickData = ani.dantotsu.connections.comick.ComickApi.getComicDetails(comickSlug)
+                                muDirectLink = comickData?.comic?.links?.mu
+                            } catch (_: Exception) {
+                                // Ignore errors, fall back to search
+                            }
+                        }
+
                         val titleForMU = (binding.mediaInfoName.text?.toString()?.trim() ?: "").takeIf { it.isNotBlank() } ?: ""
-                        if (titleForMU.isNotBlank()) {
+                        if (muDirectLink != null) {
+                            // Direct MangaUpdates link from Comick
+                            val muUrl = "https://www.mangaupdates.com/series/$muDirectLink"
+                            val muChip = ItemChipBinding.inflate(LayoutInflater.from(context), bind.itemChipGroup, false).root
+                            muChip.text = "MangaUpdates"
+                            muChip.setOnClickListener { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(muUrl))) }
+                            muChip.setOnLongClickListener { copyToClipboard(muUrl); true }
+                            bind.itemChipGroup.addView(muChip)
+                        } else if (titleForMU.isNotBlank()) {
+                            // Fallback to search link
                             val encodedMU = URLEncoder.encode(titleForMU, "utf-8").replace("+", "%20")
                             val muUrl = "https://www.mangaupdates.com/series?search=$encodedMU"
                             val muChip = ItemChipBinding.inflate(LayoutInflater.from(context), bind.itemChipGroup, false).root

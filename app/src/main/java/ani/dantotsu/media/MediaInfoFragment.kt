@@ -8,9 +8,13 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import ani.dantotsu.databinding.FragmentMediaInfoContainerBinding
 import com.google.android.material.tabs.TabLayoutMediator
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MediaInfoFragment : Fragment() {
     private var _binding: FragmentMediaInfoContainerBinding? = null
@@ -39,28 +43,70 @@ class MediaInfoFragment : Fragment() {
             if (media != null) {
                 val hasMAL = media.idMAL != null
 
-                // Setup ViewPager
-                val adapter = InfoPagerAdapter(
-                    childFragmentManager,
-                    viewLifecycleOwner.lifecycle,
-                    hasMAL
-                )
-                binding.mediaInfoViewPager.adapter = adapter
+                // Check for Comick availability
+                lifecycleScope.launch {
+                    val hasComick = withContext(Dispatchers.IO) {
+                        try {
+                            val mediaType = if (media.anime != null) "anime" else "manga"
+                            val quicklinks = ani.dantotsu.connections.malsync.MalSyncApi.getQuicklinks(
+                                media.id,
+                                media.idMAL,
+                                mediaType
+                            )
+                            // Check MalSync first
+                            var comickSlug = quicklinks?.Sites?.entries?.firstOrNull {
+                                it.key.equals("Comick", true) || it.key.contains("comick", true)
+                            }?.value?.values?.firstOrNull()?.identifier
 
-                // Disable swipe gestures to allow horizontal scrolling inside fragments
-                binding.mediaInfoViewPager.isUserInputEnabled = false
+                            // If not found in MalSync, try search API
+                            if (comickSlug == null && mediaType == "manga") {
+                                val title = media.name ?: media.nameRomaji
+                                if (!title.isNullOrBlank()) {
+                                    comickSlug = ani.dantotsu.connections.comick.ComickApi.searchAndMatchComic(
+                                        title,
+                                        media.id,
+                                        media.idMAL
+                                    )
+                                }
+                            }
 
-                // Setup TabLayout
-                TabLayoutMediator(binding.mediaInfoTabLayout, binding.mediaInfoViewPager) { tab, position ->
-                    when (position) {
-                        0 -> tab.setIcon(ani.dantotsu.R.drawable.ic_anilist)
-                        1 -> tab.setIcon(ani.dantotsu.R.drawable.ic_myanimelist)
+                            comickSlug != null
+                        } catch (_: Exception) {
+                            false
+                        }
                     }
-                }.attach()
 
-                // Hide TabLayout if only AniList is available
-                if (!hasMAL) {
-                    binding.mediaInfoTabLayout.visibility = View.GONE
+                    // Setup ViewPager
+                    val adapter = InfoPagerAdapter(
+                        childFragmentManager,
+                        viewLifecycleOwner.lifecycle,
+                        hasMAL,
+                        hasComick
+                    )
+                    binding.mediaInfoViewPager.adapter = adapter
+
+                    // Disable swipe gestures to allow horizontal scrolling inside fragments
+                    binding.mediaInfoViewPager.isUserInputEnabled = false
+
+                    // Setup TabLayout
+                    TabLayoutMediator(binding.mediaInfoTabLayout, binding.mediaInfoViewPager) { tab, position ->
+                        when (position) {
+                            0 -> tab.setIcon(ani.dantotsu.R.drawable.ic_anilist)
+                            1 -> if (hasMAL && hasComick) {
+                                tab.setIcon(ani.dantotsu.R.drawable.ic_myanimelist)
+                            } else if (hasMAL) {
+                                tab.setIcon(ani.dantotsu.R.drawable.ic_myanimelist)
+                            } else if (hasComick) {
+                                tab.setIcon(ani.dantotsu.R.drawable.ic_round_comick_24)
+                            }
+                            2 -> tab.setIcon(ani.dantotsu.R.drawable.ic_round_comick_24)
+                        }
+                    }.attach()
+
+                    // Hide TabLayout if only AniList is available
+                    if (!hasMAL && !hasComick) {
+                        binding.mediaInfoTabLayout.visibility = View.GONE
+                    }
                 }
             }
         }
@@ -69,14 +115,24 @@ class MediaInfoFragment : Fragment() {
     private class InfoPagerAdapter(
         fragmentManager: FragmentManager,
         lifecycle: Lifecycle,
-        private val hasMAL: Boolean
+        private val hasMAL: Boolean,
+        private val hasComick: Boolean
     ) : FragmentStateAdapter(fragmentManager, lifecycle) {
 
-        override fun getItemCount(): Int = if (hasMAL) 2 else 1
+        override fun getItemCount(): Int {
+            return when {
+                hasMAL && hasComick -> 3
+                hasMAL || hasComick -> 2
+                else -> 1
+            }
+        }
 
-        override fun createFragment(position: Int): Fragment = when (position) {
-            0 -> AniListInfoFragment()
-            1 -> MALInfoFragment()
+        override fun createFragment(position: Int): Fragment = when {
+            position == 0 -> AniListInfoFragment()
+            position == 1 && hasMAL && hasComick -> MALInfoFragment()
+            position == 1 && hasMAL -> MALInfoFragment()
+            position == 1 && hasComick -> ComickInfoFragment()
+            position == 2 && hasComick -> ComickInfoFragment()
             else -> AniListInfoFragment()
         }
     }
