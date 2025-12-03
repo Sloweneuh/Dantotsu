@@ -41,6 +41,29 @@ class MALInfoFragment : Fragment() {
 
     private val tripleTab = "\t\t\t"
 
+    /**
+     * Get list of available titles for searching from MAL UI
+     */
+    private fun getAvailableTitles(): ArrayList<String> {
+        val titles = ArrayList<String>()
+
+        // Add main title from MAL
+        binding.mediaInfoName.text?.toString()?.trim()?.let {
+            if (it.isNotBlank()) titles.add(it)
+        }
+
+        // Add romaji title if different and visible
+        if (binding.mediaInfoNameRomajiContainer.visibility == View.VISIBLE) {
+            binding.mediaInfoNameRomaji.text?.toString()?.trim()?.let { romaji ->
+                if (romaji.isNotBlank() && !titles.contains(romaji)) {
+                    titles.add(romaji)
+                }
+            }
+        }
+
+        return titles
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -508,11 +531,28 @@ class MALInfoFragment : Fragment() {
                             // Use MalSync provided slug
                             comickEntries.firstOrNull()?.identifier
                         } else {
-                            // Try to find via search
-                            val titleForSearch = binding.mediaInfoName.text?.toString()?.trim()
-                            if (!titleForSearch.isNullOrBlank()) {
+                            // Try to find via search - build list of titles to try
+                            val titlesToTry = mutableListOf<String>()
+
+                            // Add main title from MAL
+                            binding.mediaInfoName.text?.toString()?.trim()?.let {
+                                if (it.isNotBlank()) titlesToTry.add(it)
+                            }
+
+                            // Add romaji title if different
+                            if (binding.mediaInfoNameRomajiContainer.visibility == View.VISIBLE) {
+                                binding.mediaInfoNameRomaji.text?.toString()?.trim()?.let { romaji ->
+                                    if (romaji.isNotBlank() && !titlesToTry.contains(romaji)) {
+                                        titlesToTry.add(romaji)
+                                    }
+                                }
+                            }
+
+                            // Note: MAL API doesn't provide synonyms directly, so we can only use the titles we have
+
+                            if (titlesToTry.isNotEmpty()) {
                                 ani.dantotsu.connections.comick.ComickApi.searchAndMatchComic(
-                                    titleForSearch,
+                                    titlesToTry,
                                     anilistId,
                                     malId
                                 )
@@ -530,15 +570,33 @@ class MALInfoFragment : Fragment() {
                             chip.setOnLongClickListener { copyToClipboard(comickUrl); true }
                             bind.itemChipGroup.addView(chip)
                         } else {
-                            // Final fallback: search link
-                            val titleForSearch = (binding.mediaInfoName.text?.toString()?.trim() ?: "").takeIf { it.isNotBlank() } ?: ""
-                            if (titleForSearch.isNotBlank()) {
-                                val encoded = URLEncoder.encode(titleForSearch, "utf-8").replace("+", "%20")
-                                val searchUrl = "https://comick.dev/search?q=$encoded"
+                            // Final fallback: search link with title selector
+                            val availableTitles = getAvailableTitles()
+                            if (availableTitles.isNotEmpty()) {
                                 val chip = ItemChipBinding.inflate(LayoutInflater.from(context), bind.itemChipGroup, false).root
                                 chip.text = "Comick ⌕"
-                                chip.setOnClickListener { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(searchUrl))) }
-                                chip.setOnLongClickListener { copyToClipboard(searchUrl); true }
+                                chip.setOnClickListener {
+                                    if (availableTitles.size == 1) {
+                                        // Only one title, search directly
+                                        val encoded = URLEncoder.encode(availableTitles[0], "utf-8").replace("+", "%20")
+                                        val searchUrl = "https://comick.dev/search?q=$encoded"
+                                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(searchUrl)))
+                                    } else {
+                                        // Multiple titles, show selector
+                                        TitleSelectorDialog.newInstance(
+                                            availableTitles,
+                                            "Comick",
+                                            "https://comick.dev/search?q={TITLE}"
+                                        ).show(childFragmentManager, "comick_title_selector")
+                                    }
+                                }
+                                chip.setOnLongClickListener {
+                                    // Long press: copy first title's URL
+                                    val encoded = URLEncoder.encode(availableTitles[0], "utf-8").replace("+", "%20")
+                                    val searchUrl = "https://comick.dev/search?q=$encoded"
+                                    copyToClipboard(searchUrl)
+                                    true
+                                }
                                 bind.itemChipGroup.addView(chip)
                             }
                         }
@@ -554,7 +612,6 @@ class MALInfoFragment : Fragment() {
                             }
                         }
 
-                        val titleForMU = (binding.mediaInfoName.text?.toString()?.trim() ?: "").takeIf { it.isNotBlank() } ?: ""
                         if (muDirectLink != null) {
                             // Direct MangaUpdates link from Comick
                             val muUrl = "https://www.mangaupdates.com/series/$muDirectLink"
@@ -563,15 +620,36 @@ class MALInfoFragment : Fragment() {
                             muChip.setOnClickListener { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(muUrl))) }
                             muChip.setOnLongClickListener { copyToClipboard(muUrl); true }
                             bind.itemChipGroup.addView(muChip)
-                        } else if (titleForMU.isNotBlank()) {
-                            // Fallback to search link
-                            val encodedMU = URLEncoder.encode(titleForMU, "utf-8").replace("+", "%20")
-                            val muUrl = "https://www.mangaupdates.com/series?search=$encodedMU"
-                            val muChip = ItemChipBinding.inflate(LayoutInflater.from(context), bind.itemChipGroup, false).root
-                            muChip.text = "MangaUpdates ⌕"
-                            muChip.setOnClickListener { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(muUrl))) }
-                            muChip.setOnLongClickListener { copyToClipboard(muUrl); true }
-                            bind.itemChipGroup.addView(muChip)
+                        } else {
+                            // Fallback to search link with title selector
+                            val availableTitles = getAvailableTitles()
+                            if (availableTitles.isNotEmpty()) {
+                                val muChip = ItemChipBinding.inflate(LayoutInflater.from(context), bind.itemChipGroup, false).root
+                                muChip.text = "MangaUpdates ⌕"
+                                muChip.setOnClickListener {
+                                    if (availableTitles.size == 1) {
+                                        // Only one title, search directly
+                                        val encodedMU = URLEncoder.encode(availableTitles[0], "utf-8").replace("+", "%20")
+                                        val muUrl = "https://www.mangaupdates.com/series?search=$encodedMU"
+                                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(muUrl)))
+                                    } else {
+                                        // Multiple titles, show selector
+                                        TitleSelectorDialog.newInstance(
+                                            availableTitles,
+                                            "MangaUpdates",
+                                            "https://www.mangaupdates.com/series?search={TITLE}"
+                                        ).show(childFragmentManager, "mu_title_selector")
+                                    }
+                                }
+                                muChip.setOnLongClickListener {
+                                    // Long press: copy first title's URL
+                                    val encodedMU = URLEncoder.encode(availableTitles[0], "utf-8").replace("+", "%20")
+                                    val muUrl = "https://www.mangaupdates.com/series?search=$encodedMU"
+                                    copyToClipboard(muUrl)
+                                    true
+                                }
+                                bind.itemChipGroup.addView(muChip)
+                            }
                         }
 
                         val descIndex = parent.indexOfChild(binding.mediaInfoDescription)

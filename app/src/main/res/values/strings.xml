@@ -639,6 +639,8 @@
 
     <string name="selected">Selected</string>
     <string name="found">Found</string>
+    <string name="select">Select</string>
+    <string name="select_title_for_search">Select title to search on %s</string>
 
     <string name="age">"__Age:__ "</string>
     <string name="birthday">\n"__Birthday:__ "</string>

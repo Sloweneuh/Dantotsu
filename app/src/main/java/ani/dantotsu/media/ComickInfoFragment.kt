@@ -33,6 +33,30 @@ class ComickInfoFragment : Fragment() {
 
     private val tripleTab = "\t\t\t"
 
+    /**
+     * Filter synonyms to likely English titles by checking for Latin characters
+     * and filtering out titles with CJK (Chinese/Japanese/Korean) characters
+     */
+    private fun filterEnglishTitles(synonyms: List<String>): List<String> {
+        return synonyms.filter { title ->
+            if (title.isBlank()) return@filter false
+
+            // Check if the title contains CJK characters
+            val hasCJK = title.any { char ->
+                // Japanese Hiragana, Katakana, and Kanji ranges
+                char.code in 0x3040..0x309F || // Hiragana
+                char.code in 0x30A0..0x30FF || // Katakana
+                char.code in 0x4E00..0x9FFF || // CJK Unified Ideographs
+                // Korean Hangul
+                char.code in 0xAC00..0xD7AF || // Hangul Syllables
+                char.code in 0x1100..0x11FF    // Hangul Jamo
+            }
+
+            // Only include titles without CJK characters (likely English/Latin script)
+            !hasCJK
+        }
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -86,9 +110,27 @@ class ComickInfoFragment : Fragment() {
                         // If not found in MalSync, try search API
                         if (comickSlug == null) {
                             comickSlug = withContext(Dispatchers.IO) {
-                                val title = media.name ?: media.nameRomaji
-                                if (!title.isNullOrBlank()) {
-                                    ComickApi.searchAndMatchComic(title, media.id, media.idMAL)
+                                // Build a list of titles to try, prioritizing English titles
+                                val titlesToTry = mutableListOf<String>()
+
+                                // Add main English title first
+                                media.name?.let { titlesToTry.add(it) }
+
+                                // Add English synonyms (filter out non-Latin titles)
+                                val englishSynonyms = filterEnglishTitles(media.synonyms)
+                                englishSynonyms.forEach { synonym ->
+                                    if (!titlesToTry.contains(synonym)) {
+                                        titlesToTry.add(synonym)
+                                    }
+                                }
+
+                                // Add romaji title as fallback
+                                if (!titlesToTry.contains(media.nameRomaji)) {
+                                    titlesToTry.add(media.nameRomaji)
+                                }
+
+                                if (titlesToTry.isNotEmpty()) {
+                                    ComickApi.searchAndMatchComic(titlesToTry, media.id, media.idMAL)
                                 } else {
                                     null
                                 }

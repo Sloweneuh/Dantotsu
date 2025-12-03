@@ -56,12 +56,31 @@ object ComickApi {
 
     /**
      * Search for a comic on Comick and try to match by AniList or MAL ID
-     * @param title The manga title to search
+     * @param titles List of titles to try searching (will try each in order)
      * @param anilistId The AniList ID to match
      * @param malId The MAL ID to match (optional)
      * @return The matching comic slug or null if not found
      */
-    suspend fun searchAndMatchComic(title: String, anilistId: Int, malId: Int? = null): String? = withContext(Dispatchers.IO) {
+    suspend fun searchAndMatchComic(titles: List<String>, anilistId: Int, malId: Int? = null): String? = withContext(Dispatchers.IO) {
+        // Try each title until we find a match
+        for (title in titles) {
+            if (title.isBlank()) continue
+
+            val result = searchWithTitle(title, anilistId, malId)
+            if (result != null) {
+                Logger.log("Comick: Found match using title: $title")
+                return@withContext result
+            }
+        }
+
+        Logger.log("Comick search: no match found after trying ${titles.size} titles")
+        return@withContext null
+    }
+
+    /**
+     * Helper function to search with a single title
+     */
+    private suspend fun searchWithTitle(title: String, anilistId: Int, malId: Int? = null): String? {
         try {
             val encodedTitle = java.net.URLEncoder.encode(title, "UTF-8")
             val url = "https://api.comick.dev/v1.0/search/?type=comic&page=1&limit=5&showall=false&q=$encodedTitle&t=false"
@@ -74,82 +93,76 @@ object ComickApi {
 
             if (!response.isSuccessful) {
                 Logger.log("Comick search API error: ${response.code}")
-                return@withContext null
+                return null
             }
 
             if (body == null || body.isEmpty() || body == "[]") {
                 Logger.log("Comick search: no results for title $title")
-                return@withContext null
+                return null
             }
 
-            return@withContext try {
-                val type = object : com.google.gson.reflect.TypeToken<List<ComickSearchResult>>() {}.type
-                val searchResults: List<ComickSearchResult> = gson.fromJson(body, type)
+            val type = object : com.google.gson.reflect.TypeToken<List<ComickSearchResult>>() {}.type
+            val searchResults: List<ComickSearchResult> = gson.fromJson(body, type)
 
-                // Collect all matching results with their scores
-                data class ScoredMatch(val slug: String, val score: Int, val followers: Int)
-                val matches = mutableListOf<ScoredMatch>()
+            // Collect all matching results with their scores
+            data class ScoredMatch(val slug: String, val score: Int, val followers: Int)
+            val matches = mutableListOf<ScoredMatch>()
 
-                // Try to match by AniList or MAL ID
-                for (result in searchResults) {
-                    // Fetch full details to get links
-                    val details = getComicDetails(result.slug ?: continue)
-                    val links = details?.comic?.links
-                    val comic = details?.comic
+            // Try to match by AniList or MAL ID
+            for (result in searchResults) {
+                // Fetch full details to get links
+                val details = getComicDetails(result.slug ?: continue)
+                val links = details?.comic?.links
+                val comic = details?.comic
 
-                    var isMatch = false
+                var isMatch = false
 
-                    // Check if AniList ID matches
-                    if (links?.al == anilistId.toString()) {
-                        Logger.log("Comick: Found match by AniList ID: ${result.slug}")
-                        isMatch = true
-                    }
-
-                    // Check if MAL ID matches
-                    if (malId != null && links?.mal == malId.toString()) {
-                        Logger.log("Comick: Found match by MAL ID: ${result.slug}")
-                        isMatch = true
-                    }
-
-                    if (isMatch && comic != null) {
-                        // Calculate score based on data completeness
-                        var score = 0
-                        if (!comic.desc.isNullOrBlank()) score += 10
-                        if (!comic.parsed.isNullOrBlank()) score += 10
-                        if (comic.bayesian_rating != null) score += 5
-                        if (comic.rating_count != null && comic.rating_count > 0) score += 5
-                        if (comic.last_chapter != null && comic.last_chapter > 0) score += 5
-                        if (comic.chapter_count != null && comic.chapter_count > 0) score += 5
-                        if (!comic.md_comic_md_genres.isNullOrEmpty()) score += 10
-                        if (comic.mu_comics?.mu_comic_categories?.isNotEmpty() == true) score += 10
-                        if (comic.links?.mu != null) score += 5
-                        if (!comic.md_titles.isNullOrEmpty()) score += 5
-
-                        val followers = comic.user_follow_count ?: 0
-                        matches.add(ScoredMatch(result.slug, score, followers))
-                    }
+                // Check if AniList ID matches
+                if (links?.al == anilistId.toString()) {
+                    Logger.log("Comick: Found match by AniList ID: ${result.slug}")
+                    isMatch = true
                 }
 
-                // If we have matches, return the best one
-                if (matches.isNotEmpty()) {
-                    val bestMatch = matches.maxByOrNull {
-                        // Primary: score (data completeness)
-                        // Secondary: follower count
-                        it.score * 10000 + it.followers
-                    }
-                    Logger.log("Comick: Selected best match: ${bestMatch?.slug} (score: ${bestMatch?.score}, followers: ${bestMatch?.followers})")
-                    return@withContext bestMatch?.slug
+                // Check if MAL ID matches
+                if (malId != null && links?.mal == malId.toString()) {
+                    Logger.log("Comick: Found match by MAL ID: ${result.slug}")
+                    isMatch = true
                 }
 
-                Logger.log("Comick search: no ID match found for title $title")
-                null
-            } catch (e: Exception) {
-                Logger.log("Error parsing Comick search results: ${e.message}")
-                null
+                if (isMatch && comic != null) {
+                    // Calculate score based on data completeness
+                    var score = 0
+                    if (!comic.desc.isNullOrBlank()) score += 10
+                    if (!comic.parsed.isNullOrBlank()) score += 10
+                    if (comic.bayesian_rating != null) score += 5
+                    if (comic.rating_count != null && comic.rating_count > 0) score += 5
+                    if (comic.last_chapter != null && comic.last_chapter > 0) score += 5
+                    if (comic.chapter_count != null && comic.chapter_count > 0) score += 5
+                    if (!comic.md_comic_md_genres.isNullOrEmpty()) score += 10
+                    if (comic.mu_comics?.mu_comic_categories?.isNotEmpty() == true) score += 10
+                    if (comic.links?.mu != null) score += 5
+                    if (!comic.md_titles.isNullOrEmpty()) score += 5
+
+                    val followers = comic.user_follow_count ?: 0
+                    matches.add(ScoredMatch(result.slug, score, followers))
+                }
             }
+
+            // If we have matches, return the best one
+            if (matches.isNotEmpty()) {
+                val bestMatch = matches.maxByOrNull {
+                    // Primary: score (data completeness)
+                    // Secondary: follower count
+                    it.score * 10000 + it.followers
+                }
+                Logger.log("Comick: Selected best match: ${bestMatch?.slug} (score: ${bestMatch?.score}, followers: ${bestMatch?.followers})")
+                return bestMatch?.slug
+            }
+
+            return null
         } catch (e: Exception) {
-            Logger.log("Error searching Comick: ${e.message}")
-            null
+            Logger.log("Error searching Comick with title '$title': ${e.message}")
+            return null
         }
     }
 }

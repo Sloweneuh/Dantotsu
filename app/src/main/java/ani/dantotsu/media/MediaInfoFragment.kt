@@ -60,10 +60,40 @@ class MediaInfoFragment : Fragment() {
 
                             // If not found in MalSync, try search API
                             if (comickSlug == null && mediaType == "manga") {
-                                val title = media.name ?: media.nameRomaji
-                                if (!title.isNullOrBlank()) {
+                                // Build a list of titles to try, prioritizing English titles
+                                val titlesToTry = mutableListOf<String>()
+
+                                // Add main English title first
+                                media.name?.let { titlesToTry.add(it) }
+
+                                // Add English synonyms (filter out non-Latin titles)
+                                val englishSynonyms = media.synonyms.filter { synonym ->
+                                    if (synonym.isBlank()) return@filter false
+
+                                    // Check if the title contains CJK characters
+                                    val hasCJK = synonym.any { char ->
+                                        char.code in 0x3040..0x309F || // Hiragana
+                                        char.code in 0x30A0..0x30FF || // Katakana
+                                        char.code in 0x4E00..0x9FFF || // CJK Ideographs
+                                        char.code in 0xAC00..0xD7AF || // Hangul Syllables
+                                        char.code in 0x1100..0x11FF    // Hangul Jamo
+                                    }
+                                    !hasCJK
+                                }
+                                englishSynonyms.forEach { synonym ->
+                                    if (!titlesToTry.contains(synonym)) {
+                                        titlesToTry.add(synonym)
+                                    }
+                                }
+
+                                // Add romaji title as fallback
+                                if (!titlesToTry.contains(media.nameRomaji)) {
+                                    titlesToTry.add(media.nameRomaji)
+                                }
+
+                                if (titlesToTry.isNotEmpty()) {
                                     comickSlug = ani.dantotsu.connections.comick.ComickApi.searchAndMatchComic(
-                                        title,
+                                        titlesToTry,
                                         media.id,
                                         media.idMAL
                                     )

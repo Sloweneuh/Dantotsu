@@ -104,6 +104,43 @@ class AniListInfoFragment : Fragment() {
         }
     }
 
+    /**
+     * Get list of available titles for searching, filtering English titles
+     */
+    private fun getAvailableTitles(media: Media): ArrayList<String> {
+        val titles = ArrayList<String>()
+
+        // Add main English title first
+        media.name?.let { if (it.isNotBlank()) titles.add(it) }
+
+        // Add English synonyms (filter out non-Latin titles)
+        val englishSynonyms = media.synonyms.filter { synonym ->
+            if (synonym.isBlank()) return@filter false
+
+            // Check if the title contains CJK characters
+            val hasCJK = synonym.any { char ->
+                char.code in 0x3040..0x309F || // Hiragana
+                char.code in 0x30A0..0x30FF || // Katakana
+                char.code in 0x4E00..0x9FFF || // CJK Ideographs
+                char.code in 0xAC00..0xD7AF || // Hangul Syllables
+                char.code in 0x1100..0x11FF    // Hangul Jamo
+            }
+            !hasCJK
+        }
+        englishSynonyms.forEach { synonym ->
+            if (!titles.contains(synonym)) {
+                titles.add(synonym)
+            }
+        }
+
+        // Add romaji title as fallback
+        if (!titles.contains(media.nameRomaji)) {
+            titles.add(media.nameRomaji)
+        }
+
+        return titles
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -322,11 +359,40 @@ class AniListInfoFragment : Fragment() {
                                         // Use MalSync provided slug
                                         comickEntries.firstOrNull()?.identifier
                                     } else {
-                                        // Try to find via search
-                                        val titleForSearch = media.name ?: media.nameRomaji
-                                        if (!titleForSearch.isNullOrBlank()) {
+                                        // Try to find via search - build list of titles to try
+                                        val titlesToTry = mutableListOf<String>()
+
+                                        // Add main English title first
+                                        media.name?.let { titlesToTry.add(it) }
+
+                                        // Add English synonyms (filter out non-Latin titles)
+                                        val englishSynonyms = media.synonyms.filter { synonym ->
+                                            if (synonym.isBlank()) return@filter false
+
+                                            // Check if the title contains CJK characters
+                                            val hasCJK = synonym.any { char ->
+                                                char.code in 0x3040..0x309F || // Hiragana
+                                                char.code in 0x30A0..0x30FF || // Katakana
+                                                char.code in 0x4E00..0x9FFF || // CJK Ideographs
+                                                char.code in 0xAC00..0xD7AF || // Hangul Syllables
+                                                char.code in 0x1100..0x11FF    // Hangul Jamo
+                                            }
+                                            !hasCJK
+                                        }
+                                        englishSynonyms.forEach { synonym ->
+                                            if (!titlesToTry.contains(synonym)) {
+                                                titlesToTry.add(synonym)
+                                            }
+                                        }
+
+                                        // Add romaji title as fallback
+                                        if (!titlesToTry.contains(media.nameRomaji)) {
+                                            titlesToTry.add(media.nameRomaji)
+                                        }
+
+                                        if (titlesToTry.isNotEmpty()) {
                                             ani.dantotsu.connections.comick.ComickApi.searchAndMatchComic(
-                                                titleForSearch,
+                                                titlesToTry,
                                                 media.id,
                                                 media.idMAL
                                             )
@@ -344,15 +410,33 @@ class AniListInfoFragment : Fragment() {
                                         chip.setOnLongClickListener { copyToClipboard(comickUrl); true }
                                         bind.itemChipGroup.addView(chip)
                                     } else {
-                                        // Final fallback: search link
-                                        val titleForSearch = (media.name ?: media.nameRomaji ?: "").takeIf { it.isNotBlank() } ?: ""
-                                        if (titleForSearch.isNotBlank()) {
-                                            val encoded = URLEncoder.encode(titleForSearch, "utf-8").replace("+", "%20")
-                                            val searchUrl = "https://comick.dev/search?q=$encoded"
+                                        // Final fallback: search link with title selector
+                                        val availableTitles = getAvailableTitles(media)
+                                        if (availableTitles.isNotEmpty()) {
                                             val chip = ItemChipBinding.inflate(LayoutInflater.from(context), bind.itemChipGroup, false).root
                                             chip.text = "Comick ⌕"
-                                            chip.setOnClickListener { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(searchUrl))) }
-                                            chip.setOnLongClickListener { copyToClipboard(searchUrl); true }
+                                            chip.setOnClickListener {
+                                                if (availableTitles.size == 1) {
+                                                    // Only one title, search directly
+                                                    val encoded = URLEncoder.encode(availableTitles[0], "utf-8").replace("+", "%20")
+                                                    val searchUrl = "https://comick.dev/search?q=$encoded"
+                                                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(searchUrl)))
+                                                } else {
+                                                    // Multiple titles, show selector
+                                                    TitleSelectorDialog.newInstance(
+                                                        availableTitles,
+                                                        "Comick",
+                                                        "https://comick.dev/search?q={TITLE}"
+                                                    ).show(childFragmentManager, "comick_title_selector")
+                                                }
+                                            }
+                                            chip.setOnLongClickListener {
+                                                // Long press: copy first title's URL
+                                                val encoded = URLEncoder.encode(availableTitles[0], "utf-8").replace("+", "%20")
+                                                val searchUrl = "https://comick.dev/search?q=$encoded"
+                                                copyToClipboard(searchUrl)
+                                                true
+                                            }
                                             bind.itemChipGroup.addView(chip)
                                         }
                                     }
@@ -368,7 +452,6 @@ class AniListInfoFragment : Fragment() {
                                         }
                                     }
 
-                                    val titleForMU = (media.name ?: media.nameRomaji ?: "").takeIf { it.isNotBlank() } ?: ""
                                     if (muDirectLink != null) {
                                         // Direct MangaUpdates link from Comick
                                         val muUrl = "https://www.mangaupdates.com/series/$muDirectLink"
@@ -377,15 +460,36 @@ class AniListInfoFragment : Fragment() {
                                         muChip.setOnClickListener { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(muUrl))) }
                                         muChip.setOnLongClickListener { copyToClipboard(muUrl); true }
                                         bind.itemChipGroup.addView(muChip)
-                                    } else if (titleForMU.isNotBlank()) {
-                                        // Fallback to search link
-                                        val encodedMU = URLEncoder.encode(titleForMU, "utf-8").replace("+", "%20")
-                                        val muUrl = "https://www.mangaupdates.com/series?search=$encodedMU"
-                                        val muChip = ItemChipBinding.inflate(LayoutInflater.from(context), bind.itemChipGroup, false).root
-                                        muChip.text = "MangaUpdates ⌕"
-                                        muChip.setOnClickListener { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(muUrl))) }
-                                        muChip.setOnLongClickListener { copyToClipboard(muUrl); true }
-                                        bind.itemChipGroup.addView(muChip)
+                                    } else {
+                                        // Fallback to search link with title selector
+                                        val availableTitles = getAvailableTitles(media)
+                                        if (availableTitles.isNotEmpty()) {
+                                            val muChip = ItemChipBinding.inflate(LayoutInflater.from(context), bind.itemChipGroup, false).root
+                                            muChip.text = "MangaUpdates ⌕"
+                                            muChip.setOnClickListener {
+                                                if (availableTitles.size == 1) {
+                                                    // Only one title, search directly
+                                                    val encodedMU = URLEncoder.encode(availableTitles[0], "utf-8").replace("+", "%20")
+                                                    val muUrl = "https://www.mangaupdates.com/series?search=$encodedMU"
+                                                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(muUrl)))
+                                                } else {
+                                                    // Multiple titles, show selector
+                                                    TitleSelectorDialog.newInstance(
+                                                        availableTitles,
+                                                        "MangaUpdates",
+                                                        "https://www.mangaupdates.com/series?search={TITLE}"
+                                                    ).show(childFragmentManager, "mu_title_selector")
+                                                }
+                                            }
+                                            muChip.setOnLongClickListener {
+                                                // Long press: copy first title's URL
+                                                val encodedMU = URLEncoder.encode(availableTitles[0], "utf-8").replace("+", "%20")
+                                                val muUrl = "https://www.mangaupdates.com/series?search=$encodedMU"
+                                                copyToClipboard(muUrl)
+                                                true
+                                            }
+                                            bind.itemChipGroup.addView(muChip)
+                                        }
                                     }
 
                                     // Insert right after external links when present, otherwise after description
