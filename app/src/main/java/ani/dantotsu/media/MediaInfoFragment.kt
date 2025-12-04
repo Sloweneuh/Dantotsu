@@ -40,46 +40,68 @@ class MediaInfoFragment : Fragment() {
 
         val model: MediaDetailsViewModel by activityViewModels()
 
-        // Setup ViewPager once - always show all 4 tabs
-        val adapter = InfoPagerAdapter(
-            childFragmentManager,
-            viewLifecycleOwner.lifecycle
-        )
-        binding.mediaInfoViewPager.adapter = adapter
-
-        // Load all fragments immediately so data loads in background
-        binding.mediaInfoViewPager.offscreenPageLimit = 3
-
-        // Disable swipe gestures
-        binding.mediaInfoViewPager.isUserInputEnabled = false
-
         model.getMedia().observe(viewLifecycleOwner) { media ->
             currentMedia = media
             if (media != null && !isSetup) {
                 isSetup = true
+
+                // Setup ViewPager - show 2 tabs for anime, 4 for manga
+                val isAnime = media.anime != null
+                val adapter = InfoPagerAdapter(
+                    childFragmentManager,
+                    viewLifecycleOwner.lifecycle,
+                    isAnime
+                )
+                binding.mediaInfoViewPager.adapter = adapter
+
+                // Load all fragments immediately so data loads in background
+                binding.mediaInfoViewPager.offscreenPageLimit = if (isAnime) 1 else 3
+
+                // Disable swipe gestures
+                binding.mediaInfoViewPager.isUserInputEnabled = false
+
                 setupTabs(model, media)
             }
             updateTabStates(model, media)
         }
 
-        // Observe data availability changes
+        // Observe data availability changes (only for manga)
         model.comickSlug.observe(viewLifecycleOwner) {
-            currentMedia?.let { media -> updateTabStates(model, media) }
+            currentMedia?.let { media ->
+                if (media.anime == null) {
+                    updateTabStates(model, media)
+                }
+            }
         }
 
         model.mangaUpdatesLink.observe(viewLifecycleOwner) {
-            currentMedia?.let { media -> updateTabStates(model, media) }
+            currentMedia?.let { media ->
+                if (media.anime == null) {
+                    updateTabStates(model, media)
+                }
+            }
         }
     }
 
     private fun setupTabs(model: MediaDetailsViewModel, media: Media) {
+        val isAnime = media.anime != null
+
         // Setup TabLayout - all tabs long-clickable
         TabLayoutMediator(binding.mediaInfoTabLayout, binding.mediaInfoViewPager) { tab, position ->
-            when (position) {
-                0 -> tab.setIcon(ani.dantotsu.R.drawable.ic_anilist)
-                1 -> tab.setIcon(ani.dantotsu.R.drawable.ic_myanimelist)
-                2 -> tab.setIcon(ani.dantotsu.R.drawable.ic_round_comick_24)
-                3 -> tab.setIcon(ani.dantotsu.R.drawable.ic_round_mangaupdates_24)
+            if (isAnime) {
+                // Anime: only AniList and MAL tabs
+                when (position) {
+                    0 -> tab.setIcon(ani.dantotsu.R.drawable.ic_anilist)
+                    1 -> tab.setIcon(ani.dantotsu.R.drawable.ic_myanimelist)
+                }
+            } else {
+                // Manga: all 4 tabs
+                when (position) {
+                    0 -> tab.setIcon(ani.dantotsu.R.drawable.ic_anilist)
+                    1 -> tab.setIcon(ani.dantotsu.R.drawable.ic_myanimelist)
+                    2 -> tab.setIcon(ani.dantotsu.R.drawable.ic_round_comick_24)
+                    3 -> tab.setIcon(ani.dantotsu.R.drawable.ic_round_mangaupdates_24)
+                }
             }
         }.attach()
 
@@ -94,6 +116,8 @@ class MediaInfoFragment : Fragment() {
     }
 
     private fun handleTabLongClick(position: Int, model: MediaDetailsViewModel, media: Media): Boolean {
+        val isAnime = media.anime != null
+
         val url = when (position) {
             0 -> media.shareLink
             1 -> {
@@ -107,6 +131,8 @@ class MediaInfoFragment : Fragment() {
                 }
             }
             2 -> {
+                // Comick tab (manga only)
+                if (isAnime) return false
                 val comickSlug = model.comickSlug.value
                 if (comickSlug != null) {
                     "https://comick.dev/comic/$comickSlug"
@@ -117,6 +143,8 @@ class MediaInfoFragment : Fragment() {
                 }
             }
             3 -> {
+                // MangaUpdates tab (manga only)
+                if (isAnime) return false
                 val muLink = model.mangaUpdatesLink.value
                 if (muLink != null) {
                     muLink
@@ -135,13 +163,15 @@ class MediaInfoFragment : Fragment() {
     private fun updateTabStates(model: MediaDetailsViewModel, media: Media?) {
         if (media == null) return
 
+        val isAnime = media.anime != null
+
         for (i in 0 until binding.mediaInfoTabLayout.tabCount) {
             val tab = binding.mediaInfoTabLayout.getTabAt(i) ?: continue
             val hasData = when (i) {
                 0 -> true // AniList always has data
                 1 -> media.idMAL != null
-                2 -> model.comickSlug.value != null
-                3 -> model.mangaUpdatesLink.value != null
+                2 -> !isAnime && model.comickSlug.value != null // Only check for manga
+                3 -> !isAnime && model.mangaUpdatesLink.value != null // Only check for manga
                 else -> false
             }
 
@@ -152,17 +182,30 @@ class MediaInfoFragment : Fragment() {
 
     private class InfoPagerAdapter(
         fragmentManager: FragmentManager,
-        lifecycle: Lifecycle
+        lifecycle: Lifecycle,
+        private val isAnime: Boolean
     ) : FragmentStateAdapter(fragmentManager, lifecycle) {
 
-        override fun getItemCount(): Int = 4
+        override fun getItemCount(): Int = if (isAnime) 2 else 4
 
-        override fun createFragment(position: Int): Fragment = when (position) {
-            0 -> AniListInfoFragment()
-            1 -> MALInfoFragment()
-            2 -> ComickInfoFragment()
-            3 -> MangaUpdatesInfoFragment()
-            else -> AniListInfoFragment()
+        override fun createFragment(position: Int): Fragment {
+            return if (isAnime) {
+                // Anime: only AniList and MAL
+                when (position) {
+                    0 -> AniListInfoFragment()
+                    1 -> MALInfoFragment()
+                    else -> AniListInfoFragment()
+                }
+            } else {
+                // Manga: all 4 tabs
+                when (position) {
+                    0 -> AniListInfoFragment()
+                    1 -> MALInfoFragment()
+                    2 -> ComickInfoFragment()
+                    3 -> MangaUpdatesInfoFragment()
+                    else -> AniListInfoFragment()
+                }
+            }
         }
     }
 }
