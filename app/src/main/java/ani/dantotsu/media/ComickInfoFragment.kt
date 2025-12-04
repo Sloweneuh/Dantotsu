@@ -513,8 +513,7 @@ class ComickInfoFragment : Fragment() {
 
                     // Normal tap: search by genre/tag
                     chip.setOnClickListener {
-                        val searchParam = if (groupType == "genre") "genres" else "tags"
-                        val url = "https://comick.dev/search?$searchParam=$genreSlug"
+                        val url = "https://comick.dev/search?genres=$genreSlug"
                         startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
                     }
 
