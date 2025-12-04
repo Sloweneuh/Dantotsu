@@ -85,6 +85,7 @@ class ComickInfoFragment : Fragment() {
         }
 
         if (offline) {
+            loaded = true
             showError("Comick data requires an internet connection")
             return
         }
@@ -92,23 +93,39 @@ class ComickInfoFragment : Fragment() {
         model.getMedia().observe(viewLifecycleOwner) { media ->
             val m = media ?: return@observe
             if (!loaded) {
+                ani.dantotsu.util.Logger.log("Comick: Starting to load data for ${m.userPreferredName}")
                 lifecycleScope.launch {
                     try {
                         binding.mediaInfoProgressBar.visibility = View.VISIBLE
                         binding.mediaInfoContainer.visibility = View.GONE
 
                         // Get the Comick slug from MalSync quicklinks
-                        val quicklinks = withContext(Dispatchers.IO) {
-                            val mediaType = if (m.anime != null) "anime" else "manga"
-                            MalSyncApi.getQuicklinks(m.id, m.idMAL, mediaType)
+                        ani.dantotsu.util.Logger.log("Comick: Checking MalSync for slug")
+                        val quicklinks = try {
+                            kotlinx.coroutines.withTimeout(10000L) {
+                                withContext(Dispatchers.IO) {
+                                    val mediaType = if (m.anime != null) "anime" else "manga"
+                                    MalSyncApi.getQuicklinks(m.id, m.idMAL, mediaType)
+                                }
+                            }
+                        } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+                            ani.dantotsu.util.Logger.log("Comick: MalSync timeout after 10 seconds")
+                            null
+                        } catch (e: Exception) {
+                            ani.dantotsu.util.Logger.log("Comick: MalSync error: ${e.message}")
+                            ani.dantotsu.util.Logger.log(e)
+                            null
                         }
 
                         var comickSlug = quicklinks?.Sites?.entries?.firstOrNull {
                             it.key.equals("Comick", true) || it.key.contains("comick", true)
                         }?.value?.values?.firstOrNull()?.identifier
 
+                        ani.dantotsu.util.Logger.log("Comick: MalSync slug = $comickSlug")
+
                         // If not found in MalSync, try search API
                         if (comickSlug == null) {
+                            ani.dantotsu.util.Logger.log("Comick: No MalSync entry, trying search API")
                             comickSlug = withContext(Dispatchers.IO) {
                                 // Build a list of titles to try, prioritizing English titles
                                 val titlesToTry = mutableListOf<String>()
@@ -138,27 +155,59 @@ class ComickInfoFragment : Fragment() {
                         }
 
                         if (comickSlug == null) {
-                            showError("No Comick entry found for this media")
+                            ani.dantotsu.util.Logger.log("Comick: No slug found, showing search")
+                            model.comickSlug.postValue(null)
+                            model.comickLoaded.postValue(true)
+                            loaded = true
+                            binding.mediaInfoProgressBar.visibility = View.GONE
+                            binding.mediaInfoContainer.visibility = View.VISIBLE
+                            showNoDataWithSearch(media)
                             return@launch
                         }
 
+                        ani.dantotsu.util.Logger.log("Comick: Found slug '$comickSlug', fetching details")
+                        // Store the slug in ViewModel so the tab can use it
+                        model.comickSlug.postValue(comickSlug)
                         val comickData = withContext(Dispatchers.IO) {
                             ComickApi.getComicDetails(comickSlug)
                         }
 
                         if (comickData == null) {
-                            showError("Failed to load Comick data")
+                            ani.dantotsu.util.Logger.log("Comick: Failed to fetch comic details")
+                            loaded = true
+                            binding.mediaInfoProgressBar.visibility = View.GONE
+                            binding.mediaInfoContainer.visibility = View.VISIBLE
+                            showNoDataWithSearch(media)
                             return@launch
                         }
 
+                        ani.dantotsu.util.Logger.log("Comick: Got comic data, displaying info")
+
+                        // Store MangaUpdates link if available
+                        val muLink = comickData.comic?.links?.mu
+                        if (!muLink.isNullOrBlank()) {
+                            model.mangaUpdatesLink.postValue("https://www.mangaupdates.com/series/$muLink")
+                        } else {
+                            model.mangaUpdatesLink.postValue(null)
+                        }
+
+                        model.comickLoaded.postValue(true)
                         loaded = true
                         binding.mediaInfoProgressBar.visibility = View.GONE
                         binding.mediaInfoContainer.visibility = View.VISIBLE
 
                         displayComickInfo(comickData)
+                        ani.dantotsu.util.Logger.log("Comick: Display complete")
 
                     } catch (e: Exception) {
-                        showError("Error loading Comick data: ${e.message}")
+                        model.comickSlug.postValue(null)
+                        model.comickLoaded.postValue(true)
+                        loaded = true
+                        binding.mediaInfoProgressBar.visibility = View.GONE
+                        binding.mediaInfoContainer.visibility = View.VISIBLE
+                        ani.dantotsu.util.Logger.log("Comick error: ${e.message}")
+                        ani.dantotsu.util.Logger.log(e)
+                        showNoDataWithSearch(media)
                     }
                 }
             }
@@ -187,10 +236,64 @@ class ComickInfoFragment : Fragment() {
         Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
     }
 
+    private fun showNoDataWithSearch(media: ani.dantotsu.media.Media) {
+        binding.mediaInfoProgressBar.visibility = View.GONE
+        binding.mediaInfoContainer.visibility = View.VISIBLE
+
+        val parent = binding.mediaInfoContainer
+        parent.removeAllViews()
+
+        // Get available titles
+        val titles = ArrayList<String>()
+        titles.add(media.userPreferredName)
+        if (media.nameRomaji != media.userPreferredName) {
+            titles.add(media.nameRomaji)
+        }
+        val englishSynonyms = filterEnglishTitles(media.synonyms)
+        englishSynonyms.forEach { if (!titles.contains(it)) titles.add(it) }
+
+        // Use chip group style like the modal
+        val bind = ani.dantotsu.databinding.ItemTitleChipgroupMultilineBinding.inflate(
+            LayoutInflater.from(context),
+            parent,
+            false
+        )
+        bind.itemTitle.text = buildString { append("Search on "); append("Comick") }
+
+        // Add chips for each title
+        titles.forEach { title ->
+            val chip = ItemChipBinding.inflate(LayoutInflater.from(context), bind.itemChipGroup, false).root
+            chip.text = title
+            chip.setOnClickListener {
+                val url = "https://comick.dev/search?q=${
+                    java.net.URLEncoder.encode(title, "utf-8").replace("+", "%20")
+                }"
+                startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+            }
+            chip.setOnLongClickListener {
+                copyToClipboard(title)
+                Toast.makeText(requireContext(), "Copied: $title", Toast.LENGTH_SHORT).show()
+                true
+            }
+            bind.itemChipGroup.addView(chip)
+        }
+
+        parent.addView(bind.root)
+    }
+
     @Suppress("SetTextI18n")
     private fun displayComickInfo(comickData: ComickResponse) {
-        val parent = _binding?.mediaInfoContainer ?: return
-        val comic = comickData.comic ?: return
+        if (_binding == null) {
+            ani.dantotsu.util.Logger.log("Comick: binding is null in displayComickInfo")
+            return
+        }
+
+        val parent = binding.mediaInfoContainer
+        val comic = comickData.comic
+        if (comic == null) {
+            ani.dantotsu.util.Logger.log("Comick: comic data is null")
+            return
+        }
 
         // Display Title
         binding.mediaInfoName.text = tripleTab + (comic.title ?: "Unknown")
@@ -199,20 +302,28 @@ class ComickInfoFragment : Fragment() {
             true
         }
 
-        // Display Alternative Titles (English/Japanese if available)
-        val englishTitle = comic.md_titles?.firstOrNull { it.lang == "en" }?.title
-        val japaneseTitle = comic.md_titles?.firstOrNull { it.lang == "ja" }?.title
-        if (englishTitle != null || japaneseTitle != null) {
-            binding.mediaInfoNameRomajiContainer.visibility = View.VISIBLE
-            val altTitle = englishTitle ?: japaneseTitle
-            binding.mediaInfoNameRomaji.text = tripleTab + altTitle
-            binding.mediaInfoNameRomaji.setOnLongClickListener {
-                copyToClipboard(altTitle ?: "")
-                true
-            }
+        // Display Romaji Title based on country of origin
+        val romajiLang = when (comic.country?.lowercase()) {
+            "jp" -> "ja-ro"
+            "kr" -> "ko-ro"
+            "cn" -> "zh-ro"
+            else -> null
         }
 
-        // Mean Score (bayesian_rating)
+        val romajiTitle = romajiLang?.let { lang ->
+            comic.md_titles?.firstOrNull { it.lang == lang }?.title
+        }
+
+        if (romajiTitle != null) {
+            binding.mediaInfoNameRomajiContainer.visibility = View.VISIBLE
+            binding.mediaInfoNameRomaji.text = tripleTab + romajiTitle
+            binding.mediaInfoNameRomaji.setOnLongClickListener {
+                copyToClipboard(romajiTitle)
+                true
+            }
+        } else {
+            binding.mediaInfoNameRomajiContainer.visibility = View.GONE
+        }
         binding.mediaInfoMeanScore.text = comic.bayesian_rating ?: "??"
 
         // Status - Publication status only
@@ -255,20 +366,47 @@ class ComickInfoFragment : Fragment() {
             else -> comic.country?.uppercase() ?: "Unknown"
         }
 
-        // Start Date (Year)
+        // Change Start Date label to Published
+        binding.mediaInfoStart.parent?.let { tableRow ->
+            if (tableRow is ViewGroup && tableRow.childCount > 0) {
+                val label = tableRow.getChildAt(0)
+                if (label is android.widget.TextView) {
+                    label.text = "Published"
+                }
+            }
+        }
+        // Published (Year)
         binding.mediaInfoStart.text = comic.year?.toString() ?: "??"
         
-        // End Date - Use translation_completed status
-        binding.mediaInfoEnd.text = if (comic.translation_completed == true) {
-            "Completed"
-        } else {
-            "Ongoing"
+        // Hide End Date field - Comick doesn't provide actual end dates
+        binding.mediaInfoEnd.parent?.let { parent ->
+            if (parent is ViewGroup) {
+                parent.visibility = View.GONE
+            }
         }
 
-        // Popularity (user_follow_count)
+        // Change Popularity label to Followers
+        binding.mediaInfoPopularity.parent?.let { tableRow ->
+            if (tableRow is ViewGroup && tableRow.childCount > 0) {
+                val label = tableRow.getChildAt(0)
+                if (label is android.widget.TextView) {
+                    label.text = "Followers"
+                }
+            }
+        }
+        // Followers (user_follow_count)
         binding.mediaInfoPopularity.text = comic.user_follow_count?.toString() ?: "??"
 
-        // Favorites (follow_rank)
+        // Change Favorites label to Ranking
+        binding.mediaInfoFavorites.parent?.let { tableRow ->
+            if (tableRow is ViewGroup && tableRow.childCount > 0) {
+                val label = tableRow.getChildAt(0)
+                if (label is android.widget.TextView) {
+                    label.text = "Ranking"
+                }
+            }
+        }
+        // Ranking (follow_rank)
         binding.mediaInfoFavorites.text = "#${comic.follow_rank ?: "??"}"
 
         // Total Chapters
@@ -321,58 +459,81 @@ class ComickInfoFragment : Fragment() {
             }
         }
 
-        // Add MangaUpdates quicklink if available
-        val muLink = comic.links?.mu
-        if (!muLink.isNullOrBlank() && parent.findViewWithTag<View>("quicklinks_comick") == null) {
-            val bind = ani.dantotsu.databinding.ItemTitleChipgroupMultilineBinding.inflate(
-                LayoutInflater.from(context),
-                parent,
-                false
-            )
-            bind.itemTitle.text = "Quicklinks"
+        // Quicklinks removed - use tabs instead
 
-            val muChip = ItemChipBinding.inflate(LayoutInflater.from(context), bind.itemChipGroup, false).root
-            muChip.text = "MangaUpdates"
-            val muUrl = "https://www.mangaupdates.com/series/$muLink"
-            muChip.setOnClickListener {
-                val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(muUrl))
-                startActivity(intent)
-            }
-            muChip.setOnLongClickListener {
-                copyToClipboard(muUrl)
-                true
-            }
-            bind.itemChipGroup.addView(muChip)
-
-            bind.root.tag = "quicklinks_comick"
-            parent.addView(bind.root)
-        }
-
-        // Add Genres section
+        // Add Genres section - grouped by type (Genre, Format, Theme)
         val genres = comic.md_comic_md_genres
-        if (!genres.isNullOrEmpty() && parent.findViewWithTag<View>("genres_comick") == null) {
-            val bind = ani.dantotsu.databinding.ItemTitleChipgroupMultilineBinding.inflate(
-                LayoutInflater.from(context),
-                parent,
-                false
+        ani.dantotsu.util.Logger.log("Comick: genres list size = ${genres?.size}")
+        if (!genres.isNullOrEmpty()) {
+            // Group genres by their type (case-insensitive)
+            val genresByGroup = genres.mapNotNull { it.md_genres }.groupBy { it.group?.lowercase() }
+            ani.dantotsu.util.Logger.log("Comick: genresByGroup = ${genresByGroup.keys}")
+
+            // Order: Genre (Genres), Theme, Format, Content
+            val orderedGroups = listOf(
+                "genre" to "Genres:",
+                "theme" to "Theme:",
+                "content" to "Content:",
+                "format" to "Format:"
             )
-            bind.itemTitle.text = "Genres"
 
-            genres.forEach { genreWrapper ->
-                val genre = genreWrapper.md_genres ?: return@forEach
-                val genreName = genre.name ?: return@forEach
-
-                val chip = ItemChipBinding.inflate(LayoutInflater.from(context), bind.itemChipGroup, false).root
-                chip.text = genreName
-                chip.setOnLongClickListener {
-                    copyToClipboard(genreName)
-                    true
+            orderedGroups.forEach { (groupType, label) ->
+                // Check if this specific genre type section already exists
+                if (parent.findViewWithTag<View>("genres_${groupType}_comick") != null) {
+                    ani.dantotsu.util.Logger.log("Comick: Tag already exists for $groupType")
+                    return@forEach
                 }
-                bind.itemChipGroup.addView(chip)
-            }
 
-            bind.root.tag = "genres_comick"
-            parent.addView(bind.root)
+                val groupGenres = genresByGroup[groupType]
+                ani.dantotsu.util.Logger.log("Comick: $groupType has ${groupGenres?.size} genres")
+                if (groupGenres.isNullOrEmpty()) return@forEach
+
+                // Use single-line chip group for genres
+                val bind = ani.dantotsu.databinding.ItemTitleChipgroupBinding.inflate(
+                    LayoutInflater.from(context),
+                    parent,
+                    false
+                )
+                bind.itemTitle.text = label
+
+                // Add genre chips
+                var chipCount = 0
+                groupGenres.forEach { genre ->
+                    val genreName = genre.name ?: run {
+                        ani.dantotsu.util.Logger.log("Comick: Genre has no name")
+                        return@forEach
+                    }
+                    val genreSlug = genre.slug ?: run {
+                        ani.dantotsu.util.Logger.log("Comick: Genre '$genreName' has no slug")
+                        return@forEach
+                    }
+
+                    val chip = ItemChipBinding.inflate(LayoutInflater.from(context), bind.itemChipGroup, false).root
+                    chip.text = genreName
+
+                    // Normal tap: search by genre/tag
+                    chip.setOnClickListener {
+                        val searchParam = if (groupType == "genre") "genres" else "tags"
+                        val url = "https://comick.dev/search?$searchParam=$genreSlug"
+                        startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+                    }
+
+                    // Long tap: copy genre/tag name
+                    chip.setOnLongClickListener {
+                        copyToClipboard(genreName)
+                        android.widget.Toast.makeText(requireContext(), "Copied: $genreName", android.widget.Toast.LENGTH_SHORT).show()
+                        true
+                    }
+
+                    bind.itemChipGroup.addView(chip)
+                    chipCount++
+                }
+
+                ani.dantotsu.util.Logger.log("Comick: Added $chipCount chips for $groupType")
+                bind.root.tag = "genres_${groupType}_comick"
+                parent.addView(bind.root)
+                ani.dantotsu.util.Logger.log("Comick: Added genre section for $groupType to parent")
+            }
         }
 
         // Add Tags (mu_comic_categories)
@@ -393,13 +554,22 @@ class ComickInfoFragment : Fragment() {
                 sortedCategories.forEach { category ->
                     val categoryInfo = category.mu_categories ?: return@forEach
                     val title = categoryInfo.title ?: return@forEach
+                    val tagSlug = categoryInfo.slug ?: return@forEach
 
                     val chip = ItemChipBinding.inflate(LayoutInflater.from(context), bind.itemChipGroup, false).root
                     chip.text = title
-                    chip.isClickable = true
+
+                    // Normal tap: search by tag
                     chip.setOnClickListener {
+                        val url = "https://comick.dev/search?tags=$tagSlug"
+                        startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+                    }
+
+                    // Long tap: copy tag name
+                    chip.setOnLongClickListener {
                         copyToClipboard(title)
                         Toast.makeText(requireContext(), "Copied: $title", Toast.LENGTH_SHORT).show()
+                        true
                     }
 
                     bind.itemChipGroup.addView(chip)

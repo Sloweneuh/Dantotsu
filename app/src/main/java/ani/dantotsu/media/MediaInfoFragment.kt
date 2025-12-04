@@ -1,5 +1,7 @@
 package ani.dantotsu.media
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -8,13 +10,9 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.lifecycleScope
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import ani.dantotsu.databinding.FragmentMediaInfoContainerBinding
 import com.google.android.material.tabs.TabLayoutMediator
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class MediaInfoFragment : Fragment() {
     private var _binding: FragmentMediaInfoContainerBinding? = null
@@ -34,135 +32,136 @@ class MediaInfoFragment : Fragment() {
         _binding = null
     }
 
+    private var isSetup = false
+    private var currentMedia: Media? = null
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
         val model: MediaDetailsViewModel by activityViewModels()
 
+        // Setup ViewPager once - always show all 4 tabs
+        val adapter = InfoPagerAdapter(
+            childFragmentManager,
+            viewLifecycleOwner.lifecycle
+        )
+        binding.mediaInfoViewPager.adapter = adapter
+
+        // Load all fragments immediately so data loads in background
+        binding.mediaInfoViewPager.offscreenPageLimit = 3
+
+        // Disable swipe gestures
+        binding.mediaInfoViewPager.isUserInputEnabled = false
+
         model.getMedia().observe(viewLifecycleOwner) { media ->
-            if (media != null) {
-                val hasMAL = media.idMAL != null
+            currentMedia = media
+            if (media != null && !isSetup) {
+                isSetup = true
+                setupTabs(model, media)
+            }
+            updateTabStates(model, media)
+        }
 
-                // Check for Comick availability
-                lifecycleScope.launch {
-                    val hasComick = withContext(Dispatchers.IO) {
-                        try {
-                            val mediaType = if (media.anime != null) "anime" else "manga"
-                            val quicklinks = ani.dantotsu.connections.malsync.MalSyncApi.getQuicklinks(
-                                media.id,
-                                media.idMAL,
-                                mediaType
-                            )
-                            // Check MalSync first
-                            var comickSlug = quicklinks?.Sites?.entries?.firstOrNull {
-                                it.key.equals("Comick", true) || it.key.contains("comick", true)
-                            }?.value?.values?.firstOrNull()?.identifier
+        // Observe data availability changes
+        model.comickSlug.observe(viewLifecycleOwner) {
+            currentMedia?.let { media -> updateTabStates(model, media) }
+        }
 
-                            // If not found in MalSync, try search API
-                            if (comickSlug == null && mediaType == "manga") {
-                                // Build a list of titles to try, prioritizing English titles
-                                val titlesToTry = mutableListOf<String>()
+        model.mangaUpdatesLink.observe(viewLifecycleOwner) {
+            currentMedia?.let { media -> updateTabStates(model, media) }
+        }
+    }
 
-                                // Add main English title first
-                                media.name?.let { titlesToTry.add(it) }
+    private fun setupTabs(model: MediaDetailsViewModel, media: Media) {
+        // Setup TabLayout - all tabs long-clickable
+        TabLayoutMediator(binding.mediaInfoTabLayout, binding.mediaInfoViewPager) { tab, position ->
+            when (position) {
+                0 -> tab.setIcon(ani.dantotsu.R.drawable.ic_anilist)
+                1 -> tab.setIcon(ani.dantotsu.R.drawable.ic_myanimelist)
+                2 -> tab.setIcon(ani.dantotsu.R.drawable.ic_round_comick_24)
+                3 -> tab.setIcon(ani.dantotsu.R.drawable.ic_round_mangaupdates_24)
+            }
+        }.attach()
 
-                                // Add English synonyms (filter out non-Latin titles)
-                                val englishSynonyms = media.synonyms.filter { synonym ->
-                                    if (synonym.isBlank()) return@filter false
+        // Set long-click listeners
+        for (i in 0 until binding.mediaInfoTabLayout.tabCount) {
+            val tab = binding.mediaInfoTabLayout.getTabAt(i) ?: continue
 
-                                    // Check if the title contains CJK characters
-                                    val hasCJK = synonym.any { char ->
-                                        char.code in 0x3040..0x309F || // Hiragana
-                                        char.code in 0x30A0..0x30FF || // Katakana
-                                        char.code in 0x4E00..0x9FFF || // CJK Ideographs
-                                        char.code in 0xAC00..0xD7AF || // Hangul Syllables
-                                        char.code in 0x1100..0x11FF    // Hangul Jamo
-                                    }
-                                    !hasCJK
-                                }
-                                englishSynonyms.forEach { synonym ->
-                                    if (!titlesToTry.contains(synonym)) {
-                                        titlesToTry.add(synonym)
-                                    }
-                                }
+            tab.view.setOnLongClickListener {
+                handleTabLongClick(i, model, media)
+            }
+        }
+    }
 
-                                // Add romaji title as fallback
-                                if (!titlesToTry.contains(media.nameRomaji)) {
-                                    titlesToTry.add(media.nameRomaji)
-                                }
-
-                                if (titlesToTry.isNotEmpty()) {
-                                    comickSlug = ani.dantotsu.connections.comick.ComickApi.searchAndMatchComic(
-                                        titlesToTry,
-                                        media.id,
-                                        media.idMAL
-                                    )
-                                }
-                            }
-
-                            comickSlug != null
-                        } catch (_: Exception) {
-                            false
-                        }
-                    }
-
-                    // Setup ViewPager
-                    val adapter = InfoPagerAdapter(
-                        childFragmentManager,
-                        viewLifecycleOwner.lifecycle,
-                        hasMAL,
-                        hasComick
-                    )
-                    binding.mediaInfoViewPager.adapter = adapter
-
-                    // Disable swipe gestures to allow horizontal scrolling inside fragments
-                    binding.mediaInfoViewPager.isUserInputEnabled = false
-
-                    // Setup TabLayout
-                    TabLayoutMediator(binding.mediaInfoTabLayout, binding.mediaInfoViewPager) { tab, position ->
-                        when (position) {
-                            0 -> tab.setIcon(ani.dantotsu.R.drawable.ic_anilist)
-                            1 -> if (hasMAL && hasComick) {
-                                tab.setIcon(ani.dantotsu.R.drawable.ic_myanimelist)
-                            } else if (hasMAL) {
-                                tab.setIcon(ani.dantotsu.R.drawable.ic_myanimelist)
-                            } else if (hasComick) {
-                                tab.setIcon(ani.dantotsu.R.drawable.ic_round_comick_24)
-                            }
-                            2 -> tab.setIcon(ani.dantotsu.R.drawable.ic_round_comick_24)
-                        }
-                    }.attach()
-
-                    // Hide TabLayout if only AniList is available
-                    if (!hasMAL && !hasComick) {
-                        binding.mediaInfoTabLayout.visibility = View.GONE
-                    }
+    private fun handleTabLongClick(position: Int, model: MediaDetailsViewModel, media: Media): Boolean {
+        val url = when (position) {
+            0 -> media.shareLink
+            1 -> {
+                if (media.idMAL != null) {
+                    "https://myanimelist.net/${if (media.anime != null) "anime" else "manga"}/${media.idMAL}"
+                } else {
+                    val mediaType = if (media.anime != null) "anime" else "manga"
+                    "https://myanimelist.net/${mediaType}.php?q=${
+                        java.net.URLEncoder.encode(media.userPreferredName, "utf-8")
+                    }&cat=$mediaType"
                 }
             }
+            2 -> {
+                val comickSlug = model.comickSlug.value
+                if (comickSlug != null) {
+                    "https://comick.dev/comic/$comickSlug"
+                } else {
+                    "https://comick.dev/search?q=${
+                        java.net.URLEncoder.encode(media.userPreferredName, "utf-8").replace("+", "%20")
+                    }"
+                }
+            }
+            3 -> {
+                val muLink = model.mangaUpdatesLink.value
+                if (muLink != null) {
+                    muLink
+                } else {
+                    val encoded = java.net.URLEncoder.encode(media.userPreferredName, "utf-8").replace("+", "%20")
+                    "https://www.mangaupdates.com/series?search=$encoded"
+                }
+            }
+            else -> return false
+        }
+
+        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+        return true
+    }
+
+    private fun updateTabStates(model: MediaDetailsViewModel, media: Media?) {
+        if (media == null) return
+
+        for (i in 0 until binding.mediaInfoTabLayout.tabCount) {
+            val tab = binding.mediaInfoTabLayout.getTabAt(i) ?: continue
+            val hasData = when (i) {
+                0 -> true // AniList always has data
+                1 -> media.idMAL != null
+                2 -> model.comickSlug.value != null
+                3 -> model.mangaUpdatesLink.value != null
+                else -> false
+            }
+
+            // Set alpha to make tabs without data darker
+            tab.view.alpha = if (hasData) 1.0f else 0.4f
         }
     }
 
     private class InfoPagerAdapter(
         fragmentManager: FragmentManager,
-        lifecycle: Lifecycle,
-        private val hasMAL: Boolean,
-        private val hasComick: Boolean
+        lifecycle: Lifecycle
     ) : FragmentStateAdapter(fragmentManager, lifecycle) {
 
-        override fun getItemCount(): Int {
-            return when {
-                hasMAL && hasComick -> 3
-                hasMAL || hasComick -> 2
-                else -> 1
-            }
-        }
+        override fun getItemCount(): Int = 4
 
-        override fun createFragment(position: Int): Fragment = when {
-            position == 0 -> AniListInfoFragment()
-            position == 1 && hasMAL && hasComick -> MALInfoFragment()
-            position == 1 && hasMAL -> MALInfoFragment()
-            position == 1 && hasComick -> ComickInfoFragment()
-            position == 2 && hasComick -> ComickInfoFragment()
+        override fun createFragment(position: Int): Fragment = when (position) {
+            0 -> AniListInfoFragment()
+            1 -> MALInfoFragment()
+            2 -> ComickInfoFragment()
+            3 -> MangaUpdatesInfoFragment()
             else -> AniListInfoFragment()
         }
     }

@@ -22,6 +22,7 @@ import ani.dantotsu.copyToClipboard
 import ani.dantotsu.databinding.FragmentMediaInfoBinding
 import ani.dantotsu.databinding.ItemChipBinding
 import ani.dantotsu.databinding.ItemTitleChipgroupBinding
+import ani.dantotsu.databinding.ItemTitleChipgroupMultilineBinding
 import ani.dantotsu.databinding.ItemTitleRecyclerBinding
 import ani.dantotsu.isOnline
 import ani.dantotsu.navBarHeight
@@ -98,14 +99,23 @@ class MALInfoFragment : Fragment() {
                 MAL.getSavedToken()
             }
 
-            if (!isLoggedIn) {
-                showNotLoggedIn()
-                return@launch
-            }
-
             model.getMedia().observe(viewLifecycleOwner) { media ->
+                if (!isLoggedIn && !loaded) {
+                    loaded = true
+                    showNotLoggedIn(media)
+                    return@observe
+                }
+
+                if (isLoggedIn) {
                 val m = media ?: return@observe
-                if (!loaded && m.idMAL != null) {
+                if (!loaded) {
+                    if (m.idMAL == null) {
+                        // No MAL ID, show search option
+                        showNoDataWithSearch(m)
+                        loaded = true
+                        return@observe
+                    }
+
                     lifecycleScope.launch {
                         try {
                             binding.mediaInfoProgressBar.visibility = View.VISIBLE
@@ -120,7 +130,8 @@ class MALInfoFragment : Fragment() {
                             }
 
                             if (malData == null) {
-                                showError("Failed to load MAL data")
+                                showNoDataWithSearch(m)
+                                loaded = true
                                 return@launch
                             }
 
@@ -139,36 +150,149 @@ class MALInfoFragment : Fragment() {
                             }
 
                         } catch (e: Exception) {
-                            showError("Error loading MAL data: ${e.message}")
+                            showNoDataWithSearch(m)
+                            loaded = true
                         }
                     }
+                }
                 }
             }
         }
     }
 
-    private fun showNotLoggedIn() {
+    private fun showNotLoggedIn(media: ani.dantotsu.media.Media?) {
         binding.mediaInfoProgressBar.visibility = View.GONE
-        binding.mediaInfoContainer.visibility = View.GONE
+        binding.mediaInfoContainer.visibility = View.VISIBLE
 
-        val frameLayout = binding.mediaInfoContainer.parent as ViewGroup
-        val notLoggedInView = layoutInflater.inflate(
-            R.layout.fragment_mal_not_logged_in,
-            frameLayout,
-            false
-        )
+        if (media == null) return
 
-        notLoggedInView.findViewById<View>(R.id.connectMalButton)?.setOnClickListener {
-            MAL.loginIntent(requireContext())
+        val parent = binding.mediaInfoContainer
+        parent.removeAllViews()
+
+        // Login button
+        val loginButton = android.widget.Button(requireContext()).apply {
+            text = buildString { append("Connect to "); append("MyAnimeList") }
+            setOnClickListener {
+                MAL.loginIntent(requireContext())
+            }
+            val margin32 = 32f.px
+            val margin16 = 16f.px
+            layoutParams = ViewGroup.MarginLayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply {
+                setMargins(margin32, margin16, margin32, margin16)
+            }
         }
+        parent.addView(loginButton)
 
-        frameLayout.addView(notLoggedInView)
+        // Show button to open MAL if ID exists, otherwise show search chips
+        if (media.idMAL != null) {
+            // Show button to open MAL entry
+            val openButton = android.widget.Button(requireContext()).apply {
+                text = buildString { append("Open on "); append("MyAnimeList") }
+                setOnClickListener {
+                    val url = "https://myanimelist.net/${if (media.anime != null) "anime" else "manga"}/${media.idMAL}"
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                }
+                val margin32 = 32f.px
+                val margin16 = 16f.px
+                layoutParams = ViewGroup.MarginLayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    setMargins(margin32, 0, margin32, margin16)
+                }
+            }
+            parent.addView(openButton)
+        } else {
+            // Show title chips for search
+            val mediaType = if (media.anime != null) "anime" else "manga"
+            val titles = ArrayList<String>()
+            titles.add(media.userPreferredName)
+            if (media.nameRomaji != media.userPreferredName) {
+                titles.add(media.nameRomaji)
+            }
+            media.synonyms.forEach { if (!titles.contains(it)) titles.add(it) }
+
+            // Use chip group style like the modal
+            val bind = ItemTitleChipgroupMultilineBinding.inflate(
+                LayoutInflater.from(context),
+                parent,
+                false
+            )
+            bind.itemTitle.text = buildString { append("Search on "); append("MyAnimeList") }
+
+            // Add chips for each title
+            titles.forEach { title ->
+                val chip = ItemChipBinding.inflate(LayoutInflater.from(context), bind.itemChipGroup, false).root
+                chip.text = title
+                chip.setOnClickListener {
+                    val url = "https://myanimelist.net/${mediaType}.php?q=${
+                        URLEncoder.encode(title, "utf-8")
+                    }&cat=$mediaType"
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                }
+                chip.setOnLongClickListener {
+                    copyToClipboard(title)
+                    Toast.makeText(requireContext(), "Copied: $title", Toast.LENGTH_SHORT).show()
+                    true
+                }
+                bind.itemChipGroup.addView(chip)
+            }
+
+            parent.addView(bind.root)
+        }
     }
 
     private fun showError(message: String) {
         binding.mediaInfoProgressBar.visibility = View.GONE
         binding.mediaInfoContainer.visibility = View.VISIBLE
         Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
+    }
+
+    private fun showNoDataWithSearch(media: ani.dantotsu.media.Media) {
+        binding.mediaInfoProgressBar.visibility = View.GONE
+        binding.mediaInfoContainer.visibility = View.VISIBLE
+
+        val parent = binding.mediaInfoContainer
+        parent.removeAllViews()
+
+        val mediaType = if (media.anime != null) "anime" else "manga"
+        val titles = ArrayList<String>()
+        titles.add(media.userPreferredName)
+        if (media.nameRomaji != media.userPreferredName) {
+            titles.add(media.nameRomaji)
+        }
+        media.synonyms.forEach { if (!titles.contains(it)) titles.add(it) }
+
+        // Use chip group style like the modal
+        val bind = ItemTitleChipgroupMultilineBinding.inflate(
+            LayoutInflater.from(context),
+            parent,
+            false
+        )
+        bind.itemTitle.text = buildString { append("Search on "); append("MyAnimeList") }
+
+        // Add chips for each title
+        titles.forEach { title ->
+            val chip = ItemChipBinding.inflate(LayoutInflater.from(context), bind.itemChipGroup, false).root
+            chip.text = title
+            chip.setOnClickListener {
+                val url = "https://myanimelist.net/${mediaType}.php?q=${
+                    URLEncoder.encode(title, "utf-8")
+                }&cat=$mediaType"
+                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+            }
+            chip.setOnLongClickListener {
+                copyToClipboard(title)
+                Toast.makeText(requireContext(), "Copied: $title", Toast.LENGTH_SHORT).show()
+                true
+            }
+            bind.itemChipGroup.addView(chip)
+        }
+
+        parent.addView(bind.root)
     }
 
     @Suppress("SetTextI18n")
@@ -515,6 +639,9 @@ class MALInfoFragment : Fragment() {
         }
 
         // Quicklinks (MALSync) - insert under synopsis; show only installed extensions + Comick
+        // Hide quicklinks if corresponding tabs are visible
+        val hasComickTab = arguments?.getBoolean("hasComickTab", false) ?: false
+
         lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val quick = MalSyncApi.getQuicklinks(anilistId, malId, mediaType = "manga")
@@ -525,12 +652,15 @@ class MALInfoFragment : Fragment() {
                         bind.itemTitle.setText(R.string.quicklinks)
 
                         // Comick: prefer API-provided entries, fallback to search
-                        val comickEntries = siteMap?.entries?.firstOrNull { it.key.equals("Comick", true) || it.key.contains("comick", true) }?.value?.values?.toList()
+                        // Skip if Comick tab is visible
+                        val comickEntries = if (!hasComickTab) {
+                            siteMap?.entries?.firstOrNull { it.key.equals("Comick", true) || it.key.contains("comick", true) }?.value?.values?.toList()
+                        } else null
 
                         val comickSlug: String? = if (comickEntries != null && comickEntries.isNotEmpty()) {
                             // Use MalSync provided slug
                             comickEntries.firstOrNull()?.identifier
-                        } else {
+                        } else if (!hasComickTab) {
                             // Try to find via search - build list of titles to try
                             val titlesToTry = mutableListOf<String>()
 
@@ -559,9 +689,11 @@ class MALInfoFragment : Fragment() {
                             } else {
                                 null
                             }
+                        } else {
+                            null
                         }
 
-                        if (comickSlug != null) {
+                        if (comickSlug != null && !hasComickTab) {
                             // Direct Comick link
                             val comickUrl = "https://comick.dev/comic/$comickSlug"
                             val chip = ItemChipBinding.inflate(LayoutInflater.from(context), bind.itemChipGroup, false).root
@@ -569,7 +701,7 @@ class MALInfoFragment : Fragment() {
                             chip.setOnClickListener { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(comickUrl))) }
                             chip.setOnLongClickListener { copyToClipboard(comickUrl); true }
                             bind.itemChipGroup.addView(chip)
-                        } else {
+                        } else if (!hasComickTab) {
                             // Final fallback: search link with title selector
                             val availableTitles = getAvailableTitles()
                             if (availableTitles.isNotEmpty()) {
@@ -652,10 +784,13 @@ class MALInfoFragment : Fragment() {
                             }
                         }
 
-                        val descIndex = parent.indexOfChild(binding.mediaInfoDescription)
-                        val insertIndex = if (descIndex >= 0) descIndex + 1 else parent.childCount
-                        bind.root.tag = "quicklinks_mal"
-                        parent.addView(bind.root, insertIndex)
+                        // Only add quicklinks block if there are any chips
+                        if (bind.itemChipGroup.childCount > 0) {
+                            val descIndex = parent.indexOfChild(binding.mediaInfoDescription)
+                            val insertIndex = if (descIndex >= 0) descIndex + 1 else parent.childCount
+                            bind.root.tag = "quicklinks_mal"
+                            parent.addView(bind.root, insertIndex)
+                        }
                     }
                 }
             } catch (_: Exception) {

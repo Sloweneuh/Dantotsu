@@ -37,6 +37,10 @@ import kotlinx.coroutines.launch
 
 class MediaDetailsViewModel : ViewModel() {
     val scrolledToTop = MutableLiveData(true)
+    val comickSlug = MutableLiveData<String?>(null)
+    val mangaUpdatesLink = MutableLiveData<String?>(null)
+    val shouldShowSearchModal = MutableLiveData(false)
+    val comickLoaded = MutableLiveData(false)
 
     fun saveSelected(id: Int, data: Selected) {
         PrefManager.setCustomVal("Selected-$id", data)
