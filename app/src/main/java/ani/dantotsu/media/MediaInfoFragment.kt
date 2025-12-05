@@ -62,7 +62,6 @@ class MediaInfoFragment : Fragment() {
 
                 setupTabs(model, media)
             }
-            updateTabStates(model, media)
         }
 
         // Observe data availability changes (only for manga)
@@ -103,15 +102,16 @@ class MediaInfoFragment : Fragment() {
                     3 -> tab.setIcon(ani.dantotsu.R.drawable.ic_round_mangaupdates_24)
                 }
             }
+
+            // Set long-click listeners for opening URLs
+            tab.view.setOnLongClickListener {
+                handleTabLongClick(position, model, media)
+            }
         }.attach()
 
-        // Set long-click listeners
-        for (i in 0 until binding.mediaInfoTabLayout.tabCount) {
-            val tab = binding.mediaInfoTabLayout.getTabAt(i) ?: continue
-
-            tab.view.setOnLongClickListener {
-                handleTabLongClick(i, model, media)
-            }
+        // Update initial tab states for manga
+        if (!isAnime) {
+            updateTabStates(model, media)
         }
     }
 
@@ -119,13 +119,17 @@ class MediaInfoFragment : Fragment() {
         val isAnime = media.anime != null
 
         val url = when (position) {
-            0 -> media.shareLink
+            0 -> {
+                // AniList
+                "https://anilist.co/${if (isAnime) "anime" else "manga"}/${media.id}"
+            }
             1 -> {
+                // MAL
+                val mediaType = if (isAnime) "anime" else "manga"
                 if (media.idMAL != null) {
-                    "https://myanimelist.net/${if (media.anime != null) "anime" else "manga"}/${media.idMAL}"
+                    "https://myanimelist.net/$mediaType/${media.idMAL}"
                 } else {
-                    val mediaType = if (media.anime != null) "anime" else "manga"
-                    "https://myanimelist.net/${mediaType}.php?q=${
+                    "https://myanimelist.net/$mediaType.php?q=${
                         java.net.URLEncoder.encode(media.userPreferredName, "utf-8")
                     }&cat=$mediaType"
                 }
@@ -160,21 +164,19 @@ class MediaInfoFragment : Fragment() {
         return true
     }
 
-    private fun updateTabStates(model: MediaDetailsViewModel, media: Media?) {
-        if (media == null) return
-
+    private fun updateTabStates(model: MediaDetailsViewModel, media: Media) {
         val isAnime = media.anime != null
+        if (isAnime) return
 
         for (i in 0 until binding.mediaInfoTabLayout.tabCount) {
             val tab = binding.mediaInfoTabLayout.getTabAt(i) ?: continue
             val hasData = when (i) {
                 0 -> true // AniList always has data
                 1 -> media.idMAL != null
-                2 -> !isAnime && model.comickSlug.value != null // Only check for manga
-                3 -> !isAnime && model.mangaUpdatesLink.value != null // Only check for manga
+                2 -> model.comickSlug.value != null
+                3 -> model.mangaUpdatesLink.value != null
                 else -> false
             }
-
             // Set alpha to make tabs without data darker
             tab.view.alpha = if (hasData) 1.0f else 0.4f
         }
@@ -188,24 +190,12 @@ class MediaInfoFragment : Fragment() {
 
         override fun getItemCount(): Int = if (isAnime) 2 else 4
 
-        override fun createFragment(position: Int): Fragment {
-            return if (isAnime) {
-                // Anime: only AniList and MAL
-                when (position) {
-                    0 -> AniListInfoFragment()
-                    1 -> MALInfoFragment()
-                    else -> AniListInfoFragment()
-                }
-            } else {
-                // Manga: all 4 tabs
-                when (position) {
-                    0 -> AniListInfoFragment()
-                    1 -> MALInfoFragment()
-                    2 -> ComickInfoFragment()
-                    3 -> MangaUpdatesInfoFragment()
-                    else -> AniListInfoFragment()
-                }
-            }
+        override fun createFragment(position: Int): Fragment = when (position) {
+            0 -> AniListInfoFragment()
+            1 -> MALInfoFragment()
+            2 -> ComickInfoFragment()
+            3 -> MangaUpdatesInfoFragment()
+            else -> AniListInfoFragment()
         }
     }
 }

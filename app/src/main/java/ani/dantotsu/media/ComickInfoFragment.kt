@@ -117,40 +117,45 @@ class ComickInfoFragment : Fragment() {
                             null
                         }
 
-                        var comickSlug = quicklinks?.Sites?.entries?.firstOrNull {
+                        // Get ALL Comick slugs from MalSync (can be multiple entries)
+                        val malSyncSlugs = quicklinks?.Sites?.entries?.firstOrNull {
                             it.key.equals("Comick", true) || it.key.contains("comick", true)
-                        }?.value?.values?.firstOrNull()?.identifier
+                        }?.value?.values?.mapNotNull { it.identifier } ?: emptyList()
 
-                        ani.dantotsu.util.Logger.log("Comick: MalSync slug = $comickSlug")
+                        ani.dantotsu.util.Logger.log("Comick: MalSync returned ${malSyncSlugs.size} slug(s): $malSyncSlugs")
 
-                        // If not found in MalSync, try search API
-                        if (comickSlug == null) {
-                            ani.dantotsu.util.Logger.log("Comick: No MalSync entry, trying search API")
-                            comickSlug = withContext(Dispatchers.IO) {
-                                // Build a list of titles to try, prioritizing English titles
-                                val titlesToTry = mutableListOf<String>()
+                        // Always try search API to ensure we get the best match
+                        ani.dantotsu.util.Logger.log("Comick: Starting search and comparison")
+                        val comickSlug = withContext(Dispatchers.IO) {
+                            // Build a list of titles to try, prioritizing English titles
+                            val titlesToTry = mutableListOf<String>()
 
-                                // Add main English title first
-                                media.name?.let { titlesToTry.add(it) }
+                            // Add main English title first
+                            media.name?.let { titlesToTry.add(it) }
 
-                                // Add English synonyms (filter out non-Latin titles)
-                                val englishSynonyms = filterEnglishTitles(media.synonyms)
-                                englishSynonyms.forEach { synonym ->
-                                    if (!titlesToTry.contains(synonym)) {
-                                        titlesToTry.add(synonym)
-                                    }
+                            // Add English synonyms (filter out non-Latin titles)
+                            val englishSynonyms = filterEnglishTitles(media.synonyms)
+                            englishSynonyms.forEach { synonym ->
+                                if (!titlesToTry.contains(synonym)) {
+                                    titlesToTry.add(synonym)
                                 }
+                            }
 
-                                // Add romaji title as fallback
-                                if (!titlesToTry.contains(media.nameRomaji)) {
-                                    titlesToTry.add(media.nameRomaji)
-                                }
+                            // Add romaji title as fallback
+                            if (!titlesToTry.contains(media.nameRomaji)) {
+                                titlesToTry.add(media.nameRomaji)
+                            }
 
-                                if (titlesToTry.isNotEmpty()) {
-                                    ComickApi.searchAndMatchComic(titlesToTry, media.id, media.idMAL)
-                                } else {
-                                    null
-                                }
+                            if (titlesToTry.isNotEmpty()) {
+                                // Pass MalSync slugs for comparison
+                                ComickApi.searchAndMatchComic(
+                                    titlesToTry,
+                                    media.id,
+                                    media.idMAL,
+                                    malSyncSlugs.takeIf { it.isNotEmpty() }
+                                )
+                            } else {
+                                null
                             }
                         }
 
@@ -583,6 +588,10 @@ class ComickInfoFragment : Fragment() {
         val recommendations = comic.recommendations
         if (!recommendations.isNullOrEmpty() && parent.findViewWithTag<View>("recommendations_comick") == null) {
             lifecycleScope.launch {
+                // Get the current media's AniList ID to filter it out
+                val model: MediaDetailsViewModel by activityViewModels()
+                val currentAnilistId = model.getMedia().value?.id
+
                 val recommendedMedia = mutableListOf<ani.dantotsu.media.Media>()
 
                 // Only process recommendations that have an AniList ID
@@ -602,7 +611,7 @@ class ComickInfoFragment : Fragment() {
                         }
 
                         val anilistId = details?.comic?.links?.al?.toIntOrNull()
-                        if (anilistId != null) {
+                        if (anilistId != null && anilistId != currentAnilistId) {
                             // Fetch the media from AniList
                             val media = withContext(Dispatchers.IO) {
                                 try {
