@@ -20,6 +20,58 @@ object ComickApi {
     private val mergedComicCache = mutableMapOf<String, ComickComic>()
 
     /**
+     * Check if a Comick entry's raw or engtl links match any of the external links from AniList
+     * Uses exact URL matching only to prevent false positives
+     * @param comickLinks The links object from Comick
+     * @param externalLinks List of external link URLs from AniList
+     * @return true if any link matches
+     */
+    private fun validateComickLinks(comickLinks: ComickLinks?, externalLinks: List<String>?): Boolean {
+        if (comickLinks == null || externalLinks.isNullOrEmpty()) {
+            Logger.log("Comick: Validation skipped - comickLinks: ${comickLinks != null}, externalLinks: ${externalLinks?.size ?: 0}")
+            return false
+        }
+
+        Logger.log("Comick: Validating links - raw: ${comickLinks.raw}, engtl: ${comickLinks.engtl}")
+        Logger.log("Comick: Against ${externalLinks.size} external link(s): $externalLinks")
+
+        // Normalize URLs for comparison (remove trailing slashes, convert to lowercase)
+        fun normalizeUrl(url: String?): String? {
+            return url?.trim()?.lowercase()?.removeSuffix("/")
+        }
+
+        val normalizedExternalLinks = externalLinks.mapNotNull { normalizeUrl(it) }
+        val rawNormalized = normalizeUrl(comickLinks.raw)
+        val engtlNormalized = normalizeUrl(comickLinks.engtl)
+
+        Logger.log("Comick: Normalized - raw: $rawNormalized, engtl: $engtlNormalized")
+        Logger.log("Comick: Normalized external links: $normalizedExternalLinks")
+
+        // Check if raw link matches any external link (exact match only)
+        if (rawNormalized != null) {
+            val matchFound = normalizedExternalLinks.any { it == rawNormalized }
+            Logger.log("Comick: Raw link check - found match: $matchFound")
+            if (matchFound) {
+                Logger.log("Comick: ✓ Validated by matching raw link: ${comickLinks.raw}")
+                return true
+            }
+        }
+
+        // Check if engtl link matches any external link (exact match only)
+        if (engtlNormalized != null) {
+            val matchFound = normalizedExternalLinks.any { it == engtlNormalized }
+            Logger.log("Comick: Engtl link check - found match: $matchFound")
+            if (matchFound) {
+                Logger.log("Comick: ✓ Validated by matching engtl link: ${comickLinks.engtl}")
+                return true
+            }
+        }
+
+        Logger.log("Comick: ✗ No matching links found")
+        return false
+    }
+
+    /**
      * Merge multiple ComickComic instances, taking the best data from each
      * Priority: primary comic as base, fill in missing fields from others, use highest last_chapter
      */
@@ -113,9 +165,13 @@ object ComickApi {
             }
 
             return try {
-                gson.fromJson(body, ComickResponse::class.java)
+                val comickResponse = gson.fromJson(body, ComickResponse::class.java)
+                // Log the links object to debug
+                Logger.log("Comick: Fetched details for slug '$slug' - links: ${comickResponse?.comic?.links}")
+                comickResponse
             } catch (e: Exception) {
                 Logger.log("Error parsing Comick JSON: ${e.message}")
+                Logger.log("Response body preview: ${body.take(500)}")
                 null
             }
         } catch (e: Exception) {
@@ -130,13 +186,15 @@ object ComickApi {
      * @param anilistId The AniList ID to match
      * @param malId The MAL ID to match (optional)
      * @param malSyncSlugs Optional list of slugs from MalSync to include in comparison
+     * @param externalLinks External links from AniList to validate against raw/engtl links
      * @return The matching comic slug or null if not found
      */
     suspend fun searchAndMatchComic(
         titles: List<String>,
         anilistId: Int,
         malId: Int? = null,
-        malSyncSlugs: List<String>? = null
+        malSyncSlugs: List<String>? = null,
+        externalLinks: List<String>? = null
     ): String? = withContext(Dispatchers.IO) {
         // Collect all valid comics from both MalSync and search
         val allValidComics = mutableListOf<ComickComic>()
@@ -153,7 +211,7 @@ object ComickApi {
 
                 if (comic == null) continue
 
-                // Verify this slug actually matches our IDs
+                // Verify this slug actually matches our IDs or external links
                 var isMatch = false
                 if (links?.al == anilistId.toString()) {
                     Logger.log("Comick: MalSync slug '$slug' verified by AniList ID (followers: ${comic.user_follow_count})")
@@ -161,6 +219,11 @@ object ComickApi {
                 }
                 if (malId != null && links?.mal == malId.toString()) {
                     Logger.log("Comick: MalSync slug '$slug' verified by MAL ID (followers: ${comic.user_follow_count})")
+                    isMatch = true
+                }
+                // Check if raw or engtl links match external links
+                if (!isMatch && validateComickLinks(links, externalLinks)) {
+                    Logger.log("Comick: MalSync slug '$slug' verified by matching external links (followers: ${comic.user_follow_count})")
                     isMatch = true
                 }
 
@@ -193,7 +256,7 @@ object ComickApi {
         for (title in titles) {
             if (title.isBlank()) continue
 
-            val searchResult = searchWithTitle(title, anilistId, malId, returnAllValid = true, existingValidMuIds = validMuIds)
+            val searchResult = searchWithTitle(title, anilistId, malId, returnAllValid = true, existingValidMuIds = validMuIds, externalLinks = externalLinks)
             if (searchResult is List<*>) {
                 @Suppress("UNCHECKED_CAST")
                 val searchComics = searchResult as List<ComickComic>
@@ -254,13 +317,15 @@ object ComickApi {
      * Helper function to search with a single title
      * @param returnAllValid If true, returns all valid comics instead of selecting the best
      * @param existingValidMuIds MU IDs already validated from MalSync entries
+     * @param externalLinks External links from AniList to validate against raw/engtl links
      */
     private suspend fun searchWithTitle(
         title: String,
         anilistId: Int,
         malId: Int? = null,
         returnAllValid: Boolean = false,
-        existingValidMuIds: Set<String>? = null
+        existingValidMuIds: Set<String>? = null,
+        externalLinks: List<String>? = null
     ): Any? {
         try {
             val encodedTitle = java.net.URLEncoder.encode(title, "UTF-8")
@@ -294,12 +359,18 @@ object ComickApi {
 
             // First pass: Find entries that match by AniList or MAL ID
             for (result in searchResults) {
+                Logger.log("Comick: Checking search result: ${result.slug} - ${result.title}")
                 // Fetch full details WITHOUT cache to get raw follower counts
                 val details = getComicDetails(result.slug ?: continue, useCache = false)
                 val links = details?.comic?.links
                 val comic = details?.comic
 
-                if (comic == null) continue
+                if (comic == null) {
+                    Logger.log("Comick: Failed to get details for slug: ${result.slug}")
+                    continue
+                }
+
+                Logger.log("Comick: Entry '${result.slug}' has - al: ${links?.al}, mal: ${links?.mal}, raw: ${links?.raw}, engtl: ${links?.engtl}")
 
                 var isMatch = false
 
@@ -315,6 +386,12 @@ object ComickApi {
                     isMatch = true
                 }
 
+                // Check if raw or engtl links match external links
+                if (!isMatch && validateComickLinks(links, externalLinks)) {
+                    Logger.log("Comick: Found match by external links: ${result.slug} (followers: ${comic.user_follow_count})")
+                    isMatch = true
+                }
+
                 if (isMatch) {
                     validComics.add(comic)
                     // Track the MU ID of this valid entry
@@ -323,6 +400,7 @@ object ComickApi {
                         Logger.log("Comick: Tracked MU ID '$muId' from valid entry")
                     }
                 } else {
+                    Logger.log("Comick: Entry '${result.slug}' did not match any validation criteria")
                     // Store for potential validation by MU ID in second pass
                     potentialComics.add(Pair(comic, links?.mu))
                 }

@@ -334,15 +334,34 @@ class AnilistQueries {
 
                         val streamingLinks = arrayListOf<ArrayList<String?>>()
                         val otherLinks = arrayListOf<ArrayList<String?>>()
-                        // put all external links in the media object
+                        // put all external links in the media object (include all languages for Comick validation)
+                        // Structure: [site, url, language]
                         fetchedMedia.externalLinks?.forEach { i ->
-                            if ((i.language == "English" || i.language.isNullOrBlank()) && i.isDisabled == false) {
+                            if (i.isDisabled == false) {
                                 when (i.type) {
-                                    ExternalLinkType.STREAMING -> streamingLinks.add(arrayListOf(i.site, i.url))
-                                    else -> otherLinks.add(arrayListOf(i.site, i.url))
+                                    ExternalLinkType.STREAMING -> streamingLinks.add(arrayListOf(i.site, i.url, i.language))
+                                    else -> otherLinks.add(arrayListOf(i.site, i.url, i.language))
                                 }
                             }
                         }
+
+                        // Sort links: English/null language first, then others alphabetically by language
+                        fun sortLinks(links: ArrayList<ArrayList<String?>>) {
+                            links.sortWith(compareBy(
+                                { link ->
+                                    val lang = link.getOrNull(2)
+                                    when {
+                                        lang == null || lang.isBlank() -> 0
+                                        lang.equals("English", ignoreCase = true) -> 0
+                                        else -> 1
+                                    }
+                                },
+                                { link -> link.getOrNull(2) ?: "" }
+                            ))
+                        }
+                        sortLinks(streamingLinks)
+                        sortLinks(otherLinks)
+
                         media.externalLinks = (streamingLinks + otherLinks) as ArrayList<ArrayList<String?>>
 
                         media.shareLink = fetchedMedia.siteUrl
@@ -568,7 +587,7 @@ class AnilistQueries {
         }
 
         val query = "{${queries.joinToString(",")}}"
-        val response = executeQuery<Query.HomePageMedia>(query, show = true)
+        val response = executeQuery<Query.HomePageMedia>(query, show = false)
         val returnMap = mutableMapOf<String, ArrayList<Media>>()
 
         fun processMedia(

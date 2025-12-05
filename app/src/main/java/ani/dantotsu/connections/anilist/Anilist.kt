@@ -327,8 +327,13 @@ object Anilist {
                 json.parsed()
             } else null
         } catch (e: Exception) {
-            if (show) snackString("Error fetching Anilist data: ${e.message}")
-            Logger.log("Anilist Query Error: ${e.message}")
+            // Don't show error for cancellation - it's normal when navigating or closing
+            if (e is java.util.concurrent.CancellationException || e.message?.contains("Job was cancelled") == true) {
+                Logger.log("Anilist Query cancelled (normal): ${e.message}")
+            } else {
+                if (show) snackString("Error fetching Anilist data: ${e.message}")
+                Logger.log("Anilist Query Error: ${e.message}")
+            }
             null
         }
     }

@@ -91,9 +91,13 @@ class ComickInfoFragment : Fragment() {
         }
 
         model.getMedia().observe(viewLifecycleOwner) { media ->
+            ani.dantotsu.util.Logger.log("Comick: ========== OBSERVER TRIGGERED ==========")
             val m = media ?: return@observe
+            ani.dantotsu.util.Logger.log("Comick: Media object is not null")
             if (!loaded) {
+                ani.dantotsu.util.Logger.log("Comick: Not yet loaded, will process")
                 ani.dantotsu.util.Logger.log("Comick: Starting to load data for ${m.userPreferredName}")
+                ani.dantotsu.util.Logger.log("Comick: Media has ${m.externalLinks.size} external links at observer trigger")
                 lifecycleScope.launch {
                     try {
                         binding.mediaInfoProgressBar.visibility = View.VISIBLE
@@ -138,10 +142,10 @@ class ComickInfoFragment : Fragment() {
                                 val titlesToTry = mutableListOf<String>()
 
                                 // Add main English title first
-                                media.name?.let { titlesToTry.add(it) }
+                                m.name?.let { titlesToTry.add(it) }
 
                                 // Add English synonyms (filter out non-Latin titles)
-                                val englishSynonyms = filterEnglishTitles(media.synonyms)
+                                val englishSynonyms = filterEnglishTitles(m.synonyms)
                                 englishSynonyms.forEach { synonym ->
                                     if (!titlesToTry.contains(synonym)) {
                                         titlesToTry.add(synonym)
@@ -149,17 +153,25 @@ class ComickInfoFragment : Fragment() {
                                 }
 
                                 // Add romaji title as fallback
-                                if (!titlesToTry.contains(media.nameRomaji)) {
-                                    titlesToTry.add(media.nameRomaji)
+                                if (!titlesToTry.contains(m.nameRomaji)) {
+                                    titlesToTry.add(m.nameRomaji)
                                 }
 
                                 if (titlesToTry.isNotEmpty()) {
-                                    // Pass MalSync slugs for comparison
+                                    // Debug: Check if externalLinks exists on Media object
+                                    ani.dantotsu.util.Logger.log("Comick: DEBUG - m.externalLinks size: ${m.externalLinks.size}, content: ${m.externalLinks}")
+
+                                    // Extract external link URLs for validation
+                                    val externalLinkUrls = m.externalLinks.mapNotNull { it.getOrNull(1) }
+                                    ani.dantotsu.util.Logger.log("Comick: Found ${externalLinkUrls.size} external link(s) for validation: $externalLinkUrls")
+
+                                    // Pass MalSync slugs and external links for comparison
                                     ComickApi.searchAndMatchComic(
                                         titlesToTry,
-                                        media.id,
-                                        media.idMAL,
-                                        malSyncSlugs.takeIf { it.isNotEmpty() }
+                                        m.id,
+                                        m.idMAL,
+                                        malSyncSlugs.takeIf { it.isNotEmpty() },
+                                        externalLinkUrls.takeIf { it.isNotEmpty() }
                                     )
                                 } else {
                                     null
@@ -464,8 +476,21 @@ class ComickInfoFragment : Fragment() {
                 }
 
                 bind.itemText.text = infoText
+                
+                // Make text expandable on click
+                bind.itemText.setOnClickListener {
+                    if (bind.itemText.maxLines == 4) {
+                        android.animation.ObjectAnimator.ofInt(bind.itemText, "maxLines", 100)
+                            .setDuration(400).start()
+                    } else {
+                        android.animation.ObjectAnimator.ofInt(bind.itemText, "maxLines", 4)
+                            .setDuration(400).start()
+                    }
+                }
+                
                 bind.itemText.setOnLongClickListener {
                     copyToClipboard(infoText)
+                    Toast.makeText(requireContext(), "Copied anime info", Toast.LENGTH_SHORT).show()
                     true
                 }
 

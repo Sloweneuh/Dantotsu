@@ -324,7 +324,37 @@ class AniListInfoFragment : Fragment() {
                             bind.itemChipGroup,
                             false
                         ).root
-                        chip.text = media.externalLinks[position][0]
+
+                        val siteName = media.externalLinks[position][0]
+                        val language = media.externalLinks[position].getOrNull(2)
+                        
+                        // Use flag emojis for language indication
+                        val languageFlag = when {
+                            language.isNullOrBlank() -> ""
+                            language.equals("English", ignoreCase = true) -> " 🇬🇧"
+                            language.equals("Japanese", ignoreCase = true) -> " 🇯🇵"
+                            language.equals("Korean", ignoreCase = true) -> " 🇰🇷"
+                            language.equals("Chinese", ignoreCase = true) -> " 🇨🇳"
+                            language.equals("Spanish", ignoreCase = true) -> " 🇪🇸"
+                            language.equals("French", ignoreCase = true) -> " 🇫🇷"
+                            language.equals("German", ignoreCase = true) -> " 🇩🇪"
+                            language.equals("Italian", ignoreCase = true) -> " 🇮🇹"
+                            language.equals("Portuguese", ignoreCase = true) -> " 🇵🇹"
+                            language.equals("Brazilian Portuguese", ignoreCase = true) -> " 🇧🇷"
+                            language.equals("Russian", ignoreCase = true) -> " 🇷🇺"
+                            language.equals("Thai", ignoreCase = true) -> " 🇹🇭"
+                            language.equals("Indonesian", ignoreCase = true) -> " 🇮🇩"
+                            language.equals("Vietnamese", ignoreCase = true) -> " 🇻🇳"
+                            language.equals("Polish", ignoreCase = true) -> " 🇵🇱"
+                            language.equals("Turkish", ignoreCase = true) -> " 🇹🇷"
+                            language.equals("Dutch", ignoreCase = true) -> " 🇳🇱"
+                            language.equals("Swedish", ignoreCase = true) -> " 🇸🇪"
+                            language.equals("Arabic", ignoreCase = true) -> " 🇸🇦"
+                            language.equals("Hebrew", ignoreCase = true) -> " 🇮🇱"
+                            else -> " 🌐" // Globe emoji for unknown languages
+                        }
+                        
+                        chip.text = "$siteName$languageFlag"
                         chip.setSafeOnClickListener {
                             startActivity(
                                 Intent(

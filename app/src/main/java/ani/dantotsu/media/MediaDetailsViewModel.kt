@@ -99,12 +99,17 @@ class MediaDetailsViewModel : ViewModel() {
                     titlesToTry.add(media.nameRomaji)
                 }
 
+                // Extract external link URLs for validation
+                val externalLinkUrls = media.externalLinks.mapNotNull { it.getOrNull(1) }
+                ani.dantotsu.util.Logger.log("Comick Preload: Found ${externalLinkUrls.size} external link(s) for validation: $externalLinkUrls")
+
                 val comickSlugValue = if (titlesToTry.isNotEmpty()) {
                     comickApi.searchAndMatchComic(
                         titlesToTry,
                         media.id,
                         media.idMAL,
-                        malSyncSlugs.takeIf { it.isNotEmpty() }
+                        malSyncSlugs.takeIf { it.isNotEmpty() },
+                        externalLinkUrls.takeIf { it.isNotEmpty() }
                     )
                 } else null
 

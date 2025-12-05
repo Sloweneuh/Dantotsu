@@ -1,6 +1,7 @@
 package ani.dantotsu.media
 
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.databinding.ItemCharacterBinding
@@ -15,6 +16,34 @@ abstract class SourceAdapter(
     private val dialogFragment: SourceSearchDialogFragment,
     private val scope: CoroutineScope
 ) : RecyclerView.Adapter<SourceAdapter.SourceViewHolder>() {
+
+    /**
+     * Extracts translator/group name from title and returns a pair of (cleanedTitle, groupName)
+     * Recognizes patterns like brackets, parentheses, and various bracket types
+     */
+    private fun extractGroupName(title: String): Pair<String, String?> {
+        // Regex to match common patterns at the end of titles
+        // Matches: [Group], (Group), 【Group】, 〈Group〉, {Group}
+        val endPattern = Regex("""\s*[(\[【〈{]([^)\]】〉}]+)[)\]】〉}]\s*$""")
+        val startPattern = Regex("""^[(\[【〈{]([^)\]】〉}]+)[)\]】〉}]\s*""")
+        
+        // Try matching at the end first
+        endPattern.find(title)?.let { match ->
+            val groupName = match.groupValues[1].trim()
+            val cleanedTitle = title.replace(endPattern, "").trim()
+            return Pair(cleanedTitle, groupName)
+        }
+        
+        // Try matching at the start
+        startPattern.find(title)?.let { match ->
+            val groupName = match.groupValues[1].trim()
+            val cleanedTitle = title.replace(startPattern, "").trim()
+            return Pair(cleanedTitle, groupName)
+        }
+        
+        return Pair(title, null)
+    }
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SourceViewHolder {
         val binding =
             ItemCharacterBinding.inflate(LayoutInflater.from(parent.context), parent, false)
@@ -26,7 +55,19 @@ abstract class SourceAdapter(
         val character = sources[position]
         binding.itemCompactImage.loadImage(character.coverUrl, 200)
         binding.itemCompactTitle.isSelected = true
-        binding.itemCompactTitle.text = character.name
+
+        // Extract group name from title
+        val (cleanedTitle, groupName) = extractGroupName(character.name)
+
+        binding.itemCompactTitle.text = cleanedTitle
+
+        // Display group name if it exists
+        if (groupName != null) {
+            binding.itemCompactRelation.visibility = View.VISIBLE
+            binding.itemCompactRelation.text = groupName
+        } else {
+            binding.itemCompactRelation.visibility = View.GONE
+        }
     }
 
     override fun getItemCount(): Int = sources.size
