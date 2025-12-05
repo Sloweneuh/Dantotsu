@@ -60,8 +60,7 @@ data class MUSeriesRecord(
     val status: String? = null,
     val licensed: Boolean? = null,
     val completed: Boolean? = null,
-    val anime_start: String? = null,
-    val anime_end: String? = null,
+    val anime: MUAnime? = null,
     val related_series: List<MURelatedSeries>? = null,
     val authors: List<MUAuthor>? = null,
     val publishers: List<MUPublisher>? = null,
@@ -88,6 +87,12 @@ data class MUImageUrl(
 @Serializable
 data class MUAssociatedTitle(
     val title: String? = null
+)
+
+@Serializable
+data class MUAnime(
+    val start: String? = null,
+    val end: String? = null
 )
 
 @Serializable

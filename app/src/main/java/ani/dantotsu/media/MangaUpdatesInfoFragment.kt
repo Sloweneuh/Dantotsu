@@ -516,19 +516,21 @@ class MangaUpdatesInfoFragment : Fragment() {
         }
 
         // Anime Adaptation Info (like Comick)
-        if (!series.anime_start.isNullOrBlank() || !series.anime_end.isNullOrBlank()) {
-            val bind = ani.dantotsu.databinding.ItemTitleTextBinding.inflate(LayoutInflater.from(context), parent, false)
-            bind.itemTitle.text = getString(ani.dantotsu.R.string.anime_adaptation)
-            bind.itemText.text = buildString {
-                if (!series.anime_start.isNullOrBlank()) {
-                    append("Start: ${series.anime_start}")
+        series.anime?.let { anime ->
+            if (!anime.start.isNullOrBlank() || !anime.end.isNullOrBlank()) {
+                val bind = ani.dantotsu.databinding.ItemTitleTextBinding.inflate(LayoutInflater.from(context), parent, false)
+                bind.itemTitle.text = getString(ani.dantotsu.R.string.anime_adaptation)
+                bind.itemText.text = buildString {
+                    if (!anime.start.isNullOrBlank()) {
+                        append("Start: ${anime.start}")
+                    }
+                    if (!anime.end.isNullOrBlank()) {
+                        if (isNotEmpty()) append("\n")
+                        append("End: ${anime.end}")
+                    }
                 }
-                if (!series.anime_end.isNullOrBlank()) {
-                    if (isNotEmpty()) append("\n")
-                    append("End: ${series.anime_end}")
-                }
+                parent.addView(bind.root)
             }
-            parent.addView(bind.root)
         }
 
         // Alternative Titles / Synonyms (single row)
