@@ -42,6 +42,99 @@ class MediaDetailsViewModel : ViewModel() {
     val shouldShowSearchModal = MutableLiveData(false)
     val comickLoaded = MutableLiveData(false)
 
+    // Flag to prevent duplicate preloading
+    private var hasPreloadedExternalData = false
+
+    /**
+     * Preload Comick and MangaUpdates data in the background for manga entries.
+     * This allows tab states to update immediately without waiting for fragment loading.
+     */
+    fun preloadExternalData(media: Media) {
+        // Only preload for manga and only once
+        if (media.anime != null || hasPreloadedExternalData) return
+        hasPreloadedExternalData = true
+
+        MainScope().launch(Dispatchers.IO) {
+            try {
+                // Import required classes
+                val comickApi = ani.dantotsu.connections.comick.ComickApi
+                val malSyncApi = ani.dantotsu.connections.malsync.MalSyncApi
+
+                // Filter English titles helper
+                fun filterEnglishTitles(synonyms: List<String>): List<String> {
+                    return synonyms.filter { title ->
+                        if (title.isBlank()) return@filter false
+                        val hasCJK = title.any { char ->
+                            char.code in 0x3040..0x309F || // Hiragana
+                            char.code in 0x30A0..0x30FF || // Katakana
+                            char.code in 0x4E00..0x9FFF || // CJK Unified Ideographs
+                            char.code in 0xAC00..0xD7AF || // Hangul Syllables
+                            char.code in 0x1100..0x11FF    // Hangul Jamo
+                        }
+                        !hasCJK
+                    }
+                }
+
+                // Try MalSync first
+                val quicklinks = try {
+                    malSyncApi.getQuicklinks(media.id, media.idMAL)
+                } catch (e: Exception) {
+                    null
+                }
+
+                val malSyncSlugs = quicklinks?.Sites?.entries?.firstOrNull {
+                    it.key.equals("Comick", true) || it.key.contains("comick", true)
+                }?.value?.values?.mapNotNull { it.identifier } ?: emptyList()
+
+                // Search for Comick entry
+                val titlesToTry = mutableListOf<String>()
+                media.name?.let { titlesToTry.add(it) }
+                val englishSynonyms = filterEnglishTitles(media.synonyms)
+                englishSynonyms.forEach { synonym ->
+                    if (!titlesToTry.contains(synonym)) {
+                        titlesToTry.add(synonym)
+                    }
+                }
+                if (!titlesToTry.contains(media.nameRomaji)) {
+                    titlesToTry.add(media.nameRomaji)
+                }
+
+                val comickSlugValue = if (titlesToTry.isNotEmpty()) {
+                    comickApi.searchAndMatchComic(
+                        titlesToTry,
+                        media.id,
+                        media.idMAL,
+                        malSyncSlugs.takeIf { it.isNotEmpty() }
+                    )
+                } else null
+
+                // Update comickSlug
+                comickSlug.postValue(comickSlugValue)
+
+                // If we found a Comick slug, fetch details to get MangaUpdates link
+                if (comickSlugValue != null) {
+                    try {
+                        val comickData = comickApi.getComicDetails(comickSlugValue)
+                        val muLink = comickData?.comic?.links?.mu
+                        if (!muLink.isNullOrBlank()) {
+                            mangaUpdatesLink.postValue("https://www.mangaupdates.com/series/$muLink")
+                        } else {
+                            mangaUpdatesLink.postValue(null)
+                        }
+                    } catch (e: Exception) {
+                        mangaUpdatesLink.postValue(null)
+                    }
+                } else {
+                    mangaUpdatesLink.postValue(null)
+                }
+
+            } catch (e: Exception) {
+                comickSlug.postValue(null)
+                mangaUpdatesLink.postValue(null)
+            }
+        }
+    }
+
     fun saveSelected(id: Int, data: Selected) {
         PrefManager.setCustomVal("Selected-$id", data)
     }

@@ -45,6 +45,10 @@ class MediaInfoFragment : Fragment() {
             if (media != null && !isSetup) {
                 isSetup = true
 
+                // Preload Comick and MangaUpdates data in the background for manga
+                // This allows tab states to update immediately even with offscreenPageLimit = 1
+                model.preloadExternalData(media)
+
                 // Setup ViewPager - show 2 tabs for anime, 4 for manga
                 val isAnime = media.anime != null
                 val adapter = InfoPagerAdapter(
@@ -54,8 +58,8 @@ class MediaInfoFragment : Fragment() {
                 )
                 binding.mediaInfoViewPager.adapter = adapter
 
-                // Load all fragments immediately so data loads in background
-                binding.mediaInfoViewPager.offscreenPageLimit = if (isAnime) 1 else 3
+                // Only load adjacent tabs to reduce API calls and prevent rate limiting
+                binding.mediaInfoViewPager.offscreenPageLimit = 1
 
                 // Disable swipe gestures
                 binding.mediaInfoViewPager.isUserInputEnabled = false

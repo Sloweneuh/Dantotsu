@@ -99,64 +99,74 @@ class ComickInfoFragment : Fragment() {
                         binding.mediaInfoProgressBar.visibility = View.VISIBLE
                         binding.mediaInfoContainer.visibility = View.GONE
 
-                        // Get the Comick slug from MalSync quicklinks
-                        ani.dantotsu.util.Logger.log("Comick: Checking MalSync for slug")
-                        val quicklinks = try {
-                            kotlinx.coroutines.withTimeout(10000L) {
-                                withContext(Dispatchers.IO) {
-                                    val mediaType = if (m.anime != null) "anime" else "manga"
-                                    MalSyncApi.getQuicklinks(m.id, m.idMAL, mediaType)
+                        // Check if data was already preloaded by the ViewModel
+                        var comickSlug = model.comickSlug.value
+
+                        if (comickSlug == null) {
+                            // Data not preloaded yet, fetch it now
+                            ani.dantotsu.util.Logger.log("Comick: Fetching slug (not preloaded)")
+
+                            // Get the Comick slug from MalSync quicklinks
+                            ani.dantotsu.util.Logger.log("Comick: Checking MalSync for slug")
+                            val quicklinks = try {
+                                kotlinx.coroutines.withTimeout(10000L) {
+                                    withContext(Dispatchers.IO) {
+                                        val mediaType = if (m.anime != null) "anime" else "manga"
+                                        MalSyncApi.getQuicklinks(m.id, m.idMAL, mediaType)
+                                    }
                                 }
-                            }
-                        } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
-                            ani.dantotsu.util.Logger.log("Comick: MalSync timeout after 10 seconds")
-                            null
-                        } catch (e: Exception) {
-                            ani.dantotsu.util.Logger.log("Comick: MalSync error: ${e.message}")
-                            ani.dantotsu.util.Logger.log(e)
-                            null
-                        }
-
-                        // Get ALL Comick slugs from MalSync (can be multiple entries)
-                        val malSyncSlugs = quicklinks?.Sites?.entries?.firstOrNull {
-                            it.key.equals("Comick", true) || it.key.contains("comick", true)
-                        }?.value?.values?.mapNotNull { it.identifier } ?: emptyList()
-
-                        ani.dantotsu.util.Logger.log("Comick: MalSync returned ${malSyncSlugs.size} slug(s): $malSyncSlugs")
-
-                        // Always try search API to ensure we get the best match
-                        ani.dantotsu.util.Logger.log("Comick: Starting search and comparison")
-                        val comickSlug = withContext(Dispatchers.IO) {
-                            // Build a list of titles to try, prioritizing English titles
-                            val titlesToTry = mutableListOf<String>()
-
-                            // Add main English title first
-                            media.name?.let { titlesToTry.add(it) }
-
-                            // Add English synonyms (filter out non-Latin titles)
-                            val englishSynonyms = filterEnglishTitles(media.synonyms)
-                            englishSynonyms.forEach { synonym ->
-                                if (!titlesToTry.contains(synonym)) {
-                                    titlesToTry.add(synonym)
-                                }
-                            }
-
-                            // Add romaji title as fallback
-                            if (!titlesToTry.contains(media.nameRomaji)) {
-                                titlesToTry.add(media.nameRomaji)
-                            }
-
-                            if (titlesToTry.isNotEmpty()) {
-                                // Pass MalSync slugs for comparison
-                                ComickApi.searchAndMatchComic(
-                                    titlesToTry,
-                                    media.id,
-                                    media.idMAL,
-                                    malSyncSlugs.takeIf { it.isNotEmpty() }
-                                )
-                            } else {
+                            } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+                                ani.dantotsu.util.Logger.log("Comick: MalSync timeout after 10 seconds")
+                                null
+                            } catch (e: Exception) {
+                                ani.dantotsu.util.Logger.log("Comick: MalSync error: ${e.message}")
+                                ani.dantotsu.util.Logger.log(e)
                                 null
                             }
+
+                            // Get ALL Comick slugs from MalSync (can be multiple entries)
+                            val malSyncSlugs = quicklinks?.Sites?.entries?.firstOrNull {
+                                it.key.equals("Comick", true) || it.key.contains("comick", true)
+                            }?.value?.values?.mapNotNull { it.identifier } ?: emptyList()
+
+                            ani.dantotsu.util.Logger.log("Comick: MalSync returned ${malSyncSlugs.size} slug(s): $malSyncSlugs")
+
+                            // Always try search API to ensure we get the best match
+                            ani.dantotsu.util.Logger.log("Comick: Starting search and comparison")
+                            comickSlug = withContext(Dispatchers.IO) {
+                                // Build a list of titles to try, prioritizing English titles
+                                val titlesToTry = mutableListOf<String>()
+
+                                // Add main English title first
+                                media.name?.let { titlesToTry.add(it) }
+
+                                // Add English synonyms (filter out non-Latin titles)
+                                val englishSynonyms = filterEnglishTitles(media.synonyms)
+                                englishSynonyms.forEach { synonym ->
+                                    if (!titlesToTry.contains(synonym)) {
+                                        titlesToTry.add(synonym)
+                                    }
+                                }
+
+                                // Add romaji title as fallback
+                                if (!titlesToTry.contains(media.nameRomaji)) {
+                                    titlesToTry.add(media.nameRomaji)
+                                }
+
+                                if (titlesToTry.isNotEmpty()) {
+                                    // Pass MalSync slugs for comparison
+                                    ComickApi.searchAndMatchComic(
+                                        titlesToTry,
+                                        media.id,
+                                        media.idMAL,
+                                        malSyncSlugs.takeIf { it.isNotEmpty() }
+                                    )
+                                } else {
+                                    null
+                                }
+                            }
+                        } else {
+                            ani.dantotsu.util.Logger.log("Comick: Using preloaded slug '$comickSlug'")
                         }
 
                         if (comickSlug == null) {
@@ -584,44 +594,51 @@ class ComickInfoFragment : Fragment() {
             }
         }
 
-        // Add Recommendations
+        // Add Recommendations - Show Comick's recommendations but reuse AniList data for matches
         val recommendations = comic.recommendations
         if (!recommendations.isNullOrEmpty() && parent.findViewWithTag<View>("recommendations_comick") == null) {
             lifecycleScope.launch {
-                // Get the current media's AniList ID to filter it out
                 val model: MediaDetailsViewModel by activityViewModels()
                 val currentAnilistId = model.getMedia().value?.id
-
+                val anilistRecommendations = model.getMedia().value?.recommendations
                 val recommendedMedia = mutableListOf<ani.dantotsu.media.Media>()
 
-                // Only process recommendations that have an AniList ID
-                val recsWithAnilistId = recommendations.filter { rec ->
+                // Create a map of AniList ID to Media for quick lookup
+                val anilistById = anilistRecommendations?.associateBy { it.id } ?: emptyMap()
+
+                // Only process recommendations that have a slug
+                val recsWithSlug = recommendations.filter { rec ->
                     rec.relates?.slug != null && !rec.relates.slug.isBlank()
                 }
 
-                // Fetch AniList data for recommendations with AniList IDs
-                for (rec in recsWithAnilistId.take(10)) {
-                    val slug = rec.relates?.slug
-                    if (slug.isNullOrBlank()) continue
+                // Process Comick recommendations
+                for (rec in recsWithSlug) {
+                    val slug = rec.relates?.slug ?: continue
 
                     try {
-                        // Get the full details to check for AniList ID
+                        // Get Comick details to find the AniList ID
                         val details = withContext(Dispatchers.IO) {
                             ComickApi.getComicDetails(slug)
                         }
 
                         val anilistId = details?.comic?.links?.al?.toIntOrNull()
                         if (anilistId != null && anilistId != currentAnilistId) {
-                            // Fetch the media from AniList
-                            val media = withContext(Dispatchers.IO) {
-                                try {
-                                    ani.dantotsu.connections.anilist.Anilist.query.getMedia(anilistId)
-                                } catch (e: Exception) {
-                                    null
+                            // Check if we already have this in AniList data (avoid API call)
+                            val existingMedia = anilistById[anilistId]
+                            if (existingMedia != null) {
+                                recommendedMedia.add(existingMedia)
+                            } else {
+                                // Only fetch from API if not already loaded
+                                val media = withContext(Dispatchers.IO) {
+                                    try {
+                                        ani.dantotsu.connections.anilist.Anilist.query.getMedia(anilistId)
+                                    } catch (e: Exception) {
+                                        null
+                                    }
                                 }
-                            }
-                            if (media != null) {
-                                recommendedMedia.add(media)
+                                if (media != null) {
+                                    recommendedMedia.add(media)
+                                }
                             }
                         }
                     } catch (e: Exception) {

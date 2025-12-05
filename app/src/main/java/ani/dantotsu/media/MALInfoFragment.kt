@@ -443,21 +443,37 @@ class MALInfoFragment : Fragment() {
             parent.addView(bind.root)
         }
 
-        // Recommendations
+        // Recommendations - Show MAL's recommendations but reuse AniList data for matches
         if (malData.recommendations.isNotEmpty() && !offline) {
             lifecycleScope.launch {
+                val model: MediaDetailsViewModel by activityViewModels()
+                val anilistRecommendations = model.getMedia().value?.recommendations
                 val recommendations = mutableListOf<Media>()
 
-                malData.recommendations.take(10).forEach { recommendation ->
-                    val media = withContext(Dispatchers.IO) {
-                        try {
-                            Anilist.query.getMedia(recommendation.node.id, mal = true)
-                        } catch (e: Exception) {
-                            null
+                // Create a map of MAL ID to Media for quick lookup
+                val anilistByMalId = anilistRecommendations?.filter { it.idMAL != null }
+                    ?.associateBy { it.idMAL } ?: emptyMap()
+
+                // Process MAL recommendations
+                for (recommendation in malData.recommendations) {
+                    val malId = recommendation.node.id
+
+                    // Check if we already have this in AniList data (avoid API call)
+                    val existingMedia = anilistByMalId[malId]
+                    if (existingMedia != null) {
+                        recommendations.add(existingMedia)
+                    } else {
+                        // Only fetch from API if not already loaded
+                        val media = withContext(Dispatchers.IO) {
+                            try {
+                                Anilist.query.getMedia(malId, mal = true)
+                            } catch (e: Exception) {
+                                null
+                            }
                         }
-                    }
-                    if (media != null) {
-                        recommendations.add(media)
+                        if (media != null) {
+                            recommendations.add(media)
+                        }
                     }
                 }
 
@@ -602,21 +618,37 @@ class MALInfoFragment : Fragment() {
             parent.addView(bind.root)
         }
 
-        // Recommendations
+        // Recommendations - Show MAL's recommendations but reuse AniList data for matches
         if (malData.recommendations.isNotEmpty() && !offline) {
             lifecycleScope.launch {
+                val model: MediaDetailsViewModel by activityViewModels()
+                val anilistRecommendations = model.getMedia().value?.recommendations
                 val recommendations = mutableListOf<Media>()
 
-                malData.recommendations.take(10).forEach { recommendation ->
-                    val media = withContext(Dispatchers.IO) {
-                        try {
-                            Anilist.query.getMedia(recommendation.node.id, mal = true)
-                        } catch (e: Exception) {
-                            null
+                // Create a map of MAL ID to Media for quick lookup
+                val anilistByMalId = anilistRecommendations?.filter { it.idMAL != null }
+                    ?.associateBy { it.idMAL } ?: emptyMap()
+
+                // Process MAL recommendations
+                for (recommendation in malData.recommendations) {
+                    val malId = recommendation.node.id
+
+                    // Check if we already have this in AniList data (avoid API call)
+                    val existingMedia = anilistByMalId[malId]
+                    if (existingMedia != null) {
+                        recommendations.add(existingMedia)
+                    } else {
+                        // Only fetch from API if not already loaded
+                        val media = withContext(Dispatchers.IO) {
+                            try {
+                                Anilist.query.getMedia(malId, mal = true)
+                            } catch (e: Exception) {
+                                null
+                            }
                         }
-                    }
-                    if (media != null) {
-                        recommendations.add(media)
+                        if (media != null) {
+                            recommendations.add(media)
+                        }
                     }
                 }
 
