@@ -424,7 +424,20 @@
     <string name="mangaupdates">MangaUpdates</string>
     <string name="mal_not_logged_in_title">MyAnimeList Not Connected</string>
     <string name="mal_not_logged_in_desc">Connect your MyAnimeList account to view information from MAL</string>
-    <string name="connect_to_mal">Connect to MyAnimeList</string>
+    <string name="connect_to_mal">Login to MyAnimeList</string>
+    <string name="mu_not_logged_in_title">MangaUpdates Not Connected</string>
+    <string name="mu_not_logged_in_desc">Connect your MangaUpdates account to view information from MU</string>
+    <string name="login_to_mangaupdates">Login to MangaUpdates</string>
+    <string name="quick_search">Quick Search</string>
+    <string name="open_on_mal">Open on MyAnimeList</string>
+    <string name="open_on_mangaupdates">Open on MangaUpdates</string>
+    <string name="anime_adaptation">Anime Adaptation</string>
+    <string name="user_lists">User Lists</string>
+    <string name="categories">Categories</string>
+    <string name="authors">Authors</string>
+    <string name="publishers">Publishers</string>
+    <string name="publications">Publications</string>
+    <string name="search_all">Search All</string>
     <string name="login_with_anilist">Login with Anilist!</string>
     <string name="anilist">Anilist</string>
     <string name="account_help">How does this work\?</string>
@@ -1130,5 +1143,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="studios">Studios</string>
     <string name="external_links">External links</string>
     <string name="quicklinks">Quicklinks</string>
+    <string name="mu_search_title">Search on MangaUpdates</string>
+    <string name="mu_no_data_title">Search on MangaUpdates</string>
 
 </resources>

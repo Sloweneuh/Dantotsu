@@ -8,27 +8,38 @@
     android:padding="32dp">
 
     <ImageView
+        android:id="@+id/logo"
         android:layout_width="96dp"
         android:layout_height="96dp"
         android:layout_marginBottom="16dp"
-        android:alpha="0.58"
         android:contentDescription="@string/mangaupdates"
-        app:srcCompat="@drawable/ic_round_mangaupdates_24" />
+        app:srcCompat="@drawable/ic_round_mangaupdates_24"
+        app:tint="?attr/colorPrimary"/>
 
     <TextView
-        android:id="@+id/mangaUpdatesTitle"
+        android:id="@+id/title"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginBottom="24dp"
         android:fontFamily="@font/poppins_bold"
         android:textAlignment="center"
+        android:text="@string/mu_search_title"
         android:textSize="18sp" />
 
     <com.google.android.material.button.MaterialButton
-        android:id="@+id/mangaUpdatesButton"
+        android:id="@+id/quickSearchButton"
+        style="@style/Widget.Material3.Button.OutlinedButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        app:icon="@drawable/ic_round_mangaupdates_24" />
+        android:layout_marginBottom="8dp"
+        android:paddingHorizontal="32dp"
+        android:text="@string/quick_search"
+        android:textSize="14sp"
+        app:icon="@drawable/ic_round_search_24"
+        app:iconGravity="textStart"
+        app:cornerRadius="8dp"
+        app:strokeColor="?attr/colorPrimary"
+        app:strokeWidth="2dp" />
 
 </LinearLayout>
 

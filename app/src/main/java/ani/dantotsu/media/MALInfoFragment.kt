@@ -22,7 +22,6 @@ import ani.dantotsu.copyToClipboard
 import ani.dantotsu.databinding.FragmentMediaInfoBinding
 import ani.dantotsu.databinding.ItemChipBinding
 import ani.dantotsu.databinding.ItemTitleChipgroupBinding
-import ani.dantotsu.databinding.ItemTitleChipgroupMultilineBinding
 import ani.dantotsu.databinding.ItemTitleRecyclerBinding
 import ani.dantotsu.isOnline
 import ani.dantotsu.navBarHeight
@@ -32,7 +31,6 @@ import ani.dantotsu.settings.saving.PrefName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import ani.dantotsu.connections.malsync.MalSyncApi
 import java.net.URLEncoder
 
 class MALInfoFragment : Fragment() {
@@ -162,87 +160,103 @@ class MALInfoFragment : Fragment() {
 
     private fun showNotLoggedIn(media: ani.dantotsu.media.Media?) {
         binding.mediaInfoProgressBar.visibility = View.GONE
-        binding.mediaInfoContainer.visibility = View.VISIBLE
+        binding.mediaInfoContainer.visibility = View.GONE
 
         if (media == null) return
 
-        val parent = binding.mediaInfoContainer
-        parent.removeAllViews()
+        val hasData = media.idMAL != null
+        val frameLayout = binding.mediaInfoContainer.parent as? ViewGroup
 
-        // Login button
-        val loginButton = android.widget.Button(requireContext()).apply {
-            text = buildString { append("Connect to "); append("MyAnimeList") }
-            setOnClickListener {
-                MAL.loginIntent(requireContext())
-            }
-            val margin32 = 32f.px
-            val margin16 = 16f.px
-            layoutParams = ViewGroup.MarginLayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT
-            ).apply {
-                setMargins(margin32, margin16, margin32, margin16)
-            }
-        }
-        parent.addView(loginButton)
-
-        // Show button to open MAL if ID exists, otherwise show search chips
-        if (media.idMAL != null) {
-            // Show button to open MAL entry
-            val openButton = android.widget.Button(requireContext()).apply {
-                text = buildString { append("Open on "); append("MyAnimeList") }
-                setOnClickListener {
-                    val url = "https://myanimelist.net/${if (media.anime != null) "anime" else "manga"}/${media.idMAL}"
-                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                }
-                val margin32 = 32f.px
-                val margin16 = 16f.px
-                layoutParams = ViewGroup.MarginLayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-                ).apply {
-                    setMargins(margin32, 0, margin32, margin16)
-                }
-            }
-            parent.addView(openButton)
-        } else {
-            // Show title chips for search
-            val mediaType = if (media.anime != null) "anime" else "manga"
-            val titles = ArrayList<String>()
-            titles.add(media.userPreferredName)
-            if (media.nameRomaji != media.userPreferredName) {
-                titles.add(media.nameRomaji)
-            }
-            media.synonyms.forEach { if (!titles.contains(it)) titles.add(it) }
-
-            // Use chip group style like the modal
-            val bind = ItemTitleChipgroupMultilineBinding.inflate(
-                LayoutInflater.from(context),
-                parent,
+        frameLayout?.let { container ->
+            // Use fragment_mal_not_logged_in.xml with login button
+            val notLoggedInView = layoutInflater.inflate(
+                R.layout.fragment_not_logged_in,
+                container,
                 false
             )
-            bind.itemTitle.text = buildString { append("Search on "); append("MyAnimeList") }
 
-            // Add chips for each title
-            titles.forEach { title ->
-                val chip = ItemChipBinding.inflate(LayoutInflater.from(context), bind.itemChipGroup, false).root
-                chip.text = title
-                chip.setOnClickListener {
-                    val url = "https://myanimelist.net/${mediaType}.php?q=${
-                        URLEncoder.encode(title, "utf-8")
-                    }&cat=$mediaType"
-                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                }
-                chip.setOnLongClickListener {
-                    copyToClipboard(title)
-                    Toast.makeText(requireContext(), "Copied: $title", Toast.LENGTH_SHORT).show()
-                    true
-                }
-                bind.itemChipGroup.addView(chip)
+            //set logo
+            notLoggedInView.findViewById<android.widget.ImageView>(R.id.logo)?.setImageResource(R.drawable.ic_myanimelist)
+
+            //set titles
+            notLoggedInView.findViewById<android.widget.TextView>(R.id.Title)?.text = getString(R.string.mal_not_logged_in_title)
+            notLoggedInView.findViewById<android.widget.TextView>(R.id.desc)?.text = getString(R.string.mal_not_logged_in_desc)
+
+            //set button text
+            notLoggedInView.findViewById<com.google.android.material.button.MaterialButton>(R.id.connectButton)?.text = getString(R.string.connect_to_mal)
+            notLoggedInView.findViewById<com.google.android.material.button.MaterialButton>(R.id.connectButton)?.icon = requireContext().getDrawable(R.drawable.ic_myanimelist)
+
+            // Connect to MAL button
+            notLoggedInView.findViewById<com.google.android.material.button.MaterialButton>(R.id.connectButton)?.setOnClickListener {
+                MAL.loginIntent(requireContext())
             }
 
-            parent.addView(bind.root)
+            // Show either Quick Search OR Open on MAL button (never both)
+            if (hasData) {
+                // Show "Open on MAL" button
+                notLoggedInView.findViewById<com.google.android.material.button.MaterialButton>(R.id.quickSearchButton)?.visibility = View.GONE
+                notLoggedInView.findViewById<com.google.android.material.button.MaterialButton>(R.id.openButton)?.text = getString(R.string.open_on_mal)
+                notLoggedInView.findViewById<com.google.android.material.button.MaterialButton>(R.id.openButton)?.apply {
+                    visibility = View.VISIBLE
+                    setOnClickListener {
+                        val url = "https://myanimelist.net/${if (media.anime != null) "anime" else "manga"}/${media.idMAL}"
+                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                    }
+                }
+            } else {
+                // Show "Quick Search" button
+                notLoggedInView.findViewById<com.google.android.material.button.MaterialButton>(R.id.openButton)?.visibility = View.GONE
+                notLoggedInView.findViewById<com.google.android.material.button.MaterialButton>(R.id.quickSearchButton)?.apply {
+                    visibility = View.VISIBLE
+                    setOnClickListener {
+                        showQuickSearchModal(media)
+                    }
+                }
+            }
+
+            container.addView(notLoggedInView)
         }
+    }
+
+    private fun showQuickSearchModal(media: ani.dantotsu.media.Media) {
+        val context = requireContext()
+        val mediaType = if (media.anime != null) "anime" else "manga"
+        val titles = ArrayList<String>()
+        titles.add(media.userPreferredName)
+        if (media.nameRomaji != media.userPreferredName) {
+            titles.add(media.nameRomaji)
+        }
+        media.synonyms.forEach { if (!titles.contains(it)) titles.add(it) }
+
+        val modal = ani.dantotsu.others.CustomBottomDialog.newInstance().apply {
+            setTitleText("Search on MyAnimeList")
+
+            // Add each title as a clickable TextView
+            titles.forEach { title ->
+                val textView = android.widget.TextView(context).apply {
+                    text = title
+                    textSize = 16f
+                    val padding = 16f.px
+                    setPadding(padding, padding, padding, padding)
+                    setTextColor(androidx.core.content.ContextCompat.getColor(context, ani.dantotsu.R.color.bg_opp))
+                    // Use a simple rounded background with ripple effect
+                    val outValue = android.util.TypedValue()
+                    context.theme.resolveAttribute(android.R.attr.selectableItemBackground, outValue, true)
+                    setBackgroundResource(outValue.resourceId)
+                    isClickable = true
+                    isFocusable = true
+                    setOnClickListener {
+                        val url = "https://myanimelist.net/${mediaType}.php?q=${
+                            URLEncoder.encode(title, "utf-8")
+                        }&cat=$mediaType"
+                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                        dismiss()
+                    }
+                }
+                addView(textView)
+            }
+        }
+        modal.show(parentFragmentManager, "mal_quick_search")
     }
 
     private fun showError(message: String) {
@@ -253,46 +267,48 @@ class MALInfoFragment : Fragment() {
 
     private fun showNoDataWithSearch(media: ani.dantotsu.media.Media) {
         binding.mediaInfoProgressBar.visibility = View.GONE
-        binding.mediaInfoContainer.visibility = View.VISIBLE
+        binding.mediaInfoContainer.visibility = View.GONE
 
-        val parent = binding.mediaInfoContainer
-        parent.removeAllViews()
+        val hasData = media.idMAL != null
+        val frameLayout = binding.mediaInfoContainer.parent as? ViewGroup
 
-        val mediaType = if (media.anime != null) "anime" else "manga"
-        val titles = ArrayList<String>()
-        titles.add(media.userPreferredName)
-        if (media.nameRomaji != media.userPreferredName) {
-            titles.add(media.nameRomaji)
-        }
-        media.synonyms.forEach { if (!titles.contains(it)) titles.add(it) }
+        frameLayout?.let { container ->
+            // Use fragment_mangaupdates_page.xml (logged in, no login button)
+            val pageView = layoutInflater.inflate(
+                R.layout.fragment_nodata_page,
+                container,
+                false
+            )
 
-        // Use chip group style like the modal
-        val bind = ItemTitleChipgroupMultilineBinding.inflate(
-            LayoutInflater.from(context),
-            parent,
-            false
-        )
-        bind.itemTitle.text = buildString { append("Search on "); append("MyAnimeList") }
+            // set logo
+            pageView.findViewById<android.widget.ImageView>(R.id.logo)?.setImageResource(R.drawable.ic_myanimelist)
 
-        // Add chips for each title
-        titles.forEach { title ->
-            val chip = ItemChipBinding.inflate(LayoutInflater.from(context), bind.itemChipGroup, false).root
-            chip.text = title
-            chip.setOnClickListener {
-                val url = "https://myanimelist.net/${mediaType}.php?q=${
-                    URLEncoder.encode(title, "utf-8")
-                }&cat=$mediaType"
-                startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+            // Set title text
+            pageView.findViewById<android.widget.TextView>(R.id.title)?.text = "Search on MyAnimeList"
+
+            // Single button: either "Go to Site" OR "Quick Search"
+            pageView.findViewById<com.google.android.material.button.MaterialButton>(R.id.quickSearchButton)?.apply {
+                val mediaType = if (media.anime != null) "anime" else "manga"
+                if (hasData) {
+                    // Show "Open on MAL" button
+                    text = getString(R.string.open_on_mal)
+                    icon = context.getDrawable(R.drawable.ic_open_24)
+                    setOnClickListener {
+                        val url = "https://myanimelist.net/${mediaType}/${media.idMAL}"
+                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                    }
+                } else {
+                    // Show "Quick Search" button
+                    text = getString(R.string.quick_search)
+                    icon = context.getDrawable(R.drawable.ic_round_search_24)
+                    setOnClickListener {
+                        showQuickSearchModal(media)
+                    }
+                }
             }
-            chip.setOnLongClickListener {
-                copyToClipboard(title)
-                Toast.makeText(requireContext(), "Copied: $title", Toast.LENGTH_SHORT).show()
-                true
-            }
-            bind.itemChipGroup.addView(chip)
-        }
 
-        parent.addView(bind.root)
+            container.addView(pageView)
+        }
     }
 
     @Suppress("SetTextI18n")

@@ -16,6 +16,8 @@ import ani.dantotsu.R
 import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.discord.Discord
 import ani.dantotsu.connections.mal.MAL
+import ani.dantotsu.connections.mangaupdates.MangaUpdates
+import ani.dantotsu.connections.mangaupdates.MangaUpdatesLoginDialog
 import ani.dantotsu.databinding.ActivitySettingsAccountsBinding
 import ani.dantotsu.initActivity
 import ani.dantotsu.loadImage
@@ -203,6 +205,45 @@ class SettingsAccountActivity : AppCompatActivity() {
                     settingsDiscordLogin.setOnClickListener {
                         Discord.warning(context)
                             .show(supportFragmentManager, "dialog")
+                    }
+                }
+
+                // MangaUpdates Login
+                if (MangaUpdates.token != null) {
+                    settingsMangaUpdatesLogin.setText(R.string.logout)
+                    settingsMangaUpdatesLogin.setOnClickListener {
+                        MangaUpdates.logout()
+                        restartMainActivity.isEnabled = true
+                        reload()
+                    }
+                    settingsMangaUpdatesUsername.visibility = View.VISIBLE
+                    settingsMangaUpdatesUsername.text = MangaUpdates.username ?: "Logged In"
+
+                    // Load avatar if available
+                    if (!MangaUpdates.avatar.isNullOrBlank()) {
+                        settingsMangaUpdatesAvatar.loadImage(MangaUpdates.avatar)
+                    } else {
+                        settingsMangaUpdatesAvatar.setImageResource(R.drawable.ic_round_person_24)
+                    }
+
+                    settingsMangaUpdatesAvatar.setOnClickListener {
+                        it.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                        // Open MangaUpdates profile page if username is available
+                        MangaUpdates.username?.let { username ->
+                            openLinkInBrowser("https://www.mangaupdates.com/users/$username")
+                        }
+                    }
+                } else {
+                    settingsMangaUpdatesAvatar.setImageResource(R.drawable.ic_round_person_24)
+                    settingsMangaUpdatesUsername.visibility = View.GONE
+                    settingsMangaUpdatesLogin.setText(R.string.login)
+                    settingsMangaUpdatesLogin.setOnClickListener {
+                        val loginDialog = MangaUpdatesLoginDialog()
+                        loginDialog.setOnLoginSuccessListener {
+                            restartMainActivity.isEnabled = true
+                            reload()
+                        }
+                        loginDialog.show(supportFragmentManager, "mangaupdates_login")
                     }
                 }
             }

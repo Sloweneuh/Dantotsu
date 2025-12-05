@@ -41,6 +41,8 @@ class MediaDetailsViewModel : ViewModel() {
     val mangaUpdatesLink = MutableLiveData<String?>(null)
     val shouldShowSearchModal = MutableLiveData(false)
     val comickLoaded = MutableLiveData(false)
+    val mangaUpdatesLoaded = MutableLiveData(false)
+    val mangaUpdatesLoading = MutableLiveData(false)
 
     // Flag to prevent duplicate preloading
     private var hasPreloadedExternalData = false
@@ -117,6 +119,7 @@ class MediaDetailsViewModel : ViewModel() {
                 comickSlug.postValue(comickSlugValue)
 
                 // If we found a Comick slug, fetch details to get MangaUpdates link
+                mangaUpdatesLoading.postValue(true)
                 if (comickSlugValue != null) {
                     try {
                         val comickData = comickApi.getComicDetails(comickSlugValue)
@@ -132,10 +135,14 @@ class MediaDetailsViewModel : ViewModel() {
                 } else {
                     mangaUpdatesLink.postValue(null)
                 }
+                mangaUpdatesLoading.postValue(false)
+                mangaUpdatesLoaded.postValue(true)
 
             } catch (e: Exception) {
                 comickSlug.postValue(null)
                 mangaUpdatesLink.postValue(null)
+                mangaUpdatesLoading.postValue(false)
+                mangaUpdatesLoaded.postValue(true)
             }
         }
     }

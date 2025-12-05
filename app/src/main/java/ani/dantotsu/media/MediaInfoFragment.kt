@@ -174,15 +174,25 @@ class MediaInfoFragment : Fragment() {
 
         for (i in 0 until binding.mediaInfoTabLayout.tabCount) {
             val tab = binding.mediaInfoTabLayout.getTabAt(i) ?: continue
-            val hasData = when (i) {
-                0 -> true // AniList always has data
-                1 -> media.idMAL != null
-                2 -> model.comickSlug.value != null
-                3 -> model.mangaUpdatesLink.value != null
-                else -> false
+
+            val alpha = when (i) {
+                0 -> 1.0f // AniList always has data
+                1 -> if (media.idMAL != null) 1.0f else 0.4f
+                2 -> if (model.comickSlug.value != null) 1.0f else 0.4f
+                3 -> {
+                    // MangaUpdates: show loading state
+                    val isLoading = model.mangaUpdatesLoading.value == true
+                    val hasData = model.mangaUpdatesLink.value != null
+                    when {
+                        hasData -> 1.0f // Has data - full brightness
+                        isLoading -> 0.6f // Loading - medium brightness
+                        else -> 0.4f // No data - dim
+                    }
+                }
+                else -> 0.4f
             }
-            // Set alpha to make tabs without data darker
-            tab.view.alpha = if (hasData) 1.0f else 0.4f
+
+            tab.view.alpha = alpha
         }
     }
 

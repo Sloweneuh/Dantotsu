@@ -6,23 +6,31 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
 import androidx.core.view.updateLayoutParams
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.lifecycleScope
+import ani.dantotsu.R
+import ani.dantotsu.connections.mangaupdates.MangaUpdates
+import ani.dantotsu.connections.mangaupdates.MangaUpdatesLoginDialog
 import ani.dantotsu.copyToClipboard
 import ani.dantotsu.databinding.FragmentMediaInfoBinding
-import ani.dantotsu.databinding.ItemChipBinding
 import ani.dantotsu.isOnline
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.px
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
-import java.net.URLEncoder
+import ani.dantotsu.util.Logger
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MangaUpdatesInfoFragment : Fragment() {
     private var _binding: FragmentMediaInfoBinding? = null
     private val binding get() = _binding!!
     private var loaded = false
+    private var isLoggedIn = false
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -57,6 +65,12 @@ class MangaUpdatesInfoFragment : Fragment() {
             return
         }
 
+        // Check if user is logged in to MangaUpdates
+        lifecycleScope.launch(Dispatchers.IO) {
+            isLoggedIn = MangaUpdates.getSavedToken()
+            Logger.log("MangaUpdates Fragment: Login status = $isLoggedIn")
+        }
+
         // Observe both media and MU link
         var currentMedia: Media? = null
 
@@ -73,8 +87,8 @@ class MangaUpdatesInfoFragment : Fragment() {
             }
         }
 
-        model.comickLoaded.observe(viewLifecycleOwner) { comickLoaded ->
-            if (comickLoaded && currentMedia != null) {
+        model.mangaUpdatesLoaded.observe(viewLifecycleOwner) { muLoaded ->
+            if (muLoaded && currentMedia != null) {
                 checkAndDisplay(model, currentMedia!!)
             }
         }
@@ -84,25 +98,84 @@ class MangaUpdatesInfoFragment : Fragment() {
         if (loaded) return // Only display once
 
         val muLink = model.mangaUpdatesLink.value
-        val comickHasLoaded = model.comickLoaded.value == true
+        val muHasLoaded = model.mangaUpdatesLoaded.value == true
 
-        // Wait for Comick to finish loading before making a decision
-        if (!comickHasLoaded) {
-            // Still waiting for Comick to load
+        // Wait for MangaUpdates to finish loading before making a decision
+        if (!muHasLoaded) {
+            // Still waiting for MangaUpdates to load
             return
         }
 
-        // Comick has finished loading, now we can decide what to show
+        // MangaUpdates has finished loading, now we can decide what to show
         loaded = true
         binding.mediaInfoProgressBar.visibility = View.GONE
         binding.mediaInfoContainer.visibility = View.VISIBLE
 
         if (muLink != null) {
-            // We have a MU link, show the styled button page
-            showMangaUpdatesButton(muLink)
+            // Extract series slug/ID from MU link
+            val seriesIdentifier = muLink.substringAfterLast("/")
+
+            // Check login status and fetch data if logged in
+            lifecycleScope.launch(Dispatchers.IO) {
+                isLoggedIn = MangaUpdates.getSavedToken()
+                Logger.log("MangaUpdates Fragment: Login status = $isLoggedIn")
+
+                withContext(Dispatchers.Main) {
+                    if (isLoggedIn && seriesIdentifier.isNotBlank()) {
+                        Logger.log("MangaUpdates Fragment: Fetching details for $seriesIdentifier")
+                        fetchAndDisplayDetails(seriesIdentifier, muLink)
+                    } else {
+                        // Not logged in, just show the button to open the link
+                        showMangaUpdatesButton(muLink)
+                    }
+                }
+            }
         } else {
             // No MU link found, show search buttons
             showNoDataWithSearch(media)
+        }
+    }
+
+    private fun fetchAndDisplayDetails(seriesIdentifier: String, muLink: String) {
+        Logger.log("MangaUpdates Fragment: Starting to fetch details for identifier: $seriesIdentifier")
+        Logger.log("MangaUpdates Fragment: Full MU link: $muLink")
+        Logger.log("MangaUpdates Fragment: Token available: ${MangaUpdates.token != null}")
+
+        // Show loading state
+        binding.mediaInfoProgressBar.visibility = View.VISIBLE
+        binding.mediaInfoContainer.visibility = View.GONE
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                Logger.log("MangaUpdates Fragment: Calling getSeriesFromUrl...")
+                val seriesDetails = MangaUpdates.getSeriesFromUrl(seriesIdentifier)
+                Logger.log("MangaUpdates Fragment: API call completed, result: ${if (seriesDetails != null) "SUCCESS" else "NULL"}")
+
+                withContext(Dispatchers.Main) {
+                    binding.mediaInfoProgressBar.visibility = View.GONE
+                    binding.mediaInfoContainer.visibility = View.VISIBLE
+
+                    if (seriesDetails != null) {
+                        Logger.log("MangaUpdates Fragment: Successfully fetched details for '${seriesDetails.title}'")
+                        Logger.log("MangaUpdates Fragment: Series has description: ${seriesDetails.description != null}")
+                        Logger.log("MangaUpdates Fragment: Series has genres: ${seriesDetails.genres?.size ?: 0}")
+                        displaySeriesDetails(seriesDetails, muLink)
+                    } else {
+                        Logger.log("MangaUpdates Fragment: API returned null, showing button instead")
+                        android.widget.Toast.makeText(requireContext(), "Could not fetch MangaUpdates data", android.widget.Toast.LENGTH_SHORT).show()
+                        showMangaUpdatesButton(muLink)
+                    }
+                }
+            } catch (e: Exception) {
+                Logger.log("MangaUpdates Fragment: EXCEPTION - ${e::class.simpleName}: ${e.message}")
+                e.printStackTrace()
+                withContext(Dispatchers.Main) {
+                    binding.mediaInfoProgressBar.visibility = View.GONE
+                    binding.mediaInfoContainer.visibility = View.VISIBLE
+                    android.widget.Toast.makeText(requireContext(), "Error: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                    showMangaUpdatesButton(muLink)
+                }
+            }
         }
     }
 
@@ -131,44 +204,65 @@ class MangaUpdatesInfoFragment : Fragment() {
         binding.mediaInfoProgressBar.visibility = View.GONE
         binding.mediaInfoContainer.visibility = View.GONE
 
-        // Inflate the styled layout similar to MAL not logged in
         val frameLayout = binding.mediaInfoContainer.parent as? ViewGroup
-        frameLayout?.let {
-            val muView = layoutInflater.inflate(
-                ani.dantotsu.R.layout.fragment_mangaupdates_page,
-                it,
+        frameLayout?.let { container ->
+            // Use fragment_not_logged_in.xml with login button
+            val notLoggedInView = layoutInflater.inflate(
+                ani.dantotsu.R.layout.fragment_not_logged_in,
+                container,
                 false
             )
 
-            // Set title text
-            muView.findViewById<android.widget.TextView>(ani.dantotsu.R.id.mangaUpdatesTitle)?.text =
-                buildString { append("Open on "); append("MangaUpdates") }
+            // Set icon
+            notLoggedInView.findViewById<android.widget.ImageView>(R.id.logo)?.setImageDrawable(
+                requireContext().getDrawable(R.drawable.ic_round_mangaupdates_24)
+            )
 
-            // Set button click
-            muView.findViewById<com.google.android.material.button.MaterialButton>(ani.dantotsu.R.id.mangaUpdatesButton)?.apply {
-                text = buildString { append("Open "); append("MangaUpdates") }
+            // Set text
+            notLoggedInView.findViewById<TextView>(ani.dantotsu.R.id.Title)?.text = getString(ani.dantotsu.R.string.mu_not_logged_in_title)
+            notLoggedInView.findViewById<TextView>(ani.dantotsu.R.id.desc)?.text = getString(ani.dantotsu.R.string.mu_not_logged_in_desc)
+
+
+            // Login button
+            notLoggedInView.findViewById<com.google.android.material.button.MaterialButton>(ani.dantotsu.R.id.connectButton)?.text = getString(ani.dantotsu.R.string.login_to_mangaupdates)
+            notLoggedInView.findViewById<com.google.android.material.button.MaterialButton>(ani.dantotsu.R.id.connectButton)?.icon = requireContext().getDrawable(ani.dantotsu.R.drawable.ic_round_mangaupdates_24)
+
+            notLoggedInView.findViewById<com.google.android.material.button.MaterialButton>(ani.dantotsu.R.id.connectButton)?.setOnClickListener {
+                val loginDialog = MangaUpdatesLoginDialog()
+                loginDialog.setOnLoginSuccessListener {
+                    // Reload the fragment to show data
+                    loaded = false
+                    isLoggedIn = true
+                    val model: MediaDetailsViewModel by activityViewModels()
+                    model.getMedia().value?.let { media ->
+                        checkAndDisplay(model, media)
+                    }
+                }
+                loginDialog.show(parentFragmentManager, "mangaupdates_login")
+            }
+
+            // Show "Open on MU" button (hide Quick Search)
+            notLoggedInView.findViewById<com.google.android.material.button.MaterialButton>(ani.dantotsu.R.id.quickSearchButton)?.visibility = View.GONE
+            notLoggedInView.findViewById<com.google.android.material.button.MaterialButton>(ani.dantotsu.R.id.openButton)?.text = getString(ani.dantotsu.R.string.open_on_mangaupdates)
+            notLoggedInView.findViewById<com.google.android.material.button.MaterialButton>(ani.dantotsu.R.id.openButton)?.apply {
+                visibility = View.VISIBLE
                 setOnClickListener {
                     startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(muLink)))
                 }
             }
 
-            it.addView(muView)
+            container.addView(notLoggedInView)
         }
     }
 
-    private fun showNoDataWithSearch(media: Media) {
-        binding.mediaInfoProgressBar.visibility = View.GONE
-        binding.mediaInfoContainer.visibility = View.VISIBLE
-
-        val parent = binding.mediaInfoContainer
-        parent.removeAllViews()
-
-        // Get available titles
+    private fun showQuickSearchModal(media: Media) {
+        val context = requireContext()
         val titles = ArrayList<String>()
         titles.add(media.userPreferredName)
         if (media.nameRomaji != media.userPreferredName) {
             titles.add(media.nameRomaji)
         }
+
         // Filter English titles
         val englishSynonyms = media.synonyms.filter { title ->
             if (title.isBlank()) return@filter false
@@ -181,32 +275,343 @@ class MangaUpdatesInfoFragment : Fragment() {
         }
         englishSynonyms.forEach { if (!titles.contains(it)) titles.add(it) }
 
-        // Use chip group style like the modal
-        val bind = ani.dantotsu.databinding.ItemTitleChipgroupMultilineBinding.inflate(
-            LayoutInflater.from(context),
-            parent,
-            false
-        )
-        bind.itemTitle.text = buildString { append("Search on "); append("MangaUpdates") }
+        val modal = ani.dantotsu.others.CustomBottomDialog.newInstance().apply {
+            setTitleText("Search on MangaUpdates")
 
-        // Add chips for each title
-        titles.forEach { title ->
-            val chip = ani.dantotsu.databinding.ItemChipBinding.inflate(LayoutInflater.from(context), bind.itemChipGroup, false).root
-            chip.text = title
-            chip.setOnClickListener {
-                val encoded = java.net.URLEncoder.encode(title, "utf-8").replace("+", "%20")
-                val url = "https://www.mangaupdates.com/series?search=$encoded"
-                startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+            // Add each title as a clickable TextView
+            titles.forEach { title ->
+                val textView = android.widget.TextView(context).apply {
+                    text = title
+                    textSize = 16f
+                    val padding = 16f.px
+                    setPadding(padding, padding, padding, padding)
+                    setTextColor(androidx.core.content.ContextCompat.getColor(context, ani.dantotsu.R.color.bg_opp))
+                    // Use a simple rounded background with ripple effect
+                    val outValue = android.util.TypedValue()
+                    context.theme.resolveAttribute(android.R.attr.selectableItemBackground, outValue, true)
+                    setBackgroundResource(outValue.resourceId)
+                    isClickable = true
+                    isFocusable = true
+                    setOnClickListener {
+                        val encoded = java.net.URLEncoder.encode(title, "utf-8").replace("+", "%20")
+                        val url = "https://www.mangaupdates.com/series?search=$encoded"
+                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                        dismiss()
+                    }
+                }
+                addView(textView)
             }
-            chip.setOnLongClickListener {
-                copyToClipboard(title)
-                android.widget.Toast.makeText(requireContext(), "Copied: $title", android.widget.Toast.LENGTH_SHORT).show()
-                true
+        }
+        modal.show(parentFragmentManager, "mangaupdates_quick_search")
+    }
+
+    private fun showNoDataWithSearch(media: Media) {
+        binding.mediaInfoProgressBar.visibility = View.GONE
+        binding.mediaInfoContainer.visibility = View.GONE
+
+        // Use the page layout for no-data case
+        val frameLayout = binding.mediaInfoContainer.parent as? ViewGroup
+        frameLayout?.let { container ->
+            val pageView = layoutInflater.inflate(
+                ani.dantotsu.R.layout.fragment_nodata_page,
+                container,
+                false
+            )
+
+            //set icon
+            pageView.findViewById<android.widget.ImageView>(R.id.logo)?.setImageDrawable(
+                requireContext().getDrawable(ani.dantotsu.R.drawable.ic_round_mangaupdates_24)
+            )
+
+            // Set title
+            pageView.findViewById<android.widget.TextView>(R.id.title)?.text = "Search on MangaUpdates"
+
+            // Single button: Quick Search (since we don't have a link)
+            pageView.findViewById<com.google.android.material.button.MaterialButton>(ani.dantotsu.R.id.quickSearchButton)?.apply {
+                text = getString(ani.dantotsu.R.string.quick_search)
+                icon = context.getDrawable(ani.dantotsu.R.drawable.ic_round_search_24)
+                setOnClickListener {
+                    showQuickSearchModal(media)
+                }
             }
-            bind.itemChipGroup.addView(chip)
+
+            container.addView(pageView)
+        }
+    }
+
+    private fun displaySeriesDetails(series: ani.dantotsu.connections.mangaupdates.MUSeriesRecord, muLink: String) {
+        binding.mediaInfoProgressBar.visibility = View.GONE
+        binding.mediaInfoContainer.visibility = View.VISIBLE
+
+        val tripleTab = "\t\t\t"
+
+        // Set up the standard fields first
+        // Title
+        binding.mediaInfoName.text = tripleTab + (series.title ?: "Unknown Title")
+        binding.mediaInfoName.setOnLongClickListener {
+            copyToClipboard(series.title ?: "")
+            true
         }
 
-        parent.addView(bind.root)
+        // Hide romaji title container for MangaUpdates
+        binding.mediaInfoNameRomajiContainer.visibility = View.GONE
+
+        // Parse status field to extract chapter count and status text
+        // Example: "143 Chapters (Ongoing)" -> chapters: "143", status: "Ongoing"
+        var chaptersCount = "~"
+        var statusText = "Unknown"
+
+        series.status?.let { fullStatus ->
+            // Extract first number for chapter count
+            val chapterMatch = Regex("""(\d+)\s+Chapter""").find(fullStatus)
+            chapterMatch?.groupValues?.get(1)?.let { chaptersCount = it }
+
+            // Extract text in first parentheses for status
+            val statusMatch = Regex("""\(([^)]+)\)""").find(fullStatus)
+            statusMatch?.groupValues?.get(1)?.let { statusText = it }
+        }
+
+        // Mean Score (Rating)
+        series.bayesian_rating?.let { ratingStr ->
+            val rating = ratingStr.toDoubleOrNull()
+            binding.mediaInfoMeanScore.text = if (rating != null) {
+                String.format("%.1f", rating)
+            } else {
+                ratingStr
+            }
+        } ?: run {
+            binding.mediaInfoMeanScore.text = "??"
+        }
+
+        // Status (extracted from detailed status)
+        binding.mediaInfoStatus.text = statusText
+
+        // Total Chapters (extracted from detailed status)
+        binding.mediaInfoTotalTitle.setText(ani.dantotsu.R.string.total_chaps)
+        binding.mediaInfoTotal.text = chaptersCount
+
+        // Format/Type
+        binding.mediaInfoFormat.text = series.type ?: "Manga"
+
+        // Source (hide for MangaUpdates)
+        binding.mediaInfoSourceContainer.visibility = View.GONE
+
+        // Author (show first author of type "Author" in standard field)
+        val firstAuthor = series.authors?.firstOrNull { it.type?.equals("Author", ignoreCase = true) == true }
+        if (firstAuthor?.name != null) {
+            binding.mediaInfoAuthorContainer.visibility = View.VISIBLE
+            binding.mediaInfoAuthor.text = firstAuthor.name
+        } else {
+            binding.mediaInfoAuthorContainer.visibility = View.GONE
+        }
+
+        // Start date (Year)
+        binding.mediaInfoStart.text = series.year ?: "??"
+
+        // End date (hide entire TableRow container)
+        binding.mediaInfoEnd.visibility = View.GONE
+        (binding.mediaInfoEnd.parent as? ViewGroup)?.visibility = View.GONE
+
+        // Popularity (hide entire TableRow container)
+        binding.mediaInfoPopularity.visibility = View.GONE
+        (binding.mediaInfoPopularity.parent as? ViewGroup)?.visibility = View.GONE
+
+        // Favorites -> use for Followers count
+        // Change the label from "Favourites" to "Followers"
+        val favoritesRow = binding.mediaInfoFavorites.parent as? ViewGroup
+        favoritesRow?.let { row ->
+            for (i in 0 until row.childCount) {
+                val child = row.getChildAt(i)
+                if (child is android.widget.TextView && child.id != binding.mediaInfoFavorites.id) {
+                    child.text = getString(ani.dantotsu.R.string.followers)
+                    break
+                }
+            }
+        }
+
+        series.rank?.lists?.let { lists ->
+            val followers = (lists.reading ?: 0) + (lists.wish ?: 0) +
+                           (lists.complete ?: 0) + (lists.unfinished ?: 0) + (lists.custom ?: 0)
+            binding.mediaInfoFavorites.text = if (followers > 0) followers.toString() else "??"
+        } ?: run {
+            binding.mediaInfoFavorites.text = "??"
+        }
+
+        // Description (extract only synopsis, remove links section)
+        val fullDesc = series.description ?: getString(ani.dantotsu.R.string.no_description_available)
+        val desc = if (fullDesc.contains("**Original Webtoon:**", ignoreCase = true)) {
+            fullDesc.substringBefore("**Original Webtoon:**").trim()
+        } else if (fullDesc.contains("**Official Translation", ignoreCase = true)) {
+            fullDesc.substringBefore("**Official Translation").trim()
+        } else {
+            fullDesc.trim()
+        }
+
+        binding.mediaInfoDescription.text = tripleTab + desc
+        binding.mediaInfoDescription.setOnClickListener {
+            if (binding.mediaInfoDescription.maxLines == 5) {
+                android.animation.ObjectAnimator.ofInt(binding.mediaInfoDescription, "maxLines", 100).setDuration(950).start()
+            } else {
+                android.animation.ObjectAnimator.ofInt(binding.mediaInfoDescription, "maxLines", 5).setDuration(400).start()
+            }
+        }
+
+        // Now add additional sections to the container
+        val parent = binding.mediaInfoContainer
+
+        // Status (detailed chapter info with markdown formatting, expandable)
+        series.status?.let { rawStatusText ->
+            if (rawStatusText.isNotBlank()) {
+                val bind = ani.dantotsu.databinding.ItemTitleTextBinding.inflate(LayoutInflater.from(context), parent, false)
+                bind.itemTitle.setText(ani.dantotsu.R.string.status_title)
+
+                // First, remove escaped characters (backslashes before special chars)
+                // This converts "001\\~040" to "001~040", etc.
+                val statusText = rawStatusText.replace("\\", "")
+
+                // Process markdown: **text** -> bold
+                val processedText = android.text.SpannableStringBuilder()
+                var currentPos = 0
+                val boldPattern = Regex("""\*\*([^*]+)\*\*""")
+
+                boldPattern.findAll(statusText).forEach { match ->
+                    // Add text before the match
+                    if (match.range.first > currentPos) {
+                        processedText.append(statusText.substring(currentPos, match.range.first))
+                    }
+
+                    // Add bolded text
+                    val boldText = match.groupValues[1]
+                    val start = processedText.length
+                    processedText.append(boldText)
+                    processedText.setSpan(
+                        android.text.style.StyleSpan(android.graphics.Typeface.BOLD),
+                        start,
+                        processedText.length,
+                        android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                    )
+
+                    currentPos = match.range.last + 1
+                }
+
+                // Add remaining text
+                if (currentPos < statusText.length) {
+                    processedText.append(statusText.substring(currentPos))
+                }
+
+                bind.itemText.text = processedText
+                bind.itemText.maxLines = 3
+
+                // Make expandable on click
+                bind.itemText.setOnClickListener {
+                    if (bind.itemText.maxLines == 3) {
+                        android.animation.ObjectAnimator.ofInt(bind.itemText, "maxLines", 100).setDuration(400).start()
+                    } else {
+                        android.animation.ObjectAnimator.ofInt(bind.itemText, "maxLines", 3).setDuration(400).start()
+                    }
+                }
+
+                parent.addView(bind.root)
+            }
+        }
+
+        // Anime Adaptation Info (like Comick)
+        if (!series.anime_start.isNullOrBlank() || !series.anime_end.isNullOrBlank()) {
+            val bind = ani.dantotsu.databinding.ItemTitleTextBinding.inflate(LayoutInflater.from(context), parent, false)
+            bind.itemTitle.text = getString(ani.dantotsu.R.string.anime_adaptation)
+            bind.itemText.text = buildString {
+                if (!series.anime_start.isNullOrBlank()) {
+                    append("Start: ${series.anime_start}")
+                }
+                if (!series.anime_end.isNullOrBlank()) {
+                    if (isNotEmpty()) append("\n")
+                    append("End: ${series.anime_end}")
+                }
+            }
+            parent.addView(bind.root)
+        }
+
+        // Alternative Titles / Synonyms (single row)
+        if (!series.associated.isNullOrEmpty()) {
+            val bind = ani.dantotsu.databinding.ItemTitleChipgroupBinding.inflate(LayoutInflater.from(context), parent, false)
+            bind.itemTitle.setText(ani.dantotsu.R.string.synonyms)
+            series.associated.forEach { assoc ->
+                assoc.title?.let { title ->
+                    val chip = ani.dantotsu.databinding.ItemChipBinding.inflate(LayoutInflater.from(context), bind.itemChipGroup, false).root
+                    chip.text = title
+                    chip.setOnLongClickListener { copyToClipboard(title); true }
+                    bind.itemChipGroup.addView(chip)
+                }
+            }
+            parent.addView(bind.root)
+        }
+
+        // Genres (clickable for search, with "Search All" next to title)
+        if (!series.genres.isNullOrEmpty()) {
+            val bind = ani.dantotsu.databinding.ItemTitleChipgroupBinding.inflate(LayoutInflater.from(context), parent, false)
+            bind.itemTitle.setText(ani.dantotsu.R.string.genres)
+
+            // Add "Search All" action next to the title
+            val genreNames = series.genres.mapNotNull { it.genre }
+            if (genreNames.isNotEmpty()) {
+                bind.itemTitleAction.visibility = View.VISIBLE
+                bind.itemTitleAction.text = getString(ani.dantotsu.R.string.search_all)
+                bind.itemTitleAction.setOnClickListener {
+                    // Combine all genres with underscores
+                    val allGenres = genreNames.joinToString("_")
+                    val url = "https://www.mangaupdates.com/series?genre=$allGenres"
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                }
+            }
+
+            // Add individual genre chips
+            series.genres.forEach { genreObj ->
+                genreObj.genre?.let { genre ->
+                    val chip = ani.dantotsu.databinding.ItemChipBinding.inflate(LayoutInflater.from(context), bind.itemChipGroup, false).root
+                    chip.text = genre
+                    chip.isClickable = true
+                    chip.setOnClickListener {
+                        // Open MangaUpdates genre search
+                        val url = "https://www.mangaupdates.com/series?genre=$genre"
+                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                    }
+                    chip.setOnLongClickListener {
+                        copyToClipboard(genre)
+                        android.widget.Toast.makeText(requireContext(), "Copied: $genre", android.widget.Toast.LENGTH_SHORT).show()
+                        true
+                    }
+                    bind.itemChipGroup.addView(chip)
+                }
+            }
+            parent.addView(bind.root)
+        }
+
+        // Categories (clickable for search, like Comick)
+        if (!series.categories.isNullOrEmpty()) {
+            val bind = ani.dantotsu.databinding.ItemTitleChipgroupMultilineBinding.inflate(LayoutInflater.from(context), parent, false)
+            bind.itemTitle.text = getString(ani.dantotsu.R.string.categories)
+            series.categories.forEach { cat ->
+                cat.category?.let { category ->
+                    val chip = ani.dantotsu.databinding.ItemChipBinding.inflate(LayoutInflater.from(context), bind.itemChipGroup, false).root
+                    chip.text = category
+                    chip.isClickable = true
+                    chip.setOnClickListener {
+                        // Open MangaUpdates category search (URL encode the category name)
+                        val encoded = java.net.URLEncoder.encode(category, "UTF-8")
+                        val url = "https://www.mangaupdates.com/series?category=$encoded"
+                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                    }
+                    chip.setOnLongClickListener {
+                        copyToClipboard(category)
+                        android.widget.Toast.makeText(requireContext(), "Copied: $category", android.widget.Toast.LENGTH_SHORT).show()
+                        true
+                    }
+                    bind.itemChipGroup.addView(chip)
+                }
+            }
+            parent.addView(bind.root)
+        }
     }
 }
+
 

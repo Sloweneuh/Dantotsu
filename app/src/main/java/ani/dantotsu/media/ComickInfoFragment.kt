@@ -263,49 +263,80 @@ class ComickInfoFragment : Fragment() {
         Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
     }
 
-    private fun showNoDataWithSearch(media: ani.dantotsu.media.Media) {
-        binding.mediaInfoProgressBar.visibility = View.GONE
-        binding.mediaInfoContainer.visibility = View.VISIBLE
-
-        val parent = binding.mediaInfoContainer
-        parent.removeAllViews()
-
-        // Get available titles
+    private fun showQuickSearchModal(media: ani.dantotsu.media.Media) {
+        val context = requireContext()
         val titles = ArrayList<String>()
         titles.add(media.userPreferredName)
         if (media.nameRomaji != media.userPreferredName) {
             titles.add(media.nameRomaji)
         }
+
+        // Filter English titles
         val englishSynonyms = filterEnglishTitles(media.synonyms)
         englishSynonyms.forEach { if (!titles.contains(it)) titles.add(it) }
 
-        // Use chip group style like the modal
-        val bind = ani.dantotsu.databinding.ItemTitleChipgroupMultilineBinding.inflate(
-            LayoutInflater.from(context),
-            parent,
-            false
-        )
-        bind.itemTitle.text = buildString { append("Search on "); append("Comick") }
+        val modal = ani.dantotsu.others.CustomBottomDialog.newInstance().apply {
+            setTitleText("Search on Comick")
 
-        // Add chips for each title
-        titles.forEach { title ->
-            val chip = ItemChipBinding.inflate(LayoutInflater.from(context), bind.itemChipGroup, false).root
-            chip.text = title
-            chip.setOnClickListener {
-                val url = "https://comick.dev/search?q=${
-                    java.net.URLEncoder.encode(title, "utf-8").replace("+", "%20")
-                }"
-                startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+            // Add each title as a clickable TextView
+            titles.forEach { title ->
+                val textView = android.widget.TextView(context).apply {
+                    text = title
+                    textSize = 16f
+                    val padding = 16f.px
+                    setPadding(padding, padding, padding, padding)
+                    setTextColor(androidx.core.content.ContextCompat.getColor(context, ani.dantotsu.R.color.bg_opp))
+                    // Use a simple rounded background with ripple effect
+                    val outValue = android.util.TypedValue()
+                    context.theme.resolveAttribute(android.R.attr.selectableItemBackground, outValue, true)
+                    setBackgroundResource(outValue.resourceId)
+                    isClickable = true
+                    isFocusable = true
+                    setOnClickListener {
+                        val encoded = java.net.URLEncoder.encode(title, "utf-8").replace("+", "%20")
+                        val url = "https://comick.dev/search?q=$encoded"
+                        startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+                        dismiss()
+                    }
+                }
+                addView(textView)
             }
-            chip.setOnLongClickListener {
-                copyToClipboard(title)
-                Toast.makeText(requireContext(), "Copied: $title", Toast.LENGTH_SHORT).show()
-                true
-            }
-            bind.itemChipGroup.addView(chip)
         }
+        modal.show(parentFragmentManager, "comick_quick_search")
+    }
 
-        parent.addView(bind.root)
+    private fun showNoDataWithSearch(media: ani.dantotsu.media.Media) {
+        binding.mediaInfoProgressBar.visibility = View.GONE
+        binding.mediaInfoContainer.visibility = View.GONE
+
+        val frameLayout = binding.mediaInfoContainer.parent as? ViewGroup
+
+        frameLayout?.let { container ->
+            // Use fragment_mangaupdates_page.xml style layout
+            val pageView = layoutInflater.inflate(
+                ani.dantotsu.R.layout.fragment_nodata_page,
+                container,
+                false
+            )
+
+            // Set logo
+            pageView.findViewById<android.widget.ImageView>(ani.dantotsu.R.id.logo)?.setImageResource(ani.dantotsu.R.drawable.ic_round_comick_24)
+
+            // Set title for Comick
+            pageView.findViewById<android.widget.TextView>(ani.dantotsu.R.id.title)?.text =
+                "Search on Comick"
+
+            // Single button: Quick Search
+            pageView.findViewById<com.google.android.material.button.MaterialButton>(ani.dantotsu.R.id.quickSearchButton)?.apply {
+                text = getString(ani.dantotsu.R.string.quick_search)
+                icon = context.getDrawable(ani.dantotsu.R.drawable.ic_round_search_24)
+                setOnClickListener {
+                    showQuickSearchModal(media)
+                }
+            }
+
+            container.addView(pageView)
+        }
     }
 
     @Suppress("SetTextI18n")
