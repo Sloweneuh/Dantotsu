@@ -397,6 +397,8 @@
     <string name="year">Year</string>
     <string name="apply">Apply</string>
     <string name="cancel">Cancel</string>
+    <string name="searching">Searching…</string>
+    <string name="search_timeout">Search timed out. This source may be slow on your network.</string>
     <string name="edit">Edit</string>
     <string name="publish">Publish</string>
     <string name="reply_hint">Write a response…</string>

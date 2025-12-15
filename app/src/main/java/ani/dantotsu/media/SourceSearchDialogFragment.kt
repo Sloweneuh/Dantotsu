@@ -103,28 +103,31 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
                 fun search(queryOverride: String? = null) {
                     // prevent concurrent searches
                     if (searchJob?.isActive == true) return
-                    binding.searchBarText.clearFocus()
-                    imm.hideSoftInputFromWindow(binding.searchBarText.windowToken, 0)
+                    _binding?.searchBarText?.clearFocus()
+                    _binding?.searchBarText?.windowToken?.let { token ->
+                        imm.hideSoftInputFromWindow(token, 0)
+                    }
                     searchJob = scope.launch {
-                        val query = queryOverride ?: binding.searchBarText.text.toString()
-                        binding.searchProgress.visibility = View.VISIBLE
-                        binding.searchRecyclerView.visibility = View.GONE
+                        val query = queryOverride ?: _binding?.searchBarText?.text?.toString() ?: return@launch
+                        _binding?.searchProgressContainer?.visibility = View.VISIBLE
+                        _binding?.searchRecyclerView?.visibility = View.GONE
 
                         // Start a UI watchdog to ensure spinner is hidden even if an extension blocks
-                        searchWatchdog?.let { binding.searchProgress.removeCallbacks(it) }
+                        searchWatchdog?.let { _binding?.searchProgress?.removeCallbacks(it) }
                         searchWatchdog = Runnable {
-                            binding.searchProgress.visibility = View.GONE
-                            binding.searchRecyclerView.visibility = View.VISIBLE
-                            binding.searchRecyclerView.adapter = null
+                            _binding?.searchProgressContainer?.visibility = View.GONE
+                            _binding?.searchRecyclerView?.visibility = View.VISIBLE
+                            _binding?.searchRecyclerView?.adapter = null
                             searchJob?.cancel()
                         }
-                        binding.searchProgress.postDelayed(searchWatchdog, 16_000L)
+                        _binding?.searchProgress?.postDelayed(searchWatchdog, 12_000L)
 
                         var results: List<ani.dantotsu.parsers.ShowResponse>? = null
+                        var timedOut = false
                         try {
                             results = withContext(Dispatchers.IO) {
                                 try {
-                                    kotlinx.coroutines.withTimeoutOrNull(15_000L) {
+                                    kotlinx.coroutines.withTimeoutOrNull(10_000L) {
                                         tryWithSuspend {
                                             source.search(query)
                                         }
@@ -133,26 +136,34 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
                                     null
                                 }
                             }
+                            if (results == null) {
+                                timedOut = true
+                            }
                         } catch (_: Throwable) {
                             results = null
                         } finally {
                             // cancel watchdog and reset job
-                            searchWatchdog?.let { binding.searchProgress.removeCallbacks(it) }
+                            searchWatchdog?.let { _binding?.searchProgress?.removeCallbacks(it) }
                             searchWatchdog = null
                             searchJob = null
-                            binding.searchProgress.visibility = View.GONE
+                            _binding?.searchProgressContainer?.visibility = View.GONE
                             if (results != null && results.isNotEmpty()) {
-                                binding.searchRecyclerView.visibility = View.VISIBLE
-                                binding.searchRecyclerView.adapter =
+                                _binding?.searchRecyclerView?.visibility = View.VISIBLE
+                                _binding?.searchRecyclerView?.adapter =
                                     if (anime) AnimeSourceAdapter(results, model, i!!, media!!.id, this@SourceSearchDialogFragment, requireActivity().lifecycleScope)
                                     else MangaSourceAdapter(results, model, i!!, media!!.id, this@SourceSearchDialogFragment, requireActivity().lifecycleScope)
-                                binding.searchRecyclerView.layoutManager = GridLayoutManager(
+                                _binding?.searchRecyclerView?.layoutManager = GridLayoutManager(
                                     requireActivity(),
                                     clamp(requireActivity().resources.displayMetrics.widthPixels / 124f.px, 1, 4)
                                 )
                             } else {
-                                binding.searchRecyclerView.visibility = View.VISIBLE
-                                binding.searchRecyclerView.adapter = null
+                                _binding?.searchRecyclerView?.visibility = View.VISIBLE
+                                _binding?.searchRecyclerView?.adapter = null
+                                if (timedOut) {
+                                    withContext(Dispatchers.Main) {
+                                        ani.dantotsu.snackString(getString(R.string.search_timeout))
+                                    }
+                                }
                             }
                         }
                     }
@@ -266,11 +277,11 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
                     if (!searched) {
                         searched = true
                         val first = titleOptions.firstOrNull()
-                        val currentText = binding.searchBarText.text?.toString() ?: ""
+                        val currentText = _binding?.searchBarText?.text?.toString() ?: ""
                         val defaultFallback = try { media?.mangaName() ?: "" } catch (_: Throwable) { "" }
                         if (!first.isNullOrBlank() && (currentText.isBlank() || currentText == defaultFallback)) {
                             withContext(Dispatchers.Main) {
-                                binding.searchBarText.setText(first)
+                                _binding?.searchBarText?.setText(first)
                                 search(first)
                             }
                         }
@@ -318,6 +329,17 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
 
                         else -> false
                     }
+                }
+
+                // Cancel button to stop slow searches
+                binding.searchCancelButton.setOnClickListener {
+                    searchJob?.cancel()
+                    searchWatchdog?.let { _binding?.searchProgress?.removeCallbacks(it) }
+                    searchWatchdog = null
+                    searchJob = null
+                    _binding?.searchProgressContainer?.visibility = View.GONE
+                    _binding?.searchRecyclerView?.visibility = View.VISIBLE
+                    _binding?.searchRecyclerView?.adapter = null
                 }
                 // end icon is used as dropdown trigger; searching is done via IME or the search end icon inside TextInputLayout if desired
             }

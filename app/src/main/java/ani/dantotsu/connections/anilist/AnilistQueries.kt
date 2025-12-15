@@ -511,7 +511,7 @@ class AnilistQueries {
                     0,
                     User(
                         Anilist.userid!!,
-                        Anilist.username!!,
+                        Anilist.username ?: "",
                         Anilist.avatar,
                         Anilist.bg,
                         activity = listOf()
@@ -724,9 +724,9 @@ class AnilistQueries {
         )
         if (image.url.isNullOrEmpty() || image.checkTime()) {
             val response =
-                executeQuery<Query.MediaListCollection>("""{ MediaListCollection(userId: ${Anilist.userid}, type: $type, chunk:1,perChunk:25, sort: [SCORE_DESC,UPDATED_TIME_DESC]) { lists { entries{ media { id bannerImage } } } } } """)
+                executeQuery<Query.MediaListCollection>("""{ MediaListCollection(userId: ${Anilist.userid}, type: $type, chunk:1,perChunk:25, sort: [SCORE_DESC,UPDATED_TIME_DESC]) { lists { entries{ media { id bannerImage isAdult } } } } } """)
             val random = response?.data?.mediaListCollection?.lists?.mapNotNull {
-                it.entries?.mapNotNull { entry ->
+                it.entries?.filter {i -> i.media?.isAdult != true  }?.mapNotNull { entry ->
                     val imageUrl = entry.media?.bannerImage
                     if (imageUrl != null && imageUrl != "null") imageUrl
                     else null
@@ -1303,7 +1303,7 @@ class AnilistQueries {
             return page?.airingSchedules?.mapNotNull { i ->
                 i.media?.takeIf { !idArr.contains(it.id) }?.let {
                     val shouldAdd = when {
-                        !listOnly && it.countryOfOrigin == "JP" && adultOnly && it.isAdult == true -> true
+                        !listOnly && adultOnly && it.isAdult == true -> true
                         !listOnly && !adultOnly && it.countryOfOrigin == "JP" && it.isAdult == false -> true
                         listOnly && it.mediaListEntry != null -> true
                         else -> false

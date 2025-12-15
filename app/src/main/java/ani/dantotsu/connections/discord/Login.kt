@@ -2,6 +2,7 @@ package ani.dantotsu.connections.discord
 
 import android.annotation.SuppressLint
 import android.app.Application.getProcessName
+import android.graphics.Bitmap
 import android.os.Build
 import android.os.Bundle
 import android.webkit.WebResourceRequest
@@ -13,6 +14,7 @@ import ani.dantotsu.R
 import ani.dantotsu.connections.discord.Discord.saveToken
 import ani.dantotsu.startMainActivity
 import ani.dantotsu.themes.ThemeManager
+import org.json.JSONObject
 
 class Login : AppCompatActivity() {
 
@@ -36,31 +38,37 @@ class Login : AppCompatActivity() {
         }
         WebView.setWebContentsDebuggingEnabled(true)
         webView.webViewClient = object : WebViewClient() {
+            override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
+                super.onPageStarted(view, url, favicon)
+                view?.evaluateJavascript(
+                    """window.LOCAL_STORAGE = localStorage""".trimIndent()
+                ) {}
+            }
+
             override fun shouldOverrideUrlLoading(
                 view: WebView?,
                 request: WebResourceRequest?
             ): Boolean {
-                // Check if the URL is the one expected after a successful login
-                if (request?.url.toString() != "https://discord.com/login") {
-                    // Delay the script execution to ensure the page is fully loaded
+                val currentUrl = request?.url.toString()
+                android.util.Log.d("WebView", "Navigating to: $currentUrl")
+
+                if (currentUrl != "https://discord.com/login") {
                     view?.postDelayed({
                         view.evaluateJavascript(
                             """
-                    (function() {
-                        const wreq = (webpackChunkdiscord_app.push([[''],{},e=>{m=[];for(let c in e.c)m.push(e.c[c])}]),m).find(m=>m?.exports?.default?.getToken!==void 0).exports.default.getToken();
-                        return wreq;
-                    })()
-                """.trimIndent()
+                    (function() { 
+                        return window.LOCAL_STORAGE.getItem('token');
+                    })();
+                    """.trimIndent()
                         ) { result ->
-                            login(result.trim('"'))
+                            val token = result?.let {
+                                JSONObject("{\"token\":$it}").getString("token")
+                            } ?: ""
+                            login( token.trim('"'))
                         }
                     }, 2000)
                 }
                 return super.shouldOverrideUrlLoading(view, request)
-            }
-
-            override fun onPageFinished(view: WebView?, url: String?) {
-                super.onPageFinished(view, url)
             }
         }
 
