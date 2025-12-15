@@ -21,6 +21,7 @@ import ani.dantotsu.connections.mal.MAL
 import ani.dantotsu.copyToClipboard
 import ani.dantotsu.databinding.FragmentMediaInfoBinding
 import ani.dantotsu.databinding.ItemChipBinding
+import ani.dantotsu.databinding.ItemChipSynonymBinding
 import ani.dantotsu.databinding.ItemTitleChipgroupBinding
 import ani.dantotsu.databinding.ItemTitleRecyclerBinding
 import ani.dantotsu.isOnline
@@ -426,7 +427,7 @@ class MALInfoFragment : Fragment() {
             )
             bind.itemTitle.setText(R.string.synonyms)
             malData.alternativeTitles.synonyms.forEach { synonym ->
-                val chip = ItemChipBinding.inflate(
+                val chip = ItemChipSynonymBinding.inflate(
                     LayoutInflater.from(context),
                     bind.itemChipGroup,
                     false
@@ -601,7 +602,7 @@ class MALInfoFragment : Fragment() {
             )
             bind.itemTitle.setText(R.string.synonyms)
             malData.alternativeTitles.synonyms.forEach { synonym ->
-                val chip = ItemChipBinding.inflate(
+                val chip = ItemChipSynonymBinding.inflate(
                     LayoutInflater.from(context),
                     bind.itemChipGroup,
                     false

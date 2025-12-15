@@ -36,6 +36,7 @@ import ani.dantotsu.currActivity
 import ani.dantotsu.databinding.ActivityGenreBinding
 import ani.dantotsu.databinding.FragmentMediaInfoBinding
 import ani.dantotsu.databinding.ItemChipBinding
+import ani.dantotsu.databinding.ItemChipSynonymBinding
 import ani.dantotsu.databinding.ItemQuelsBinding
 import ani.dantotsu.databinding.ItemTitleChipgroupBinding
 import ani.dantotsu.databinding.ItemTitleRecyclerBinding
@@ -380,7 +381,7 @@ class AniListInfoFragment : Fragment() {
                         false
                     )
                     for (position in media.synonyms.indices) {
-                        val chip = ItemChipBinding.inflate(
+                        val chip = ItemChipSynonymBinding.inflate(
                             LayoutInflater.from(context),
                             bind.itemChipGroup,
                             false

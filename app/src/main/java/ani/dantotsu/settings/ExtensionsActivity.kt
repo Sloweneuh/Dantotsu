@@ -139,6 +139,12 @@ class ExtensionsActivity : AppCompatActivity() {
             }
         }.attach()
 
+        // Set initial tab if provided in intent
+        val initialTab = intent.getIntExtra("tab", -1)
+        if (initialTab in 0..5) {
+            viewPager.setCurrentItem(initialTab, false)
+        }
+
 
         searchView.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) {

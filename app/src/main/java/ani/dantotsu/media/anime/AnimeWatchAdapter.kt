@@ -132,6 +132,7 @@ class AnimeWatchAdapter(
 
         binding.mediaSourceNameContainer.isGone = offline
         binding.mediaSourceSettings.isGone = offline
+        binding.mediaSourceAddExtension.isGone = offline
         binding.mediaSourceSearch.isGone = offline
         binding.mediaSourceTitle.isGone = offline
 
@@ -179,6 +180,13 @@ class AnimeWatchAdapter(
             }
             subscribeButton(false)
             fragment.loadEpisodes(i, false)
+        }
+
+        // Add Extension Button
+        binding.mediaSourceAddExtension.setOnClickListener {
+            val intent = Intent(fragment.requireContext(), ani.dantotsu.settings.ExtensionsActivity::class.java)
+            intent.putExtra("tab", 1) // 1 = Available Anime tab
+            startActivity(fragment.requireContext(), intent, null)
         }
 
         binding.mediaSourceLanguage.setOnItemClickListener { _, _, i, _ ->
@@ -336,6 +344,17 @@ class AnimeWatchAdapter(
 
     fun subscribeButton(enabled: Boolean) {
         subscribe?.enabled(enabled)
+    }
+
+    fun refreshSourceList() {
+        // Update the adapter with the new source list
+        _binding?.mediaSource?.setAdapter(
+            ArrayAdapter(
+                fragment.requireContext(),
+                R.layout.item_dropdown,
+                watchSources.names
+            )
+        )
     }
 
     // Chips

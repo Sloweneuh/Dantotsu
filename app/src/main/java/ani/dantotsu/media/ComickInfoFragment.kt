@@ -16,6 +16,7 @@ import ani.dantotsu.connections.malsync.MalSyncApi
 import ani.dantotsu.copyToClipboard
 import ani.dantotsu.databinding.FragmentMediaInfoBinding
 import ani.dantotsu.databinding.ItemChipBinding
+import ani.dantotsu.databinding.ItemChipSynonymBinding
 import ani.dantotsu.databinding.ItemTitleTextBinding
 import ani.dantotsu.isOnline
 import ani.dantotsu.navBarHeight
@@ -487,6 +488,42 @@ class ComickInfoFragment : Fragment() {
             } else {
                 android.animation.ObjectAnimator.ofInt(binding.mediaInfoDescription, "maxLines", 5)
                     .setDuration(400).start()
+            }
+        }
+
+        // Add Synonyms / Alternative Titles (English only from md_titles)
+        val mdTitles = comic.md_titles
+        if (!mdTitles.isNullOrEmpty()) {
+            // Filter for English titles only
+            val englishTitles = mdTitles.filter {
+                it.lang?.equals("en", ignoreCase = true) == true && !it.title.isNullOrBlank()
+            }.mapNotNull { it.title }
+
+            if (englishTitles.isNotEmpty() && parent.findViewWithTag<View>("synonyms_comick") == null) {
+                val bind = ani.dantotsu.databinding.ItemTitleChipgroupBinding.inflate(
+                    LayoutInflater.from(context),
+                    parent,
+                    false
+                )
+                bind.itemTitle.text = "Synonyms"
+
+                englishTitles.forEach { title ->
+                    val chip = ItemChipSynonymBinding.inflate(
+                        LayoutInflater.from(context),
+                        bind.itemChipGroup,
+                        false
+                    ).root
+                    chip.text = title
+                    chip.setOnLongClickListener {
+                        copyToClipboard(title)
+                        Toast.makeText(requireContext(), "Copied: $title", Toast.LENGTH_SHORT).show()
+                        true
+                    }
+                    bind.itemChipGroup.addView(chip)
+                }
+
+                bind.root.tag = "synonyms_comick"
+                parent.addView(bind.root)
             }
         }
 

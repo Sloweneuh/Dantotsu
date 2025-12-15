@@ -137,6 +137,7 @@ class MangaReadAdapter(
 
         binding.mediaSourceNameContainer.isGone = offline
         binding.mediaSourceSettings.isGone = offline
+        binding.mediaSourceAddExtension.isGone = offline
         binding.mediaSourceSearch.isGone = offline
         binding.mediaSourceTitle.isGone = offline
         // Source Selection
@@ -185,6 +186,13 @@ class MangaReadAdapter(
             // Invalidate if it's the last source
             val invalidate = i == mangaReadSources.names.size - 1
             fragment.loadChapters(i, invalidate)
+        }
+
+        // Add Extension Button
+        binding.mediaSourceAddExtension.setOnClickListener {
+            val intent = Intent(fragment.requireContext(), ani.dantotsu.settings.ExtensionsActivity::class.java)
+            intent.putExtra("tab", 3) // 3 = Available Manga tab
+            ContextCompat.startActivity(fragment.requireContext(), intent, null)
         }
 
         binding.mediaSourceLanguage.setOnItemClickListener { _, _, i, _ ->
@@ -437,6 +445,17 @@ class MangaReadAdapter(
 
     fun subscribeButton(enabled: Boolean) {
         subscribe?.enabled(enabled)
+    }
+
+    fun refreshSourceList() {
+        // Update the adapter with the new source list
+        _binding?.mediaSource?.setAdapter(
+            ArrayAdapter(
+                fragment.requireContext(),
+                R.layout.item_dropdown,
+                mangaReadSources.names
+            )
+        )
     }
 
     // Chips

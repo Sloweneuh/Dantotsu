@@ -639,6 +639,11 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
         binding.mediaInfoProgressBar.visibility = progress
         binding.mediaSourceRecycler.layoutManager?.onRestoreInstanceState(state)
 
+        // Refresh source list in case new extensions were installed
+        if (::headerAdapter.isInitialized) {
+            headerAdapter.refreshSourceList()
+        }
+
         requireActivity().setNavigationTheme()
     }
 

@@ -539,7 +539,7 @@ class MangaUpdatesInfoFragment : Fragment() {
             bind.itemTitle.setText(ani.dantotsu.R.string.synonyms)
             series.associated.forEach { assoc ->
                 assoc.title?.let { title ->
-                    val chip = ani.dantotsu.databinding.ItemChipBinding.inflate(LayoutInflater.from(context), bind.itemChipGroup, false).root
+                    val chip = ani.dantotsu.databinding.ItemChipSynonymBinding.inflate(LayoutInflater.from(context), bind.itemChipGroup, false).root
                     chip.text = title
                     chip.setOnLongClickListener { copyToClipboard(title); true }
                     bind.itemChipGroup.addView(chip)
