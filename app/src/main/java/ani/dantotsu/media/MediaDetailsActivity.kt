@@ -304,7 +304,8 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
             }
 
             // Fetch MalSync data for manga to show latest available chapter
-            if (media.manga != null && isOnline(this)) {
+            // Don't show for manga marked as COMPLETED
+            if (media.manga != null && isOnline(this) && media.userStatus != "COMPLETED") {
                 lifecycleScope.launch(Dispatchers.IO) {
                     try {
                         val malSyncResult = ani.dantotsu.connections.malsync.MalSyncApi.getLastChapter(media.id, media.idMAL)

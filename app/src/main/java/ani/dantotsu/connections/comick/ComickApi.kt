@@ -99,6 +99,8 @@ object ComickApi {
             last_chapter = highestLastChapter ?: primary.last_chapter, // Use highest last_chapter
             chapter_count = primary.chapter_count ?: allComics.firstNotNullOfOrNull { it.chapter_count },
             demographic = primary.demographic ?: allComics.firstNotNullOfOrNull { it.demographic },
+            final_chapter = primary.final_chapter ?: allComics.firstNotNullOfOrNull { it.final_chapter },
+            final_volume = primary.final_volume ?: allComics.firstNotNullOfOrNull { it.final_volume },
             has_anime = primary.has_anime ?: allComics.firstNotNullOfOrNull { it.has_anime },
             anime = primary.anime ?: allComics.firstNotNullOfOrNull { it.anime },
             mu_comics = primary.mu_comics ?: allComics.firstNotNullOfOrNull { it.mu_comics },

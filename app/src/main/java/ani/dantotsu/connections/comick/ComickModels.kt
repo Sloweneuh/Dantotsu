@@ -23,6 +23,8 @@ data class ComickComic(
     val last_chapter: Double?,
     val chapter_count: Int?,
     val demographic: Int?,
+    val final_chapter: String?,
+    val final_volume: String?,
     val has_anime: Boolean?,
     val anime: ComickAnimeInfo?,
     val mu_comics: ComickMuComics?,

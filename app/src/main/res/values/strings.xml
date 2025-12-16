@@ -141,6 +141,8 @@
     <string name="chapters"> Chapter(s)</string>
     <string name="total_divider"> | %1$s</string>
     <string name="total_chaps">Total Chapters</string>
+    <string name="latest_chapter">Latest Chapter</string>
+    <string name="final_chapter">Final Chapter</string>
     <string name="ep_duration">Average Duration</string>
     <string name="min">" min"</string>
     <string name="season">Season</string>

@@ -468,11 +468,73 @@ class ComickInfoFragment : Fragment() {
         // Ranking (follow_rank)
         binding.mediaInfoFavorites.text = "#${comic.follow_rank ?: "??"}"
 
-        // Total Chapters
-        binding.mediaInfoTotalTitle.setText(ani.dantotsu.R.string.total_chaps)
-        binding.mediaInfoTotal.text = comic.last_chapter?.let {
-            if (it % 1.0 == 0.0) it.toInt().toString() else it.toString()
-        } ?: "??"
+        // Check if we should hide Latest Chapter (when completed and latest >= final)
+        val finalChapterStr = comic.final_chapter
+        val isCompleted = comic.status == 2 // 2 = Completed
+        val isTranslationCompleted = comic.translation_completed == true
+        val lastChapter = comic.last_chapter
+
+        // Parse final_chapter string to Double for comparison
+        val finalChapterNum = finalChapterStr?.toDoubleOrNull()
+
+        // Debug logging
+        ani.dantotsu.util.Logger.log("Comick: Latest Chapter Debug - lastChapter=$lastChapter, finalChapter=$finalChapterStr, finalChapterNum=$finalChapterNum")
+        ani.dantotsu.util.Logger.log("Comick: Status - isCompleted=$isCompleted, isTranslationCompleted=$isTranslationCompleted")
+
+        // Hide latest chapter if:
+        // 1. Both status and translation are completed
+        // 2. Latest chapter exists and final chapter exists
+        // 3. Latest chapter is >= final chapter (handles cases like 26.5 vs 26)
+        val shouldHideLatestChapter = isCompleted && isTranslationCompleted &&
+                                      lastChapter != null && finalChapterNum != null &&
+                                      lastChapter >= finalChapterNum
+
+        ani.dantotsu.util.Logger.log("Comick: shouldHideLatestChapter=$shouldHideLatestChapter")
+
+        // Latest Chapter - hide if both status and translation are completed and latest >= final
+        if (shouldHideLatestChapter) {
+            binding.mediaInfoTotal.parent?.let { parent ->
+                if (parent is ViewGroup) {
+                    parent.visibility = View.GONE
+                }
+            }
+        } else {
+            binding.mediaInfoTotal.parent?.let { parent ->
+                if (parent is ViewGroup) {
+                    parent.visibility = View.VISIBLE
+                }
+            }
+            binding.mediaInfoTotalTitle.setText(ani.dantotsu.R.string.latest_chapter)
+            binding.mediaInfoTotal.text = lastChapter?.let {
+                if (it % 1.0 == 0.0) it.toInt().toString() else it.toString()
+            } ?: "??"
+        }
+
+        // Final Chapter (using duration container)
+        val finalVolume = comic.final_volume
+        if (finalChapterStr != null || finalVolume != null) {
+            binding.mediaInfoDurationContainer.visibility = View.VISIBLE
+
+            // Change the label to "Final Chapter"
+            binding.mediaInfoDurationContainer.let { container ->
+                if (container.childCount > 0) {
+                    val label = container.getChildAt(0)
+                    if (label is android.widget.TextView) {
+                        label.text = getString(ani.dantotsu.R.string.final_chapter)
+                    }
+                }
+            }
+
+            // Format the text based on what's available
+            binding.mediaInfoDuration.text = when {
+                finalVolume != null && finalChapterStr != null -> "Volume $finalVolume, Chapter $finalChapterStr"
+                finalChapterStr != null -> "Chapter $finalChapterStr"
+                finalVolume != null -> "Volume $finalVolume"
+                else -> "??"
+            }
+        } else {
+            binding.mediaInfoDurationContainer.visibility = View.GONE
+        }
 
         // Description
         val rawDescription = comic.parsed ?: comic.desc ?: "No description available"
