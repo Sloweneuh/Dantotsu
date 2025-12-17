@@ -166,7 +166,9 @@ class MangaReaderActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        mangaCache.clear()
+        ani.dantotsu.util.Logger.log("MangaReaderActivity.onDestroy: clearing cache (size: ${mangaCache.size()})")
+        // Don't clear cache on destroy - let LRU manage it and preserve cache for reloads
+        // mangaCache.clear()
         if (DiscordServiceRunningSingleton.running) {
             DiscordServiceRunningSingleton.running = false
             val stopIntent = Intent(this, DiscordService::class.java)
@@ -323,7 +325,9 @@ class MangaReaderActivity : AppCompatActivity() {
 
         //Chapter Change
         fun change(index: Int) {
-            mangaCache.clear()
+            ani.dantotsu.util.Logger.log("Chapter change to index $index (cache size: ${mangaCache.size()})")
+            // Don't clear cache - let LRU manage memory and allow extension client to work on reloads
+            // mangaCache.clear()
             PrefManager.setCustomVal(
                 "${media.id}_${chaptersArr[currentChapterIndex]}",
                 currentChapterPage

@@ -383,9 +383,12 @@ class DynamicMangaParser(extension: MangaExtension.Installed) : MangaParser() {
 
                 val deferreds = reIndexedPages.map { page ->
                     async(Dispatchers.IO) {
-                        mangaCache.put(page.imageUrl ?: "", ImageData(page, source))
+                        // Normalize cache key: prefer imageUrl, fallback to uri or page.url
+                        val key = page.imageUrl ?: page.uri?.toString() ?: page.url ?: ""
+                        Logger.log("MangaCache PUT: key='$key', chapter=${sChapter.url}, index=${page.index}")
+                        mangaCache.put(key, ImageData(page, source))
                         imageDataList += ImageData(page, source)
-                        Logger.log("put page: ${page.imageUrl}")
+                        Logger.log("put page: $key")
                         pageToMangaImage(page)
                     }
                 }
@@ -473,13 +476,14 @@ class DynamicMangaParser(extension: MangaExtension.Installed) : MangaParser() {
 
     private fun pageToMangaImage(page: Page): MangaImage {
         var headersMap = mapOf<String, String>()
-        var url = ""
+        // Use imageUrl when available, otherwise fall back to page.url
+        val resolvedUrl = page.imageUrl ?: page.url ?: ""
 
-        page.imageUrl?.let {
+        resolvedUrl.takeIf { it.isNotEmpty() }?.let {
             val splitUrl = it.split("&")
-            url = it
-
-            headersMap = splitUrl.mapNotNull { part ->
+            // Keep the full resolved URL as the FileUrl.url
+            // Extract additional header-like key=value pairs if present after the first part
+            headersMap = splitUrl.drop(1).mapNotNull { part ->
                 val idx = part.indexOf("=")
                 if (idx != -1) {
                     try {
@@ -496,7 +500,7 @@ class DynamicMangaParser(extension: MangaExtension.Installed) : MangaParser() {
         }
 
         return MangaImage(
-            FileUrl(url, headersMap),
+            FileUrl(resolvedUrl, headersMap),
             false,
             page
         )

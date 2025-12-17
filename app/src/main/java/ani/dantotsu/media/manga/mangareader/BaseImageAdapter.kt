@@ -170,40 +170,76 @@ abstract class BaseImageAdapter(
             return tryWithSuspend {
                 val mangaCache = uy.kohesive.injekt.Injekt.get<MangaCache>()
                 withContext(Dispatchers.IO) {
-                    Glide.with(this@loadBitmap)
-                        .asBitmap()
-                        .let {
-                            val localFile = File(link.url)
-                            if (localFile.exists()) {
-                                it.load(localFile.absoluteFile)
-                                    .skipMemoryCache(true)
-                                    .diskCacheStrategy(DiskCacheStrategy.NONE)
-                            } else if (link.url.startsWith("content://")) {
-                                it.load(Uri.parse(link.url))
-                                    .skipMemoryCache(true)
-                                    .diskCacheStrategy(DiskCacheStrategy.NONE)
-                            } else {
-                                mangaCache.get(link.url)?.let { imageData ->
-                                    val bitmap = imageData.fetchAndProcessImage(
-                                        imageData.page,
-                                        imageData.source
-                                    )
-                                    it.load(bitmap)
-                                        .skipMemoryCache(true)
-                                        .diskCacheStrategy(DiskCacheStrategy.NONE)
+                    val localFile = File(link.url)
+                    if (localFile.exists()) {
+                        return@withContext Glide.with(this@loadBitmap)
+                            .asBitmap()
+                            .load(localFile.absoluteFile)
+                            .skipMemoryCache(true)
+                            .diskCacheStrategy(DiskCacheStrategy.NONE)
+                            .let {
+                                if (transforms.isNotEmpty()) {
+                                    it.transform(*transforms.toTypedArray())
+                                } else {
+                                    it
                                 }
-
                             }
+                            .submit()
+                            .get()
+                    }
+                    
+                    if (link.url.startsWith("content://")) {
+                        return@withContext Glide.with(this@loadBitmap)
+                            .asBitmap()
+                            .load(Uri.parse(link.url))
+                            .skipMemoryCache(true)
+                            .diskCacheStrategy(DiskCacheStrategy.NONE)
+                            .let {
+                                if (transforms.isNotEmpty()) {
+                                    it.transform(*transforms.toTypedArray())
+                                } else {
+                                    it
+                                }
+                            }
+                            .submit()
+                            .get()
+                    }
+                    
+                    // For remote URLs, check if we have extension source data
+                    val imageData = mangaCache.get(link.url)
+                    ani.dantotsu.util.Logger.log("MangaCache GET: key='${link.url}', found=${imageData != null}")
+                    if (imageData != null) {
+                        // Use extension's client (includes interceptors like ImageInterceptor)
+                        ani.dantotsu.util.Logger.log("Using extension client for: ${link.url}")
+                        val bitmap = imageData.fetchAndProcessImage(
+                            imageData.page,
+                            imageData.source
+                        )
+                        // Apply transforms if needed
+                        if (bitmap != null && transforms.isNotEmpty()) {
+                            return@withContext Glide.with(this@loadBitmap)
+                                .asBitmap()
+                                .load(bitmap)
+                                .transform(*transforms.toTypedArray())
+                                .submit()
+                                .get()
                         }
-                        ?.let {
+                        return@withContext bitmap
+                    }
+                    
+                    // Fallback to standard Glide for URLs without extension source
+                    return@withContext Glide.with(this@loadBitmap)
+                        .asBitmap()
+                        .load(GlideUrl(link.url) { link.headers })
+                        .let {
                             if (transforms.isNotEmpty()) {
                                 it.transform(*transforms.toTypedArray())
                             } else {
                                 it
                             }
                         }
-                        ?.submit()
-                        ?.get()
+                        .submit()
+                        .get()
                 }
             }
         }
