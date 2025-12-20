@@ -160,13 +160,15 @@ class MALInfoFragment : Fragment() {
     }
 
     private fun showNotLoggedIn(media: ani.dantotsu.media.Media?) {
-        binding.mediaInfoProgressBar.visibility = View.GONE
-        binding.mediaInfoContainer.visibility = View.GONE
+        // Use local nullable binding to avoid NPE if view is destroyed while coroutine resumes
+        val b = _binding ?: return
+        b.mediaInfoProgressBar.visibility = View.GONE
+        b.mediaInfoContainer.visibility = View.GONE
 
         if (media == null) return
 
         val hasData = media.idMAL != null
-        val frameLayout = binding.mediaInfoContainer.parent as? ViewGroup
+        val frameLayout = b.mediaInfoContainer.parent as? ViewGroup
 
         frameLayout?.let { container ->
             // Use fragment_mal_not_logged_in.xml with login button
@@ -261,17 +263,22 @@ class MALInfoFragment : Fragment() {
     }
 
     private fun showError(message: String) {
-        binding.mediaInfoProgressBar.visibility = View.GONE
-        binding.mediaInfoContainer.visibility = View.VISIBLE
+        // Avoid NPE if view destroyed before this runs
+        _binding?.let { b ->
+            b.mediaInfoProgressBar.visibility = View.GONE
+            b.mediaInfoContainer.visibility = View.VISIBLE
+        }
         Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
     }
 
     private fun showNoDataWithSearch(media: ani.dantotsu.media.Media) {
-        binding.mediaInfoProgressBar.visibility = View.GONE
-        binding.mediaInfoContainer.visibility = View.GONE
+        // Use local nullable binding to avoid NPE if view is destroyed while coroutine resumes
+        val b = _binding ?: return
+        b.mediaInfoProgressBar.visibility = View.GONE
+        b.mediaInfoContainer.visibility = View.GONE
 
         val hasData = media.idMAL != null
-        val frameLayout = binding.mediaInfoContainer.parent as? ViewGroup
+        val frameLayout = b.mediaInfoContainer.parent as? ViewGroup
 
         frameLayout?.let { container ->
             // Use fragment_mangaupdates_page.xml (logged in, no login button)

@@ -1,7 +1,6 @@
 package ani.dantotsu.connections.mangaupdates
 
 import ani.dantotsu.Mapper
-import ani.dantotsu.client
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.tryWithSuspend
@@ -49,7 +48,7 @@ object MangaUpdates {
                 httpClient.newCall(request).execute()
             }
 
-            val responseBody = response.body?.string()
+            val responseBody = extractBody(response)
             if (!response.isSuccessful || responseBody.isNullOrBlank()) {
                 Logger.log("MangaUpdates Login: Failed with code ${response.code}")
                 return@tryWithSuspend false
@@ -102,7 +101,7 @@ object MangaUpdates {
                 httpClient.newCall(request).execute()
             }
 
-            val responseBody = response.body?.string()
+            val responseBody = extractBody(response)
             if (!response.isSuccessful || responseBody == null || responseBody.isBlank()) {
                 Logger.log("MangaUpdates Profile: Failed with code ${response.code}")
                 return@tryWithSuspend null
@@ -193,7 +192,7 @@ object MangaUpdates {
                 httpClient.newCall(request).execute()
             }
 
-            val responseBody = response.body?.string()
+            val responseBody = extractBody(response)
             if (!response.isSuccessful || responseBody == null || responseBody.isBlank()) {
                 Logger.log("MangaUpdates Search: Failed with code ${response.code}")
                 return@tryWithSuspend null
@@ -236,7 +235,7 @@ object MangaUpdates {
                 }
             }
 
-            val responseBody = response.body?.string()
+            val responseBody = extractBody(response)
             if (!response.isSuccessful || responseBody.isNullOrBlank()) {
                 Logger.log("MangaUpdates GetSeries: Failed with code ${response.code}")
                 return@tryWithSuspend null
@@ -304,7 +303,7 @@ object MangaUpdates {
                 httpClient.newCall(request).execute()
             }
 
-            val html = response.body?.string()
+            val html = extractBody(response)
             if (!response.isSuccessful || html.isNullOrBlank()) {
                 Logger.log("MangaUpdates Scrape: Failed to fetch page for slug '$urlSlug'")
                 return@tryWithSuspend null
@@ -373,30 +372,83 @@ object MangaUpdates {
      */
     suspend fun getSeriesFromUrl(urlOrId: String): MUSeriesRecord? {
         return tryWithSuspend {
-            // Check if it's a numeric ID
-            val numericId = urlOrId.toLongOrNull()
+            // Prefer resolving the canonical numeric identifier via the page's JSON-LD script
+            val numericIdFromInput = urlOrId.toLongOrNull()
 
-            if (numericId != null) {
-                // It's a numeric ID, fetch directly
-                Logger.log("MangaUpdates GetFromUrl: Using numeric ID $numericId")
-                return@tryWithSuspend getSeriesDetails(numericId)
+            // Build the page URL to fetch: numeric input uses series.html?id=..., slug uses /series/<slug>
+            val pageUrl = if (numericIdFromInput != null) {
+                "$WEB_URL/series.html?id=$numericIdFromInput"
+            } else {
+                "$WEB_URL/series/$urlOrId"
             }
 
-            // It's a URL slug - try direct API call first (some slugs work directly)
-            Logger.log("MangaUpdates GetFromUrl: Trying direct API call with slug '$urlOrId'")
+            Logger.log("MangaUpdates GetFromUrl: Fetching page for canonical id extraction: $pageUrl")
+
+            try {
+                val pageRequest = Request.Builder().url(pageUrl).get().build()
+                val pageResponse = withContext(Dispatchers.IO) { httpClient.newCall(pageRequest).execute() }
+
+                val pageHtml = extractBody(pageResponse)
+                if (!pageHtml.isNullOrBlank()) {
+                    try {
+                        val ldRegex = Regex("(?is)<script[^>]*type=['\"]application/ld\\+json['\"][^>]*>(.*?)</script>")
+                        val ldMatch = ldRegex.find(pageHtml)
+                        if (ldMatch != null) {
+                            val jsonLd = ldMatch.groupValues[1]
+                            val idRegexSimple = Regex("\"identifier\"\\s*:\\s*(\\d+)")
+                            val idMatch = idRegexSimple.find(jsonLd)
+                            val ldId = idMatch?.groupValues?.get(1)?.toLongOrNull()
+                            if (ldId != null) {
+                                Logger.log("MangaUpdates GetFromUrl: Found JSON-LD identifier $ldId, trying numeric API")
+                                val byLdId = getSeriesDetails(ldId)
+                                if (byLdId != null) return@tryWithSuspend byLdId
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Logger.log("MangaUpdates GetFromUrl: JSON-LD parsing failed: ${e.message}")
+                    }
+                }
+
+                // If JSON-LD not present or didn't yield a working id, try fallback routes.
+                // 1) If input was numeric, try the numeric API (might still work)
+                if (numericIdFromInput != null) {
+                    Logger.log("MangaUpdates GetFromUrl: Trying numeric API for input id $numericIdFromInput as fallback")
+                    val directById = getSeriesDetails(numericIdFromInput)
+                    if (directById != null) return@tryWithSuspend directById
+                }
+
+                // 2) Try to check the final request URL to get a slug
+                val finalUrl = pageResponse.request.url.toString()
+                Logger.log("MangaUpdates GetFromUrl: Page final URL: $finalUrl")
+                val possibleSlug = finalUrl.substringAfterLast('/').substringBefore('?')
+                if (possibleSlug.isNotBlank() && possibleSlug != numericIdFromInput?.toString()) {
+                    Logger.log("MangaUpdates GetFromUrl: Found possible slug '$possibleSlug', trying slug-based API")
+                    val bySlug = tryDirectApiCall(possibleSlug)
+                    if (bySlug != null) return@tryWithSuspend bySlug
+
+                    // 3) As a last fallback, use search-based lookup
+                    val lookedUpId = lookupSeriesIdFromSlug(possibleSlug)
+                    if (lookedUpId != null) return@tryWithSuspend getSeriesDetails(lookedUpId)
+                }
+            } catch (e: Exception) {
+                Logger.log("MangaUpdates GetFromUrl: Page fetch/extract failed: ${e.message}")
+            }
+
+            // Final fallback: try direct slug/id API and then search
+            Logger.log("MangaUpdates GetFromUrl: Falling back to direct API and search for '$urlOrId'")
+            // Try direct API call with given identifier (slug or id string)
             val directResult = tryDirectApiCall(urlOrId)
-            if (directResult != null) {
-                Logger.log("MangaUpdates GetFromUrl: Direct API call succeeded")
-                return@tryWithSuspend directResult
+            if (directResult != null) return@tryWithSuspend directResult
+
+            // Try numeric input direct details if not already tried
+            numericIdFromInput?.let { id ->
+                val details = getSeriesDetails(id)
+                if (details != null) return@tryWithSuspend details
             }
 
-            // Direct call failed, try looking it up via scraping
-            Logger.log("MangaUpdates GetFromUrl: Direct call failed, trying lookup via scraping")
+            // Last resort: use search/lookup by title
             val seriesId = lookupSeriesIdFromSlug(urlOrId)
-
-            if (seriesId != null) {
-                return@tryWithSuspend getSeriesDetails(seriesId)
-            }
+            if (seriesId != null) return@tryWithSuspend getSeriesDetails(seriesId)
 
             Logger.log("MangaUpdates GetFromUrl: All methods failed for '$urlOrId'")
             null
@@ -427,7 +479,7 @@ object MangaUpdates {
                 return@tryWithSuspend null
             }
 
-            val responseBody = response.body?.string()
+            val responseBody = extractBody(response)
             if (responseBody == null || responseBody.isBlank()) {
                 return@tryWithSuspend null
             }
@@ -435,5 +487,13 @@ object MangaUpdates {
             Mapper.parse<MUSeriesRecord>(responseBody)
         }
     }
-}
 
+    // helper to read okhttp response bodies safely
+    private fun extractBody(response: okhttp3.Response): String? {
+        return try {
+            response.body?.string()
+        } catch (_: Exception) {
+            null
+        }
+    }
+}

@@ -82,15 +82,11 @@ class MangaUpdatesInfoFragment : Fragment() {
         }
 
         model.mangaUpdatesLink.observe(viewLifecycleOwner) { muLink ->
-            if (currentMedia != null) {
-                checkAndDisplay(model, currentMedia!!)
-            }
+            currentMedia?.let { checkAndDisplay(model, it) }
         }
 
         model.mangaUpdatesLoaded.observe(viewLifecycleOwner) { muLoaded ->
-            if (muLoaded && currentMedia != null) {
-                checkAndDisplay(model, currentMedia!!)
-            }
+            if (muLoaded) currentMedia?.let { checkAndDisplay(model, it) }
         }
     }
 
@@ -112,8 +108,8 @@ class MangaUpdatesInfoFragment : Fragment() {
         binding.mediaInfoContainer.visibility = View.VISIBLE
 
         if (muLink != null) {
-            // Extract series slug/ID from MU link
-            val seriesIdentifier = muLink.substringAfterLast("/")
+            // Extract series slug/ID from MU link (handles numeric id query param and slugs)
+            val seriesIdentifier = extractMUIdentifier(muLink)
 
             // Check login status and fetch data if logged in
             lifecycleScope.launch(Dispatchers.IO) {
@@ -123,7 +119,7 @@ class MangaUpdatesInfoFragment : Fragment() {
                 withContext(Dispatchers.Main) {
                     if (isLoggedIn && seriesIdentifier.isNotBlank()) {
                         Logger.log("MangaUpdates Fragment: Fetching details for $seriesIdentifier")
-                        fetchAndDisplayDetails(seriesIdentifier, muLink)
+                        fetchAndDisplayDetails(seriesIdentifier, muLink, media)
                     } else {
                         // Not logged in, just show the button to open the link
                         showMangaUpdatesButton(muLink)
@@ -136,7 +132,47 @@ class MangaUpdatesInfoFragment : Fragment() {
         }
     }
 
-    private fun fetchAndDisplayDetails(seriesIdentifier: String, muLink: String) {
+    // Helper: extract either numeric series ID (from ?id=), the slug from a MangaUpdates link, or return id directly
+    private fun extractMUIdentifier(muLink: String): String {
+        // If the input is already a simple ID (numeric or alphanumeric slug), return it as-is
+        val simpleIdPattern = Regex("^[A-Za-z0-9_-]+$")
+        if (muLink.matches(simpleIdPattern)) return muLink
+
+        try {
+            val uri = Uri.parse(muLink)
+            // Prefer explicit id query parameter
+            val idParam = uri.getQueryParameter("id")
+            if (!idParam.isNullOrBlank()) return idParam
+
+            // Fallback to last path segment
+            val path = uri.path ?: ""
+            var lastSeg = path.trimEnd('/').substringAfterLast('/')
+
+            // If the link contains series.html?id=... without proper parsing above, try to extract after '='
+            if (lastSeg.isBlank() && muLink.contains("=")) {
+                val afterEq = muLink.substringAfter('=', "")
+                if (afterEq.isNotBlank()) return afterEq
+            }
+
+            // If lastSeg still contains query params (e.g., "series.html?id=159827"), strip them
+            if (lastSeg.contains("?")) {
+                lastSeg = lastSeg.substringBefore('?')
+            }
+
+            // If the last segment looks like "series.html", try to extract id manually
+            if (lastSeg.contains("series.html") && muLink.contains("id=")) {
+                val afterEq = muLink.substringAfter("id=", "")
+                if (afterEq.isNotBlank()) return afterEq.substringBefore('&')
+            }
+
+            return lastSeg
+        } catch (e: Exception) {
+            // Fallback: return last path-like token
+            return muLink.substringAfterLast('/')
+        }
+    }
+
+    private fun fetchAndDisplayDetails(seriesIdentifier: String, muLink: String, media: Media) {
         Logger.log("MangaUpdates Fragment: Starting to fetch details for identifier: $seriesIdentifier")
         Logger.log("MangaUpdates Fragment: Full MU link: $muLink")
         Logger.log("MangaUpdates Fragment: Token available: ${MangaUpdates.token != null}")
@@ -159,11 +195,16 @@ class MangaUpdatesInfoFragment : Fragment() {
                         Logger.log("MangaUpdates Fragment: Successfully fetched details for '${seriesDetails.title}'")
                         Logger.log("MangaUpdates Fragment: Series has description: ${seriesDetails.description != null}")
                         Logger.log("MangaUpdates Fragment: Series has genres: ${seriesDetails.genres?.size ?: 0}")
-                        displaySeriesDetails(seriesDetails, muLink)
+                        displaySeriesDetails(seriesDetails)
                     } else {
-                        Logger.log("MangaUpdates Fragment: API returned null, showing button instead")
+                        Logger.log("MangaUpdates Fragment: API returned null")
                         android.widget.Toast.makeText(requireContext(), "Could not fetch MangaUpdates data", android.widget.Toast.LENGTH_SHORT).show()
-                        showMangaUpdatesButton(muLink)
+                        // If we're logged in, show quick search UI instead of the login fallback
+                        if (isLoggedIn) {
+                            showNoDataWithSearch(media)
+                        } else {
+                            showMangaUpdatesButton(muLink)
+                        }
                     }
                 }
             } catch (e: Exception) {
@@ -173,7 +214,11 @@ class MangaUpdatesInfoFragment : Fragment() {
                     binding.mediaInfoProgressBar.visibility = View.GONE
                     binding.mediaInfoContainer.visibility = View.VISIBLE
                     android.widget.Toast.makeText(requireContext(), "Error: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
-                    showMangaUpdatesButton(muLink)
+                    if (isLoggedIn) {
+                        showNoDataWithSearch(media)
+                    } else {
+                        showMangaUpdatesButton(muLink)
+                    }
                 }
             }
         }
@@ -324,7 +369,7 @@ class MangaUpdatesInfoFragment : Fragment() {
             )
 
             // Set title
-            pageView.findViewById<android.widget.TextView>(R.id.title)?.text = "Search on MangaUpdates"
+            pageView.findViewById<android.widget.TextView>(R.id.title)?.text = getString(ani.dantotsu.R.string.mu_no_data_title)
 
             // Single button: Quick Search (since we don't have a link)
             pageView.findViewById<com.google.android.material.button.MaterialButton>(ani.dantotsu.R.id.quickSearchButton)?.apply {
@@ -339,7 +384,7 @@ class MangaUpdatesInfoFragment : Fragment() {
         }
     }
 
-    private fun displaySeriesDetails(series: ani.dantotsu.connections.mangaupdates.MUSeriesRecord, muLink: String) {
+    private fun displaySeriesDetails(series: ani.dantotsu.connections.mangaupdates.MUSeriesRecord) {
         binding.mediaInfoProgressBar.visibility = View.GONE
         binding.mediaInfoContainer.visibility = View.VISIBLE
 
@@ -615,5 +660,3 @@ class MangaUpdatesInfoFragment : Fragment() {
         }
     }
 }
-
-

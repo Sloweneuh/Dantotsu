@@ -1149,5 +1149,8 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="quicklinks">Quicklinks</string>
     <string name="mu_search_title">Search on MangaUpdates</string>
     <string name="mu_no_data_title">Search on MangaUpdates</string>
+    <string name="mu_title_format">%1$s%2$s</string>
+    <string name="unknown_title">Unknown Title</string>
+    <string name="mu_desc_format">%1$s%2$s</string>
 
 </resources>
