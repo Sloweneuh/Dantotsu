@@ -125,7 +125,13 @@ class MediaDetailsViewModel : ViewModel() {
                         val comickData = comickApi.getComicDetails(comickSlugValue)
                         val muLink = comickData?.comic?.links?.mu
                         if (!muLink.isNullOrBlank()) {
-                            mangaUpdatesLink.postValue("https://www.mangaupdates.com/series/$muLink")
+                            // If the muLink is purely numeric, use the series.html?id= fallback; otherwise assume it's a slug.
+                            val link = if (muLink.trim().toLongOrNull() != null) {
+                                "https://www.mangaupdates.com/series.html?id=${muLink.trim()}"
+                            } else {
+                                "https://www.mangaupdates.com/series/${muLink.trim()}"
+                            }
+                            mangaUpdatesLink.postValue(link)
                         } else {
                             mangaUpdatesLink.postValue(null)
                         }
