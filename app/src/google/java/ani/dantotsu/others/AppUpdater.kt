@@ -89,7 +89,20 @@ object AppUpdater {
         return response.changelog to response.version
     }
 
-    private suspend fun fetchApkUrl(repo: String, version: String, isDebug: Boolean): String? {
+    private suspend fun fetchApkUrl(repo: String, version: String, isDebug: Boolean, stableMd: String? = null): String? {
+        // For stable builds: stable.md supplies the version; construct the canonical GitHub releases download URL
+        // This keeps the stable path to a single network call (we already fetched stable.md to get version).
+        if (!isDebug) {
+            try {
+                // Most repos publish the APK under a predictable asset name — default to the app-google-release.apk used by CI
+                val constructed = "https://github.com/$repo/releases/download/$version/app-google-release.apk"
+                return constructed
+            } catch (e: Exception) {
+                Logger.log("Failed to construct APK URL for stable release: ${e.message}")
+            }
+            // If the constructed URL doesn't work at runtime, the download will fail and we will fall back to the fallback endpoint.
+        }
+
         return try {
             fetchApkUrlFromGithub(repo, version)
         } catch (e: Exception) {
@@ -104,11 +117,23 @@ object AppUpdater {
     }
 
     private suspend fun fetchApkUrlFromGithub(repo: String, version: String): String? {
-        val apks = client.get("https://api.github.com/repos/$repo/releases/tags/v$version")
-            .parsed<GithubResponse>().assets?.filter {
-                it.browserDownloadURL.endsWith(".apk")
-            }
-        return apks?.firstOrNull()?.browserDownloadURL
+        // Always use the releases list endpoint and filter by tag_name to find the matching release
+        try {
+            val res = client.get("https://api.github.com/repos/$repo/releases")
+                .parsed<JsonArray>().map { Mapper.json.decodeFromJsonElement<GithubResponse>(it) }
+
+            // Find exact match for tag (either with or without a leading 'v')
+            val match = res.firstOrNull { it.tagName == version || it.tagName == "v$version" }
+                ?: res.firstOrNull { it.tagName.equals(version, ignoreCase = true) || it.tagName.equals("v$version", ignoreCase = true) }
+
+            val apk = match?.assets?.firstOrNull { it.browserDownloadURL.endsWith(".apk") }?.browserDownloadURL
+            if (!apk.isNullOrBlank()) return apk
+
+        } catch (e: Exception) {
+            Logger.log("Github releases list fetch failed: ${e.message}")
+        }
+
+        return null
     }
 
     private suspend fun fetchApkUrlFromFallback(version: String, isDebug: Boolean): String? {
@@ -153,7 +178,7 @@ object AppUpdater {
                     setPositiveButton(currContext()!!.getString(R.string.lets_go)) {
                         MainScope().launch(Dispatchers.IO) {
                             try {
-                                val apkUrl = fetchApkUrl(repo, version, BuildConfig.DEBUG)
+                                val apkUrl = fetchApkUrl(repo, version, BuildConfig.DEBUG, md)
                                 if (apkUrl != null) {
                                     activity.downloadUpdate(version, apkUrl)
                                 } else {
