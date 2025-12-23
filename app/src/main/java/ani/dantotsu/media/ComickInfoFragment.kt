@@ -1,5 +1,6 @@
 package ani.dantotsu.media
 
+import android.annotation.SuppressLint
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -99,7 +100,7 @@ class ComickInfoFragment : Fragment() {
                 ani.dantotsu.util.Logger.log("Comick: Not yet loaded, will process")
                 ani.dantotsu.util.Logger.log("Comick: Starting to load data for ${m.userPreferredName}")
                 ani.dantotsu.util.Logger.log("Comick: Media has ${m.externalLinks.size} external links at observer trigger")
-                lifecycleScope.launch {
+                viewLifecycleOwner.lifecycleScope.launch {
                     try {
                         binding.mediaInfoProgressBar.visibility = View.VISIBLE
                         binding.mediaInfoContainer.visibility = View.GONE
@@ -324,8 +325,7 @@ class ComickInfoFragment : Fragment() {
             pageView.findViewById<android.widget.ImageView>(ani.dantotsu.R.id.logo)?.setImageResource(ani.dantotsu.R.drawable.ic_round_comick_24)
 
             // Set title for Comick
-            pageView.findViewById<android.widget.TextView>(ani.dantotsu.R.id.title)?.text =
-                "Search on Comick"
+            pageView.findViewById<android.widget.TextView>(ani.dantotsu.R.id.title)?.setText(ani.dantotsu.R.string.search_on_comick)
 
             // Single button: Quick Search
             pageView.findViewById<com.google.android.material.button.MaterialButton>(ani.dantotsu.R.id.quickSearchButton)?.apply {
@@ -340,7 +340,7 @@ class ComickInfoFragment : Fragment() {
         }
     }
 
-    @Suppress("SetTextI18n")
+    @SuppressLint("SetTextI18n")
     private fun displayComickInfo(comickData: ComickResponse) {
         if (_binding == null) {
             ani.dantotsu.util.Logger.log("Comick: binding is null in displayComickInfo")
@@ -752,7 +752,7 @@ class ComickInfoFragment : Fragment() {
         // Add Recommendations - Show Comick's recommendations but reuse AniList data for matches
         val recommendations = comic.recommendations
         if (!recommendations.isNullOrEmpty() && parent.findViewWithTag<View>("recommendations_comick") == null) {
-            lifecycleScope.launch {
+            viewLifecycleOwner.lifecycleScope.launch {
                 val model: MediaDetailsViewModel by activityViewModels()
                 val currentAnilistId = model.getMedia().value?.id
                 val anilistRecommendations = model.getMedia().value?.recommendations
@@ -830,4 +830,3 @@ class ComickInfoFragment : Fragment() {
         }
     }
 }
-

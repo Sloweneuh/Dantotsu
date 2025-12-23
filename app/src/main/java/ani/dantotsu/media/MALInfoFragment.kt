@@ -700,6 +700,9 @@ class MALInfoFragment : Fragment() {
             "finished_airing", "finished" -> "Finished"
             "currently_airing", "currently_publishing" -> "Releasing"
             "not_yet_aired", "not_yet_published" -> "Not Yet Released"
+            "on_hiatus", "on_hold" -> "On Hiatus"
+            "cancelled" -> "Cancelled"
+
             else -> status?.replaceFirstChar { it.uppercase() } ?: "Unknown"
         }
     }

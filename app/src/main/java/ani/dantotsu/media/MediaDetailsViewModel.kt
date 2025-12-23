@@ -34,6 +34,8 @@ import com.bumptech.glide.load.resource.bitmap.BitmapTransformation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
+import ani.dantotsu.connections.mangaupdates.MangaUpdates
+import ani.dantotsu.connections.mangaupdates.MUSeriesRecord
 
 class MediaDetailsViewModel : ViewModel() {
     val scrolledToTop = MutableLiveData(true)
@@ -44,17 +46,21 @@ class MediaDetailsViewModel : ViewModel() {
     val mangaUpdatesLoaded = MutableLiveData(false)
     val mangaUpdatesLoading = MutableLiveData(false)
 
-    // Flag to prevent duplicate preloading
-    private var hasPreloadedExternalData = false
+    // New: Hold preloaded MangaUpdates series details (or null if none)
+    val mangaUpdatesSeries = MutableLiveData<MUSeriesRecord?>(null)
+    val mangaUpdatesError = MutableLiveData<String?>(null)
+
+    // Replace boolean flag with last preloaded media id to avoid cross-media cache issues
+    private var lastPreloadedMediaId: Int? = null
 
     /**
      * Preload Comick and MangaUpdates data in the background for manga entries.
      * This allows tab states to update immediately without waiting for fragment loading.
      */
     fun preloadExternalData(media: Media) {
-        // Only preload for manga and only once
-        if (media.anime != null || hasPreloadedExternalData) return
-        hasPreloadedExternalData = true
+        // Only preload for manga and only once per media
+        if (media.anime != null || lastPreloadedMediaId == media.id) return
+        lastPreloadedMediaId = media.id
 
         MainScope().launch(Dispatchers.IO) {
             try {
@@ -120,6 +126,9 @@ class MediaDetailsViewModel : ViewModel() {
 
                 // If we found a Comick slug, fetch details to get MangaUpdates link
                 mangaUpdatesLoading.postValue(true)
+                mangaUpdatesError.postValue(null)
+                mangaUpdatesSeries.postValue(null)
+
                 if (comickSlugValue != null) {
                     try {
                         val comickData = comickApi.getComicDetails(comickSlugValue)
@@ -132,14 +141,41 @@ class MediaDetailsViewModel : ViewModel() {
                                 "https://www.mangaupdates.com/series/${muLink.trim()}"
                             }
                             mangaUpdatesLink.postValue(link)
+
+                            // Only attempt to fetch the series details if user is logged in to MangaUpdates
+                            try {
+                                val loggedIn = MangaUpdates.getSavedToken()
+                                if (loggedIn) {
+                                    val seriesIdentifier = extractMUIdentifier(link)
+                                    if (seriesIdentifier.isNotBlank()) {
+                                        try {
+                                            val seriesDetails = MangaUpdates.getSeriesFromUrl(seriesIdentifier)
+                                            mangaUpdatesSeries.postValue(seriesDetails)
+                                        } catch (e: Exception) {
+                                            mangaUpdatesSeries.postValue(null)
+                                            mangaUpdatesError.postValue(e.message)
+                                        }
+                                    }
+                                } else {
+                                    // Not logged in - do not attempt full fetch; fragment will show login UI
+                                    mangaUpdatesSeries.postValue(null)
+                                }
+                            } catch (e: Exception) {
+                                // If checking token or fetching failed, record error but continue
+                                mangaUpdatesSeries.postValue(null)
+                                mangaUpdatesError.postValue(e.message)
+                            }
                         } else {
                             mangaUpdatesLink.postValue(null)
+                            mangaUpdatesSeries.postValue(null)
                         }
                     } catch (e: Exception) {
                         mangaUpdatesLink.postValue(null)
+                        mangaUpdatesSeries.postValue(null)
                     }
                 } else {
                     mangaUpdatesLink.postValue(null)
+                    mangaUpdatesSeries.postValue(null)
                 }
                 mangaUpdatesLoading.postValue(false)
                 mangaUpdatesLoaded.postValue(true)
@@ -149,7 +185,71 @@ class MediaDetailsViewModel : ViewModel() {
                 mangaUpdatesLink.postValue(null)
                 mangaUpdatesLoading.postValue(false)
                 mangaUpdatesLoaded.postValue(true)
+                mangaUpdatesSeries.postValue(null)
+                mangaUpdatesError.postValue(e.message)
             }
+        }
+    }
+
+    // Public fallback fetch method: ask ViewModel to fetch MU series by identifier (used by fragment if needed)
+    fun fetchMangaUpdatesSeriesByIdentifier(seriesIdentifier: String) {
+        if (seriesIdentifier.isBlank() || mangaUpdatesLoading.value == true) return
+        mangaUpdatesLoading.postValue(true)
+        mangaUpdatesError.postValue(null)
+        MainScope().launch(Dispatchers.IO) {
+            try {
+                val series = MangaUpdates.getSeriesFromUrl(seriesIdentifier)
+                mangaUpdatesSeries.postValue(series)
+                mangaUpdatesLoaded.postValue(true)
+            } catch (e: Exception) {
+                mangaUpdatesSeries.postValue(null)
+                mangaUpdatesError.postValue(e.message)
+                mangaUpdatesLoaded.postValue(true)
+            } finally {
+                mangaUpdatesLoading.postValue(false)
+            }
+        }
+    }
+
+    // Helper: extract either numeric series ID (from ?id=), the slug from a MangaUpdates link, or return id directly
+    private fun extractMUIdentifier(muLinkRaw: String?): String {
+        if (muLinkRaw.isNullOrBlank()) return ""
+        val muLink = muLinkRaw.trim()
+        // If the input is already a simple ID (numeric or alphanumeric slug), return it as-is
+        val simpleIdPattern = Regex("^[A-Za-z0-9_-]+$")
+        if (muLink.matches(simpleIdPattern)) return muLink
+
+        return try {
+            val uri = android.net.Uri.parse(muLink)
+            // Prefer explicit id query parameter
+            val idParam = uri.getQueryParameter("id")
+            if (!idParam.isNullOrBlank()) return idParam
+
+            // Fallback to last path segment
+            val path = uri.path ?: ""
+            var lastSeg = path.trimEnd('/').substringAfterLast('/')
+
+            // If the link contains series.html?id=... without proper parsing above, try to extract after '='
+            if (lastSeg.isBlank() && muLink.contains("=")) {
+                val afterEq = muLink.substringAfter('=', "")
+                if (afterEq.isNotBlank()) return afterEq
+            }
+
+            // If lastSeg still contains query params (e.g., "series.html?id=159827"), strip them
+            if (lastSeg.contains("?")) {
+                lastSeg = lastSeg.substringBefore('?')
+            }
+
+            // If the last segment looks like "series.html", try to extract id manually
+            if (lastSeg.contains("series.html") && muLink.contains("id=")) {
+                val afterEq = muLink.substringAfter("id=", "")
+                if (afterEq.isNotBlank()) return afterEq.substringBefore('&')
+            }
+
+            lastSeg
+        } catch (e: Exception) {
+            // Fallback: return last path-like token
+            muLink.substringAfterLast('/')
         }
     }
 

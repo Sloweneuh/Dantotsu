@@ -1,5 +1,6 @@
 package ani.dantotsu.media
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -65,7 +66,7 @@ class MangaUpdatesInfoFragment : Fragment() {
             return
         }
 
-        // Check if user is logged in to MangaUpdates
+        // Observe login status in background
         lifecycleScope.launch(Dispatchers.IO) {
             isLoggedIn = MangaUpdates.getSavedToken()
             Logger.log("MangaUpdates Fragment: Login status = $isLoggedIn")
@@ -88,6 +89,18 @@ class MangaUpdatesInfoFragment : Fragment() {
         model.mangaUpdatesLoaded.observe(viewLifecycleOwner) { muLoaded ->
             if (muLoaded) currentMedia?.let { checkAndDisplay(model, it) }
         }
+
+        // New: observe preloaded series details and display immediately if available
+        model.mangaUpdatesSeries.observe(viewLifecycleOwner) { series ->
+            if (series != null) {
+                // If we already displayed content, skip
+                if (loaded) return@observe
+                loaded = true
+                binding.mediaInfoProgressBar.visibility = View.GONE
+                binding.mediaInfoContainer.visibility = View.VISIBLE
+                displaySeriesDetails(series)
+            }
+        }
     }
 
     private fun checkAndDisplay(model: MediaDetailsViewModel, media: Media) {
@@ -102,6 +115,8 @@ class MangaUpdatesInfoFragment : Fragment() {
             return
         }
 
+        // If ViewModel already preloaded the series details, the observer above will handle displaying it.
+        // At this point, either there is no MU link or preload didn't fetch the series (e.g., not logged in).
         // MangaUpdates has finished loading, now we can decide what to show
         loaded = true
         binding.mediaInfoProgressBar.visibility = View.GONE
@@ -118,8 +133,15 @@ class MangaUpdatesInfoFragment : Fragment() {
 
                 withContext(Dispatchers.Main) {
                     if (isLoggedIn && seriesIdentifier.isNotBlank()) {
-                        Logger.log("MangaUpdates Fragment: Fetching details for $seriesIdentifier")
-                        fetchAndDisplayDetails(seriesIdentifier, muLink, media)
+                        // Try to use ViewModel's preloaded data first
+                        val preloaded = model.mangaUpdatesSeries.value
+                        if (preloaded != null) {
+                            displaySeriesDetails(preloaded)
+                        } else {
+                            // Not preloaded (maybe not logged in earlier) -> fetch now via ViewModel
+                            Logger.log("MangaUpdates Fragment: Fetching details for $seriesIdentifier")
+                            model.fetchMangaUpdatesSeriesByIdentifier(seriesIdentifier)
+                        }
                     } else {
                         // Not logged in, just show the button to open the link
                         showMangaUpdatesButton(muLink)
@@ -384,6 +406,7 @@ class MangaUpdatesInfoFragment : Fragment() {
         }
     }
 
+    @SuppressLint("SetTextI18n")
     private fun displaySeriesDetails(series: ani.dantotsu.connections.mangaupdates.MUSeriesRecord) {
         binding.mediaInfoProgressBar.visibility = View.GONE
         binding.mediaInfoContainer.visibility = View.VISIBLE
