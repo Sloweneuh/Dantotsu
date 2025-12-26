@@ -1,6 +1,6 @@
-# 3.2.4
+# 3.2.5
 
 - **Bugfixes:**
-  - Fixed a crash related to quitting a manga info page before the info from Comick was loaded
-  - Fixed a bug that prevented the MangaUpdates data from being loaded before going on the Comick or MangaUpdates tabs
-  - Fixed a display issue with some media status in the MyAnimeList tab
+  - Fixed a bug preventing users from expending the anime info in the MangaUpdates tab
+  - Trimmed MangaUpdates synopsis further
+  - Fixed a bug that broke MangaUpdates tab display when logging in from the tab.

@@ -150,6 +150,7 @@ class MediaDetailsViewModel : ViewModel() {
                                     if (seriesIdentifier.isNotBlank()) {
                                         try {
                                             val seriesDetails = MangaUpdates.getSeriesFromUrl(seriesIdentifier)
+                                            Logger.log("MediaDetailsViewModel: Preload fetched series for id=$seriesIdentifier -> title=${seriesDetails?.title}")
                                             mangaUpdatesSeries.postValue(seriesDetails)
                                         } catch (e: Exception) {
                                             mangaUpdatesSeries.postValue(null)
@@ -193,12 +194,15 @@ class MediaDetailsViewModel : ViewModel() {
 
     // Public fallback fetch method: ask ViewModel to fetch MU series by identifier (used by fragment if needed)
     fun fetchMangaUpdatesSeriesByIdentifier(seriesIdentifier: String) {
-        if (seriesIdentifier.isBlank() || mangaUpdatesLoading.value == true) return
+        if (seriesIdentifier.isBlank()) return
+        // Allow explicit fetch requests from the fragment even if a preload previously set loading=true.
+        Logger.log("MediaDetailsViewModel: fetchMangaUpdatesSeriesByIdentifier starting for id=$seriesIdentifier")
         mangaUpdatesLoading.postValue(true)
         mangaUpdatesError.postValue(null)
         MainScope().launch(Dispatchers.IO) {
             try {
                 val series = MangaUpdates.getSeriesFromUrl(seriesIdentifier)
+                Logger.log("MediaDetailsViewModel: Fallback fetch result for id=$seriesIdentifier -> title=${series?.title}")
                 mangaUpdatesSeries.postValue(series)
                 mangaUpdatesLoaded.postValue(true)
             } catch (e: Exception) {

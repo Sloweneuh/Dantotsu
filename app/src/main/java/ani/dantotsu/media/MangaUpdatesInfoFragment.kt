@@ -93,12 +93,19 @@ class MangaUpdatesInfoFragment : Fragment() {
         // New: observe preloaded series details and display immediately if available
         model.mangaUpdatesSeries.observe(viewLifecycleOwner) { series ->
             if (series != null) {
-                // If we already displayed content, skip
-                if (loaded) return@observe
-                loaded = true
+                Logger.log("MangaUpdates Fragment: ViewModel provided series: title=${series.title}, genres=${series.genres?.size ?: 0}")
+                // Avoid re-rendering the same series; allow rendering if UI is empty or showing fallback
+                val currentTitle = binding.mediaInfoName.text?.toString()?.trim()
+                if (!currentTitle.isNullOrBlank() && series.title != null && currentTitle.contains(series.title!!, ignoreCase = true)) {
+                    // Already showing this series — nothing to do
+                    return@observe
+                }
+
+                // Display the series (displaySeriesDetails will clear fallbacks and mark loaded)
                 binding.mediaInfoProgressBar.visibility = View.GONE
                 binding.mediaInfoContainer.visibility = View.VISIBLE
                 displaySeriesDetails(series)
+                loaded = true
             }
         }
     }
@@ -116,41 +123,74 @@ class MangaUpdatesInfoFragment : Fragment() {
         }
 
         // If ViewModel already preloaded the series details, the observer above will handle displaying it.
-        // At this point, either there is no MU link or preload didn't fetch the series (e.g., not logged in).
-        // MangaUpdates has finished loading, now we can decide what to show
-        loaded = true
-        binding.mediaInfoProgressBar.visibility = View.GONE
-        binding.mediaInfoContainer.visibility = View.VISIBLE
+        // At this point we decide what UI to show. We must NOT mark `loaded = true` if we still need to fetch
+        // data (so the mangaUpdatesSeries observer can display it later). Only set `loaded` when we actually
+        // add a static/fallback view or display the series directly.
 
-        if (muLink != null) {
-            // Extract series slug/ID from MU link (handles numeric id query param and slugs)
-            val seriesIdentifier = extractMUIdentifier(muLink)
+        val seriesIdentifier = muLink?.let { extractMUIdentifier(it) } ?: ""
 
-            // Check login status and fetch data if logged in
-            lifecycleScope.launch(Dispatchers.IO) {
-                isLoggedIn = MangaUpdates.getSavedToken()
-                Logger.log("MangaUpdates Fragment: Login status = $isLoggedIn")
+        Logger.log("MangaUpdates Fragment: checkAndDisplay decision: muLink=$muLink, muHasLoaded=$muHasLoaded, isLoggedIn(approx)=$isLoggedIn")
+        // Check login status and decide
+        lifecycleScope.launch(Dispatchers.IO) {
+            isLoggedIn = MangaUpdates.getSavedToken()
+            Logger.log("MangaUpdates Fragment: Login status = $isLoggedIn")
 
-                withContext(Dispatchers.Main) {
+            withContext(Dispatchers.Main) {
+                // If the ViewModel did not provide a MU link, try to find one in the media's external links
+                var effectiveMuLink = muLink
+                if (effectiveMuLink.isNullOrBlank()) {
+                    try {
+                        val extLinks = media.externalLinks
+                        extLinks.forEach { linkEntry ->
+                            val candidate = linkEntry.getOrNull(1) ?: linkEntry.getOrNull(0)
+                            if (!candidate.isNullOrBlank() && candidate.contains("mangaupdates", ignoreCase = true)) {
+                                effectiveMuLink = candidate
+                                return@forEach
+                            }
+                        }
+                    } catch (_: Exception) {
+                        // ignore
+                    }
+                }
+
+                // Copy effectiveMuLink into an immutable local to avoid smart-cast issues
+                val tmpLink = effectiveMuLink
+                if (tmpLink != null) {
+                    val link = tmpLink.trim()
+                    Logger.log("MangaUpdates Fragment: Using MU link (vm or external): $link")
+                    // derive identifier from the effective link
+                    val seriesIdentifier = extractMUIdentifier(link)
+                    Logger.log("MangaUpdates Fragment: Derived seriesIdentifier=$seriesIdentifier")
+
                     if (isLoggedIn && seriesIdentifier.isNotBlank()) {
                         // Try to use ViewModel's preloaded data first
                         val preloaded = model.mangaUpdatesSeries.value
                         if (preloaded != null) {
+                            // Display immediately and mark loaded
+                            Logger.log("MangaUpdates Fragment: Using preloaded series from ViewModel: ${preloaded.title}")
                             displaySeriesDetails(preloaded)
+                            loaded = true
                         } else {
-                            // Not preloaded (maybe not logged in earlier) -> fetch now via ViewModel
+                            // Need to fetch now -> show progress and wait for observer to populate
                             Logger.log("MangaUpdates Fragment: Fetching details for $seriesIdentifier")
+                            binding.mediaInfoProgressBar.visibility = View.VISIBLE
+                            binding.mediaInfoContainer.visibility = View.GONE
+                            // Do not set loaded; observer will display when data arrives
                             model.fetchMangaUpdatesSeriesByIdentifier(seriesIdentifier)
                         }
                     } else {
-                        // Not logged in, just show the button to open the link
-                        showMangaUpdatesButton(muLink)
+                        // Not logged in, show login/open fallback and mark loaded
+                        Logger.log("MangaUpdates Fragment: Not logged in — showing fallback login view")
+                        showMangaUpdatesButton(link)
+                        loaded = true
                     }
+                } else {
+                    // No MU link found, show search buttons and mark loaded
+                    Logger.log("MangaUpdates Fragment: No MU link found — showing search fallback")
+                    showNoDataWithSearch(media)
+                    loaded = true
                 }
             }
-        } else {
-            // No MU link found, show search buttons
-            showNoDataWithSearch(media)
         }
     }
 
@@ -263,8 +303,23 @@ class MangaUpdatesInfoFragment : Fragment() {
                 setPadding(padding, padding, padding, padding)
                 textSize = 16f
             }
+            // Tag so it can be removed later when switching to the real info view
+            errorView.tag = "mu_fallback_view"
             it.addView(errorView)
         }
+    }
+
+    // Remove any previously-added fallback views (login / no-data / error) so the real info UI can be shown cleanly
+    private fun clearFallbackViews() {
+        val parent = binding.mediaInfoContainer.parent as? ViewGroup ?: return
+        val toRemove = mutableListOf<View>()
+        for (i in 0 until parent.childCount) {
+            val child = parent.getChildAt(i)
+            if (child.tag == "mu_fallback_view") {
+                toRemove.add(child)
+            }
+        }
+        toRemove.forEach { parent.removeView(it) }
     }
 
     private fun showMangaUpdatesButton(muLink: String) {
@@ -273,12 +328,17 @@ class MangaUpdatesInfoFragment : Fragment() {
 
         val frameLayout = binding.mediaInfoContainer.parent as? ViewGroup
         frameLayout?.let { container ->
+            // Remove any previous fallback views to avoid stacking multiple pages
+            clearFallbackViews()
             // Use fragment_not_logged_in.xml with login button
             val notLoggedInView = layoutInflater.inflate(
                 ani.dantotsu.R.layout.fragment_not_logged_in,
                 container,
                 false
             )
+
+            // Mark it so we can remove it later when the real content is ready
+            notLoggedInView.tag = "mu_fallback_view"
 
             // Set icon
             notLoggedInView.findViewById<android.widget.ImageView>(R.id.logo)?.setImageDrawable(
@@ -297,7 +357,10 @@ class MangaUpdatesInfoFragment : Fragment() {
             notLoggedInView.findViewById<com.google.android.material.button.MaterialButton>(ani.dantotsu.R.id.connectButton)?.setOnClickListener {
                 val loginDialog = MangaUpdatesLoginDialog()
                 loginDialog.setOnLoginSuccessListener {
-                    // Reload the fragment to show data
+                    // Remove the fallback UI immediately, show progress and re-check
+                    clearFallbackViews()
+                    binding.mediaInfoProgressBar.visibility = View.VISIBLE
+                    binding.mediaInfoContainer.visibility = View.GONE
                     loaded = false
                     isLoggedIn = true
                     val model: MediaDetailsViewModel by activityViewModels()
@@ -319,8 +382,11 @@ class MangaUpdatesInfoFragment : Fragment() {
             }
 
             container.addView(notLoggedInView)
-        }
-    }
+            Logger.log("MangaUpdates Fragment: Added not-logged-in fallback view for link=$muLink")
+             // We've shown a fallback view; mark as loaded so we don't attempt to re-render
+             loaded = true
+         }
+     }
 
     private fun showQuickSearchModal(media: Media) {
         val context = requireContext()
@@ -379,11 +445,16 @@ class MangaUpdatesInfoFragment : Fragment() {
         // Use the page layout for no-data case
         val frameLayout = binding.mediaInfoContainer.parent as? ViewGroup
         frameLayout?.let { container ->
+            // Remove previous fallback views to avoid duplicates
+            clearFallbackViews()
             val pageView = layoutInflater.inflate(
                 ani.dantotsu.R.layout.fragment_nodata_page,
                 container,
                 false
             )
+
+            // Tag so it can be removed later
+            pageView.tag = "mu_fallback_view"
 
             //set icon
             pageView.findViewById<android.widget.ImageView>(R.id.logo)?.setImageDrawable(
@@ -403,14 +474,22 @@ class MangaUpdatesInfoFragment : Fragment() {
             }
 
             container.addView(pageView)
+            // Mark loaded after adding the fallback page
+            Logger.log("MangaUpdates Fragment: Added no-data fallback page")
+            loaded = true
         }
     }
 
     @SuppressLint("SetTextI18n")
     private fun displaySeriesDetails(series: ani.dantotsu.connections.mangaupdates.MUSeriesRecord) {
+        // Remove any previously shown fallback (login / no-data / error) before displaying details
+        clearFallbackViews()
         binding.mediaInfoProgressBar.visibility = View.GONE
         binding.mediaInfoContainer.visibility = View.VISIBLE
 
+        // We are now displaying real series data; mark as loaded so observers won't overwrite later
+        loaded = true
+        Logger.log("MangaUpdates Fragment: displaySeriesDetails - title=${series.title}, descriptionPresent=${!series.description.isNullOrBlank()}")
         val tripleTab = "\t\t\t"
 
         // Set up the standard fields first
@@ -505,17 +584,44 @@ class MangaUpdatesInfoFragment : Fragment() {
             binding.mediaInfoFavorites.text = "??"
         }
 
-        // Description (extract only synopsis, remove links section)
+        // Description (extract only synopsis, remove any text that was supposed to be italic/bold/links)
         val fullDesc = series.description ?: getString(ani.dantotsu.R.string.no_description_available)
-        val desc = if (fullDesc.contains("**Original Webtoon:**", ignoreCase = true)) {
-            fullDesc.substringBefore("**Original Webtoon:**").trim()
-        } else if (fullDesc.contains("**Official Translation", ignoreCase = true)) {
-            fullDesc.substringBefore("**Official Translation").trim()
-        } else {
-            fullDesc.trim()
+
+        //Remove markdown links entirely
+        val linkPattern = Regex("""\[(.*?)\]\(.*?\)""")
+        val descNoLinks = linkPattern.replace(fullDesc) { matchResult ->
+            "" // Remove the entire link, including the text
+        }.replace(Regex("""\n{3,}"""), "\n\n")
+
+
+        val italicPattern = Regex("""\*(.*?)\*""")
+        val boldPattern = Regex("""\*\*(.*?)\*\*""")
+        val parenthesisPattern = Regex("""\((.*?)\)""")
+        val descNoMarkdown = italicPattern.replace(descNoLinks) { matchResult ->
+            "" // Remove text inside single asterisks
+        }.let { intermediate ->
+            boldPattern.replace(intermediate) { matchResult ->
+                "" // Remove text inside double asterisks
+            }
+        }.let { intermediate2 ->
+            parenthesisPattern.replace(intermediate2) { matchResult ->
+                "" // Remove text inside parentheses
+            }
         }
 
-        binding.mediaInfoDescription.text = tripleTab + desc
+        //Remove isolated asterisks, underscores, parentheses and other markdown chars
+        val markdownCharsPattern = Regex("""[\*\_\`\~\|\>\#\-\+\=]""")
+        val descNoMarkdownChars = markdownCharsPattern.replace(descNoMarkdown, "")
+
+        //Remove isolated brackets, parentheses and similar
+        val bracketsPattern = Regex("""[\[\]\(\)\{\}]""")
+        val descNoBrackets = bracketsPattern.replace(descNoMarkdownChars, "")
+
+
+
+
+
+        binding.mediaInfoDescription.text = tripleTab + descNoBrackets
         binding.mediaInfoDescription.setOnClickListener {
             if (binding.mediaInfoDescription.maxLines == 5) {
                 android.animation.ObjectAnimator.ofInt(binding.mediaInfoDescription, "maxLines", 100).setDuration(950).start()
@@ -595,6 +701,15 @@ class MangaUpdatesInfoFragment : Fragment() {
                     if (!anime.end.isNullOrBlank()) {
                         if (isNotEmpty()) append("\n")
                         append("End: ${anime.end}")
+                    }
+                }
+
+                //Make expendable on click
+                bind.itemText.setOnClickListener {
+                    if (bind.itemText.maxLines == 3) {
+                        android.animation.ObjectAnimator.ofInt(bind.itemText, "maxLines", 100).setDuration(400).start()
+                    } else {
+                        android.animation.ObjectAnimator.ofInt(bind.itemText, "maxLines", 3).setDuration(400).start()
                     }
                 }
                 parent.addView(bind.root)
