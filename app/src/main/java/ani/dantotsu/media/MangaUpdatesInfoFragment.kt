@@ -617,11 +617,13 @@ class MangaUpdatesInfoFragment : Fragment() {
         val bracketsPattern = Regex("""[\[\]\(\)\{\}]""")
         val descNoBrackets = bracketsPattern.replace(descNoMarkdownChars, "")
 
+        //Remove excessive newlines
+        val excessiveNewlinesPattern = Regex("""\n{3,}""")
+        val descCleaned = excessiveNewlinesPattern.replace(descNoBrackets, "\n\n")
 
 
 
-
-        binding.mediaInfoDescription.text = tripleTab + descNoBrackets
+        binding.mediaInfoDescription.text = tripleTab + descCleaned.trim()
         binding.mediaInfoDescription.setOnClickListener {
             if (binding.mediaInfoDescription.maxLines == 5) {
                 android.animation.ObjectAnimator.ofInt(binding.mediaInfoDescription, "maxLines", 100).setDuration(950).start()
