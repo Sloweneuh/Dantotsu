@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <array name="default_score_range">
+        <item>0.0</item>
+        <item>100.0</item>
+    </array>
+    <array name="default_year_range">
+        <item>1970.0</item>
+        <item>2028.0</item>
+    </array>
+</resources>
+

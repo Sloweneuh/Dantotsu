@@ -396,9 +396,16 @@
     <string name="donate_desc">Want to support Dantotsu\'s Maintainer?\nConsider Donating</string>
     <string name="donate_goal">No donation goal atm</string>
     <string name="filter">Filter</string>
+    <string name="filter_by_genre">Filter by Genre</string>
+    <string name="reset_filters">Reset Filters</string>
+    <string name="country_filter">Country Filter</string>
+    <string name="adult_tags">18+</string>
+    <string name="score_range">Score Range</string>
+    <string name="year_range">Year Range</string>
     <string name="year">Year</string>
     <string name="apply">Apply</string>
     <string name="cancel">Cancel</string>
+    <string name="clear">Clear</string>
     <string name="searching">Searching…</string>
     <string name="search_timeout">Search timed out. This source may be slow on your network.</string>
     <string name="edit">Edit</string>

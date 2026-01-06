@@ -313,9 +313,9 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                             val lastChapter = malSyncResult.lastEp.total
                             val userProgress = media.userProgress ?: 0
 
-                            // Only update if there are unread chapters
-                            if (lastChapter > userProgress) {
-                                withContext(Dispatchers.Main) {
+                            withContext(Dispatchers.Main) {
+                                // Only update if there are unread chapters
+                                if (lastChapter > userProgress) {
                                     val updatedText = SpannableStringBuilder().apply {
                                         val white = this@MediaDetailsActivity.getThemeColor(
                                             com.google.android.material.R.attr.colorOnBackground
@@ -343,6 +343,9 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                                         binding.mediaUnreadSource?.text = getString(R.string.notification_source_subtext, malSource)
                                         binding.mediaUnreadSource?.visibility = View.VISIBLE
                                     }
+                                } else {
+                                    // User has caught up - hide the unread source
+                                    binding.mediaUnreadSource?.visibility = View.GONE
                                 }
                             }
                         }
@@ -350,6 +353,9 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                         // Silently fail - just keep showing the original text
                     }
                 }
+            } else if (media.manga != null) {
+                // If manga but completed or offline, hide the unread source
+                binding.mediaUnreadSource?.visibility = View.GONE
             }
         }
 

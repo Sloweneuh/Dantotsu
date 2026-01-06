@@ -303,7 +303,16 @@ class SearchAdapter(private val activity: SearchActivity, private val type: Sear
             val chip = chips[position]
             holder.binding.root.apply {
                 text = chip.text.replace("_", " ")
+                isCloseIconVisible = true
+
+                // Make entire chip clickable, not just the X icon
                 setOnClickListener {
+                    activity.aniMangaResult.removeChip(chip)
+                    update()
+                    activity.search()
+                    searchAdapter.updateFilterTextViewDrawable()
+                }
+                setOnCloseIconClickListener {
                     activity.aniMangaResult.removeChip(chip)
                     update()
                     activity.search()

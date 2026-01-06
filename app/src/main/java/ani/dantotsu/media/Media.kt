@@ -133,6 +133,10 @@ data class Media(
         this.userUpdatedAt = mediaList.updatedAt?.toLong()
         this.genres =
             mediaList.media?.genres?.toMutableList() as? ArrayList<String>? ?: arrayListOf()
+        // Extract additional fields from media object
+        this.tags = mediaList.media?.tags?.mapNotNull { it.name }?.let { ArrayList(it) } ?: arrayListOf()
+        this.source = mediaList.media?.source?.toString()
+        this.countryOfOrigin = mediaList.media?.countryOfOrigin
     }
 
     constructor(mediaEdge: MediaEdge) : this(mediaEdge.node!!) {

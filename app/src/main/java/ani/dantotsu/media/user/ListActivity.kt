@@ -28,12 +28,14 @@ import com.google.android.material.tabs.TabLayoutMediator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.Locale
 
 
 class ListActivity : AppCompatActivity() {
     private lateinit var binding: ActivityListBinding
     private val scope = lifecycleScope
     private var selectedTabIdx = 0
+    private val model: ListViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -82,7 +84,6 @@ class ListActivity : AppCompatActivity() {
             override fun onTabReselected(tab: TabLayout.Tab?) {}
         })
 
-        val model: ListViewModel by viewModels()
         model.getLists().observe(this) {
             val defaultKeys = listOf(
                 "Reading",
@@ -159,19 +160,13 @@ class ListActivity : AppCompatActivity() {
         }
 
         binding.filter.setOnClickListener {
-            val genres =
-                PrefManager.getVal<Set<String>>(PrefName.GenresList).toMutableSet().sorted()
-            val popup = PopupMenu(this, it)
-            popup.menu.add("All")
-            genres.forEach { genre ->
-                popup.menu.add(genre)
+            val currentFilters = model.currentFilters.value ?: ListFilters()
+
+            val dialog = ListFilterBottomDialog(anime, currentFilters) { filters ->
+                model.applyFilters(filters)
+                updateFilterChips(filters)
             }
-            popup.setOnMenuItemClickListener { menuItem ->
-                val selectedGenre = menuItem.title.toString()
-                model.filterLists(selectedGenre)
-                true
-            }
-            popup.show()
+            dialog.show(supportFragmentManager, "list_filter")
         }
 
         binding.random.setOnClickListener {
@@ -187,6 +182,7 @@ class ListActivity : AppCompatActivity() {
             toggleSearchView(binding.searchView.isVisible)
             if (!binding.searchView.isVisible) {
                 model.unfilterLists()
+                updateFilterChips(ListFilters())
             }
         }
 
@@ -205,5 +201,131 @@ class ListActivity : AppCompatActivity() {
             val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
             imm.showSoftInput(binding.searchViewText, InputMethodManager.SHOW_IMPLICIT)
         }
+    }
+
+    private fun updateFilterChips(filters: ListFilters) {
+        binding.genreChipsGroup.removeAllViews()
+
+        if (filters.isEmpty()) {
+            binding.genreChipsScrollView.visibility = View.GONE
+            return
+        }
+
+        binding.genreChipsScrollView.visibility = View.VISIBLE
+
+        // Add genre chips
+        filters.genres.forEach { genre ->
+            addFilterChip(genre, "Genre") {
+                val newFilters = filters.copy(genres = filters.genres - genre)
+                model.applyFilters(newFilters)
+                updateFilterChips(newFilters)
+            }
+        }
+
+        // Add tag chips
+        filters.tags.forEach { tag ->
+            addFilterChip(tag, "Tag") {
+                val newFilters = filters.copy(tags = filters.tags - tag)
+                model.applyFilters(newFilters)
+                updateFilterChips(newFilters)
+            }
+        }
+
+        // Add format chips
+        filters.formats.forEach { format ->
+            addFilterChip(format, "Format") {
+                val newFilters = filters.copy(formats = filters.formats - format)
+                model.applyFilters(newFilters)
+                updateFilterChips(newFilters)
+            }
+        }
+
+        // Add status chips
+        filters.statuses.forEach { status ->
+            addFilterChip(status, "Status") {
+                val newFilters = filters.copy(statuses = filters.statuses - status)
+                model.applyFilters(newFilters)
+                updateFilterChips(newFilters)
+            }
+        }
+
+        // Add source chips
+        filters.sources.forEach { source ->
+            addFilterChip(source, "Source") {
+                val newFilters = filters.copy(sources = filters.sources - source)
+                model.applyFilters(newFilters)
+                updateFilterChips(newFilters)
+            }
+        }
+
+        // Add season chip
+        filters.season?.let { season ->
+            addFilterChip(season, "Season") {
+                val newFilters = filters.copy(season = null)
+                model.applyFilters(newFilters)
+                updateFilterChips(newFilters)
+            }
+        }
+
+        // Add country chip
+        filters.countryOfOrigin?.let { country ->
+            addFilterChip(country, "Country") {
+                val newFilters = filters.copy(countryOfOrigin = null)
+                model.applyFilters(newFilters)
+                updateFilterChips(newFilters)
+            }
+        }
+
+        // Add score range chip (if not default)
+        if (filters.scoreRange != Pair(0.0f, 10.0f)) {
+            val minScore = if (filters.scoreRange.first % 1 == 0f) {
+                filters.scoreRange.first.toInt().toString()
+            } else {
+                String.format(Locale.US, "%.1f", filters.scoreRange.first)
+            }
+            val maxScore = if (filters.scoreRange.second % 1 == 0f) {
+                filters.scoreRange.second.toInt().toString()
+            } else {
+                String.format(Locale.US, "%.1f", filters.scoreRange.second)
+            }
+            addFilterChip("Score: $minScore-$maxScore", "Score") {
+                val newFilters = filters.copy(scoreRange = Pair(0.0f, 10.0f))
+                model.applyFilters(newFilters)
+                updateFilterChips(newFilters)
+            }
+        }
+
+        // Add year range chip (if not default)
+        if (filters.yearRange != Pair(1970, 2028)) {
+            addFilterChip("Years: ${filters.yearRange.first}-${filters.yearRange.second}", "YearRange") {
+                val newFilters = filters.copy(yearRange = Pair(1970, 2028))
+                model.applyFilters(newFilters)
+                updateFilterChips(newFilters)
+            }
+        }
+    }
+
+    private fun addFilterChip(text: String, type: String, onRemove: () -> Unit) {
+        val chip = com.google.android.material.chip.Chip(this)
+        chip.text = text
+        chip.isCloseIconVisible = true
+
+        // Make entire chip clickable, not just the X icon
+        chip.setOnClickListener {
+            onRemove()
+        }
+        chip.setOnCloseIconClickListener {
+            onRemove()
+        }
+
+        // Apply theme colors to match the app style
+        chip.chipBackgroundColor = getColorStateList(R.color.chip_background_color)
+        chip.chipStrokeColor = android.content.res.ColorStateList.valueOf(
+            getThemeColor(com.google.android.material.R.attr.colorPrimaryContainer)
+        )
+        chip.setTextAppearance(R.style.Suffix)
+        chip.textSize = 14f
+
+        binding.genreChipsGroup.addView(chip)
     }
 }
