@@ -16,3 +16,4 @@
 
 - **Bugfixes**
   - Fixed a bug that didn't remove the unread chapter source from the display once user progress had caught up.
+  - Fixed a bug that didn't display unread chapter info for manga in the user list.

@@ -262,6 +262,7 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
 
         @SuppressLint("ResourceType")
         fun total() {
+            ani.dantotsu.util.Logger.log("MediaDetails: total() function called")
             val text = SpannableStringBuilder().apply {
 
                 val white =
@@ -296,26 +297,70 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
             }
             binding.mediaTotal.text = text
 
-            // show source passed from notification if present
+            // Check if source and lastChapter passed from intent (e.g., from unread chapters list or notification)
             val passedSource = intent.getStringExtra("source")
-            if (!passedSource.isNullOrBlank()) {
-                binding.mediaUnreadSource?.text = getString(R.string.notification_source_subtext, passedSource)
-                binding.mediaUnreadSource?.visibility = View.VISIBLE
+            val passedLastChapter = intent.getIntExtra("lastChapter", -1)
+
+            // Handle passed unread info
+            if (media.manga != null) {
+                val userProgress = media.userProgress ?: 0
+
+                // If we have both source and lastChapter, show the full info
+                if (!passedSource.isNullOrBlank() && passedLastChapter > 0 && passedLastChapter > userProgress) {
+                    val updatedText = SpannableStringBuilder().apply {
+                        val white = this@MediaDetailsActivity.getThemeColor(
+                            com.google.android.material.R.attr.colorOnBackground
+                        )
+                        if (media.userStatus != null) {
+                            append(getString(R.string.read_num))
+                            val colorSecondary = getThemeColor(
+                                com.google.android.material.R.attr.colorSecondary
+                            )
+                            bold { color(colorSecondary) { append("${media.userProgress}") } }
+                            append(getString(R.string.chapters_out_of))
+                        } else {
+                            append(getString(R.string.chapters_total_of))
+                        }
+                        // Show latest available chapter (similar to nextAiringEpisode for anime)
+                        bold { color(white) { append("$passedLastChapter") } }
+                        append(" / ")
+                        bold { color(white) { append("${media.manga!!.totalChapters ?: "??"}") } }
+                    }
+                    binding.mediaTotal.text = updatedText
+
+                    binding.mediaUnreadSource?.text = getString(R.string.notification_source_subtext, passedSource)
+                    binding.mediaUnreadSource?.visibility = View.VISIBLE
+                } else if (!passedSource.isNullOrBlank()) {
+                    // Show source only (from notification or when we have source but no lastChapter)
+                    binding.mediaUnreadSource?.text = getString(R.string.notification_source_subtext, passedSource)
+                    binding.mediaUnreadSource?.visibility = View.VISIBLE
+                }
             }
 
-            // Fetch MalSync data for manga to show latest available chapter
+            // Fetch MalSync data for manga to show latest available chapter (or update cached data)
             // Don't show for manga marked as COMPLETED
+            ani.dantotsu.util.Logger.log("MediaDetails: total() called for ${media.mainName()}")
+            ani.dantotsu.util.Logger.log("MediaDetails: manga=${media.manga != null}, online=${isOnline(this)}, status=${media.userStatus}")
+            ani.dantotsu.util.Logger.log("MediaDetails: passedSource=$passedSource, passedLastChapter=$passedLastChapter")
+
             if (media.manga != null && isOnline(this) && media.userStatus != "COMPLETED") {
+                ani.dantotsu.util.Logger.log("MediaDetails: Starting MalSync API call for mediaId=${media.id}")
                 lifecycleScope.launch(Dispatchers.IO) {
                     try {
                         val malSyncResult = ani.dantotsu.connections.malsync.MalSyncApi.getLastChapter(media.id, media.idMAL)
+                        ani.dantotsu.util.Logger.log("MediaDetails: MalSync result: $malSyncResult")
                         if (malSyncResult != null && malSyncResult.lastEp != null) {
                             val lastChapter = malSyncResult.lastEp.total
                             val userProgress = media.userProgress ?: 0
+                            ani.dantotsu.util.Logger.log("MediaDetails: lastChapter=$lastChapter, userProgress=$userProgress, source=${malSyncResult.source}")
 
                             withContext(Dispatchers.Main) {
-                                // Only update if there are unread chapters
-                                if (lastChapter > userProgress) {
+                                // Check if there are unread chapters
+                                val hasUnreadChapters = lastChapter > userProgress
+                                ani.dantotsu.util.Logger.log("MediaDetails: hasUnreadChapters=$hasUnreadChapters")
+
+                                if (hasUnreadChapters) {
+                                    // Update chapter count display
                                     val updatedText = SpannableStringBuilder().apply {
                                         val white = this@MediaDetailsActivity.getThemeColor(
                                             com.google.android.material.R.attr.colorOnBackground
@@ -336,30 +381,53 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                                         bold { color(white) { append("${media.manga!!.totalChapters ?: "??"}") } }
                                     }
                                     binding.mediaTotal.text = updatedText
+                                }
 
-                                    // Show source from MalSync result if available
-                                    val malSource = malSyncResult.source
-                                    if (!malSource.isNullOrBlank()) {
-                                        binding.mediaUnreadSource?.text = getString(R.string.notification_source_subtext, malSource)
-                                        binding.mediaUnreadSource?.visibility = View.VISIBLE
-                                    }
+                                // Show source from MalSync result (prefer MalSync source, fallback to passed source)
+                                val malSource = malSyncResult.source
+                                val sourceToShow = if (!malSource.isNullOrBlank()) {
+                                    malSource
+                                } else if (!passedSource.isNullOrBlank()) {
+                                    passedSource
+                                } else if (hasUnreadChapters) {
+                                    // MalSync reports unread but no source - show unknown
+                                    getString(R.string.notification_unknown_source)
                                 } else {
-                                    // User has caught up - hide the unread source
-                                    binding.mediaUnreadSource?.visibility = View.GONE
+                                    null
+                                }
+
+                                ani.dantotsu.util.Logger.log("MediaDetails: malSource='$malSource', sourceToShow='$sourceToShow'")
+                                ani.dantotsu.util.Logger.log("MediaDetails: Condition check: sourceNotBlank=${!sourceToShow.isNullOrBlank()}, hasUnread=$hasUnreadChapters, hasPassedSource=${!passedSource.isNullOrBlank()}")
+
+                                if (!sourceToShow.isNullOrBlank() && (hasUnreadChapters || !passedSource.isNullOrBlank())) {
+                                    // Show source if: 1) has unread chapters, OR 2) source was explicitly passed
+                                    ani.dantotsu.util.Logger.log("MediaDetails: SHOWING source: $sourceToShow")
+                                    binding.mediaUnreadSource?.text = getString(R.string.notification_source_subtext, sourceToShow)
+                                    binding.mediaUnreadSource?.visibility = View.VISIBLE
+                                } else {
+                                    ani.dantotsu.util.Logger.log("MediaDetails: HIDING source (passedSource=$passedSource)")
+                                    // Hide source if user is caught up and no explicit passed source
+                                    if (passedSource.isNullOrBlank()) {
+                                        binding.mediaUnreadSource?.visibility = View.GONE
+                                    }
                                 }
                             }
+                        } else {
+                            ani.dantotsu.util.Logger.log("MediaDetails: MalSync result was null or had no lastEp")
                         }
-                    } catch (_: Exception) {
+                    } catch (e: Exception) {
+                        ani.dantotsu.util.Logger.log("MediaDetails: MalSync API error: ${e.message}")
+                        e.printStackTrace()
                         // Silently fail - just keep showing the original text
                     }
                 }
-            } else if (media.manga != null) {
-                // If manga but completed or offline, hide the unread source
-                binding.mediaUnreadSource?.visibility = View.GONE
+            } else {
+                ani.dantotsu.util.Logger.log("MediaDetails: NOT calling MalSync API - condition failed")
             }
         }
 
         fun progress() {
+            ani.dantotsu.util.Logger.log("MediaDetails: progress() called, userStatus=${media.userStatus}")
             val statuses: Array<String> = resources.getStringArray(R.array.status)
             val statusStrings =
                 if (media.manga == null) resources.getStringArray(R.array.status_anime) else resources.getStringArray(

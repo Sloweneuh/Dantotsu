@@ -95,7 +95,9 @@ class UnreadChaptersAdapter(
                 ContextCompat.startActivity(
                     it.context,
                     Intent(it.context, ani.dantotsu.media.MediaDetailsActivity::class.java)
-                        .putExtra("media", media),
+                        .putExtra("media", media)
+                        .putExtra("source", info.source)
+                        .putExtra("lastChapter", info.lastChapter),
                     null
                 )
             }
@@ -143,7 +145,9 @@ class UnreadChaptersAdapter(
                 ContextCompat.startActivity(
                     it.context,
                     Intent(it.context, ani.dantotsu.media.MediaDetailsActivity::class.java)
-                        .putExtra("media", media),
+                        .putExtra("media", media)
+                        .putExtra("source", info.source)
+                        .putExtra("lastChapter", info.lastChapter),
                     null
                 )
             }

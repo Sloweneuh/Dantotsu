@@ -23,25 +23,39 @@ object MalSyncApi {
 
     suspend fun getLastChapter(anilistId: Int, malId: Int? = null): MalSyncResponse? = withContext(Dispatchers.IO) {
         try {
-            // Try with Anilist ID first
-            var url = "https://api.malsync.moe/nc/mal/manga/anilist:$anilistId/pr"
-            var request = Request.Builder()
-                .url(url)
-                .build()
+            var url: String
+            var request: Request
+            var response: okhttp3.Response
+            var body: String?
 
-            var response = client.newCall(request).execute()
-            var body = response.body?.string()
-
-            // If Anilist ID fails or returns empty, try with MAL ID
-            if ((!response.isSuccessful || body == null || body == "[]" || body.isEmpty()) && malId != null) {
-                Logger.log("MalSync: Anilist ID $anilistId failed, trying MAL ID $malId")
+            // Try with MAL ID first (preferred)
+            if (malId != null) {
+                Logger.log("MalSync: Trying MAL ID $malId first")
                 url = "https://api.malsync.moe/nc/mal/manga/$malId/pr"
                 request = Request.Builder()
                     .url(url)
                     .build()
                 response = client.newCall(request).execute()
                 body = response.body?.string()
+
+                // If MAL ID succeeds and has results, use it
+                if (response.isSuccessful && body != null && body != "[]" && body.isNotEmpty()) {
+                    Logger.log("MalSync: MAL ID $malId succeeded")
+                    val type = object : TypeToken<List<MalSyncResponse>>() {}.type
+                    val results: List<MalSyncResponse> = gson.fromJson(body, type)
+                    return@withContext getProgress(results)
+                }
+                Logger.log("MalSync: MAL ID $malId failed or returned no results, falling back to AniList ID")
             }
+
+            // Fallback to Anilist ID
+            Logger.log("MalSync: Trying AniList ID $anilistId")
+            url = "https://api.malsync.moe/nc/mal/manga/anilist:$anilistId/pr"
+            request = Request.Builder()
+                .url(url)
+                .build()
+            response = client.newCall(request).execute()
+            body = response.body?.string()
 
             if (!response.isSuccessful) {
                 Logger.log("MalSync API error: ${response.code}")
