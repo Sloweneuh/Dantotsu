@@ -73,12 +73,10 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                 )
 
                 var total: Int? = null
-                var effectiveTotal: Int? = null // The actual total to use (from AniList or MALSync)
                 binding.mediaListProgress.setText(if (media!!.userProgress != null) media!!.userProgress.toString() else "")
                 if (media!!.anime != null) {
                     if (media!!.anime!!.totalEpisodes != null) {
                         total = media!!.anime!!.totalEpisodes!!
-                        effectiveTotal = total
                         binding.mediaListProgress.filters =
                             arrayOf(
                                 InputFilterMinMax(0.0, total.toDouble(), binding.mediaListStatus),
@@ -118,13 +116,11 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                                             // If lastEp < total: show userProgress / lastEp / total
                                             total != null && malSyncEpisode < total -> {
                                                 ani.dantotsu.util.Logger.log("MediaListDialog: lastEp ($malSyncEpisode) < total ($total), showing: / $malSyncEpisode / $total")
-                                                effectiveTotal = malSyncEpisode
                                                 " / $malSyncEpisode / $total"
                                             }
                                             // Default: show userProgress / lastEp (when no total or lastEp > total)
                                             else -> {
                                                 ani.dantotsu.util.Logger.log("MediaListDialog: Default case, showing: / $malSyncEpisode")
-                                                effectiveTotal = malSyncEpisode
                                                 // Update filters if MALSync has more episodes than AniList total
                                                 if (total == null || malSyncEpisode > total) {
                                                     _binding?.mediaListProgress?.filters =
@@ -147,7 +143,6 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                 } else if (media!!.manga != null) {
                     // Check if AniList has totalChapters
                     total = media!!.manga!!.totalChapters
-                    effectiveTotal = total
 
                     // Debug logging
                     ani.dantotsu.util.Logger.log("MediaListDialog: manga=${media!!.nameRomaji}, totalChapters=${media!!.manga!!.totalChapters}, total=$total")
@@ -178,18 +173,10 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                                                            (total == null || malSyncChapter < total)
 
                                     if (shouldShowMalSync) {
-                                        ani.dantotsu.util.Logger.log("MediaListDialog: Using MALSync chapter $malSyncChapter (userProgress=$userProgress, anilistTotal=$total)")
-                                        effectiveTotal = malSyncChapter
+                                        ani.dantotsu.util.Logger.log("MediaListDialog: Showing MALSync chapter $malSyncChapter for display (userProgress=$userProgress, anilistTotal=$total)")
 
-                                        // Update suffix text with MALSync data, showing " / X / ?" to indicate it's temporary
-                                        _binding?.mediaListProgressLayout?.suffixText = " / $malSyncChapter / ?"
-
-                                        // Update filters with the MALSync total
-                                        _binding?.mediaListProgress?.filters =
-                                            arrayOf(
-                                                InputFilterMinMax(0.0, malSyncChapter.toDouble(), binding.mediaListStatus),
-                                                LengthFilter(malSyncChapter.toString().length)
-                                            )
+                                        // Update suffix text with MALSync data, showing " / X / Y" or " / X / ?" to indicate it's temporary
+                                        _binding?.mediaListProgressLayout?.suffixText = " / $malSyncChapter / ${total ?: '?'}"
                                     } else {
                                         ani.dantotsu.util.Logger.log("MediaListDialog: Not showing MALSync (malSync=$malSyncChapter, userProgress=$userProgress, anilistTotal=$total)")
                                     }
@@ -248,15 +235,9 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                 start.dialog.setOnDismissListener { _binding?.mediaListStart?.setText(start.date.toStringOrEmpty()) }
                 end.dialog.setOnDismissListener { _binding?.mediaListEnd?.setText(end.date.toStringOrEmpty()) }
 
-                // Function to get the current effective total (updates when MALSync data arrives)
-                fun getCurrentTotal(): Int? {
-                    return effectiveTotal
-                }
-
                 fun onComplete() {
-                    val currentTotal = getCurrentTotal()
-                    if (currentTotal != null) {
-                        binding.mediaListProgress.setText(currentTotal.toString())
+                    if (total != null) {
+                        binding.mediaListProgress.setText(total.toString())
                     }
                     if (start.date.year == null) {
                         start.date = FuzzyDate().getToday()
@@ -270,8 +251,7 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                 var endBackupDate: FuzzyDate? = null
                 var progressBackup: String? = null
                 binding.mediaListStatus.setOnItemClickListener { _, _, i, _ ->
-                    val currentTotal = getCurrentTotal()
-                    if (i == 2 && currentTotal != null) {
+                    if (i == 2 && total != null) {
                         startBackupDate = start.date
                         endBackupDate = end.date
                         progressBackup = binding.mediaListProgress.text.toString()
@@ -297,12 +277,11 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                     val init =
                         if (binding.mediaListProgress.text.toString() != "") binding.mediaListProgress.text.toString()
                             .toInt() else 0
-                    val currentTotal = getCurrentTotal()
-                    if (init < (currentTotal ?: 5000)) {
+                    if (init < (total ?: 5000)) {
                         val progressText = "${init + 1}"
                         binding.mediaListProgress.setText(progressText)
                     }
-                    if (init + 1 == (currentTotal ?: 5000)) {
+                    if (init + 1 == (total ?: 5000)) {
                         binding.mediaListStatus.setText(statusStrings[2], false)
                         onComplete()
                     }

@@ -210,18 +210,10 @@ class MediaListDialogSmallFragment : BottomSheetDialogFragment() {
                                                    (total == null || malSyncChapter < total)
 
                             if (shouldShowMalSync) {
-                                ani.dantotsu.util.Logger.log("MediaListDialogSmall: Using MALSync chapter $malSyncChapter (userProgress=$userProgress, anilistTotal=$total)")
-                                effectiveTotal = malSyncChapter
+                                ani.dantotsu.util.Logger.log("MediaListDialogSmall: Showing MALSync chapter $malSyncChapter for display (userProgress=$userProgress, anilistTotal=$total)")
 
-                                // Update suffix text with MALSync data, showing " / X / ?" to indicate it's temporary
-                                _binding?.mediaListProgressLayout?.suffixText = " / $malSyncChapter / ?"
-
-                                // Update filters with the MALSync total
-                                _binding?.mediaListProgress?.filters =
-                                    arrayOf(
-                                        InputFilterMinMax(0.0, malSyncChapter.toDouble(), binding.mediaListStatus),
-                                        LengthFilter(malSyncChapter.toString().length)
-                                    )
+                                // Update suffix text with MALSync data, showing " / X / Y" or " / X / ?" to indicate it's temporary
+                                _binding?.mediaListProgressLayout?.suffixText = " / $malSyncChapter / ${total ?: '?'}"
                             } else {
                                 ani.dantotsu.util.Logger.log("MediaListDialogSmall: Not showing MALSync (malSync=$malSyncChapter, userProgress=$userProgress, anilistTotal=$total)")
                             }

@@ -299,8 +299,10 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                             listPopup.width = (300 * resources.displayMetrics.density).toInt() // 300dp
                             listPopup.height = ViewGroup.LayoutParams.WRAP_CONTENT
 
-                            // Position dropdown below the button
+                            // Force dropdown to always appear below the button
                             listPopup.isModal = true
+                            listPopup.verticalOffset = 4.dpToPx() // Small offset from button
+                            listPopup.setDropDownGravity(android.view.Gravity.START or android.view.Gravity.TOP)
 
                             listPopup.setOnItemClickListener { _, _, position, _ ->
                                 val selectedOption = sortedLanguageOptions[position]
