@@ -104,7 +104,6 @@ class MediaListDialogSmallFragment : BottomSheetDialogFragment() {
             )
         )
 
-
         var total: Int? = null
         var effectiveTotal: Int? = null // The actual total to use (from AniList or MALSync)
         binding.mediaListProgress.setText(if (media.userProgress != null) media.userProgress.toString() else "")
@@ -117,6 +116,65 @@ class MediaListDialogSmallFragment : BottomSheetDialogFragment() {
                         InputFilterMinMax(0.0, total.toDouble(), binding.mediaListStatus),
                         LengthFilter(total.toString().length)
                     )
+            }
+
+            // Fetch MALSync data for anime if MAL ID is available
+            if (media.idMAL != null) {
+                scope.launch(Dispatchers.IO) {
+                    try {
+                        val preferredLanguage = ani.dantotsu.connections.malsync.MalSyncLanguageHelper.getPreferredLanguage(media.id)
+                        val malSyncResult = ani.dantotsu.connections.malsync.MalSyncApi.getLastEpisode(
+                            media.id,
+                            media.idMAL,
+                            preferredLanguage
+                        )
+                        ani.dantotsu.util.Logger.log("MediaListDialogSmall: MALSync anime result for ${media.nameRomaji}: lastEpisode=${malSyncResult?.lastEp?.total}, language=$preferredLanguage")
+
+                        if (malSyncResult?.lastEp?.total != null) {
+                            val malSyncEpisode = malSyncResult.lastEp.total
+                            val userProgress = media.userProgress ?: 0
+
+                            withContext(Dispatchers.Main) {
+                                // Apply display conditions based on lastEp vs total vs userProgress
+                                val suffixText = when {
+                                    // If lastEp < userProgress: show userProgress / total
+                                    malSyncEpisode < userProgress -> {
+                                        ani.dantotsu.util.Logger.log("MediaListDialogSmall: lastEp ($malSyncEpisode) < userProgress ($userProgress), showing: / ${total ?: "??"}")
+                                        " / ${total ?: "??"}"
+                                    }
+                                    // If lastEp == total: show userProgress / total
+                                    total != null && malSyncEpisode == total -> {
+                                        ani.dantotsu.util.Logger.log("MediaListDialogSmall: lastEp ($malSyncEpisode) == total ($total), showing: / $total")
+                                        " / $total"
+                                    }
+                                    // If lastEp < total: show userProgress / lastEp / total
+                                    total != null && malSyncEpisode < total -> {
+                                        ani.dantotsu.util.Logger.log("MediaListDialogSmall: lastEp ($malSyncEpisode) < total ($total), showing: / $malSyncEpisode / $total")
+                                        effectiveTotal = malSyncEpisode
+                                        " / $malSyncEpisode / $total"
+                                    }
+                                    // Default: show userProgress / lastEp (when no total or lastEp > total)
+                                    else -> {
+                                        ani.dantotsu.util.Logger.log("MediaListDialogSmall: Default case, showing: / $malSyncEpisode")
+                                        effectiveTotal = malSyncEpisode
+                                        // Update filters if MALSync has more episodes than AniList total
+                                        if (total == null || malSyncEpisode > total) {
+                                            _binding?.mediaListProgress?.filters =
+                                                arrayOf(
+                                                    InputFilterMinMax(0.0, malSyncEpisode.toDouble(), binding.mediaListStatus),
+                                                    LengthFilter(malSyncEpisode.toString().length)
+                                                )
+                                        }
+                                        " / $malSyncEpisode"
+                                    }
+                                }
+                                _binding?.mediaListProgressLayout?.suffixText = suffixText
+                            }
+                        }
+                    } catch (e: Exception) {
+                        ani.dantotsu.util.Logger.log("Error fetching MALSync anime data: ${e.message}")
+                    }
+                }
             }
         } else if (media.manga != null) {
             // Check if AniList has totalChapters

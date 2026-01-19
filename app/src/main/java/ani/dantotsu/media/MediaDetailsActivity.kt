@@ -260,6 +260,158 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
             null
         }
 
+        // Extension function to convert dp to px
+        fun Int.dpToPx(): Int {
+            return (this * resources.displayMetrics.density).toInt()
+        }
+
+        fun showLanguageDropdown(media: Media) {
+            lifecycleScope.launch(Dispatchers.IO) {
+                try {
+                    val availableLanguagesWithEpisodes = ani.dantotsu.connections.malsync.MalSyncApi.getAvailableLanguagesWithEpisodes(media.idMAL!!)
+
+                    withContext(Dispatchers.Main) {
+                        if (availableLanguagesWithEpisodes.isNotEmpty()) {
+                            val languageOptions = ani.dantotsu.connections.malsync.LanguageMapper.mapLanguagesWithEpisodes(availableLanguagesWithEpisodes)
+
+                            // Sort languages: English (Dub) first, then English (Sub), then the rest
+                            val sortedLanguageOptions = languageOptions.sortedWith(compareBy { option ->
+                                when (option.id) {
+                                    "en/dub" -> 0  // English (Dub) first
+                                    "en/sub" -> 1  // English (Sub) second
+                                    else -> 2      // Everything else
+                                }
+                            })
+
+                            // Create ListPopupWindow with custom adapter to show icons
+                            val listPopup = androidx.appcompat.widget.ListPopupWindow(this@MediaDetailsActivity)
+                            listPopup.anchorView = binding.mediaLanguageButton
+
+                            // Use the existing LanguageAdapter which already supports icons
+                            val adapter = ani.dantotsu.connections.malsync.LanguageAdapter(
+                                this@MediaDetailsActivity,
+                                sortedLanguageOptions,
+                                isForListPopup = true  // Show episode counts in popup
+                            )
+                            listPopup.setAdapter(adapter)
+
+                            // Set proper width to show content
+                            listPopup.width = (300 * resources.displayMetrics.density).toInt() // 300dp
+                            listPopup.height = ViewGroup.LayoutParams.WRAP_CONTENT
+
+                            // Position dropdown below the button
+                            listPopup.isModal = true
+
+                            listPopup.setOnItemClickListener { _, _, position, _ ->
+                                val selectedOption = sortedLanguageOptions[position]
+                                ani.dantotsu.connections.malsync.MalSyncLanguageHelper.setPreferredLanguage(media.id, selectedOption.id)
+                                listPopup.dismiss()
+
+                                // Refresh MALSync data with new language
+                                lifecycleScope.launch(Dispatchers.IO) {
+                                    try {
+                                        val malSyncResult = ani.dantotsu.connections.malsync.MalSyncApi.getLastEpisode(media.id, media.idMAL, selectedOption.id)
+                                        if (malSyncResult != null && malSyncResult.lastEp != null) {
+                                            val lastEpisode = malSyncResult.lastEp.total
+                                            val userProgress = media.userProgress ?: 0
+                                            val anilistTotal = media.anime!!.totalEpisodes
+                                            val languageOption = ani.dantotsu.connections.malsync.LanguageMapper.mapLanguage(malSyncResult.id)
+
+                                            val shouldShowLastEp = when {
+                                                lastEpisode < userProgress -> false
+                                                anilistTotal != null && lastEpisode == anilistTotal -> false
+                                                anilistTotal != null && lastEpisode < anilistTotal -> true
+                                                else -> anilistTotal == null
+                                            }
+
+                                            withContext(Dispatchers.Main) {
+                                                val updatedText = SpannableStringBuilder().apply {
+                                                    val white = this@MediaDetailsActivity.getThemeColor(
+                                                        com.google.android.material.R.attr.colorOnBackground
+                                                    )
+                                                    if (media.userStatus != null) {
+                                                        append(getString(R.string.watched_num))
+                                                        val colorSecondary = getThemeColor(
+                                                            com.google.android.material.R.attr.colorSecondary
+                                                        )
+                                                        bold { color(colorSecondary) { append("${media.userProgress}") } }
+                                                        append(getString(R.string.episodes_out_of))
+                                                    } else {
+                                                        append(getString(R.string.episodes_total_of))
+                                                    }
+
+                                                    if (shouldShowLastEp) {
+                                                        bold { color(white) { append("$lastEpisode") } }
+                                                        append(" / ")
+                                                    }
+
+                                                    bold { color(white) { append("${anilistTotal ?: "??"}") } }
+                                                }
+                                                binding.mediaTotal.text = updatedText
+
+                                                // Update button with new language directly
+                                                val newLangCodeUpper = if (malSyncResult.lang.isNotBlank()) {
+                                                    malSyncResult.lang.uppercase()
+                                                } else {
+                                                    languageOption.id.split("/").firstOrNull()?.uppercase() ?: "EN"
+                                                }
+                                                binding.mediaLanguageButton.text = newLangCodeUpper
+                                                val newIconDrawable = ContextCompat.getDrawable(this@MediaDetailsActivity, languageOption.iconRes)
+                                                newIconDrawable?.setTint(getThemeColor(com.google.android.material.R.attr.colorOnSurface))
+                                                binding.mediaLanguageButton.setCompoundDrawablesWithIntrinsicBounds(
+                                                    newIconDrawable, null, null, null
+                                                )
+                                            }
+                                        }
+                                    } catch (e: Exception) {
+                                        ani.dantotsu.util.Logger.log("Error refreshing MALSync data: ${e.message}")
+                                    }
+                                }
+                            }
+
+                            listPopup.show()
+                        }
+                    }
+                } catch (e: Exception) {
+                    ani.dantotsu.util.Logger.log("Error fetching available languages: ${e.message}")
+                }
+            }
+        }
+
+        @SuppressLint("ResourceType")
+        fun setupLanguageButton(media: Media, currentLanguageOption: ani.dantotsu.connections.malsync.LanguageOption, langCode: String) {
+            val langCodeUpper = if (langCode.isNotBlank()) {
+                langCode.uppercase()
+            } else {
+                currentLanguageOption.id.split("/").firstOrNull()?.uppercase() ?: "EN"
+            }
+
+            // Set button text (just the language code)
+            binding.mediaLanguageButton.text = langCodeUpper
+
+            // Set icon as compound drawable (left side)
+            val iconDrawable = ContextCompat.getDrawable(this@MediaDetailsActivity, currentLanguageOption.iconRes)
+            iconDrawable?.setTint(getThemeColor(com.google.android.material.R.attr.colorOnSurface))
+            binding.mediaLanguageButton.setCompoundDrawablesWithIntrinsicBounds(
+                iconDrawable, // left
+                null, // top
+                null, // right
+                null  // bottom
+            )
+
+            // Set padding between icon and text
+            binding.mediaLanguageButton.compoundDrawablePadding = 4.dpToPx()
+
+            binding.mediaLanguageButton.visibility = View.VISIBLE
+
+            // Setup dropdown on click
+            binding.mediaLanguageButton.setOnClickListener {
+                if (media.idMAL != null) {
+                    showLanguageDropdown(media)
+                }
+            }
+        }
+
         @SuppressLint("ResourceType")
         fun total() {
             ani.dantotsu.util.Logger.log("MediaDetails: total() function called")
@@ -296,6 +448,71 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                 }
             }
             binding.mediaTotal.text = text
+
+            // Fetch MALSync data for anime to show latest available episode (replaces nextAiringEpisode display)
+            // Only show for anime with MAL ID and not COMPLETED status
+            if (media.anime != null && media.idMAL != null && isOnline(this) && media.userStatus != "COMPLETED") {
+                ani.dantotsu.util.Logger.log("MediaDetails: Starting MALSync API call for anime mediaId=${media.id}, malId=${media.idMAL}")
+                lifecycleScope.launch(Dispatchers.IO) {
+                    try {
+                        val preferredLanguage = ani.dantotsu.connections.malsync.MalSyncLanguageHelper.getPreferredLanguage(media.id)
+                        val malSyncResult = ani.dantotsu.connections.malsync.MalSyncApi.getLastEpisode(media.id, media.idMAL, preferredLanguage)
+                        ani.dantotsu.util.Logger.log("MediaDetails: MalSync anime result: $malSyncResult")
+
+                        if (malSyncResult != null && malSyncResult.lastEp != null) {
+                            val lastEpisode = malSyncResult.lastEp.total
+                            val userProgress = media.userProgress ?: 0
+                            val anilistTotal = media.anime!!.totalEpisodes
+                            val languageOption = ani.dantotsu.connections.malsync.LanguageMapper.mapLanguage(malSyncResult.id)
+                            ani.dantotsu.util.Logger.log("MediaDetails: lastEpisode=$lastEpisode, userProgress=$userProgress, anilistTotal=$anilistTotal, language=${languageOption.displayName}")
+
+                            // Determine if we should show lastEp number
+                            val shouldShowLastEp = when {
+                                lastEpisode < userProgress -> false
+                                anilistTotal != null && lastEpisode == anilistTotal -> false
+                                anilistTotal != null && lastEpisode < anilistTotal -> true
+                                else -> anilistTotal == null // Show if no AniList total
+                            }
+
+                            ani.dantotsu.util.Logger.log("MediaDetails: shouldShowLastEp=$shouldShowLastEp")
+
+                            withContext(Dispatchers.Main) {
+                                // Update episode count display to show MALSync data
+                                // Language info shown in button, not inline
+                                val updatedText = SpannableStringBuilder().apply {
+                                    val white = this@MediaDetailsActivity.getThemeColor(
+                                        com.google.android.material.R.attr.colorOnBackground
+                                    )
+                                    if (media.userStatus != null) {
+                                        append(getString(R.string.watched_num))
+                                        val colorSecondary = getThemeColor(
+                                            com.google.android.material.R.attr.colorSecondary
+                                        )
+                                        bold { color(colorSecondary) { append("${media.userProgress}") } }
+                                        append(getString(R.string.episodes_out_of))
+                                    } else {
+                                        append(getString(R.string.episodes_total_of))
+                                    }
+
+                                    // Show lastEp only if conditions are met
+                                    if (shouldShowLastEp) {
+                                        bold { color(white) { append("$lastEpisode") } }
+                                        append(" / ")
+                                    }
+
+                                    bold { color(white) { append("${anilistTotal ?: "??"}") } }
+                                }
+                                binding.mediaTotal.text = updatedText
+
+                                // Show language button with icon and lang code
+                                setupLanguageButton(media, languageOption, malSyncResult.lang)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        ani.dantotsu.util.Logger.log("Error fetching MalSync anime data: ${e.message}")
+                    }
+                }
+            }
 
             // Check if source and lastChapter passed from intent (e.g., from unread chapters list or notification)
             val passedSource = intent.getStringExtra("source")
@@ -460,13 +677,9 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
         }
         progress()
 
-        // Hide share buttons - no longer used
-        binding.mediaNotify.visibility = View.GONE
-        binding.mediaNotify2.visibility = View.GONE
-
-        model.getMedia().observe(this) {
-            if (it != null) {
-                media = it
+        supportFragmentManager.addFragmentOnAttachListener { _, fragment ->
+            if (fragment != null) {
+                media = fragment as? Media ?: media
                 scope.launch {
                     if (media.isFav != favButton?.clicked) favButton?.clicked()
                 }

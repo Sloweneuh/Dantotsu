@@ -1,19 +1,9 @@
-# 3.2.6
+# 3.2.7
 
 - **Features:**
-  - Better filtering in User lists
-    - You can now use more filters in your or other users' lists
-    - Available filters: 
-      - Country of Origin (CN, JP, KR, TW)
-      - Source
-      - Format
-      - Status
-      - Season (Anime only)
-      - Score Range
-      - Year Range
-      - Genres
-      - Tags (Including adult tags if switch enabled)
+  - Support for MALSync API Anime endpoints
+    - Info on the last released episode of an anime
+    - Language selector for each entry (Dub and Sub)
 
 - **Bugfixes**
-  - Fixed a bug that didn't remove the unread chapter source from the display once user progress had caught up.
-  - Fixed a bug that didn't display unread chapter info for manga in the user list.
+  - Fixed a bug that didn't display the total amount of chapters for a finished manga in the modal to edit user progress.

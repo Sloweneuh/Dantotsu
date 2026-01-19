@@ -32,6 +32,14 @@ data class UnreadChapterInfo(
     val userProgress: Int
 ) : Serializable
 
+data class UnreleasedEpisodeInfo(
+    val mediaId: Int,
+    val lastEpisode: Int,
+    val languageId: String,        // e.g., "en/dub", "en/sub"
+    val languageDisplay: String,   // e.g., "English (Dub)"
+    val userProgress: Int
+) : Serializable
+
 data class BatchProgressResult(
     val malid: String?,  // Can be numeric "5114" or "anilist:173188"
     val data: List<MalSyncResponse>?

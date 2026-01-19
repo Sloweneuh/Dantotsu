@@ -59,6 +59,10 @@ class MediaListViewActivity : AppCompatActivity() {
         val localUnreadInfo = passedUnreadInfo
         if (passedUnreadInfo != null) passedUnreadInfo = null
 
+        // Store unreleased episode info locally for use in changeView
+        val localUnreleasedInfo = passedUnreleasedInfo
+        if (passedUnreleasedInfo != null) passedUnreleasedInfo = null
+
         val view = PrefManager.getCustomVal("mediaView", 0)
         var mediaView: View = when (view) {
             1 -> binding.mediaList
@@ -72,11 +76,20 @@ class MediaListViewActivity : AppCompatActivity() {
             current.alpha = 1f
             PrefManager.setCustomVal("mediaView", mode)
 
-            // Use custom adapter if we have unread info
-            if (localUnreadInfo != null) {
-                binding.mediaRecyclerView.adapter = ani.dantotsu.home.UnreadChaptersAdapter(mediaList, localUnreadInfo, mode)
-            } else {
-                binding.mediaRecyclerView.adapter = MediaAdaptor(mode, mediaList, this)
+            // Use custom adapter based on what info we have
+            when {
+                localUnreadInfo != null -> {
+                    // Manga with unread chapters
+                    binding.mediaRecyclerView.adapter = ani.dantotsu.home.UnreadChaptersAdapter(mediaList, localUnreadInfo, mode)
+                }
+                localUnreleasedInfo != null -> {
+                    // Anime with unreleased episodes
+                    binding.mediaRecyclerView.adapter = ani.dantotsu.home.UnreleasedEpisodesAdapter(mediaList, localUnreleasedInfo, mode)
+                }
+                else -> {
+                    // Standard adapter
+                    binding.mediaRecyclerView.adapter = MediaAdaptor(mode, mediaList, this)
+                }
             }
             binding.mediaRecyclerView.layoutManager = GridLayoutManager(
                 this,
@@ -92,13 +105,20 @@ class MediaListViewActivity : AppCompatActivity() {
         val text = "${intent.getStringExtra("title")} (${mediaList.count()})"
         binding.listTitle.text = text
 
-        // Check if we have unread chapter info to display
-        if (localUnreadInfo != null) {
-            // Use custom adapter for unread chapters
-            binding.mediaRecyclerView.adapter = ani.dantotsu.home.UnreadChaptersAdapter(mediaList, localUnreadInfo, view)
-        } else {
-            // Use standard adapter
-            binding.mediaRecyclerView.adapter = MediaAdaptor(view, mediaList, this)
+        // Check if we have unread chapter info or unreleased episode info to display
+        when {
+            localUnreadInfo != null -> {
+                // Use custom adapter for unread chapters (manga)
+                binding.mediaRecyclerView.adapter = ani.dantotsu.home.UnreadChaptersAdapter(mediaList, localUnreadInfo, view)
+            }
+            localUnreleasedInfo != null -> {
+                // Use custom adapter for unreleased episodes (anime)
+                binding.mediaRecyclerView.adapter = ani.dantotsu.home.UnreleasedEpisodesAdapter(mediaList, localUnreleasedInfo, view)
+            }
+            else -> {
+                // Use standard adapter
+                binding.mediaRecyclerView.adapter = MediaAdaptor(view, mediaList, this)
+            }
         }
         binding.mediaRecyclerView.layoutManager = GridLayoutManager(
             this,
@@ -109,5 +129,6 @@ class MediaListViewActivity : AppCompatActivity() {
     companion object {
         var passedMedia: ArrayList<Media>? = null
         var passedUnreadInfo: Map<Int, ani.dantotsu.connections.malsync.UnreadChapterInfo>? = null
+        var passedUnreleasedInfo: Map<Int, ani.dantotsu.connections.malsync.UnreleasedEpisodeInfo>? = null
     }
 }

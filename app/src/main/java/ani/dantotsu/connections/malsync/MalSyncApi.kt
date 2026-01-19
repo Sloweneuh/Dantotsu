@@ -43,7 +43,7 @@ object MalSyncApi {
                     Logger.log("MalSync: MAL ID $malId succeeded")
                     val type = object : TypeToken<List<MalSyncResponse>>() {}.type
                     val results: List<MalSyncResponse> = gson.fromJson(body, type)
-                    return@withContext getProgress(results)
+                    return@withContext getProgressForManga(results)
                 }
                 Logger.log("MalSync: MAL ID $malId failed or returned no results, falling back to AniList ID")
             }
@@ -72,19 +72,119 @@ object MalSyncApi {
 
             // Use the same logic as the web extension's getProgress function
             // Priority: en/sub -> any entry with lang "en" -> first available
-            getProgress(results)
+            getProgressForManga(results)
         } catch (e: Exception) {
             Logger.log("Error fetching MalSync data: ${e.message}")
             null
         }
     }
 
+    suspend fun getLastEpisode(anilistId: Int, malId: Int?, preferredLanguage: String = "en/dub"): MalSyncResponse? = withContext(Dispatchers.IO) {
+        try {
+            // Use MAL ID only (as per user requirements)
+            if (malId == null) {
+                Logger.log("MalSync: No MAL ID provided for anime $anilistId")
+                return@withContext null
+            }
+
+            Logger.log("MalSync: Fetching anime data for MAL ID $malId with preferred language $preferredLanguage")
+            val url = "https://api.malsync.moe/nc/mal/anime/$malId/pr"
+            val request = Request.Builder()
+                .url(url)
+                .build()
+            val response = client.newCall(request).execute()
+            val body = response.body?.string()
+
+            if (!response.isSuccessful) {
+                Logger.log("MalSync API error: ${response.code}")
+                return@withContext null
+            }
+
+            if (body == null || body == "[]" || body.isEmpty()) {
+                Logger.log("MalSync: No results found for MAL ID $malId")
+                return@withContext null
+            }
+
+            val type = object : TypeToken<List<MalSyncResponse>>() {}.type
+            val results: List<MalSyncResponse> = gson.fromJson(body, type)
+
+            // Use anime-specific progress selection with language preference
+            getProgressForAnime(results, preferredLanguage)
+        } catch (e: Exception) {
+            Logger.log("Error fetching MalSync anime data: ${e.message}")
+            null
+        }
+    }
+
     /**
-     * Implements the same progress selection logic as the web extension
+     * Get all available language IDs for an anime
+     * @param malId MAL anime ID
+     * @return List of available language IDs (e.g., ["en/dub", "en/sub", "jp"])
+     */
+    suspend fun getAvailableLanguages(malId: Int): List<String> = withContext(Dispatchers.IO) {
+        try {
+            Logger.log("MalSync: Fetching available languages for MAL ID $malId")
+            val url = "https://api.malsync.moe/nc/mal/anime/$malId/pr"
+            val request = Request.Builder()
+                .url(url)
+                .build()
+            val response = client.newCall(request).execute()
+            val body = response.body?.string()
+
+            if (!response.isSuccessful || body == null || body == "[]" || body.isEmpty()) {
+                Logger.log("MalSync: No results found for MAL ID $malId")
+                return@withContext emptyList()
+            }
+
+            val type = object : TypeToken<List<MalSyncResponse>>() {}.type
+            val results: List<MalSyncResponse> = gson.fromJson(body, type)
+
+            val languages = results.map { it.id }.distinct()
+            Logger.log("MalSync: Available languages for MAL ID $malId: $languages")
+            return@withContext languages
+        } catch (e: Exception) {
+            Logger.log("Error fetching available languages: ${e.message}")
+            emptyList()
+        }
+    }
+
+    /**
+     * Get all available languages with episode counts for an anime
+     * @param malId MAL anime ID
+     * @return List of MalSyncResponse with language IDs and episode counts
+     */
+    suspend fun getAvailableLanguagesWithEpisodes(malId: Int): List<MalSyncResponse> = withContext(Dispatchers.IO) {
+        try {
+            Logger.log("MalSync: Fetching available languages with episodes for MAL ID $malId")
+            val url = "https://api.malsync.moe/nc/mal/anime/$malId/pr"
+            val request = Request.Builder()
+                .url(url)
+                .build()
+            val response = client.newCall(request).execute()
+            val body = response.body?.string()
+
+            if (!response.isSuccessful || body == null || body == "[]" || body.isEmpty()) {
+                Logger.log("MalSync: No results found for MAL ID $malId")
+                return@withContext emptyList()
+            }
+
+            val type = object : TypeToken<List<MalSyncResponse>>() {}.type
+            val results: List<MalSyncResponse> = gson.fromJson(body, type)
+
+            Logger.log("MalSync: Found ${results.size} language options for MAL ID $malId")
+            return@withContext results
+        } catch (e: Exception) {
+            Logger.log("Error fetching available languages with episodes: ${e.message}")
+            emptyList()
+        }
+    }
+
+    /**
+     * Implements the same progress selection logic as the web extension for manga
      * Prioritizes entries based on ID and language with fallback logic
      * Only returns English language entries to avoid showing other languages
      */
-    private fun getProgress(results: List<MalSyncResponse>): MalSyncResponse? {
+    private fun getProgressForManga(results: List<MalSyncResponse>): MalSyncResponse? {
         if (results.isEmpty()) return null
 
         // Primary: Look for "en/sub" (standard for manga)
@@ -97,6 +197,47 @@ object MalSyncApi {
 
         // Only return English entries - don't show other languages
         return top
+    }
+
+    /**
+     * Implements progress selection logic for anime with language preference
+     * Prioritizes based on preferred language with fallback logic
+     * @param results List of available MalSync entries
+     * @param preferredLanguage Preferred language ID (e.g., "en/dub", "en/sub")
+     * @return Best matching MalSyncResponse or null
+     */
+    private fun getProgressForAnime(results: List<MalSyncResponse>, preferredLanguage: String): MalSyncResponse? {
+        if (results.isEmpty()) return null
+
+        Logger.log("MalSync: Selecting anime progress from ${results.size} entries with preferred language $preferredLanguage")
+        Logger.log("MalSync: Available IDs: ${results.map { it.id }}")
+
+        // Primary: Look for exact match with preferred language
+        var top = results.firstOrNull { it.id == preferredLanguage }
+        if (top != null) {
+            Logger.log("MalSync: Found exact match for $preferredLanguage")
+            return top
+        }
+
+        // Fallback 1: If preferred was "en/dub", try "en/sub"
+        if (preferredLanguage == "en/dub") {
+            top = results.firstOrNull { it.id == "en/sub" }
+            if (top != null) {
+                Logger.log("MalSync: Fallback to en/sub from en/dub")
+                return top
+            }
+        }
+
+        // Fallback 2: Try any entry with lang "en"
+        top = results.firstOrNull { it.lang == "en" }
+        if (top != null) {
+            Logger.log("MalSync: Fallback to any English language entry: ${top.id}")
+            return top
+        }
+
+        // Fallback 3: Return first available entry
+        Logger.log("MalSync: Using first available entry: ${results.first().id}")
+        return results.first()
     }
 
     /**
@@ -172,7 +313,7 @@ object MalSyncApi {
                     batchResults.forEach { result ->
                         val cacheKey = result.malid ?: return@forEach
                         val anilistId = cacheKeyMap[cacheKey] ?: return@forEach
-                        val progress = getProgress(result.data ?: emptyList())
+                        val progress = getProgressForManga(result.data ?: emptyList())
                         if (progress != null) {
                             resultMap[anilistId] = progress
                         }
@@ -206,6 +347,96 @@ object MalSyncApi {
         }
 
         unreadMap
+    }
+
+    /**
+     * Batch fetch episode progress data for multiple anime using MAL IDs only
+     * Returns results with language preference applied per anime
+     * @param animeList List of pairs containing (anilistId, malId)
+     * @return Map of AniList IDs to MalSyncResponse with preferred language
+     */
+    suspend fun getBatchAnimeEpisodes(animeList: List<Pair<Int, Int?>>): Map<Int, MalSyncResponse> = withContext(Dispatchers.IO) {
+        if (animeList.isEmpty()) return@withContext emptyMap()
+
+        val resultMap = mutableMapOf<Int, MalSyncResponse>()
+
+        // Filter to only include anime with MAL IDs
+        val animeWithMalIds = animeList.filter { it.second != null }
+
+        if (animeWithMalIds.isEmpty()) return@withContext emptyMap()
+
+        // Create cache keys using MAL IDs only
+        val cacheKeyMap = mutableMapOf<String, Pair<Int, String>>() // malId -> (anilistId, preferredLanguage)
+        val cacheKeys = animeWithMalIds.map { (anilistId, malId) ->
+            val preferredLanguage = MalSyncLanguageHelper.getPreferredLanguage(anilistId)
+            val key = malId.toString()
+            cacheKeyMap[key] = Pair(anilistId, preferredLanguage)
+            key
+        }
+
+        // Batch fetch all anime (up to 50 at a time)
+        cacheKeys.chunked(50).forEach { chunk ->
+            try {
+                // Wait 5 seconds between requests (rate limiting)
+                if (resultMap.isNotEmpty()) {
+                    delay(5000)
+                }
+
+                val jsonArray = org.json.JSONArray(chunk)
+                val jsonBody = JSONObject().apply {
+                    put("malids", jsonArray)
+                }.toString()
+
+                Logger.log("MalSync batch anime request: $jsonBody")
+
+                val requestBody = jsonBody.toRequestBody("application/json".toMediaType())
+                val request = Request.Builder()
+                    .url("https://api.malsync.moe/nc/mal/anime/POST/pr")
+                    .post(requestBody)
+                    .build()
+
+                val response = client.newCall(request).execute()
+                val body = response.body?.string()
+
+                if (!response.isSuccessful) {
+                    Logger.log("MalSync batch anime API error: ${response.code} - Body: $body")
+                    return@forEach
+                }
+
+                if (body == null || body.isEmpty()) {
+                    Logger.log("MalSync batch anime API returned empty response")
+                    return@forEach
+                }
+
+                Logger.log("MalSync batch anime response (first 500 chars): ${body.take(500)}")
+
+                try {
+                    val type = object : TypeToken<List<BatchProgressResult>>() {}.type
+                    val batchResults: List<BatchProgressResult> = gson.fromJson(body, type)
+
+                    Logger.log("Parsed ${batchResults.size} anime results from batch")
+
+                    // Process each anime's results with language preference
+                    batchResults.forEach { result ->
+                        val cacheKey = result.malid ?: return@forEach
+                        val (anilistId, preferredLanguage) = cacheKeyMap[cacheKey] ?: return@forEach
+                        val progress = getProgressForAnime(result.data ?: emptyList(), preferredLanguage)
+                        if (progress != null) {
+                            resultMap[anilistId] = progress
+                        }
+                    }
+                } catch (parseError: Exception) {
+                    Logger.log("Error parsing batch anime response: ${parseError.message}")
+                    Logger.log("Response body: $body")
+                }
+
+            } catch (e: Exception) {
+                Logger.log("Error fetching batch anime progress for chunk: ${e.message}")
+                e.printStackTrace()
+            }
+        }
+
+        resultMap
     }
 
     /**

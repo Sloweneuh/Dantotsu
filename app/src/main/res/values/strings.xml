@@ -385,6 +385,7 @@
     <string name="over_scroll">Over Scroll to Next/Previous Chapter</string>
     <string name="volume_buttons">Change pages with Volume Buttons</string>
     <string name="list_private">Private</string>
+    <string name="language_icon">Language Icon</string>
     <string name="wrap_images">Wrap Images</string>
     <string name="wrap_images_info">Mostly useful for larger devices, removes space between images, if they exist.</string>
     <string name="reload">Reload</string>

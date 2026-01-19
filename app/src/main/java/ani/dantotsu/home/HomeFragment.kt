@@ -266,16 +266,131 @@ class HomeFragment : Fragment() {
         }
 
         // Recycler Views
-        initRecyclerView(
-            model.getAnimeContinue(),
-            binding.homeContinueWatchingContainer,
-            binding.homeWatchingRecyclerView,
-            binding.homeWatchingProgressBar,
-            binding.homeWatchingEmpty,
-            binding.homeContinueWatch,
-            binding.homeContinueWatchMore,
-            getString(R.string.continue_watching)
-        )
+        // Continue Watching with MALSync data
+        binding.homeContinueWatchingContainer.visibility = View.VISIBLE
+        binding.homeWatchingProgressBar.visibility = View.VISIBLE
+        binding.homeWatchingRecyclerView.visibility = View.GONE
+        binding.homeWatchingEmpty.visibility = View.GONE
+        binding.homeContinueWatch.visibility = View.INVISIBLE
+        binding.homeContinueWatchMore.visibility = View.INVISIBLE
+
+        model.getAnimeContinue().observe(viewLifecycleOwner) { continueWatchingList ->
+            binding.homeWatchingRecyclerView.visibility = View.GONE
+            binding.homeWatchingEmpty.visibility = View.GONE
+            if (continueWatchingList != null) {
+                if (continueWatchingList.isNotEmpty()) {
+                    // Fetch MALSync data using batch endpoint
+                    scope.launch {
+                        val unreleasedInfo = mutableMapOf<Int, ani.dantotsu.connections.malsync.UnreleasedEpisodeInfo>()
+
+                        withContext(Dispatchers.IO) {
+                            // Collect pairs of (anilistId, malId)
+                            val animeIds = continueWatchingList.map { anime ->
+                                Pair(anime.id, anime.idMAL)
+                            }
+                            val batchResults = ani.dantotsu.connections.malsync.MalSyncApi.getBatchAnimeEpisodes(animeIds)
+
+                            // Map results back to anime IDs with display rules
+                            for (anime in continueWatchingList) {
+                                val result = batchResults[anime.id]
+                                if (result != null && result.lastEp != null) {
+                                    val malSyncEpisode = result.lastEp.total
+                                    val userProgress = anime.userProgress ?: 0
+                                    val anilistTotal = anime.anime?.totalEpisodes
+
+                                    // Apply same display conditions as bottom sheet:
+                                    // 1. Don't show if lastEp < userProgress
+                                    // 2. Don't show if lastEp == anilistTotal
+                                    // 3. Only show if lastEp < anilistTotal (there are unreleased episodes)
+                                    val shouldShow = when {
+                                        malSyncEpisode < userProgress -> false
+                                        anilistTotal != null && malSyncEpisode == anilistTotal -> false
+                                        anilistTotal != null && malSyncEpisode < anilistTotal -> true
+                                        else -> anilistTotal == null // Show if no AniList total
+                                    }
+
+                                    if (shouldShow) {
+                                        unreleasedInfo[anime.id] = ani.dantotsu.connections.malsync.UnreleasedEpisodeInfo(
+                                            mediaId = anime.id,
+                                            lastEpisode = malSyncEpisode,
+                                            languageId = result.id,
+                                            languageDisplay = "", // Don't display language on homepage
+                                            userProgress = userProgress
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        withContext(Dispatchers.Main) {
+                            if (unreleasedInfo.isNotEmpty()) {
+                                // Sort by unwatched episodes for anime with MALSync data, put others at end
+                                val sortedList = continueWatchingList.sortedBy { anime ->
+                                    val info = unreleasedInfo[anime.id]
+                                    if (info != null) {
+                                        info.lastEpisode - info.userProgress // Calculate unwatched count
+                                    } else {
+                                        Int.MAX_VALUE // Put items without MALSync data at the end
+                                    }
+                                }
+
+                                binding.homeWatchingRecyclerView.adapter =
+                                    UnreleasedEpisodesAdapter(sortedList, unreleasedInfo)
+                                binding.homeWatchingRecyclerView.layoutManager = LinearLayoutManager(
+                                    requireContext(),
+                                    LinearLayoutManager.HORIZONTAL,
+                                    false
+                                )
+                                binding.homeContinueWatchMore.setOnClickListener { i ->
+                                    MediaListViewActivity.passedMedia = ArrayList(sortedList)
+                                    MediaListViewActivity.passedUnreleasedInfo = unreleasedInfo
+                                    ContextCompat.startActivity(
+                                        i.context, Intent(i.context, MediaListViewActivity::class.java)
+                                            .putExtra("title", getString(R.string.continue_watching)),
+                                        null
+                                    )
+                                }
+                                binding.homeWatchingRecyclerView.visibility = View.VISIBLE
+                                binding.homeWatchingRecyclerView.layoutAnimation =
+                                    LayoutAnimationController(setSlideIn(), 0.25f)
+                            } else {
+                                // No MALSync data available, show standard adapter
+                                binding.homeWatchingRecyclerView.adapter = MediaAdaptor(0, continueWatchingList, requireActivity())
+                                binding.homeWatchingRecyclerView.layoutManager = LinearLayoutManager(
+                                    requireContext(),
+                                    LinearLayoutManager.HORIZONTAL,
+                                    false
+                                )
+                                binding.homeContinueWatchMore.setOnClickListener { i ->
+                                    MediaListViewActivity.passedMedia = continueWatchingList
+                                    ContextCompat.startActivity(
+                                        i.context, Intent(i.context, MediaListViewActivity::class.java)
+                                            .putExtra("title", getString(R.string.continue_watching)),
+                                        null
+                                    )
+                                }
+                                binding.homeWatchingRecyclerView.visibility = View.VISIBLE
+                                binding.homeWatchingRecyclerView.layoutAnimation =
+                                    LayoutAnimationController(setSlideIn(), 0.25f)
+                            }
+                            binding.homeContinueWatchMore.visibility = View.VISIBLE
+                            binding.homeContinueWatch.visibility = View.VISIBLE
+                            binding.homeContinueWatchMore.startAnimation(setSlideUp())
+                            binding.homeContinueWatch.startAnimation(setSlideUp())
+                            binding.homeWatchingProgressBar.visibility = View.GONE
+                        }
+                    }
+                } else {
+                    binding.homeWatchingEmpty.visibility = View.VISIBLE
+                    binding.homeContinueWatchMore.visibility = View.VISIBLE
+                    binding.homeContinueWatch.visibility = View.VISIBLE
+                    binding.homeContinueWatchMore.startAnimation(setSlideUp())
+                    binding.homeContinueWatch.startAnimation(setSlideUp())
+                    binding.homeWatchingProgressBar.visibility = View.GONE
+                }
+            }
+        }
+
         binding.homeWatchingBrowseButton.setOnClickListener {
             bottomBar.selectTabAt(0)
         }

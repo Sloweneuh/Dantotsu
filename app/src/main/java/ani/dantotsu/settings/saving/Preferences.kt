@@ -187,6 +187,7 @@ enum class PrefName(val data: Pref) {
     OfflineMode(Pref(Location.Irrelevant, Boolean::class, false)),
     DiscordStatus(Pref(Location.Irrelevant, String::class, "online")),
     ShowAniListIcon(Pref(Location.Irrelevant, Boolean::class, false)),
+    MalSyncLanguagePreferences(Pref(Location.Irrelevant, Set::class, setOf<String>())), // Stores "mediaId:language" pairs
     DownloadsKeys(Pref(Location.Irrelevant, String::class, "")),
     NovelLastExtCheck(Pref(Location.Irrelevant, Long::class, 0L)),
     ImageUrl(Pref(Location.Irrelevant, String::class, "")),
