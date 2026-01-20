@@ -767,6 +767,14 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                 }
             }
         }
+
+        // Observe media updates to refresh the progress display
+        model.getMedia().observe(this) { updatedMedia ->
+            if (updatedMedia != null) {
+                media = updatedMedia
+                progress()
+            }
+        }
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
