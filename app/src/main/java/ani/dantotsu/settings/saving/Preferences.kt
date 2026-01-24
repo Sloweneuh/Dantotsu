@@ -45,11 +45,16 @@ enum class PrefName(val data: Pref) {
     NovelSourcesOrder(Pref(Location.General, List::class, listOf<String>())),
     CommentNotificationInterval(Pref(Location.General, Int::class, 0)),
     AnilistNotificationInterval(Pref(Location.General, Int::class, 3)),
-    SubscriptionNotificationInterval(Pref(Location.General, Int::class, 2)),
+    SubscriptionNotificationInterval(Pref(Location.General, Int::class, 2)), // Legacy: index-based
+    SubscriptionNotificationIntervalMinutes(Pref(Location.General, Long::class, 60L)), // New: 480 minutes = 8 hours
     UnreadChapterNotificationInterval(Pref(Location.General, Long::class, 60L)), // 60 minutes = 1 hour
     LastAnilistNotificationId(Pref(Location.General, Int::class, 0)),
     AnilistFilteredTypes(Pref(Location.General, Set::class, setOf<String>())),
     UseAlarmManager(Pref(Location.General, Boolean::class, false)),
+    FirebaseToken(Pref(Location.General, String::class, "")),
+    LastFirebaseBackgroundCheck(Pref(Location.General, Long::class, 0L)),
+    LastUnreadChapterCheck(Pref(Location.General, Long::class, 0L)),
+    LastSubscriptionCheck(Pref(Location.General, Long::class, 0L)),
     IncludeAnimeList(Pref(Location.General, Boolean::class, true)),
     IncludeMangaList(Pref(Location.General, Boolean::class, true)),
     AdultOnly(Pref(Location.General, Boolean::class, false)),

@@ -29,9 +29,9 @@ interface TaskScheduler {
                     PrefName.AnilistNotificationInterval
                 )]
 
-                TaskType.SUBSCRIPTION_NOTIFICATION -> SubscriptionNotificationWorker.checkIntervals[PrefManager.getVal(
-                    PrefName.SubscriptionNotificationInterval
-                )]
+                TaskType.SUBSCRIPTION_NOTIFICATION -> PrefManager.getVal(
+                    PrefName.SubscriptionNotificationIntervalMinutes
+                )
 
                 TaskType.UNREAD_CHAPTER_NOTIFICATION -> PrefManager.getVal(
                     PrefName.UnreadChapterNotificationInterval

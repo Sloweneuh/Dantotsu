@@ -245,9 +245,13 @@ object MalSyncApi {
      * Fetches up to 50 manga at once to reduce API calls
      * Supports both numeric MAL IDs and "anilist:ID" format
      * @param mediaList List of pairs containing (anilistId, malId)
+     * @param onProgress Optional callback for progress updates (batchNumber, totalBatches, processedCount, totalCount)
      * @return Map of AniList IDs to MalSyncResponse
      */
-    suspend fun getBatchProgressByMedia(mediaList: List<Pair<Int, Int?>>): Map<Int, MalSyncResponse> = withContext(Dispatchers.IO) {
+    suspend fun getBatchProgressByMedia(
+        mediaList: List<Pair<Int, Int?>>,
+        onProgress: ((Int, Int, Int, Int) -> Unit)? = null
+    ): Map<Int, MalSyncResponse> = withContext(Dispatchers.IO) {
         if (mediaList.isEmpty()) return@withContext emptyMap()
 
         val resultMap = mutableMapOf<Int, MalSyncResponse>()
@@ -265,8 +269,18 @@ object MalSyncApi {
         }
 
         // Batch fetch all manga (up to 50 at a time)
-        cacheKeys.chunked(50).forEach { chunk ->
+        val chunks = cacheKeys.chunked(50)
+        val totalBatches = chunks.size
+        val totalCount = mediaList.size
+
+        chunks.forEachIndexed { batchIndex, chunk ->
+            val batchNumber = batchIndex + 1
+            val processedSoFar = minOf(batchNumber * 50, totalCount)
+
             try {
+                // Notify progress before processing batch
+                onProgress?.invoke(batchNumber, totalBatches, processedSoFar - chunk.size, totalCount)
+
                 // Wait 5 seconds between requests (rate limiting, matching web extension)
                 if (resultMap.isNotEmpty()) {
                     delay(5000)
@@ -291,12 +305,12 @@ object MalSyncApi {
 
                 if (!response.isSuccessful) {
                     Logger.log("MalSync batch API error: ${response.code} - Body: $body")
-                    return@forEach
+                    return@forEachIndexed
                 }
 
                 if (body == null || body.isEmpty()) {
                     Logger.log("MalSync batch API returned empty response")
-                    return@forEach
+                    return@forEachIndexed
                 }
 
                 Logger.log("MalSync batch response (first 500 chars): ${body.take(500)}")
@@ -322,6 +336,9 @@ object MalSyncApi {
                     Logger.log("Error parsing batch response: ${parseError.message}")
                     Logger.log("Response body: $body")
                 }
+
+                // Notify progress after batch completes
+                onProgress?.invoke(batchNumber, totalBatches, processedSoFar, totalCount)
 
             } catch (e: Exception) {
                 Logger.log("Error fetching batch progress for chunk: ${e.message}")

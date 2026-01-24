@@ -10,9 +10,14 @@ import ani.dantotsu.notifications.subscription.SubscriptionNotificationWorker
 
 class WorkManagerScheduler(private val context: Context) : TaskScheduler {
     override fun scheduleRepeatingTask(taskType: TaskType, interval: Long) {
-        if (interval * 1000 < PeriodicWorkRequest.MIN_PERIODIC_INTERVAL_MILLIS) {
+        // WorkManager minimum is 15 minutes, so use that if interval is less
+        val actualInterval = if (interval <= 0) {
             cancelTask(taskType)
             return
+        } else if (interval < 15) {
+            15L // Minimum 15 minutes for WorkManager
+        } else {
+            interval
         }
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
@@ -22,10 +27,10 @@ class WorkManagerScheduler(private val context: Context) : TaskScheduler {
             TaskType.COMMENT_NOTIFICATION -> {
                 val recurringWork = PeriodicWorkRequest.Builder(
                     CommentNotificationWorker::class.java,
-                    interval,
+                    actualInterval,
                     java.util.concurrent.TimeUnit.MINUTES,
                     PeriodicWorkRequest.MIN_PERIODIC_FLEX_MILLIS,
-                    java.util.concurrent.TimeUnit.MINUTES
+                    java.util.concurrent.TimeUnit.MILLISECONDS
                 )
                     .setConstraints(constraints)
                     .build()
@@ -39,10 +44,10 @@ class WorkManagerScheduler(private val context: Context) : TaskScheduler {
             TaskType.ANILIST_NOTIFICATION -> {
                 val recurringWork = PeriodicWorkRequest.Builder(
                     AnilistNotificationWorker::class.java,
-                    interval,
+                    actualInterval,
                     java.util.concurrent.TimeUnit.MINUTES,
                     PeriodicWorkRequest.MIN_PERIODIC_FLEX_MILLIS,
-                    java.util.concurrent.TimeUnit.MINUTES
+                    java.util.concurrent.TimeUnit.MILLISECONDS
                 )
                     .setConstraints(constraints)
                     .build()
@@ -56,10 +61,10 @@ class WorkManagerScheduler(private val context: Context) : TaskScheduler {
             TaskType.SUBSCRIPTION_NOTIFICATION -> {
                 val recurringWork = PeriodicWorkRequest.Builder(
                     SubscriptionNotificationWorker::class.java,
-                    interval,
+                    actualInterval,
                     java.util.concurrent.TimeUnit.MINUTES,
                     PeriodicWorkRequest.MIN_PERIODIC_FLEX_MILLIS,
-                    java.util.concurrent.TimeUnit.MINUTES
+                    java.util.concurrent.TimeUnit.MILLISECONDS
                 )
                     .setConstraints(constraints)
                     .build()
@@ -73,10 +78,10 @@ class WorkManagerScheduler(private val context: Context) : TaskScheduler {
             TaskType.UNREAD_CHAPTER_NOTIFICATION -> {
                 val recurringWork = PeriodicWorkRequest.Builder(
                     ani.dantotsu.notifications.unread.UnreadChapterNotificationWorker::class.java,
-                    interval,
+                    actualInterval,
                     java.util.concurrent.TimeUnit.MINUTES,
                     PeriodicWorkRequest.MIN_PERIODIC_FLEX_MILLIS,
-                    java.util.concurrent.TimeUnit.MINUTES
+                    java.util.concurrent.TimeUnit.MILLISECONDS
                 )
                     .setConstraints(constraints)
                     .build()

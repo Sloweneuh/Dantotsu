@@ -18,7 +18,7 @@ android {
         minSdk 21
         targetSdk 35
         versionCode((System.currentTimeMillis() / 60000).toInteger())
-        versionName "3.2.7"
+        versionName "3.2.8"
         versionCode versionName.split("\\.").collect { it.toInteger() * 100 }.join("") as Integer
         signingConfig signingConfigs.debug
 
@@ -88,6 +88,7 @@ dependencies {
     googleImplementation platform('com.google.firebase:firebase-bom:33.13.0')
     googleImplementation 'com.google.firebase:firebase-analytics-ktx:22.4.0'
     googleImplementation 'com.google.firebase:firebase-crashlytics-ktx:19.4.3'
+    googleImplementation 'com.google.firebase:firebase-messaging-ktx:24.1.0'
 //  Core
     implementation 'androidx.appcompat:appcompat:1.7.0'
     implementation 'androidx.browser:browser:1.8.0'

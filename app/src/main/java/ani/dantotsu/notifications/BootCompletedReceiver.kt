@@ -15,23 +15,18 @@ import ani.dantotsu.util.Logger
 class BootCompletedReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
         if (intent?.action == Intent.ACTION_BOOT_COMPLETED) {
-            val scheduler = AlarmManagerScheduler(context)
             PrefManager.init(context)
             Logger.init(context)
-            Logger.log("Starting Dantotsu Subscription Service on Boot")
+            Logger.log("BootCompletedReceiver: Starting Dantotsu notification services on boot")
+
             if (PrefManager.getVal(PrefName.UseAlarmManager)) {
-                val commentInterval =
-                    CommentNotificationWorker.checkIntervals[PrefManager.getVal(PrefName.CommentNotificationInterval)]
-                val anilistInterval =
-                    AnilistNotificationWorker.checkIntervals[PrefManager.getVal(PrefName.AnilistNotificationInterval)]
-                scheduler.scheduleRepeatingTask(
-                    TaskType.COMMENT_NOTIFICATION,
-                    commentInterval
-                )
-                scheduler.scheduleRepeatingTask(
-                    TaskType.ANILIST_NOTIFICATION,
-                    anilistInterval
-                )
+                Logger.log("BootCompletedReceiver: Using AlarmManager, scheduling all tasks")
+                val scheduler = TaskScheduler.create(context, true)
+                scheduler.scheduleAllTasks(context)
+            } else {
+                Logger.log("BootCompletedReceiver: Using WorkManager, scheduling all tasks")
+                val scheduler = TaskScheduler.create(context, false)
+                scheduler.scheduleAllTasks(context)
             }
         }
     }

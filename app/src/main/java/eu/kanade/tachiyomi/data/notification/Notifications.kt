@@ -78,6 +78,12 @@ object Notifications {
     const val ID_SUBSCRIPTION_CHECK = -1001
     const val ID_SUBSCRIPTION_CHECK_PROGRESS = -1002
 
+    /**
+     * Notification channel and ids used for unread chapter checks.
+     */
+    const val GROUP_UNREAD_CHAPTER_CHECK = "group_unread_chapter_check"
+    const val CHANNEL_UNREAD_CHAPTER_CHECK_PROGRESS = "unread_chapter_check_progress_channel"
+    const val ID_UNREAD_CHAPTER_CHECK_PROGRESS = -1003
 
     /**
      * Notification channel and ids used for app and extension updates.
@@ -136,6 +142,9 @@ object Notifications {
                 buildNotificationChannelGroup(GROUP_SUBSCRIPTION_CHECK) {
                     setName("Subscription Checks")
                 },
+                buildNotificationChannelGroup(GROUP_UNREAD_CHAPTER_CHECK) {
+                    setName("Unread Chapter Checks")
+                },
             ),
         )
 
@@ -182,6 +191,10 @@ object Notifications {
                 buildNotificationChannel(CHANNEL_SUBSCRIPTION_CHECK_PROGRESS, IMPORTANCE_DEFAULT) {
                     setName("Subscription Checks Progress")
                     setGroup(GROUP_SUBSCRIPTION_CHECK)
+                },
+                buildNotificationChannel(CHANNEL_UNREAD_CHAPTER_CHECK_PROGRESS, IMPORTANCE_DEFAULT) {
+                    setName("Unread Chapter Checks Progress")
+                    setGroup(GROUP_UNREAD_CHAPTER_CHECK)
                 },
                 buildNotificationChannel(CHANNEL_APP_GLOBAL, IMPORTANCE_HIGH) {
                     setName("Global Updates")

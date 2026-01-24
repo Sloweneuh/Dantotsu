@@ -16,6 +16,7 @@ import ani.dantotsu.connections.crashlytics.CrashlyticsInterface
 import ani.dantotsu.notifications.TaskScheduler
 import ani.dantotsu.notifications.WorkManagerScheduler
 import ani.dantotsu.notifications.AlarmManagerScheduler
+import ani.dantotsu.notifications.firebase.FirebaseBackgroundScheduler
 import ani.dantotsu.others.DisabledReports
 import ani.dantotsu.parsers.AnimeSources
 import ani.dantotsu.parsers.MangaSources
@@ -153,6 +154,16 @@ class App : MultiDexApplication() {
             val scheduler = TaskScheduler.create(this@App, useAlarmManager)
             try {
                 scheduler.scheduleAllTasks(this@App)
+                // Initialize Firebase background scheduler for better reliability
+                // Only available in Google Play build variant
+                if (BuildConfig.FLAVOR == "google") {
+                    try {
+                        FirebaseBackgroundScheduler.initialize(this@App)
+                        Logger.log("Firebase background scheduler initialized")
+                    } catch (e: Exception) {
+                        Logger.log("Failed to initialize Firebase: ${e.message}")
+                    }
+                }
                 // Ensure unread chapter checks are scheduled on both mechanisms
                 // to improve reliability: WorkManager (periodic, survives reboots) and
                 // AlarmManager (can wake device and run during Doze with setExactAndAllowWhileIdle).
