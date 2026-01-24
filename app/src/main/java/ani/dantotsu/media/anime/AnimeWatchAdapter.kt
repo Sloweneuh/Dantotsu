@@ -8,6 +8,7 @@ import android.widget.ArrayAdapter
 import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.NumberPicker
+import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.content.ContextCompat
 import androidx.core.content.ContextCompat.startActivity
 import androidx.core.net.toUri
@@ -25,6 +26,7 @@ import ani.dantotsu.databinding.ItemMediaSourceBinding
 import ani.dantotsu.displayTimer
 import ani.dantotsu.isOnline
 import ani.dantotsu.loadImage
+import ani.dantotsu.media.ExtensionDropdownAdapter
 import ani.dantotsu.media.Media
 import ani.dantotsu.media.MediaDetailsActivity
 import ani.dantotsu.media.MediaNameAdapter
@@ -157,11 +159,22 @@ class AnimeWatchAdapter(
             }
         }
 
+        // Get icons for all sources
+        val sourceIcons = watchSources.list.mapIndexed { index, lazierParser ->
+            val sourceName = watchSources.names.getOrNull(index)
+            if (sourceName == "Downloaded") {
+                // Use download icon for Downloaded source
+                AppCompatResources.getDrawable(fragment.requireContext(), R.drawable.ic_download_24)
+            } else {
+                (lazierParser.get?.value as? DynamicAnimeParser)?.extension?.icon
+            }
+        }
+
         binding.mediaSource.setAdapter(
-            ArrayAdapter(
+            ExtensionDropdownAdapter(
                 fragment.requireContext(),
-                R.layout.item_dropdown,
-                watchSources.names
+                watchSources.names,
+                sourceIcons
             )
         )
         binding.mediaSourceTitle.isSelected = true
@@ -348,11 +361,20 @@ class AnimeWatchAdapter(
 
     fun refreshSourceList() {
         // Update the adapter with the new source list
+        val sourceIcons = watchSources.list.mapIndexed { index, lazierParser ->
+            val sourceName = watchSources.names.getOrNull(index)
+            if (sourceName == "Downloaded") {
+                // Use download icon for Downloaded source
+                AppCompatResources.getDrawable(fragment.requireContext(), R.drawable.ic_download_24)
+            } else {
+                (lazierParser.get?.value as? DynamicAnimeParser)?.extension?.icon
+            }
+        }
         _binding?.mediaSource?.setAdapter(
-            ArrayAdapter(
+            ExtensionDropdownAdapter(
                 fragment.requireContext(),
-                R.layout.item_dropdown,
-                watchSources.names
+                watchSources.names,
+                sourceIcons
             )
         )
     }

@@ -12,6 +12,7 @@ import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.NumberPicker
 import android.widget.TextView
+import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.content.ContextCompat
 import androidx.core.content.ContextCompat.getString
 import androidx.core.content.ContextCompat.startActivity
@@ -28,6 +29,7 @@ import ani.dantotsu.databinding.ItemChipBinding
 import ani.dantotsu.databinding.ItemMediaSourceBinding
 import ani.dantotsu.isOnline
 import ani.dantotsu.loadImage
+import ani.dantotsu.media.ExtensionDropdownAdapter
 import ani.dantotsu.media.Media
 import ani.dantotsu.media.MediaDetailsActivity
 import ani.dantotsu.media.MediaNameAdapter
@@ -162,11 +164,21 @@ class MangaReadAdapter(
         media.selected?.scanlators?.let {
             hiddenScanlators.addAll(it)
         }
+        // Get icons for all sources
+        val sourceIcons = mangaReadSources.list.mapIndexed { index, lazierParser ->
+            val sourceName = mangaReadSources.names.getOrNull(index)
+            if (sourceName == "Downloaded") {
+                // Use download icon for Downloaded source
+                AppCompatResources.getDrawable(fragment.requireContext(), R.drawable.ic_download_24)
+            } else {
+                (lazierParser.get?.value as? DynamicMangaParser)?.extension?.icon
+            }
+        }
         binding.mediaSource.setAdapter(
-            ArrayAdapter(
+            ExtensionDropdownAdapter(
                 fragment.requireContext(),
-                R.layout.item_dropdown,
-                mangaReadSources.names
+                mangaReadSources.names,
+                sourceIcons
             )
         )
         binding.mediaSourceTitle.isSelected = true
@@ -449,11 +461,20 @@ class MangaReadAdapter(
 
     fun refreshSourceList() {
         // Update the adapter with the new source list
+        val sourceIcons = mangaReadSources.list.mapIndexed { index, lazierParser ->
+            val sourceName = mangaReadSources.names.getOrNull(index)
+            if (sourceName == "Downloaded") {
+                // Use download icon for Downloaded source
+                AppCompatResources.getDrawable(fragment.requireContext(), R.drawable.ic_download_24)
+            } else {
+                (lazierParser.get?.value as? DynamicMangaParser)?.extension?.icon
+            }
+        }
         _binding?.mediaSource?.setAdapter(
-            ArrayAdapter(
+            ExtensionDropdownAdapter(
                 fragment.requireContext(),
-                R.layout.item_dropdown,
-                mangaReadSources.names
+                mangaReadSources.names,
+                sourceIcons
             )
         )
     }
