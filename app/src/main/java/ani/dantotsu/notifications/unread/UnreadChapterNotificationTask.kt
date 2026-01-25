@@ -92,7 +92,7 @@ class UnreadChapterNotificationTask : Task {
 
                     // Show progress notification if enabled
                     val progressEnabled: Boolean =
-                        PrefManager.getVal(PrefName.SubscriptionCheckingNotifications)
+                        PrefManager.getVal(PrefName.UnreadChapterCheckingNotifications)
                     Logger.log("UnreadChapterNotificationTask: progressEnabled = $progressEnabled")
 
                     val hasPermission = hasNotificationPermission(context)

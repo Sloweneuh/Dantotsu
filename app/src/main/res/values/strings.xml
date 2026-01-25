@@ -479,7 +479,7 @@
     <string name="checking_subscriptions">Notification for Checking Subscriptions</string>
     <string name="subscriptions_checking_time_s">Subscriptions Update Frequency : %1$s</string>
     <string name="subscriptions_checking_time">Subscriptions Update Frequency</string>
-    <string name="subscriptions_info">Amount of time for Dantotsu to periodically check for new Episodes/Chapters\n(Less time will cause more battery consumption)</string>
+    <string name="subscriptions_info">Amount of time for Dantotsu to periodically check for new Episodes/Chapters for your subscriptions</string>
     <string name="do_not_update">Don\'t Update</string>
     <string name="loading_chap_number">Loading Chapter %1$s</string>
     <string name="sort_by_release_date">Sort by Release Date</string>
@@ -1032,7 +1032,17 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="anilist_notifications_checking_time_desc">Set the frequency you want the app to check for Anilist notifications</string>
     <string name="comment_notification_checking_time_desc">Set the frequency you want the app to check for Comment notifications</string>
     <string name="unread_chapter_notification_checking_time_desc">Set how often to check for new unread chapters in your manga list</string>
+    <string name="unread_chapter_check_progress_notification">Show unread chapter check progress</string>
+    <string name="unread_chapter_check_progress_notification_desc">Display a notification showing progress during unread chapter checks</string>
     <string name="notification_for_checking_subscriptions_desc">Show notification for checking Subscriptions</string>
+    <string name="subscription_notifications">Subscription Notifications</string>
+    <string name="subscription_notifications_desc">Configure notification settings for subscribed anime and manga updates</string>
+    <string name="unread_chapter_notifications">Unread Chapter Notifications</string>
+    <string name="unread_chapter_notifications_desc">Configure automatic checks for new unread chapters in your manga list</string>
+    <string name="anilist_notifications">AniList Notifications</string>
+    <string name="anilist_notifications_desc">Configure AniList activity notifications and filters</string>
+    <string name="comment_notifications">Comment Notifications</string>
+    <string name="comment_notifications_desc">Configure notifications for new comments and replies</string>
     <string name="use_alarm_manager_reliable_desc">Use to bypass the phone\'s battery optimizer</string>
     <string name="oled_theme_variant_desc">As dark as it gets</string>
     <string name="use_material_you_desc">Use the same color as your wallpaper</string>

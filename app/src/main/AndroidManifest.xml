@@ -168,6 +168,18 @@
             android:name=".settings.SettingsNotificationActivity"
             android:parentActivityName=".MainActivity" />
         <activity
+            android:name=".settings.SettingsSubscriptionNotificationActivity"
+            android:parentActivityName=".settings.SettingsNotificationActivity" />
+        <activity
+            android:name=".settings.SettingsUnreadChapterNotificationActivity"
+            android:parentActivityName=".settings.SettingsNotificationActivity" />
+        <activity
+            android:name=".settings.SettingsAnilistNotificationActivity"
+            android:parentActivityName=".settings.SettingsNotificationActivity" />
+        <activity
+            android:name=".settings.SettingsCommentNotificationActivity"
+            android:parentActivityName=".settings.SettingsNotificationActivity" />
+        <activity
             android:name=".settings.SettingsThemeActivity"
             android:parentActivityName=".MainActivity" />
         <activity

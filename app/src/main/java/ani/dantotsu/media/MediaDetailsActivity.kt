@@ -297,12 +297,51 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
 
                             // Set proper width to show content
                             listPopup.width = (300 * resources.displayMetrics.density).toInt() // 300dp
-                            listPopup.height = ViewGroup.LayoutParams.WRAP_CONTENT
 
                             // Force dropdown to always appear below the button
                             listPopup.isModal = true
-                            listPopup.verticalOffset = 4.dpToPx() // Small offset from button
-                            listPopup.setDropDownGravity(android.view.Gravity.START or android.view.Gravity.TOP)
+
+                            // CRITICAL: Set inputMethodMode to NOT_NEEDED to prevent automatic repositioning
+                            listPopup.inputMethodMode = androidx.appcompat.widget.ListPopupWindow.INPUT_METHOD_NOT_NEEDED
+
+                            // Wait for anchor to be measured, then show dropdown
+                            binding.mediaLanguageButton.post {
+                                // Get anchor location on screen after it's been measured
+                                val location = IntArray(2)
+                                binding.mediaLanguageButton.getLocationOnScreen(location)
+                                val anchorY = location[1]
+                                val anchorHeight = binding.mediaLanguageButton.height
+
+                                // Calculate available space below the anchor
+                                val displayMetrics = resources.displayMetrics
+                                val screenHeight = displayMetrics.heightPixels
+                                val spaceBelow = screenHeight - (anchorY + anchorHeight)
+
+                                // Add small margin for visual spacing
+                                val margin = 4.dpToPx()
+
+                                // Set height based on available space
+                                if (spaceBelow < 400.dpToPx()) {
+                                    listPopup.height = spaceBelow - margin * 2
+                                } else {
+                                    listPopup.height = ViewGroup.LayoutParams.WRAP_CONTENT
+                                }
+
+                                // Set vertical offset to appear just below the button
+                                listPopup.verticalOffset = margin
+
+                                // Use NO flags for gravity - this prevents automatic positioning
+                                // and forces it to use our explicit offset
+                                listPopup.setDropDownGravity(android.view.Gravity.NO_GRAVITY)
+
+                                // Show the popup - it will now appear below the anchor
+                                try {
+                                    listPopup.show()
+                                } catch (e: Exception) {
+                                    // Handle case where show fails
+                                    e.printStackTrace()
+                                }
+                            }
 
                             listPopup.setOnItemClickListener { _, _, position, _ ->
                                 val selectedOption = sortedLanguageOptions[position]
@@ -370,8 +409,6 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                                     }
                                 }
                             }
-
-                            listPopup.show()
                         }
                     }
                 } catch (e: Exception) {

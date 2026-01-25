@@ -16,25 +16,45 @@ class ListViewModel : ViewModel() {
     private val lists = MutableLiveData<MutableMap<String, ArrayList<Media>>>()
     private val unfilteredLists = MutableLiveData<MutableMap<String, ArrayList<Media>>>()
     val currentFilters = MutableLiveData<ListFilters>(ListFilters())
+    private var currentSearchQuery: String = ""
 
     fun getLists(): LiveData<MutableMap<String, ArrayList<Media>>> = lists
 
     suspend fun loadLists(anime: Boolean, userId: Int, sortOrder: String? = null) {
         tryWithSuspend {
             val res = Anilist.query.getMediaLists(anime, userId, sortOrder)
-            lists.postValue(res)
             unfilteredLists.postValue(res)
+
+            // Reapply current filters if they exist
+            val filters = currentFilters.value
+            if (filters != null && !filters.isEmpty()) {
+                val filteredLists = res.mapValues { entry ->
+                    entry.value.filter { media ->
+                        matchesFilters(media, filters)
+                    }.let { ArrayList(it) }
+                }.toMutableMap()
+                lists.postValue(filteredLists)
+            } else {
+                lists.postValue(res)
+            }
         }
     }
 
     fun applyFilters(filters: ListFilters) {
-        if (filters.isEmpty()) {
-            lists.postValue(unfilteredLists.value)
-            currentFilters.postValue(ListFilters())
+        currentFilters.postValue(filters)
+
+        // If there's an active search query, reapply the search with new filters
+        if (currentSearchQuery.isNotEmpty()) {
+            performSearch(currentSearchQuery, filters)
             return
         }
 
-        currentFilters.postValue(filters)
+        // No active search, just apply filters
+        if (filters.isEmpty()) {
+            lists.postValue(unfilteredLists.value)
+            return
+        }
+
         val currentLists = unfilteredLists.value ?: return
 
         val filteredLists = currentLists.mapValues { entry ->
@@ -150,12 +170,46 @@ class ListViewModel : ViewModel() {
 
     fun searchLists(search: String) {
         val query = search.trim()
+        currentSearchQuery = query  // Save current search query
+
         if (query.isEmpty()) {
-            lists.postValue(unfilteredLists.value)
+            // When search is cleared, reapply current filters if they exist
+            val filters = currentFilters.value
+            if (filters != null && !filters.isEmpty()) {
+                // Don't call applyFilters here to avoid resetting currentSearchQuery
+                val currentLists = unfilteredLists.value ?: return
+                val filteredLists = currentLists.mapValues { entry ->
+                    entry.value.filter { media ->
+                        matchesFilters(media, filters)
+                    }.let { ArrayList(it) }
+                }.toMutableMap()
+                lists.postValue(filteredLists)
+            } else {
+                lists.postValue(unfilteredLists.value)
+            }
             return
         }
+
+        // Perform search with current filters
+        performSearch(query, currentFilters.value)
+    }
+
+    private fun performSearch(query: String, filters: ListFilters?) {
         val q = normalize(query)
-        val currentLists = unfilteredLists.value ?: return
+
+        // Determine which list to search: if filters are active, search filtered list; otherwise search all
+        val baseList = if (filters != null && !filters.isEmpty()) {
+            // Apply filters first to get the filtered list, then search within that
+            unfilteredLists.value?.mapValues { entry ->
+                entry.value.filter { media ->
+                    matchesFilters(media, filters)
+                }.let { ArrayList(it) }
+            }?.toMutableMap()
+        } else {
+            unfilteredLists.value
+        }
+
+        val currentLists = baseList ?: return
         val filteredLists = currentLists.mapValues { entry ->
             entry.value.filter { media ->
                 val name = normalize(media.name)
@@ -171,7 +225,13 @@ class ListViewModel : ViewModel() {
     }
 
     fun unfilterLists() {
-        lists.postValue(unfilteredLists.value)
+        // When unfiltering for search, check if we should reapply saved filters
+        val filters = currentFilters.value
+        if (filters != null && !filters.isEmpty()) {
+            applyFilters(filters)
+        } else {
+            lists.postValue(unfilteredLists.value)
+        }
     }
 
 }

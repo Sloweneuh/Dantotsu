@@ -85,47 +85,13 @@ object FirebaseBackgroundScheduler {
     /**
      * Fallback scheduler that runs periodic checks even without server-side FCM
      * This uses local scheduling as a backup mechanism
+     * Note: This should NOT trigger checks - it only subscribes to topics.
+     * Actual scheduling is handled by AlarmManager or WorkManager.
      */
     private fun startFallbackScheduler(context: Context) {
-        scope.launch {
-            while (isActive) {
-                try {
-                    // Check every hour if we should run notification checks
-                    delay(TimeUnit.HOURS.toMillis(1))
-
-                    PrefManager.init(context)
-                    val lastCheck = PrefManager.getVal<Long>(PrefName.LastFirebaseBackgroundCheck)
-                    val now = System.currentTimeMillis()
-
-                    // Check unread chapters
-                    val unreadInterval = PrefManager.getVal<Long>(PrefName.UnreadChapterNotificationInterval)
-                    if (unreadInterval > 0) {
-                        val unreadLastCheck = PrefManager.getVal<Long>(PrefName.LastUnreadChapterCheck)
-                        if (now - unreadLastCheck >= TimeUnit.MINUTES.toMillis(unreadInterval)) {
-                            Logger.log("Firebase Fallback: Triggering unread chapters check")
-                            triggerUnreadChaptersCheck(context)
-                            PrefManager.setVal(PrefName.LastUnreadChapterCheck, now)
-                        }
-                    }
-
-                    // Check subscriptions
-                    val subscriptionInterval = PrefManager.getVal<Long>(PrefName.SubscriptionNotificationIntervalMinutes)
-                    if (subscriptionInterval > 0) {
-                        val subscriptionLastCheck = PrefManager.getVal<Long>(PrefName.LastSubscriptionCheck)
-                        val intervalMillis = TimeUnit.MINUTES.toMillis(subscriptionInterval)
-                        if (now - subscriptionLastCheck >= intervalMillis) {
-                            Logger.log("Firebase Fallback: Triggering subscription check")
-                            triggerSubscriptionCheck(context)
-                            PrefManager.setVal(PrefName.LastSubscriptionCheck, now)
-                        }
-                    }
-
-                    PrefManager.setVal(PrefName.LastFirebaseBackgroundCheck, now)
-                } catch (e: Exception) {
-                    Logger.log("Firebase Fallback: Error in scheduler: ${e.message}")
-                }
-            }
-        }
+        // Disabled: AlarmManager/WorkManager handles scheduling
+        // This fallback was causing duplicate checks
+        Logger.log("Firebase: Fallback scheduler disabled - using AlarmManager/WorkManager instead")
     }
 
     /**

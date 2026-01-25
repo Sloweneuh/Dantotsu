@@ -22,6 +22,8 @@ import androidx.annotation.OptIn
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.animation.doOnEnd
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.doOnAttach
 import androidx.core.view.updateLayoutParams
 import androidx.core.view.updateMargins
@@ -132,15 +134,6 @@ class MainActivity : AppCompatActivity() {
         }
         bottomNavBar.background = ContextCompat.getDrawable(this, R.drawable.bottom_nav_gray)
 
-        val offset = try {
-            val statusBarHeightId = resources.getIdentifier("status_bar_height", "dimen", "android")
-            resources.getDimensionPixelSize(statusBarHeightId)
-        } catch (e: Exception) {
-            statusBarHeight
-        }
-        val layoutParams = binding.incognito.layoutParams as ViewGroup.MarginLayoutParams
-        layoutParams.topMargin = 11 * offset / 12
-        binding.incognito.layoutParams = layoutParams
         incognitoLiveData = PrefManager.getLiveVal(
             PrefName.Incognito,
             false
@@ -233,6 +226,32 @@ class MainActivity : AppCompatActivity() {
 
         binding.root.doOnAttach {
             initActivity(this)
+
+            // Set up window insets listener after initActivity to handle dynamic changes
+            ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, windowInsets ->
+                val navInsets = windowInsets.getInsets(WindowInsetsCompat.Type.navigationBars())
+                val statusInsets = windowInsets.getInsets(WindowInsetsCompat.Type.statusBars())
+
+                // Update global values only if they've changed or are zero
+                val newNavBarHeight = navInsets.bottom
+                val newStatusBarHeight = statusInsets.top
+
+                if (newNavBarHeight > 0) navBarHeight = newNavBarHeight
+                if (newStatusBarHeight > 0) statusBarHeight = newStatusBarHeight
+
+                // Update navbar container margin
+                binding.includedNavbar.navbarContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+                    bottomMargin = navBarHeight
+                }
+
+                // Update incognito icon top margin (16dp base + statusBarHeight)
+                binding.incognito.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+                    topMargin = statusBarHeight + (16 * resources.displayMetrics.density).toInt()
+                }
+
+                windowInsets
+            }
+
             val preferences: SourcePreferences = Injekt.get()
             if (preferences.animeExtensionUpdatesCount()
                     .get() > 0 || preferences.mangaExtensionUpdatesCount().get() > 0
@@ -284,9 +303,6 @@ class MainActivity : AppCompatActivity() {
                         false
                     )
                 }
-            }
-            binding.includedNavbar.navbarContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-                bottomMargin = navBarHeight
             }
         }
 
@@ -540,6 +556,13 @@ class MainActivity : AppCompatActivity() {
             }
             show()
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Request a layout pass to ensure window insets are recalculated
+        // This fixes layout issues after screen turns off and back on
+        binding.root.requestApplyInsets()
     }
 
     //ViewPager

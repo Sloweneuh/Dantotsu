@@ -113,6 +113,13 @@ class ListActivity : AppCompatActivity() {
             }
         }
 
+        // Observe current filters to update chips when filters are reapplied
+        model.currentFilters.observe(this) { filters ->
+            if (filters != null) {
+                updateFilterChips(filters)
+            }
+        }
+
         val live = Refresh.activity.getOrPut(this.hashCode()) { MutableLiveData(true) }
         live.observe(this) {
             if (it) {
@@ -179,11 +186,10 @@ class ListActivity : AppCompatActivity() {
         }
 
         binding.search.setOnClickListener {
-            toggleSearchView(binding.searchView.isVisible)
-            if (!binding.searchView.isVisible) {
-                model.unfilterLists()
-                updateFilterChips(ListFilters())
-            }
+            val wasVisible = binding.searchView.isVisible
+            toggleSearchView(wasVisible)
+            // When closing search view, the text.clear() in toggleSearchView
+            // will trigger searchLists("") which handles filter reapplication
         }
 
         binding.searchViewText.addTextChangedListener {
@@ -305,7 +311,7 @@ class ListActivity : AppCompatActivity() {
         }
     }
 
-    private fun addFilterChip(text: String, type: String, onRemove: () -> Unit) {
+    private fun addFilterChip(text: String, @Suppress("UNUSED_PARAMETER") type: String, onRemove: () -> Unit) {
         val chip = com.google.android.material.chip.Chip(this)
         chip.text = text
         chip.isCloseIconVisible = true
@@ -319,7 +325,7 @@ class ListActivity : AppCompatActivity() {
         }
 
         // Apply theme colors to match the app style
-        chip.chipBackgroundColor = getColorStateList(R.color.chip_background_color)
+        chip.chipBackgroundColor = ContextCompat.getColorStateList(this, R.color.chip_background_color)
         chip.chipStrokeColor = android.content.res.ColorStateList.valueOf(
             getThemeColor(com.google.android.material.R.attr.colorPrimaryContainer)
         )
