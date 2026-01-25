@@ -14,3 +14,4 @@
   - Fixed various issues related to using filters alongside name search in lists
   - Fixed an issue causing the display to break if the device screen was off for too long
   - Fixed an issue causing the anime language dropdown to display above the button and move below when scrolling on some devices
+  - Changed anime trailer to a button instead of an embedded video to restore functionnality after youtube changed how embed works

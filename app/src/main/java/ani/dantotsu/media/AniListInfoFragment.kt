@@ -51,6 +51,7 @@ import ani.dantotsu.px
 import ani.dantotsu.setSafeOnClickListener
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
+import ani.dantotsu.toast
 import com.xwray.groupie.GroupieAdapter
 import io.noties.markwon.Markwon
 import io.noties.markwon.SoftBreakAddsNewLinePlugin
@@ -428,57 +429,48 @@ class AniListInfoFragment : Fragment() {
                     }
                 }
                 if (media.trailer != null && !offline) {
-                    @Suppress("DEPRECATION")
-                    class MyChrome : WebChromeClient() {
-                        private var mCustomView: View? = null
-                        private var mCustomViewCallback: CustomViewCallback? = null
-                        private var mOriginalSystemUiVisibility = 0
+                    // Extract video ID from trailer URL
+                    val trailerUrl = media.trailer!!
+                    val videoId = trailerUrl.substringAfterLast("/").substringBefore("?")
 
-                        override fun onHideCustomView() {
-                            (requireActivity().window.decorView as FrameLayout).removeView(
-                                mCustomView
-                            )
-                            mCustomView = null
-                            requireActivity().window.decorView.systemUiVisibility =
-                                mOriginalSystemUiVisibility
-                            mCustomViewCallback!!.onCustomViewHidden()
-                            mCustomViewCallback = null
+                    // Create a YouTube-styled button
+                    val button = com.google.android.material.button.MaterialButton(requireContext()).apply {
+                        @SuppressLint("SetTextI18n")
+                        text = "▶  Watch Trailer on YouTube"
+                        textSize = 16f
+                        setTextColor(ContextCompat.getColor(context, android.R.color.white))
+
+                        // YouTube red color
+                        backgroundTintList = android.content.res.ColorStateList.valueOf(
+                            ContextCompat.getColor(context, android.R.color.holo_red_dark)
+                        )
+
+                        // Large button styling
+                        minimumHeight = 56f.px
+                        setPadding(32f.px, 16f.px, 32f.px, 16f.px)
+
+                        // Center in parent with margins
+                        layoutParams = ViewGroup.MarginLayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT
+                        ).apply {
+                            setMargins(32f.px, 16f.px, 32f.px, 16f.px)
                         }
 
-                        override fun onShowCustomView(
-                            paramView: View,
-                            paramCustomViewCallback: CustomViewCallback
-                        ) {
-                            if (mCustomView != null) {
-                                onHideCustomView()
-                                return
+                        cornerRadius = 12f.px
+                        elevation = 4f.px.toFloat()
+
+                        setSafeOnClickListener {
+                            try {
+                                val intent = Intent(Intent.ACTION_VIEW, "https://www.youtube.com/watch?v=$videoId".toUri())
+                                startActivity(intent)
+                            } catch (e: Exception) {
+                                Toast.makeText(requireContext(), "Unable to open trailer", Toast.LENGTH_SHORT).show()
                             }
-                            mCustomView = paramView
-                            mOriginalSystemUiVisibility =
-                                requireActivity().window.decorView.systemUiVisibility
-                            mCustomViewCallback = paramCustomViewCallback
-                            (requireActivity().window.decorView as FrameLayout).addView(
-                                mCustomView,
-                                FrameLayout.LayoutParams(-1, -1)
-                            )
-                            requireActivity().window.decorView.systemUiVisibility =
-                                3846 or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
                         }
                     }
 
-                    val bind = ItemTitleTrailerBinding.inflate(
-                        LayoutInflater.from(context),
-                        parent,
-                        false
-                    )
-                    bind.mediaInfoTrailer.apply {
-                        visibility = View.VISIBLE
-                        settings.javaScriptEnabled = true
-                        isSoundEffectsEnabled = true
-                        webChromeClient = MyChrome()
-                        loadUrl(media.trailer!!)
-                    }
-                    parent.addView(bind.root)
+                    parent.addView(button)
                 }
 
                 if (media.anime != null && (media.anime.op.isNotEmpty() || media.anime.ed.isNotEmpty()) && !offline) {

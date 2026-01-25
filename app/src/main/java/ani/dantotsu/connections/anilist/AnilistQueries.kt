@@ -123,9 +123,14 @@ class AnilistQueries {
                         }
 
                         media.trailer = fetchedMedia.trailer?.let { i ->
-                            if (i.site != null && i.site.toString() == "youtube")
-                                "https://www.youtube.com/embed/${i.id.toString().trim('"')}"
-                            else null
+                            if (i.site != null && i.site.toString().lowercase() == "youtube" && i.id != null) {
+                                // Clean the video ID and construct proper embed URL
+                                val videoId = i.id.toString().trim().trim('"').trim()
+                                if (videoId.isNotEmpty()) {
+                                    // Use youtube-nocookie.com for better embed support
+                                    "https://www.youtube-nocookie.com/embed/$videoId?enablejsapi=1&autoplay=0&modestbranding=1&rel=0"
+                                } else null
+                            } else null
                         }
 
                         fetchedMedia.synonyms?.apply {
