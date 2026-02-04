@@ -4,8 +4,6 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import ani.dantotsu.MainActivity
-import eu.kanade.tachiyomi.core.Constants
 
 /**
  * Global [BroadcastReceiver] that runs on UI thread
@@ -15,7 +13,6 @@ import eu.kanade.tachiyomi.core.Constants
 class NotificationReceiver {
 
     companion object {
-        private const val NAME = "NotificationReceiver"
 
 
         /**
@@ -25,8 +22,8 @@ class NotificationReceiver {
          * @return [PendingIntent]
          */
         internal fun openExtensionsPendingActivity(context: Context): PendingIntent {
-            val intent = Intent(context, MainActivity::class.java).apply {
-                action = Constants.SHORTCUT_EXTENSIONS
+            val intent = Intent(context, ani.dantotsu.settings.ExtensionsActivity::class.java).apply {
+                putExtra("tab", 0) // Open the Updates tab (position 0)
                 addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
             }
             return PendingIntent.getActivity(

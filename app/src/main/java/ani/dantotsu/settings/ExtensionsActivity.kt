@@ -28,10 +28,14 @@ import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.util.customAlertDialog
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
+import eu.kanade.domain.source.service.SourcePreferences
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 import java.util.Locale
 
 class ExtensionsActivity : AppCompatActivity() {
     lateinit var binding: ActivityExtensionsBinding
+    private var hasUpdates = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -68,18 +72,36 @@ class ExtensionsActivity : AppCompatActivity() {
         val viewPager = findViewById<ViewPager2>(R.id.viewPager)
         viewPager.offscreenPageLimit = 1
 
+        // Check if there are any extension updates
+        val preferences: SourcePreferences = Injekt.get()
+        hasUpdates = preferences.animeExtensionUpdatesCount().get() > 0 ||
+                     preferences.mangaExtensionUpdatesCount().get() > 0
+
         viewPager.adapter = object : FragmentStateAdapter(this) {
-            override fun getItemCount(): Int = 6
+            override fun getItemCount(): Int = if (hasUpdates) 7 else 6
 
             override fun createFragment(position: Int): Fragment {
-                return when (position) {
-                    0 -> InstalledAnimeExtensionsFragment()
-                    1 -> AnimeExtensionsFragment()
-                    2 -> InstalledMangaExtensionsFragment()
-                    3 -> MangaExtensionsFragment()
-                    4 -> InstalledNovelExtensionsFragment()
-                    5 -> NovelExtensionsFragment()
-                    else -> AnimeExtensionsFragment()
+                return if (hasUpdates) {
+                    when (position) {
+                        0 -> ExtensionUpdatesFragment()
+                        1 -> InstalledAnimeExtensionsFragment()
+                        2 -> AnimeExtensionsFragment()
+                        3 -> InstalledMangaExtensionsFragment()
+                        4 -> MangaExtensionsFragment()
+                        5 -> InstalledNovelExtensionsFragment()
+                        6 -> NovelExtensionsFragment()
+                        else -> ExtensionUpdatesFragment()
+                    }
+                } else {
+                    when (position) {
+                        0 -> InstalledAnimeExtensionsFragment()
+                        1 -> AnimeExtensionsFragment()
+                        2 -> InstalledMangaExtensionsFragment()
+                        3 -> MangaExtensionsFragment()
+                        4 -> InstalledNovelExtensionsFragment()
+                        5 -> NovelExtensionsFragment()
+                        else -> InstalledAnimeExtensionsFragment()
+                    }
                 }
             }
 
@@ -93,9 +115,16 @@ class ExtensionsActivity : AppCompatActivity() {
                     searchView.setText("")
                     searchView.clearFocus()
                     tabLayout.clearFocus()
-                    if (tab.text?.contains("Installed") == true) binding.languageselect.visibility =
-                        View.GONE
-                    else binding.languageselect.visibility = View.VISIBLE
+
+                    // Hide language select and repo button for Updates and Installed tabs
+                    if (tab.text?.contains("Updates") == true || tab.text?.contains("Installed") == true) {
+                        binding.languageselect.visibility = View.GONE
+                        binding.openSettingsButton.visibility = View.GONE
+                    } else {
+                        binding.languageselect.visibility = View.VISIBLE
+                        binding.openSettingsButton.visibility = View.VISIBLE
+                    }
+
                     viewPager.updateLayoutParams<ViewGroup.LayoutParams> {
                         height = ViewGroup.LayoutParams.MATCH_PARENT
                     }
@@ -128,21 +157,38 @@ class ExtensionsActivity : AppCompatActivity() {
         )
 
         TabLayoutMediator(tabLayout, viewPager) { tab, position ->
-            tab.text = when (position) {
-                0 -> "Installed Anime"
-                1 -> "Available Anime"
-                2 -> "Installed Manga"
-                3 -> "Available Manga"
-                4 -> "Installed Novels"
-                5 -> "Available Novels"
-                else -> null
+            tab.text = if (hasUpdates) {
+                when (position) {
+                    0 -> "Updates"
+                    1 -> "Installed Anime"
+                    2 -> "Available Anime"
+                    3 -> "Installed Manga"
+                    4 -> "Available Manga"
+                    5 -> "Installed Novels"
+                    6 -> "Available Novels"
+                    else -> null
+                }
+            } else {
+                when (position) {
+                    0 -> "Installed Anime"
+                    1 -> "Available Anime"
+                    2 -> "Installed Manga"
+                    3 -> "Available Manga"
+                    4 -> "Installed Novels"
+                    5 -> "Available Novels"
+                    else -> null
+                }
             }
         }.attach()
 
         // Set initial tab if provided in intent
         val initialTab = intent.getIntExtra("tab", -1)
-        if (initialTab in 0..5) {
+        val maxTab = if (hasUpdates) 6 else 5
+        if (initialTab in 0..maxTab) {
             viewPager.setCurrentItem(initialTab, false)
+        } else if (initialTab == 0 && !hasUpdates) {
+            // If Updates tab was requested but no updates exist, go to first tab
+            viewPager.setCurrentItem(0, false)
         }
 
 

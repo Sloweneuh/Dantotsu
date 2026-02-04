@@ -1172,5 +1172,8 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="unknown_title">Unknown Title</string>
     <string name="mu_desc_format">%1$s%2$s</string>
     <string name="search_on_comick">Search on Comick</string>
+    <string name="no_updates_available">No updates available</string>
+    <string name="update_all">Update All</string>
+    <string name="updates">Updates</string>
 
 </resources>

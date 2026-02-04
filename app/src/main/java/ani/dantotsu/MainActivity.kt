@@ -259,7 +259,10 @@ class MainActivity : AppCompatActivity() {
                 snackString(R.string.extension_updates_available)
                     ?.setDuration(Snackbar.LENGTH_SHORT)
                     ?.setAction(R.string.review) {
-                        startActivity(Intent(this, ExtensionsActivity::class.java))
+                        startActivity(
+                            Intent(this, ExtensionsActivity::class.java)
+                                .putExtra("tab", 0) // Open the Updates tab (position 0)
+                        )
                     }
             }
             window.navigationBarColor = ContextCompat.getColor(this, android.R.color.transparent)
