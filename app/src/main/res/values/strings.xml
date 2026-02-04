@@ -1175,5 +1175,10 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="no_updates_available">No updates available</string>
     <string name="update_all">Update All</string>
     <string name="updates">Updates</string>
+    <string name="select_extensions">Select Extensions to Test</string>
+    <string name="select_all">Select All</string>
+    <string name="deselect_all">Deselect All</string>
+    <string name="test_results">Test Results</string>
+    <string name="extensions_selected">%1$d extension(s) selected</string>
 
 </resources>
