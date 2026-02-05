@@ -1,17 +1,16 @@
-# 3.2.8
+# 3.2.9
 
 - **Features:**
-  - Rework of the notification system
-    - Updated the settings UI for notifications to use subcategories, to make it more readable
-    - Progress notification when Unread Chapters check is in progress
-    - Notifications truly work even when the app is closed (If the use of the alarm manager is enabled in settings)
-    - Changed the interval settings for subscription checks to match the ones for unread chapters
-    - Changed the UI to set a custom interval to use typing in hours or minutes instead of scrolling in minutes
-  - Added icons to the extension selection dropdown to make it easier to find the right one when there are many installed
+  - Added a tab for extensions with pending gupdates
+    - The toast at app launch alerting about new updates will open that tab
+    - Contains a button to start updating all extensions with updates
+    - The tab will not be visible if there are no updates available
+  - Added buttons to open an entry/chapter/episode on the source website
+    - Longclicking an entry's image in the "Wrong title?" popup will also open it in the browser
+
+- **Changes**
+  - Reworked the extension test UI
+    - Functionality didn't change, but the UI is prettier and easier to use
 
 - **Bugfixes:**
-  - Fixed an issue that removed filters when a list refreshed
-  - Fixed various issues related to using filters alongside name search in lists
-  - Fixed an issue causing the display to break if the device screen was off for too long
-  - Fixed an issue causing the anime language dropdown to display above the button and move below when scrolling on some devices
-  - Changed anime trailer to a button instead of an embedded video to restore functionnality after youtube changed how embed works
+  - Fixed an issue that caused Android to believe the app wasn't responding

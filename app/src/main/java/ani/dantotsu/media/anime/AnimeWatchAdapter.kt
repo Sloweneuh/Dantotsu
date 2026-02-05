@@ -601,8 +601,6 @@ class AnimeWatchAdapter(
         if (parser is DynamicAnimeParser) {
             fragment.lifecycleScope.launch {
                 try {
-                    // Delay to ensure any ongoing save operations complete
-                    kotlinx.coroutines.delay(500)
 
                     val savedResponse = parser.loadSavedShowResponse(media.id)
                     if (savedResponse?.sAnime != null) {

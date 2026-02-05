@@ -219,7 +219,6 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
                         reload()
                         // Refresh browser button after reload completes
                         lifecycleScope.launch {
-                            kotlinx.coroutines.delay(200)
                             headerAdapter.refreshBrowserButton()
                         }
                     }

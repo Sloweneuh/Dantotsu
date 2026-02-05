@@ -202,11 +202,9 @@ abstract class AnimeParser : BaseParser() {
             )
             val dub = if (isDubAvailableSeparately()) "_${if (selectDub) "dub" else "sub"}" else ""
             val key = "${saveName}${dub}_$mediaId"
-            // Run on IO dispatcher to ensure proper thread coordination
+            // Run on IO dispatcher for thread safety
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 PrefManager.setCustomVal(key, response)
-                // Increase delay to ensure SharedPreferences write is fully visible across threads
-                kotlinx.coroutines.delay(200)
             }
         }
     }

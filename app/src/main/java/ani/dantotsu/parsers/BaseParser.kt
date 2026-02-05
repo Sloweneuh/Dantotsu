@@ -217,11 +217,9 @@ abstract class BaseParser {
                     )
                 } : ${response.name}"
             )
-            // Run on IO dispatcher to ensure proper thread coordination
+            // Run on IO dispatcher for thread safety
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 PrefManager.setCustomVal(key, response)
-                // Delay to ensure SharedPreferences write completes
-                kotlinx.coroutines.delay(200)
             }
         }
     }

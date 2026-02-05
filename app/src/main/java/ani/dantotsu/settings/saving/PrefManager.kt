@@ -214,15 +214,15 @@ object PrefManager {
     fun <T> setCustomVal(key: String, value: T?) {
         //for custom force irrelevant
         when (value) {
-            is Boolean -> irrelevantPreferences!!.edit().putBoolean(key, value as Boolean).commit()
-            is Int -> irrelevantPreferences!!.edit().putInt(key, value as Int).commit()
-            is Float -> irrelevantPreferences!!.edit().putFloat(key, value as Float).commit()
-            is Long -> irrelevantPreferences!!.edit().putLong(key, value as Long).commit()
-            is String -> irrelevantPreferences!!.edit().putString(key, value as String).commit()
-            is Set<*> -> irrelevantPreferences!!.edit().putStringSet(key, value as Set<String>).commit()
-            null -> irrelevantPreferences!!.edit().remove(key).commit()
+            is Boolean -> irrelevantPreferences!!.edit().putBoolean(key, value as Boolean).apply()
+            is Int -> irrelevantPreferences!!.edit().putInt(key, value as Int).apply()
+            is Float -> irrelevantPreferences!!.edit().putFloat(key, value as Float).apply()
+            is Long -> irrelevantPreferences!!.edit().putLong(key, value as Long).apply()
+            is String -> irrelevantPreferences!!.edit().putString(key, value as String).apply()
+            is Set<*> -> irrelevantPreferences!!.edit().putStringSet(key, value as Set<String>).apply()
+            null -> irrelevantPreferences!!.edit().remove(key).apply()
             else -> {
-                // serializeClass handles commit internally
+                // serializeClass handles apply internally
                 serializeClass(key, value, Location.Irrelevant)
             }
         }
@@ -406,7 +406,7 @@ object PrefManager {
             val serialized = Base64.encodeToString(bos.toByteArray(), Base64.DEFAULT)
             val editor = pref.edit()
             editor.putString(key, serialized)
-            editor.commit() // Synchronous write to disk
+            editor.apply() // Asynchronous write to disk to prevent ANR
         } catch (e: Exception) {
             snackString("Error serializing preference: ${e.message}")
             Logger.log(e)

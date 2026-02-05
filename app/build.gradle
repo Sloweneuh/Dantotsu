@@ -18,7 +18,7 @@ android {
         minSdk 21
         targetSdk 35
         versionCode((System.currentTimeMillis() / 60000).toInteger())
-        versionName "3.2.8"
+        versionName "3.2.9"
         versionCode versionName.split("\\.").collect { it.toInteger() * 100 }.join("") as Integer
         signingConfig signingConfigs.debug
 

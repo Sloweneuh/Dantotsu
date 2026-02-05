@@ -224,12 +224,9 @@ class AnimeWatchFragment : Fragment() {
                     }
                     loaded = true
                 } else {
-                    android.util.Log.d("AnimeWatchFragment", "Already loaded, calling reload()")
                     reload()
                     // Refresh browser button after reload completes
                     lifecycleScope.launch {
-                        kotlinx.coroutines.delay(200)
-                        android.util.Log.d("AnimeWatchFragment", "Calling refreshBrowserButton after delay")
                         headerAdapter.refreshBrowserButton()
                     }
                 }

@@ -712,8 +712,6 @@ class MangaReadAdapter(
         if (parser is DynamicMangaParser) {
             fragment.lifecycleScope.launch {
                 try {
-                    // Delay to ensure any ongoing save operations complete
-                    kotlinx.coroutines.delay(500)
 
                     val savedResponse = parser.loadSavedShowResponse(media.id)
                     if (savedResponse?.sManga != null) {
