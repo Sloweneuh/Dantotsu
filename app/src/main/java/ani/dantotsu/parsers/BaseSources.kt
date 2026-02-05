@@ -155,7 +155,7 @@ abstract class BaseSources {
         return list[i].get.value
     }
 
-    fun saveResponse(i: Int, mediaId: Int, response: ShowResponse) {
+    suspend fun saveResponse(i: Int, mediaId: Int, response: ShowResponse) {
         get(i)?.saveShowResponse(mediaId, response, true)
     }
 }

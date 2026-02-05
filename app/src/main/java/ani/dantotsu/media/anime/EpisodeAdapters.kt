@@ -19,11 +19,13 @@ import ani.dantotsu.download.DownloadsManager.Companion.getDirSize
 import ani.dantotsu.media.Media
 import ani.dantotsu.media.MediaNameAdapter
 import ani.dantotsu.media.MediaType
+import ani.dantotsu.parsers.DynamicAnimeParser
 import ani.dantotsu.setAnimation
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.util.customAlertDialog
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.model.GlideUrl
+import eu.kanade.tachiyomi.animesource.online.AnimeHttpSource
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.ln
@@ -51,6 +53,7 @@ class EpisodeAdapter(
     private var type: Int,
     private val media: Media,
     private val fragment: AnimeWatchFragment,
+    private val watchSources: ani.dantotsu.parsers.WatchSources,
     var arr: List<Episode> = arrayListOf(),
     var offlineMode: Boolean
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
@@ -110,6 +113,9 @@ class EpisodeAdapter(
                 binding.itemEpisodeNumber.text = ep.number
                 binding.itemEpisodeTitle.text = if (ep.number == title) "Episode $title" else title
 
+                // Show browser button if it's a dynamic parser with HttpSource
+                setupEpisodeBrowserButton(binding.itemEpisodeBrowser)
+
                 if (ep.filler) {
                     binding.itemEpisodeFiller.visibility = View.VISIBLE
                     binding.itemEpisodeFillerView.visibility = View.VISIBLE
@@ -158,6 +164,10 @@ class EpisodeAdapter(
 
                 binding.itemEpisodeNumber.text = ep.number
                 binding.itemEpisodeTitle.text = title
+
+                // Show browser button if it's a dynamic parser with HttpSource
+                setupEpisodeBrowserButton(binding.itemEpisodeBrowser)
+
                 if (ep.filler) {
                     binding.itemEpisodeFiller.visibility = View.VISIBLE
                     binding.itemEpisodeFillerView.visibility = View.VISIBLE
@@ -195,6 +205,10 @@ class EpisodeAdapter(
                 setAnimation(fragment.requireContext(), holder.binding.root)
                 binding.itemEpisodeNumber.text = ep.number
                 binding.itemEpisodeFillerView.isVisible = ep.filler
+
+                // Show browser button if it's a dynamic parser with HttpSource
+                setupEpisodeBrowserButton(binding.itemEpisodeBrowser)
+
                 if (media.userProgress != null) {
                     if ((ep.number.toFloatOrNull() ?: 9999f) <= media.userProgress!!.toFloat())
                         binding.itemEpisodeViewedCover.visibility = View.VISIBLE
@@ -288,6 +302,12 @@ class EpisodeAdapter(
                 if (bindingAdapterPosition < arr.size && bindingAdapterPosition >= 0)
                     fragment.onEpisodeClick(arr[bindingAdapterPosition].number)
             }
+
+            binding.itemEpisodeBrowser.setOnClickListener {
+                if (bindingAdapterPosition < arr.size && bindingAdapterPosition >= 0) {
+                    fragment.openEpisodeInBrowser(arr[bindingAdapterPosition])
+                }
+            }
         }
     }
 
@@ -297,6 +317,12 @@ class EpisodeAdapter(
             itemView.setOnClickListener {
                 if (bindingAdapterPosition < arr.size && bindingAdapterPosition >= 0)
                     fragment.onEpisodeClick(arr[bindingAdapterPosition].number)
+            }
+
+            binding.itemEpisodeBrowser.setOnClickListener {
+                if (bindingAdapterPosition < arr.size && bindingAdapterPosition >= 0) {
+                    fragment.openEpisodeInBrowser(arr[bindingAdapterPosition])
+                }
             }
         }
     }
@@ -346,6 +372,12 @@ class EpisodeAdapter(
                     binding.itemEpisodeDesc.maxLines = 100
                 else
                     binding.itemEpisodeDesc.maxLines = 3
+            }
+
+            binding.itemEpisodeBrowser.setOnClickListener {
+                if (bindingAdapterPosition < arr.size && bindingAdapterPosition >= 0) {
+                    fragment.openEpisodeInBrowser(arr[bindingAdapterPosition])
+                }
             }
         }
 
@@ -422,5 +454,20 @@ class EpisodeAdapter(
         val pre = ("KMGTPE")[exp - 1]
         return String.format("%.1f %sB", bytes / unit.toDouble().pow(exp.toDouble()), pre)
     }
+
+    private fun setupEpisodeBrowserButton(button: View) {
+        val parser = watchSources[media.selected!!.sourceIndex]
+        if (parser is DynamicAnimeParser) {
+            val httpSource = parser.extension.sources.getOrNull(parser.sourceLanguage) as? AnimeHttpSource
+            if (httpSource != null) {
+                button.visibility = View.VISIBLE
+            } else {
+                button.visibility = View.GONE
+            }
+        } else {
+            button.visibility = View.GONE
+        }
+    }
 }
+
 

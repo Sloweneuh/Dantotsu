@@ -14,8 +14,10 @@ import ani.dantotsu.databinding.ItemChapterListBinding
 import ani.dantotsu.databinding.ItemEpisodeCompactBinding
 import ani.dantotsu.media.Media
 import ani.dantotsu.media.MediaNameAdapter
+import ani.dantotsu.parsers.DynamicMangaParser
 import ani.dantotsu.setAnimation
 import ani.dantotsu.util.customAlertDialog
+import eu.kanade.tachiyomi.source.online.HttpSource
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -26,6 +28,7 @@ class MangaChapterAdapter(
     private var type: Int,
     private val media: Media,
     private val fragment: MangaReadFragment,
+    private val mangaReadSources: ani.dantotsu.parsers.MangaReadSources,
     var arr: ArrayList<MangaChapter> = arrayListOf(),
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
@@ -246,6 +249,12 @@ class MangaChapterAdapter(
                 true
             }
 
+            binding.itemChapterBrowser.setOnClickListener {
+                if (0 <= bindingAdapterPosition && bindingAdapterPosition < arr.size) {
+                    fragment.openChapterInBrowser(arr[bindingAdapterPosition])
+                }
+            }
+
         }
     }
 
@@ -257,6 +266,8 @@ class MangaChapterAdapter(
                 val ep = arr[position]
                 val parsedNumber = MediaNameAdapter.findChapterNumber(ep.number)?.toInt()
                 binding.itemEpisodeNumber.text = parsedNumber?.toString() ?: ep.number
+
+
                 if (media.userProgress != null) {
                     if ((MediaNameAdapter.findChapterNumber(ep.number)
                             ?: 9999f) <= media.userProgress!!.toFloat()
@@ -281,6 +292,9 @@ class MangaChapterAdapter(
                 holder.bind(ep.uniqueNumber(), ep.progress)
                 setAnimation(fragment.requireContext(), holder.binding.root)
                 binding.itemChapterNumber.text = ep.number
+
+                // Show browser button if it's a dynamic parser with HttpSource
+                setupChapterBrowserButton(binding.itemChapterBrowser)
 
                 if (ep.date != null) {
                     binding.itemChapterDateLayout.visibility = View.VISIBLE
@@ -358,6 +372,20 @@ class MangaChapterAdapter(
             1L -> "1 day ago"
             in 2..6 -> "$daysDifference days ago"
             else -> SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(targetDate)
+        }
+    }
+
+    private fun setupChapterBrowserButton(button: View) {
+        val parser = mangaReadSources[media.selected!!.sourceIndex]
+        if (parser is DynamicMangaParser) {
+            val httpSource = parser.extension.sources.getOrNull(parser.sourceLanguage) as? HttpSource
+            if (httpSource != null) {
+                button.visibility = View.VISIBLE
+            } else {
+                button.visibility = View.GONE
+            }
+        } else {
+            button.visibility = View.GONE
         }
     }
 

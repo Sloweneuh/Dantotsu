@@ -190,7 +190,7 @@ abstract class AnimeParser : BaseParser() {
         return loaded
     }
 
-    override fun saveShowResponse(mediaId: Int, response: ShowResponse?, selected: Boolean) {
+    override suspend fun saveShowResponse(mediaId: Int, response: ShowResponse?, selected: Boolean) {
         if (response != null) {
             checkIfVariablesAreEmpty()
             setUserText(
@@ -201,7 +201,13 @@ abstract class AnimeParser : BaseParser() {
                 } : ${response.name}"
             )
             val dub = if (isDubAvailableSeparately()) "_${if (selectDub) "dub" else "sub"}" else ""
-            PrefManager.setCustomVal("${saveName}${dub}_$mediaId", response)
+            val key = "${saveName}${dub}_$mediaId"
+            // Run on IO dispatcher to ensure proper thread coordination
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                PrefManager.setCustomVal(key, response)
+                // Increase delay to ensure SharedPreferences write is fully visible across threads
+                kotlinx.coroutines.delay(200)
+            }
         }
     }
 }

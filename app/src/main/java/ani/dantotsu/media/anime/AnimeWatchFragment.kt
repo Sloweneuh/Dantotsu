@@ -187,6 +187,8 @@ class AnimeWatchFragment : Fragment() {
                 progress = View.GONE
                 binding.mediaInfoProgressBar.visibility = progress
 
+                android.util.Log.d("AnimeWatchFragment", "getMedia observe: loaded=$loaded")
+
                 if (!loaded) {
                     model.watchSources = if (media.isAdult) HAnimeSources else AnimeSources
 
@@ -199,6 +201,7 @@ class AnimeWatchFragment : Fragment() {
                             style ?: PrefManager.getVal(PrefName.AnimeDefaultView),
                             media,
                             this,
+                            model.watchSources!!,
                             offlineMode = offlineMode
                         )
 
@@ -221,7 +224,14 @@ class AnimeWatchFragment : Fragment() {
                     }
                     loaded = true
                 } else {
+                    android.util.Log.d("AnimeWatchFragment", "Already loaded, calling reload()")
                     reload()
+                    // Refresh browser button after reload completes
+                    lifecycleScope.launch {
+                        kotlinx.coroutines.delay(200)
+                        android.util.Log.d("AnimeWatchFragment", "Calling refreshBrowserButton after delay")
+                        headerAdapter.refreshBrowserButton()
+                    }
                 }
             }
         }
@@ -296,6 +306,7 @@ class AnimeWatchFragment : Fragment() {
                     }
 
                     headerAdapter.subscribeButton(true)
+                    headerAdapter.refreshBrowserButton()
                     reload()
                 }
             }
@@ -454,6 +465,51 @@ class AnimeWatchFragment : Fragment() {
         model.continueMedia = false
         model.saveSelected(media.id, media.selected!!)
         model.onEpisodeClick(media, i, requireActivity().supportFragmentManager)
+    }
+
+    fun openEpisodeInBrowser(episode: Episode) {
+        val parser = model.watchSources?.get(media.selected!!.sourceIndex) as? ani.dantotsu.parsers.DynamicAnimeParser
+        if (parser != null) {
+            val httpSource = parser.extension.sources.getOrNull(parser.sourceLanguage) as? eu.kanade.tachiyomi.animesource.online.AnimeHttpSource
+            if (httpSource != null && episode.sEpisode != null) {
+                try {
+                    val url = httpSource.getEpisodeUrl(episode.sEpisode)
+                    android.util.Log.d("AnimeWatchFragment", "Episode URL: '$url'")
+                    android.util.Log.d("AnimeWatchFragment", "Episode sEpisode.url: '${episode.sEpisode.url}'")
+
+                    // Validate URL
+                    if (url.isBlank()) {
+                        Toast.makeText(requireContext(), "Invalid episode URL", Toast.LENGTH_SHORT).show()
+                        return
+                    }
+
+                    // Try to construct full URL if needed
+                    val fullUrl = if (!url.startsWith("http://") && !url.startsWith("https://")) {
+                        val baseUrl = httpSource.baseUrl
+                        android.util.Log.d("AnimeWatchFragment", "Base URL: '$baseUrl'")
+                        if (url.startsWith("/")) {
+                            "$baseUrl$url"
+                        } else {
+                            "$baseUrl/$url"
+                        }
+                    } else {
+                        url
+                    }
+
+                    android.util.Log.d("AnimeWatchFragment", "Full URL: '$fullUrl'")
+
+                    val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(fullUrl))
+                    startActivity(intent)
+                } catch (e: Exception) {
+                    android.util.Log.e("AnimeWatchFragment", "Error opening episode in browser", e)
+                    Toast.makeText(requireContext(), "Failed to open episode link: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                Toast.makeText(requireContext(), "Browser view not available for this source", Toast.LENGTH_SHORT).show()
+            }
+        } else {
+            Toast.makeText(requireContext(), "Browser view not available for this source", Toast.LENGTH_SHORT).show()
+        }
     }
 
     fun onAnimeEpisodeDownloadClick(i: String) {

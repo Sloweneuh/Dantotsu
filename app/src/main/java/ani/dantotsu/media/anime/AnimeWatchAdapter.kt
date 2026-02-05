@@ -42,6 +42,7 @@ import ani.dantotsu.px
 import ani.dantotsu.settings.FAQActivity
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
+import ani.dantotsu.snackString
 import ani.dantotsu.toast
 import ani.dantotsu.util.customAlertDialog
 import com.google.android.material.chip.Chip
@@ -60,6 +61,7 @@ class AnimeWatchAdapter(
     private var autoSelect = true
     var subscribe: MediaDetailsActivity.PopImageButton? = null
     private var _binding: ItemMediaSourceBinding? = null
+    val binding get() = _binding
 
     // Helper: choose English by default when available
     private fun defaultLangIndexForSource(sourceIndex: Int, preferred: Int): Int {
@@ -157,6 +159,7 @@ class AnimeWatchAdapter(
                 showUserTextListener = { MainScope().launch { binding.mediaSourceTitle.text = it } }
                 binding.animeSourceDubbedCont.isVisible = isDubAvailableSeparately()
             }
+            setupBrowserButton(binding, source)
         }
 
         // Get icons for all sources
@@ -191,6 +194,7 @@ class AnimeWatchAdapter(
                 setLanguageList(newDefault, i)
                 try { fragment.onLangChange(newDefault) } catch (_: Exception) { }
             }
+            setupBrowserButton(binding, i)
             subscribeButton(false)
             fragment.loadEpisodes(i, false)
         }
@@ -585,6 +589,50 @@ class AnimeWatchAdapter(
                 binding?.mediaSourceLanguage?.setAdapter(adapter)
 
             }
+        }
+    }
+
+    private fun setupBrowserButton(binding: ItemMediaSourceBinding, sourceIndex: Int) {
+        val parser = watchSources[sourceIndex]
+
+        // Initially hide the button
+        binding.mediaSourceTitleBrowser.visibility = View.GONE
+
+        if (parser is DynamicAnimeParser) {
+            fragment.lifecycleScope.launch {
+                try {
+                    // Delay to ensure any ongoing save operations complete
+                    kotlinx.coroutines.delay(500)
+
+                    val savedResponse = parser.loadSavedShowResponse(media.id)
+                    if (savedResponse?.sAnime != null) {
+                        val httpSource = parser.extension.sources.getOrNull(parser.sourceLanguage) as? AnimeHttpSource
+                        if (httpSource != null) {
+                            binding.mediaSourceTitleBrowser.visibility = View.VISIBLE
+                            binding.mediaSourceTitleBrowser.setOnClickListener {
+                                try {
+                                    val url = httpSource.getAnimeUrl(savedResponse.sAnime)
+                                    val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
+                                    fragment.startActivity(intent)
+                                } catch (e: Exception) {
+                                    snackString("Failed to open link: ${e.message}")
+                                }
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    // Silently fail and keep button hidden
+                }
+            }
+        }
+    }
+
+    /**
+     * Refresh the browser button visibility - call this after a new entry is selected
+     */
+    fun refreshBrowserButton() {
+        binding?.let { binding ->
+            setupBrowserButton(binding, media.selected!!.sourceIndex)
         }
     }
 

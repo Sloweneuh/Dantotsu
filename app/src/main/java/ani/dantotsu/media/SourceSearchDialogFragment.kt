@@ -150,8 +150,8 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
                             if (results != null && results.isNotEmpty()) {
                                 _binding?.searchRecyclerView?.visibility = View.VISIBLE
                                 _binding?.searchRecyclerView?.adapter =
-                                    if (anime) AnimeSourceAdapter(results, model, i!!, media!!.id, this@SourceSearchDialogFragment, requireActivity().lifecycleScope)
-                                    else MangaSourceAdapter(results, model, i!!, media!!.id, this@SourceSearchDialogFragment, requireActivity().lifecycleScope)
+                                    if (anime) AnimeSourceAdapter(results, model, i!!, media!!.id, this@SourceSearchDialogFragment, requireActivity().lifecycleScope, source.hostUrl, source)
+                                    else MangaSourceAdapter(results, model, i!!, media!!.id, this@SourceSearchDialogFragment, requireActivity().lifecycleScope, source.hostUrl, source)
                                 _binding?.searchRecyclerView?.layoutManager = GridLayoutManager(
                                     requireActivity(),
                                     clamp(requireActivity().resources.displayMetrics.widthPixels / 124f.px, 1, 4)

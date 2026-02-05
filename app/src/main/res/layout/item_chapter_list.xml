@@ -45,6 +45,17 @@
                 tools:ignore="ContentDescription" />
 
             <ImageButton
+                android:id="@+id/itemChapterBrowser"
+                android:layout_width="24dp"
+                android:layout_height="48dp"
+                android:layout_marginEnd="5dp"
+                android:background="?android:attr/selectableItemBackground"
+                app:srcCompat="@drawable/ic_open_24"
+                app:tint="?attr/colorOnBackground"
+                android:visibility="gone"
+                tools:ignore="ContentDescription" />
+
+            <ImageButton
                 android:id="@+id/itemDownload"
                 android:layout_width="24dp"
                 android:layout_height="48dp"

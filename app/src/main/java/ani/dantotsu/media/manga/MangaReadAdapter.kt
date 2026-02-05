@@ -65,6 +65,7 @@ class MangaReadAdapter(
 
     var subscribe: MediaDetailsActivity.PopImageButton? = null
     private var _binding: ItemMediaSourceBinding? = null
+    val binding get() = _binding
     val hiddenScanlators = mutableListOf<String>()
     var scanlatorSelectionListener: ScanlatorSelectionListener? = null
     var options = listOf<String>()
@@ -160,6 +161,7 @@ class MangaReadAdapter(
                 binding.mediaSourceTitle.text = showUserText
                 showUserTextListener = { MainScope().launch { binding.mediaSourceTitle.text = it } }
             }
+            setupBrowserButton(binding, source)
         }
         media.selected?.scanlators?.let {
             hiddenScanlators.addAll(it)
@@ -194,6 +196,7 @@ class MangaReadAdapter(
                     try { fragment.onLangChange(newDefault, ext.saveName) } catch (_: Exception) { }
                 } ?: setLanguageList(newDefault, i)
             }
+            setupBrowserButton(binding, i)
             subscribeButton(false)
             // Invalidate if it's the last source
             val invalidate = i == mangaReadSources.names.size - 1
@@ -697,6 +700,50 @@ class MangaReadAdapter(
                 binding?.mediaSourceLanguage?.setAdapter(adapter)
 
             }
+        }
+    }
+
+    private fun setupBrowserButton(binding: ItemMediaSourceBinding, sourceIndex: Int) {
+        val parser = mangaReadSources[sourceIndex]
+
+        // Initially hide the button
+        binding.mediaSourceTitleBrowser.visibility = View.GONE
+
+        if (parser is DynamicMangaParser) {
+            fragment.lifecycleScope.launch {
+                try {
+                    // Delay to ensure any ongoing save operations complete
+                    kotlinx.coroutines.delay(500)
+
+                    val savedResponse = parser.loadSavedShowResponse(media.id)
+                    if (savedResponse?.sManga != null) {
+                        val httpSource = parser.extension.sources.getOrNull(parser.sourceLanguage) as? HttpSource
+                        if (httpSource != null) {
+                            binding.mediaSourceTitleBrowser.visibility = View.VISIBLE
+                            binding.mediaSourceTitleBrowser.setOnClickListener {
+                                try {
+                                    val url = httpSource.getMangaUrl(savedResponse.sManga)
+                                    val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))
+                                    fragment.startActivity(intent)
+                                } catch (e: Exception) {
+                                    snackString("Failed to open link: ${e.message}")
+                                }
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    // Silently fail and keep button hidden
+                }
+            }
+        }
+    }
+
+    /**
+     * Refresh the browser button visibility - call this after a new entry is selected
+     */
+    fun refreshBrowserButton() {
+        binding?.let { binding ->
+            setupBrowserButton(binding, media.selected!!.sourceIndex)
         }
     }
 

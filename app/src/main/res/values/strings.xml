@@ -1180,5 +1180,6 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="deselect_all">Deselect All</string>
     <string name="test_results">Test Results</string>
     <string name="extensions_selected">%1$d extension(s) selected</string>
+    <string name="open_in_browser">Open in browser</string>
 
 </resources>

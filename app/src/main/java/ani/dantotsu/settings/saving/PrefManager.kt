@@ -213,18 +213,18 @@ object PrefManager {
     @Suppress("UNCHECKED_CAST")
     fun <T> setCustomVal(key: String, value: T?) {
         //for custom force irrelevant
-        with(irrelevantPreferences!!.edit()) {
-            when (value) {
-                is Boolean -> putBoolean(key, value as Boolean)
-                is Int -> putInt(key, value as Int)
-                is Float -> putFloat(key, value as Float)
-                is Long -> putLong(key, value as Long)
-                is String -> putString(key, value as String)
-                is Set<*> -> putStringSet(key, value as Set<String>)
-                null -> remove(key)
-                else -> serializeClass(key, value, Location.Irrelevant)
+        when (value) {
+            is Boolean -> irrelevantPreferences!!.edit().putBoolean(key, value as Boolean).commit()
+            is Int -> irrelevantPreferences!!.edit().putInt(key, value as Int).commit()
+            is Float -> irrelevantPreferences!!.edit().putFloat(key, value as Float).commit()
+            is Long -> irrelevantPreferences!!.edit().putLong(key, value as Long).commit()
+            is String -> irrelevantPreferences!!.edit().putString(key, value as String).commit()
+            is Set<*> -> irrelevantPreferences!!.edit().putStringSet(key, value as Set<String>).commit()
+            null -> irrelevantPreferences!!.edit().remove(key).commit()
+            else -> {
+                // serializeClass handles commit internally
+                serializeClass(key, value, Location.Irrelevant)
             }
-            apply()
         }
     }
 
@@ -404,7 +404,9 @@ object PrefManager {
             }
 
             val serialized = Base64.encodeToString(bos.toByteArray(), Base64.DEFAULT)
-            pref.edit().putString(key, serialized).apply()
+            val editor = pref.edit()
+            editor.putString(key, serialized)
+            editor.commit() // Synchronous write to disk
         } catch (e: Exception) {
             snackString("Error serializing preference: ${e.message}")
             Logger.log(e)
@@ -420,8 +422,7 @@ object PrefManager {
                 val data = Base64.decode(serialized, Base64.DEFAULT)
                 val bis = ByteArrayInputStream(data)
                 val ois = ObjectInputStream(bis)
-                val obj = ois.readObject() as T?
-                obj
+                ois.readObject() as T?
             } else {
                 Logger.log("Serialized data is null (key: $key)")
                 default

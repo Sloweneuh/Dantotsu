@@ -102,9 +102,9 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
-    ): View? {
+    ): View {
         _binding = FragmentMediaSourceBinding.inflate(inflater, container, false)
-        return _binding?.root
+        return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -192,7 +192,10 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
                         headerAdapter.scanlatorSelectionListener = this
                         chapterAdapter =
                             MangaChapterAdapter(
-                                style ?: PrefManager.getVal(PrefName.MangaDefaultView), media, this
+                                style ?: PrefManager.getVal(PrefName.MangaDefaultView),
+                                media,
+                                this,
+                                model.mangaReadSources!!
                             )
 
                         for (download in downloadManager.mangaDownloadedTypes) {
@@ -214,6 +217,11 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
                         loaded = true
                     } else {
                         reload()
+                        // Refresh browser button after reload completes
+                        lifecycleScope.launch {
+                            kotlinx.coroutines.delay(200)
+                            headerAdapter.refreshBrowserButton()
+                        }
                     }
                 } else {
                     binding.mediaNotSupported.visibility = View.VISIBLE
@@ -310,6 +318,7 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
                 }
 
                 headerAdapter.subscribeButton(true)
+                headerAdapter.refreshBrowserButton()
                 reload()
             }
         }
@@ -343,7 +352,8 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
         selected.langIndex = i
         model.saveSelected(media.id, selected)
         media.selected = selected
-        PrefManager.removeCustomVal("${saveName}_${media.id}")
+        // Don't remove the saved ShowResponse when changing language - only when changing source
+        // The saved response is still valid for different languages of the same extension
     }
 
     fun onScanlatorChange(list: List<String>) {
@@ -455,6 +465,26 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
             model.saveSelected(media.id, media.selected!!)
             ChapterLoaderDialog.newInstance(it, true)
                 .show(requireActivity().supportFragmentManager, "dialog")
+        }
+    }
+
+    fun openChapterInBrowser(chapter: MangaChapter) {
+        val parser = model.mangaReadSources?.get(media.selected!!.sourceIndex) as? DynamicMangaParser
+        if (parser != null) {
+            val httpSource = parser.extension.sources.getOrNull(parser.sourceLanguage) as? eu.kanade.tachiyomi.source.online.HttpSource
+            if (httpSource != null) {
+                try {
+                    val url = httpSource.getChapterUrl(chapter.sChapter)
+                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
+                    startActivity(intent)
+                } catch (e: Exception) {
+                    Toast.makeText(requireContext(), "Failed to open chapter link: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                Toast.makeText(requireContext(), "Browser view not available for this source", Toast.LENGTH_SHORT).show()
+            }
+        } else {
+            Toast.makeText(requireContext(), "Browser view not available for this source", Toast.LENGTH_SHORT).show()
         }
     }
 

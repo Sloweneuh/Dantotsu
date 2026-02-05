@@ -192,8 +192,9 @@ abstract class BaseParser {
      */
     open suspend fun loadSavedShowResponse(mediaId: Int): ShowResponse? {
         checkIfVariablesAreEmpty()
+        val key = "${saveName}_$mediaId"
         return PrefManager.getNullableCustomVal(
-            "${saveName}_$mediaId",
+            key,
             null,
             ShowResponse::class.java
         )
@@ -205,9 +206,10 @@ abstract class BaseParser {
      * @param response : The ShowResponse object to save.
      * @param selected : Boolean : If the ShowResponse was selected by the user or not.
      */
-    open fun saveShowResponse(mediaId: Int, response: ShowResponse?, selected: Boolean = false) {
+    open suspend fun saveShowResponse(mediaId: Int, response: ShowResponse?, selected: Boolean = false) {
+        checkIfVariablesAreEmpty()
+        val key = "${saveName}_$mediaId"
         if (response != null) {
-            checkIfVariablesAreEmpty()
             setUserText(
                 "${
                     if (selected) currContext()!!.getString(R.string.selected) else currContext()!!.getString(
@@ -215,7 +217,12 @@ abstract class BaseParser {
                     )
                 } : ${response.name}"
             )
-            PrefManager.setCustomVal("${saveName}_$mediaId", response)
+            // Run on IO dispatcher to ensure proper thread coordination
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                PrefManager.setCustomVal(key, response)
+                // Delay to ensure SharedPreferences write completes
+                kotlinx.coroutines.delay(200)
+            }
         }
     }
 
