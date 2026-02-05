@@ -1,7 +1,7 @@
 # 3.2.9
 
 - **Features:**
-  - Added a tab for extensions with pending gupdates
+  - Added a tab for extensions with pending updates
     - The toast at app launch alerting about new updates will open that tab
     - Contains a button to start updating all extensions with updates
     - The tab will not be visible if there are no updates available

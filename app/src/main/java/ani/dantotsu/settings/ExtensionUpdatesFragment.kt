@@ -28,7 +28,9 @@ import eu.kanade.tachiyomi.extension.anime.AnimeExtensionManager
 import eu.kanade.tachiyomi.extension.anime.model.AnimeExtension
 import eu.kanade.tachiyomi.extension.manga.MangaExtensionManager
 import eu.kanade.tachiyomi.extension.manga.model.MangaExtension
+import rx.Subscription
 import rx.android.schedulers.AndroidSchedulers
+import rx.subscriptions.CompositeSubscription
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -46,6 +48,8 @@ class ExtensionUpdatesFragment : Fragment() {
     private val animeExtensionManager: AnimeExtensionManager = Injekt.get()
     private val mangaExtensionManager: MangaExtensionManager = Injekt.get()
     private val novelExtensionManager: NovelExtensionManager = Injekt.get()
+
+    private val compositeSubscription = CompositeSubscription()
 
     private lateinit var adapter: UpdatesAdapter
 
@@ -186,7 +190,7 @@ class ExtensionUpdatesFragment : Fragment() {
         val context = requireContext()
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-        when (item) {
+        val subscription: Subscription = when (item) {
             is UpdateItem.AnimeUpdate -> {
                 animeExtensionManager.updateExtension(item.extension)
                     .observeOn(AndroidSchedulers.mainThread())
@@ -248,6 +252,9 @@ class ExtensionUpdatesFragment : Fragment() {
                     )
             }
         }
+
+        // Add subscription to composite to prevent it from being garbage collected
+        compositeSubscription.add(subscription)
     }
 
     private fun showUpdateNotification(manager: NotificationManager, context: Context, title: String, text: String) {
@@ -278,6 +285,7 @@ class ExtensionUpdatesFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        compositeSubscription.clear()
         super.onDestroyView()
         _binding = null
     }
