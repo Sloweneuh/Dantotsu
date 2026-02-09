@@ -6,6 +6,7 @@ import ani.dantotsu.connections.mal.MAL
 import ani.dantotsu.media.SearchHistory
 import ani.dantotsu.notifications.comment.CommentStore
 import ani.dantotsu.notifications.subscription.SubscriptionStore
+import ani.dantotsu.notifications.unread.UnreadChapterStore
 import ani.dantotsu.settings.saving.internal.Location
 import ani.dantotsu.settings.saving.internal.Pref
 
@@ -216,6 +217,13 @@ enum class PrefName(val data: Pref) {
             Location.Irrelevant,
             List::class,
             listOf<SubscriptionStore>()
+        )
+    ),
+    UnreadChapterNotificationStore(
+        Pref(
+            Location.Irrelevant,
+            List::class,
+            listOf<UnreadChapterStore>()
         )
     ),
     UnreadCommentNotifications(Pref(Location.Irrelevant, Int::class, 0)),

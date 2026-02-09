@@ -213,6 +213,8 @@ class UnreadChapterNotificationTask : Task {
                     if (newNotifications.isNotEmpty()) {
                         withContext(Dispatchers.Main) {
                             sendNotifications(context, newNotifications)
+                            // Store notifications in the notification center
+                            storeNotifications(newNotifications)
                         }
                     }
 
@@ -298,6 +300,54 @@ class UnreadChapterNotificationTask : Task {
     private fun saveNotifiedChapters(context: Context, key: String, notified: Set<String>) {
         val prefs = context.getSharedPreferences("unread_notifications", Context.MODE_PRIVATE)
         prefs.edit().putStringSet(key, notified).apply()
+    }
+
+    private fun storeNotifications(newChapters: List<Pair<Media, UnreadChapterInfo>>) {
+        val notificationStore = PrefManager.getNullableVal<List<UnreadChapterStore>>(
+            PrefName.UnreadChapterNotificationStore,
+            null
+        ) ?: listOf()
+        val newStore = notificationStore.toMutableList()
+
+        // Keep only last 50 notifications
+        if (newStore.size > 50) {
+            newStore.sortByDescending { it.time }
+            while (newStore.size > 50) {
+                newStore.removeAt(newStore.size - 1)
+            }
+        }
+
+        newChapters.forEach { (media, info) ->
+            val unreadCount = info.lastChapter - info.userProgress
+
+            // Check if notification already exists
+            val exists = newStore.any {
+                it.mediaId == media.id && it.lastChapter == info.lastChapter
+            }
+
+            if (!exists) {
+                newStore.add(
+                    UnreadChapterStore(
+                        mediaId = media.id,
+                        mediaName = media.userPreferredName,
+                        lastChapter = info.lastChapter,
+                        unreadCount = unreadCount,
+                        source = info.source,
+                        image = media.cover,
+                        banner = media.banner,
+                        time = System.currentTimeMillis()
+                    )
+                )
+            }
+        }
+
+        PrefManager.setVal(PrefName.UnreadChapterNotificationStore, newStore)
+
+        // Increment unread notification count
+        PrefManager.setVal(
+            PrefName.UnreadCommentNotifications,
+            PrefManager.getVal<Int>(PrefName.UnreadCommentNotifications) + newChapters.size
+        )
     }
 
     private fun getProgressNotification(

@@ -18,12 +18,14 @@ import ani.dantotsu.databinding.FragmentNotificationsBinding
 import ani.dantotsu.media.MediaDetailsActivity
 import ani.dantotsu.notifications.comment.CommentStore
 import ani.dantotsu.notifications.subscription.SubscriptionStore
+import ani.dantotsu.notifications.unread.UnreadChapterStore
 import ani.dantotsu.profile.ProfileActivity
 import ani.dantotsu.profile.activity.FeedActivity
 import ani.dantotsu.profile.notification.NotificationFragment.Companion.NotificationType.COMMENT
 import ani.dantotsu.profile.notification.NotificationFragment.Companion.NotificationType.MEDIA
 import ani.dantotsu.profile.notification.NotificationFragment.Companion.NotificationType.ONE
 import ani.dantotsu.profile.notification.NotificationFragment.Companion.NotificationType.SUBSCRIPTION
+import ani.dantotsu.profile.notification.NotificationFragment.Companion.NotificationType.UNREAD_CHAPTER
 import ani.dantotsu.profile.notification.NotificationFragment.Companion.NotificationType.USER
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
@@ -93,6 +95,7 @@ class NotificationFragment : Fragment() {
             MEDIA -> getNotificationsFiltered(type = true) { it.media != null }
             USER -> getNotificationsFiltered { it.media == null }
             SUBSCRIPTION -> getSubscriptions()
+            UNREAD_CHAPTER -> getUnreadChapters()
             COMMENT -> getComments()
         }
         adapter.addAll(list.map { NotificationItem(it, type, adapter, ::onClick) })
@@ -158,6 +161,36 @@ class NotificationFragment : Fragment() {
             }
     }
 
+    private fun getUnreadChapters(): List<Notification> {
+        val list = PrefManager.getNullableVal<List<UnreadChapterStore>>(
+            PrefName.UnreadChapterNotificationStore,
+            null
+        ) ?: listOf()
+        return list
+            .sortedByDescending { (it.time / 1000L).toInt() }
+            .filter { it.image != null } // Remove old/invalid data
+            .map {
+                val content = if (it.unreadCount == 1) {
+                    "${it.mediaName}: Chapter ${it.lastChapter}"
+                } else {
+                    "${it.mediaName}: Chapter ${it.lastChapter} (${it.unreadCount} unread)"
+                }
+                val sourceInfo = if (it.source.isBlank()) "" else "\nSource: ${it.source}"
+
+                Notification(
+                    it.type,
+                    System.currentTimeMillis().toInt(),
+                    commentId = it.mediaId,
+                    mediaId = it.mediaId,
+                    notificationType = it.type,
+                    context = content + sourceInfo,
+                    createdAt = (it.time / 1000L).toInt(),
+                    image = it.image,
+                    banner = it.banner ?: it.image
+                )
+            }
+    }
+
     private fun shouldLoadMore(): Boolean {
         val layoutManager =
             (binding.notificationRecyclerView.layoutManager as LinearLayoutManager).findLastVisibleItemPosition()
@@ -218,7 +251,7 @@ class NotificationFragment : Fragment() {
 
     companion object {
         enum class NotificationClickType { USER, MEDIA, ACTIVITY, COMMENT, UNDEFINED }
-        enum class NotificationType { MEDIA, USER, SUBSCRIPTION, COMMENT, ONE }
+        enum class NotificationType { MEDIA, USER, SUBSCRIPTION, UNREAD_CHAPTER, COMMENT, ONE }
 
         fun newInstance(type: NotificationType, id: Int = -1): NotificationFragment {
             return NotificationFragment().apply {

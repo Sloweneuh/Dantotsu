@@ -17,6 +17,7 @@ import ani.dantotsu.profile.notification.NotificationFragment.Companion.Notifica
 import ani.dantotsu.profile.notification.NotificationFragment.Companion.NotificationType.MEDIA
 import ani.dantotsu.profile.notification.NotificationFragment.Companion.NotificationType.ONE
 import ani.dantotsu.profile.notification.NotificationFragment.Companion.NotificationType.SUBSCRIPTION
+import ani.dantotsu.profile.notification.NotificationFragment.Companion.NotificationType.UNREAD_CHAPTER
 import ani.dantotsu.profile.notification.NotificationFragment.Companion.NotificationType.USER
 import ani.dantotsu.profile.notification.NotificationFragment.Companion.newInstance
 import ani.dantotsu.settings.saving.PrefManager
@@ -49,7 +50,8 @@ class NotificationActivity : AppCompatActivity() {
         val tabs = mutableListOf(
             Pair(R.drawable.ic_round_person_24, "User"),
             Pair(R.drawable.ic_round_movie_filter_24, "Media"),
-            Pair(R.drawable.ic_round_notifications_active_24, "Subs")
+            Pair(R.drawable.ic_round_notifications_active_24, "Subs"),
+            Pair(R.drawable.ic_round_menu_book_24, "Unread")
         )
         if (CommentsEnabled) {
             tabs.add(Pair(R.drawable.ic_round_comment_24, "Comments"))
@@ -91,14 +93,16 @@ class NotificationActivity : AppCompatActivity() {
         val id: Int = -1,
         val commentsEnabled: Boolean
     ) : FragmentStateAdapter(fragmentManager, lifecycle) {
-        override fun getItemCount(): Int = if (id != -1) 1 else if (commentsEnabled) 4 else 3
+        override fun getItemCount(): Int = if (id != -1) 1 else if (commentsEnabled) 5 else 4
 
         override fun createFragment(position: Int): Fragment = when (position) {
             0 -> newInstance(if (id != -1) ONE else USER, id)
             1 -> newInstance(MEDIA)
             2 -> newInstance(SUBSCRIPTION)
-            3 -> newInstance(COMMENT)
-            else -> newInstance(MEDIA)
+            3 -> newInstance(UNREAD_CHAPTER)
+            4 -> newInstance(COMMENT)
+            else -> newInstance(USER)
         }
     }
 }
+

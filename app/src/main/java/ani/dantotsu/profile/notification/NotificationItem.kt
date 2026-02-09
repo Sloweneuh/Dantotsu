@@ -10,10 +10,12 @@ import ani.dantotsu.databinding.ItemNotificationBinding
 import ani.dantotsu.loadImage
 import ani.dantotsu.notifications.comment.CommentStore
 import ani.dantotsu.notifications.subscription.SubscriptionStore
+import ani.dantotsu.notifications.unread.UnreadChapterStore
 import ani.dantotsu.profile.activity.ActivityItemBuilder
 import ani.dantotsu.profile.notification.NotificationFragment.Companion.NotificationClickType
 import ani.dantotsu.profile.notification.NotificationFragment.Companion.NotificationType.COMMENT
 import ani.dantotsu.profile.notification.NotificationFragment.Companion.NotificationType.SUBSCRIPTION
+import ani.dantotsu.profile.notification.NotificationFragment.Companion.NotificationType.UNREAD_CHAPTER
 import ani.dantotsu.setAnimation
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
@@ -38,7 +40,7 @@ class NotificationItem(
 
     fun dialog() {
         when (type) {
-            COMMENT, SUBSCRIPTION -> {
+            COMMENT, SUBSCRIPTION, UNREAD_CHAPTER -> {
                 binding.root.context.customAlertDialog().apply {
                     setTitle(R.string.delete)
                     setMessage(ActivityItemBuilder.getContent(notification))
@@ -63,6 +65,17 @@ class NotificationItem(
                                 val newList =
                                     list.filter { (it.time / 1000L).toInt() != notification.createdAt }
                                 PrefManager.setVal(PrefName.SubscriptionNotificationStore, newList)
+                                parentAdapter.remove(this@NotificationItem)
+                            }
+
+                            UNREAD_CHAPTER -> {
+                                val list = PrefManager.getNullableVal<List<UnreadChapterStore>>(
+                                    PrefName.UnreadChapterNotificationStore,
+                                    null
+                                ) ?: listOf()
+                                val newList =
+                                    list.filter { (it.time / 1000L).toInt() != notification.createdAt }
+                                PrefManager.setVal(PrefName.UnreadChapterNotificationStore, newList)
                                 parentAdapter.remove(this@NotificationItem)
                             }
 
