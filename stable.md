@@ -1,16 +1,19 @@
-# 3.2.9
+# 3.3.0
 
 - **Features:**
-  - Added a tab for extensions with pending updates
-    - The toast at app launch alerting about new updates will open that tab
-    - Contains a button to start updating all extensions with updates
-    - The tab will not be visible if there are no updates available
-  - Added buttons to open an entry/chapter/episode on the source website
-    - Longclicking an entry's image in the "Wrong title?" popup will also open it in the browser
+  - Added French translation
+    - Takes device language by default, with a language selector in settings
+  - Added selected language display on homepage for anime
+    - The "Planned Anime" segment also uses that system
+  - Added a notification tab for unread chapters
+    - A button was also added to all notification tabs to access their relevant settings
+    - A setting was added to delete the unread chapters notification history
+  - Added a button to share any of the media links (Anilist, MyAnimeList, Comick, MangaUpdates)
+  - Added a way to retry loading failed images when reading.
 
 - **Changes**
-  - Reworked the extension test UI
-    - Functionality didn't change, but the UI is prettier and easier to use
+  - Cleaned up and updated info for the app
+  - Added a more obvious way to access Discord RPC settings
 
 - **Bugfixes:**
-  - Fixed an issue that caused Android to believe the app wasn't responding
+  - Fixed an issue causing settings restored from a backup to stay enabled even when the relevant Android permissions weren't granted

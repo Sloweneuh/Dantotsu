@@ -197,6 +197,9 @@ val Int.toPx
     ).toInt()
 
 fun initActivity(a: Activity) {
+    // Apply language preference
+    ani.dantotsu.util.LanguageHelper.applyLanguage(a)
+
     val window = a.window
     WindowCompat.setDecorFitsSystemWindows(window, false)
     val darkMode = PrefManager.getVal<Int>(PrefName.DarkMode)

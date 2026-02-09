@@ -156,6 +156,40 @@ class SettingsCommonActivity : AppCompatActivity() {
                     arrayListOf(
                         Settings(
                             type = 1,
+                            name = getString(R.string.language_setting),
+                            desc = ani.dantotsu.util.LanguageHelper.getLanguageDisplayName(
+                                ani.dantotsu.util.LanguageHelper.getCurrentLanguageCode()
+                            ),
+                            icon = R.drawable.ic_round_language_24,
+                            onClick = {
+                                val languages = ani.dantotsu.util.LanguageHelper.getSupportedLanguages()
+                                val languageNames = languages.map { it.getDisplayName() }.toTypedArray()
+                                val currentLanguage = ani.dantotsu.util.LanguageHelper.getCurrentLanguageCode()
+                                val currentIndex = languages.indexOfFirst { it.code == currentLanguage }
+
+                                customAlertDialog().apply {
+                                    setTitle(getString(R.string.language_setting))
+                                    singleChoiceItems(languageNames, currentIndex) { which ->
+                                        val selectedLanguage = languages[which]
+                                        ani.dantotsu.util.LanguageHelper.setLanguage(context, selectedLanguage.code)
+
+                                        // Show restart dialog
+                                        customAlertDialog().apply {
+                                            setTitle(getString(R.string.restart_required))
+                                            setMessage(getString(R.string.restart_app_to_apply_language))
+                                            setPosButton(getString(R.string.restart)) {
+                                                restartApp()
+                                            }
+                                            setNegButton(getString(R.string.later))
+                                            show()
+                                        }
+                                    }
+                                    show()
+                                }
+                            },
+                        ),
+                        Settings(
+                            type = 1,
                             name = getString(R.string.ui_settings),
                             desc = getString(R.string.ui_settings_desc),
                             icon = R.drawable.ic_round_auto_awesome_24,

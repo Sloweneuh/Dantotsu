@@ -1318,6 +1318,16 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="preferences_imported">Preferences imported</string>
     <string name="error_serializing_preference">Error serializing preference: %1$s</string>
 
+    <!-- Language Settings -->
+    <string name="language_setting">App Language</string>
+    <string name="language_system_default">System Default</string>
+    <string name="language_english">English</string>
+    <string name="language_french">French</string>
+    <string name="restart_required">Restart Required</string>
+    <string name="restart_app_to_apply_language">Please restart the app to apply language change</string>
+    <string name="restart">Restart</string>
+    <string name="later">Later</string>
+
 </resources>
 
 
