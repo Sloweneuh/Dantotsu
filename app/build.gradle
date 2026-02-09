@@ -19,9 +19,9 @@ android {
         applicationId "ani.dantotsu"
         minSdk 21
         targetSdk 35
-        versionCode((System.currentTimeMillis() / 60000).toInteger())
         versionName "3.3.0"
-        versionCode versionName.split("\\.").collect { it.toInteger() * 100 }.join("") as Integer
+        def (major, minor, patch) = versionName.split("\\.").collect { it.toInteger() }
+        versionCode = major * 1_000_000 + minor * 1_000 + patch
         signingConfig signingConfigs.debug
 
     }

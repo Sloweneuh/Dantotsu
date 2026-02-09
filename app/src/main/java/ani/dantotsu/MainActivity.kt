@@ -79,7 +79,8 @@ import nl.joery.animatedbottombar.AnimatedBottomBar
 import tachiyomi.core.util.lang.launchIO
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
-import java.io.Serializableimport io.sentry.Sentry
+import java.io.Serializable
+import io.sentry.Sentry
 
 
 
@@ -405,8 +406,8 @@ class MainActivity : AppCompatActivity() {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     if (!(PrefManager.getVal(PrefName.AllowOpeningLinks) as Boolean)) {
                         CustomBottomDialog.newInstance().apply {
-                            title = getString(R.string.allow_opening_links_title)
-                            val md = getString(R.string.allow_opening_links_desc)
+                            title = this@MainActivity.getString(R.string.allow_opening_links_title)
+                            val md = this@MainActivity.getString(R.string.allow_opening_links_desc)
                             addView(TextView(this@MainActivity).apply {
                                 val markWon =
                                     Markwon.builder(this@MainActivity)
