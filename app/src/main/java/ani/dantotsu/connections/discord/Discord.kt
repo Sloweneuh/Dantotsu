@@ -11,6 +11,11 @@ import ani.dantotsu.toast
 import ani.dantotsu.tryWith
 import io.noties.markwon.Markwon
 import io.noties.markwon.SoftBreakAddsNewLinePlugin
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import org.json.JSONObject
 import java.io.File
 
 object Discord {
@@ -19,11 +24,51 @@ object Discord {
     var userid: String? = null
     var avatar: String? = null
 
+    private val client = OkHttpClient()
+
+    suspend fun fetchUserInfo() {
+        if (token == null) return
+
+        withContext(Dispatchers.IO) {
+            tryWith(true) {
+                val request = Request.Builder()
+                    .url("https://discord.com/api/v9/users/@me")
+                    .addHeader("Authorization", token!!)
+                    .build()
+
+                val response = client.newCall(request).execute()
+                if (response.isSuccessful) {
+                    val body = response.body?.string() ?: "{}"
+                    val json = JSONObject(body)
+                    val id = json.optString("id", "")
+                    val username = json.optString("username", "")
+                    val avatarHash = json.optString("avatar", "")
+
+                    if (id.isNotEmpty() && username.isNotEmpty()) {
+                        userid = id
+                        avatar = if (avatarHash.isNotEmpty()) avatarHash else null
+
+                        // Save to preferences
+                        PrefManager.setVal(PrefName.DiscordId, id)
+                        PrefManager.setVal(PrefName.DiscordUserName, username)
+                        if (avatarHash.isNotEmpty()) {
+                            PrefManager.setVal(PrefName.DiscordAvatar, avatarHash)
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     fun getSavedToken(): Boolean {
         token = PrefManager.getVal(
             PrefName.DiscordToken, null as String?
         )
+        // Also load saved user info
+        if (token != null) {
+            userid = PrefManager.getVal(PrefName.DiscordId, null as String?)
+            avatar = PrefManager.getVal(PrefName.DiscordAvatar, null as String?)
+        }
         return token != null
     }
 
@@ -33,6 +78,9 @@ object Discord {
 
     fun removeSavedToken(context: Context) {
         PrefManager.removeVal(PrefName.DiscordToken)
+        PrefManager.removeVal(PrefName.DiscordId)
+        PrefManager.removeVal(PrefName.DiscordUserName)
+        PrefManager.removeVal(PrefName.DiscordAvatar)
         token = null
         userid = null
         avatar = null

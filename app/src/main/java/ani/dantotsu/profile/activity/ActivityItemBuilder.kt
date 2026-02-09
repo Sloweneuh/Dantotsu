@@ -81,6 +81,11 @@ class ActivityItemBuilder {
                     "${notification.deletedMediaTitle} has been deleted from the site"
                 }
 
+                NotificationType.UNREAD_CHAPTER, NotificationType.UnreadChapter -> {
+                    // Use context which already has the formatted text from NotificationFragment
+                    notification.context ?: "New chapter available"
+                }
+
                 NotificationType.COMMENT_REPLY -> {
                     notification.context ?: "You should not see this"
                 }

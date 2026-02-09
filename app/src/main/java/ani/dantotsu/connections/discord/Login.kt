@@ -10,10 +10,12 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
 import ani.dantotsu.R
 import ani.dantotsu.connections.discord.Discord.saveToken
 import ani.dantotsu.startMainActivity
 import ani.dantotsu.themes.ThemeManager
+import kotlinx.coroutines.launch
 import org.json.JSONObject
 
 class Login : AppCompatActivity() {
@@ -81,10 +83,18 @@ class Login : AppCompatActivity() {
             finish()
             return
         }
-        Toast.makeText(this, "Logged in successfully", Toast.LENGTH_SHORT).show()
-        finish()
+
+        // Save token first
         saveToken(token)
-        startMainActivity(this@Login)
+        Discord.token = token
+
+        // Fetch user info
+        lifecycleScope.launch {
+            Discord.fetchUserInfo()
+            Toast.makeText(this@Login, "Logged in successfully", Toast.LENGTH_SHORT).show()
+            finish()
+            startMainActivity(this@Login)
+        }
     }
 
 }

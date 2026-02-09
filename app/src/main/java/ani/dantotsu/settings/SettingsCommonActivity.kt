@@ -1,8 +1,13 @@
 package ani.dantotsu.settings
 
+import android.Manifest
+import android.app.AlarmManager
 import android.app.AlertDialog
+import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
@@ -11,6 +16,7 @@ import android.widget.ArrayAdapter
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.biometric.BiometricManager
+import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
 import androidx.documentfile.provider.DocumentFile
@@ -82,14 +88,18 @@ class SettingsCommonActivity : AppCompatActivity() {
                                             toast(getString(R.string.incorrect_password))
                                             return@passwordAlertDialog
                                         }
-                                    if (PreferencePackager.unpack(decryptedJson)) restartApp()
+                                    if (PreferencePackager.unpack(decryptedJson)) {
+                                        checkPermissionsAfterRestore()
+                                    }
                                 } else {
                                     toast(getString(R.string.password_cannot_be_empty))
                                 }
                             }
                         } else if (name.endsWith(".ani")) {
                             val decryptedJson = jsonString.toString(Charsets.UTF_8)
-                            if (PreferencePackager.unpack(decryptedJson)) restartApp()
+                            if (PreferencePackager.unpack(decryptedJson)) {
+                                checkPermissionsAfterRestore()
+                            }
                         } else {
                             toast(getString(R.string.unknown_file_type))
                         }
@@ -497,6 +507,83 @@ class SettingsCommonActivity : AppCompatActivity() {
         // Override the positive button here
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
             handleOkAction()
+        }
+    }
+
+    private fun checkPermissionsAfterRestore() {
+        val missingPermissions = mutableListOf<String>()
+        var hasDisabledSettings = false
+
+        // Check POST_NOTIFICATIONS permission for notification-related settings
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val hasNotificationPermission = ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+
+            if (!hasNotificationPermission) {
+                // Check if any notification settings are enabled
+                val hasAnilistNotifications = PrefManager.getVal<Int>(PrefName.AnilistNotificationInterval) > 0
+                val hasSubscriptionNotifications = PrefManager.getVal<Long>(PrefName.SubscriptionNotificationIntervalMinutes) > 0L
+                val hasUnreadChapterNotifications = PrefManager.getVal<Long>(PrefName.UnreadChapterNotificationInterval) > 0L
+                val hasCommentNotifications = PrefManager.getVal<Int>(PrefName.CommentNotificationInterval) > 0
+
+                if (hasAnilistNotifications || hasSubscriptionNotifications ||
+                    hasUnreadChapterNotifications || hasCommentNotifications) {
+                    missingPermissions.add("Notifications")
+
+                    // Disable notification settings
+                    PrefManager.setVal(PrefName.AnilistNotificationInterval, 0)
+                    PrefManager.setVal(PrefName.SubscriptionNotificationIntervalMinutes, 0L)
+                    PrefManager.setVal(PrefName.UnreadChapterNotificationInterval, 0L)
+                    PrefManager.setVal(PrefName.CommentNotificationInterval, 0)
+                    hasDisabledSettings = true
+                }
+            }
+        }
+
+        // Check SCHEDULE_EXACT_ALARM permission for alarm manager
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val useAlarmManager = PrefManager.getVal<Boolean>(PrefName.UseAlarmManager)
+
+            if (useAlarmManager) {
+                val alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+                val canScheduleExactAlarms = alarmManager.canScheduleExactAlarms()
+
+                if (!canScheduleExactAlarms) {
+                    missingPermissions.add("Schedule Exact Alarms")
+
+                    // Disable alarm manager setting
+                    PrefManager.setVal(PrefName.UseAlarmManager, false)
+                    hasDisabledSettings = true
+                }
+            }
+        }
+
+        if (missingPermissions.isNotEmpty()) {
+            showPermissionWarningDialog(missingPermissions, hasDisabledSettings)
+        } else {
+            restartApp()
+        }
+    }
+
+    private fun showPermissionWarningDialog(missingPermissions: List<String>, hasDisabledSettings: Boolean) {
+        val permissionsList = missingPermissions.joinToString("\n• ", prefix = "• ")
+
+        val message = if (hasDisabledSettings) {
+            getString(R.string.restore_permissions_warning_disabled, permissionsList)
+        } else {
+            getString(R.string.restore_permissions_warning, permissionsList)
+        }
+
+        customAlertDialog().apply {
+            setTitle(R.string.permissions_required)
+            setMessage(message)
+            setPosButton(R.string.ok) {
+                restartApp()
+            }
+            setCancelable(false)
+            show()
         }
     }
 }

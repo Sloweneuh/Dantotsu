@@ -26,11 +26,10 @@ class DiscordDialogFragment : BottomSheetDialogFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        when (PrefManager.getCustomVal("discord_mode", "dantotsu")) {
+        when (PrefManager.getCustomVal("discord_mode", "nothing")) {
             "nothing" -> binding.radioNothing.isChecked = true
-            "dantotsu" -> binding.radioDantotsu.isChecked = true
             "anilist" -> binding.radioAnilist.isChecked = true
-            else -> binding.radioAnilist.isChecked = true
+            else -> binding.radioNothing.isChecked = true
         }
         binding.showIcon.isChecked = PrefManager.getVal(PrefName.ShowAniListIcon)
         binding.showIcon.setOnCheckedChangeListener { _, isChecked ->
@@ -42,9 +41,8 @@ class DiscordDialogFragment : BottomSheetDialogFragment() {
         binding.radioGroup.setOnCheckedChangeListener { _, checkedId ->
             val mode = when (checkedId) {
                 binding.radioNothing.id -> "nothing"
-                binding.radioDantotsu.id -> "dantotsu"
                 binding.radioAnilist.id -> "anilist"
-                else -> "dantotsu"
+                else -> "nothing"
             }
             PrefManager.setCustomVal("discord_mode", mode)
         }

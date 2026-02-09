@@ -126,6 +126,37 @@ class SettingsUnreadChapterNotificationActivity : AppCompatActivity() {
                             openSettings(context, null)
                         }
                     ),
+                    Settings(
+                        type = 1,
+                        name = getString(R.string.clear_unread_chapter_history),
+                        desc = getString(R.string.clear_unread_chapter_history_desc),
+                        icon = R.drawable.ic_delete,
+                        onClick = {
+                            context.customAlertDialog().apply {
+                                setTitle(R.string.clear_unread_chapter_history)
+                                setMessage(R.string.clear_unread_chapter_history_confirm)
+                                setPosButton(R.string.yes) {
+                                    // Clear the notification history store (UI display)
+                                    PrefManager.setVal(
+                                        PrefName.UnreadChapterNotificationStore,
+                                        listOf<ani.dantotsu.notifications.unread.UnreadChapterStore>()
+                                    )
+                                    
+                                    // Clear the notified chapters tracking (prevents duplicates)
+                                    val prefs = context.getSharedPreferences("unread_notifications", android.content.Context.MODE_PRIVATE)
+                                    prefs.edit().remove("notified_unread_chapters").apply()
+                                    
+                                    android.widget.Toast.makeText(
+                                        context,
+                                        R.string.clear_unread_chapter_history_success,
+                                        android.widget.Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                                setNegButton(R.string.cancel)
+                                show()
+                            }
+                        }
+                    ),
                 )
             )
             settingsRecyclerView.apply {

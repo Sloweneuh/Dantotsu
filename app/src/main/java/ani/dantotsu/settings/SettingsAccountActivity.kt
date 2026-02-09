@@ -132,6 +132,16 @@ class SettingsAccountActivity : AppCompatActivity() {
                     val id = PrefManager.getVal(PrefName.DiscordId, null as String?)
                     val avatar = PrefManager.getVal(PrefName.DiscordAvatar, null as String?)
                     val username = PrefManager.getVal(PrefName.DiscordUserName, null as String?)
+
+                    // If user info is missing, fetch it
+                    if (id == null || username == null) {
+                        lifecycleScope.launch {
+                            Discord.fetchUserInfo()
+                            // Reload to display the fetched info
+                            reload()
+                        }
+                    }
+
                     if (id != null && avatar != null) {
                         settingsDiscordAvatar.loadImage("https://cdn.discordapp.com/avatars/$id/$avatar.png")
                         settingsDiscordAvatar.setOnClickListener {
@@ -139,6 +149,8 @@ class SettingsAccountActivity : AppCompatActivity() {
                             val discordLink = getString(R.string.discord_link, id)
                             openLinkInBrowser(discordLink)
                         }
+                    } else {
+                        settingsDiscordAvatar.setImageResource(R.drawable.ic_round_person_24)
                     }
                     settingsDiscordUsername.visibility = View.VISIBLE
                     settingsDiscordUsername.text =
@@ -260,7 +272,14 @@ class SettingsAccountActivity : AppCompatActivity() {
                     switch = { isChecked, _ ->
                         PrefManager.setVal(PrefName.rpcEnabled, isChecked)
                     },
-                    isVisible = Discord.token != null
+                    isVisible = Discord.token != null,
+                    attachToSwitch = {
+                        it.settingsExtraIcon.visibility = View.VISIBLE
+                        it.settingsExtraIcon.setImageResource(R.drawable.ic_round_settings_24)
+                        it.settingsExtraIcon.setOnClickListener {
+                            DiscordDialogFragment().show(supportFragmentManager, "dialog")
+                        }
+                    }
                 ),
                 Settings(
                     type = 1,

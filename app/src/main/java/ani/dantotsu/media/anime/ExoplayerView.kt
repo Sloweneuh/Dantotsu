@@ -1423,18 +1423,12 @@ class ExoplayerView :
         val rpcenabled: Boolean = PrefManager.getVal(PrefName.rpcEnabled)
         if ((isOnline(context) && !offline) && Discord.token != null && !incognito && rpcenabled) {
             lifecycleScope.launch {
-                val discordMode = PrefManager.getCustomVal("discord_mode", "dantotsu")
+                val discordMode = PrefManager.getCustomVal("discord_mode", "nothing")
                 val buttons =
                     when (discordMode) {
                         "nothing" ->
                             mutableListOf(
                                 RPC.Link(getString(R.string.view_anime), media.shareLink ?: ""),
-                            )
-
-                        "dantotsu" ->
-                            mutableListOf(
-                                RPC.Link(getString(R.string.view_anime), media.shareLink ?: ""),
-                                RPC.Link("Watch on Dantotsu", getString(R.string.dantotsu)),
                             )
 
                         "anilist" -> {
@@ -1446,7 +1440,9 @@ class ExoplayerView :
                             )
                         }
 
-                        else -> mutableListOf()
+                        else -> mutableListOf(
+                            RPC.Link(getString(R.string.view_anime), media.shareLink ?: ""),
+                        )
                     }
                 val startTimestamp = Calendar.getInstance()
                 val durationInSeconds =

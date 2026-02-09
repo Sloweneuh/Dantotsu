@@ -109,15 +109,6 @@ class SettingsAboutActivity : AppCompatActivity() {
                     ),
                     Settings(
                         type = 1,
-                        name = getString(R.string.forks),
-                        desc = getString(R.string.forks_desc),
-                        icon = R.drawable.ic_round_restaurant_24,
-                        onClick = {
-                            ForksDialogFragment().show(supportFragmentManager, "dialog")
-                        }
-                    ),
-                    Settings(
-                        type = 1,
                         name = getString(R.string.disclaimer),
                         desc = getString(R.string.disclaimer_desc),
                         icon = R.drawable.ic_round_info_24,

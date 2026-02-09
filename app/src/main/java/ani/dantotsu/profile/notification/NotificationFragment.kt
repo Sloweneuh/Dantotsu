@@ -170,12 +170,23 @@ class NotificationFragment : Fragment() {
             .sortedByDescending { (it.time / 1000L).toInt() }
             .filter { it.image != null } // Remove old/invalid data
             .map {
-                val content = if (it.unreadCount == 1) {
-                    "${it.mediaName}: Chapter ${it.lastChapter}"
+                // Format with HTML for better styling - each on separate line
+                val title = "<b>${it.mediaName}</b>"
+                val chapter = if (it.unreadCount == 1) {
+                    "Chapter ${it.lastChapter}"
                 } else {
-                    "${it.mediaName}: Chapter ${it.lastChapter} (${it.unreadCount} unread)"
+                    "Chapter ${it.lastChapter} <i>(${it.unreadCount} unread)</i>"
                 }
-                val sourceInfo = if (it.source.isBlank()) "" else "\nSource: ${it.source}"
+                val source = if (it.source.isNotBlank()) {
+                    "<small>Source: ${it.source}</small>"
+                } else ""
+
+                // Use <br/> for HTML line breaks to ensure separation
+                val content = if (source.isNotEmpty()) {
+                    "$title<br/>$chapter<br/>$source"
+                } else {
+                    "$title<br/>$chapter"
+                }
 
                 Notification(
                     it.type,
@@ -183,7 +194,7 @@ class NotificationFragment : Fragment() {
                     commentId = it.mediaId,
                     mediaId = it.mediaId,
                     notificationType = it.type,
-                    context = content + sourceInfo,
+                    context = content,
                     createdAt = (it.time / 1000L).toInt(),
                     image = it.image,
                     banner = it.banner ?: it.image

@@ -10,10 +10,7 @@
     <string name="logout">Logout</string>
 
     <string name="dantotsu" translatable="false">https://dantotsu.app/</string>
-    <string name="discord" translatable="false">https://discord.gg/4HPZ5nAWwM</string>
-    <string name="github" translatable="false">https://github.com/rebelonion/Dantotsu</string>
-    <string name="telegram" translatable="false" tools:ignore="Typos">https://t.me/+gzBCQExtLQo1YTNh </string>
-    <string name="coffee" translatable="false">https://www.buymeacoffee.com/rebelonion</string>
+    <string name="github" translatable="false">https://github.com/Sloweneuh/Dantotsu</string>
 
     <string name="anilist_link">https://anilist.co/user/%1$s/</string>
     <string name="myanilist_link">https://myanimelist.net/profile/%1$s/</string>
@@ -394,8 +391,6 @@
     <string name="other">Other</string>
     <string name="total_repeats">TOTAL REPEATS</string>
     <string name="custom_lists">Custom Lists</string>
-    <string name="donate_desc">Want to support Dantotsu\'s Maintainer?\nConsider Donating</string>
-    <string name="donate_goal">No donation goal atm</string>
     <string name="filter">Filter</string>
     <string name="filter_by_genre">Filter by Genre</string>
     <string name="reset_filters">Reset Filters</string>
@@ -428,7 +423,6 @@
     <string name="timestamp_proxy">Use Proxy for Timestamps</string>
     <string name="check_app_updates">Check for Updates</string>
     <string name="author">Author</string>
-    <string name="forks">Versions</string>
     <string name="faq">FAQ</string>
     <string name="accounts">Accounts</string>
     <string name="addons">Add-ons</string>
@@ -497,9 +491,8 @@
     <string name="install_step">Step: %1$s</string>
     <string name="review">Review</string>
     <string name="reviews">Reviews</string>
-    <string name="discord_nothing_button">Display only the first button</string>
-    <string name="discord_dantotsu_button">Display dantotsu in the second button</string>
-    <string name="discord_anilist_button">Display your AniList profile instead</string>
+    <string name="discord_nothing_button">Show only anime/manga link button</string>
+    <string name="discord_anilist_button">Show anime/manga link + AniList profile button</string>
     <string name="discord_rich_presence">Discord Rich Presence</string>
     <string name="stream_on_dantotsu">Stream on Dantotsu</string>
     <string name="view_my_anilist">View My AniList</string>
@@ -797,6 +790,9 @@
     <string name="backup_restore">Backup and Restore</string>
     <string name="restore_settings">Import Settings</string>
     <string name="restore_settings_underline"><u>Restore Settings</u></string>
+    <string name="permissions_required">Permissions Required</string>
+    <string name="restore_permissions_warning">Settings have been restored, but the following features require permissions that are not currently granted:\n\n%1$s\n\nPlease enable these permissions in the app settings for the restored features to work properly.</string>
+    <string name="restore_permissions_warning_disabled">Settings have been restored, but the following features require permissions that are not currently granted:\n\n%1$s\n\nThese settings have been automatically disabled. Please grant the required permissions in the app settings and re-enable them manually.</string>
     <string name="try_internal_cast_experimental">Try Internal Cast (Experimental)</string>
     <string name="comments_button">Enable Comments</string>    
     <string name="comments_button_desc">Dantotsu\'s very own comments server</string>
@@ -879,7 +875,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="custom_interval_desc">Enter the interval in minutes (1-1440)</string>
     <string name="activities">Activities</string>
     <string name="enable_rpc">Enable Discord RPC</string>
-    <string name="enable_rpc_desc">Display your taste to plebs on Discord!</string>
+    <string name="enable_rpc_desc">Display your taste to plebs on Discord! Tap the settings icon to configure.</string>
 
     <string name="incorrect_password">Incorrect password</string>
     <string name="password_cannot_be_empty">Password cannot be empty</string>
@@ -925,10 +921,6 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="button_backup">Backup</string>
     <string name="no_location_selected">No location selected</string>
     <string name="enjoying_app">Enjoying the App?</string>
-    <string name="consider_donating">Consider donating!</string>
-    <string name="no_moners">no moners :(</string>
-    <string name="you_be_rich">That\'s alright, you\'ll be a rich man soon :prayge:</string>
-    <string name="donate">donate :)</string>
     <string name="do_it">Do it!</string>
     <string name="password">Password</string>
 
@@ -1000,8 +992,8 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="faq_desc">General questions about Dantotsu</string>
     <string name="check_app_updates_desc">Check Github for app updates</string>
     <string name="share_username_in_crash_reports_desc">Share username in crash reports</string>
-    <string name="devs_desc">Dantotsu\'s very own unpaid labours </string>
-    <string name="forks_desc">More like Dantotsu</string>
+    <string name="devs_desc">Original developer and maintainer of this version. For more contributors, visit the official repository.</string>
+    <string name="devs_disclaimer">This list shows the original developer and maintainer of this version.\nFor more contributors, visit:\nhttps://git.rebelonion.dev/rebelonion/Dantotsu</string>
     <string name="disclaimer_desc">Something to keep in mind</string>
     <string name="enable_torrent_desc">This will run a torrent server in the background</string>
     <string name="player_settings_desc">All the player related settings</string>
@@ -1039,6 +1031,10 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="subscription_notifications_desc">Configure notification settings for subscribed anime and manga updates</string>
     <string name="unread_chapter_notifications">Unread Chapter Notifications</string>
     <string name="unread_chapter_notifications_desc">Configure automatic checks for new unread chapters in your manga list</string>
+    <string name="clear_unread_chapter_history">Clear Notification History</string>
+    <string name="clear_unread_chapter_history_desc">Delete all unread chapter notification history. This will allow previously notified chapters to trigger notifications again.</string>
+    <string name="clear_unread_chapter_history_confirm">Are you sure you want to clear all unread chapter notification history? This will reset the notification tracking and previously notified chapters may appear again.</string>
+    <string name="clear_unread_chapter_history_success">Notification history cleared successfully</string>
     <string name="anilist_notifications">AniList Notifications</string>
     <string name="anilist_notifications_desc">Configure AniList activity notifications and filters</string>
     <string name="comment_notifications">Comment Notifications</string>
@@ -1163,6 +1159,8 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="privacy_policy">Privacy Policy</string>
     <string name="privacy_policy_desc">Read our privacy policy</string>
     <string name="failed_to_load">Failed to load</string>
+    <string name="failed_to_load_image">Failed to load image</string>
+    <string name="retry">Retry</string>
     <string name="studios">Studios</string>
     <string name="external_links">External links</string>
     <string name="quicklinks">Quicklinks</string>

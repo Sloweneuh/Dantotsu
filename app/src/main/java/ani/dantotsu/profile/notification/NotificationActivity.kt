@@ -1,5 +1,6 @@
 package ani.dantotsu.profile.notification
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
@@ -20,6 +21,10 @@ import ani.dantotsu.profile.notification.NotificationFragment.Companion.Notifica
 import ani.dantotsu.profile.notification.NotificationFragment.Companion.NotificationType.UNREAD_CHAPTER
 import ani.dantotsu.profile.notification.NotificationFragment.Companion.NotificationType.USER
 import ani.dantotsu.profile.notification.NotificationFragment.Companion.newInstance
+import ani.dantotsu.settings.SettingsAnilistNotificationActivity
+import ani.dantotsu.settings.SettingsCommentNotificationActivity
+import ani.dantotsu.settings.SettingsSubscriptionNotificationActivity
+import ani.dantotsu.settings.SettingsUnreadChapterNotificationActivity
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.statusBarHeight
@@ -60,6 +65,12 @@ class NotificationActivity : AppCompatActivity() {
         tabs.forEach { (icon, title) -> navBar.addTab(navBar.createTab(icon, title)) }
 
         binding.notificationBack.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
+        
+        // Settings button click listener
+        binding.notificationSettings.setOnClickListener {
+            openSettingsForCurrentTab()
+        }
+        
         val getOne = intent.getIntExtra("activityId", -1)
         if (getOne != -1) navBar.isVisible = false
         binding.notificationViewPager.isUserInputEnabled = false
@@ -85,6 +96,18 @@ class NotificationActivity : AppCompatActivity() {
         if (this::navBar.isInitialized) {
             navBar.selectTabAt(selected)
         }
+    }
+
+    private fun openSettingsForCurrentTab() {
+        val intent = when (selected) {
+            0 -> Intent(this, SettingsAnilistNotificationActivity::class.java) // User tab
+            1 -> Intent(this, SettingsAnilistNotificationActivity::class.java) // Media tab
+            2 -> Intent(this, SettingsSubscriptionNotificationActivity::class.java) // Subscription tab
+            3 -> Intent(this, SettingsUnreadChapterNotificationActivity::class.java) // Unread Chapter tab
+            4 -> Intent(this, SettingsCommentNotificationActivity::class.java) // Comments tab
+            else -> Intent(this, SettingsAnilistNotificationActivity::class.java)
+        }
+        startActivity(intent)
     }
 
     private class ViewPagerAdapter(

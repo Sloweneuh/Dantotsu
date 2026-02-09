@@ -7,6 +7,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.core.view.updateLayoutParams
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
 import ani.dantotsu.databinding.ItemImageBinding
@@ -19,6 +20,7 @@ import ani.dantotsu.settings.saving.PrefName
 import com.bumptech.glide.load.resource.bitmap.BitmapTransformation
 import com.davemorrissey.labs.subscaleview.ImageSource
 import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
+import kotlinx.coroutines.launch
 
 open class ImageAdapter(
     activity: MangaReaderActivity,
@@ -52,10 +54,28 @@ open class ImageAdapter(
         val imageView = parent.findViewById<SubsamplingScaleImageView>(R.id.imgProgImageNoGestures)
             ?: return false
         val progress = parent.findViewById<View>(R.id.imgProgProgress) ?: return false
+        val errorLayout = parent.findViewById<View>(R.id.imgProgError) ?: return false
+        val retryButton = parent.findViewById<View>(R.id.imgProgRetry)
+
         imageView.recycle()
         imageView.visibility = View.GONE
+        errorLayout.visibility = View.GONE
+        progress.visibility = View.VISIBLE
 
-        val bitmap = loadBitmap(position, parent) ?: return false
+        val bitmap = loadBitmap(position, parent)
+
+        if (bitmap == null) {
+            // Show error layout with retry button
+            progress.visibility = View.GONE
+            errorLayout.visibility = View.VISIBLE
+
+            retryButton?.setOnClickListener {
+                activity.lifecycleScope.launch {
+                    loadImage(position, parent)
+                }
+            }
+            return false
+        }
 
         var sWidth = getSystem().displayMetrics.widthPixels
         var sHeight = getSystem().displayMetrics.heightPixels

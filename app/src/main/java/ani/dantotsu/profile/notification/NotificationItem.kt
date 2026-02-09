@@ -1,5 +1,7 @@
 package ani.dantotsu.profile.notification
 
+import android.os.Build
+import android.text.Html
 import android.view.View
 import android.view.ViewGroup
 import ani.dantotsu.R
@@ -147,7 +149,19 @@ class NotificationItem(
     private fun setBinding() {
         val notificationType: NotificationType =
             NotificationType.valueOf(notification.notificationType)
-        binding.notificationText.text = ActivityItemBuilder.getContent(notification)
+        
+        // Render HTML for styled text
+        val contentText = ActivityItemBuilder.getContent(notification)
+        binding.notificationText.text = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            Html.fromHtml(contentText, Html.FROM_HTML_MODE_COMPACT)
+        } else {
+            @Suppress("DEPRECATION")
+            Html.fromHtml(contentText)
+        }
+        
+        // Ensure text wraps and displays fully
+        binding.notificationText.maxLines = Int.MAX_VALUE
+        
         binding.notificationDate.text = ActivityItemBuilder.getDateTime(notification.createdAt)
 
         when (notificationType) {
@@ -373,6 +387,36 @@ class NotificationItem(
 
             NotificationType.MEDIA_DELETION -> {
                 binding.notificationCover.visibility = View.GONE
+            }
+
+            NotificationType.UNREAD_CHAPTER, NotificationType.UnreadChapter -> {
+                // Use notification.image/banner fields directly for UnreadChapter notifications
+                val coverImage = notification.image
+                if (coverImage != null) {
+                    binding.notificationCover.loadImage(coverImage)
+                    binding.notificationCover.visibility = View.VISIBLE
+                    binding.notificationCoverUser.visibility = View.VISIBLE
+                    binding.notificationCoverUserContainer.visibility = View.GONE
+                } else {
+                    // Use placeholder image when image is not available
+                    binding.notificationCover.setImageResource(R.drawable.ic_round_import_contacts_24)
+                    binding.notificationCover.visibility = View.VISIBLE
+                    binding.notificationCoverUser.visibility = View.VISIBLE
+                    binding.notificationCoverUserContainer.visibility = View.GONE
+                }
+
+                // Set banner image
+                blurImage(binding.notificationBannerImage, notification.banner ?: notification.image)
+                val defaultHeight = 153.toPx
+                binding.notificationBannerImage.layoutParams.height = defaultHeight
+                binding.notificationGradiant.layoutParams.height = defaultHeight
+                (binding.notificationTextContainer.layoutParams as ViewGroup.MarginLayoutParams).marginStart = 125.toPx
+
+                binding.notificationBannerImage.setOnClickListener {
+                    clickCallback(
+                        notification.mediaId ?: 0, null, NotificationClickType.MEDIA
+                    )
+                }
             }
 
             NotificationType.COMMENT_REPLY -> {

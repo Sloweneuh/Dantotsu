@@ -22,6 +22,8 @@ enum class NotificationType(val value: String) {
     MEDIA_DATA_CHANGE("MEDIA_DATA_CHANGE"),
     MEDIA_MERGE("MEDIA_MERGE"),
     MEDIA_DELETION("MEDIA_DELETION"),
+    UNREAD_CHAPTER("UNREAD_CHAPTER"),
+    UnreadChapter("UnreadChapter"), // AniList sends this in PascalCase
 
     //custom
     COMMENT_REPLY("COMMENT_REPLY"),
