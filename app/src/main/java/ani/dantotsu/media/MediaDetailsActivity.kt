@@ -13,6 +13,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.widget.ImageView
+import android.widget.LinearLayout
 import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
@@ -258,6 +259,11 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
         } else {
             binding.mediaFav.visibility = View.GONE
             null
+        }
+
+        // Share Button
+        binding.mediaShare.setOnClickListener {
+            shareMediaLinks(media)
         }
 
         // Extension function to convert dp to px
@@ -985,6 +991,110 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
             disabled = !enabled
             image.alpha = if (disabled) 0.33f else 1f
         }
+    }
+
+    private fun shareMediaLinks(media: Media) {
+        val isAnime = media.anime != null
+        val mediaType = if (isAnime) "anime" else "manga"
+
+        // Build list of available links with their labels and icons
+        val linkOptions = mutableListOf<Triple<String, String, Int>>() // label, url, iconRes
+
+        // AniList link
+        val anilistLink = "https://anilist.co/$mediaType/${media.id}"
+        linkOptions.add(Triple("AniList", anilistLink, R.drawable.ic_anilist))
+
+        // MAL link
+        if (media.idMAL != null) {
+            val malLink = "https://myanimelist.net/$mediaType/${media.idMAL}"
+            linkOptions.add(Triple("MyAnimeList", malLink, R.drawable.ic_myanimelist))
+        }
+
+        // For manga only: Comick and MangaUpdates
+        if (!isAnime) {
+            // Comick link
+            val comickSlug = model.comickSlug.value
+            if (comickSlug != null) {
+                val comickLink = "https://comick.io/comic/$comickSlug"
+                linkOptions.add(Triple("Comick", comickLink, R.drawable.ic_round_comick_24))
+            }
+
+            // MangaUpdates link - check ViewModel first
+            var muLink = model.mangaUpdatesSeries.value?.seriesId?.let { seriesId ->
+                "https://www.mangaupdates.com/series/$seriesId"
+            }
+
+            // If not in ViewModel, check external links
+            if (muLink == null) {
+                media.externalLinks.forEach { linkEntry ->
+                    val candidate = linkEntry.getOrNull(1) ?: linkEntry.getOrNull(0)
+                    if (!candidate.isNullOrBlank() && candidate.contains("mangaupdates", ignoreCase = true)) {
+                        muLink = candidate
+                        return@forEach
+                    }
+                }
+            }
+
+            if (muLink != null) {
+                linkOptions.add(Triple("MangaUpdates", muLink, R.drawable.ic_round_mangaupdates_24))
+            }
+        }
+
+        // Create custom dialog with icons in a row
+        val dialog = androidx.appcompat.app.AlertDialog.Builder(this, R.style.MyPopup)
+            .create()
+
+        // Create custom title view with centered text
+        val titleView = android.widget.TextView(this).apply {
+            setText(R.string.share)
+            textSize = 20f
+            gravity = android.view.Gravity.CENTER
+            setPadding(32, 32, 32, 16)
+            setTextColor(getThemeColor(com.google.android.material.R.attr.colorOnSurface))
+        }
+        dialog.setCustomTitle(titleView)
+
+        // Create horizontal layout with icons
+        val iconLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER
+            setPadding(32, 16, 32, 32)
+        }
+
+        linkOptions.forEach { (label, link, iconRes) ->
+            val iconButton = ImageView(this).apply {
+                setImageResource(iconRes)
+                val size = (56 * resources.displayMetrics.density).toInt()
+                layoutParams = LinearLayout.LayoutParams(size, size).apply {
+                    setMargins(16, 0, 16, 0)
+                }
+                setPadding(12, 12, 12, 12)
+                // Set icon color to match tab icons (bg_opp: black in light theme, white in dark theme)
+                setColorFilter(
+                    ContextCompat.getColor(context, R.color.bg_opp),
+                    android.graphics.PorterDuff.Mode.SRC_IN
+                )
+                // Add ripple effect without background
+                val outValue = android.util.TypedValue()
+                context.theme.resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, outValue, true)
+                setBackgroundResource(outValue.resourceId)
+                contentDescription = label
+                setOnClickListener {
+                    // Open share sheet directly - it will dismiss the dialog automatically
+                    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, link)
+                        putExtra(Intent.EXTRA_SUBJECT, "${media.userPreferredName} - $label")
+                    }
+                    startActivity(Intent.createChooser(shareIntent, "Share $label link"))
+                    dialog.dismiss()
+                }
+            }
+            iconLayout.addView(iconButton)
+        }
+
+        dialog.setView(iconLayout)
+        dialog.show()
     }
 
     companion object {
