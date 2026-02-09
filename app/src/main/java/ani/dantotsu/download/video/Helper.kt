@@ -77,8 +77,8 @@ object Helper {
 
         if (downloadCheck) {
             context.customAlertDialog().apply {
-                setTitle("Download Exists")
-                setMessage("A download for this episode already exists. Do you want to overwrite it?")
+                setTitle(context.getString(R.string.download_exists))
+                setMessage(context.getString(R.string.download_already_exists))
                 setPosButton(R.string.yes) {
                     PrefManager.getAnimeDownloadPreferences().edit()
                         .remove(animeDownloadTask.getTaskName())

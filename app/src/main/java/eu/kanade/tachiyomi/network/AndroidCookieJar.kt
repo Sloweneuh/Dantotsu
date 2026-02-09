@@ -1,6 +1,7 @@
 package eu.kanade.tachiyomi.network
 
 import android.webkit.CookieManager
+import ani.dantotsu.R
 import ani.dantotsu.snackString
 import okhttp3.Cookie
 import okhttp3.CookieJar
@@ -11,7 +12,7 @@ class AndroidCookieJar : CookieJar {
     val manager: CookieManager? = try {
         CookieManager.getInstance()
     } catch (e: Exception) {
-        snackString("Webview is outdated, please update your webview")
+        snackString(R.string.webview_outdated)
         null
     }
 

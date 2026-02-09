@@ -413,7 +413,7 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
                 val names =
                     allSettings.map { LanguageMapper.getLanguageName(it.lang) }.toTypedArray()
                 requireContext().customAlertDialog().apply {
-                    setTitle("Select a Source")
+                    setTitle(getString(R.string.select_source))
                     singleChoiceItems(names) { which ->
                         selectedSetting = allSettings[which]
                         itemSelected = true

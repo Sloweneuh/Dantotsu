@@ -5,6 +5,7 @@ import android.os.Build
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.widget.Toast
+import ani.dantotsu.R
 import eu.kanade.tachiyomi.util.system.DeviceUtil
 import eu.kanade.tachiyomi.util.system.WebViewUtil
 import eu.kanade.tachiyomi.util.system.setDefaultSettings
@@ -58,7 +59,7 @@ abstract class WebViewInterceptor(
 
         if (!WebViewUtil.supportsWebView(context)) {
             launchUI {
-                context.toast("Webview is required for dantotsu", Toast.LENGTH_LONG)
+                context.toast(context.getString(R.string.webview_required), Toast.LENGTH_LONG)
             }
             return response
         }

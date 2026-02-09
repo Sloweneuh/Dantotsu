@@ -579,9 +579,9 @@ class MangaUpdatesInfoFragment : Fragment() {
         series.rank?.lists?.let { lists ->
             val followers = (lists.reading ?: 0) + (lists.wish ?: 0) +
                            (lists.complete ?: 0) + (lists.unfinished ?: 0) + (lists.custom ?: 0)
-            binding.mediaInfoFavorites.text = if (followers > 0) followers.toString() else "??"
+            binding.mediaInfoFavorites.text = if (followers > 0) followers.toString() else getString(R.string.question_marks)
         } ?: run {
-            binding.mediaInfoFavorites.text = "??"
+            binding.mediaInfoFavorites.text = getString(R.string.question_marks)
         }
 
         // Description (extract only synopsis, remove any text that was supposed to be italic/bold/links)

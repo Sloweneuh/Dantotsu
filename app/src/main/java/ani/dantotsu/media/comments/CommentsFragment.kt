@@ -161,7 +161,7 @@ class CommentsFragment : Fragment() {
         }
         binding.openRules.setOnClickListener {
             activity.customAlertDialog().apply {
-                setTitle("Commenting Rules")
+                setTitle(getString(R.string.commenting_rules))
                     .setMessage(
                         "🚨 BREAK ANY RULE = YOU'RE GONE\n\n" +
                                 "1. NO RACISM, DISCRIMINATION, OR HATE SPEECH\n" +
@@ -312,48 +312,48 @@ class CommentsFragment : Fragment() {
 
                 }
             }
+        }
 
-            activity.binding.commentLabel.setOnClickListener {
-                //alert dialog to enter a number, with a cancel and ok button
-                activity.customAlertDialog().apply {
-                    val customView = DialogEdittextBinding.inflate(layoutInflater)
-                    setTitle("Enter a chapter/episode number tag")
-                    setCustomView(customView.root)
-                    setPosButton("OK") {
-                        val text = customView.dialogEditText.text.toString()
-                        tag = text.toIntOrNull()
-                        if (tag == null) {
-                            activity.binding.commentLabel.background = ResourcesCompat.getDrawable(
-                                resources,
-                                R.drawable.ic_label_off_24,
-                                null
-                            )
-                        } else {
-                            activity.binding.commentLabel.background = ResourcesCompat.getDrawable(
-                                resources,
-                                R.drawable.ic_label_24,
-                                null
-                            )
-                        }
-                    }
-                    setNeutralButton("Clear") {
-                        tag = null
+        activity.binding.commentLabel.setOnClickListener {
+            //alert dialog to enter a number, with a cancel and ok button
+            activity.customAlertDialog().apply {
+                val customView = DialogEdittextBinding.inflate(layoutInflater)
+                setTitle(getString(R.string.enter_chapter_episode_tag))
+                setCustomView(customView.root)
+                setPosButton("OK") {
+                    val text = customView.dialogEditText.text.toString()
+                    tag = text.toIntOrNull()
+                    if (tag == null) {
                         activity.binding.commentLabel.background = ResourcesCompat.getDrawable(
                             resources,
                             R.drawable.ic_label_off_24,
                             null
                         )
-                    }
-                    setNegButton("Cancel") {
-                        tag = null
+                    } else {
                         activity.binding.commentLabel.background = ResourcesCompat.getDrawable(
                             resources,
-                            R.drawable.ic_label_off_24,
+                            R.drawable.ic_label_24,
                             null
                         )
                     }
-                    show()
                 }
+                setNeutralButton("Clear") {
+                    tag = null
+                    activity.binding.commentLabel.background = ResourcesCompat.getDrawable(
+                        resources,
+                        R.drawable.ic_label_off_24,
+                        null
+                    )
+                }
+                setNegButton("Cancel") {
+                    tag = null
+                    activity.binding.commentLabel.background = ResourcesCompat.getDrawable(
+                        resources,
+                        R.drawable.ic_label_off_24,
+                        null
+                    )
+                }
+                show()
             }
         }
 
@@ -583,7 +583,7 @@ class CommentsFragment : Fragment() {
      */
     private fun showCommentRulesDialog() {
         activity.customAlertDialog().apply {
-            setTitle("Commenting Rules")
+            setTitle(getString(R.string.commenting_rules))
                 .setMessage(
                     "🚨 BREAK ANY RULE = YOU'RE GONE\n\n" +
                             "1. NO RACISM, DISCRIMINATION, OR HATE SPEECH\n" +

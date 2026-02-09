@@ -125,8 +125,8 @@ class MangaReadAdapter(
         //for removing saved progress
         binding.sourceTitle.setOnLongClickListener {
             fragment.requireContext().customAlertDialog().apply {
-                setTitle(" Delete Progress for all chapters of ${media.nameRomaji}")
-                setMessage("This will delete all the locally stored progress for chapters")
+                setTitle(fragment.getString(R.string.delete_progress_for_chapters, media.nameRomaji))
+                setMessage(fragment.getString(R.string.delete_stored_progress_chapters))
                 setPosButton(R.string.ok) {
                     clearCustomValsForMedia("${media.id}", "_Chapter")
                     clearCustomValsForMedia("${media.id}", "_Vol")
@@ -324,8 +324,8 @@ class MangaReadAdapter(
                 //downloadNo.text = "0"
                 mediaDownloadTop.setOnClickListener {
                     fragment.requireContext().customAlertDialog().apply {
-                        setTitle("Multi Chapter Downloader")
-                        setMessage("Enter the number of chapters to download")
+                        setTitle(fragment.getString(R.string.multi_chapter_downloader))
+                        setMessage(fragment.getString(R.string.enter_number_of_chapters))
                         val input = View.inflate(currContext(), R.layout.dialog_layout, null)
                         val editText = input.findViewById<EditText>(R.id.downloadNo)
                         setCustomView(input)
@@ -335,7 +335,7 @@ class MangaReadAdapter(
                                 downloadNo.setText(value.toString(), TextView.BufferType.EDITABLE)
                                 fragment.multiDownload(value)
                             } else {
-                                toast("Please enter a valid number")
+                                toast(fragment.getString(R.string.please_enter_valid_number))
                             }
                         }
                         setNegButton(R.string.cancel)
@@ -344,8 +344,8 @@ class MangaReadAdapter(
                 }
                 resetProgress.setOnClickListener {
                     fragment.requireContext().customAlertDialog().apply {
-                        setTitle(" Delete Progress for all chapters of ${media.nameRomaji}")
-                        setMessage("This will delete all the locally stored progress for chapters")
+                        setTitle(fragment.getString(R.string.delete_progress_for_chapters, media.nameRomaji))
+                        setMessage(fragment.getString(R.string.delete_stored_progress_chapters))
                         setPosButton(R.string.ok) {
 // Usage
                             clearCustomValsForMedia("${media.id}", "_Chapter")
@@ -437,7 +437,7 @@ class MangaReadAdapter(
                 }
 
                 fragment.requireContext().customAlertDialog().apply {
-                    setTitle("Options")
+                    setTitle(fragment.requireContext().getString(R.string.options))
                     setCustomView(root)
                     setPosButton("OK") {
                         if (run) fragment.onIconPressed(style, reversed)

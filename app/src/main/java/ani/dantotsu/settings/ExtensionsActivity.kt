@@ -219,7 +219,7 @@ class ExtensionsActivity : AppCompatActivity() {
             val index = LanguageMapper.Companion.Language.entries.toTypedArray()
                 .indexOfFirst { it.code == listOrder }
             customAlertDialog().apply {
-                setTitle("Language")
+                setTitle(getString(R.string.language))
                 singleChoiceItems(languageOptions, index) { selected ->
                     PrefManager.setVal(
                         PrefName.LangSort,

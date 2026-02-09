@@ -74,7 +74,7 @@ class InstalledAnimeExtensionsFragment : Fragment(), SearchQueryHandler {
                         .toTypedArray()
                     var selectedIndex = 0
                     requireContext().customAlertDialog().apply {
-                        setTitle("Select a Source")
+                        setTitle(getString(R.string.select_source))
                         singleChoiceItems(names, selectedIndex) { which ->
                             itemSelected = true
                             selectedIndex = which
@@ -114,14 +114,14 @@ class InstalledAnimeExtensionsFragment : Fragment(), SearchQueryHandler {
                 // Hide ViewPager2 and TabLayout
                 changeUIVisibility(false)
             } else {
-                Toast.makeText(requireContext(), "Source is not configurable", Toast.LENGTH_SHORT)
+                Toast.makeText(requireContext(), getString(R.string.source_not_configurable), Toast.LENGTH_SHORT)
                     .show()
             }
         },
         { pkg ->
             if (isAdded) {
                 animeExtensionManager.uninstallExtension(pkg.pkgName)
-                snackString("Extension uninstalled")
+                snackString(getString(R.string.extension_uninstalled))
             }
         }, { pkg ->
             if (isAdded) {
@@ -139,8 +139,8 @@ class InstalledAnimeExtensionsFragment : Fragment(), SearchQueryHandler {
                                     Notifications.CHANNEL_DOWNLOADER_PROGRESS
                                 )
                                     .setSmallIcon(R.drawable.ic_round_sync_24)
-                                    .setContentTitle("Updating extension")
-                                    .setContentText("Step: $installStep")
+                                    .setContentTitle(getString(R.string.updating_extension))
+                                    .setContentText(getString(R.string.install_step, installStep))
                                     .setPriority(NotificationCompat.PRIORITY_LOW)
                                 notificationManager.notify(1, builder.build())
                             },
@@ -152,11 +152,11 @@ class InstalledAnimeExtensionsFragment : Fragment(), SearchQueryHandler {
                                     Notifications.CHANNEL_DOWNLOADER_ERROR
                                 )
                                     .setSmallIcon(R.drawable.ic_round_info_24)
-                                    .setContentTitle("Update failed: ${error.message}")
-                                    .setContentText("Error: ${error.message}")
+                                    .setContentTitle(getString(R.string.update_failed, error.message))
+                                    .setContentText(getString(R.string.error_message, error.message))
                                     .setPriority(NotificationCompat.PRIORITY_HIGH)
                                 notificationManager.notify(1, builder.build())
-                                snackString("Update failed: ${error.message}")
+                                snackString(getString(R.string.update_failed, error.message))
                             },
                             {
                                 val builder = NotificationCompat.Builder(
@@ -164,15 +164,15 @@ class InstalledAnimeExtensionsFragment : Fragment(), SearchQueryHandler {
                                     Notifications.CHANNEL_DOWNLOADER_PROGRESS
                                 )
                                     .setSmallIcon(R.drawable.ic_circle_check)
-                                    .setContentTitle("Update complete")
-                                    .setContentText("The extension has been successfully updated.")
+                                    .setContentTitle(getString(R.string.update_complete))
+                                    .setContentText(getString(R.string.extension_has_been_updated))
                                     .setPriority(NotificationCompat.PRIORITY_LOW)
                                 notificationManager.notify(1, builder.build())
-                                snackString("Extension updated")
+                                snackString(getString(R.string.extension_updated))
                             }
                         )
                 } else {
-                    snackString("No update available")
+                    snackString(getString(R.string.no_update_available))
                 }
 
             }

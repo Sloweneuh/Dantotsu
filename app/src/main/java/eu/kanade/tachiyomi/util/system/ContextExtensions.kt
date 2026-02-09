@@ -20,6 +20,8 @@ import androidx.core.graphics.blue
 import androidx.core.graphics.green
 import androidx.core.graphics.red
 import androidx.core.net.toUri
+import ani.dantotsu.R
+import ani.dantotsu.toast
 import ani.dantotsu.util.Logger
 import com.hippo.unifile.UniFile
 import eu.kanade.tachiyomi.util.lang.truncateCenter
@@ -46,7 +48,7 @@ fun Context.copyToClipboard(label: String, content: String) {
         }
     } catch (e: Throwable) {
         Logger.log(e)
-        toast("Failed to copy to clipboard")
+        toast(getString(R.string.failed_to_copy_to_clipboard))
     }
 }
 

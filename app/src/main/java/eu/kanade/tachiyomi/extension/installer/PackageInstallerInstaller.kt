@@ -113,7 +113,7 @@ class PackageInstallerInstaller(private val service: Service) : Installer(servic
             }
         } catch (e: Exception) {
             Logger.log("Failed to install extension ${entry.downloadId} ${entry.uri}\n$e")
-            snackString("Failed to install extension ${entry.downloadId} ${entry.uri}")
+            snackString(R.string.failed_to_install_extension, null, "${entry.downloadId} ${entry.uri}")
             activeSession?.let { (_, sessionId) ->
                 packageInstaller.abandonSession(sessionId)
             }

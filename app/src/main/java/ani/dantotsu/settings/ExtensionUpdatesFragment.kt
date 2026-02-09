@@ -170,8 +170,8 @@ class ExtensionUpdatesFragment : Fragment() {
 
     private fun updateAllExtensions(items: List<UpdateItem>) {
         MaterialAlertDialogBuilder(requireContext())
-            .setTitle("Update All Extensions")
-            .setMessage("Update ${items.size} extension(s)?")
+            .setTitle(getString(R.string.update_all_extensions))
+            .setMessage(getString(R.string.update_extensions_count, items.size))
             .setPositiveButton("Update") { _, _ ->
                 updateExtensionsSequentially(items.toMutableList())
             }

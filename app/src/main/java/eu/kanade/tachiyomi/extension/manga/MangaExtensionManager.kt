@@ -2,6 +2,7 @@ package eu.kanade.tachiyomi.extension.manga
 
 import android.content.Context
 import android.graphics.drawable.Drawable
+import ani.dantotsu.R
 import ani.dantotsu.media.MediaType
 import ani.dantotsu.snackString
 import ani.dantotsu.util.Logger
@@ -119,7 +120,7 @@ class MangaExtensionManager(
             api.findMangaExtensions()
         } catch (e: Exception) {
             Logger.log(e)
-            withUIContext { snackString("Failed to get manga extensions") }
+            withUIContext { snackString(context.getString(R.string.failed_to_get_manga_extensions)) }
             emptyList()
         }
 

@@ -344,8 +344,8 @@ class EpisodeAdapter(
                         return@setOnClickListener
                     } else if (downloadedEpisodes.contains(episodeNumber)) {
                         binding.root.context.customAlertDialog().apply {
-                            setTitle("Delete Episode")
-                            setMessage("Are you sure you want to delete Episode $episodeNumber?")
+                            setTitle(context.getString(R.string.delete_episode))
+                            setMessage(context.getString(R.string.are_you_sure_delete_episode, episodeNumber))
                             setPosButton(R.string.yes) {
                                 fragment.onAnimeEpisodeRemoveDownloadClick(episodeNumber)
                             }

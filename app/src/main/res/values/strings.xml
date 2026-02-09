@@ -872,7 +872,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="unread_chapter_notification_checking_time">Unread chapter check interval : %1$s</string>
     <string name="custom">Custom…</string>
     <string name="custom_interval_title">Custom Interval</string>
-    <string name="custom_interval_desc">Enter the interval in minutes (1-1440)</string>
+    <string name="custom_interval_desc">Enter the interval in minutes (1–1440)</string>
     <string name="activities">Activities</string>
     <string name="enable_rpc">Enable Discord RPC</string>
     <string name="enable_rpc_desc">Display your taste to plebs on Discord! Tap the settings icon to configure.</string>
@@ -1180,4 +1180,156 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="extensions_selected">%1$d extension(s) selected</string>
     <string name="open_in_browser">Open in browser</string>
 
+    <!-- Toast Messages -->
+    <string name="extension_repo_added">%1$s Extension Repo added</string>
+    <string name="invalid_file_type">Invalid file type</string>
+    <string name="error_importing_settings_toast">Error importing settings</string>
+    <string name="failed_to_retrieve_token">Failed to retrieve token</string>
+    <string name="logged_in_successfully">Logged in successfully</string>
+    <string name="successfully_deleted">Successfully deleted</string>
+    <string name="failed_to_delete_directory">Failed to delete directory</string>
+    <string name="webview_required">Webview is required for dantotsu</string>
+    <string name="copied_to_clipboard_truncated">Copied to clipboard: %1$s</string>
+    <string name="failed_to_copy_to_clipboard">Failed to copy to clipboard</string>
+    <string name="token_retrieved_successfully">Token retrieved successfully</string>
+    <string name="failed_to_get_token">Failed to get token</string>
+    <string name="subscription_requests_sent">Subscription requests sent</string>
+    <string name="starting_unread_chapters_check">Starting unread chapters check…</string>
+    <string name="starting_subscription_check">Starting subscription check…</string>
+    <string name="simulating_scheduler_tick">Simulating scheduler tick…</string>
+    <string name="scheduler_tick_completed">Scheduler tick completed</string>
+    <string name="log_written_successfully">Log written successfully</string>
+    <string name="failed_to_write_log">Failed to write log</string>
+    <string name="showing_full_logs">Showing full logs</string>
+    <string name="error_no_type">Error: No type</string>
+    <string name="error_no_parent_id">Error: No parent ID</string>
+    <string name="preview_enabled">Preview enabled</string>
+    <string name="preview_disabled">Preview disabled</string>
+
+    <!-- Dialog Titles -->
+    <string name="paste_your_link_here">Paste your link here</string>
+    <string name="select_source">Select a Source</string>
+    <string name="update_all_extensions">Update All Extensions</string>
+    <string name="multi_episode_downloader">Multi Episode Downloader</string>
+    <string name="options">Options</string>
+    <string name="commenting_rules">Commenting Rules</string>
+    <string name="enter_chapter_episode_tag">Enter a chapter/episode number tag</string>
+    <string name="delete_item">Delete %1$s?</string>
+    <string name="multi_chapter_downloader">Multi Chapter Downloader</string>
+    <string name="delete_chapter">Delete Chapter</string>
+    <string name="delete_episode">Delete Episode</string>
+    <string name="delete_progress_for_chapters">Delete Progress for all chapters of %1$s</string>
+    <string name="enter_password_dialog_title">Enter Password</string>
+
+    <!-- Dialog Messages -->
+    <string name="update_extensions_count">Update %1$d extension(s)?</string>
+    <string name="are_you_sure_delete_item">Are you sure you want to delete %1$s?</string>
+    <string name="are_you_sure_delete_episode">Are you sure you want to delete Episode %1$s?</string>
+    <string name="enter_number_of_episodes">Enter the number of episodes to download</string>
+    <string name="enter_number_of_chapters">Enter the number of chapters to download</string>
+    <string name="delete_stored_progress_chapters">This will delete all the locally stored progress for chapters</string>
+    <string name="download_already_exists">A download for this episode already exists. Do you want to overwrite it?</string>
+
+    <!-- MainActivity Strings -->
+    <string name="allow_opening_links_title">Allow Dantotsu to automatically open Anilist &amp; MAL Links?</string>
+    <string name="allow_opening_links_desc">Open settings &amp; click +Add Links &amp; select Anilist &amp; Mal urls</string>
+
+    <!-- Comick Info Fragment Strings -->
+    <string name="copied_anime_info">Copied anime info</string>
+    <string name="search_on_comick_title">Search on Comick</string>
+
+    <!-- Status Types -->
+    <string name="completed">Completed</string>
+    <string name="ongoing">Ongoing</string>
+    <string name="unknown">Unknown</string>
+    <string name="cancelled">Cancelled</string>
+    <string name="hiatus">Hiatus</string>
+
+    <!-- Demographic Types -->
+    <string name="shounen">Shounen</string>
+    <string name="shoujo">Shoujo</string>
+    <string name="seinen">Seinen</string>
+    <string name="josei">Josei</string>
+
+    <!-- Format Types -->
+    <string name="manga_jp">Manga</string>
+    <string name="manhwa">Manhwa</string>
+    <string name="manhua">Manhua</string>
+
+    <!-- Labels -->
+    <string name="demographic">Demographic</string>
+    <string name="published">Published</string>
+    <string name="ranking">Ranking</string>
+    <string name="copied_title_toast">Copied: %1$s</string>
+
+    <!-- MAL Strings -->
+    <string name="search_on_myanimelist">Search on MyAnimeList</string>
+
+    <!-- MangaUpdates Info Fragment Strings -->
+    <string name="question_marks">\?\?</string>
+
+    <!-- Sort and Layout Strings -->
+    <string name="down_to_up">Down to Up</string>
+    <string name="up_to_down">Up to Down</string>
+    <string name="please_enter_valid_number">Please enter a valid number</string>
+
+    <!-- Download Status Strings -->
+    <string name="downloaded">Downloaded</string>
+    <string name="downloading_progress">Downloading: %1$d%%</string>
+    <string name="failed">Failed</string>
+    <string name="deleted_item">Deleted %1$s</string>
+
+    <!-- Notification Strings (Additional) -->
+    <string name="new_anilist_notification">New Anilist Notification</string>
+    <string name="you_received_warning">You received a warning</string>
+    <string name="be_more_thoughtful">Be more thoughtful with your comments</string>
+    <string name="new_comment_reply">New Comment Reply</string>
+    <string name="update_from_dantotsu">Update from Dantotsu</string>
+    <string name="new_feature_available">New feature available</string>
+    <string name="replied_to_your_comment">%1$s replied to your comment in %2$s</string>
+
+    <!-- Additional Dialog Strings -->
+    <string name="downloading_app_version">Downloading Dantotsu %1$s</string>
+    <string name="download_exists">Download Exists</string>
+    <string name="select_a_source">Select a Source</string>
+
+    <!-- Extension Manager Strings (Complete) -->
+    <string name="source_not_configurable">Source is not configurable</string>
+    <string name="extension_uninstalled">Extension uninstalled</string>
+    <string name="updating_extension">Updating extension</string>
+    <string name="update_failed">Update failed: %1$s</string>
+    <string name="update_complete">Update complete</string>
+    <string name="extension_has_been_updated">The extension has been successfully updated.</string>
+    <string name="extension_updated">Extension updated</string>
+    <string name="no_update_available">No update available</string>
+    <string name="installing_extension_text">Installing extension</string>
+    <string name="failed_to_get_extensions_list">Failed to get extensions list</string>
+    <string name="failed_to_install_extension">Failed to install extension %1$s %2$s</string>
+    <string name="failed_to_get_manga_extensions">Failed to get manga extensions</string>
+
+    <!-- Error Strings -->
+    <string name="unknown_error">Unknown error</string>
+
+    <!-- WebView Strings -->
+    <string name="webview_outdated">Webview is outdated, please update your webview</string>
+
+    <!-- Preferences Strings -->
+    <string name="error_importing_preferences">Error importing preferences</string>
+    <string name="preferences_imported">Preferences imported</string>
+    <string name="error_serializing_preference">Error serializing preference: %1$s</string>
+
 </resources>
+
+
+
+
+
+
+
+
+
+
+
+
+
+

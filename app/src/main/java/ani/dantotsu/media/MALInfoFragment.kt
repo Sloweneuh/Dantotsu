@@ -292,7 +292,7 @@ class MALInfoFragment : Fragment() {
             pageView.findViewById<android.widget.ImageView>(R.id.logo)?.setImageResource(R.drawable.ic_myanimelist)
 
             // Set title text
-            pageView.findViewById<android.widget.TextView>(R.id.title)?.text = "Search on MyAnimeList"
+            pageView.findViewById<android.widget.TextView>(R.id.title)?.text = getString(R.string.search_on_myanimelist)
 
             // Single button: either "Go to Site" OR "Quick Search"
             pageView.findViewById<com.google.android.material.button.MaterialButton>(R.id.quickSearchButton)?.apply {

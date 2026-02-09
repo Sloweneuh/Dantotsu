@@ -94,8 +94,8 @@ class NovelResponseAdapter(
 
         binding.root.setOnLongClickListener {
             it.context.customAlertDialog().apply {
-                setTitle("Delete ${novel.name}?")
-                setMessage("Are you sure you want to delete ${novel.name}?")
+                setTitle(it.context.getString(R.string.delete_item, novel.name))
+                setMessage(it.context.getString(R.string.are_you_sure_delete_item, novel.name))
                 setPosButton(R.string.yes) {
                     downloadedCheckCallback.deleteDownload(novel)
                     deleteDownload(novel.link)
@@ -166,7 +166,7 @@ class NovelResponseAdapter(
         val position = list.indexOfFirst { it.link == link }
         if (position != -1) {
             list[position].extra?.remove("0")
-            list[position].extra?.set("0", "Downloading: $progress%")
+            list[position].extra?.set("0", fragment.getString(R.string.downloading_progress, progress))
             Logger.log("updateDownloadProgress: $progress, position: $position")
             notifyItemChanged(position)
         }

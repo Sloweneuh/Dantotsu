@@ -87,7 +87,7 @@ class ActivityMarkdownCreator : AppCompatActivity() {
         parentId = intent.getIntExtra("parentId", -1)
         when (type) {
             "replyActivity" -> if (parentId == -1) {
-                toast("Error: No parent ID")
+                toast(getString(R.string.error_no_parent_id))
                 finish()
                 return
             }
@@ -252,7 +252,7 @@ class ActivityMarkdownCreator : AppCompatActivity() {
             setPadding(0, 0, 0, 0)
         }
         customAlertDialog().apply {
-            setTitle("Paste your link here")
+            setTitle(getString(R.string.paste_your_link_here))
             setCustomView(container)
             setPosButton(getString(R.string.ok)) {
                 val input = inputEditText.text.toString()

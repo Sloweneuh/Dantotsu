@@ -28,7 +28,7 @@ class AnimeSourcePreferencesFragment : PreferenceFragmentCompat() {
         preferenceScreen = try {
             populateAnimePreferenceScreen()
         } catch (e: Exception) {
-            snackString(e.message ?: "Unknown error")
+            snackString(e.message ?: getString(R.string.unknown_error))
             preferenceManager.createPreferenceScreen(requireContext())
         }
     }
@@ -96,7 +96,7 @@ class InitialAnimeSourcePreferencesFragment(
         preferenceScreen = try {
             populateAnimePreferenceScreen()
         } catch (e: Exception) {
-            snackString(e.message ?: "Unknown error")
+            snackString(e.message ?: getString(R.string.unknown_error))
             preferenceManager.createPreferenceScreen(requireContext())
         }
         //set background color

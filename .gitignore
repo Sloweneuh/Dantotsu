@@ -40,3 +40,5 @@ crowdin.yml
 
 #vscode
 .vscode
+# Sentry Config File
+sentry.properties

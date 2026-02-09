@@ -98,7 +98,7 @@ class LoginFragment : Fragment() {
         }
 
         requireActivity().customAlertDialog().apply {
-            setTitle("Enter Password")
+            setTitle(getString(R.string.enter_password_dialog_title))
             setCustomView(dialogView.root)
             setPosButton(R.string.ok) {
                 val editText = dialogView.userAgentTextBox

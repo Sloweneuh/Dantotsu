@@ -203,8 +203,8 @@ class OfflineMangaFragment : Fragment(), OfflineMangaSearchListener {
                 }
             // Alert dialog to confirm deletion
             requireContext().customAlertDialog().apply {
-                setTitle("Delete ${item.title}?")
-                setMessage("Are you sure you want to delete ${item.title}?")
+                setTitle(getString(R.string.delete_item, item.title))
+                setMessage(getString(R.string.are_you_sure_delete_item, item.title))
                 setPosButton(R.string.yes) {
                     downloadManager.removeMedia(item.title, type)
                     getDownloads()

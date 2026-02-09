@@ -370,9 +370,9 @@ class DownloadCompat {
                 val deleted = directory.deleteRecursively()
                 if (toast) {
                     if (deleted) {
-                        Toast.makeText(context, "Successfully deleted", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.successfully_deleted), Toast.LENGTH_SHORT).show()
                     } else {
-                        Toast.makeText(context, "Failed to delete directory", Toast.LENGTH_SHORT)
+                        Toast.makeText(context, context.getString(R.string.failed_to_delete_directory), Toast.LENGTH_SHORT)
                             .show()
                     }
                 }

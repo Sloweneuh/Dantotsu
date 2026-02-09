@@ -410,7 +410,7 @@ class AnimeWatchFragment : Fragment() {
                 requireContext()
                     .customAlertDialog()
                     .apply {
-                        setTitle("Select a Source")
+                        setTitle(getString(R.string.select_a_source))
                         singleChoiceItems(names) { which ->
                             selectedSetting = allSettings[which]
                             itemSelected = true

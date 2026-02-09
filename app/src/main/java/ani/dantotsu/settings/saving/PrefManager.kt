@@ -3,6 +3,7 @@ package ani.dantotsu.settings.saving
 import android.content.Context
 import android.content.SharedPreferences
 import android.util.Base64
+import ani.dantotsu.R
 import ani.dantotsu.settings.saving.internal.Compat
 import ani.dantotsu.settings.saving.internal.Location
 import ani.dantotsu.settings.saving.internal.PreferencePackager
@@ -369,10 +370,10 @@ object PrefManager {
             }
             apply()
             return if (hadError) {
-                snackString("Error importing preferences")
+                snackString(R.string.error_importing_preferences)
                 false
             } else {
-                snackString("Preferences imported")
+                snackString(R.string.preferences_imported)
                 true
             }
         }
@@ -408,7 +409,7 @@ object PrefManager {
             editor.putString(key, serialized)
             editor.apply() // Asynchronous write to disk to prevent ANR
         } catch (e: Exception) {
-            snackString("Error serializing preference: ${e.message}")
+            snackString(R.string.error_serializing_preference, null, e.message)
             Logger.log(e)
         }
     }

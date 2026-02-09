@@ -91,7 +91,7 @@ class Login : AppCompatActivity() {
         // Fetch user info
         lifecycleScope.launch {
             Discord.fetchUserInfo()
-            Toast.makeText(this@Login, "Logged in successfully", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this@Login, getString(R.string.logged_in_successfully), Toast.LENGTH_SHORT).show()
             finish()
             startMainActivity(this@Login)
         }

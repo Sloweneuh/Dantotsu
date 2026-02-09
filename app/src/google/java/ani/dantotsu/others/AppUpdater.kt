@@ -235,7 +235,7 @@ object AppUpdater {
 
         val request = DownloadManager.Request(Uri.parse(url))
             .setMimeType("application/vnd.android.package-archive")
-            .setTitle("Downloading Dantotsu $version")
+            .setTitle(getString(R.string.downloading_app_version, version))
             .setDestinationInExternalPublicDir(
                 Environment.DIRECTORY_DOWNLOADS,
                 "Dantotsu $version.apk"

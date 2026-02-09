@@ -81,7 +81,7 @@ class AnilistNotificationTask : Task {
         content: String,
         notificationId: Int? = null
     ): android.app.Notification {
-        val title = "New Anilist Notification"
+        val title = context.getString(R.string.new_anilist_notification)
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             putExtra("FRAGMENT_TO_LOAD", "NOTIFICATIONS")

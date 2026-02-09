@@ -326,8 +326,8 @@ class AnimeWatchAdapter(
                 // Multi download
                 mediaDownloadTop.setOnClickListener {
                     fragment.requireContext().customAlertDialog().apply {
-                        setTitle("Multi Episode Downloader")
-                        setMessage("Enter the number of episodes to download")
+                        setTitle(fragment.getString(R.string.multi_episode_downloader))
+                        setMessage(fragment.getString(R.string.enter_number_of_episodes))
                         val input = NumberPicker(currContext())
                         input.minValue = 1
                         input.maxValue = 30
@@ -342,7 +342,7 @@ class AnimeWatchAdapter(
                 }
 
                 fragment.requireContext().customAlertDialog().apply {
-                    setTitle("Options")
+                    setTitle(fragment.getString(R.string.options))
                     setCustomView(root)
                     setPosButton("OK") {
                         if (run) fragment.onIconPressed(style, reversed)

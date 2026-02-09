@@ -215,8 +215,8 @@ class MangaChapterAdapter(
                         return@setOnClickListener
                     } else if (downloadedChapters.contains(chapterNumber)) {
                         it.context.customAlertDialog().apply {
-                            setTitle("Delete Chapter")
-                            setMessage("Are you sure you want to delete ${chapterNumber}?")
+                            setTitle(it.context.getString(R.string.delete_chapter))
+                            setMessage(it.context.getString(R.string.are_you_sure_delete_item, chapterNumber))
                             setPosButton(R.string.delete) {
                                 fragment.onMangaChapterRemoveDownloadClick(chapter)
                             }
@@ -233,8 +233,8 @@ class MangaChapterAdapter(
             binding.itemDownload.setOnLongClickListener {
                 //Alert dialog asking for the number of chapters to download
                 it.context.customAlertDialog().apply {
-                    setTitle("Multi Chapter Downloader")
-                    setMessage("Enter the number of chapters to download")
+                    setTitle(it.context.getString(R.string.multi_chapter_downloader))
+                    setMessage(it.context.getString(R.string.enter_number_of_chapters))
                     val input = NumberPicker(currContext())
                     input.minValue = 1
                     input.maxValue = itemCount - bindingAdapterPosition

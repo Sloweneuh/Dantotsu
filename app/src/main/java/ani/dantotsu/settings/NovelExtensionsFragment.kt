@@ -91,8 +91,8 @@ class NovelExtensionsFragment : Fragment(),
                             Notifications.CHANNEL_DOWNLOADER_PROGRESS
                         )
                             .setSmallIcon(R.drawable.ic_round_sync_24)
-                            .setContentTitle("Installing extension")
-                            .setContentText("Step: $installStep")
+                            .setContentTitle(getString(R.string.installing_extension_text))
+                            .setContentText(getString(R.string.install_step, installStep))
                             .setPriority(NotificationCompat.PRIORITY_LOW)
                         notificationManager.notify(1, builder.build())
                     },
@@ -103,11 +103,11 @@ class NovelExtensionsFragment : Fragment(),
                             Notifications.CHANNEL_DOWNLOADER_ERROR
                         )
                             .setSmallIcon(R.drawable.ic_round_info_24)
-                            .setContentTitle("Installation failed: ${error.message}")
-                            .setContentText("Error: ${error.message}")
+                            .setContentTitle(getString(R.string.installation_failed, error.message))
+                            .setContentText(getString(R.string.error_message, error.message))
                             .setPriority(NotificationCompat.PRIORITY_HIGH)
                         notificationManager.notify(1, builder.build())
-                        snackString("Installation failed: ${error.message}")
+                        snackString(getString(R.string.installation_failed, error.message))
                     },
                     {
                         val builder = NotificationCompat.Builder(
@@ -115,12 +115,12 @@ class NovelExtensionsFragment : Fragment(),
                             Notifications.CHANNEL_DOWNLOADER_PROGRESS
                         )
                             .setSmallIcon(R.drawable.ic_download_24)
-                            .setContentTitle("Installation complete")
-                            .setContentText("The extension has been successfully installed.")
+                            .setContentTitle(getString(R.string.installation_complete))
+                            .setContentText(getString(R.string.extension_has_been_installed))
                             .setPriority(NotificationCompat.PRIORITY_LOW)
                         notificationManager.notify(1, builder.build())
                         viewModel.invalidatePager()
-                        snackString("Extension installed")
+                        snackString(getString(R.string.extension_installed))
                     }
                 )
         }

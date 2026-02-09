@@ -121,8 +121,8 @@ class CommentNotificationTask : Task {
                         }
 
                         CommentNotificationWorker.NotificationType.DANTOTSU_UPDATE -> {
-                            val title = "Update from Dantotsu"
-                            val message = it.content ?: "New feature available"
+                            val title = context.getString(R.string.update_from_dantotsu)
+                            val message = it.content ?: context.getString(R.string.new_feature_available)
 
                             val commentStore = CommentStore(
                                 title,

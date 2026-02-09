@@ -33,7 +33,7 @@ class MangaUpdatesLoginDialog : DialogFragment() {
         progressBar = view.findViewById(R.id.mangaupdatesLoginProgress)
 
         val dialog = MaterialAlertDialogBuilder(requireContext(), R.style.MyPopup)
-            .setTitle("Login to MangaUpdates")
+            .setTitle(getString(R.string.login_to_mangaupdates))
             .setView(view)
             .setPositiveButton("Login", null)
             .setNegativeButton("Cancel") { _, _ -> dismiss() }

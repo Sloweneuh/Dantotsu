@@ -11,6 +11,7 @@ import androidx.core.view.updateLayoutParams
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
+import ani.dantotsu.R
 import ani.dantotsu.connections.comick.ComickApi
 import ani.dantotsu.connections.comick.ComickResponse
 import ani.dantotsu.connections.malsync.MalSyncApi
@@ -278,7 +279,7 @@ class ComickInfoFragment : Fragment() {
         englishSynonyms.forEach { if (!titles.contains(it)) titles.add(it) }
 
         val modal = ani.dantotsu.others.CustomBottomDialog.newInstance().apply {
-            setTitleText("Search on Comick")
+            setTitleText(getString(R.string.search_on_comick_title))
 
             // Add each title as a clickable TextView
             titles.forEach { title ->
@@ -436,7 +437,7 @@ class ComickInfoFragment : Fragment() {
         }
         // Published (Year)
         binding.mediaInfoStart.text = comic.year?.toString() ?: "??"
-        
+
         // Hide End Date field - Comick doesn't provide actual end dates
         binding.mediaInfoEnd.parent?.let { parent ->
             if (parent is ViewGroup) {

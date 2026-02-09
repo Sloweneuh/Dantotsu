@@ -79,7 +79,8 @@ import nl.joery.animatedbottombar.AnimatedBottomBar
 import tachiyomi.core.util.lang.launchIO
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
-import java.io.Serializable
+import java.io.Serializableimport io.sentry.Sentry
+
 
 
 class MainActivity : AppCompatActivity() {
@@ -96,6 +97,15 @@ class MainActivity : AppCompatActivity() {
         ThemeManager(this).applyTheme()
 
         super.onCreate(savedInstanceState)
+    // waiting for view to draw to better represent a captured error with a screenshot
+    findViewById<android.view.View>(android.R.id.content).viewTreeObserver.addOnGlobalLayoutListener {
+      try {
+        throw Exception("This app uses Sentry! :)")
+      } catch (e: Exception) {
+        Sentry.captureException(e)
+      }
+    }
+
 
         //get FRAGMENT_CLASS_NAME from intent
         val fragment = intent.getStringExtra("FRAGMENT_CLASS_NAME")
@@ -395,8 +405,8 @@ class MainActivity : AppCompatActivity() {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     if (!(PrefManager.getVal(PrefName.AllowOpeningLinks) as Boolean)) {
                         CustomBottomDialog.newInstance().apply {
-                            title = "Allow Dantotsu to automatically open Anilist & MAL Links?"
-                            val md = "Open settings & click +Add Links & select Anilist & Mal urls"
+                            title = getString(R.string.allow_opening_links_title)
+                            val md = getString(R.string.allow_opening_links_desc)
                             addView(TextView(this@MainActivity).apply {
                                 val markWon =
                                     Markwon.builder(this@MainActivity)
@@ -542,7 +552,7 @@ class MainActivity : AppCompatActivity() {
             subtitle.text = getString(R.string.enter_password_to_decrypt_file)
         }
         customAlertDialog().apply {
-            setTitle("Enter Password")
+            setTitle(getString(R.string.enter_password_dialog_title))
             setCustomView(dialogView.root)
             setPosButton(R.string.yes) {
                 val editText = dialogView.userAgentTextBox
@@ -550,7 +560,7 @@ class MainActivity : AppCompatActivity() {
                     editText.text?.toString()?.trim()?.toCharArray(password)
                     callback(password)
                 } else {
-                    toast("Password cannot be empty")
+                    toast(getString(R.string.password_cannot_be_empty))
                 }
             }
             setNegButton(R.string.cancel) {
