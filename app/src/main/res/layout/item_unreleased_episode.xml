@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="-16dp"
+    android:layout_marginEnd="-16dp"
+    android:clipToPadding="false"
+    android:gravity="center_horizontal"
+    android:orientation="vertical">
+
+    <FrameLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="-16dp"
+        android:layout_marginBottom="-16dp"
+        android:clipToPadding="false"
+        android:padding="22dp">
+
+        <androidx.cardview.widget.CardView
+            android:id="@+id/itemCompactCard"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:translationZ="8dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="4dp">
+
+            <com.google.android.material.imageview.ShapeableImageView
+                android:id="@+id/itemCompactImage"
+                android:layout_width="102dp"
+                android:layout_height="154dp"
+                android:scaleType="centerCrop"
+                android:transitionName="mediaCover"
+                app:shapeAppearanceOverlay="@style/roundedImageView"
+                tools:ignore="ContentDescription,ImageContrastCheck"
+                tools:srcCompat="@tools:sample/backgrounds/scenic" />
+
+            <LinearLayout
+                android:id="@+id/itemCompactScoreBG"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom|end"
+                android:background="@drawable/item_score"
+                android:backgroundTint="#FFFFFF"
+                android:backgroundTintMode="multiply"
+                android:orientation="horizontal"
+                android:paddingStart="8dp"
+                android:paddingEnd="6dp">
+
+                <TextView
+                    android:id="@+id/itemCompactScore"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="2dp"
+                    android:fontFamily="@font/poppins_bold"
+                    android:paddingTop="2dp"
+                    android:textColor="?attr/colorOnPrimary"
+                    android:textSize="12sp"
+                    tools:ignore="TextContrastCheck"
+                    tools:text="0.0" />
+
+                <ImageView
+                    android:id="@+id/imageView2"
+                    android:layout_width="12dp"
+                    android:layout_height="match_parent"
+                    app:srcCompat="@drawable/ic_round_star_24"
+                    app:tint="?attr/colorOnPrimary"
+                    tools:ignore="ContentDescription" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/itemCompactLanguageBG"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="top|end"
+                android:background="@drawable/item_language_badge"
+                android:backgroundTint="#FFFFFF"
+                android:backgroundTintMode="multiply"
+                android:orientation="horizontal"
+                android:paddingStart="6dp"
+                android:paddingTop="3dp"
+                android:paddingEnd="6dp"
+                android:paddingBottom="3dp">
+
+                <ImageView
+                    android:id="@+id/itemCompactLanguageIcon"
+                    android:layout_width="13dp"
+                    android:layout_height="13dp"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginEnd="3dp"
+                    app:srcCompat="@drawable/ic_anime_dub_24"
+                    app:tint="?attr/colorOnPrimary"
+                    tools:ignore="ContentDescription" />
+
+                <TextView
+                    android:id="@+id/itemCompactLanguageCode"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/poppins_bold"
+                    android:textColor="?attr/colorOnPrimary"
+                    android:textSize="12sp"
+                    tools:ignore="TextContrastCheck"
+                    tools:text="EN" />
+
+            </LinearLayout>
+
+        </androidx.cardview.widget.CardView>
+
+        <androidx.cardview.widget.CardView
+            android:id="@+id/itemCompactScoreContainer"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_gravity="bottom"
+            android:translationZ="8dp"
+            app:cardCornerRadius="8dp"
+            app:cardElevation="4dp">
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/item_ongoing" />
+        </androidx.cardview.widget.CardView>
+    </FrameLayout>
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="0dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="10dp"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/itemCompactTitle"
+            android:layout_width="108dp"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:lineSpacingExtra="-4dp"
+            android:maxLines="2"
+            android:textSize="14dp"
+            android:transitionName="mediaTitle"
+            tools:ignore="SpUsage"
+            tools:text="Anime Title" />
+
+        <LinearLayout
+            android:id="@+id/itemCompactProgressContainer"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/itemCompactUserProgress"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="?attr/colorSecondary"
+                android:textSize="14dp"
+                tools:ignore="SpUsage,TextContrastCheck"
+                tools:text="5" />
+
+            <TextView
+                android:id="@+id/itemCompactTotal"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:alpha="0.58"
+                android:textSize="14dp"
+                tools:ignore="SpUsage,TextContrastCheck"
+                tools:text=" | 10 | 24" />
+        </LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout>

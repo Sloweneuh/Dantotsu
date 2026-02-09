@@ -290,49 +290,30 @@ class HomeFragment : Fragment() {
                             }
                             val batchResults = ani.dantotsu.connections.malsync.MalSyncApi.getBatchAnimeEpisodes(animeIds)
 
-                            // Map results back to anime IDs with display rules
+                            // Map results back to anime IDs - always include language info
                             for (anime in continueWatchingList) {
                                 val result = batchResults[anime.id]
                                 if (result != null && result.lastEp != null) {
                                     val malSyncEpisode = result.lastEp.total
                                     val userProgress = anime.userProgress ?: 0
-                                    val anilistTotal = anime.anime?.totalEpisodes
+                                    val languageOption = ani.dantotsu.connections.malsync.LanguageMapper.mapLanguage(result.id)
 
-                                    // Apply same display conditions as bottom sheet:
-                                    // 1. Don't show if lastEp < userProgress
-                                    // 2. Don't show if lastEp == anilistTotal
-                                    // 3. Only show if lastEp < anilistTotal (there are unreleased episodes)
-                                    val shouldShow = when {
-                                        malSyncEpisode < userProgress -> false
-                                        anilistTotal != null && malSyncEpisode == anilistTotal -> false
-                                        anilistTotal != null && malSyncEpisode < anilistTotal -> true
-                                        else -> anilistTotal == null // Show if no AniList total
-                                    }
-
-                                    if (shouldShow) {
-                                        unreleasedInfo[anime.id] = ani.dantotsu.connections.malsync.UnreleasedEpisodeInfo(
-                                            mediaId = anime.id,
-                                            lastEpisode = malSyncEpisode,
-                                            languageId = result.id,
-                                            languageDisplay = "", // Don't display language on homepage
-                                            userProgress = userProgress
-                                        )
-                                    }
+                                    // Always add language info for display
+                                    unreleasedInfo[anime.id] = ani.dantotsu.connections.malsync.UnreleasedEpisodeInfo(
+                                        mediaId = anime.id,
+                                        lastEpisode = malSyncEpisode,
+                                        languageId = result.id,
+                                        languageDisplay = languageOption.displayName,
+                                        userProgress = userProgress
+                                    )
                                 }
                             }
                         }
 
                         withContext(Dispatchers.Main) {
                             if (unreleasedInfo.isNotEmpty()) {
-                                // Sort by unwatched episodes for anime with MALSync data, put others at end
-                                val sortedList = continueWatchingList.sortedBy { anime ->
-                                    val info = unreleasedInfo[anime.id]
-                                    if (info != null) {
-                                        info.lastEpisode - info.userProgress // Calculate unwatched count
-                                    } else {
-                                        Int.MAX_VALUE // Put items without MALSync data at the end
-                                    }
-                                }
+                                // Use the list as-is or sort by last watched
+                                val sortedList = continueWatchingList
 
                                 binding.homeWatchingRecyclerView.adapter =
                                     UnreleasedEpisodesAdapter(sortedList, unreleasedInfo)
@@ -406,16 +387,112 @@ class HomeFragment : Fragment() {
             getString(R.string.fav_anime)
         )
 
-        initRecyclerView(
-            model.getAnimePlanned(),
-            binding.homePlannedAnimeContainer,
-            binding.homePlannedAnimeRecyclerView,
-            binding.homePlannedAnimeProgressBar,
-            binding.homePlannedAnimeEmpty,
-            binding.homePlannedAnime,
-            binding.homePlannedAnimeMore,
-            getString(R.string.planned_anime)
-        )
+        // Planned Anime with MALSync data
+        binding.homePlannedAnimeContainer.visibility = View.VISIBLE
+        binding.homePlannedAnimeProgressBar.visibility = View.VISIBLE
+        binding.homePlannedAnimeRecyclerView.visibility = View.GONE
+        binding.homePlannedAnimeEmpty.visibility = View.GONE
+        binding.homePlannedAnime.visibility = View.INVISIBLE
+        binding.homePlannedAnimeMore.visibility = View.INVISIBLE
+
+        model.getAnimePlanned().observe(viewLifecycleOwner) { plannedList ->
+            binding.homePlannedAnimeRecyclerView.visibility = View.GONE
+            binding.homePlannedAnimeEmpty.visibility = View.GONE
+            if (plannedList != null) {
+                if (plannedList.isNotEmpty()) {
+                    // Fetch MALSync data using batch endpoint
+                    scope.launch {
+                        val plannedInfo = mutableMapOf<Int, ani.dantotsu.connections.malsync.UnreleasedEpisodeInfo>()
+
+                        withContext(Dispatchers.IO) {
+                            // Collect pairs of (anilistId, malId)
+                            val animeIds = plannedList.map { anime ->
+                                Pair(anime.id, anime.idMAL)
+                            }
+                            val batchResults = ani.dantotsu.connections.malsync.MalSyncApi.getBatchAnimeEpisodes(animeIds)
+
+                            // Map results back to anime IDs - always include language info
+                            for (anime in plannedList) {
+                                val result = batchResults[anime.id]
+                                if (result != null && result.lastEp != null) {
+                                    val malSyncEpisode = result.lastEp.total
+                                    val userProgress = anime.userProgress ?: 0
+                                    val languageOption = ani.dantotsu.connections.malsync.LanguageMapper.mapLanguage(result.id)
+
+                                    // Always add language info for display
+                                    plannedInfo[anime.id] = ani.dantotsu.connections.malsync.UnreleasedEpisodeInfo(
+                                        mediaId = anime.id,
+                                        lastEpisode = malSyncEpisode,
+                                        languageId = result.id,
+                                        languageDisplay = languageOption.displayName,
+                                        userProgress = userProgress
+                                    )
+                                }
+                            }
+                        }
+
+                        withContext(Dispatchers.Main) {
+                            if (plannedInfo.isNotEmpty()) {
+                                // Use the list as-is
+                                val sortedList = plannedList
+
+                                binding.homePlannedAnimeRecyclerView.adapter =
+                                    UnreleasedEpisodesAdapter(sortedList, plannedInfo)
+                                binding.homePlannedAnimeRecyclerView.layoutManager = LinearLayoutManager(
+                                    requireContext(),
+                                    LinearLayoutManager.HORIZONTAL,
+                                    false
+                                )
+                                binding.homePlannedAnimeMore.setOnClickListener { i ->
+                                    MediaListViewActivity.passedMedia = ArrayList(sortedList)
+                                    MediaListViewActivity.passedUnreleasedInfo = plannedInfo
+                                    ContextCompat.startActivity(
+                                        i.context, Intent(i.context, MediaListViewActivity::class.java)
+                                            .putExtra("title", getString(R.string.planned_anime)),
+                                        null
+                                    )
+                                }
+                                binding.homePlannedAnimeRecyclerView.visibility = View.VISIBLE
+                                binding.homePlannedAnimeRecyclerView.layoutAnimation =
+                                    LayoutAnimationController(setSlideIn(), 0.25f)
+                            } else {
+                                // No MALSync data available, show standard adapter
+                                binding.homePlannedAnimeRecyclerView.adapter = MediaAdaptor(0, plannedList, requireActivity())
+                                binding.homePlannedAnimeRecyclerView.layoutManager = LinearLayoutManager(
+                                    requireContext(),
+                                    LinearLayoutManager.HORIZONTAL,
+                                    false
+                                )
+                                binding.homePlannedAnimeMore.setOnClickListener { i ->
+                                    MediaListViewActivity.passedMedia = plannedList
+                                    ContextCompat.startActivity(
+                                        i.context, Intent(i.context, MediaListViewActivity::class.java)
+                                            .putExtra("title", getString(R.string.planned_anime)),
+                                        null
+                                    )
+                                }
+                                binding.homePlannedAnimeRecyclerView.visibility = View.VISIBLE
+                                binding.homePlannedAnimeRecyclerView.layoutAnimation =
+                                    LayoutAnimationController(setSlideIn(), 0.25f)
+                            }
+                            binding.homePlannedAnimeMore.visibility = View.VISIBLE
+                            binding.homePlannedAnime.visibility = View.VISIBLE
+                            binding.homePlannedAnimeMore.startAnimation(setSlideUp())
+                            binding.homePlannedAnime.startAnimation(setSlideUp())
+                            binding.homePlannedAnimeProgressBar.visibility = View.GONE
+                        }
+                    }
+                } else {
+                    binding.homePlannedAnimeEmpty.visibility = View.VISIBLE
+                    binding.homePlannedAnimeMore.visibility = View.VISIBLE
+                    binding.homePlannedAnime.visibility = View.VISIBLE
+                    binding.homePlannedAnimeMore.startAnimation(setSlideUp())
+                    binding.homePlannedAnime.startAnimation(setSlideUp())
+                    binding.homePlannedAnimeProgressBar.visibility = View.GONE
+                }
+            }
+        }
+
         binding.homePlannedAnimeBrowseButton.setOnClickListener {
             bottomBar.selectTabAt(0)
         }

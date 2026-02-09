@@ -9,7 +9,7 @@ import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
 import ani.dantotsu.blurImage
 import ani.dantotsu.databinding.ItemMediaLargeBinding
-import ani.dantotsu.databinding.ItemUnreadChapterBinding
+import ani.dantotsu.databinding.ItemUnreleasedEpisodeBinding
 import ani.dantotsu.loadImage
 import ani.dantotsu.media.Media
 import ani.dantotsu.setSafeOnClickListener
@@ -20,7 +20,7 @@ class UnreleasedEpisodesAdapter(
     private var type: Int = 0 // 0 = grid/compact, 1 = list/large
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
-    inner class CompactViewHolder(val binding: ItemUnreadChapterBinding) :
+    inner class CompactViewHolder(val binding: ItemUnreleasedEpisodeBinding) :
         RecyclerView.ViewHolder(binding.root)
 
     inner class LargeViewHolder(val binding: ItemMediaLargeBinding) :
@@ -31,7 +31,7 @@ class UnreleasedEpisodesAdapter(
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         return when (viewType) {
             0 -> CompactViewHolder(
-                ItemUnreadChapterBinding.inflate(
+                ItemUnreleasedEpisodeBinding.inflate(
                     LayoutInflater.from(parent.context),
                     parent,
                     false
@@ -59,7 +59,7 @@ class UnreleasedEpisodesAdapter(
     }
 
     @android.annotation.SuppressLint("SetTextI18n")
-    private fun bindCompactView(binding: ItemUnreadChapterBinding, media: Media, info: ani.dantotsu.connections.malsync.UnreleasedEpisodeInfo?) {
+    private fun bindCompactView(binding: ItemUnreleasedEpisodeBinding, media: Media, info: ani.dantotsu.connections.malsync.UnreleasedEpisodeInfo?) {
         binding.apply {
             // Load cover image
             itemCompactImage.loadImage(media.cover)
@@ -70,22 +70,49 @@ class UnreleasedEpisodesAdapter(
             // Set progress text
             itemCompactUserProgress.text = (media.userProgress ?: 0).toString()
 
-            val totalEpisodes = media.anime?.totalEpisodes ?: "~"
+            val totalEpisodes = media.anime?.totalEpisodes
 
-            // Show MALSync lastEp only if info exists (meaning lastEp != total and other conditions)
+            // Don't show MALSync episode count if it matches the total (all episodes released)
             if (info != null) {
-                itemCompactTotal.text = " | ${info.lastEpisode} | $totalEpisodes"
+                if (totalEpisodes != null && info.lastEpisode == totalEpisodes) {
+                    // Don't show middle number when language episode count matches total
+                    itemCompactTotal.text = " | $totalEpisodes"
+                } else {
+                    // Show language episode count when it differs from total
+                    itemCompactTotal.text = " | ${info.lastEpisode} | ${totalEpisodes ?: "~"}"
+                }
             } else {
                 // Standard display without MALSync data
-                itemCompactTotal.text = " | $totalEpisodes"
+                itemCompactTotal.text = " | ${totalEpisodes ?: "~"}"
             }
 
-            // Set source text (language) - hide if empty
+            // Set language badge with icon and code - hide if empty
             if (info != null && info.languageDisplay.isNotEmpty()) {
-                itemCompactSource.text = info.languageDisplay
-                itemCompactSource.visibility = View.VISIBLE
+                val languageOption = ani.dantotsu.connections.malsync.LanguageMapper.mapLanguage(info.languageId)
+                itemCompactLanguageIcon.setImageResource(languageOption.iconRes)
+                // Extract short language code (e.g., "EN" from "English", or first 2 chars from languageId)
+                val languageCode = when {
+                    info.languageId.startsWith("en") -> "EN"
+                    info.languageId.startsWith("ja") || info.languageId.startsWith("jp") -> "JP"
+                    info.languageId.startsWith("de") -> "DE"
+                    info.languageId.startsWith("fr") -> "FR"
+                    info.languageId.startsWith("es") -> "ES"
+                    info.languageId.startsWith("pt") -> "PT"
+                    info.languageId.startsWith("it") -> "IT"
+                    info.languageId.startsWith("ru") -> "RU"
+                    info.languageId.startsWith("ar") -> "AR"
+                    info.languageId.startsWith("zh") -> "ZH"
+                    info.languageId.startsWith("ko") -> "KO"
+                    info.languageId.startsWith("id") -> "ID"
+                    info.languageId.startsWith("ms") -> "MS"
+                    info.languageId.startsWith("th") -> "TH"
+                    info.languageId.startsWith("vi") -> "VI"
+                    else -> info.languageId.split("/")[0].take(2).uppercase()
+                }
+                itemCompactLanguageCode.text = languageCode
+                itemCompactLanguageBG.visibility = View.VISIBLE
             } else {
-                itemCompactSource.visibility = View.GONE
+                itemCompactLanguageBG.visibility = View.GONE
             }
 
             // Set score - divide by 10.0 to match Anilist format, fallback to mean score
@@ -99,6 +126,13 @@ class UnreleasedEpisodesAdapter(
                 itemCompactScoreBG.visibility = View.VISIBLE
             } else {
                 itemCompactScoreBG.visibility = View.GONE
+            }
+
+            // Show the "currently airing" indicator only for anime with status RELEASING
+            if (media.status == root.context.getString(R.string.status_releasing)) {
+                itemCompactScoreContainer.visibility = View.VISIBLE
+            } else {
+                itemCompactScoreContainer.visibility = View.GONE
             }
 
             // Handle click to open media details
@@ -125,22 +159,31 @@ class UnreleasedEpisodesAdapter(
 
             // Set progress info
             val userProgress = media.userProgress ?: 0
-            val totalEpisodes = media.anime?.totalEpisodes ?: "~"
+            val totalEpisodes = media.anime?.totalEpisodes
 
-            // Show MALSync lastEp only if info exists
+            // Don't show MALSync episode count if it matches the total (all episodes released)
             if (info != null) {
-                itemCompactTotal.text = "$userProgress | ${info.lastEpisode} | $totalEpisodes"
+                if (totalEpisodes != null && info.lastEpisode == totalEpisodes) {
+                    // Don't show middle number when language episode count matches total
+                    itemCompactTotal.text = "$userProgress | $totalEpisodes"
+                } else {
+                    // Show language episode count when it differs from total
+                    itemCompactTotal.text = "$userProgress | ${info.lastEpisode} | ${totalEpisodes ?: "~"}"
+                }
             } else {
                 // Standard display without MALSync data
-                itemCompactTotal.text = "$userProgress | $totalEpisodes"
+                itemCompactTotal.text = "$userProgress | ${totalEpisodes ?: "~"}"
             }
             itemTotal.text = ""
 
-            // Show language info using the relation/type container - hide if empty
+            // Show language info with icon using the relation/type container - hide if empty
             if (info != null && info.languageDisplay.isNotEmpty()) {
+                val languageOption = ani.dantotsu.connections.malsync.LanguageMapper.mapLanguage(info.languageId)
                 itemCompactType.visibility = View.VISIBLE
-                itemCompactRelation.text = info.languageDisplay
-                itemCompactTypeImage.visibility = View.GONE
+                itemCompactTypeImage.visibility = View.VISIBLE
+                itemCompactTypeImage.setImageResource(languageOption.iconRes)
+                // Show full language name in list view
+                itemCompactRelation.text = languageOption.displayName
             } else {
                 itemCompactType.visibility = View.GONE
             }

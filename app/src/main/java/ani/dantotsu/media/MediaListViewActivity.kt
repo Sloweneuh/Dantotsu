@@ -69,7 +69,19 @@ class MediaListViewActivity : AppCompatActivity() {
             0 -> binding.mediaGrid
             else -> binding.mediaGrid
         }
-        mediaView.alpha = 1f
+
+        // Set initial button states - selected button at full alpha, other at 0.33f
+        when (view) {
+            1 -> {
+                binding.mediaList.alpha = 1f
+                binding.mediaGrid.alpha = 0.33f
+            }
+            else -> {
+                binding.mediaGrid.alpha = 1f
+                binding.mediaList.alpha = 0.33f
+            }
+        }
+
         fun changeView(mode: Int, current: View) {
             mediaView.alpha = 0.33f
             mediaView = current
