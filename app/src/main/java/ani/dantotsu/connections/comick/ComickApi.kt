@@ -110,6 +110,8 @@ object ComickApi {
                 ?: allComics.firstNotNullOfOrNull { it.md_titles?.takeIf { list -> list.isNotEmpty() } },
             md_comic_md_genres = primary.md_comic_md_genres?.takeIf { it.isNotEmpty() }
                 ?: allComics.firstNotNullOfOrNull { it.md_comic_md_genres?.takeIf { list -> list.isNotEmpty() } },
+            md_covers = primary.md_covers?.takeIf { it.isNotEmpty() }
+                ?: allComics.firstNotNullOfOrNull { it.md_covers?.takeIf { list -> list.isNotEmpty() } },
             links = primary.links ?: allComics.firstNotNullOfOrNull { it.links },
             recommendations = primary.recommendations?.takeIf { it.isNotEmpty() }
                 ?: allComics.firstNotNullOfOrNull { it.recommendations?.takeIf { list -> list.isNotEmpty() } }
@@ -433,5 +435,51 @@ object ComickApi {
             return null
         }
     }
-}
 
+    /**
+     * Search for comics on Comick by title (for user-initiated search)
+     * @param query The search query
+     * @param allowAdult If false, filters out pornographic content (only allows "safe" and "suggestive")
+     * @return List of matching comics
+     */
+    suspend fun searchComics(query: String, allowAdult: Boolean = true): List<ComickComic>? = withContext(Dispatchers.IO) {
+        try {
+            val encodedQuery = java.net.URLEncoder.encode(query, "UTF-8")
+            val url = "https://api.comick.dev/v1.0/search/?type=comic&page=1&limit=25&showall=false&q=$encodedQuery&t=false"
+            val request = Request.Builder()
+                .url(url)
+                .build()
+
+            val response = client.newCall(request).execute()
+            val body = response.body.string()
+
+            if (!response.isSuccessful) {
+                Logger.log("Comick search API error: ${response.code}")
+                return@withContext null
+            }
+
+            if (body.isNullOrEmpty() || body == "[]") {
+                Logger.log("Comick search: no results for query '$query'")
+                return@withContext emptyList()
+            }
+
+            val allResults = gson.fromJson(body, Array<ComickComic>::class.java).toList()
+
+            // Filter by content rating if adult content is not allowed
+            val results = if (!allowAdult) {
+                allResults.filter { comic ->
+                    val rating = comic.content_rating?.lowercase()
+                    rating == "safe" || rating == "suggestive"
+                }
+            } else {
+                allResults
+            }
+
+            Logger.log("Comick search: Found ${results.size} results for query '$query' (filtered: ${!allowAdult})")
+            return@withContext results
+        } catch (e: Exception) {
+            Logger.log("Error searching Comick: ${e.message}")
+            return@withContext null
+        }
+    }
+}

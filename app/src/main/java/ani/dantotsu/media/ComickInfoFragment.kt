@@ -98,9 +98,15 @@ class ComickInfoFragment : Fragment() {
             val m = media ?: return@observe
             ani.dantotsu.util.Logger.log("Comick: Media object is not null")
             if (!loaded) {
+                loadComickData(m, model)
+            }
+        }
+    }
+
+    private fun loadComickData(media: Media, model: MediaDetailsViewModel) {
                 ani.dantotsu.util.Logger.log("Comick: Not yet loaded, will process")
-                ani.dantotsu.util.Logger.log("Comick: Starting to load data for ${m.userPreferredName}")
-                ani.dantotsu.util.Logger.log("Comick: Media has ${m.externalLinks.size} external links at observer trigger")
+                ani.dantotsu.util.Logger.log("Comick: Starting to load data for ${media.userPreferredName}")
+                ani.dantotsu.util.Logger.log("Comick: Media has ${media.externalLinks.size} external links at observer trigger")
                 viewLifecycleOwner.lifecycleScope.launch {
                     try {
                         binding.mediaInfoProgressBar.visibility = View.VISIBLE
@@ -118,8 +124,8 @@ class ComickInfoFragment : Fragment() {
                             val quicklinks = try {
                                 kotlinx.coroutines.withTimeout(10000L) {
                                     withContext(Dispatchers.IO) {
-                                        val mediaType = if (m.anime != null) "anime" else "manga"
-                                        MalSyncApi.getQuicklinks(m.id, m.idMAL, mediaType)
+                                        val mediaType = if (media.anime != null) "anime" else "manga"
+                                        MalSyncApi.getQuicklinks(media.id, media.idMAL, mediaType)
                                     }
                                 }
                             } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
@@ -145,10 +151,10 @@ class ComickInfoFragment : Fragment() {
                                 val titlesToTry = mutableListOf<String>()
 
                                 // Add main English title first
-                                m.name?.let { titlesToTry.add(it) }
+                                media.name?.let { titlesToTry.add(it) }
 
                                 // Add English synonyms (filter out non-Latin titles)
-                                val englishSynonyms = filterEnglishTitles(m.synonyms)
+                                val englishSynonyms = filterEnglishTitles(media.synonyms)
                                 englishSynonyms.forEach { synonym ->
                                     if (!titlesToTry.contains(synonym)) {
                                         titlesToTry.add(synonym)
@@ -156,23 +162,23 @@ class ComickInfoFragment : Fragment() {
                                 }
 
                                 // Add romaji title as fallback
-                                if (!titlesToTry.contains(m.nameRomaji)) {
-                                    titlesToTry.add(m.nameRomaji)
+                                if (!titlesToTry.contains(media.nameRomaji)) {
+                                    titlesToTry.add(media.nameRomaji)
                                 }
 
                                 if (titlesToTry.isNotEmpty()) {
                                     // Debug: Check if externalLinks exists on Media object
-                                    ani.dantotsu.util.Logger.log("Comick: DEBUG - m.externalLinks size: ${m.externalLinks.size}, content: ${m.externalLinks}")
+                                    ani.dantotsu.util.Logger.log("Comick: DEBUG - media.externalLinks size: ${media.externalLinks.size}, content: ${media.externalLinks}")
 
                                     // Extract external link URLs for validation
-                                    val externalLinkUrls = m.externalLinks.mapNotNull { it.getOrNull(1) }
+                                    val externalLinkUrls = media.externalLinks.mapNotNull { it.getOrNull(1) }
                                     ani.dantotsu.util.Logger.log("Comick: Found ${externalLinkUrls.size} external link(s) for validation: $externalLinkUrls")
 
                                     // Pass MalSync slugs and external links for comparison
                                     ComickApi.searchAndMatchComic(
                                         titlesToTry,
-                                        m.id,
-                                        m.idMAL,
+                                        media.id,
+                                        media.idMAL,
                                         malSyncSlugs.takeIf { it.isNotEmpty() },
                                         externalLinkUrls.takeIf { it.isNotEmpty() }
                                     )
@@ -240,8 +246,6 @@ class ComickInfoFragment : Fragment() {
                         showNoDataWithSearch(media)
                     }
                 }
-            }
-        }
     }
 
     private fun showError(message: String) {
@@ -266,7 +270,7 @@ class ComickInfoFragment : Fragment() {
         Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
     }
 
-    private fun showQuickSearchModal(media: ani.dantotsu.media.Media) {
+    private fun showQuickSearchModal(media: Media) {
         val context = requireContext()
         val titles = ArrayList<String>()
         titles.add(media.userPreferredName)
@@ -279,7 +283,7 @@ class ComickInfoFragment : Fragment() {
         englishSynonyms.forEach { if (!titles.contains(it)) titles.add(it) }
 
         val modal = ani.dantotsu.others.CustomBottomDialog.newInstance().apply {
-            setTitleText(getString(R.string.search_on_comick_title))
+            setTitleText(context.getString(R.string.search_on_comick_title))
 
             // Add each title as a clickable TextView
             titles.forEach { title ->
@@ -288,7 +292,7 @@ class ComickInfoFragment : Fragment() {
                     textSize = 16f
                     val padding = 16f.px
                     setPadding(padding, padding, padding, padding)
-                    setTextColor(androidx.core.content.ContextCompat.getColor(context, ani.dantotsu.R.color.bg_opp))
+                    setTextColor(androidx.core.content.ContextCompat.getColor(context, R.color.bg_opp))
                     // Use a simple rounded background with ripple effect
                     val outValue = android.util.TypedValue()
                     context.theme.resolveAttribute(android.R.attr.selectableItemBackground, outValue, true)
@@ -296,9 +300,8 @@ class ComickInfoFragment : Fragment() {
                     isClickable = true
                     isFocusable = true
                     setOnClickListener {
-                        val encoded = java.net.URLEncoder.encode(title, "utf-8").replace("+", "%20")
-                        val url = "https://comick.dev/search?q=$encoded"
-                        startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+                        // Perform search and show results in-tab
+                        showComickSearchResults(media, title)
                         dismiss()
                     }
                 }
@@ -308,7 +311,224 @@ class ComickInfoFragment : Fragment() {
         modal.show(parentFragmentManager, "comick_quick_search")
     }
 
-    private fun showNoDataWithSearch(media: ani.dantotsu.media.Media) {
+    private fun showComickSearchResults(media: Media, initialQuery: String) {
+        // Capture context early to avoid issues if fragment gets detached
+        val fragmentContext = requireContext()
+
+        // Hide the current content
+        binding.mediaInfoProgressBar.visibility = View.GONE
+        binding.mediaInfoContainer.visibility = View.GONE
+
+        val frameLayout = binding.mediaInfoContainer.parent as? ViewGroup
+
+        frameLayout?.let { container ->
+            // IMPORTANT: Remove all previous views to prevent overlap
+            container.removeAllViews()
+
+            // Inflate search layout
+            val searchView = layoutInflater.inflate(
+                R.layout.fragment_search_page,
+                container,
+                false
+            )
+
+            val searchBarLayout = searchView.findViewById<com.google.android.material.textfield.TextInputLayout>(R.id.searchBarLayout)
+            val searchBar = searchView.findViewById<android.widget.AutoCompleteTextView>(R.id.searchBarText)
+            val searchProgress = searchView.findViewById<android.widget.ProgressBar>(R.id.searchProgress)
+            val emptyMessage = searchView.findViewById<android.widget.TextView>(R.id.emptyMessage)
+            val recyclerView = searchView.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.searchRecyclerView)
+
+            // Build list of title options for dropdown
+            val titleOptions = mutableListOf<String>()
+            titleOptions.add(media.userPreferredName)
+            if (media.nameRomaji != media.userPreferredName) {
+                titleOptions.add(media.nameRomaji)
+            }
+            val englishSynonyms = filterEnglishTitles(media.synonyms)
+            englishSynonyms.forEach { if (!titleOptions.contains(it)) titleOptions.add(it) }
+
+            // Set up RecyclerView
+            recyclerView.layoutManager = androidx.recyclerview.widget.GridLayoutManager(
+                fragmentContext,
+                androidx.core.math.MathUtils.clamp(
+                    fragmentContext.resources.displayMetrics.widthPixels / 124f.px,
+                    1, 4
+                )
+            )
+
+            // Set initial query
+            searchBar.setText(initialQuery)
+
+            // Function to perform search - define early so it can be used in dropdown
+            fun performSearch(query: String) {
+                if (query.isBlank()) return
+
+                searchProgress.visibility = View.VISIBLE
+                emptyMessage.visibility = View.GONE
+                recyclerView.visibility = View.GONE
+
+                viewLifecycleOwner.lifecycleScope.launch {
+                    try {
+                        // Get adult content preference
+                        val allowAdult = PrefManager.getVal(PrefName.AdultOnly)
+
+                        val results = withContext(Dispatchers.IO) {
+                            ComickApi.searchComics(query, allowAdult)
+                        }
+
+                        withContext(Dispatchers.Main) {
+                            searchProgress.visibility = View.GONE
+                            if (results.isNullOrEmpty()) {
+                                emptyMessage.visibility = View.VISIBLE
+                                recyclerView.visibility = View.GONE
+                            } else {
+                                emptyMessage.visibility = View.GONE
+                                recyclerView.visibility = View.VISIBLE
+                                recyclerView.adapter = ComickSearchAdapter(results) { selectedComic ->
+                                    // Save the selection - user knows it's correct, no verification needed
+                                    selectedComic.slug?.let { slug ->
+                                        saveComickSelection(media, slug)
+                                    }
+                                }
+                            }
+                        }
+                    } catch (e: Exception) {
+                        withContext(Dispatchers.Main) {
+                            searchProgress.visibility = View.GONE
+                            emptyMessage.visibility = View.VISIBLE
+                            emptyMessage.text = fragmentContext.getString(R.string.error_loading_data)
+                            Toast.makeText(fragmentContext, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+            }
+
+            // Add dropdown icon to search bar if there are multiple titles
+            if (titleOptions.size > 1) {
+                searchBarLayout.endIconMode = com.google.android.material.textfield.TextInputLayout.END_ICON_DROPDOWN_MENU
+
+                // Set up dropdown when end icon is clicked
+                searchBarLayout.setEndIconOnClickListener {
+                    val adapter = android.widget.ArrayAdapter(fragmentContext, R.layout.item_titles_dropdown, titleOptions)
+                    val popup = androidx.appcompat.widget.ListPopupWindow(fragmentContext)
+                    popup.anchorView = searchBar
+                    popup.setAdapter(adapter)
+                    popup.isModal = true
+
+                    searchBarLayout.post {
+                        popup.width = searchBarLayout.width
+                        popup.verticalOffset = searchBarLayout.height
+                        popup.setBackgroundDrawable(
+                            androidx.core.content.ContextCompat.getDrawable(fragmentContext, R.drawable.dropdown_background)
+                        )
+                        try { popup.listView?.elevation = 12f } catch (_: Throwable) {}
+                        popup.show()
+                    }
+
+                    popup.setOnItemClickListener { _, _, position, _ ->
+                        val selected = titleOptions[position]
+                        searchBar.setText(selected)
+                        popup.dismiss()
+                        // Automatically perform the search
+                        performSearch(selected)
+                    }
+                }
+            }
+
+            // Set up search listener
+            searchBar.setOnEditorActionListener { _, actionId, _ ->
+                if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH) {
+                    performSearch(searchBar.text.toString())
+                    // Hide keyboard
+                    val imm = fragmentContext.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
+                    imm.hideSoftInputFromWindow(searchBar.windowToken, 0)
+                    true
+                } else false
+            }
+
+            container.addView(searchView)
+
+            // Perform initial search
+            performSearch(initialQuery)
+        }
+    }
+
+    private fun saveComickSelection(media: Media, slug: String) {
+        // Check if fragment is still attached
+        if (!isAdded || context == null) return
+
+        val model: MediaDetailsViewModel by activityViewModels()
+
+        // Save the slug to preferences - user selected this, so we trust it
+        PrefManager.setCustomVal("comick_slug_${media.id}", slug)
+
+        // Update ViewModel
+        model.comickSlug.postValue(slug)
+
+        // Show progress and fetch the selected entry directly
+        binding.mediaInfoProgressBar.visibility = View.VISIBLE
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val comickData = withContext(Dispatchers.IO) {
+                    ComickApi.getComicDetails(slug)
+                }
+
+                withContext(Dispatchers.Main) {
+                    if (comickData == null) {
+                        binding.mediaInfoProgressBar.visibility = View.GONE
+                        Toast.makeText(requireContext(), "Failed to fetch Comick data", Toast.LENGTH_SHORT).show()
+                        return@withContext
+                    }
+
+                    // Store MangaUpdates link if available
+                    val muLink = comickData.comic?.links?.mu
+                    if (!muLink.isNullOrBlank()) {
+                        model.mangaUpdatesLink.postValue("https://www.mangaupdates.com/series/$muLink")
+                    }
+
+                    model.comickLoaded.postValue(true)
+                    loaded = true
+                    binding.mediaInfoProgressBar.visibility = View.GONE
+
+                    // Clear the search view and show the actual data
+                    val frameLayout = binding.mediaInfoContainer.parent as? ViewGroup
+                    frameLayout?.removeAllViews()
+
+                    binding.mediaInfoContainer.visibility = View.VISIBLE
+                    displayComickInfo(comickData)
+
+                    Toast.makeText(requireContext(), "Successfully linked to Comick entry", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    binding.mediaInfoProgressBar.visibility = View.GONE
+                    Toast.makeText(requireContext(), "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private fun unlinkComickSelection(media: Media) {
+        // Check if fragment is still attached
+        if (!isAdded || context == null) return
+
+        val model: MediaDetailsViewModel by activityViewModels()
+
+        // Remove the saved slug from preferences
+        PrefManager.removeCustomVal("comick_slug_${media.id}")
+
+        // Clear ViewModel
+        model.comickSlug.postValue(null)
+
+        // Reset loaded flag and show quick search
+        loaded = false
+        showNoDataWithSearch(media)
+
+        Toast.makeText(requireContext(), "Comick entry unlinked", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun showNoDataWithSearch(media: Media) {
         binding.mediaInfoProgressBar.visibility = View.GONE
         binding.mediaInfoContainer.visibility = View.GONE
 
@@ -353,6 +573,33 @@ class ComickInfoFragment : Fragment() {
         if (comic == null) {
             ani.dantotsu.util.Logger.log("Comick: comic data is null")
             return
+        }
+
+        // Check if this is a manually selected entry (saved in preferences)
+        val model: MediaDetailsViewModel by activityViewModels()
+        val media = model.getMedia().value
+        val isManualSelection = media?.let {
+            PrefManager.getNullableCustomVal<String>("comick_slug_${it.id}", null, String::class.java) != null
+        } ?: false
+
+        // Add "Unlink" button at the top if this is a manual selection
+        if (isManualSelection && media != null) {
+            val unlinkButton = com.google.android.material.button.MaterialButton(requireContext()).apply {
+                text = "Unlink Entry"
+                icon = androidx.appcompat.content.res.AppCompatResources.getDrawable(requireContext(), R.drawable.ic_round_link_off_24)
+                iconGravity = com.google.android.material.button.MaterialButton.ICON_GRAVITY_START
+                layoutParams = android.widget.LinearLayout.LayoutParams(
+                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
+                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    val margin = 16.px
+                    setMargins(margin, margin, margin, margin / 2)
+                }
+                setOnClickListener {
+                    unlinkComickSelection(media)
+                }
+            }
+            parent.addView(unlinkButton, 0) // Add as first child
         }
 
         // Display Title

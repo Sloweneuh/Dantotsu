@@ -32,6 +32,7 @@ data class ComickComic(
     val content_rating: String?,
     val md_titles: List<ComickAlternativeTitle>?,
     val md_comic_md_genres: List<ComickGenre>?,
+    val md_covers: List<ComickCover>?,
     val links: ComickLinks?,
     val recommendations: List<ComickRecommendation>?
 ) : Serializable
