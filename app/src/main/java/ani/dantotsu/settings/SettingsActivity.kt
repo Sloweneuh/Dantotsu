@@ -39,6 +39,10 @@ class SettingsActivity : AppCompatActivity() {
     lateinit var binding: ActivitySettingsBinding
     private var cursedCounter = 0
 
+    override fun attachBaseContext(newBase: android.content.Context?) {
+        super.attachBaseContext(newBase?.let { ani.dantotsu.util.LanguageHelper.applyLanguageToContext(it) })
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         ThemeManager(this).applyTheme()
@@ -237,7 +241,7 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     override fun onResume() {
-        ThemeManager(this).applyTheme()
         super.onResume()
+        ThemeManager(this).applyTheme()
     }
 }

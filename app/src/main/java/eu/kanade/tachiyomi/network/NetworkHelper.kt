@@ -8,6 +8,7 @@ import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.util.Logger
 import com.lagradost.nicehttp.Requests
 import eu.kanade.tachiyomi.network.interceptor.CloudflareInterceptor
+import eu.kanade.tachiyomi.network.interceptor.DohErrorInterceptor
 import eu.kanade.tachiyomi.network.interceptor.IgnoreGzipInterceptor
 import eu.kanade.tachiyomi.network.interceptor.UncaughtExceptionInterceptor
 import eu.kanade.tachiyomi.network.interceptor.UserAgentInterceptor
@@ -76,6 +77,7 @@ private fun setupSocks5Proxy() {
                 ),
             )
             .addInterceptor(UncaughtExceptionInterceptor())
+            .addInterceptor(DohErrorInterceptor())
             .addInterceptor(UserAgentInterceptor(::defaultUserAgentProvider))
             .addNetworkInterceptor(IgnoreGzipInterceptor())
             .addNetworkInterceptor(BrotliInterceptor)
@@ -111,6 +113,9 @@ private fun setupSocks5Proxy() {
             PREF_DOH_NJALLA -> builder.dohNajalla()
             PREF_DOH_SHECAN -> builder.dohShecan()
             PREF_DOH_LIBREDNS -> builder.dohLibreDNS()
+            PREF_DOH_OPENDNS -> builder.dohOpenDNS()
+            PREF_DOH_CLEANBROWSING -> builder.dohCleanBrowsing()
+            PREF_DOH_NEXTDNS -> builder.dohNextDNS()
         }
       builder.build()
      }

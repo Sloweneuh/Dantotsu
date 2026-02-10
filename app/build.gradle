@@ -13,13 +13,13 @@ def gitCommitHash = providers.exec {
 }.standardOutput.asText.get().trim()
 
 android {
-    compileSdk 35
+    compileSdk = 35
 
     defaultConfig {
         applicationId "ani.dantotsu"
-        minSdk 21
-        targetSdk 35
-        versionName "3.3.0"
+        minSdk = 21
+        targetSdk = 35
+        versionName "3.3.1"
         def (major, minor, patch) = versionName.split("\\.").collect { it.toInteger() }
         versionCode = major * 1_000_000 + minor * 1_000 + patch
         signingConfig signingConfigs.debug

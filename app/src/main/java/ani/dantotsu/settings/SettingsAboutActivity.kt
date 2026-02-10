@@ -28,6 +28,11 @@ import kotlinx.coroutines.launch
 
 class SettingsAboutActivity : AppCompatActivity() {
     private lateinit var binding: ActivitySettingsAboutBinding
+
+    override fun attachBaseContext(newBase: android.content.Context?) {
+        super.attachBaseContext(newBase?.let { ani.dantotsu.util.LanguageHelper.applyLanguageToContext(it) })
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         ThemeManager(this).applyTheme()
@@ -75,6 +80,18 @@ class SettingsAboutActivity : AppCompatActivity() {
                         isChecked = PrefManager.getVal(PrefName.SharedUserID),
                         switch = { isChecked, _ ->
                             PrefManager.setVal(PrefName.SharedUserID, isChecked)
+                        },
+                        isVisible = !BuildConfig.FLAVOR.contains("fdroid")
+                    ),
+                    Settings(
+                        type = 2,
+                        name = getString(R.string.disable_crash_reports),
+                        desc = getString(R.string.disable_crash_reports_desc),
+                        icon = R.drawable.ic_round_error_outline_24,
+                        isChecked = PrefManager.getVal(PrefName.DisableCrashReports),
+                        switch = { isChecked, _ ->
+                            PrefManager.setVal(PrefName.DisableCrashReports, isChecked)
+                            restartApp()
                         },
                         isVisible = !BuildConfig.FLAVOR.contains("fdroid")
                     ),

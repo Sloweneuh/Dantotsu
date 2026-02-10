@@ -54,7 +54,9 @@ class App : MultiDexApplication() {
     private lateinit var downloadAddonManager: DownloadAddonManager
 
     override fun attachBaseContext(base: Context?) {
-        super.attachBaseContext(base)
+        // Apply language before anything else
+        val context = base?.let { ani.dantotsu.util.LanguageHelper.applyLanguageToContext(it) } ?: base
+        super.attachBaseContext(context)
         MultiDex.install(this)
     }
 
@@ -87,19 +89,24 @@ class App : MultiDexApplication() {
         }
         registerActivityLifecycleCallbacks(mFTActivityLifecycleCallbacks)
 
-        crashlytics.setCrashlyticsCollectionEnabled(!DisabledReports)
-        (PrefManager.getVal(PrefName.SharedUserID) as Boolean).let {
-            if (!it) return@let
-            val dUsername = PrefManager.getVal(PrefName.DiscordUserName, null as String?)
-            val aUsername = PrefManager.getVal(PrefName.AnilistUserName, null as String?)
-            if (dUsername != null) {
-                crashlytics.setCustomKey("dUsername", dUsername)
+        // Check both the hardcoded constant and user preference
+        val disableCrashReports = DisabledReports || PrefManager.getVal(PrefName.DisableCrashReports)
+        crashlytics.setCrashlyticsCollectionEnabled(!disableCrashReports)
+
+        if (!disableCrashReports) {
+            (PrefManager.getVal(PrefName.SharedUserID) as Boolean).let {
+                if (!it) return@let
+                val dUsername = PrefManager.getVal(PrefName.DiscordUserName, null as String?)
+                val aUsername = PrefManager.getVal(PrefName.AnilistUserName, null as String?)
+                if (dUsername != null) {
+                    crashlytics.setCustomKey("dUsername", dUsername)
+                }
+                if (aUsername != null) {
+                    crashlytics.setCustomKey("aUsername", aUsername)
+                }
             }
-            if (aUsername != null) {
-                crashlytics.setCustomKey("aUsername", aUsername)
-            }
+            crashlytics.setCustomKey("device Info", SettingsActivity.getDeviceInfo())
         }
-        crashlytics.setCustomKey("device Info", SettingsActivity.getDeviceInfo())
 
         initializeNetwork()
 

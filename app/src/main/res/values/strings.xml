@@ -992,6 +992,8 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="faq_desc">General questions about Dantotsu</string>
     <string name="check_app_updates_desc">Check Github for app updates</string>
     <string name="share_username_in_crash_reports_desc">Share username in crash reports</string>
+    <string name="disable_crash_reports">Disable crash reports</string>
+    <string name="disable_crash_reports_desc">Stop sending crash reports and error analytics to Sentry (requires app restart)</string>
     <string name="devs_desc">Original developer and maintainer of this version. For more contributors, visit the official repository.</string>
     <string name="devs_disclaimer">This list shows the original developer and maintainer of this version.\nFor more contributors, visit:\nhttps://git.rebelonion.dev/rebelonion/Dantotsu</string>
     <string name="disclaimer_desc">Something to keep in mind</string>

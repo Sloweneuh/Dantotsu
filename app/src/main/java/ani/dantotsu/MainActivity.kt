@@ -90,6 +90,9 @@ class MainActivity : AppCompatActivity() {
     private val scope = lifecycleScope
     private var load = false
 
+    override fun attachBaseContext(newBase: android.content.Context?) {
+        super.attachBaseContext(newBase?.let { ani.dantotsu.util.LanguageHelper.applyLanguageToContext(it) })
+    }
 
     @kotlin.OptIn(DelicateCoroutinesApi::class)
     @SuppressLint("InternalInsetResource", "DiscouragedApi")
@@ -98,14 +101,6 @@ class MainActivity : AppCompatActivity() {
         ThemeManager(this).applyTheme()
 
         super.onCreate(savedInstanceState)
-    // waiting for view to draw to better represent a captured error with a screenshot
-    findViewById<android.view.View>(android.R.id.content).viewTreeObserver.addOnGlobalLayoutListener {
-      try {
-        throw Exception("This app uses Sentry! :)")
-      } catch (e: Exception) {
-        Sentry.captureException(e)
-      }
-    }
 
 
         //get FRAGMENT_CLASS_NAME from intent

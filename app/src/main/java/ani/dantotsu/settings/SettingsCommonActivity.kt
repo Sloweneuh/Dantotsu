@@ -32,6 +32,7 @@ import ani.dantotsu.navBarHeight
 import ani.dantotsu.others.calc.BiometricPromptUtils
 import ani.dantotsu.restartApp
 import ani.dantotsu.savePrefsToDownloads
+import ani.dantotsu.startMainActivity
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.settings.saving.internal.Location
@@ -54,6 +55,10 @@ import java.util.UUID
 class SettingsCommonActivity : AppCompatActivity() {
     private lateinit var binding: ActivitySettingsCommonBinding
     private lateinit var launcher: LauncherWrapper
+
+    override fun attachBaseContext(newBase: android.content.Context?) {
+        super.attachBaseContext(newBase?.let { ani.dantotsu.util.LanguageHelper.applyLanguageToContext(it) })
+    }
 
     @OptIn(DelicateCoroutinesApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -173,12 +178,12 @@ class SettingsCommonActivity : AppCompatActivity() {
                                         val selectedLanguage = languages[which]
                                         ani.dantotsu.util.LanguageHelper.setLanguage(context, selectedLanguage.code)
 
-                                        // Show restart dialog
+                                        // Show restart confirmation dialog
                                         customAlertDialog().apply {
                                             setTitle(getString(R.string.restart_required))
                                             setMessage(getString(R.string.restart_app_to_apply_language))
                                             setPosButton(getString(R.string.restart)) {
-                                                restartApp()
+                                                startMainActivity(this@SettingsCommonActivity)
                                             }
                                             setNegButton(getString(R.string.later))
                                             show()

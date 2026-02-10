@@ -101,6 +101,16 @@ class UnreadChaptersAdapter(
                     null
                 )
             }
+
+            // Handle long click to open list editor
+            itemCompactImage.setOnLongClickListener {
+                val activity = it.context as? androidx.fragment.app.FragmentActivity
+                if (activity != null && activity.supportFragmentManager.findFragmentByTag("list") == null) {
+                    ani.dantotsu.media.MediaListDialogSmallFragment.newInstance(media)
+                        .show(activity.supportFragmentManager, "list")
+                }
+                true
+            }
         }
     }
 
@@ -150,6 +160,16 @@ class UnreadChaptersAdapter(
                         .putExtra("lastChapter", info.lastChapter),
                     null
                 )
+            }
+
+            // Handle long click to open list editor
+            itemCompactImage.setOnLongClickListener {
+                val activity = it.context as? androidx.fragment.app.FragmentActivity
+                if (activity != null && activity.supportFragmentManager.findFragmentByTag("list") == null) {
+                    ani.dantotsu.media.MediaListDialogSmallFragment.newInstance(media)
+                        .show(activity.supportFragmentManager, "list")
+                }
+                true
             }
         }
     }

@@ -31,6 +31,43 @@ object LanguageHelper {
         applyLanguage(context, languageCode)
     }
 
+    /**
+     * Returns a new context with the language applied.
+     * Use this in attachBaseContext() to properly apply language before activity creation.
+     */
+    fun applyLanguageToContext(context: Context, languageCode: String = getCurrentLanguageCode()): Context {
+        val locale = when (languageCode) {
+            SYSTEM_DEFAULT -> {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    LocaleList.getDefault()[0]
+                } else {
+                    Locale.getDefault()
+                }
+            }
+            else -> Locale(languageCode)
+        }
+
+        Locale.setDefault(locale)
+
+        val config = Configuration(context.resources.configuration)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            config.setLocale(locale)
+            val localeList = LocaleList(locale)
+            LocaleList.setDefault(localeList)
+            config.setLocales(localeList)
+        } else {
+            @Suppress("DEPRECATION")
+            config.locale = locale
+        }
+
+        return context.createConfigurationContext(config)
+    }
+
+    /**
+     * Apply language to an existing context (for compatibility).
+     * Note: This updates the existing context but may not work properly for all cases.
+     * Prefer using applyLanguageToContext() in attachBaseContext() instead.
+     */
     fun applyLanguage(context: Context, languageCode: String = getCurrentLanguageCode()) {
         val locale = when (languageCode) {
             SYSTEM_DEFAULT -> {

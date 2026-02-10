@@ -14,6 +14,7 @@ enum class PrefName(val data: Pref) {
     //General
     AppLanguage(Pref(Location.General, String::class, "system")),
     SharedUserID(Pref(Location.General, Boolean::class, true)),
+    DisableCrashReports(Pref(Location.General, Boolean::class, false)),
     OfflineView(Pref(Location.General, Int::class, 0)),
     DownloadManager(Pref(Location.General, Int::class, 0)),
     NSFWExtension(Pref(Location.General, Boolean::class, true)),

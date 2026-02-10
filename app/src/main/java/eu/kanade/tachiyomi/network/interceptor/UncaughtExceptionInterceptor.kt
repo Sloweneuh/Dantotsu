@@ -5,6 +5,7 @@ import okhttp3.Interceptor
 import okhttp3.Response
 import java.io.IOException
 import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 
 /**
  * Catches any uncaught exceptions from later in the chain and rethrows as a non-fatal
@@ -22,6 +23,9 @@ class UncaughtExceptionInterceptor : Interceptor {
         } catch (e: SocketTimeoutException) {
             Logger.log(e)
             throw IOException("Request timed out")  // there's some odd behavior throwing a SocketTimeoutException
+        } catch (e: UnknownHostException) {
+            Logger.log(e)
+            throw IOException("Unable to resolve host: ${e.message}")
         } catch (e: Exception) {
             Logger.log(e)
             if (e is IOException) {

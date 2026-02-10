@@ -11,21 +11,102 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
+import java.io.IOException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 import java.util.concurrent.TimeUnit
 
 object MalSyncApi {
     private val client = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
+        .connectTimeout(10, TimeUnit.SECONDS)
+        .readTimeout(10, TimeUnit.SECONDS)
+        .writeTimeout(10, TimeUnit.SECONDS)
         .build()
 
     private val gson = Gson()
 
+    // Track consecutive network failures to avoid spamming requests
+    private var consecutiveNetworkFailures = 0
+    private var lastNetworkFailureTime = 0L
+    private const val MAX_CONSECUTIVE_FAILURES = 3
+    private const val FAILURE_COOLDOWN_MS = 60000L // 1 minute
+
+    /**
+     * Check if we should skip API calls due to repeated network failures
+     */
+    private fun shouldSkipDueToNetworkFailures(): Boolean {
+        if (consecutiveNetworkFailures >= MAX_CONSECUTIVE_FAILURES) {
+            val timeSinceLastFailure = System.currentTimeMillis() - lastNetworkFailureTime
+            if (timeSinceLastFailure < FAILURE_COOLDOWN_MS) {
+                Logger.log("MalSync: Skipping API call due to repeated network failures (cooldown active)")
+                return true
+            } else {
+                // Reset after cooldown period
+                consecutiveNetworkFailures = 0
+            }
+        }
+        return false
+    }
+
+    /**
+     * Record a network failure
+     */
+    private fun recordNetworkFailure() {
+        consecutiveNetworkFailures++
+        lastNetworkFailureTime = System.currentTimeMillis()
+        Logger.log("MalSync: Network failure recorded (count: $consecutiveNetworkFailures)")
+    }
+
+    /**
+     * Record a successful network call
+     */
+    private fun recordNetworkSuccess() {
+        consecutiveNetworkFailures = 0
+    }
+
+    /**
+     * Execute a network request with proper error handling
+     */
+    private fun executeRequest(request: Request): okhttp3.Response? {
+        try {
+            val response = client.newCall(request).execute()
+            recordNetworkSuccess()
+            return response
+        } catch (e: UnknownHostException) {
+            Logger.log("MalSync: Unable to resolve host: ${e.message}")
+            recordNetworkFailure()
+            return null
+        } catch (e: SocketTimeoutException) {
+            Logger.log("MalSync: Request timeout: ${e.message}")
+            recordNetworkFailure()
+            return null
+        } catch (e: IOException) {
+            Logger.log("MalSync: Network error: ${e.message}")
+            recordNetworkFailure()
+            return null
+        } catch (e: Exception) {
+            Logger.log("MalSync: Unexpected error: ${e.message}")
+            return null
+        }
+    }
+
+    /**
+     * Reset network failure counter - useful for manual retries
+     */
+    fun resetNetworkFailures() {
+        consecutiveNetworkFailures = 0
+        Logger.log("MalSync: Network failure counter reset")
+    }
+
     suspend fun getLastChapter(anilistId: Int, malId: Int? = null): MalSyncResponse? = withContext(Dispatchers.IO) {
+        if (shouldSkipDueToNetworkFailures()) {
+            return@withContext null
+        }
+
         try {
             var url: String
             var request: Request
-            var response: okhttp3.Response
+            var response: okhttp3.Response?
             var body: String?
 
             // Try with MAL ID first (preferred)
@@ -35,7 +116,13 @@ object MalSyncApi {
                 request = Request.Builder()
                     .url(url)
                     .build()
-                response = client.newCall(request).execute()
+                response = executeRequest(request)
+
+                if (response == null) {
+                    Logger.log("MalSync: Network error fetching MAL ID $malId")
+                    return@withContext null
+                }
+
                 body = response.body?.string()
 
                 // If MAL ID succeeds and has results, use it
@@ -54,7 +141,13 @@ object MalSyncApi {
             request = Request.Builder()
                 .url(url)
                 .build()
-            response = client.newCall(request).execute()
+            response = executeRequest(request)
+
+            if (response == null) {
+                Logger.log("MalSync: Network error fetching AniList ID $anilistId")
+                return@withContext null
+            }
+
             body = response.body?.string()
 
             if (!response.isSuccessful) {
@@ -80,6 +173,10 @@ object MalSyncApi {
     }
 
     suspend fun getLastEpisode(anilistId: Int, malId: Int?, preferredLanguage: String = "en/dub"): MalSyncResponse? = withContext(Dispatchers.IO) {
+        if (shouldSkipDueToNetworkFailures()) {
+            return@withContext null
+        }
+
         try {
             // Use MAL ID only (as per user requirements)
             if (malId == null) {
@@ -92,7 +189,13 @@ object MalSyncApi {
             val request = Request.Builder()
                 .url(url)
                 .build()
-            val response = client.newCall(request).execute()
+            val response = executeRequest(request)
+
+            if (response == null) {
+                Logger.log("MalSync: Network error fetching anime for MAL ID $malId")
+                return@withContext null
+            }
+
             val body = response.body?.string()
 
             if (!response.isSuccessful) {
@@ -122,13 +225,17 @@ object MalSyncApi {
      * @return List of available language IDs (e.g., ["en/dub", "en/sub", "jp"])
      */
     suspend fun getAvailableLanguages(malId: Int): List<String> = withContext(Dispatchers.IO) {
+        if (shouldSkipDueToNetworkFailures()) {
+            return@withContext emptyList()
+        }
+
         try {
             Logger.log("MalSync: Fetching available languages for MAL ID $malId")
             val url = "https://api.malsync.moe/nc/mal/anime/$malId/pr"
             val request = Request.Builder()
                 .url(url)
                 .build()
-            val response = client.newCall(request).execute()
+            val response = executeRequest(request) ?: return@withContext emptyList()
             val body = response.body?.string()
 
             if (!response.isSuccessful || body == null || body == "[]" || body.isEmpty()) {
@@ -154,13 +261,17 @@ object MalSyncApi {
      * @return List of MalSyncResponse with language IDs and episode counts
      */
     suspend fun getAvailableLanguagesWithEpisodes(malId: Int): List<MalSyncResponse> = withContext(Dispatchers.IO) {
+        if (shouldSkipDueToNetworkFailures()) {
+            return@withContext emptyList()
+        }
+
         try {
             Logger.log("MalSync: Fetching available languages with episodes for MAL ID $malId")
             val url = "https://api.malsync.moe/nc/mal/anime/$malId/pr"
             val request = Request.Builder()
                 .url(url)
                 .build()
-            val response = client.newCall(request).execute()
+            val response = executeRequest(request) ?: return@withContext emptyList()
             val body = response.body?.string()
 
             if (!response.isSuccessful || body == null || body == "[]" || body.isEmpty()) {
@@ -254,6 +365,11 @@ object MalSyncApi {
     ): Map<Int, MalSyncResponse> = withContext(Dispatchers.IO) {
         if (mediaList.isEmpty()) return@withContext emptyMap()
 
+        if (shouldSkipDueToNetworkFailures()) {
+            Logger.log("MalSync: Skipping batch request due to repeated network failures")
+            return@withContext emptyMap()
+        }
+
         val resultMap = mutableMapOf<Int, MalSyncResponse>()
 
         // Create cache keys - prefer MAL ID (numeric), fallback to "anilist:ID" (string)
@@ -278,6 +394,12 @@ object MalSyncApi {
             val processedSoFar = minOf(batchNumber * 50, totalCount)
 
             try {
+                // Check network status before each batch
+                if (shouldSkipDueToNetworkFailures()) {
+                    Logger.log("MalSync: Stopping batch processing due to network failures")
+                    return@withContext resultMap
+                }
+
                 // Notify progress before processing batch
                 onProgress?.invoke(batchNumber, totalBatches, processedSoFar - chunk.size, totalCount)
 
@@ -300,16 +422,26 @@ object MalSyncApi {
                     .post(requestBody)
                     .build()
 
-                val response = client.newCall(request).execute()
+                val response = executeRequest(request)
+
+                if (response == null) {
+                    Logger.log("MalSync batch API network error for batch $batchNumber")
+                    // Continue to next batch instead of stopping completely
+                    onProgress?.invoke(batchNumber, totalBatches, processedSoFar, totalCount)
+                    return@forEachIndexed
+                }
+
                 val body = response.body?.string()
 
                 if (!response.isSuccessful) {
                     Logger.log("MalSync batch API error: ${response.code} - Body: $body")
+                    onProgress?.invoke(batchNumber, totalBatches, processedSoFar, totalCount)
                     return@forEachIndexed
                 }
 
                 if (body == null || body.isEmpty()) {
                     Logger.log("MalSync batch API returned empty response")
+                    onProgress?.invoke(batchNumber, totalBatches, processedSoFar, totalCount)
                     return@forEachIndexed
                 }
 
@@ -375,6 +507,11 @@ object MalSyncApi {
     suspend fun getBatchAnimeEpisodes(animeList: List<Pair<Int, Int?>>): Map<Int, MalSyncResponse> = withContext(Dispatchers.IO) {
         if (animeList.isEmpty()) return@withContext emptyMap()
 
+        if (shouldSkipDueToNetworkFailures()) {
+            Logger.log("MalSync: Skipping batch anime request due to repeated network failures")
+            return@withContext emptyMap()
+        }
+
         val resultMap = mutableMapOf<Int, MalSyncResponse>()
 
         // Filter to only include anime with MAL IDs
@@ -394,6 +531,12 @@ object MalSyncApi {
         // Batch fetch all anime (up to 50 at a time)
         cacheKeys.chunked(50).forEach { chunk ->
             try {
+                // Check network status before each batch
+                if (shouldSkipDueToNetworkFailures()) {
+                    Logger.log("MalSync: Stopping anime batch processing due to network failures")
+                    return@withContext resultMap
+                }
+
                 // Wait 5 seconds between requests (rate limiting)
                 if (resultMap.isNotEmpty()) {
                     delay(5000)
@@ -412,7 +555,13 @@ object MalSyncApi {
                     .post(requestBody)
                     .build()
 
-                val response = client.newCall(request).execute()
+                val response = executeRequest(request)
+
+                if (response == null) {
+                    Logger.log("MalSync batch anime API network error")
+                    return@forEach
+                }
+
                 val body = response.body?.string()
 
                 if (!response.isSuccessful) {
@@ -462,6 +611,10 @@ object MalSyncApi {
      */
     // mediaType should be either "manga" or "anime". Defaults to "manga" to remain backward-compatible.
     suspend fun getQuicklinks(anilistId: Int, malId: Int? = null, mediaType: String = "manga"): QuicklinksResponse? = withContext(Dispatchers.IO) {
+        if (shouldSkipDueToNetworkFailures()) {
+            return@withContext null
+        }
+
         try {
             // mediaType expected to be "manga" or "anime"; build endpoint accordingly
             val typeSegment = if (mediaType.equals("anime", ignoreCase = true)) "anime" else "manga"
@@ -469,7 +622,13 @@ object MalSyncApi {
             // If malId is provided, try MAL endpoint first
             var url = if (malId != null) "https://api.malsync.moe/mal/$typeSegment/$malId" else "https://api.malsync.moe/mal/$typeSegment/anilist:$anilistId"
             var request = Request.Builder().url(url).build()
-            var response = client.newCall(request).execute()
+            var response = executeRequest(request)
+
+            if (response == null) {
+                Logger.log("MalSync quicklinks: Network error")
+                return@withContext null
+            }
+
             var body = response.body?.string()
 
             // If MAL request failed or returned empty and malId was provided, fallback to AniList endpoint
@@ -477,7 +636,13 @@ object MalSyncApi {
                 Logger.log("MalSync quicklinks: MAL id $malId failed, trying AniList id $anilistId")
                 url = "https://api.malsync.moe/mal/$typeSegment/anilist:$anilistId"
                 request = Request.Builder().url(url).build()
-                response = client.newCall(request).execute()
+                response = executeRequest(request)
+
+                if (response == null) {
+                    Logger.log("MalSync quicklinks: Network error on fallback")
+                    return@withContext null
+                }
+
                 body = response.body?.string()
             }
 
