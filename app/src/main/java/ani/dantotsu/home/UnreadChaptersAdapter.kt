@@ -91,16 +91,19 @@ class UnreadChaptersAdapter(
             }
 
             // Handle click to open media details
-            root.setSafeOnClickListener {
+            val clickAction = {
                 ContextCompat.startActivity(
-                    it.context,
-                    Intent(it.context, ani.dantotsu.media.MediaDetailsActivity::class.java)
+                    root.context,
+                    Intent(root.context, ani.dantotsu.media.MediaDetailsActivity::class.java)
                         .putExtra("media", media)
                         .putExtra("source", info.source)
                         .putExtra("lastChapter", info.lastChapter),
                     null
                 )
             }
+            root.setSafeOnClickListener { clickAction() }
+            itemCompactImage.setSafeOnClickListener { clickAction() }
+            itemCompactTitle.setSafeOnClickListener { clickAction() }
 
             // Handle long click to open list editor
             itemCompactImage.setOnLongClickListener {
@@ -151,16 +154,19 @@ class UnreadChaptersAdapter(
             }
 
             // Handle click to open media details
-            root.setSafeOnClickListener {
+            val clickAction = {
                 ContextCompat.startActivity(
-                    it.context,
-                    Intent(it.context, ani.dantotsu.media.MediaDetailsActivity::class.java)
+                    root.context,
+                    Intent(root.context, ani.dantotsu.media.MediaDetailsActivity::class.java)
                         .putExtra("media", media)
                         .putExtra("source", info.source)
                         .putExtra("lastChapter", info.lastChapter),
                     null
                 )
             }
+            root.setSafeOnClickListener { clickAction() }
+            itemCompactImage.setSafeOnClickListener { clickAction() }
+            itemCompactTitle.setSafeOnClickListener { clickAction() }
 
             // Handle long click to open list editor
             itemCompactImage.setOnLongClickListener {
