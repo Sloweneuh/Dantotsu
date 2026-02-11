@@ -29,14 +29,15 @@ import kotlinx.coroutines.withContext
 
 class MangaUpdatesInfoFragment : Fragment() {
     private var _binding: FragmentMediaInfoBinding? = null
-    private val binding get() = _binding!!
+    private val binding
+        get() = _binding!!
     private var loaded = false
     private var isLoggedIn = false
 
     override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
+            inflater: LayoutInflater,
+            container: ViewGroup?,
+            savedInstanceState: Bundle?
     ): View {
         _binding = FragmentMediaInfoBinding.inflate(inflater, container, false)
         return binding.root
@@ -50,7 +51,7 @@ class MangaUpdatesInfoFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         val model: MediaDetailsViewModel by activityViewModels()
         val offline: Boolean =
-            PrefManager.getVal(PrefName.OfflineMode) || !isOnline(requireContext())
+                PrefManager.getVal(PrefName.OfflineMode) || !isOnline(requireContext())
 
         binding.mediaInfoContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> {
             bottomMargin += 128f.px + navBarHeight
@@ -93,10 +94,16 @@ class MangaUpdatesInfoFragment : Fragment() {
         // New: observe preloaded series details and display immediately if available
         model.mangaUpdatesSeries.observe(viewLifecycleOwner) { series ->
             if (series != null) {
-                Logger.log("MangaUpdates Fragment: ViewModel provided series: title=${series.title}, genres=${series.genres?.size ?: 0}")
-                // Avoid re-rendering the same series; allow rendering if UI is empty or showing fallback
+                Logger.log(
+                        "MangaUpdates Fragment: ViewModel provided series: title=${series.title}, genres=${series.genres?.size ?: 0}"
+                )
+                // Avoid re-rendering the same series; allow rendering if UI is empty or showing
+                // fallback
                 val currentTitle = binding.mediaInfoName.text?.toString()?.trim()
-                if (!currentTitle.isNullOrBlank() && series.title != null && currentTitle.contains(series.title!!, ignoreCase = true)) {
+                if (!currentTitle.isNullOrBlank() &&
+                                series.title != null &&
+                                currentTitle.contains(series.title!!, ignoreCase = true)
+                ) {
                     // Already showing this series — nothing to do
                     return@observe
                 }
@@ -122,28 +129,36 @@ class MangaUpdatesInfoFragment : Fragment() {
             return
         }
 
-        // If ViewModel already preloaded the series details, the observer above will handle displaying it.
-        // At this point we decide what UI to show. We must NOT mark `loaded = true` if we still need to fetch
-        // data (so the mangaUpdatesSeries observer can display it later). Only set `loaded` when we actually
+        // If ViewModel already preloaded the series details, the observer above will handle
+        // displaying it.
+        // At this point we decide what UI to show. We must NOT mark `loaded = true` if we still
+        // need to fetch
+        // data (so the mangaUpdatesSeries observer can display it later). Only set `loaded` when we
+        // actually
         // add a static/fallback view or display the series directly.
 
         val seriesIdentifier = muLink?.let { extractMUIdentifier(it) } ?: ""
 
-        Logger.log("MangaUpdates Fragment: checkAndDisplay decision: muLink=$muLink, muHasLoaded=$muHasLoaded, isLoggedIn(approx)=$isLoggedIn")
+        Logger.log(
+                "MangaUpdates Fragment: checkAndDisplay decision: muLink=$muLink, muHasLoaded=$muHasLoaded, isLoggedIn(approx)=$isLoggedIn"
+        )
         // Check login status and decide
         lifecycleScope.launch(Dispatchers.IO) {
             isLoggedIn = MangaUpdates.getSavedToken()
             Logger.log("MangaUpdates Fragment: Login status = $isLoggedIn")
 
             withContext(Dispatchers.Main) {
-                // If the ViewModel did not provide a MU link, try to find one in the media's external links
+                // If the ViewModel did not provide a MU link, try to find one in the media's
+                // external links
                 var effectiveMuLink = muLink
                 if (effectiveMuLink.isNullOrBlank()) {
                     try {
                         val extLinks = media.externalLinks
                         extLinks.forEach { linkEntry ->
                             val candidate = linkEntry.getOrNull(1) ?: linkEntry.getOrNull(0)
-                            if (!candidate.isNullOrBlank() && candidate.contains("mangaupdates", ignoreCase = true)) {
+                            if (!candidate.isNullOrBlank() &&
+                                            candidate.contains("mangaupdates", ignoreCase = true)
+                            ) {
                                 effectiveMuLink = candidate
                                 return@forEach
                             }
@@ -167,12 +182,16 @@ class MangaUpdatesInfoFragment : Fragment() {
                         val preloaded = model.mangaUpdatesSeries.value
                         if (preloaded != null) {
                             // Display immediately and mark loaded
-                            Logger.log("MangaUpdates Fragment: Using preloaded series from ViewModel: ${preloaded.title}")
+                            Logger.log(
+                                    "MangaUpdates Fragment: Using preloaded series from ViewModel: ${preloaded.title}"
+                            )
                             displaySeriesDetails(preloaded)
                             loaded = true
                         } else {
                             // Need to fetch now -> show progress and wait for observer to populate
-                            Logger.log("MangaUpdates Fragment: Fetching details for $seriesIdentifier")
+                            Logger.log(
+                                    "MangaUpdates Fragment: Fetching details for $seriesIdentifier"
+                            )
                             binding.mediaInfoProgressBar.visibility = View.VISIBLE
                             binding.mediaInfoContainer.visibility = View.GONE
                             // Do not set loaded; observer will display when data arrives
@@ -180,7 +199,9 @@ class MangaUpdatesInfoFragment : Fragment() {
                         }
                     } else {
                         // Not logged in, show login/open fallback and mark loaded
-                        Logger.log("MangaUpdates Fragment: Not logged in — showing fallback login view")
+                        Logger.log(
+                                "MangaUpdates Fragment: Not logged in — showing fallback login view"
+                        )
                         showMangaUpdatesButton(link)
                         loaded = true
                     }
@@ -194,7 +215,8 @@ class MangaUpdatesInfoFragment : Fragment() {
         }
     }
 
-    // Helper: extract either numeric series ID (from ?id=), the slug from a MangaUpdates link, or return id directly
+    // Helper: extract either numeric series ID (from ?id=), the slug from a MangaUpdates link, or
+    // return id directly
     private fun extractMUIdentifier(muLink: String): String {
         // If the input is already a simple ID (numeric or alphanumeric slug), return it as-is
         val simpleIdPattern = Regex("^[A-Za-z0-9_-]+$")
@@ -210,7 +232,8 @@ class MangaUpdatesInfoFragment : Fragment() {
             val path = uri.path ?: ""
             var lastSeg = path.trimEnd('/').substringAfterLast('/')
 
-            // If the link contains series.html?id=... without proper parsing above, try to extract after '='
+            // If the link contains series.html?id=... without proper parsing above, try to extract
+            // after '='
             if (lastSeg.isBlank() && muLink.contains("=")) {
                 val afterEq = muLink.substringAfter('=', "")
                 if (afterEq.isNotBlank()) return afterEq
@@ -235,7 +258,9 @@ class MangaUpdatesInfoFragment : Fragment() {
     }
 
     private fun fetchAndDisplayDetails(seriesIdentifier: String, muLink: String, media: Media) {
-        Logger.log("MangaUpdates Fragment: Starting to fetch details for identifier: $seriesIdentifier")
+        Logger.log(
+                "MangaUpdates Fragment: Starting to fetch details for identifier: $seriesIdentifier"
+        )
         Logger.log("MangaUpdates Fragment: Full MU link: $muLink")
         Logger.log("MangaUpdates Fragment: Token available: ${MangaUpdates.token != null}")
 
@@ -247,20 +272,33 @@ class MangaUpdatesInfoFragment : Fragment() {
             try {
                 Logger.log("MangaUpdates Fragment: Calling getSeriesFromUrl...")
                 val seriesDetails = MangaUpdates.getSeriesFromUrl(seriesIdentifier)
-                Logger.log("MangaUpdates Fragment: API call completed, result: ${if (seriesDetails != null) "SUCCESS" else "NULL"}")
+                Logger.log(
+                        "MangaUpdates Fragment: API call completed, result: ${if (seriesDetails != null) "SUCCESS" else "NULL"}"
+                )
 
                 withContext(Dispatchers.Main) {
                     binding.mediaInfoProgressBar.visibility = View.GONE
                     binding.mediaInfoContainer.visibility = View.VISIBLE
 
                     if (seriesDetails != null) {
-                        Logger.log("MangaUpdates Fragment: Successfully fetched details for '${seriesDetails.title}'")
-                        Logger.log("MangaUpdates Fragment: Series has description: ${seriesDetails.description != null}")
-                        Logger.log("MangaUpdates Fragment: Series has genres: ${seriesDetails.genres?.size ?: 0}")
+                        Logger.log(
+                                "MangaUpdates Fragment: Successfully fetched details for '${seriesDetails.title}'"
+                        )
+                        Logger.log(
+                                "MangaUpdates Fragment: Series has description: ${seriesDetails.description != null}"
+                        )
+                        Logger.log(
+                                "MangaUpdates Fragment: Series has genres: ${seriesDetails.genres?.size ?: 0}"
+                        )
                         displaySeriesDetails(seriesDetails)
                     } else {
                         Logger.log("MangaUpdates Fragment: API returned null")
-                        android.widget.Toast.makeText(requireContext(), "Could not fetch MangaUpdates data", android.widget.Toast.LENGTH_SHORT).show()
+                        android.widget.Toast.makeText(
+                                        requireContext(),
+                                        "Could not fetch MangaUpdates data",
+                                        android.widget.Toast.LENGTH_SHORT
+                                )
+                                .show()
                         // If we're logged in, show quick search UI instead of the login fallback
                         if (isLoggedIn) {
                             showNoDataWithSearch(media)
@@ -270,12 +308,19 @@ class MangaUpdatesInfoFragment : Fragment() {
                     }
                 }
             } catch (e: Exception) {
-                Logger.log("MangaUpdates Fragment: EXCEPTION - ${e::class.simpleName}: ${e.message}")
+                Logger.log(
+                        "MangaUpdates Fragment: EXCEPTION - ${e::class.simpleName}: ${e.message}"
+                )
                 e.printStackTrace()
                 withContext(Dispatchers.Main) {
                     binding.mediaInfoProgressBar.visibility = View.GONE
                     binding.mediaInfoContainer.visibility = View.VISIBLE
-                    android.widget.Toast.makeText(requireContext(), "Error: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                    android.widget.Toast.makeText(
+                                    requireContext(),
+                                    "Error: ${e.message}",
+                                    android.widget.Toast.LENGTH_SHORT
+                            )
+                            .show()
                     if (isLoggedIn) {
                         showNoDataWithSearch(media)
                     } else {
@@ -292,11 +337,7 @@ class MangaUpdatesInfoFragment : Fragment() {
 
         val frameLayout = binding.mediaInfoContainer.parent as? ViewGroup
         frameLayout?.let {
-            val errorView = layoutInflater.inflate(
-                android.R.layout.simple_list_item_1,
-                it,
-                false
-            )
+            val errorView = layoutInflater.inflate(android.R.layout.simple_list_item_1, it, false)
             (errorView as? android.widget.TextView)?.apply {
                 text = message
                 val padding = 32f.px
@@ -309,7 +350,8 @@ class MangaUpdatesInfoFragment : Fragment() {
         }
     }
 
-    // Remove any previously-added fallback views (login / no-data / error) so the real info UI can be shown cleanly
+    // Remove any previously-added fallback views (login / no-data / error) so the real info UI can
+    // be shown cleanly
     private fun clearFallbackViews() {
         val parent = binding.mediaInfoContainer.parent as? ViewGroup ?: return
         val toRemove = mutableListOf<View>()
@@ -331,62 +373,83 @@ class MangaUpdatesInfoFragment : Fragment() {
             // Remove any previous fallback views to avoid stacking multiple pages
             clearFallbackViews()
             // Use fragment_not_logged_in.xml with login button
-            val notLoggedInView = layoutInflater.inflate(
-                ani.dantotsu.R.layout.fragment_not_logged_in,
-                container,
-                false
-            )
+            val notLoggedInView =
+                    layoutInflater.inflate(
+                            ani.dantotsu.R.layout.fragment_not_logged_in,
+                            container,
+                            false
+                    )
 
             // Mark it so we can remove it later when the real content is ready
             notLoggedInView.tag = "mu_fallback_view"
 
             // Set icon
-            notLoggedInView.findViewById<android.widget.ImageView>(R.id.logo)?.setImageDrawable(
-                requireContext().getDrawable(R.drawable.ic_round_mangaupdates_24)
-            )
+            notLoggedInView
+                    .findViewById<android.widget.ImageView>(R.id.logo)
+                    ?.setImageDrawable(
+                            requireContext().getDrawable(R.drawable.ic_round_mangaupdates_24)
+                    )
 
             // Set text
-            notLoggedInView.findViewById<TextView>(ani.dantotsu.R.id.Title)?.text = getString(ani.dantotsu.R.string.mu_not_logged_in_title)
-            notLoggedInView.findViewById<TextView>(ani.dantotsu.R.id.desc)?.text = getString(ani.dantotsu.R.string.mu_not_logged_in_desc)
-
+            notLoggedInView.findViewById<TextView>(ani.dantotsu.R.id.Title)?.text =
+                    getString(ani.dantotsu.R.string.mu_not_logged_in_title)
+            notLoggedInView.findViewById<TextView>(ani.dantotsu.R.id.desc)?.text =
+                    getString(ani.dantotsu.R.string.mu_not_logged_in_desc)
 
             // Login button
-            notLoggedInView.findViewById<com.google.android.material.button.MaterialButton>(ani.dantotsu.R.id.connectButton)?.text = getString(ani.dantotsu.R.string.login_to_mangaupdates)
-            notLoggedInView.findViewById<com.google.android.material.button.MaterialButton>(ani.dantotsu.R.id.connectButton)?.icon = requireContext().getDrawable(ani.dantotsu.R.drawable.ic_round_mangaupdates_24)
+            notLoggedInView.findViewById<com.google.android.material.button.MaterialButton>(
+                            ani.dantotsu.R.id.connectButton
+                    )
+                    ?.text = getString(ani.dantotsu.R.string.login_to_mangaupdates)
+            notLoggedInView.findViewById<com.google.android.material.button.MaterialButton>(
+                            ani.dantotsu.R.id.connectButton
+                    )
+                    ?.icon =
+                    requireContext().getDrawable(ani.dantotsu.R.drawable.ic_round_mangaupdates_24)
 
-            notLoggedInView.findViewById<com.google.android.material.button.MaterialButton>(ani.dantotsu.R.id.connectButton)?.setOnClickListener {
-                val loginDialog = MangaUpdatesLoginDialog()
-                loginDialog.setOnLoginSuccessListener {
-                    // Remove the fallback UI immediately, show progress and re-check
-                    clearFallbackViews()
-                    binding.mediaInfoProgressBar.visibility = View.VISIBLE
-                    binding.mediaInfoContainer.visibility = View.GONE
-                    loaded = false
-                    isLoggedIn = true
-                    val model: MediaDetailsViewModel by activityViewModels()
-                    model.getMedia().value?.let { media ->
-                        checkAndDisplay(model, media)
+            notLoggedInView.findViewById<com.google.android.material.button.MaterialButton>(
+                            ani.dantotsu.R.id.connectButton
+                    )
+                    ?.setOnClickListener {
+                        val loginDialog = MangaUpdatesLoginDialog()
+                        loginDialog.setOnLoginSuccessListener {
+                            // Remove the fallback UI immediately, show progress and re-check
+                            clearFallbackViews()
+                            binding.mediaInfoProgressBar.visibility = View.VISIBLE
+                            binding.mediaInfoContainer.visibility = View.GONE
+                            loaded = false
+                            isLoggedIn = true
+                            val model: MediaDetailsViewModel by activityViewModels()
+                            model.getMedia().value?.let { media -> checkAndDisplay(model, media) }
+                        }
+                        loginDialog.show(parentFragmentManager, "mangaupdates_login")
                     }
-                }
-                loginDialog.show(parentFragmentManager, "mangaupdates_login")
-            }
 
             // Show "Open on MU" button (hide Quick Search)
-            notLoggedInView.findViewById<com.google.android.material.button.MaterialButton>(ani.dantotsu.R.id.quickSearchButton)?.visibility = View.GONE
-            notLoggedInView.findViewById<com.google.android.material.button.MaterialButton>(ani.dantotsu.R.id.openButton)?.text = getString(ani.dantotsu.R.string.open_on_mangaupdates)
-            notLoggedInView.findViewById<com.google.android.material.button.MaterialButton>(ani.dantotsu.R.id.openButton)?.apply {
-                visibility = View.VISIBLE
-                setOnClickListener {
-                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(muLink)))
-                }
-            }
+            notLoggedInView.findViewById<com.google.android.material.button.MaterialButton>(
+                            ani.dantotsu.R.id.quickSearchButton
+                    )
+                    ?.visibility = View.GONE
+            notLoggedInView.findViewById<com.google.android.material.button.MaterialButton>(
+                            ani.dantotsu.R.id.openButton
+                    )
+                    ?.text = getString(ani.dantotsu.R.string.open_on_mangaupdates)
+            notLoggedInView.findViewById<com.google.android.material.button.MaterialButton>(
+                            ani.dantotsu.R.id.openButton
+                    )
+                    ?.apply {
+                        visibility = View.VISIBLE
+                        setOnClickListener {
+                            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(muLink)))
+                        }
+                    }
 
             container.addView(notLoggedInView)
             Logger.log("MangaUpdates Fragment: Added not-logged-in fallback view for link=$muLink")
-             // We've shown a fallback view; mark as loaded so we don't attempt to re-render
-             loaded = true
-         }
-     }
+            // We've shown a fallback view; mark as loaded so we don't attempt to re-render
+            loaded = true
+        }
+    }
 
     private fun showQuickSearchModal(media: Media) {
         val context = requireContext()
@@ -397,44 +460,62 @@ class MangaUpdatesInfoFragment : Fragment() {
         }
 
         // Filter English titles
-        val englishSynonyms = media.synonyms.filter { title ->
-            if (title.isBlank()) return@filter false
-            val hasCJK = title.any { char ->
-                char.code in 0x3040..0x309F || char.code in 0x30A0..0x30FF ||
-                char.code in 0x4E00..0x9FFF || char.code in 0xAC00..0xD7AF ||
-                char.code in 0x1100..0x11FF
-            }
-            !hasCJK
-        }
+        val englishSynonyms =
+                media.synonyms.filter { title ->
+                    if (title.isBlank()) return@filter false
+                    val hasCJK =
+                            title.any { char ->
+                                char.code in 0x3040..0x309F ||
+                                        char.code in 0x30A0..0x30FF ||
+                                        char.code in 0x4E00..0x9FFF ||
+                                        char.code in 0xAC00..0xD7AF ||
+                                        char.code in 0x1100..0x11FF
+                            }
+                    !hasCJK
+                }
         englishSynonyms.forEach { if (!titles.contains(it)) titles.add(it) }
 
-        val modal = ani.dantotsu.others.CustomBottomDialog.newInstance().apply {
-            setTitleText("Search on MangaUpdates")
+        val modal =
+                ani.dantotsu.others.CustomBottomDialog.newInstance().apply {
+                    setTitleText("Search on MangaUpdates")
 
-            // Add each title as a clickable TextView
-            titles.forEach { title ->
-                val textView = android.widget.TextView(context).apply {
-                    text = title
-                    textSize = 16f
-                    val padding = 16f.px
-                    setPadding(padding, padding, padding, padding)
-                    setTextColor(androidx.core.content.ContextCompat.getColor(context, ani.dantotsu.R.color.bg_opp))
-                    // Use a simple rounded background with ripple effect
-                    val outValue = android.util.TypedValue()
-                    context.theme.resolveAttribute(android.R.attr.selectableItemBackground, outValue, true)
-                    setBackgroundResource(outValue.resourceId)
-                    isClickable = true
-                    isFocusable = true
-                    setOnClickListener {
-                        val encoded = java.net.URLEncoder.encode(title, "utf-8").replace("+", "%20")
-                        val url = "https://www.mangaupdates.com/series?search=$encoded"
-                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                        dismiss()
+                    // Add each title as a clickable TextView
+                    titles.forEach { title ->
+                        val textView =
+                                android.widget.TextView(context).apply {
+                                    text = title
+                                    textSize = 16f
+                                    val padding = 16f.px
+                                    setPadding(padding, padding, padding, padding)
+                                    setTextColor(
+                                            androidx.core.content.ContextCompat.getColor(
+                                                    context,
+                                                    ani.dantotsu.R.color.bg_opp
+                                            )
+                                    )
+                                    // Use a simple rounded background with ripple effect
+                                    val outValue = android.util.TypedValue()
+                                    context.theme.resolveAttribute(
+                                            android.R.attr.selectableItemBackground,
+                                            outValue,
+                                            true
+                                    )
+                                    setBackgroundResource(outValue.resourceId)
+                                    isClickable = true
+                                    isFocusable = true
+                                    setOnClickListener {
+                                        val encoded =
+                                                java.net.URLEncoder.encode(title, "utf-8")
+                                                        .replace("+", "%20")
+                                        val url =
+                                                "https://www.mangaupdates.com/series?search=$encoded"
+                                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                                        dismiss()
+                                    }
+                                }
+                        addView(textView)
                     }
                 }
-                addView(textView)
-            }
-        }
         modal.show(parentFragmentManager, "mangaupdates_quick_search")
     }
 
@@ -447,31 +528,36 @@ class MangaUpdatesInfoFragment : Fragment() {
         frameLayout?.let { container ->
             // Remove previous fallback views to avoid duplicates
             clearFallbackViews()
-            val pageView = layoutInflater.inflate(
-                ani.dantotsu.R.layout.fragment_nodata_page,
-                container,
-                false
-            )
+            val pageView =
+                    layoutInflater.inflate(
+                            ani.dantotsu.R.layout.fragment_nodata_page,
+                            container,
+                            false
+                    )
 
             // Tag so it can be removed later
             pageView.tag = "mu_fallback_view"
 
-            //set icon
-            pageView.findViewById<android.widget.ImageView>(R.id.logo)?.setImageDrawable(
-                requireContext().getDrawable(ani.dantotsu.R.drawable.ic_round_mangaupdates_24)
-            )
+            // set icon
+            pageView.findViewById<android.widget.ImageView>(R.id.logo)
+                    ?.setImageDrawable(
+                            requireContext()
+                                    .getDrawable(ani.dantotsu.R.drawable.ic_round_mangaupdates_24)
+                    )
 
             // Set title
-            pageView.findViewById<android.widget.TextView>(R.id.title)?.text = getString(ani.dantotsu.R.string.mu_no_data_title)
+            pageView.findViewById<android.widget.TextView>(R.id.title)?.text =
+                    getString(ani.dantotsu.R.string.mu_no_data_title)
 
             // Single button: Quick Search (since we don't have a link)
-            pageView.findViewById<com.google.android.material.button.MaterialButton>(ani.dantotsu.R.id.quickSearchButton)?.apply {
-                text = getString(ani.dantotsu.R.string.quick_search)
-                icon = context.getDrawable(ani.dantotsu.R.drawable.ic_round_search_24)
-                setOnClickListener {
-                    showQuickSearchModal(media)
-                }
-            }
+            pageView.findViewById<com.google.android.material.button.MaterialButton>(
+                            ani.dantotsu.R.id.quickSearchButton
+                    )
+                    ?.apply {
+                        text = getString(ani.dantotsu.R.string.quick_search)
+                        icon = context.getDrawable(ani.dantotsu.R.drawable.ic_round_search_24)
+                        setOnClickListener { showQuickSearchModal(media) }
+                    }
 
             container.addView(pageView)
             // Mark loaded after adding the fallback page
@@ -489,7 +575,9 @@ class MangaUpdatesInfoFragment : Fragment() {
 
         // We are now displaying real series data; mark as loaded so observers won't overwrite later
         loaded = true
-        Logger.log("MangaUpdates Fragment: displaySeriesDetails - title=${series.title}, descriptionPresent=${!series.description.isNullOrBlank()}")
+        Logger.log(
+                "MangaUpdates Fragment: displaySeriesDetails - title=${series.title}, descriptionPresent=${!series.description.isNullOrBlank()}"
+        )
         val tripleTab = "\t\t\t"
 
         // Set up the standard fields first
@@ -521,14 +609,14 @@ class MangaUpdatesInfoFragment : Fragment() {
         // Mean Score (Rating)
         series.bayesian_rating?.let { ratingStr ->
             val rating = ratingStr.toDoubleOrNull()
-            binding.mediaInfoMeanScore.text = if (rating != null) {
-                String.format("%.1f", rating)
-            } else {
-                ratingStr
-            }
-        } ?: run {
-            binding.mediaInfoMeanScore.text = "??"
+            binding.mediaInfoMeanScore.text =
+                    if (rating != null) {
+                        String.format("%.1f", rating)
+                    } else {
+                        ratingStr
+                    }
         }
+                ?: run { binding.mediaInfoMeanScore.text = "??" }
 
         // Status (extracted from detailed status)
         binding.mediaInfoStatus.text = statusText
@@ -544,7 +632,8 @@ class MangaUpdatesInfoFragment : Fragment() {
         binding.mediaInfoSourceContainer.visibility = View.GONE
 
         // Author (show first author of type "Author" in standard field)
-        val firstAuthor = series.authors?.firstOrNull { it.type?.equals("Author", ignoreCase = true) == true }
+        val firstAuthor =
+                series.authors?.firstOrNull { it.type?.equals("Author", ignoreCase = true) == true }
         if (firstAuthor?.name != null) {
             binding.mediaInfoAuthorContainer.visibility = View.VISIBLE
             binding.mediaInfoAuthor.text = firstAuthor.name
@@ -577,68 +666,106 @@ class MangaUpdatesInfoFragment : Fragment() {
         }
 
         series.rank?.lists?.let { lists ->
-            val followers = (lists.reading ?: 0) + (lists.wish ?: 0) +
-                           (lists.complete ?: 0) + (lists.unfinished ?: 0) + (lists.custom ?: 0)
-            binding.mediaInfoFavorites.text = if (followers > 0) followers.toString() else getString(R.string.question_marks)
-        } ?: run {
-            binding.mediaInfoFavorites.text = getString(R.string.question_marks)
+            val followers =
+                    (lists.reading
+                            ?: 0) +
+                            (lists.wish ?: 0) +
+                            (lists.complete ?: 0) +
+                            (lists.unfinished ?: 0) +
+                            (lists.custom ?: 0)
+            binding.mediaInfoFavorites.text =
+                    if (followers > 0) followers.toString() else getString(R.string.question_marks)
         }
+                ?: run { binding.mediaInfoFavorites.text = getString(R.string.question_marks) }
 
-        // Description (extract only synopsis, remove any text that was supposed to be italic/bold/links)
-        val fullDesc = series.description ?: getString(ani.dantotsu.R.string.no_description_available)
+        // Description (extract only synopsis, remove any text that was supposed to be
+        // italic/bold/links)
+        val fullDesc =
+                series.description ?: getString(ani.dantotsu.R.string.no_description_available)
 
-        //Remove markdown links entirely
+        // Remove markdown links entirely
         val linkPattern = Regex("""\[(.*?)\]\(.*?\)""")
-        val descNoLinks = linkPattern.replace(fullDesc) { matchResult ->
-            "" // Remove the entire link, including the text
-        }.replace(Regex("""\n{3,}"""), "\n\n")
-
+        val descNoLinks =
+                linkPattern
+                        .replace(fullDesc) { matchResult ->
+                            "" // Remove the entire link, including the text
+                        }
+                        .replace(Regex("""\n{3,}"""), "\n\n")
 
         val italicPattern = Regex("""\*(.*?)\*""")
         val boldPattern = Regex("""\*\*(.*?)\*\*""")
         val parenthesisPattern = Regex("""\((.*?)\)""")
-        val descNoMarkdown = italicPattern.replace(descNoLinks) { matchResult ->
-            "" // Remove text inside single asterisks
-        }.let { intermediate ->
-            boldPattern.replace(intermediate) { matchResult ->
-                "" // Remove text inside double asterisks
-            }
-        }.let { intermediate2 ->
-            parenthesisPattern.replace(intermediate2) { matchResult ->
-                "" // Remove text inside parentheses
-            }
-        }
+        val descNoMarkdown =
+                italicPattern
+                        .replace(descNoLinks) { matchResult ->
+                            "" // Remove text inside single asterisks
+                        }
+                        .let { intermediate ->
+                            boldPattern.replace(intermediate) { matchResult ->
+                                "" // Remove text inside double asterisks
+                            }
+                        }
+                        .let { intermediate2 ->
+                            parenthesisPattern.replace(intermediate2) { matchResult ->
+                                "" // Remove text inside parentheses
+                            }
+                        }
 
-        //Remove isolated asterisks, underscores, parentheses and other markdown chars
+        // Remove isolated asterisks, underscores, parentheses and other markdown chars
         val markdownCharsPattern = Regex("""[\*\_\`\~\|\>\#\-\+\=]""")
         val descNoMarkdownChars = markdownCharsPattern.replace(descNoMarkdown, "")
 
-        //Remove isolated brackets, parentheses and similar
+        // Remove isolated brackets, parentheses and similar
         val bracketsPattern = Regex("""[\[\]\(\)\{\}]""")
         val descNoBrackets = bracketsPattern.replace(descNoMarkdownChars, "")
 
-        //Remove excessive newlines
+        // Remove excessive newlines
         val excessiveNewlinesPattern = Regex("""\n{3,}""")
         val descCleaned = excessiveNewlinesPattern.replace(descNoBrackets, "\n\n")
-
-
 
         binding.mediaInfoDescription.text = tripleTab + descCleaned.trim()
         binding.mediaInfoDescription.setOnClickListener {
             if (binding.mediaInfoDescription.maxLines == 5) {
-                android.animation.ObjectAnimator.ofInt(binding.mediaInfoDescription, "maxLines", 100).setDuration(950).start()
+                android.animation.ObjectAnimator.ofInt(
+                                binding.mediaInfoDescription,
+                                "maxLines",
+                                100
+                        )
+                        .setDuration(950)
+                        .start()
             } else {
-                android.animation.ObjectAnimator.ofInt(binding.mediaInfoDescription, "maxLines", 5).setDuration(400).start()
+                android.animation.ObjectAnimator.ofInt(binding.mediaInfoDescription, "maxLines", 5)
+                        .setDuration(400)
+                        .start()
             }
         }
 
         // Now add additional sections to the container
         val parent = binding.mediaInfoContainer
 
+        // Clear any previously added dynamic views to prevent duplicates
+        // Keep only the static views from the layout (everything before the first
+        // ItemTitleTextBinding)
+        val viewsToRemove = mutableListOf<View>()
+        for (i in 0 until parent.childCount) {
+            val child = parent.getChildAt(i)
+            // Remove any views that were dynamically added (they'll have specific binding types)
+            // We identify them by checking if they're NOT part of the original layout
+            if (child.tag == "dynamic_mu_section") {
+                viewsToRemove.add(child)
+            }
+        }
+        viewsToRemove.forEach { parent.removeView(it) }
+
         // Status (detailed chapter info with markdown formatting, expandable)
         series.status?.let { rawStatusText ->
             if (rawStatusText.isNotBlank()) {
-                val bind = ani.dantotsu.databinding.ItemTitleTextBinding.inflate(LayoutInflater.from(context), parent, false)
+                val bind =
+                        ani.dantotsu.databinding.ItemTitleTextBinding.inflate(
+                                LayoutInflater.from(context),
+                                parent,
+                                false
+                        )
                 bind.itemTitle.setText(ani.dantotsu.R.string.status_title)
 
                 // First, remove escaped characters (backslashes before special chars)
@@ -661,10 +788,10 @@ class MangaUpdatesInfoFragment : Fragment() {
                     val start = processedText.length
                     processedText.append(boldText)
                     processedText.setSpan(
-                        android.text.style.StyleSpan(android.graphics.Typeface.BOLD),
-                        start,
-                        processedText.length,
-                        android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                            android.text.style.StyleSpan(android.graphics.Typeface.BOLD),
+                            start,
+                            processedText.length,
+                            android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
                     )
 
                     currentPos = match.range.last + 1
@@ -681,12 +808,17 @@ class MangaUpdatesInfoFragment : Fragment() {
                 // Make expandable on click
                 bind.itemText.setOnClickListener {
                     if (bind.itemText.maxLines == 3) {
-                        android.animation.ObjectAnimator.ofInt(bind.itemText, "maxLines", 100).setDuration(400).start()
+                        android.animation.ObjectAnimator.ofInt(bind.itemText, "maxLines", 100)
+                                .setDuration(400)
+                                .start()
                     } else {
-                        android.animation.ObjectAnimator.ofInt(bind.itemText, "maxLines", 3).setDuration(400).start()
+                        android.animation.ObjectAnimator.ofInt(bind.itemText, "maxLines", 3)
+                                .setDuration(400)
+                                .start()
                     }
                 }
 
+                bind.root.tag = "dynamic_mu_section"
                 parent.addView(bind.root)
             }
         }
@@ -694,7 +826,12 @@ class MangaUpdatesInfoFragment : Fragment() {
         // Anime Adaptation Info (like Comick)
         series.anime?.let { anime ->
             if (!anime.start.isNullOrBlank() || !anime.end.isNullOrBlank()) {
-                val bind = ani.dantotsu.databinding.ItemTitleTextBinding.inflate(LayoutInflater.from(context), parent, false)
+                val bind =
+                        ani.dantotsu.databinding.ItemTitleTextBinding.inflate(
+                                LayoutInflater.from(context),
+                                parent,
+                                false
+                        )
                 bind.itemTitle.text = getString(ani.dantotsu.R.string.anime_adaptation)
                 bind.itemText.text = buildString {
                     if (!anime.start.isNullOrBlank()) {
@@ -706,36 +843,61 @@ class MangaUpdatesInfoFragment : Fragment() {
                     }
                 }
 
-                //Make expendable on click
+                // Make expendable on click
                 bind.itemText.setOnClickListener {
                     if (bind.itemText.maxLines == 3) {
-                        android.animation.ObjectAnimator.ofInt(bind.itemText, "maxLines", 100).setDuration(400).start()
+                        android.animation.ObjectAnimator.ofInt(bind.itemText, "maxLines", 100)
+                                .setDuration(400)
+                                .start()
                     } else {
-                        android.animation.ObjectAnimator.ofInt(bind.itemText, "maxLines", 3).setDuration(400).start()
+                        android.animation.ObjectAnimator.ofInt(bind.itemText, "maxLines", 3)
+                                .setDuration(400)
+                                .start()
                     }
                 }
+                bind.root.tag = "dynamic_mu_section"
                 parent.addView(bind.root)
             }
         }
 
         // Alternative Titles / Synonyms (single row)
         if (!series.associated.isNullOrEmpty()) {
-            val bind = ani.dantotsu.databinding.ItemTitleChipgroupBinding.inflate(LayoutInflater.from(context), parent, false)
+            val bind =
+                    ani.dantotsu.databinding.ItemTitleChipgroupBinding.inflate(
+                            LayoutInflater.from(context),
+                            parent,
+                            false
+                    )
             bind.itemTitle.setText(ani.dantotsu.R.string.synonyms)
             series.associated.forEach { assoc ->
                 assoc.title?.let { title ->
-                    val chip = ani.dantotsu.databinding.ItemChipSynonymBinding.inflate(LayoutInflater.from(context), bind.itemChipGroup, false).root
+                    val chip =
+                            ani.dantotsu.databinding.ItemChipSynonymBinding.inflate(
+                                            LayoutInflater.from(context),
+                                            bind.itemChipGroup,
+                                            false
+                                    )
+                                    .root
                     chip.text = title
-                    chip.setOnLongClickListener { copyToClipboard(title); true }
+                    chip.setOnLongClickListener {
+                        copyToClipboard(title)
+                        true
+                    }
                     bind.itemChipGroup.addView(chip)
                 }
             }
+            bind.root.tag = "dynamic_mu_section"
             parent.addView(bind.root)
         }
 
         // Genres (clickable for search, with "Search All" next to title)
         if (!series.genres.isNullOrEmpty()) {
-            val bind = ani.dantotsu.databinding.ItemTitleChipgroupBinding.inflate(LayoutInflater.from(context), parent, false)
+            val bind =
+                    ani.dantotsu.databinding.ItemTitleChipgroupBinding.inflate(
+                            LayoutInflater.from(context),
+                            parent,
+                            false
+                    )
             bind.itemTitle.setText(ani.dantotsu.R.string.genres)
 
             // Add "Search All" action next to the title
@@ -754,7 +916,13 @@ class MangaUpdatesInfoFragment : Fragment() {
             // Add individual genre chips
             series.genres.forEach { genreObj ->
                 genreObj.genre?.let { genre ->
-                    val chip = ani.dantotsu.databinding.ItemChipBinding.inflate(LayoutInflater.from(context), bind.itemChipGroup, false).root
+                    val chip =
+                            ani.dantotsu.databinding.ItemChipBinding.inflate(
+                                            LayoutInflater.from(context),
+                                            bind.itemChipGroup,
+                                            false
+                                    )
+                                    .root
                     chip.text = genre
                     chip.isClickable = true
                     chip.setOnClickListener {
@@ -764,22 +932,39 @@ class MangaUpdatesInfoFragment : Fragment() {
                     }
                     chip.setOnLongClickListener {
                         copyToClipboard(genre)
-                        android.widget.Toast.makeText(requireContext(), "Copied: $genre", android.widget.Toast.LENGTH_SHORT).show()
+                        android.widget.Toast.makeText(
+                                        requireContext(),
+                                        "Copied: $genre",
+                                        android.widget.Toast.LENGTH_SHORT
+                                )
+                                .show()
                         true
                     }
                     bind.itemChipGroup.addView(chip)
                 }
             }
+            bind.root.tag = "dynamic_mu_section"
             parent.addView(bind.root)
         }
 
         // Categories (clickable for search, like Comick)
         if (!series.categories.isNullOrEmpty()) {
-            val bind = ani.dantotsu.databinding.ItemTitleChipgroupMultilineBinding.inflate(LayoutInflater.from(context), parent, false)
+            val bind =
+                    ani.dantotsu.databinding.ItemTitleChipgroupMultilineBinding.inflate(
+                            LayoutInflater.from(context),
+                            parent,
+                            false
+                    )
             bind.itemTitle.text = getString(ani.dantotsu.R.string.categories)
             series.categories.forEach { cat ->
                 cat.category?.let { category ->
-                    val chip = ani.dantotsu.databinding.ItemChipBinding.inflate(LayoutInflater.from(context), bind.itemChipGroup, false).root
+                    val chip =
+                            ani.dantotsu.databinding.ItemChipBinding.inflate(
+                                            LayoutInflater.from(context),
+                                            bind.itemChipGroup,
+                                            false
+                                    )
+                                    .root
                     chip.text = category
                     chip.isClickable = true
                     chip.setOnClickListener {
@@ -790,12 +975,18 @@ class MangaUpdatesInfoFragment : Fragment() {
                     }
                     chip.setOnLongClickListener {
                         copyToClipboard(category)
-                        android.widget.Toast.makeText(requireContext(), "Copied: $category", android.widget.Toast.LENGTH_SHORT).show()
+                        android.widget.Toast.makeText(
+                                        requireContext(),
+                                        "Copied: $category",
+                                        android.widget.Toast.LENGTH_SHORT
+                                )
+                                .show()
                         true
                     }
                     bind.itemChipGroup.addView(chip)
                 }
             }
+            bind.root.tag = "dynamic_mu_section"
             parent.addView(bind.root)
         }
     }
