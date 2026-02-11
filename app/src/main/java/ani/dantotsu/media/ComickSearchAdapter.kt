@@ -52,15 +52,37 @@ class ComickSearchAdapter(
             itemCompactTitle.isSingleLine = true
             itemCompactTitle.isSelected = true // Enable marquee
 
-            // Long click on title to show full title
+            // Title tap: select result
+            itemCompactTitle.setSafeOnClickListener {
+                comic.slug?.let { slug ->
+                    onItemClick(comic)
+                }
+            }
+
+            // Title long tap: toggle between marquee scrolling and full title display
             itemCompactTitle.setOnLongClickListener {
-                comic.title?.let { title ->
-                    Toast.makeText(root.context, title, Toast.LENGTH_LONG).show()
+                if (itemCompactTitle.isSingleLine) {
+                    // Switch to full title display
+                    itemCompactTitle.isSingleLine = false
+                    itemCompactTitle.ellipsize = null
+                    itemCompactTitle.maxLines = Int.MAX_VALUE
+                } else {
+                    // Switch back to marquee scrolling
+                    itemCompactTitle.isSingleLine = true
+                    itemCompactTitle.ellipsize = TextUtils.TruncateAt.MARQUEE
+                    itemCompactTitle.isSelected = true
                 }
                 true
             }
 
-            // Long click on cover to open in browser
+            // Cover tap: select result
+            itemCompactImage.setSafeOnClickListener {
+                comic.slug?.let { slug ->
+                    onItemClick(comic)
+                }
+            }
+
+            // Cover long tap: open in browser
             itemCompactImage.setOnLongClickListener {
                 comic.slug?.let { slug ->
                     val url = "https://comick.io/comic/$slug"
@@ -74,13 +96,6 @@ class ComickSearchAdapter(
             itemCompactScoreBG.visibility = android.view.View.GONE
             itemCompactOngoing.visibility = android.view.View.GONE
             itemCompactType.visibility = android.view.View.GONE
-
-            // Set click listener - only if slug is not null
-            root.setSafeOnClickListener {
-                comic.slug?.let { slug ->
-                    onItemClick(comic)
-                }
-            }
         }
     }
 

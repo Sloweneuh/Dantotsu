@@ -116,74 +116,82 @@ class ComickInfoFragment : Fragment() {
                         var comickSlug = model.comickSlug.value
 
                         if (comickSlug == null) {
-                            // Data not preloaded yet, fetch it now
-                            ani.dantotsu.util.Logger.log("Comick: Fetching slug (not preloaded)")
+                            // Check if user has manually saved a slug for this media
+                            val savedSlug = PrefManager.getNullableCustomVal<String>("comick_slug_${media.id}", null, String::class.java)
+                            if (savedSlug != null) {
+                                ani.dantotsu.util.Logger.log("Comick: Found saved slug '$savedSlug' in preferences")
+                                comickSlug = savedSlug
+                                model.comickSlug.postValue(savedSlug)
+                            } else {
+                                // Data not preloaded yet, fetch it now
+                                ani.dantotsu.util.Logger.log("Comick: Fetching slug (not preloaded)")
 
-                            // Get the Comick slug from MalSync quicklinks
-                            ani.dantotsu.util.Logger.log("Comick: Checking MalSync for slug")
-                            val quicklinks = try {
-                                kotlinx.coroutines.withTimeout(10000L) {
-                                    withContext(Dispatchers.IO) {
-                                        val mediaType = if (media.anime != null) "anime" else "manga"
-                                        MalSyncApi.getQuicklinks(media.id, media.idMAL, mediaType)
+                                // Get the Comick slug from MalSync quicklinks
+                                ani.dantotsu.util.Logger.log("Comick: Checking MalSync for slug")
+                                val quicklinks = try {
+                                    kotlinx.coroutines.withTimeout(10000L) {
+                                        withContext(Dispatchers.IO) {
+                                            val mediaType = if (media.anime != null) "anime" else "manga"
+                                            MalSyncApi.getQuicklinks(media.id, media.idMAL, mediaType)
+                                        }
                                     }
-                                }
-                            } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
-                                ani.dantotsu.util.Logger.log("Comick: MalSync timeout after 10 seconds")
-                                null
-                            } catch (e: Exception) {
-                                ani.dantotsu.util.Logger.log("Comick: MalSync error: ${e.message}")
-                                ani.dantotsu.util.Logger.log(e)
-                                null
-                            }
-
-                            // Get ALL Comick slugs from MalSync (can be multiple entries)
-                            val malSyncSlugs = quicklinks?.Sites?.entries?.firstOrNull {
-                                it.key.equals("Comick", true) || it.key.contains("comick", true)
-                            }?.value?.values?.mapNotNull { it.identifier } ?: emptyList()
-
-                            ani.dantotsu.util.Logger.log("Comick: MalSync returned ${malSyncSlugs.size} slug(s): $malSyncSlugs")
-
-                            // Always try search API to ensure we get the best match
-                            ani.dantotsu.util.Logger.log("Comick: Starting search and comparison")
-                            comickSlug = withContext(Dispatchers.IO) {
-                                // Build a list of titles to try, prioritizing English titles
-                                val titlesToTry = mutableListOf<String>()
-
-                                // Add main English title first
-                                media.name?.let { titlesToTry.add(it) }
-
-                                // Add English synonyms (filter out non-Latin titles)
-                                val englishSynonyms = filterEnglishTitles(media.synonyms)
-                                englishSynonyms.forEach { synonym ->
-                                    if (!titlesToTry.contains(synonym)) {
-                                        titlesToTry.add(synonym)
-                                    }
-                                }
-
-                                // Add romaji title as fallback
-                                if (!titlesToTry.contains(media.nameRomaji)) {
-                                    titlesToTry.add(media.nameRomaji)
-                                }
-
-                                if (titlesToTry.isNotEmpty()) {
-                                    // Debug: Check if externalLinks exists on Media object
-                                    ani.dantotsu.util.Logger.log("Comick: DEBUG - media.externalLinks size: ${media.externalLinks.size}, content: ${media.externalLinks}")
-
-                                    // Extract external link URLs for validation
-                                    val externalLinkUrls = media.externalLinks.mapNotNull { it.getOrNull(1) }
-                                    ani.dantotsu.util.Logger.log("Comick: Found ${externalLinkUrls.size} external link(s) for validation: $externalLinkUrls")
-
-                                    // Pass MalSync slugs and external links for comparison
-                                    ComickApi.searchAndMatchComic(
-                                        titlesToTry,
-                                        media.id,
-                                        media.idMAL,
-                                        malSyncSlugs.takeIf { it.isNotEmpty() },
-                                        externalLinkUrls.takeIf { it.isNotEmpty() }
-                                    )
-                                } else {
+                                } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+                                    ani.dantotsu.util.Logger.log("Comick: MalSync timeout after 10 seconds")
                                     null
+                                } catch (e: Exception) {
+                                    ani.dantotsu.util.Logger.log("Comick: MalSync error: ${e.message}")
+                                    ani.dantotsu.util.Logger.log(e)
+                                    null
+                                }
+
+                                // Get ALL Comick slugs from MalSync (can be multiple entries)
+                                val malSyncSlugs = quicklinks?.Sites?.entries?.firstOrNull {
+                                    it.key.equals("Comick", true) || it.key.contains("comick", true)
+                                }?.value?.values?.mapNotNull { it.identifier } ?: emptyList()
+
+                                ani.dantotsu.util.Logger.log("Comick: MalSync returned ${malSyncSlugs.size} slug(s): $malSyncSlugs")
+
+                                // Always try search API to ensure we get the best match
+                                ani.dantotsu.util.Logger.log("Comick: Starting search and comparison")
+                                comickSlug = withContext(Dispatchers.IO) {
+                                    // Build a list of titles to try, prioritizing English titles
+                                    val titlesToTry = mutableListOf<String>()
+
+                                    // Add main English title first
+                                    media.name?.let { titlesToTry.add(it) }
+
+                                    // Add English synonyms (filter out non-Latin titles)
+                                    val englishSynonyms = filterEnglishTitles(media.synonyms)
+                                    englishSynonyms.forEach { synonym ->
+                                        if (!titlesToTry.contains(synonym)) {
+                                            titlesToTry.add(synonym)
+                                        }
+                                    }
+
+                                    // Add romaji title as fallback
+                                    if (!titlesToTry.contains(media.nameRomaji)) {
+                                        titlesToTry.add(media.nameRomaji)
+                                    }
+
+                                    if (titlesToTry.isNotEmpty()) {
+                                        // Debug: Check if externalLinks exists on Media object
+                                        ani.dantotsu.util.Logger.log("Comick: DEBUG - media.externalLinks size: ${media.externalLinks.size}, content: ${media.externalLinks}")
+
+                                        // Extract external link URLs for validation
+                                        val externalLinkUrls = media.externalLinks.mapNotNull { it.getOrNull(1) }
+                                        ani.dantotsu.util.Logger.log("Comick: Found ${externalLinkUrls.size} external link(s) for validation: $externalLinkUrls")
+
+                                        // Pass MalSync slugs and external links for comparison
+                                        ComickApi.searchAndMatchComic(
+                                            titlesToTry,
+                                            media.id,
+                                            media.idMAL,
+                                            malSyncSlugs.takeIf { it.isNotEmpty() },
+                                            externalLinkUrls.takeIf { it.isNotEmpty() }
+                                        )
+                                    } else {
+                                        null
+                                    }
                                 }
                             }
                         } else {
@@ -370,7 +378,7 @@ class ComickInfoFragment : Fragment() {
                 viewLifecycleOwner.lifecycleScope.launch {
                     try {
                         // Get adult content preference
-                        val allowAdult = PrefManager.getVal(PrefName.AdultOnly)
+                        val allowAdult = PrefManager.getVal<Boolean>(PrefName.AdultOnly)
 
                         val results = withContext(Dispatchers.IO) {
                             ComickApi.searchComics(query, allowAdult)
@@ -489,12 +497,17 @@ class ComickInfoFragment : Fragment() {
 
                     model.comickLoaded.postValue(true)
                     loaded = true
+
+                    // Clear the search view and restore the original layout
+                    val frameLayout = binding.root.findViewById<ViewGroup>(R.id.mediaInfoScroll)
+                        ?.getChildAt(0) as? ViewGroup
+                    frameLayout?.let { parent ->
+                        parent.removeAllViews()
+                        parent.addView(binding.mediaInfoProgressBar)
+                        parent.addView(binding.mediaInfoContainer)
+                    }
+
                     binding.mediaInfoProgressBar.visibility = View.GONE
-
-                    // Clear the search view and show the actual data
-                    val frameLayout = binding.mediaInfoContainer.parent as? ViewGroup
-                    frameLayout?.removeAllViews()
-
                     binding.mediaInfoContainer.visibility = View.VISIBLE
                     displayComickInfo(comickData)
 
@@ -581,26 +594,6 @@ class ComickInfoFragment : Fragment() {
         val isManualSelection = media?.let {
             PrefManager.getNullableCustomVal<String>("comick_slug_${it.id}", null, String::class.java) != null
         } ?: false
-
-        // Add "Unlink" button at the top if this is a manual selection
-        if (isManualSelection && media != null) {
-            val unlinkButton = com.google.android.material.button.MaterialButton(requireContext()).apply {
-                text = "Unlink Entry"
-                icon = androidx.appcompat.content.res.AppCompatResources.getDrawable(requireContext(), R.drawable.ic_round_link_off_24)
-                iconGravity = com.google.android.material.button.MaterialButton.ICON_GRAVITY_START
-                layoutParams = android.widget.LinearLayout.LayoutParams(
-                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
-                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
-                ).apply {
-                    val margin = 16.px
-                    setMargins(margin, margin, margin, margin / 2)
-                }
-                setOnClickListener {
-                    unlinkComickSelection(media)
-                }
-            }
-            parent.addView(unlinkButton, 0) // Add as first child
-        }
 
         // Display Title
         binding.mediaInfoName.text = tripleTab + (comic.title ?: "Unknown")
@@ -1075,6 +1068,26 @@ class ComickInfoFragment : Fragment() {
                     }
                 }
             }
+        }
+
+        // Add "Unlink" button at the bottom if this is a manual selection
+        if (isManualSelection && media != null) {
+            val unlinkButton = com.google.android.material.button.MaterialButton(requireContext()).apply {
+                text = "Unlink Entry"
+                icon = androidx.appcompat.content.res.AppCompatResources.getDrawable(requireContext(), R.drawable.ic_round_close_24)
+                iconGravity = com.google.android.material.button.MaterialButton.ICON_GRAVITY_START
+                layoutParams = android.widget.LinearLayout.LayoutParams(
+                    android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    val margin = 16f.px
+                    setMargins(margin, margin, margin, margin)
+                }
+                setOnClickListener {
+                    unlinkComickSelection(media)
+                }
+            }
+            parent.addView(unlinkButton) // Add as last child
         }
     }
 }

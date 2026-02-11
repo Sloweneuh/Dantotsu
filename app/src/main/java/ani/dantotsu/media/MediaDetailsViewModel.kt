@@ -111,7 +111,12 @@ class MediaDetailsViewModel : ViewModel() {
                 val externalLinkUrls = media.externalLinks.mapNotNull { it.getOrNull(1) }
                 ani.dantotsu.util.Logger.log("Comick Preload: Found ${externalLinkUrls.size} external link(s) for validation: $externalLinkUrls")
 
-                val comickSlugValue = if (titlesToTry.isNotEmpty()) {
+                // Check if user has manually saved a slug for this media first
+                val savedSlug = PrefManager.getNullableCustomVal<String>("comick_slug_${media.id}", null, String::class.java)
+                val comickSlugValue = if (savedSlug != null) {
+                    ani.dantotsu.util.Logger.log("Comick Preload: Found saved slug '$savedSlug' in preferences")
+                    savedSlug
+                } else if (titlesToTry.isNotEmpty()) {
                     comickApi.searchAndMatchComic(
                         titlesToTry,
                         media.id,
