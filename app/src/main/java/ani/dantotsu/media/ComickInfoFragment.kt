@@ -676,6 +676,10 @@ class ComickInfoFragment : Fragment() {
             pageView.findViewById<android.widget.TextView>(ani.dantotsu.R.id.title)
                     ?.setText(ani.dantotsu.R.string.search_on_comick)
 
+            // Set small subtitle message
+            pageView.findViewById<android.widget.TextView>(R.id.subtitle)?.text =
+                getString(ani.dantotsu.R.string.search_sub_comick)
+
             // Single button: Quick Search
             pageView.findViewById<com.google.android.material.button.MaterialButton>(
                             ani.dantotsu.R.id.quickSearchButton
