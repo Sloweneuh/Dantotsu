@@ -8,6 +8,8 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import ani.dantotsu.R
 import ani.dantotsu.connections.anilist.Anilist
+import ani.dantotsu.connections.mangaupdates.MUSeriesRecord
+import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.currContext
 import ani.dantotsu.media.anime.Episode
 import ani.dantotsu.media.anime.SelectorDialogFragment
@@ -34,8 +36,6 @@ import com.bumptech.glide.load.resource.bitmap.BitmapTransformation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
-import ani.dantotsu.connections.mangaupdates.MangaUpdates
-import ani.dantotsu.connections.mangaupdates.MUSeriesRecord
 
 class MediaDetailsViewModel : ViewModel() {
     val scrolledToTop = MutableLiveData(true)
@@ -54,8 +54,8 @@ class MediaDetailsViewModel : ViewModel() {
     private var lastPreloadedMediaId: Int? = null
 
     /**
-     * Preload Comick and MangaUpdates data in the background for manga entries.
-     * This allows tab states to update immediately without waiting for fragment loading.
+     * Preload Comick and MangaUpdates data in the background for manga entries. This allows tab
+     * states to update immediately without waiting for fragment loading.
      */
     fun preloadExternalData(media: Media) {
         // Only preload for manga and only once per media
@@ -72,27 +72,35 @@ class MediaDetailsViewModel : ViewModel() {
                 fun filterEnglishTitles(synonyms: List<String>): List<String> {
                     return synonyms.filter { title ->
                         if (title.isBlank()) return@filter false
-                        val hasCJK = title.any { char ->
-                            char.code in 0x3040..0x309F || // Hiragana
-                            char.code in 0x30A0..0x30FF || // Katakana
-                            char.code in 0x4E00..0x9FFF || // CJK Unified Ideographs
-                            char.code in 0xAC00..0xD7AF || // Hangul Syllables
-                            char.code in 0x1100..0x11FF    // Hangul Jamo
-                        }
+                        val hasCJK =
+                                title.any { char ->
+                                    char.code in 0x3040..0x309F || // Hiragana
+                                    char.code in 0x30A0..0x30FF || // Katakana
+                                            char.code in 0x4E00..0x9FFF || // CJK Unified Ideographs
+                                            char.code in 0xAC00..0xD7AF || // Hangul Syllables
+                                            char.code in 0x1100..0x11FF // Hangul Jamo
+                                }
                         !hasCJK
                     }
                 }
 
                 // Try MalSync first
-                val quicklinks = try {
-                    malSyncApi.getQuicklinks(media.id, media.idMAL)
-                } catch (e: Exception) {
-                    null
-                }
+                val quicklinks =
+                        try {
+                            malSyncApi.getQuicklinks(media.id, media.idMAL)
+                        } catch (e: Exception) {
+                            null
+                        }
 
-                val malSyncSlugs = quicklinks?.Sites?.entries?.firstOrNull {
-                    it.key.equals("Comick", true) || it.key.contains("comick", true)
-                }?.value?.values?.mapNotNull { it.identifier } ?: emptyList()
+                val malSyncSlugs =
+                        quicklinks?.Sites?.entries
+                                ?.firstOrNull {
+                                    it.key.equals("Comick", true) || it.key.contains("comick", true)
+                                }
+                                ?.value
+                                ?.values
+                                ?.mapNotNull { it.identifier }
+                                ?: emptyList()
 
                 // Search for Comick entry
                 val titlesToTry = mutableListOf<String>()
@@ -109,68 +117,98 @@ class MediaDetailsViewModel : ViewModel() {
 
                 // Extract external link URLs for validation
                 val externalLinkUrls = media.externalLinks.mapNotNull { it.getOrNull(1) }
-                ani.dantotsu.util.Logger.log("Comick Preload: Found ${externalLinkUrls.size} external link(s) for validation: $externalLinkUrls")
+                ani.dantotsu.util.Logger.log(
+                        "Comick Preload: Found ${externalLinkUrls.size} external link(s) for validation: $externalLinkUrls"
+                )
 
                 // Check if user has manually saved a slug for this media first
-                val savedSlug = PrefManager.getNullableCustomVal<String>("comick_slug_${media.id}", null, String::class.java)
-                val comickSlugValue = if (savedSlug != null) {
-                    ani.dantotsu.util.Logger.log("Comick Preload: Found saved slug '$savedSlug' in preferences")
-                    savedSlug
-                } else if (titlesToTry.isNotEmpty()) {
-                    comickApi.searchAndMatchComic(
-                        titlesToTry,
-                        media.id,
-                        media.idMAL,
-                        malSyncSlugs.takeIf { it.isNotEmpty() },
-                        externalLinkUrls.takeIf { it.isNotEmpty() }
-                    )
-                } else null
+                val savedSlug =
+                        PrefManager.getNullableCustomVal<String>(
+                                "comick_slug_${media.id}",
+                                null,
+                                String::class.java
+                        )
+                val comickSlugValue =
+                        if (savedSlug != null) {
+                            ani.dantotsu.util.Logger.log(
+                                    "Comick Preload: Found saved slug '$savedSlug' in preferences"
+                            )
+                            savedSlug
+                        } else if (titlesToTry.isNotEmpty()) {
+                            comickApi.searchAndMatchComic(
+                                    titlesToTry,
+                                    media.id,
+                                    media.idMAL,
+                                    malSyncSlugs.takeIf { it.isNotEmpty() },
+                                    externalLinkUrls.takeIf { it.isNotEmpty() }
+                            )
+                        } else null
 
                 // Update comickSlug
                 comickSlug.postValue(comickSlugValue)
 
-                // If we found a Comick slug, fetch details to get MangaUpdates link
+                // Check if user has manually saved a MangaUpdates link
+                val savedMULink =
+                        PrefManager.getNullableCustomVal<String>(
+                                "mangaupdates_link_${media.id}",
+                                null,
+                                String::class.java
+                        )
+
+                // If we found a Comick slug or have a saved MU link, fetch details
                 mangaUpdatesLoading.postValue(true)
                 mangaUpdatesError.postValue(null)
                 mangaUpdatesSeries.postValue(null)
 
-                if (comickSlugValue != null) {
+                // Helper to fetch series details
+                suspend fun fetchMUSeries(link: String) {
+                    try {
+                        val loggedIn = MangaUpdates.getSavedToken()
+                        if (loggedIn) {
+                            val seriesIdentifier = extractMUIdentifier(link)
+                            if (seriesIdentifier.isNotBlank()) {
+                                try {
+                                    val seriesDetails =
+                                            MangaUpdates.getSeriesFromUrl(seriesIdentifier)
+                                    ani.dantotsu.util.Logger.log(
+                                            "MediaDetailsViewModel: Preload fetched series for id=$seriesIdentifier -> title=${seriesDetails?.title}"
+                                    )
+                                    mangaUpdatesSeries.postValue(seriesDetails)
+                                } catch (e: Exception) {
+                                    mangaUpdatesSeries.postValue(null)
+                                    mangaUpdatesError.postValue(e.message)
+                                }
+                            }
+                        } else {
+                            mangaUpdatesSeries.postValue(null)
+                        }
+                    } catch (e: Exception) {
+                        mangaUpdatesSeries.postValue(null)
+                        mangaUpdatesError.postValue(e.message)
+                    }
+                }
+
+                if (savedMULink != null) {
+                    ani.dantotsu.util.Logger.log(
+                            "MediaDetailsViewModel: Found saved MangaUpdates link '$savedMULink'"
+                    )
+                    mangaUpdatesLink.postValue(savedMULink)
+                    fetchMUSeries(savedMULink)
+                } else if (comickSlugValue != null) {
                     try {
                         val comickData = comickApi.getComicDetails(comickSlugValue)
                         val muLink = comickData?.comic?.links?.mu
                         if (!muLink.isNullOrBlank()) {
-                            // If the muLink is purely numeric, use the series.html?id= fallback; otherwise assume it's a slug.
-                            val link = if (muLink.trim().toLongOrNull() != null) {
-                                "https://www.mangaupdates.com/series.html?id=${muLink.trim()}"
-                            } else {
-                                "https://www.mangaupdates.com/series/${muLink.trim()}"
-                            }
-                            mangaUpdatesLink.postValue(link)
-
-                            // Only attempt to fetch the series details if user is logged in to MangaUpdates
-                            try {
-                                val loggedIn = MangaUpdates.getSavedToken()
-                                if (loggedIn) {
-                                    val seriesIdentifier = extractMUIdentifier(link)
-                                    if (seriesIdentifier.isNotBlank()) {
-                                        try {
-                                            val seriesDetails = MangaUpdates.getSeriesFromUrl(seriesIdentifier)
-                                            Logger.log("MediaDetailsViewModel: Preload fetched series for id=$seriesIdentifier -> title=${seriesDetails?.title}")
-                                            mangaUpdatesSeries.postValue(seriesDetails)
-                                        } catch (e: Exception) {
-                                            mangaUpdatesSeries.postValue(null)
-                                            mangaUpdatesError.postValue(e.message)
-                                        }
+                            // If the muLink is purely numeric, use the series.html?id= fallback;
+                            // otherwise assume it's a slug.
+                            val link =
+                                    if (muLink.trim().toLongOrNull() != null) {
+                                        "https://www.mangaupdates.com/series.html?id=${muLink.trim()}"
+                                    } else {
+                                        "https://www.mangaupdates.com/series/${muLink.trim()}"
                                     }
-                                } else {
-                                    // Not logged in - do not attempt full fetch; fragment will show login UI
-                                    mangaUpdatesSeries.postValue(null)
-                                }
-                            } catch (e: Exception) {
-                                // If checking token or fetching failed, record error but continue
-                                mangaUpdatesSeries.postValue(null)
-                                mangaUpdatesError.postValue(e.message)
-                            }
+                            mangaUpdatesLink.postValue(link)
+                            fetchMUSeries(link)
                         } else {
                             mangaUpdatesLink.postValue(null)
                             mangaUpdatesSeries.postValue(null)
@@ -185,7 +223,6 @@ class MediaDetailsViewModel : ViewModel() {
                 }
                 mangaUpdatesLoading.postValue(false)
                 mangaUpdatesLoaded.postValue(true)
-
             } catch (e: Exception) {
                 comickSlug.postValue(null)
                 mangaUpdatesLink.postValue(null)
@@ -197,17 +234,23 @@ class MediaDetailsViewModel : ViewModel() {
         }
     }
 
-    // Public fallback fetch method: ask ViewModel to fetch MU series by identifier (used by fragment if needed)
+    // Public fallback fetch method: ask ViewModel to fetch MU series by identifier (used by
+    // fragment if needed)
     fun fetchMangaUpdatesSeriesByIdentifier(seriesIdentifier: String) {
         if (seriesIdentifier.isBlank()) return
-        // Allow explicit fetch requests from the fragment even if a preload previously set loading=true.
-        Logger.log("MediaDetailsViewModel: fetchMangaUpdatesSeriesByIdentifier starting for id=$seriesIdentifier")
+        // Allow explicit fetch requests from the fragment even if a preload previously set
+        // loading=true.
+        Logger.log(
+                "MediaDetailsViewModel: fetchMangaUpdatesSeriesByIdentifier starting for id=$seriesIdentifier"
+        )
         mangaUpdatesLoading.postValue(true)
         mangaUpdatesError.postValue(null)
         MainScope().launch(Dispatchers.IO) {
             try {
                 val series = MangaUpdates.getSeriesFromUrl(seriesIdentifier)
-                Logger.log("MediaDetailsViewModel: Fallback fetch result for id=$seriesIdentifier -> title=${series?.title}")
+                Logger.log(
+                        "MediaDetailsViewModel: Fallback fetch result for id=$seriesIdentifier -> title=${series?.title}"
+                )
                 mangaUpdatesSeries.postValue(series)
                 mangaUpdatesLoaded.postValue(true)
             } catch (e: Exception) {
@@ -220,7 +263,8 @@ class MediaDetailsViewModel : ViewModel() {
         }
     }
 
-    // Helper: extract either numeric series ID (from ?id=), the slug from a MangaUpdates link, or return id directly
+    // Helper: extract either numeric series ID (from ?id=), the slug from a MangaUpdates link, or
+    // return id directly
     private fun extractMUIdentifier(muLinkRaw: String?): String {
         if (muLinkRaw.isNullOrBlank()) return ""
         val muLink = muLinkRaw.trim()
@@ -238,7 +282,8 @@ class MediaDetailsViewModel : ViewModel() {
             val path = uri.path ?: ""
             var lastSeg = path.trimEnd('/').substringAfterLast('/')
 
-            // If the link contains series.html?id=... without proper parsing above, try to extract after '='
+            // If the link contains series.html?id=... without proper parsing above, try to extract
+            // after '='
             if (lastSeg.isBlank() && muLink.contains("=")) {
                 val afterEq = muLink.substringAfter('=', "")
                 if (afterEq.isNotBlank()) return afterEq
@@ -266,30 +311,28 @@ class MediaDetailsViewModel : ViewModel() {
         PrefManager.setCustomVal("Selected-$id", data)
     }
 
-
     fun loadSelected(media: Media, isDownload: Boolean = false): Selected {
         val data =
-            PrefManager.getNullableCustomVal("Selected-${media.id}", null, Selected::class.java)
-                ?: Selected().let {
-                    it.sourceIndex = 0
-                    it.preferDub = PrefManager.getVal(PrefName.SettingsPreferDub)
-                    saveSelected(media.id, it)
-                    it
-                }
+                PrefManager.getNullableCustomVal("Selected-${media.id}", null, Selected::class.java)
+                        ?: Selected().let {
+                            it.sourceIndex = 0
+                            it.preferDub = PrefManager.getVal(PrefName.SettingsPreferDub)
+                            saveSelected(media.id, it)
+                            it
+                        }
         if (isDownload) {
-            data.sourceIndex = when {
-                media.anime != null -> {
-                    AnimeSources.list.size - 1
-                }
-
-                media.format == "MANGA" || media.format == "ONE_SHOT" -> {
-                    MangaSources.list.size - 1
-                }
-
-                else -> {
-                    NovelSources.list.size - 1
-                }
-            }
+            data.sourceIndex =
+                    when {
+                        media.anime != null -> {
+                            AnimeSources.list.size - 1
+                        }
+                        media.format == "MANGA" || media.format == "ONE_SHOT" -> {
+                            MangaSources.list.size - 1
+                        }
+                        else -> {
+                            NovelSources.list.size - 1
+                        }
+                    }
         }
         return data
     }
@@ -313,20 +356,20 @@ class MediaDetailsViewModel : ViewModel() {
 
     val responses = MutableLiveData<List<ShowResponse>?>(null)
 
-
-    //Anime
+    // Anime
     private val kitsuEpisodes: MutableLiveData<Map<String, Episode>> =
-        MutableLiveData<Map<String, Episode>>(null)
+            MutableLiveData<Map<String, Episode>>(null)
 
     fun getKitsuEpisodes(): LiveData<Map<String, Episode>> = kitsuEpisodes
     suspend fun loadKitsuEpisodes(s: Media) {
         tryWithSuspend {
-            if (kitsuEpisodes.value == null) kitsuEpisodes.postValue(Kitsu.getKitsuEpisodesDetails(s))
+            if (kitsuEpisodes.value == null)
+                    kitsuEpisodes.postValue(Kitsu.getKitsuEpisodesDetails(s))
         }
     }
 
     private val anifyEpisodes: MutableLiveData<Map<String, Episode>> =
-        MutableLiveData<Map<String, Episode>>(null)
+            MutableLiveData<Map<String, Episode>>(null)
 
     fun getAnifyEpisodes(): LiveData<Map<String, Episode>> = anifyEpisodes
     suspend fun loadAnifyEpisodes(s: Int) {
@@ -336,16 +379,13 @@ class MediaDetailsViewModel : ViewModel() {
     }
 
     private val fillerEpisodes: MutableLiveData<Map<String, Episode>> =
-        MutableLiveData<Map<String, Episode>>(null)
+            MutableLiveData<Map<String, Episode>>(null)
 
     fun getFillerEpisodes(): LiveData<Map<String, Episode>> = fillerEpisodes
     suspend fun loadFillerEpisodes(s: Media) {
         tryWithSuspend {
-            if (fillerEpisodes.value == null) fillerEpisodes.postValue(
-                Jikan.getEpisodes(
-                    s.idMAL ?: return@tryWithSuspend
-                )
-            )
+            if (fillerEpisodes.value == null)
+                    fillerEpisodes.postValue(Jikan.getEpisodes(s.idMAL ?: return@tryWithSuspend))
         }
     }
 
@@ -369,7 +409,7 @@ class MediaDetailsViewModel : ViewModel() {
     suspend fun overrideEpisodes(i: Int, source: ShowResponse, id: Int) {
         watchSources?.saveResponse(i, id, source)
         epsLoaded[i] =
-            watchSources?.loadEpisodes(i, source.link, source.extra, source.sAnime) ?: return
+                watchSources?.loadEpisodes(i, source.link, source.extra, source.sAnime) ?: return
         episodes.postValue(epsLoaded)
     }
 
@@ -392,64 +432,66 @@ class MediaDetailsViewModel : ViewModel() {
                     }
                 }
                 ep.extractorCallback = null
-                if (list.isNotEmpty())
-                    ep.allStreams = true
+                if (list.isNotEmpty()) ep.allStreams = true
             }
         }
 
-
         if (post) {
             episode.postValue(ep)
-            MainScope().launch(Dispatchers.Main) {
-                episode.value = null
-            }
+            MainScope().launch(Dispatchers.Main) { episode.value = null }
         }
     }
 
     val timeStamps = MutableLiveData<List<AniSkip.Stamp>?>()
     private val timeStampsMap: MutableMap<Int, List<AniSkip.Stamp>?> = mutableMapOf()
     suspend fun loadTimeStamps(
-        malId: Int?,
-        episodeNum: Int?,
-        duration: Long,
-        useProxyForTimeStamps: Boolean
+            malId: Int?,
+            episodeNum: Int?,
+            duration: Long,
+            useProxyForTimeStamps: Boolean
     ) {
         malId ?: return
         episodeNum ?: return
         if (timeStampsMap.containsKey(episodeNum))
-            return timeStamps.postValue(timeStampsMap[episodeNum])
+                return timeStamps.postValue(timeStampsMap[episodeNum])
         val result = AniSkip.getResult(malId, episodeNum, duration, useProxyForTimeStamps)
         timeStampsMap[episodeNum] = result
         timeStamps.postValue(result)
     }
 
     suspend fun loadEpisodeSingleVideo(
-        ep: Episode,
-        selected: Selected,
-        post: Boolean = true
+            ep: Episode,
+            selected: Selected,
+            post: Boolean = true
     ): Boolean {
         if (ep.extractors.isNullOrEmpty()) {
 
             val server = selected.server ?: return false
             val link = ep.link ?: return false
 
-            ep.extractors = mutableListOf(watchSources?.get(selected.sourceIndex)?.let {
-                selected.sourceIndex = selected.sourceIndex
-                if (!post && !it.allowsPreloading) null
-                else ep.sEpisode?.let { it1 ->
-                    it.loadSingleVideoServer(
-                        server, link, ep.extra,
-                        it1, post
+            ep.extractors =
+                    mutableListOf(
+                            watchSources?.get(selected.sourceIndex)?.let {
+                                selected.sourceIndex = selected.sourceIndex
+                                if (!post && !it.allowsPreloading) null
+                                else
+                                        ep.sEpisode?.let { it1 ->
+                                            it.loadSingleVideoServer(
+                                                    server,
+                                                    link,
+                                                    ep.extra,
+                                                    it1,
+                                                    post
+                                            )
+                                        }
+                            }
+                                    ?: return false
                     )
-                }
-            } ?: return false)
             ep.allStreams = false
         }
         if (post) {
             episode.postValue(ep)
-            MainScope().launch(Dispatchers.Main) {
-                episode.value = null
-            }
+            MainScope().launch(Dispatchers.Main) { episode.value = null }
         }
         return true
     }
@@ -457,19 +499,17 @@ class MediaDetailsViewModel : ViewModel() {
     fun setEpisode(ep: Episode?, who: String) {
         Logger.log("set episode ${ep?.number} - $who")
         episode.postValue(ep)
-        MainScope().launch(Dispatchers.Main) {
-            episode.value = null
-        }
+        MainScope().launch(Dispatchers.Main) { episode.value = null }
     }
 
     val epChanged = MutableLiveData(true)
     fun onEpisodeClick(
-        media: Media,
-        i: String,
-        manager: FragmentManager,
-        launch: Boolean = true,
-        prevEp: String? = null,
-        isDownload: Boolean = false
+            media: Media,
+            i: String,
+            manager: FragmentManager,
+            launch: Boolean = true,
+            prevEp: String? = null,
+            isDownload: Boolean = false
     ) {
         Handler(Looper.getMainLooper()).post {
             if (manager.findFragmentByTag("dialog") == null && !manager.isDestroyed) {
@@ -481,32 +521,34 @@ class MediaDetailsViewModel : ViewModel() {
                 }
                 media.selected = this.loadSelected(media)
                 val selector =
-                    SelectorDialogFragment.newInstance(
-                        media.selected!!.server,
-                        launch,
-                        prevEp,
-                        isDownload
-                    )
+                        SelectorDialogFragment.newInstance(
+                                media.selected!!.server,
+                                launch,
+                                prevEp,
+                                isDownload
+                        )
                 selector.show(manager, "dialog")
             }
         }
     }
 
-    //Manga
+    // Manga
     var mangaReadSources: MangaReadSources? = null
 
     private val mangaChapters =
-        MutableLiveData<MutableMap<Int, MutableMap<String, MangaChapter>>>(null)
+            MutableLiveData<MutableMap<Int, MutableMap<String, MangaChapter>>>(null)
     private val mangaLoaded = mutableMapOf<Int, MutableMap<String, MangaChapter>>()
     fun getMangaChapters(): LiveData<MutableMap<Int, MutableMap<String, MangaChapter>>> =
-        mangaChapters
+            mangaChapters
 
     suspend fun loadMangaChapters(media: Media, i: Int, invalidate: Boolean = false) {
         Logger.log("Loading Manga Chapters : $mangaLoaded")
-        if (!mangaLoaded.containsKey(i) || invalidate) tryWithSuspend {
-            mangaLoaded[i] =
-                mangaReadSources?.loadChaptersFromMedia(i, media) ?: return@tryWithSuspend
-        }
+        if (!mangaLoaded.containsKey(i) || invalidate)
+                tryWithSuspend {
+                    mangaLoaded[i] =
+                            mangaReadSources?.loadChaptersFromMedia(i, media)
+                                    ?: return@tryWithSuspend
+                }
         mangaChapters.postValue(mangaLoaded)
     }
 
@@ -521,24 +563,27 @@ class MediaDetailsViewModel : ViewModel() {
     private val mangaChapter = MutableLiveData<MangaChapter?>(null)
     fun getMangaChapter(): LiveData<MangaChapter?> = mangaChapter
     suspend fun loadMangaChapterImages(
-        chapter: MangaChapter,
-        selected: Selected,
-        post: Boolean = true
+            chapter: MangaChapter,
+            selected: Selected,
+            post: Boolean = true
     ): Boolean {
 
         return tryWithSuspend(true) {
             chapter.addImages(
-                mangaReadSources?.get(selected.sourceIndex)
-                    ?.loadImages(chapter.link, chapter.sChapter) ?: return@tryWithSuspend false
+                    mangaReadSources
+                            ?.get(selected.sourceIndex)
+                            ?.loadImages(chapter.link, chapter.sChapter)
+                            ?: return@tryWithSuspend false
             )
             if (post) mangaChapter.postValue(chapter)
             true
-        } ?: false
+        }
+                ?: false
     }
 
     fun loadTransformation(mangaImage: MangaImage, source: Int): BitmapTransformation? {
-        return if (mangaImage.useTransformation) mangaReadSources?.get(source)
-            ?.getTransformation() else null
+        return if (mangaImage.useTransformation) mangaReadSources?.get(source)?.getTransformation()
+        else null
     }
 
     val novelSources = NovelSources
@@ -566,9 +611,39 @@ class MediaDetailsViewModel : ViewModel() {
     suspend fun loadBook(novel: ShowResponse, i: Int) {
         tryWithSuspend {
             book.postValue(
-                novelSources[i]?.loadBook(novel.link, novel.extra) ?: return@tryWithSuspend
+                    novelSources[i]?.loadBook(novel.link, novel.extra) ?: return@tryWithSuspend
             )
         }
     }
 
+    fun saveMangaUpdatesLink(
+            mediaId: Int,
+            link: String,
+            preloadedSeries: ani.dantotsu.connections.mangaupdates.MUSeriesRecord? = null
+    ) {
+        val key = "mangaupdates_link_${mediaId}"
+        val serialized = link // String is handled natively
+        ani.dantotsu.settings.saving.PrefManager.setCustomVal(key, serialized)
+        ani.dantotsu.util.Logger.log("MediaDetailsViewModel: Saved MU link for $mediaId: $link")
+
+        mangaUpdatesLink.postValue(link)
+
+        if (preloadedSeries != null) {
+            mangaUpdatesLoaded.postValue(true)
+            mangaUpdatesSeries.postValue(preloadedSeries)
+        } else {
+            val identifier = extractMUIdentifier(link)
+            if (identifier.isNotBlank()) {}
+        }
+    }
+
+    fun removeMangaUpdatesLink(mediaId: Int) {
+        val key = "mangaupdates_link_${mediaId}"
+        ani.dantotsu.settings.saving.PrefManager.removeCustomVal(key)
+        ani.dantotsu.util.Logger.log("MediaDetailsViewModel: Removed MU link for $mediaId")
+
+        mangaUpdatesLink.postValue(null)
+        mangaUpdatesSeries.postValue(null)
+        mangaUpdatesLoaded.postValue(true)
+    }
 }

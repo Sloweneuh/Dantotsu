@@ -5,7 +5,6 @@ import android.net.Uri
 import android.text.TextUtils
 import android.view.LayoutInflater
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.connections.mangaupdates.MUSearchResult
 import ani.dantotsu.databinding.ItemMediaCompactBinding
@@ -13,19 +12,16 @@ import ani.dantotsu.loadImage
 import ani.dantotsu.setSafeOnClickListener
 
 class MangaUpdatesSearchAdapter(
-    private val results: List<MUSearchResult>,
-    private val onItemClick: (MUSearchResult) -> Unit
+        private val results: List<MUSearchResult>,
+        private val onItemClick: (MUSearchResult) -> Unit
 ) : RecyclerView.Adapter<MangaUpdatesSearchAdapter.ViewHolder>() {
 
     inner class ViewHolder(val binding: ItemMediaCompactBinding) :
-        RecyclerView.ViewHolder(binding.root)
+            RecyclerView.ViewHolder(binding.root)
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-        val binding = ItemMediaCompactBinding.inflate(
-            LayoutInflater.from(parent.context),
-            parent,
-            false
-        )
+        val binding =
+                ItemMediaCompactBinding.inflate(LayoutInflater.from(parent.context), parent, false)
         return ViewHolder(binding)
     }
 
@@ -43,15 +39,29 @@ class MangaUpdatesSearchAdapter(
             itemCompactTitle.isSingleLine = true
             itemCompactTitle.isSelected = true // Enable marquee
 
-            // Long click on title to show full title
+            // Title tap: select result
+            itemCompactTitle.setSafeOnClickListener { onItemClick(series) }
+
+            // Title long tap: toggle between marquee scrolling and full title display
             itemCompactTitle.setOnLongClickListener {
-                title?.let { titleText ->
-                    Toast.makeText(root.context, titleText, Toast.LENGTH_LONG).show()
+                if (itemCompactTitle.isSingleLine) {
+                    // Switch to full title display
+                    itemCompactTitle.isSingleLine = false
+                    itemCompactTitle.ellipsize = null
+                    itemCompactTitle.maxLines = Int.MAX_VALUE
+                } else {
+                    // Switch back to marquee scrolling
+                    itemCompactTitle.isSingleLine = true
+                    itemCompactTitle.ellipsize = TextUtils.TruncateAt.MARQUEE
+                    itemCompactTitle.isSelected = true
                 }
                 true
             }
 
-            // Long click on cover to open in browser
+            // Cover tap: select result
+            itemCompactImage.setSafeOnClickListener { onItemClick(series) }
+
+            // Cover long tap: open in browser
             itemCompactImage.setOnLongClickListener {
                 series.record?.url?.let { url ->
                     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
@@ -64,16 +74,8 @@ class MangaUpdatesSearchAdapter(
             itemCompactScoreBG.visibility = android.view.View.GONE
             itemCompactOngoing.visibility = android.view.View.GONE
             itemCompactType.visibility = android.view.View.GONE
-
-            // Set click listener
-            root.setSafeOnClickListener {
-                onItemClick(series)
-            }
         }
     }
 
     override fun getItemCount(): Int = results.size
 }
-
-
-

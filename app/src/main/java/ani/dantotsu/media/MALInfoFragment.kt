@@ -294,6 +294,12 @@ class MALInfoFragment : Fragment() {
             // Set title text
             pageView.findViewById<android.widget.TextView>(R.id.title)?.text = getString(R.string.search_on_myanimelist)
 
+            // Set small subtitle message (lookup id dynamically to avoid lint/resource variant issues)
+            val subtitleId = resources.getIdentifier("subtitle", "id", requireContext().packageName)
+            if (subtitleId != 0) {
+                pageView.findViewById<android.widget.TextView>(subtitleId)?.text = getString(R.string.search_sub_myanimelist)
+            }
+
             // Single button: either "Go to Site" OR "Quick Search"
             pageView.findViewById<com.google.android.material.button.MaterialButton>(R.id.quickSearchButton)?.apply {
                 val mediaType = if (media.anime != null) "anime" else "manga"

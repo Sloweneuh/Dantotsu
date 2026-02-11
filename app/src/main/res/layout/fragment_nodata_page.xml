@@ -20,11 +20,23 @@
         android:id="@+id/title"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="24dp"
+        android:layout_marginBottom="8dp"
         android:fontFamily="@font/poppins_bold"
         android:textAlignment="center"
         android:text="@string/mu_search_title"
         android:textSize="18sp" />
+
+    <!-- Small subtitle message shown under the title (set by each fragment) -->
+    <TextView
+        android:id="@+id/subtitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        android:text=""
+        android:textAlignment="center"
+        android:textSize="14sp"
+        android:fontFamily="@font/poppins"
+        android:textColor="?attr/colorOnSurfaceVariant" />
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/quickSearchButton"
@@ -42,4 +54,3 @@
         app:strokeWidth="2dp" />
 
 </LinearLayout>
-

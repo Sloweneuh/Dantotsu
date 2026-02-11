@@ -289,7 +289,7 @@
     <string name="ask_update_progress_doujin">Update Progress for Doujins</string>
     <string name="very_bold">very bold of you sar</string>
     <string name="watch_complete_percentage">Watch Update Percentage</string>
-    <string name="watch_complete_percentage_info">The percentage at which your Anilist progress should be updated after watching an episode. \nThis also sets the \% for when to preload links for the next episode.</string>
+    <string name="watch_complete_percentage_info">The percentage at which your Anilist progress should be updated after watching an episode. \nThis also sets the %% for when to preload links for the next episode.</string>
 
     <string name="behaviour">Behaviour</string>
     <string name="always_continue">Always Continue from where you left off</string>
@@ -514,7 +514,7 @@
     <string name="auto_skip">Auto Skipping OP &amp; ED</string>
     <string name="show_skip_time_stamp_button">Show Skip Time Stamp Button</string>
     <string name="always_load_time_stamps">Always Load Time Stamps</string>
-    <string name="auto_hide_time_stamps">Auto Hide Time Stamps</string>string
+    <string name="auto_hide_time_stamps">Auto Hide Time Stamps</string>
     <string name="timestamps">Segments</string>
     <string name="auto_skip_op_ed">Auto Skip OP / ED</string>
     <string name="requires_time_stamps_to_be_enabled">Requires Time Stamps to be Enabled</string>
@@ -1172,6 +1172,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="unknown_title">Unknown Title</string>
     <string name="mu_desc_format">%1$s%2$s</string>
     <string name="search_on_comick">Search on Comick</string>
+    <string name="search_sub_comick">No corresponding media could be found on Comick. \n You can try to search and add it manually.</string>
     <string name="no_updates_available">No updates available</string>
     <string name="update_all">Update All</string>
     <string name="updates">Updates</string>
@@ -1266,9 +1267,11 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
 
     <!-- MAL Strings -->
     <string name="search_on_myanimelist">Search on MyAnimeList</string>
+    <string name="search_sub_myanimelist">No corresponding media exists on MyAnimeList. \n You can try to search on the website.</string>
 
     <!-- MangaUpdates Info Fragment Strings -->
     <string name="question_marks">\?\?</string>
+    <string name="search_sub_mangaupdates">No corresponding media could be found on MangaUpdates. \n You can try to search and add it manually.</string>
 
     <!-- Sort and Layout Strings -->
     <string name="down_to_up">Down to Up</string>
@@ -1330,7 +1333,37 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="restart">Restart</string>
     <string name="later">Later</string>
 
+
+    <!-- MangaUpdates / Comick -->
+    <string name="mangaupdates_requires_internet">MangaUpdates requires an internet connection</string>
+    <string name="comick_requires_internet">Comick data requires an internet connection</string>
+    <string name="linked_mangaupdates_entry">Successfully linked to MangaUpdates entry</string>
+    <string name="linked_comick_entry">Successfully linked to Comick entry</string>
+    <string name="mangaupdates_entry_unlinked">MangaUpdates entry unlinked</string>
+    <string name="comick_entry_unlinked">Comick entry unlinked</string>
+    <string name="unlink_mangaupdates">Unlink MangaUpdates</string>
+    <string name="unlink_comick">Unlink Comick</string>
+    <string name="failed_fetch_comick">Failed to fetch Comick data</string>
+    <string name="unknown_value">\??</string>
+
+    <string name="comick_status_ongoing">Ongoing</string>
+    <string name="comick_status_completed">Completed</string>
+    <string name="comick_status_cancelled">Cancelled</string>
+    <string name="comick_status_hiatus">Hiatus</string>
+
+    <string name="volume_chapter_format">Volume %1$s, Chapter %2$s</string>
+    <string name="volume_format">Volume %1$s</string>
+    <string name="chapter_format">Chapter %1$s</string>
+    <string name="anime_start_format">\nStart: %1$s</string>
+    <string name="anime_end_format">\nEnd: %1$s</string>
+
 </resources>
+
+
+
+
+
+
 
 
 

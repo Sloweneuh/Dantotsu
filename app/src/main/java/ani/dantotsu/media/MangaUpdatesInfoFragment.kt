@@ -63,7 +63,7 @@ class MangaUpdatesInfoFragment : Fragment() {
 
         if (offline) {
             loaded = true
-            showError("MangaUpdates requires an internet connection")
+            showError(getString(R.string.mangaupdates_requires_internet))
             return
         }
 
@@ -111,7 +111,7 @@ class MangaUpdatesInfoFragment : Fragment() {
                 // Display the series (displaySeriesDetails will clear fallbacks and mark loaded)
                 binding.mediaInfoProgressBar.visibility = View.GONE
                 binding.mediaInfoContainer.visibility = View.VISIBLE
-                displaySeriesDetails(series)
+                currentMedia?.let { displaySeriesDetails(series, it, model) }
                 loaded = true
             }
         }
@@ -185,7 +185,7 @@ class MangaUpdatesInfoFragment : Fragment() {
                             Logger.log(
                                     "MangaUpdates Fragment: Using preloaded series from ViewModel: ${preloaded.title}"
                             )
-                            displaySeriesDetails(preloaded)
+                            displaySeriesDetails(preloaded, media, model)
                             loaded = true
                         } else {
                             // Need to fetch now -> show progress and wait for observer to populate
@@ -254,80 +254,6 @@ class MangaUpdatesInfoFragment : Fragment() {
         } catch (e: Exception) {
             // Fallback: return last path-like token
             return muLink.substringAfterLast('/')
-        }
-    }
-
-    private fun fetchAndDisplayDetails(seriesIdentifier: String, muLink: String, media: Media) {
-        Logger.log(
-                "MangaUpdates Fragment: Starting to fetch details for identifier: $seriesIdentifier"
-        )
-        Logger.log("MangaUpdates Fragment: Full MU link: $muLink")
-        Logger.log("MangaUpdates Fragment: Token available: ${MangaUpdates.token != null}")
-
-        // Show loading state
-        binding.mediaInfoProgressBar.visibility = View.VISIBLE
-        binding.mediaInfoContainer.visibility = View.GONE
-
-        lifecycleScope.launch(Dispatchers.IO) {
-            try {
-                Logger.log("MangaUpdates Fragment: Calling getSeriesFromUrl...")
-                val seriesDetails = MangaUpdates.getSeriesFromUrl(seriesIdentifier)
-                Logger.log(
-                        "MangaUpdates Fragment: API call completed, result: ${if (seriesDetails != null) "SUCCESS" else "NULL"}"
-                )
-
-                withContext(Dispatchers.Main) {
-                    binding.mediaInfoProgressBar.visibility = View.GONE
-                    binding.mediaInfoContainer.visibility = View.VISIBLE
-
-                    if (seriesDetails != null) {
-                        Logger.log(
-                                "MangaUpdates Fragment: Successfully fetched details for '${seriesDetails.title}'"
-                        )
-                        Logger.log(
-                                "MangaUpdates Fragment: Series has description: ${seriesDetails.description != null}"
-                        )
-                        Logger.log(
-                                "MangaUpdates Fragment: Series has genres: ${seriesDetails.genres?.size ?: 0}"
-                        )
-                        displaySeriesDetails(seriesDetails)
-                    } else {
-                        Logger.log("MangaUpdates Fragment: API returned null")
-                        android.widget.Toast.makeText(
-                                        requireContext(),
-                                        "Could not fetch MangaUpdates data",
-                                        android.widget.Toast.LENGTH_SHORT
-                                )
-                                .show()
-                        // If we're logged in, show quick search UI instead of the login fallback
-                        if (isLoggedIn) {
-                            showNoDataWithSearch(media)
-                        } else {
-                            showMangaUpdatesButton(muLink)
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                Logger.log(
-                        "MangaUpdates Fragment: EXCEPTION - ${e::class.simpleName}: ${e.message}"
-                )
-                e.printStackTrace()
-                withContext(Dispatchers.Main) {
-                    binding.mediaInfoProgressBar.visibility = View.GONE
-                    binding.mediaInfoContainer.visibility = View.VISIBLE
-                    android.widget.Toast.makeText(
-                                    requireContext(),
-                                    "Error: ${e.message}",
-                                    android.widget.Toast.LENGTH_SHORT
-                            )
-                            .show()
-                    if (isLoggedIn) {
-                        showNoDataWithSearch(media)
-                    } else {
-                        showMangaUpdatesButton(muLink)
-                    }
-                }
-            }
         }
     }
 
@@ -452,7 +378,8 @@ class MangaUpdatesInfoFragment : Fragment() {
     }
 
     private fun showQuickSearchModal(media: Media) {
-        val context = requireContext()
+        // Guard: if fragment is detached, bail out to avoid IllegalStateException
+        val fragmentContext = context ?: return
         val titles = ArrayList<String>()
         titles.add(media.userPreferredName)
         if (media.nameRomaji != media.userPreferredName) {
@@ -477,25 +404,26 @@ class MangaUpdatesInfoFragment : Fragment() {
 
         val modal =
                 ani.dantotsu.others.CustomBottomDialog.newInstance().apply {
-                    setTitleText("Search on MangaUpdates")
+                    // Use fragmentContext for resource lookups to avoid accidental requireContext()
+                    setTitleText(fragmentContext.getString(R.string.mu_search_title))
 
                     // Add each title as a clickable TextView
                     titles.forEach { title ->
                         val textView =
-                                android.widget.TextView(context).apply {
+                                android.widget.TextView(fragmentContext).apply {
                                     text = title
                                     textSize = 16f
                                     val padding = 16f.px
                                     setPadding(padding, padding, padding, padding)
                                     setTextColor(
                                             androidx.core.content.ContextCompat.getColor(
-                                                    context,
+                                                    fragmentContext,
                                                     ani.dantotsu.R.color.bg_opp
                                             )
                                     )
                                     // Use a simple rounded background with ripple effect
                                     val outValue = android.util.TypedValue()
-                                    context.theme.resolveAttribute(
+                                    fragmentContext.theme.resolveAttribute(
                                             android.R.attr.selectableItemBackground,
                                             outValue,
                                             true
@@ -504,19 +432,229 @@ class MangaUpdatesInfoFragment : Fragment() {
                                     isClickable = true
                                     isFocusable = true
                                     setOnClickListener {
-                                        val encoded =
-                                                java.net.URLEncoder.encode(title, "utf-8")
-                                                        .replace("+", "%20")
-                                        val url =
-                                                "https://www.mangaupdates.com/series?search=$encoded"
-                                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                                        // Perform search and show results in-tab (guarded inside the method)
+                                        showMangaUpdatesSearchResults(media, title)
                                         dismiss()
                                     }
                                 }
                         addView(textView)
                     }
                 }
-        modal.show(parentFragmentManager, "mangaupdates_quick_search")
+
+        // Only show the dialog if the fragment is still added and the FragmentManager state
+        // hasn't been saved (avoids IllegalStateException when committing after onSaveInstanceState)
+        if (isAdded && !parentFragmentManager.isStateSaved) {
+            modal.show(parentFragmentManager, "mangaupdates_quick_search")
+        }
+    }
+
+    private fun showMangaUpdatesSearchResults(media: Media, initialQuery: String) {
+        // Capture context early to avoid issues if fragment gets detached
+        val fragmentContext = context ?: return
+
+        // Hide the current content
+        binding.mediaInfoProgressBar.visibility = View.GONE
+        binding.mediaInfoContainer.visibility = View.GONE
+
+        val frameLayout = binding.mediaInfoContainer.parent as? ViewGroup
+
+        frameLayout?.let { container ->
+            // IMPORTANT: Remove all previous views to prevent overlap
+            container.removeAllViews()
+
+            // Inflate search layout
+            val searchView = layoutInflater.inflate(R.layout.fragment_search_page, container, false)
+
+            val searchBarLayout =
+                    searchView.findViewById<com.google.android.material.textfield.TextInputLayout>(
+                            R.id.searchBarLayout
+                    )
+            val searchBar =
+                    searchView.findViewById<android.widget.AutoCompleteTextView>(R.id.searchBarText)
+            val searchProgress =
+                    searchView.findViewById<android.widget.ProgressBar>(R.id.searchProgress)
+            val emptyMessage = searchView.findViewById<android.widget.TextView>(R.id.emptyMessage)
+            val recyclerView =
+                    searchView.findViewById<androidx.recyclerview.widget.RecyclerView>(
+                            R.id.searchRecyclerView
+                    )
+
+            // Build list of title options for dropdown
+            val titleOptions = mutableListOf<String>()
+            titleOptions.add(media.userPreferredName)
+            if (media.nameRomaji != media.userPreferredName) {
+                titleOptions.add(media.nameRomaji)
+            }
+            val englishSynonyms =
+                    media.synonyms.filter { title ->
+                        if (title.isBlank()) return@filter false
+                        val hasCJK =
+                                title.any { char ->
+                                    char.code in 0x3040..0x309F ||
+                                            char.code in 0x30A0..0x30FF ||
+                                            char.code in 0x4E00..0x9FFF ||
+                                            char.code in 0xAC00..0xD7AF ||
+                                            char.code in 0x1100..0x11FF
+                                }
+                        !hasCJK
+                    }
+            englishSynonyms.forEach { if (!titleOptions.contains(it)) titleOptions.add(it) }
+
+            // Set up RecyclerView
+            recyclerView.layoutManager =
+                    androidx.recyclerview.widget.GridLayoutManager(
+                            fragmentContext,
+                            androidx.core.math.MathUtils.clamp(
+                                    fragmentContext.resources.displayMetrics.widthPixels / 124f.px,
+                                    1,
+                                    4
+                            )
+                    )
+
+            // Set initial query
+            searchBar.setText(initialQuery)
+
+            // Function to perform search - define early so it can be used in dropdown
+            fun performSearch(query: String) {
+                if (query.isBlank()) return
+
+                searchProgress.visibility = View.VISIBLE
+                emptyMessage.visibility = View.GONE
+                recyclerView.visibility = View.GONE
+
+                viewLifecycleOwner.lifecycleScope.launch {
+                    try {
+                        val results =
+                                withContext(Dispatchers.IO) { MangaUpdates.searchSeries(query) }
+
+                        withContext(Dispatchers.Main) {
+                            searchProgress.visibility = View.GONE
+                            if (results?.results.isNullOrEmpty()) {
+                                emptyMessage.visibility = View.VISIBLE
+                                recyclerView.visibility = View.GONE
+                            } else {
+                                emptyMessage.visibility = View.GONE
+                                recyclerView.visibility = View.VISIBLE
+                                recyclerView.adapter =
+                                        MangaUpdatesSearchAdapter(results!!.results!!) {
+                                                selectedResult ->
+                                            // Save the selection
+                                            selectedResult.record?.let { series ->
+                                                saveMangaUpdatesSelection(media, series)
+                                            }
+                                        }
+                            }
+                        }
+                    } catch (e: Exception) {
+                        withContext(Dispatchers.Main) {
+                            searchProgress.visibility = View.GONE
+                            emptyMessage.visibility = View.VISIBLE
+                            emptyMessage.text =
+                                    fragmentContext.getString(R.string.error_loading_data)
+                            android.widget.Toast.makeText(
+                                            fragmentContext,
+                                            getString(R.string.error_message, e.message ?: ""),
+                                            android.widget.Toast.LENGTH_SHORT
+                                    )
+                                    .show()
+                        }
+                    }
+                }
+            }
+
+            // Add dropdown icon to search bar if there are multiple titles
+            if (titleOptions.size > 1) {
+                searchBarLayout.endIconMode =
+                        com.google.android.material.textfield.TextInputLayout.END_ICON_DROPDOWN_MENU
+
+                // Set up dropdown when end icon is clicked
+                searchBarLayout.setEndIconOnClickListener {
+                    val adapter =
+                            android.widget.ArrayAdapter(
+                                    fragmentContext,
+                                    R.layout.item_titles_dropdown,
+                                    titleOptions
+                            )
+                    val popup = androidx.appcompat.widget.ListPopupWindow(fragmentContext)
+                    popup.anchorView = searchBar
+                    popup.setAdapter(adapter)
+                    popup.isModal = true
+
+                    searchBarLayout.post {
+                        popup.width = searchBarLayout.width
+                        popup.verticalOffset = searchBarLayout.height
+                        popup.setBackgroundDrawable(
+                                androidx.core.content.ContextCompat.getDrawable(
+                                        fragmentContext,
+                                        R.drawable.dropdown_background
+                                )
+                        )
+                        try {
+                            popup.listView?.elevation = 12f
+                        } catch (_: Throwable) {}
+                        popup.show()
+                    }
+
+                    popup.setOnItemClickListener { _, _, position, _ ->
+                        val selected = titleOptions[position]
+                        searchBar.setText(selected)
+                        popup.dismiss()
+                        // Automatically perform the search
+                        performSearch(selected)
+                    }
+                }
+            }
+
+            // Set up search listener
+            searchBar.setOnEditorActionListener { _, actionId, _ ->
+                if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH) {
+                    performSearch(searchBar.text.toString())
+                    // Hide keyboard
+                    val imm =
+                            fragmentContext.getSystemService(
+                                    android.content.Context.INPUT_METHOD_SERVICE
+                            ) as?
+                                    android.view.inputmethod.InputMethodManager
+                    imm?.hideSoftInputFromWindow(searchBar.windowToken, 0)
+                    true
+                } else {
+                    false
+                }
+            }
+
+            // Add the search view to the container
+            container.addView(searchView)
+
+            // Perform initial search
+            performSearch(initialQuery)
+        }
+    }
+
+    private fun saveMangaUpdatesSelection(
+            media: Media,
+            series: ani.dantotsu.connections.mangaupdates.MUSeriesRecord
+    ) {
+        val muLink = "https://www.mangaupdates.com/series/${series.seriesId.toString(36)}"
+        val model: MediaDetailsViewModel by activityViewModels()
+        model.saveMangaUpdatesLink(media.id, muLink, series)
+
+        // Clear the search view and restore the original layout
+        val frameLayout =
+                binding.root.findViewById<ViewGroup>(R.id.mediaInfoScroll)?.getChildAt(0) as?
+                        ViewGroup
+        frameLayout?.let { parent ->
+            parent.removeAllViews()
+            parent.addView(binding.mediaInfoProgressBar)
+            parent.addView(binding.mediaInfoContainer)
+        }
+
+        // Observer will handle displaying details since we updated LiveData via ViewModel
+        android.widget.Toast.makeText(
+                        requireContext(),
+                        getString(R.string.linked_mangaupdates_entry),
+                        android.widget.Toast.LENGTH_SHORT
+                )
+                .show()
     }
 
     private fun showNoDataWithSearch(media: Media) {
@@ -549,6 +687,10 @@ class MangaUpdatesInfoFragment : Fragment() {
             pageView.findViewById<android.widget.TextView>(R.id.title)?.text =
                     getString(ani.dantotsu.R.string.mu_no_data_title)
 
+            // Set small subtitle message
+            pageView.findViewById<android.widget.TextView>(R.id.subtitle)?.text =
+                    getString(ani.dantotsu.R.string.search_sub_mangaupdates)
+
             // Single button: Quick Search (since we don't have a link)
             pageView.findViewById<com.google.android.material.button.MaterialButton>(
                             ani.dantotsu.R.id.quickSearchButton
@@ -567,7 +709,11 @@ class MangaUpdatesInfoFragment : Fragment() {
     }
 
     @SuppressLint("SetTextI18n")
-    private fun displaySeriesDetails(series: ani.dantotsu.connections.mangaupdates.MUSeriesRecord) {
+    private fun displaySeriesDetails(
+            series: ani.dantotsu.connections.mangaupdates.MUSeriesRecord,
+            media: Media,
+            model: MediaDetailsViewModel
+    ) {
         // Remove any previously shown fallback (login / no-data / error) before displaying details
         clearFallbackViews()
         binding.mediaInfoProgressBar.visibility = View.GONE
@@ -582,7 +728,7 @@ class MangaUpdatesInfoFragment : Fragment() {
 
         // Set up the standard fields first
         // Title
-        binding.mediaInfoName.text = tripleTab + (series.title ?: "Unknown Title")
+        binding.mediaInfoName.text = tripleTab + (series.title ?: getString(R.string.unknown_title))
         binding.mediaInfoName.setOnLongClickListener {
             copyToClipboard(series.title ?: "")
             true
@@ -594,7 +740,7 @@ class MangaUpdatesInfoFragment : Fragment() {
         // Parse status field to extract chapter count and status text
         // Example: "143 Chapters (Ongoing)" -> chapters: "143", status: "Ongoing"
         var chaptersCount = "~"
-        var statusText = "Unknown"
+        var statusText = getString(R.string.unknown)
 
         series.status?.let { fullStatus ->
             // Extract first number for chapter count
@@ -616,7 +762,7 @@ class MangaUpdatesInfoFragment : Fragment() {
                         ratingStr
                     }
         }
-                ?: run { binding.mediaInfoMeanScore.text = "??" }
+                ?: run { binding.mediaInfoMeanScore.text = getString(R.string.unknown_value) }
 
         // Status (extracted from detailed status)
         binding.mediaInfoStatus.text = statusText
@@ -626,7 +772,7 @@ class MangaUpdatesInfoFragment : Fragment() {
         binding.mediaInfoTotal.text = chaptersCount
 
         // Format/Type
-        binding.mediaInfoFormat.text = series.type ?: "Manga"
+        binding.mediaInfoFormat.text = series.type ?: getString(R.string.manga)
 
         // Source (hide for MangaUpdates)
         binding.mediaInfoSourceContainer.visibility = View.GONE
@@ -642,7 +788,7 @@ class MangaUpdatesInfoFragment : Fragment() {
         }
 
         // Start date (Year)
-        binding.mediaInfoStart.text = series.year ?: "??"
+        binding.mediaInfoStart.text = series.year ?: getString(R.string.unknown_value)
 
         // End date (hide entire TableRow container)
         binding.mediaInfoEnd.visibility = View.GONE
@@ -987,7 +1133,40 @@ class MangaUpdatesInfoFragment : Fragment() {
                 }
             }
             bind.root.tag = "dynamic_mu_section"
-            parent.addView(bind.root)
         }
+
+        // Unlink button
+        val unlinkBtn =
+                com.google.android.material.button.MaterialButton(requireContext()).apply {
+                    text = resources.getString(R.string.unlink_mangaupdates)
+                    icon =
+                            androidx.appcompat.content.res.AppCompatResources.getDrawable(
+                                    requireContext(),
+                                    ani.dantotsu.R.drawable.ic_round_close_24
+                            )
+                    iconGravity =
+                            com.google.android.material.button.MaterialButton.ICON_GRAVITY_START
+                    layoutParams =
+                            android.widget.LinearLayout.LayoutParams(
+                                            android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                                            android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+                                    )
+                                    .apply {
+                                        val margin = 16f.px
+                                        setMargins(margin, margin, margin, margin)
+                                    }
+                    setOnClickListener {
+                        loaded = false
+                        model.removeMangaUpdatesLink(media.id)
+                        android.widget.Toast.makeText(
+                                        requireContext(),
+                                        getString(R.string.mangaupdates_entry_unlinked),
+                                        android.widget.Toast.LENGTH_SHORT
+                                )
+                                .show()
+                    }
+                    tag = "dynamic_mu_section"
+                }
+        parent.addView(unlinkBtn)
     }
 }
