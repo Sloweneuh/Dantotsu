@@ -40,34 +40,68 @@ class UserInterfaceSettingsActivity : AppCompatActivity() {
             val savedLayout = PrefManager.getVal<List<Boolean>>(PrefName.HomeLayout)
 
             // Ensure the list has the correct size (handle old preferences with fewer items)
-            val set = if (savedLayout.size < views.size) {
+            val visibilityList = if (savedLayout.size < views.size) {
                 // Pad with 'true' for new items
                 savedLayout.toMutableList().apply {
-                    while (size < views.size) {
-                        add(true)
-                    }
+                    while (size < views.size) add(true)
                 }
-            } else {
-                savedLayout.toMutableList()
+            } else savedLayout.toMutableList()
+
+            // Build initial order from pref or default sequential
+            val savedOrder = PrefManager.getVal<List<Int>>(PrefName.HomeLayoutOrder)
+            val order = if (savedOrder.isNullOrEmpty() || savedOrder.size != views.size) {
+                (0 until views.size).toList()
+            } else savedOrder
+
+            val items = order.mapIndexed { i, originalIndex ->
+                HomeLayoutItem(originalIndex, views[originalIndex], visibilityList.getOrNull(originalIndex) == true)
+            }.toMutableList()
+
+            val dialogView = layoutInflater.inflate(R.layout.dialog_home_layout_reorder, null)
+            val recycler = dialogView.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.homeLayoutRecycler)
+            val adapter = HomeLayoutAdapter(items)
+            recycler.adapter = adapter
+            recycler.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(this)
+
+            val callback = object : androidx.recyclerview.widget.ItemTouchHelper.SimpleCallback(
+                androidx.recyclerview.widget.ItemTouchHelper.UP or androidx.recyclerview.widget.ItemTouchHelper.DOWN,
+                0
+            ) {
+                override fun onMove(
+                    rv: androidx.recyclerview.widget.RecyclerView,
+                    vh: androidx.recyclerview.widget.RecyclerView.ViewHolder,
+                    target: androidx.recyclerview.widget.RecyclerView.ViewHolder
+                ): Boolean {
+                    val from = vh.bindingAdapterPosition
+                    val to = target.bindingAdapterPosition
+                    adapter.onItemMove(from, to)
+                    return true
+                }
+
+                override fun onSwiped(viewHolder: androidx.recyclerview.widget.RecyclerView.ViewHolder, direction: Int) {}
             }
+
+            val touchHelper = androidx.recyclerview.widget.ItemTouchHelper(callback)
+            touchHelper.attachToRecyclerView(recycler)
 
             customAlertDialog().apply {
-                setTitle(getString(R.string.home_layout_show))
-                multiChoiceItems(
-                    items = views,
-                    checkedItems = set.toBooleanArray()
-                ) { selectedItems ->
-                    for (i in selectedItems.indices) {
-                        set[i] = selectedItems[i]
-                    }
-                }
+                setTitle(getString(R.string.home_layout_show_and_order))
+                setCustomView(dialogView)
                 setPosButton(R.string.ok) {
-                    PrefManager.setVal(PrefName.HomeLayout, set)
+                    // Persist visibility in original index order
+                    val finalItems = adapter.getItems()
+                    val newOrder = finalItems.map { it.id }
+                    val newVisibility = MutableList(views.size) { i ->
+                        // find item with original index i
+                        finalItems.find { it.id == i }?.visible ?: true
+                    }
+                    PrefManager.setVal(PrefName.HomeLayoutOrder, newOrder)
+                    PrefManager.setVal(PrefName.HomeLayout, newVisibility)
                     restartApp()
                 }
+                setNegButton(R.string.cancel, null)
                 show()
             }
-
         }
 
         binding.uiSettingsSmallView.isChecked = PrefManager.getVal(PrefName.SmallView)

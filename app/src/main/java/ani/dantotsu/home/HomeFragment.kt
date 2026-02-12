@@ -226,7 +226,7 @@ class HomeFragment : Fragment() {
             progress.visibility = View.VISIBLE
             recyclerView.visibility = View.GONE
             empty.visibility = View.GONE
-            title.visibility = View.INVISIBLE
+            title.visibility = View.VISIBLE
             more.visibility = View.INVISIBLE
 
             mode.observe(viewLifecycleOwner) {
@@ -271,7 +271,7 @@ class HomeFragment : Fragment() {
         binding.homeWatchingProgressBar.visibility = View.VISIBLE
         binding.homeWatchingRecyclerView.visibility = View.GONE
         binding.homeWatchingEmpty.visibility = View.GONE
-        binding.homeContinueWatch.visibility = View.INVISIBLE
+        binding.homeContinueWatch.visibility = View.VISIBLE
         binding.homeContinueWatchMore.visibility = View.INVISIBLE
 
         model.getAnimeContinue().observe(viewLifecycleOwner) { continueWatchingList ->
@@ -392,7 +392,7 @@ class HomeFragment : Fragment() {
         binding.homePlannedAnimeProgressBar.visibility = View.VISIBLE
         binding.homePlannedAnimeRecyclerView.visibility = View.GONE
         binding.homePlannedAnimeEmpty.visibility = View.GONE
-        binding.homePlannedAnime.visibility = View.INVISIBLE
+        binding.homePlannedAnime.visibility = View.VISIBLE
         binding.homePlannedAnimeMore.visibility = View.INVISIBLE
 
         model.getAnimePlanned().observe(viewLifecycleOwner) { plannedList ->
@@ -502,7 +502,7 @@ class HomeFragment : Fragment() {
         binding.homeUnreadChaptersProgressBar.visibility = View.VISIBLE
         binding.homeUnreadChaptersRecyclerView.visibility = View.GONE
         binding.homeUnreadChaptersEmpty.visibility = View.GONE
-        binding.homeUnreadChapters.visibility = View.INVISIBLE
+        binding.homeUnreadChapters.visibility = View.VISIBLE
         binding.homeUnreadChaptersMore.visibility = View.INVISIBLE
 
         // Observe error state to show appropriate message
@@ -754,6 +754,24 @@ class HomeFragment : Fragment() {
             binding.homeRecommendedContainer,
             binding.homeUserStatusContainer,
         )
+
+        // Reorder container views according to saved HomeLayoutOrder preference
+        try {
+            val savedOrder = PrefManager.getVal<List<Int>>(PrefName.HomeLayoutOrder)
+            if (!savedOrder.isNullOrEmpty() && savedOrder.size == containers.size) {
+                val parent = binding.homeContainer as ViewGroup
+                val firstIndex = parent.indexOfChild(containers[0]).let { if (it >= 0) it else 0 }
+                var insertIndex = firstIndex
+                for (idx in savedOrder) {
+                    val v = containers[idx]
+                    parent.removeView(v)
+                    parent.addView(v, insertIndex)
+                    insertIndex++
+                }
+            }
+        } catch (e: Exception) {
+            // Fail silently if pref malformed or views not attached yet
+        }
 
         var running = false
         val live = Refresh.activity.getOrPut(1) { MutableLiveData(true) }

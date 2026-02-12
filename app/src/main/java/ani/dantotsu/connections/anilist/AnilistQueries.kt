@@ -576,44 +576,31 @@ class AnilistQueries {
         val toShow: List<Boolean> =
             PrefManager.getVal(PrefName.HomeLayout) // list of booleans for what to show
 
+        val viewsCount = ani.dantotsu.currContext()?.resources?.getStringArray(ani.dantotsu.R.array.home_layouts)?.size ?: 9
+        val savedOrder = PrefManager.getVal<List<Int>>(PrefName.HomeLayoutOrder)
+        val order = if (savedOrder.isNullOrEmpty() || savedOrder.size != viewsCount) (0 until viewsCount).toList() else savedOrder
+
         val queries = mutableListOf<String>()
-        if (toShow.getOrNull(0) == true) {
-            queries.add("""currentAnime: ${continueMediaQuery("ANIME", "CURRENT")}""")
-            queries.add("""repeatingAnime: ${continueMediaQuery("ANIME", "REPEATING")}""")
-        }
-        if (toShow.getOrNull(1) == true) queries.add("""favoriteAnime: ${favMediaQuery(true, 1)}""")
-        if (toShow.getOrNull(2) == true) queries.add(
-            """plannedAnime: ${
-                continueMediaQuery(
-                    "ANIME",
-                    "PLANNING"
-                )
-            }"""
-        )
-        if (toShow.getOrNull(4) == true) {
-            queries.add("""currentManga: ${continueMediaQuery("MANGA", "CURRENT")}""")
-            queries.add("""repeatingManga: ${continueMediaQuery("MANGA", "REPEATING")}""")
-        }
-        if (toShow.getOrNull(5) == true) queries.add(
-            """favoriteManga: ${
-                favMediaQuery(
-                    false,
-                    1
-                )
-            }"""
-        )
-        if (toShow.getOrNull(6) == true) queries.add(
-            """plannedManga: ${
-                continueMediaQuery(
-                    "MANGA",
-                    "PLANNING"
-                )
-            }"""
-        )
-        if (toShow.getOrNull(7) == true) {
-            queries.add("""recommendationQuery: ${recommendationQuery()}""")
-            queries.add("""recommendationPlannedQueryAnime: ${recommendationPlannedQuery("ANIME")}""")
-            queries.add("""recommendationPlannedQueryManga: ${recommendationPlannedQuery("MANGA")}""")
+        for (idx in order) {
+            when (idx) {
+                0 -> if (toShow.getOrNull(0) == true) {
+                    queries.add("""currentAnime: ${continueMediaQuery("ANIME", "CURRENT")}""")
+                    queries.add("""repeatingAnime: ${continueMediaQuery("ANIME", "REPEATING")}""")
+                }
+                1 -> if (toShow.getOrNull(1) == true) queries.add("""favoriteAnime: ${favMediaQuery(true, 1)}""")
+                2 -> if (toShow.getOrNull(2) == true) queries.add("""plannedAnime: ${continueMediaQuery("ANIME", "PLANNING")}""")
+                4 -> if (toShow.getOrNull(4) == true) {
+                    queries.add("""currentManga: ${continueMediaQuery("MANGA", "CURRENT")}""")
+                    queries.add("""repeatingManga: ${continueMediaQuery("MANGA", "REPEATING")}""")
+                }
+                5 -> if (toShow.getOrNull(5) == true) queries.add("""favoriteManga: ${favMediaQuery(false, 1)}""")
+                6 -> if (toShow.getOrNull(6) == true) queries.add("""plannedManga: ${continueMediaQuery("MANGA", "PLANNING")}""")
+                7 -> if (toShow.getOrNull(7) == true) {
+                    queries.add("""recommendationQuery: ${recommendationQuery()}""")
+                    queries.add("""recommendationPlannedQueryAnime: ${recommendationPlannedQuery("ANIME")}""")
+                    queries.add("""recommendationPlannedQueryManga: ${recommendationPlannedQuery("MANGA")}""")
+                }
+            }
         }
 
         val query = "{${queries.joinToString(",")}}"
