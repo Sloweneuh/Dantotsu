@@ -1217,39 +1217,46 @@ class ComickInfoFragment : Fragment() {
                         }
 
                 // Process Comick recommendations
-                for (rec in recsWithSlug) {
+                // First, fetch Comick details for each recommendation to collect AniList IDs
+                val recAnilistPairs = mutableListOf<Pair<Int, Int>>() // Pair(recommendationIndex, anilistId)
+                for ((index, rec) in recsWithSlug.withIndex()) {
                     val slug = rec.relates?.slug ?: continue
-
                     try {
-                        // Get Comick details to find the AniList ID
-                        val details =
-                                withContext(Dispatchers.IO) { ComickApi.getComicDetails(slug) }
-
+                        val details = withContext(Dispatchers.IO) { ComickApi.getComicDetails(slug) }
                         val anilistId = details?.comic?.links?.al?.toIntOrNull()
                         if (anilistId != null && anilistId != currentAnilistId) {
-                            // Check if we already have this in AniList data (avoid API call)
-                            val existingMedia = anilistById[anilistId]
-                            if (existingMedia != null) {
-                                recommendedMedia.add(existingMedia)
-                            } else {
-                                // Only fetch from API if not already loaded
-                                val media =
-                                        withContext(Dispatchers.IO) {
-                                            try {
-                                                ani.dantotsu.connections.anilist.Anilist.query
-                                                        .getMedia(anilistId)
-                                            } catch (e: Exception) {
-                                                null
-                                            }
-                                        }
-                                if (media != null) {
-                                    recommendedMedia.add(media)
-                                }
-                            }
+                            recAnilistPairs.add(Pair(index, anilistId))
                         }
                     } catch (e: Exception) {
-                        // Skip this recommendation if there's an error
+                        // Skip this recommendation if there's an error fetching Comick details
                         continue
+                    }
+                }
+
+                if (recAnilistPairs.isNotEmpty()) {
+                    // Determine which AniList IDs are missing from the already-loaded AniList recommendations
+                    val allAnilistIds = recAnilistPairs.map { it.second }
+                    val missingIds = allAnilistIds.filter { anilistById[it] == null }
+
+                    // Batch fetch missing AniList media
+                    val batchFetched = if (missingIds.isNotEmpty()) {
+                        withContext(Dispatchers.IO) {
+                            try {
+                                ani.dantotsu.connections.anilist.Anilist.query.getMediaBatch(missingIds)
+                            } catch (e: Exception) {
+                                emptyList<ani.dantotsu.media.Media>()
+                            }
+                        }
+                    } else emptyList()
+
+                    val batchById = batchFetched.associateBy { it.id }
+
+                    // Preserve original recommendation order by iterating recAnilistPairs
+                    for ((_, anilistId) in recAnilistPairs) {
+                        val existingMedia = anilistById[anilistId] ?: batchById[anilistId]
+                        if (existingMedia != null) {
+                            recommendedMedia.add(existingMedia)
+                        }
                     }
                 }
 

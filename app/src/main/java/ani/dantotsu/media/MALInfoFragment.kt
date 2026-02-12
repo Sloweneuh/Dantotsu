@@ -484,26 +484,26 @@ class MALInfoFragment : Fragment() {
                 val anilistByMalId = anilistRecommendations?.filter { it.idMAL != null }
                     ?.associateBy { it.idMAL } ?: emptyMap()
 
-                // Process MAL recommendations
+                // Collect MAL IDs not present in AniList data
+                val missingMalIds = malData.recommendations.map { it.node.id }
+                    .filter { anilistByMalId[it] == null }
+
+                // Batch fetch missing recommendations from AniList
+                val batchFetched = withContext(Dispatchers.IO) {
+                    try {
+                        Anilist.query.getMediaBatch(missingMalIds, mal = true)
+                    } catch (e: Exception) {
+                        emptyList<Media>()
+                    }
+                }
+                val batchByMalId = batchFetched.filter { it.idMAL != null }.associateBy { it.idMAL }
+
+                // Process MAL recommendations in order
                 for (recommendation in malData.recommendations) {
                     val malId = recommendation.node.id
-
-                    // Check if we already have this in AniList data (avoid API call)
-                    val existingMedia = anilistByMalId[malId]
+                    val existingMedia = anilistByMalId[malId] ?: batchByMalId[malId]
                     if (existingMedia != null) {
                         recommendations.add(existingMedia)
-                    } else {
-                        // Only fetch from API if not already loaded
-                        val media = withContext(Dispatchers.IO) {
-                            try {
-                                Anilist.query.getMedia(malId, mal = true)
-                            } catch (e: Exception) {
-                                null
-                            }
-                        }
-                        if (media != null) {
-                            recommendations.add(media)
-                        }
                     }
                 }
 

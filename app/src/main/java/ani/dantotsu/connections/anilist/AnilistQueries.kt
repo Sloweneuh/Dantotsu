@@ -41,6 +41,31 @@ import java.util.Calendar
 import kotlin.system.measureTimeMillis
 
 class AnilistQueries {
+    /**
+     * Batch fetch AniList media by a list of AniList IDs (for recommendations, etc.)
+     */
+    /**
+     * Batch fetch AniList media by a list of AniList or MAL IDs (for recommendations, etc.)
+     * @param ids List of IDs
+     * @param mal If true, treat IDs as MAL IDs, otherwise AniList IDs
+     */
+    suspend fun getMediaBatch(ids: List<Int>, mal: Boolean = false): List<Media> {
+        if (ids.isEmpty()) return emptyList()
+        val idsString = ids.joinToString(",")
+        val idField = if (mal) "idMal" else "id"
+        val fieldClause = "${idField}_in: [$idsString]"
+        val query = """
+            {
+                Page(perPage: ${ids.size}) {
+                    media($fieldClause, type: MANGA) {
+                        ${standardMediaInformation()}
+                    }
+                }
+            }
+        """.trimIndent()
+        val response = executeQuery<Query.Page>(query, force = true)?.data?.page
+        return response?.media?.map { Media(it) } ?: emptyList()
+    }
 
     suspend fun getUserData(): Boolean {
         val response: Query.Viewer?

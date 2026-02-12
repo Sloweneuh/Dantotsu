@@ -6,6 +6,22 @@ import ani.dantotsu.tryWithSuspend
 import kotlinx.serialization.Serializable
 
 class MALQueries {
+
+        /**
+         * Batch fetch MAL manga or anime details by a list of MAL IDs (for recommendations, etc.)
+         * @param ids List of MAL IDs
+         * @param isAnime true for anime, false for manga
+         */
+        suspend fun getDetailsBatch(ids: List<Int>, isAnime: Boolean): List<Any?> {
+            if (ids.isEmpty()) return emptyList()
+            return ids.map { id ->
+                try {
+                    if (isAnime) getAnimeDetails(id) else getMangaDetails(id)
+                } catch (e: Exception) {
+                    null
+                }
+            }
+        }
     private val apiUrl = "https://api.myanimelist.net/v2"
     private val authHeader: Map<String, String>?
         get() {
