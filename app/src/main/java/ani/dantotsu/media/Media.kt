@@ -118,6 +118,7 @@ data class Media(
         ) else null,
         manga = if (apiMedia.type == MediaType.MANGA) Manga(totalChapters = apiMedia.chapters) else null,
         format = apiMedia.format?.toString(),
+        description = apiMedia.description?.toString(),
     ) {
         // Ensure synonyms from Anilist ApiMedia are copied so local searches (e.g. in lists) can match them
         apiMedia.synonyms?.let { list ->

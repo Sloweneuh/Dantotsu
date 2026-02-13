@@ -127,15 +127,37 @@ class UnreadChaptersAdapter(
             // Set title
             itemCompactTitle.text = media.userPreferredName
 
-            // Set progress info - show: userProgress | lastChapter | totalChapters
+            // Set progress info - show: userProgress / (lastChapter | totalChapters)
             val totalChapters = media.manga?.totalChapters ?: "~"
-            itemCompactTotal.text = "${info.userProgress} | ${info.lastChapter} | $totalChapters"
+            itemUserProgressLarge.text = (info.userProgress).toString()
+            itemProgressSeparator.visibility = View.VISIBLE
+            itemCompactTotal.text = "${info.lastChapter} | $totalChapters"
             itemTotal.text = ""
+
+            // Synopsis preview (strip HTML) and make it scrollable
+            try {
+                val synopsis = androidx.core.text.HtmlCompat.fromHtml(media.description ?: "", androidx.core.text.HtmlCompat.FROM_HTML_MODE_LEGACY).toString()
+                itemCompactSynopsis.text = synopsis
+                itemCompactSynopsis.movementMethod = android.text.method.ScrollingMovementMethod()
+                itemCompactSynopsis.setOnTouchListener { v, event ->
+                    when (event.action) {
+                        android.view.MotionEvent.ACTION_DOWN -> v.parent?.requestDisallowInterceptTouchEvent(true)
+                        android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> v.parent?.requestDisallowInterceptTouchEvent(false)
+                    }
+                    false
+                }
+            } catch (e: Exception) {
+                itemCompactSynopsis.text = ""
+            }
 
             // Show source info using the relation/type container
             itemCompactType.visibility = View.VISIBLE
             itemCompactRelation.text = info.source
             itemCompactTypeImage.visibility = View.GONE
+
+            // Show media status between title and synopsis when available
+            itemCompactStatus.text = media.status ?: ""
+            itemCompactStatus.visibility = if (!itemCompactStatus.text.isNullOrBlank()) View.VISIBLE else View.GONE
 
             // Hide ongoing indicator (not applicable here)
             itemCompactOngoing.visibility = View.GONE

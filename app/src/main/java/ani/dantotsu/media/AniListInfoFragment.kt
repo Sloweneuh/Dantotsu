@@ -740,6 +740,14 @@ class AniListInfoFragment : Fragment() {
                             LinearLayoutManager.HORIZONTAL,
                             false
                         )
+                        itemMore.visibility = View.VISIBLE
+                        itemMore.setSafeOnClickListener {
+                            MediaListViewActivity.passedMedia = ArrayList(media.recommendations!!)
+                            startActivity(
+                                Intent(requireContext(), MediaListViewActivity::class.java)
+                                    .putExtra("title", getString(R.string.recommended))
+                            )
+                        }
                         parent.addView(root)
                     }
                 }

@@ -312,7 +312,7 @@
     <string name="immersive_mode">Hide Status Bar</string>
     <string name="immersive_modelist">Hide Status Bar for list</string>
     <string name="immersive_mode_info">Requires App restart to fully apply.</string>
-    <string name="home_layout_show">Show/Hide Layouts on Home</string>
+    <string name="home_layout_show">Edit Home Sections</string>
     <string name="home_layout_show_and_order">Show, hide and reorder Home sections</string>
     <string-array name="home_layouts">
         <item>Continue Watching</item>

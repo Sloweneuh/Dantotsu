@@ -228,7 +228,7 @@
     <string name="app">Application</string>
     <string name="immersive_mode">Masquer la barre d\'état</string>
     <string name="immersive_modelist">Masquer la barre d\'état pour la liste</string>
-    <string name="home_layout_show">Afficher/Masquer les sections de l\'accueil</string>
+    <string name="home_layout_show">Modifier les sections de l\'accueil</string>
     <string-array name="home_layouts">
         <item>Continuer à regarder</item>
         <item>Anime favoris</item>

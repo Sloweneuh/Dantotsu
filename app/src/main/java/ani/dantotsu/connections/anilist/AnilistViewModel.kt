@@ -157,14 +157,15 @@ class AnilistHomeViewModel : ViewModel() {
 
     suspend fun initHomePage() {
         val res = Anilist.query.initHomePage()
-        res["currentAnime"]?.let { animeContinue.postValue(it) }
-        res["favoriteAnime"]?.let { animeFav.postValue(it) }
-        res["currentAnimePlanned"]?.let { animePlanned.postValue(it) }
-        res["currentManga"]?.let { mangaContinue.postValue(it) }
-        res["favoriteManga"]?.let { mangaFav.postValue(it) }
-        res["currentMangaPlanned"]?.let { mangaPlanned.postValue(it) }
-        res["recommendations"]?.let { recommendation.postValue(it) }
-        res["hidden"]?.let { hidden.postValue(it) }
+        // Always post a value (even if empty) to ensure UI updates and hides progress bars
+        animeContinue.postValue(res["currentAnime"] ?: arrayListOf())
+        animeFav.postValue(res["favoriteAnime"] ?: arrayListOf())
+        animePlanned.postValue(res["currentAnimePlanned"] ?: arrayListOf())
+        mangaContinue.postValue(res["currentManga"] ?: arrayListOf())
+        mangaFav.postValue(res["favoriteManga"] ?: arrayListOf())
+        mangaPlanned.postValue(res["currentMangaPlanned"] ?: arrayListOf())
+        recommendation.postValue(res["recommendations"] ?: arrayListOf())
+        hidden.postValue(res["hidden"] ?: arrayListOf())
     }
 
     suspend fun initHomePageWithUserStatus() {
@@ -183,14 +184,15 @@ class AnilistHomeViewModel : ViewModel() {
                 val statusRes = userStatusDeferred.await()
 
                 // Post all values together
-                res["currentAnime"]?.let { animeContinue.postValue(it) }
-                res["favoriteAnime"]?.let { animeFav.postValue(it) }
-                res["currentAnimePlanned"]?.let { animePlanned.postValue(it) }
-                res["currentManga"]?.let { mangaContinue.postValue(it) }
-                res["favoriteManga"]?.let { mangaFav.postValue(it) }
-                res["currentMangaPlanned"]?.let { mangaPlanned.postValue(it) }
-                res["recommendations"]?.let { recommendation.postValue(it) }
-                res["hidden"]?.let { hidden.postValue(it) }
+                // Always post values (even if empty) to ensure UI updates properly
+                animeContinue.postValue(res["currentAnime"] ?: arrayListOf())
+                animeFav.postValue(res["favoriteAnime"] ?: arrayListOf())
+                animePlanned.postValue(res["currentAnimePlanned"] ?: arrayListOf())
+                mangaContinue.postValue(res["currentManga"] ?: arrayListOf())
+                mangaFav.postValue(res["favoriteManga"] ?: arrayListOf())
+                mangaPlanned.postValue(res["currentMangaPlanned"] ?: arrayListOf())
+                recommendation.postValue(res["recommendations"] ?: arrayListOf())
+                hidden.postValue(res["hidden"] ?: arrayListOf())
                 userStatus.postValue(statusRes ?: arrayListOf())
             }
         } catch (e: Exception) {

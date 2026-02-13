@@ -1,6 +1,7 @@
 package ani.dantotsu.media
 
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -25,6 +26,7 @@ import ani.dantotsu.navBarHeight
 import ani.dantotsu.px
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
+import ani.dantotsu.setSafeOnClickListener
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -1276,15 +1278,23 @@ class ComickInfoFragment : Fragment() {
                                                     recommendedMedia,
                                                     requireActivity()
                                             )
-                                    itemRecycler.layoutManager =
+                                        itemRecycler.layoutManager =
                                             androidx.recyclerview.widget.LinearLayoutManager(
-                                                    requireContext(),
-                                                    androidx.recyclerview.widget.LinearLayoutManager
-                                                            .HORIZONTAL,
-                                                    false
+                                                requireContext(),
+                                                androidx.recyclerview.widget.LinearLayoutManager
+                                                    .HORIZONTAL,
+                                                false
                                             )
-                                    root.tag = "recommendations_comick"
-                                    parent.addView(root)
+                                        itemMore.visibility = View.VISIBLE
+                                        itemMore.setSafeOnClickListener {
+                                        MediaListViewActivity.passedMedia = ArrayList(recommendedMedia)
+                                        startActivity(
+                                            Intent(requireContext(), MediaListViewActivity::class.java)
+                                            .putExtra("title", getString(ani.dantotsu.R.string.recommended))
+                                        )
+                                        }
+                                        root.tag = "recommendations_comick"
+                                        parent.addView(root)
                                 }
                     }
                 }

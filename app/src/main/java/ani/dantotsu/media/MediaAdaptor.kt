@@ -1,6 +1,9 @@
 package ani.dantotsu.media
 
 import android.annotation.SuppressLint
+import androidx.core.text.HtmlCompat
+import android.text.method.ScrollingMovementMethod
+import android.view.MotionEvent
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -148,6 +151,24 @@ class MediaAdaptor(
                         b.root.context,
                         (if (media.userScore != 0) R.drawable.item_user_score else R.drawable.item_score)
                     )
+                    b.itemCompactStatus.text = media.status ?: ""
+                    b.itemCompactStatus.visibility = if (!b.itemCompactStatus.text.isNullOrBlank()) View.VISIBLE else View.GONE
+                    // Synopsis preview (stripped from HTML) and user progress
+                    try {
+                        val synopsis = HtmlCompat.fromHtml(media.description ?: "", HtmlCompat.FROM_HTML_MODE_LEGACY).toString()
+                        b.itemCompactSynopsis.text = synopsis
+                        b.itemCompactSynopsis.movementMethod = ScrollingMovementMethod()
+                        b.itemCompactSynopsis.setOnTouchListener { v, event ->
+                            when (event.action) {
+                                MotionEvent.ACTION_DOWN -> v.parent?.requestDisallowInterceptTouchEvent(true)
+                                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> v.parent?.requestDisallowInterceptTouchEvent(false)
+                            }
+                            false
+                        }
+                    } catch (e: Exception) {
+                        b.itemCompactSynopsis.text = ""
+                    }
+                    b.itemUserProgressLarge.text = (media.userProgress ?: "~").toString()
                     if (media.anime != null) {
                         val itemTotal = " " + if ((media.anime.totalEpisodes
                                 ?: 0) != 1
@@ -155,10 +176,8 @@ class MediaAdaptor(
                             R.string.episode_singular
                         )
                         b.itemTotal.text = itemTotal
-                        b.itemCompactTotal.text =
-                            if (media.anime.nextAiringEpisode != null) (media.anime.nextAiringEpisode.toString() + " / " + (media.anime.totalEpisodes
-                                ?: "??").toString()) else (media.anime.totalEpisodes
-                                ?: "??").toString()
+                        // Show only total count here; separator is handled in layout
+                        b.itemCompactTotal.text = (media.anime.totalEpisodes ?: "??").toString()
                     } else if (media.manga != null) {
                         val itemTotal = " " + if ((media.manga.totalChapters
                                 ?: 0) != 1
@@ -166,7 +185,7 @@ class MediaAdaptor(
                             R.string.chapter_singular
                         )
                         b.itemTotal.text = itemTotal
-                        b.itemCompactTotal.text = "${media.manga.totalChapters ?: "??"}"
+                        b.itemCompactTotal.text = (media.manga.totalChapters ?: "??").toString()
                     }
                     if (position == mediaList!!.size - 2 && viewPager != null) viewPager.post {
                         val start = mediaList.size

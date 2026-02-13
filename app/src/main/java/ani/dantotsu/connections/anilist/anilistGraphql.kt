@@ -235,6 +235,7 @@ favourites
 isFavourite
 format
 bannerImage
+description
 countryOfOrigin
 coverImage {
   large

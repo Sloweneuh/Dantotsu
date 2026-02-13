@@ -31,6 +31,7 @@ import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import ani.dantotsu.setSafeOnClickListener
 import kotlinx.coroutines.withContext
 import java.net.URLEncoder
 
@@ -520,6 +521,14 @@ class MALInfoFragment : Fragment() {
                         LinearLayoutManager.HORIZONTAL,
                         false
                     )
+                    bind.itemMore.visibility = View.VISIBLE
+                    bind.itemMore.setSafeOnClickListener {
+                        MediaListViewActivity.passedMedia = ArrayList(recommendations)
+                        startActivity(
+                            Intent(requireContext(), MediaListViewActivity::class.java)
+                                .putExtra("title", getString(R.string.recommended))
+                        )
+                    }
                     parent.addView(bind.root)
                 }
             }
@@ -695,6 +704,14 @@ class MALInfoFragment : Fragment() {
                         LinearLayoutManager.HORIZONTAL,
                         false
                     )
+                    bind.itemMore.visibility = View.VISIBLE
+                    bind.itemMore.setSafeOnClickListener {
+                        MediaListViewActivity.passedMedia = ArrayList(recommendations)
+                        startActivity(
+                            Intent(requireContext(), MediaListViewActivity::class.java)
+                                .putExtra("title", getString(R.string.recommended))
+                        )
+                    }
                     parent.addView(bind.root)
                 }
             }

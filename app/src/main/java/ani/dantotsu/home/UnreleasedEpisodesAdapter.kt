@@ -170,24 +170,42 @@ class UnreleasedEpisodesAdapter(
             // Set title
             itemCompactTitle.text = media.userPreferredName
 
-            // Set progress info
+            // Set progress info: userProgress / (lastEpisode | totalEpisodes)
             val userProgress = media.userProgress ?: 0
             val totalEpisodes = media.anime?.totalEpisodes
+            itemUserProgressLarge.text = userProgress.toString()
+            itemProgressSeparator.visibility = View.VISIBLE
 
             // Don't show MALSync episode count if it matches the total (all episodes released)
             if (info != null) {
                 if (totalEpisodes != null && info.lastEpisode == totalEpisodes) {
-                    // Don't show middle number when language episode count matches total
-                    itemCompactTotal.text = "$userProgress | $totalEpisodes"
+                    // Only show total
+                    itemCompactTotal.text = (totalEpisodes ?: "~").toString()
                 } else {
                     // Show language episode count when it differs from total
-                    itemCompactTotal.text = "$userProgress | ${info.lastEpisode} | ${totalEpisodes ?: "~"}"
+                    itemCompactTotal.text = "${info.lastEpisode} | ${totalEpisodes ?: "~"}"
                 }
             } else {
                 // Standard display without MALSync data
-                itemCompactTotal.text = "$userProgress | ${totalEpisodes ?: "~"}"
+                itemCompactTotal.text = (totalEpisodes ?: "~").toString()
             }
             itemTotal.text = ""
+
+            // Synopsis preview (strip HTML) and make it scrollable
+            try {
+                val synopsis = androidx.core.text.HtmlCompat.fromHtml(media.description ?: "", androidx.core.text.HtmlCompat.FROM_HTML_MODE_LEGACY).toString()
+                itemCompactSynopsis.text = synopsis
+                itemCompactSynopsis.movementMethod = android.text.method.ScrollingMovementMethod()
+                itemCompactSynopsis.setOnTouchListener { v, event ->
+                    when (event.action) {
+                        android.view.MotionEvent.ACTION_DOWN -> v.parent?.requestDisallowInterceptTouchEvent(true)
+                        android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> v.parent?.requestDisallowInterceptTouchEvent(false)
+                    }
+                    false
+                }
+            } catch (e: Exception) {
+                itemCompactSynopsis.text = ""
+            }
 
             // Show language info with icon using the relation/type container - hide if empty
             if (info != null && info.languageDisplay.isNotEmpty()) {
@@ -203,6 +221,10 @@ class UnreleasedEpisodesAdapter(
 
             // Hide ongoing indicator (not applicable here)
             itemCompactOngoing.visibility = View.GONE
+
+            // Show media status between title and synopsis when available
+            itemCompactStatus.text = media.status ?: ""
+            itemCompactStatus.visibility = if (!itemCompactStatus.text.isNullOrBlank()) View.VISIBLE else View.GONE
 
             // Set score - divide by 10.0 to match Anilist format, fallback to mean score
             val score = if (media.userScore == 0) (media.meanScore ?: 0) else media.userScore
