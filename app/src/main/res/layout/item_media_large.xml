@@ -12,7 +12,7 @@
     <ImageView
         android:id="@+id/itemCompactBanner"
         android:layout_width="match_parent"
-        android:layout_height="152dp"
+        android:layout_height="210dp"
         android:scaleType="centerCrop"
         tools:ignore="ContentDescription"
         tools:srcCompat="@tools:sample/backgrounds/scenic" />
@@ -20,7 +20,7 @@
     <ImageView
         android:id="@+id/imageView"
         android:layout_width="match_parent"
-        android:layout_height="153dp"
+        android:layout_height="211dp"
         app:srcCompat="@drawable/linear_gradient_nav"
         tools:ignore="ContentDescription" />
 
@@ -34,6 +34,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:clipToPadding="false"
+            android:layout_gravity="center_vertical"
             android:padding="8dp">
 
             <androidx.cardview.widget.CardView
@@ -88,6 +89,43 @@
 
                 </LinearLayout>
 
+                <LinearLayout
+                    android:id="@+id/itemCompactLanguageBG"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="top|end"
+                    android:background="@drawable/item_language_badge"
+                    android:backgroundTint="#FFFFFF"
+                    android:backgroundTintMode="multiply"
+                    android:orientation="horizontal"
+                    android:paddingStart="6dp"
+                    android:paddingTop="3dp"
+                    android:paddingEnd="6dp"
+                    android:paddingBottom="3dp"
+                    android:visibility="gone">
+
+                    <ImageView
+                        android:id="@+id/itemCompactLanguageIcon"
+                        android:layout_width="13dp"
+                        android:layout_height="13dp"
+                        android:layout_gravity="center_vertical"
+                        android:layout_marginEnd="3dp"
+                        app:srcCompat="@drawable/ic_anime_sub_24"
+                        app:tint="?attr/colorOnPrimary"
+                        tools:ignore="ContentDescription" />
+
+                    <TextView
+                        android:id="@+id/itemCompactLanguageCode"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/poppins_bold"
+                        android:textColor="?attr/colorOnPrimary"
+                        android:textSize="12sp"
+                        tools:ignore="TextContrastCheck"
+                        tools:text="EN" />
+
+                </LinearLayout>
+
             </androidx.cardview.widget.CardView>
 
             <androidx.cardview.widget.CardView
@@ -110,7 +148,7 @@
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="bottom"
+            android:layout_gravity="center_vertical"
             android:orientation="vertical"
             android:background="@drawable/bg_text_scrim"
             android:padding="12dp"

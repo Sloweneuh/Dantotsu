@@ -207,16 +207,34 @@ class UnreleasedEpisodesAdapter(
                 itemCompactSynopsis.text = ""
             }
 
-            // Show language info with icon using the relation/type container - hide if empty
+            // Show language badge on top of cover (icon + short code) when available
             if (info != null && info.languageDisplay.isNotEmpty()) {
                 val languageOption = ani.dantotsu.connections.malsync.LanguageMapper.mapLanguage(info.languageId)
-                itemCompactType.visibility = View.VISIBLE
-                itemCompactTypeImage.visibility = View.VISIBLE
-                itemCompactTypeImage.setImageResource(languageOption.iconRes)
-                // Show full language name in list view
-                itemCompactRelation.text = languageOption.displayName
-            } else {
+                itemCompactLanguageBG.visibility = View.VISIBLE
+                itemCompactLanguageIcon.setImageResource(languageOption.iconRes)
+                val languageCode = when {
+                    info.languageId.startsWith("en") -> "EN"
+                    info.languageId.startsWith("ja") || info.languageId.startsWith("jp") -> "JP"
+                    info.languageId.startsWith("de") -> "DE"
+                    info.languageId.startsWith("fr") -> "FR"
+                    info.languageId.startsWith("es") -> "ES"
+                    info.languageId.startsWith("pt") -> "PT"
+                    info.languageId.startsWith("it") -> "IT"
+                    info.languageId.startsWith("ru") -> "RU"
+                    info.languageId.startsWith("ar") -> "AR"
+                    info.languageId.startsWith("zh") -> "ZH"
+                    info.languageId.startsWith("ko") -> "KO"
+                    info.languageId.startsWith("id") -> "ID"
+                    info.languageId.startsWith("ms") -> "MS"
+                    info.languageId.startsWith("th") -> "TH"
+                    info.languageId.startsWith("vi") -> "VI"
+                    else -> info.languageId.split("/")[0].take(2).uppercase()
+                }
+                itemCompactLanguageCode.text = languageCode
+                // Hide relation/type column to avoid duplication
                 itemCompactType.visibility = View.GONE
+            } else {
+                itemCompactLanguageBG.visibility = View.GONE
             }
 
             // Hide ongoing indicator (not applicable here)

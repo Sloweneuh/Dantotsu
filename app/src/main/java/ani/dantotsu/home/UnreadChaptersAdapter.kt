@@ -74,8 +74,17 @@ class UnreadChaptersAdapter(
             val totalChapters = media.manga?.totalChapters ?: "~"
             itemCompactTotal.text = " | ${info.lastChapter} | $totalChapters"
 
-            // Set source text
-            itemCompactSource.text = info.source
+            // Show source as badge on top of cover (icon + short code) to match anime badge
+                if (!info.source.isNullOrBlank()) {
+                    // Show full source name in badge and hide icon
+                    itemCompactLanguageIcon.visibility = View.GONE
+                    itemCompactLanguageCode.text = info.source
+                    itemCompactLanguageBG.visibility = View.VISIBLE
+                    itemCompactSource.visibility = View.GONE
+                } else {
+                    itemCompactLanguageBG.visibility = View.GONE
+                    itemCompactSource.visibility = View.VISIBLE
+                }
 
             // Set score - divide by 10.0 to match Anilist format, fallback to mean score
             val score = if (media.userScore == 0) (media.meanScore ?: 0) else media.userScore
@@ -150,10 +159,17 @@ class UnreadChaptersAdapter(
                 itemCompactSynopsis.text = ""
             }
 
-            // Show source info using the relation/type container
-            itemCompactType.visibility = View.VISIBLE
-            itemCompactRelation.text = info.source
-            itemCompactTypeImage.visibility = View.GONE
+            // Show source as a badge on top of the cover (icon + short code), hide side relation
+            val sourceDisplay = info.source
+                if (!sourceDisplay.isNullOrBlank()) {
+                    // Show full source name in badge and hide icon
+                    itemCompactLanguageIcon.visibility = View.GONE
+                    itemCompactLanguageCode.text = sourceDisplay
+                    itemCompactLanguageBG.visibility = View.VISIBLE
+                    itemCompactType.visibility = View.GONE
+                } else {
+                    itemCompactType.visibility = View.GONE
+                }
 
             // Show media status between title and synopsis when available
             itemCompactStatus.text = media.status ?: ""
