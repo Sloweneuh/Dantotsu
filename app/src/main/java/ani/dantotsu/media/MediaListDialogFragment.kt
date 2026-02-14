@@ -21,6 +21,7 @@ import ani.dantotsu.connections.mal.MAL
 import ani.dantotsu.databinding.BottomSheetMediaListBinding
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.settings.saving.PrefManager
+import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.snackString
 import ani.dantotsu.tryWith
 import com.google.android.material.materialswitch.MaterialSwitch
@@ -84,8 +85,9 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                             )
                     }
 
-                    // Fetch MALSync data for anime if MAL ID is available
-                    if (media!!.idMAL != null) {
+                    // Fetch MALSync data for anime if MAL ID is available and mode allows anime
+                    val malMode = PrefManager.getVal<String>(PrefName.MalSyncCheckMode) ?: "both"
+                    if (media!!.idMAL != null && PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled) && malMode != "manga") {
                         scope.launch(Dispatchers.IO) {
                             try {
                                 val preferredLanguage = ani.dantotsu.connections.malsync.MalSyncLanguageHelper.getPreferredLanguage(media!!.id)
@@ -157,7 +159,9 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
 
                     // Always fetch MALSync data for manga to get the latest chapter info
                     // This helps when AniList doesn't have totalChapters even for finished manga
-                    scope.launch(Dispatchers.IO) {
+                    val malMode2 = PrefManager.getVal<String>(PrefName.MalSyncCheckMode) ?: "both"
+                    if (PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled) && malMode2 != "anime") {
+                        scope.launch(Dispatchers.IO) {
                         try {
                             val malSyncResult = ani.dantotsu.connections.malsync.MalSyncApi.getLastChapter(media!!.id, media!!.idMAL)
                             ani.dantotsu.util.Logger.log("MediaListDialog: MALSync result for ${media!!.nameRomaji}: lastChapter=${malSyncResult?.lastEp?.total}, total=$total")
@@ -185,6 +189,7 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                         } catch (e: Exception) {
                             ani.dantotsu.util.Logger.log("Error fetching MALSync data: ${e.message}")
                         }
+                    }
                     }
                 }
 

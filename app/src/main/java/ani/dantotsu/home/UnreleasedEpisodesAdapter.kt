@@ -196,6 +196,7 @@ class UnreleasedEpisodesAdapter(
                 val synopsis = androidx.core.text.HtmlCompat.fromHtml(media.description ?: "", androidx.core.text.HtmlCompat.FROM_HTML_MODE_LEGACY).toString()
                 itemCompactSynopsis.text = synopsis
                 itemCompactSynopsis.movementMethod = android.text.method.ScrollingMovementMethod()
+                itemCompactSynopsis.scrollTo(0, 0)
                 itemCompactSynopsis.setOnTouchListener { v, event ->
                     when (event.action) {
                         android.view.MotionEvent.ACTION_DOWN -> v.parent?.requestDisallowInterceptTouchEvent(true)
@@ -205,6 +206,7 @@ class UnreleasedEpisodesAdapter(
                 }
             } catch (e: Exception) {
                 itemCompactSynopsis.text = ""
+                itemCompactSynopsis.scrollTo(0, 0)
             }
 
             // Show language badge on top of cover (icon + short code) when available

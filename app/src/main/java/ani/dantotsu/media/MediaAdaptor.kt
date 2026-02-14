@@ -158,6 +158,7 @@ class MediaAdaptor(
                         val synopsis = HtmlCompat.fromHtml(media.description ?: "", HtmlCompat.FROM_HTML_MODE_LEGACY).toString()
                         b.itemCompactSynopsis.text = synopsis
                         b.itemCompactSynopsis.movementMethod = ScrollingMovementMethod()
+                        b.itemCompactSynopsis.scrollTo(0, 0)
                         b.itemCompactSynopsis.setOnTouchListener { v, event ->
                             when (event.action) {
                                 MotionEvent.ACTION_DOWN -> v.parent?.requestDisallowInterceptTouchEvent(true)
@@ -167,6 +168,7 @@ class MediaAdaptor(
                         }
                     } catch (e: Exception) {
                         b.itemCompactSynopsis.text = ""
+                        b.itemCompactSynopsis.scrollTo(0, 0)
                     }
                     b.itemUserProgressLarge.text = (media.userProgress ?: "~").toString()
                     if (media.anime != null) {

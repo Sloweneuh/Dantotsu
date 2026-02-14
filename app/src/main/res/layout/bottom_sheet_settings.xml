@@ -145,7 +145,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="64dp"
                 android:checked="false"
-                android:drawableStart="@drawable/ic_download_24"
+                android:drawableStart="@drawable/ic_signal_wifi_off_24"
                 android:drawablePadding="16dp"
                 android:elegantTextHeight="true"
                 android:fontFamily="@font/poppins_bold"

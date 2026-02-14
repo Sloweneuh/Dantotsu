@@ -22,7 +22,7 @@ import ani.dantotsu.util.Logger
 
 class SettingsUnreadChapterNotificationActivity : AppCompatActivity() {
     private lateinit var binding: ActivitySettingsUnreadChapterNotificationsBinding
-
+    private var malSyncEnabledInitial: Boolean = true
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         ThemeManager(this).applyTheme()
@@ -37,6 +37,33 @@ class SettingsUnreadChapterNotificationActivity : AppCompatActivity() {
             }
             unreadChapterNotificationSettingsBack.setOnClickListener {
                 onBackPressedDispatcher.onBackPressed()
+            }
+
+            // Track initial MALSync enabled state so we can reload when returning
+            malSyncEnabledInitial = PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled)
+
+            // If MALSync info is disabled, hide notification options and show explanatory item
+            if (!malSyncEnabledInitial) {
+                settingsRecyclerView.adapter = SettingsAdapter(
+                    arrayListOf(
+                        Settings(
+                            type = 1,
+                            name = getString(R.string.disable_malsync),
+                            desc = getString(R.string.disable_malsync_desc),
+                            icon = R.drawable.ic_malsync,
+                            onClick = {
+                                // Open Connections settings so the user can enable MALSync
+                                val intent = android.content.Intent(context, SettingsConnectionsActivity::class.java)
+                                context.startActivity(intent)
+                            }
+                        )
+                    )
+                )
+                settingsRecyclerView.apply {
+                    layoutManager = LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false)
+                    setHasFixedSize(true)
+                }
+                return
             }
 
             // Unread chapter notification intervals (in minutes)
@@ -266,6 +293,15 @@ class SettingsUnreadChapterNotificationActivity : AppCompatActivity() {
             }
             setNegButton(R.string.cancel)
             show()
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        val current = PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled)
+        if (current != malSyncEnabledInitial) {
+            // Preference changed in Connections — recreate to reflect new state
+            recreate()
         }
     }
 }

@@ -295,6 +295,16 @@ class SettingsAccountActivity : AppCompatActivity() {
                     isActivity = true
                 ),
                 Settings(
+                    type = 1,
+                    name = getString(R.string.connections_settings),
+                    desc = getString(R.string.connections_desc),
+                    icon = R.drawable.ic_link_2_24,
+                    onClick = {
+                        startActivity(Intent(context, SettingsConnectionsActivity::class.java))
+                    },
+                    isActivity = true
+                ),
+                Settings(
                     type = 2,
                     name = getString(R.string.comments_button),
                     desc = getString(R.string.comments_button_desc),

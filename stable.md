@@ -1,16 +1,15 @@
-# 3.5.0
+# 3.6.0
 
 - **Features:**
-  - Homepage Reordering
-    - Homepage sections can now be reordered
-  - Updated "List View" of media
-    - Now shows synopsis, media status and user progress
-    - List view is now available for recommendations in Anilist, MAL and Comick tabs of a media
+  - Autoscroll
+    - You can autoscroll when reading manga, with a button on the reader
+    - The scroll speed can also be changed in reader settings, as well as a toggle to enable autoscroll by default
+  - Connections settings
+    - You can now disable info fetching and tab display for MAL, Comick MangaUpdates and MALSync
+    - You can choose whether MALSync checks for manga, anime or both
 
 - **Changes:**
-  - Reduced the amount of Anilist API calls to prevent rate limit triggers
-  - Made homepage section titles visible during loading
-  - Updated default Home section order
+  - Updated the list view display to improve text readeability
 
 - **Bugfixes:**
-  - Prevented homepage sections from infinitely loading by putting a placeholder in case of an empty response
+  - Fixed an issue causing the Unlink button to appear all the time on the MangaUpdates tab

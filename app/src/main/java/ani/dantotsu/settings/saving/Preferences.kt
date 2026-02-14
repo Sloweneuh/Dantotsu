@@ -66,6 +66,12 @@ enum class PrefName(val data: Pref) {
     EnableSocks5Proxy(Pref(Location.General, Boolean::class, false)),
     ProxyAuthEnabled(Pref(Location.General, Boolean::class, false)),
     AniMangaSearchDirect(Pref(Location.General, Boolean::class, true)),
+    // Connection toggles (allow disabling external info/tabs)
+    ComickEnabled(Pref(Location.General, Boolean::class, true)),
+    MalEnabled(Pref(Location.General, Boolean::class, true)),
+    MangaUpdatesEnabled(Pref(Location.General, Boolean::class, true)),
+    MalSyncInfoEnabled(Pref(Location.General, Boolean::class, true)),
+    MalSyncCheckMode(Pref(Location.General, String::class, "both")),
 
     //User Interface
     UseOLED(Pref(Location.UI, Boolean::class, false)),
@@ -176,6 +182,8 @@ enum class PrefName(val data: Pref) {
     LongClickImage(Pref(Location.Reader, Boolean::class, true)),
     CropBorders(Pref(Location.Reader, Boolean::class, false)),
     CropBorderThreshold(Pref(Location.Reader, Int::class, 10)),
+    AutoScrollEnabled(Pref(Location.Reader, Boolean::class, false)),
+    AutoScrollSpeed(Pref(Location.Reader, Float::class, 1f)),
 
     //Novel Reader
     CurrentThemeName(Pref(Location.NovelReader, String::class, "Default")),

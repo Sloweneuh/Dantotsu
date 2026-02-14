@@ -84,13 +84,15 @@ class MediaDetailsViewModel : ViewModel() {
                     }
                 }
 
-                // Try MalSync first
-                val quicklinks =
-                        try {
-                            malSyncApi.getQuicklinks(media.id, media.idMAL)
-                        } catch (e: Exception) {
-                            null
-                        }
+                // Try MalSync first (only if MALSync info enabled)
+                val malMode = ani.dantotsu.settings.saving.PrefManager.getVal<String>(ani.dantotsu.settings.saving.PrefName.MalSyncCheckMode) ?: "both"
+                val quicklinks = if (ani.dantotsu.settings.saving.PrefManager.getVal<Boolean>(ani.dantotsu.settings.saving.PrefName.MalSyncInfoEnabled) && malMode != "anime") {
+                    try {
+                        malSyncApi.getQuicklinks(media.id, media.idMAL)
+                    } catch (e: Exception) {
+                        null
+                    }
+                } else null
 
                 val malSyncSlugs =
                         quicklinks?.Sites?.entries
@@ -122,38 +124,53 @@ class MediaDetailsViewModel : ViewModel() {
                 )
 
                 // Check if user has manually saved a slug for this media first
+                // If Comick is disabled, skip searching and clear related LiveData
+                if (!ani.dantotsu.settings.saving.PrefManager.getVal<Boolean>(ani.dantotsu.settings.saving.PrefName.ComickEnabled)) {
+                    comickSlug.postValue(null)
+                    comickLoaded.postValue(true)
+                }
+
+                if (!ani.dantotsu.settings.saving.PrefManager.getVal<Boolean>(ani.dantotsu.settings.saving.PrefName.ComickEnabled)) {
+                    // Ensure we don't run the search below
+                }
+
+                // Proceed to determine comickSlug only if Comick enabled
                 val savedSlug =
+                    if (ani.dantotsu.settings.saving.PrefManager.getVal<Boolean>(ani.dantotsu.settings.saving.PrefName.ComickEnabled)) {
                         PrefManager.getNullableCustomVal<String>(
-                                "comick_slug_${media.id}",
-                                null,
-                                String::class.java
+                            "comick_slug_${media.id}",
+                            null,
+                            String::class.java
                         )
-                val comickSlugValue =
-                        if (savedSlug != null) {
-                            ani.dantotsu.util.Logger.log(
-                                    "Comick Preload: Found saved slug '$savedSlug' in preferences"
-                            )
-                            savedSlug
-                        } else if (titlesToTry.isNotEmpty()) {
-                            comickApi.searchAndMatchComic(
-                                    titlesToTry,
-                                    media.id,
-                                    media.idMAL,
-                                    malSyncSlugs.takeIf { it.isNotEmpty() },
-                                    externalLinkUrls.takeIf { it.isNotEmpty() }
-                            )
-                        } else null
+                    } else null
+                val comickSlugValue = if (ani.dantotsu.settings.saving.PrefManager.getVal<Boolean>(ani.dantotsu.settings.saving.PrefName.ComickEnabled)) {
+                    if (savedSlug != null) {
+                        ani.dantotsu.util.Logger.log(
+                                "Comick Preload: Found saved slug '$savedSlug' in preferences"
+                        )
+                        savedSlug
+                    } else if (titlesToTry.isNotEmpty()) {
+                        comickApi.searchAndMatchComic(
+                                titlesToTry,
+                                media.id,
+                                media.idMAL,
+                                malSyncSlugs.takeIf { it.isNotEmpty() },
+                                externalLinkUrls.takeIf { it.isNotEmpty() }
+                        )
+                    } else null
+                } else null
 
                 // Update comickSlug
                 comickSlug.postValue(comickSlugValue)
 
-                // Check if user has manually saved a MangaUpdates link
-                val savedMULink =
-                        PrefManager.getNullableCustomVal<String>(
-                                "mangaupdates_link_${media.id}",
-                                null,
-                                String::class.java
-                        )
+                // Check if user has manually saved a MangaUpdates link (only if MU enabled)
+                val savedMULink = if (ani.dantotsu.settings.saving.PrefManager.getVal<Boolean>(ani.dantotsu.settings.saving.PrefName.MangaUpdatesEnabled)) {
+                    PrefManager.getNullableCustomVal<String>(
+                        "mangaupdates_link_${media.id}",
+                        null,
+                        String::class.java
+                    )
+                } else null
 
                 // If we found a Comick slug or have a saved MU link, fetch details
                 mangaUpdatesLoading.postValue(true)
@@ -194,7 +211,7 @@ class MediaDetailsViewModel : ViewModel() {
                     )
                     mangaUpdatesLink.postValue(savedMULink)
                     fetchMUSeries(savedMULink)
-                } else if (comickSlugValue != null) {
+                } else if (comickSlugValue != null && ani.dantotsu.settings.saving.PrefManager.getVal<Boolean>(ani.dantotsu.settings.saving.PrefName.MangaUpdatesEnabled)) {
                     try {
                         val comickData = comickApi.getComicDetails(comickSlugValue)
                         val muLink = comickData?.comic?.links?.mu
@@ -217,9 +234,17 @@ class MediaDetailsViewModel : ViewModel() {
                         mangaUpdatesLink.postValue(null)
                         mangaUpdatesSeries.postValue(null)
                     }
-                } else {
-                    mangaUpdatesLink.postValue(null)
-                    mangaUpdatesSeries.postValue(null)
+                    } else {
+                    // If MangaUpdates is disabled, ensure LiveData reflect disabled state
+                    if (!ani.dantotsu.settings.saving.PrefManager.getVal<Boolean>(ani.dantotsu.settings.saving.PrefName.MangaUpdatesEnabled)) {
+                        mangaUpdatesLink.postValue(null)
+                        mangaUpdatesSeries.postValue(null)
+                        mangaUpdatesLoaded.postValue(true)
+                        mangaUpdatesLoading.postValue(false)
+                    } else {
+                        mangaUpdatesLink.postValue(null)
+                        mangaUpdatesSeries.postValue(null)
+                    }
                 }
                 mangaUpdatesLoading.postValue(false)
                 mangaUpdatesLoaded.postValue(true)

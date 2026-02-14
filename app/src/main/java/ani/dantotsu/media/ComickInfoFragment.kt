@@ -141,12 +141,12 @@ class ComickInfoFragment : Fragment() {
 
                         // Get the Comick slug from MalSync quicklinks
                         ani.dantotsu.util.Logger.log("Comick: Checking MalSync for slug")
-                        val quicklinks =
+                        val malMode = PrefManager.getVal<String>(PrefName.MalSyncCheckMode) ?: "both"
+                        val mediaType = if (media.anime != null) "anime" else "manga"
+                        val quicklinks = if (PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled) && (malMode == "both" || malMode == mediaType)) {
                                 try {
                                     kotlinx.coroutines.withTimeout(10000L) {
                                         withContext(Dispatchers.IO) {
-                                            val mediaType =
-                                                    if (media.anime != null) "anime" else "manga"
                                             MalSyncApi.getQuicklinks(
                                                     media.id,
                                                     media.idMAL,
@@ -166,6 +166,10 @@ class ComickInfoFragment : Fragment() {
                                     ani.dantotsu.util.Logger.log(e)
                                     null
                                 }
+                        } else {
+                            ani.dantotsu.util.Logger.log("Comick: MALSync disabled or mode disallows this media type; skipping MalSync quicklinks lookup")
+                            null
+                        }
 
                         // Get ALL Comick slugs from MalSync (can be multiple entries)
                         val malSyncSlugs =
@@ -265,20 +269,23 @@ class ComickInfoFragment : Fragment() {
                 ani.dantotsu.util.Logger.log("Comick: Got comic data, displaying info")
 
                 // Store MangaUpdates link if available, but check for manual override first
-                val savedMULink =
-                        ani.dantotsu.settings.saving.PrefManager.getNullableCustomVal<String>(
-                                "mangaupdates_link_${media.id}",
-                                null,
-                                String::class.java
-                        )
-                if (savedMULink == null) {
-                    val muLink = comickData.comic?.links?.mu
-                    if (!muLink.isNullOrBlank()) {
-                        model.mangaUpdatesLink.postValue(
-                                "https://www.mangaupdates.com/series/$muLink"
-                        )
-                    } else {
-                        model.mangaUpdatesLink.postValue(null)
+                // Only update MangaUpdates link if MangaUpdates integration is enabled
+                if (ani.dantotsu.settings.saving.PrefManager.getVal(ani.dantotsu.settings.saving.PrefName.MangaUpdatesEnabled)) {
+                    val savedMULink =
+                            ani.dantotsu.settings.saving.PrefManager.getNullableCustomVal<String>(
+                                    "mangaupdates_link_${media.id}",
+                                    null,
+                                    String::class.java
+                            )
+                    if (savedMULink == null) {
+                        val muLink = comickData.comic?.links?.mu
+                        if (!muLink.isNullOrBlank()) {
+                            model.mangaUpdatesLink.postValue(
+                                    "https://www.mangaupdates.com/series/$muLink"
+                            )
+                        } else {
+                            model.mangaUpdatesLink.postValue(null)
+                        }
                     }
                 }
 

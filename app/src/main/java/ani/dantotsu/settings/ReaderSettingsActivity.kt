@@ -184,6 +184,26 @@ class ReaderSettingsActivity : AppCompatActivity() {
             PrefManager.setVal(PrefName.LongClickImage, isChecked)
         }
 
+        // Autoscroll speed (clamp stored preference to slider bounds)
+        run {
+            val pref = PrefManager.getVal<Float>(PrefName.AutoScrollSpeed)
+            val from = binding.readerSettingsAutoscrollSpeed.valueFrom
+            val to = binding.readerSettingsAutoscrollSpeed.valueTo
+            val clamped = when {
+                pref < from -> from
+                pref > to -> to
+                else -> pref
+            }
+            binding.readerSettingsAutoscrollSpeed.value = clamped
+        }
+        binding.readerSettingsAutoscrollEnabled.isChecked = PrefManager.getVal(PrefName.AutoScrollEnabled)
+        binding.readerSettingsAutoscrollEnabled.setOnCheckedChangeListener { _, isChecked ->
+            PrefManager.setVal(PrefName.AutoScrollEnabled, isChecked)
+        }
+        binding.readerSettingsAutoscrollSpeed.addOnChangeListener { _, value, _ ->
+            PrefManager.setVal(PrefName.AutoScrollSpeed, value)
+        }
+
         //LN settings
         val layoutListLN = listOf(
             binding.LNpaged,

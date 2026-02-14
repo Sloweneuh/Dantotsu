@@ -8,7 +8,10 @@ import ani.dantotsu.BottomSheetDialogFragment
 import ani.dantotsu.R
 import ani.dantotsu.databinding.BottomSheetCurrentReaderSettingsBinding
 import ani.dantotsu.settings.CurrentReaderSettings
+import ani.dantotsu.settings.saving.PrefManager
+import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.settings.CurrentReaderSettings.Directions
+import com.google.android.material.slider.Slider
 
 class ReaderSettingsDialogFragment : BottomSheetDialogFragment() {
     private var _binding: BottomSheetCurrentReaderSettingsBinding? = null
@@ -162,6 +165,32 @@ class ReaderSettingsDialogFragment : BottomSheetDialogFragment() {
             settings.longClickImage = isChecked
             activity.applySettings()
         }
+
+        // Autoscroll enabled
+        binding.readerAutoscrollEnabled.isChecked = PrefManager.getVal(PrefName.AutoScrollEnabled)
+        binding.readerAutoscrollEnabled.setOnCheckedChangeListener { _, isChecked ->
+            PrefManager.setVal(PrefName.AutoScrollEnabled, isChecked)
+            if (isChecked) activity.startAutoscroll() else activity.stopAutoscroll()
+        }
+
+        // Autoscroll speed (clamp stored preference to slider bounds)
+        run {
+            val pref = PrefManager.getVal<Float>(PrefName.AutoScrollSpeed)
+            val from = binding.readerAutoscrollSpeed.valueFrom
+            val to = binding.readerAutoscrollSpeed.valueTo
+            val clamped = when {
+                pref < from -> from
+                pref > to -> to
+                else -> pref
+            }
+            binding.readerAutoscrollSpeed.value = clamped
+        }
+        binding.readerAutoscrollSpeed.addOnChangeListener(object : Slider.OnChangeListener {
+            override fun onValueChange(slider: Slider, value: Float, fromUser: Boolean) {
+                PrefManager.setVal(PrefName.AutoScrollSpeed, value)
+                activity.updateAutoscrollSpeed(value)
+            }
+        })
     }
 
     override fun onDestroy() {

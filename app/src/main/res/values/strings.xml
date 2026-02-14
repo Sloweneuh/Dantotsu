@@ -61,6 +61,8 @@
     <string name="unread_chapters">Unread Chapters</string>
     <string name="no_unread_chapters">No unread chapters</string>
     <string name="error_fetching_unread_chapters">Couldn\'t fetch unread chapters</string>
+    <string name="malsync_disabled_home">MALSync disabled — enable MALSync in Connections to see unread chapters</string>
+    <string name="malsync_anime_only_home">MALSync set to anime-only — enable manga checks in Connections to see unread chapters</string>
 
     <!-- Notification strings for unread chapters -->
     <string name="notification_new_chapter_title">New Chapter Available</string>
@@ -191,6 +193,21 @@
     <string name="titles">Titles</string>
 
     <string name="anilist_settings">Anilist Settings</string>
+    <string name="connections_settings">Connections</string>
+    <string name="connections_desc">Enable or disable external connections and info tabs</string>
+    <string name="disable_comick">Enable Comick</string>
+    <string name="disable_comick_desc">Toggle fetching Comick data and Comick tab</string>
+    <string name="disable_mal">Enable MyAnimeList (MAL)</string>
+    <string name="disable_mal_desc">Toggle fetching MAL data and MAL tab</string>
+    <string name="disable_mangaupdates">Enable MangaUpdates</string>
+    <string name="disable_mangaupdates_desc">Toggle fetching MangaUpdates data and tab</string>
+    <string name="disable_malsync">Enable MALSync Info</string>
+    <string name="disable_malsync_desc">Toggle fetching MALSync info and related display</string>
+    <string name="malsync_checks_dialog_title">MALSync checks</string>
+    <string name="malsync_checks_option_manga">Manga</string>
+    <string name="malsync_checks_option_anime">Anime</string>
+    <string name="malsync_checks_option_both">Both</string>
+    <string name="malsync_checks_desc">Checks: %1$s</string>
     <string name="extension_settings">Extensions</string>
     <string name="downloads">Downloads</string>
     <string name="offline_mode">Offline Mode</string>
@@ -1020,6 +1037,8 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="skip_loading_extension_icons_desc">Don\'t load icons of extensions on the extension page</string>
     <string name="NSFWExtention_desc">Enable 18+ extensions from search (May remove some useful extensions)</string>
     <string name="reader_settings_desc">All the Reader related settings</string>
+    <string name="autoscroll">Autoscroll</string>
+    <string name="autoscroll_speed">Autoscroll speed</string>
     <string name="purge_manga_downloads_desc">Delete all downloaded Manga</string>
     <string name="purge_novel_downloads_desc">Delete all downloaded Novels</string>
     <string name="include_list_desc">Include list items in Manga explore page</string>

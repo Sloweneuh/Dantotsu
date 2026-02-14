@@ -279,6 +279,12 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
         fun showLanguageDropdown(media: Media) {
             lifecycleScope.launch(Dispatchers.IO) {
                 try {
+                    val malMode = PrefManager.getVal<String>(PrefName.MalSyncCheckMode) ?: "both"
+                    if (!PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled) || malMode == "manga") {
+                        ani.dantotsu.util.Logger.log("MediaDetails: MALSync disabled or set to manga-only; skipping language dropdown fetch for anime")
+                        return@launch
+                    }
+
                     val availableLanguagesWithEpisodes =
                             ani.dantotsu.connections.malsync.MalSyncApi
                                     .getAvailableLanguagesWithEpisodes(media.idMAL!!)
@@ -619,11 +625,14 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
             // Fetch MALSync data for anime to show latest available episode (replaces
             // nextAiringEpisode display)
             // Only show for anime with MAL ID and not COMPLETED status
-            if (media.anime != null &&
-                            media.idMAL != null &&
-                            isOnline(this) &&
-                            media.userStatus != "COMPLETED"
-            ) {
+                val malModeForAnime = PrefManager.getVal<String>(PrefName.MalSyncCheckMode) ?: "both"
+                if (media.anime != null &&
+                    media.idMAL != null &&
+                    isOnline(this) &&
+                    media.userStatus != "COMPLETED" &&
+                    PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled) &&
+                    malModeForAnime != "manga"
+                ) {
                 ani.dantotsu.util.Logger.log(
                         "MediaDetails: Starting MALSync API call for anime mediaId=${media.id}, malId=${media.idMAL}"
                 )
@@ -798,7 +807,8 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                     "MediaDetails: passedSource=$passedSource, passedLastChapter=$passedLastChapter"
             )
 
-            if (media.manga != null && isOnline(this) && media.userStatus != "COMPLETED") {
+                val malModeForManga = PrefManager.getVal<String>(PrefName.MalSyncCheckMode) ?: "both"
+                if (media.manga != null && isOnline(this) && media.userStatus != "COMPLETED" && PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled) && malModeForManga != "anime") {
                 ani.dantotsu.util.Logger.log(
                         "MediaDetails: Starting MalSync API call for mediaId=${media.id}"
                 )

@@ -128,6 +128,8 @@ class MangaReaderActivity : AppCompatActivity() {
 
     var sliding = false
     var isAnimating = false
+    private var autoscrollTimer: Timer? = null
+    var autoscrollOn = false
 
     private val directionRLBT
         get() = defaultSettings.direction == RIGHT_TO_LEFT
@@ -165,8 +167,70 @@ class MangaReaderActivity : AppCompatActivity() {
             hideSystemBarsExtendView()
     }
 
+    private fun toggleAutoscroll() {
+        if (autoscrollOn) stopAutoscroll() else startAutoscroll()
+    }
+
+    fun startAutoscroll() {
+        autoscrollOn = true
+        binding.mangaReaderAutoscroll.setImageResource(R.drawable.ic_round_pause_24)
+        autoscrollTimer?.cancel()
+        val speed = PrefManager.getVal<Float>(PrefName.AutoScrollSpeed)
+        if (defaultSettings.layout == CurrentReaderSettings.Layouts.PAGED) {
+            // Higher `speed` -> faster. Use a tighter base so max values are noticeably faster.
+            val interval = (1000L / maxOf(0.1f, speed)).toLong()
+            autoscrollTimer = Timer()
+            autoscrollTimer?.scheduleAtFixedRate(object : TimerTask() {
+                override fun run() {
+                    binding.mangaReaderPager.post {
+                        try {
+                            if (directionRLBT) {
+                                if (binding.mangaReaderPager.currentItem > 0) binding.mangaReaderPager.currentItem = binding.mangaReaderPager.currentItem - 1
+                            } else {
+                                if (binding.mangaReaderPager.currentItem < binding.mangaReaderPager.adapter?.itemCount?.minus(1) ?: 0) binding.mangaReaderPager.currentItem = binding.mangaReaderPager.currentItem + 1
+                            }
+                        } catch (e: Exception) {
+                        }
+                    }
+                }
+            }, interval, interval)
+        } else {
+            // Continuous: scroll by more pixels per tick for higher speed
+            val pxPerTick = (12 * PrefManager.getVal<Float>(PrefName.AutoScrollSpeed)).toInt()
+            val interval = 50L
+            autoscrollTimer = Timer()
+            autoscrollTimer?.scheduleAtFixedRate(object : TimerTask() {
+                override fun run() {
+                    binding.mangaReaderRecycler.post {
+                        try {
+                            binding.mangaReaderRecycler.smoothScrollBy(0, pxPerTick)
+                        } catch (e: Exception) {
+                        }
+                    }
+                }
+            }, interval, interval)
+        }
+    }
+
+    fun stopAutoscroll() {
+        autoscrollOn = false
+        autoscrollTimer?.cancel()
+        autoscrollTimer = null
+        binding.mangaReaderAutoscroll.setImageResource(R.drawable.ic_round_play_arrow_24)
+    }
+
+    fun updateAutoscrollSpeed(newSpeed: Float) {
+        PrefManager.setVal(PrefName.AutoScrollSpeed, newSpeed)
+        if (autoscrollOn) {
+            // restart with new speed
+            autoscrollTimer?.cancel()
+            startAutoscroll()
+        }
+    }
+
     override fun onDestroy() {
         ani.dantotsu.util.Logger.log("MangaReaderActivity.onDestroy: clearing cache (size: ${mangaCache.size()})")
+        autoscrollTimer?.cancel()
         // Don't clear cache on destroy - let LRU manage it and preserve cache for reloads
         // mangaCache.clear()
         if (DiscordServiceRunningSingleton.running) {
@@ -356,6 +420,15 @@ class MangaReaderActivity : AppCompatActivity() {
 
         binding.mangaReaderSettings.setSafeOnClickListener {
             ReaderSettingsDialogFragment.newInstance().show(supportFragmentManager, "settings")
+        }
+
+        binding.mangaReaderAutoscroll.setOnClickListener {
+            toggleAutoscroll()
+        }
+
+        // Start autoscroll if enabled in preferences
+        if (PrefManager.getVal(PrefName.AutoScrollEnabled)) {
+            startAutoscroll()
         }
 
         //Next Chapter

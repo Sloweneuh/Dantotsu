@@ -47,6 +47,15 @@
     <string name="no_unread_chapters">Aucun chapitre non lu</string>
     <string name="error_fetching_unread_chapters">Impossible de récupérer les chapitres non lus</string>
 
+    <!-- MALSync settings translations -->
+    <string name="malsync_checks_dialog_title">Vérifications MALSync</string>
+    <string name="malsync_checks_option_manga">Manga</string>
+    <string name="malsync_checks_option_anime">Anime</string>
+    <string name="malsync_checks_option_both">Les deux</string>
+    <string name="malsync_checks_desc">Vérifications : %1$s</string>
+    <string name="malsync_disabled_home">MALSync désactivé — activez MALSync dans Connexions pour voir les chapitres non lus</string>
+    <string name="malsync_anime_only_home">MALSync configuré en mode anime uniquement — activez les vérifications manga dans Connexions pour voir les chapitres non lus</string>
+
     <string name="notification_new_chapter_title">Nouveau chapitre disponible</string>
     <string name="notification_unknown_source">Source inconnue</string>
     <string name="notification_new_chapter_text_single">%1$s : Chapitre %2$d</string>
@@ -157,6 +166,17 @@
     <string name="titles">Titres</string>
 
     <string name="anilist_settings">Paramètres Anilist</string>
+    <string name="connections_settings">Connexions</string>
+    <string name="connections_desc">Activer ou désactiver les connexions externes et les onglets d\'information</string>
+    <string name="disable_comick">Activer Comick</string>
+    <string name="disable_comick_desc">Activer ou désactiver la récupération des données Comick et l\'onglet Comick</string>
+    <string name="disable_mal">Activer MyAnimeList (MAL)</string>
+    <string name="disable_mal_desc">Activer ou désactiver la récupération des données MAL et l\'onglet MAL</string>
+    <string name="disable_mangaupdates">Activer MangaUpdates</string>
+    <string name="disable_mangaupdates_desc">Activer ou désactiver la récupération des données MangaUpdates et l\'onglet MangaUpdates</string>
+    <string name="disable_malsync">Activer les infos MALSync</string>
+    <string name="disable_malsync_desc">Activer ou désactiver la récupération des infos MALSync et leur affichage associé</string>
+    <string name="home_layout_show_and_order">Afficher, masquer et réorganiser les sections de l\'accueil</string>
     <string name="extension_settings">Extensions</string>
     <string name="downloads">Téléchargements</string>
     <string name="offline_mode">Mode hors ligne</string>
@@ -1156,6 +1176,7 @@
     <string name="force_legacy_installer_desc">Utiliser l\'installateur legacy pour installer les extensions (Pour les vieux téléphones android)</string>
     <string name="skip_loading_extension_icons_desc">Ne pas charger les icônes des extensions sur la page des extensions</string>
     <string name="NSFWExtention_desc">Activer les extensions 18+ depuis la recherche (Peut supprimer certaines extensions utiles)</string>
+    <string name="autoscroll_speed">Vitesse de défilement</string>
     <string name="purge_manga_downloads_desc">Supprimer tous les Manga téléchargés</string>
     <string name="purge_novel_downloads_desc">Supprimer tous les Romans téléchargés</string>
     <string name="include_list_desc">Inclure les éléments de la liste dans la page d\'exploration Manga</string>
@@ -1275,4 +1296,5 @@
     <string name="chapter_format">Chapitre %1$s</string>
     <string name="anime_start_format">\nDébut: %1$s</string>
     <string name="anime_end_format">\nFin: %1$s</string>
+    <string name="autoscroll">Défilement automatique</string>
 </resources>

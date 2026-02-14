@@ -12,12 +12,17 @@ import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import ani.dantotsu.databinding.FragmentMediaInfoContainerBinding
+import ani.dantotsu.settings.saving.PrefManager
+import ani.dantotsu.settings.saving.PrefName
 import com.google.android.material.tabs.TabLayoutMediator
 
 class MediaInfoFragment : Fragment() {
     private var _binding: FragmentMediaInfoContainerBinding? = null
     private val binding
         get() = _binding!!
+
+    private data class TabInfo(val type: String, val fragment: Fragment, val iconRes: Int)
+    private var tabs: List<TabInfo> = emptyList()
 
     override fun onCreateView(
             inflater: LayoutInflater,
@@ -50,15 +55,48 @@ class MediaInfoFragment : Fragment() {
                 // This allows tab states to update immediately even with offscreenPageLimit = 1
                 model.preloadExternalData(media)
 
-                // Setup ViewPager - show 2 tabs for anime, 4 for manga
+                // Setup ViewPager - show tabs depending on media type and enabled connections
                 val isAnime = media.anime != null
-                val adapter =
-                        InfoPagerAdapter(
-                                childFragmentManager,
-                                viewLifecycleOwner.lifecycle,
-                                isAnime
-                        )
+
+                // Build list of tabs dynamically according to user connection settings
+                val tabsMutable = mutableListOf<TabInfo>()
+                // AniList always present
+                tabsMutable.add(TabInfo("anilist", AniListInfoFragment(), ani.dantotsu.R.drawable.ic_anilist))
+                // MAL tab is optional based on settings
+                if (PrefManager.getVal<Boolean>(PrefName.MalEnabled)) {
+                    tabsMutable.add(TabInfo("mal", MALInfoFragment(), ani.dantotsu.R.drawable.ic_myanimelist))
+                }
+
+                if (!isAnime) {
+                    if (PrefManager.getVal<Boolean>(PrefName.ComickEnabled)) {
+                        tabsMutable.add(TabInfo("comick", ComickInfoFragment(), ani.dantotsu.R.drawable.ic_round_comick_24))
+                    }
+                    if (PrefManager.getVal<Boolean>(PrefName.MangaUpdatesEnabled)) {
+                        tabsMutable.add(TabInfo("mangaupdates", MangaUpdatesInfoFragment(), ani.dantotsu.R.drawable.ic_round_mangaupdates_24))
+                    }
+                }
+
+                // Promote to class-level list for other methods to use
+                tabs = tabsMutable.toList()
+
+                val adapter = object : androidx.viewpager2.adapter.FragmentStateAdapter(childFragmentManager, viewLifecycleOwner.lifecycle) {
+                    override fun getItemCount(): Int = tabs.size
+                    override fun createFragment(position: Int): Fragment = tabs[position].fragment
+                }
+
                 binding.mediaInfoViewPager.adapter = adapter
+
+                // If only AniList is enabled (single tab), hide the TabLayout and show the
+                // AniList info directly without tabs.
+                if (tabs.size <= 1) {
+                    binding.mediaInfoTabLayout.visibility = android.view.View.GONE
+                    // Keep ViewPager visible to host the AniList fragment
+                    binding.mediaInfoViewPager.isUserInputEnabled = false
+                    // No need to setup tabs
+                    return@observe
+                } else {
+                    binding.mediaInfoTabLayout.visibility = android.view.View.VISIBLE
+                }
 
                 // Only load adjacent tabs to reduce API calls and prevent rate limiting
                 binding.mediaInfoViewPager.offscreenPageLimit = 1
@@ -101,26 +139,16 @@ class MediaInfoFragment : Fragment() {
 
         // Setup TabLayout - all tabs long-clickable
         TabLayoutMediator(binding.mediaInfoTabLayout, binding.mediaInfoViewPager) { tab, position ->
-                    if (isAnime) {
-                        // Anime: only AniList and MAL tabs
-                        when (position) {
-                            0 -> tab.setIcon(ani.dantotsu.R.drawable.ic_anilist)
-                            1 -> tab.setIcon(ani.dantotsu.R.drawable.ic_myanimelist)
-                        }
-                    } else {
-                        // Manga: all 4 tabs
-                        when (position) {
-                            0 -> tab.setIcon(ani.dantotsu.R.drawable.ic_anilist)
-                            1 -> tab.setIcon(ani.dantotsu.R.drawable.ic_myanimelist)
-                            2 -> tab.setIcon(ani.dantotsu.R.drawable.ic_round_comick_24)
-                            3 -> tab.setIcon(ani.dantotsu.R.drawable.ic_round_mangaupdates_24)
-                        }
-                    }
+            val iconRes = (binding.mediaInfoViewPager.adapter as? androidx.viewpager2.adapter.FragmentStateAdapter)?.let {
+                // tabs list captured above through closure
+                // Use tabs built earlier; safe to cast adapter as our anonymous adapter
+                (tabs.getOrNull(position)?.iconRes) ?: ani.dantotsu.R.drawable.ic_anilist
+            } ?: ani.dantotsu.R.drawable.ic_anilist
 
-                    // Set long-click listeners for opening URLs
-                    tab.view.setOnLongClickListener { handleTabLongClick(position, model, media) }
-                }
-                .attach()
+            tab.setIcon(iconRes)
+            // Set long-click listeners for opening URLs
+            tab.view.setOnLongClickListener { handleTabLongClick(position, model, media) }
+        }.attach()
 
         // Re-apply tab states when selection changes to prevent default behavior overriding custom
         // alpha
@@ -210,27 +238,31 @@ class MediaInfoFragment : Fragment() {
         val isAnime = media.anime != null
         if (isAnime) return
 
+        // Build a list of tab types in current order to compute alpha states
+        val tabTypes = mutableListOf<String>()
+        tabTypes.add("anilist")
+        if (PrefManager.getVal<Boolean>(PrefName.MalEnabled)) tabTypes.add("mal")
+        if (PrefManager.getVal<Boolean>(PrefName.ComickEnabled)) tabTypes.add("comick")
+        if (PrefManager.getVal<Boolean>(PrefName.MangaUpdatesEnabled)) tabTypes.add("mangaupdates")
+
         for (i in 0 until binding.mediaInfoTabLayout.tabCount) {
             val tab = binding.mediaInfoTabLayout.getTabAt(i) ?: continue
-
-            val alpha =
-                    when (i) {
-                        0 -> 1.0f // AniList always has data
-                        1 -> if (media.idMAL != null) 1.0f else 0.4f
-                        2 -> if (model.comickSlug.value != null) 1.0f else 0.4f
-                        3 -> {
-                            // MangaUpdates: show loading state
-                            val isLoading = model.mangaUpdatesLoading.value == true
-                            val hasData = model.mangaUpdatesLink.value != null
-                            when {
-                                hasData -> 1.0f // Has data - full brightness
-                                isLoading -> 0.6f // Loading - medium brightness
-                                else -> 0.4f // No data - dim
-                            }
-                        }
+            val type = tabTypes.getOrNull(i) ?: ""
+            val alpha = when (type) {
+                "anilist" -> 1.0f
+                "mal" -> if (media.idMAL != null) 1.0f else 0.4f
+                "comick" -> if (model.comickSlug.value != null) 1.0f else 0.4f
+                "mangaupdates" -> {
+                    val isLoading = model.mangaUpdatesLoading.value == true
+                    val hasData = model.mangaUpdatesLink.value != null
+                    when {
+                        hasData -> 1.0f
+                        isLoading -> 0.6f
                         else -> 0.4f
                     }
-
+                }
+                else -> 0.4f
+            }
             tab.view.alpha = alpha
         }
     }

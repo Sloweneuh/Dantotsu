@@ -135,6 +135,14 @@ class UnreadChapterNotificationTask : Task {
 
                     Logger.log("UnreadChapterNotificationTask: Starting batch MalSync API calls for $totalManga manga")
 
+                    // Respect MALSync mode: if user set MALSync to anime-only, skip manga unread checks
+                    val malMode = PrefManager.getVal<String>(PrefName.MalSyncCheckMode) ?: "both"
+                    if (!PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled) || malMode == "anime") {
+                        Logger.log("UnreadChapterNotificationTask: MALSync disabled or set to anime-only; skipping MalSync API calls")
+                        currentlyPerforming = false
+                        return@withContext
+                    }
+
                     val batchResults = MalSyncApi.getBatchProgressByMedia(mediaIds) { batchNum, totalBatches, processedCount, totalCount ->
                         // This callback is invoked by MalSyncApi after each batch of 50
                         Logger.log("UnreadChapterNotificationTask: Batch $batchNum/$totalBatches progress: $processedCount/$totalCount")

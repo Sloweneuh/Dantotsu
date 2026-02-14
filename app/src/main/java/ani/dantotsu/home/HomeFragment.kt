@@ -283,29 +283,32 @@ class HomeFragment : Fragment() {
                     scope.launch {
                         val unreleasedInfo = mutableMapOf<Int, ani.dantotsu.connections.malsync.UnreleasedEpisodeInfo>()
 
-                        withContext(Dispatchers.IO) {
-                            // Collect pairs of (anilistId, malId)
-                            val animeIds = continueWatchingList.map { anime ->
-                                Pair(anime.id, anime.idMAL)
-                            }
-                            val batchResults = ani.dantotsu.connections.malsync.MalSyncApi.getBatchAnimeEpisodes(animeIds)
+                        val malMode = PrefManager.getVal<String>(PrefName.MalSyncCheckMode) ?: "both"
+                        if (PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled) && malMode != "manga") {
+                            withContext(Dispatchers.IO) {
+                                // Collect pairs of (anilistId, malId)
+                                val animeIds = continueWatchingList.map { anime ->
+                                    Pair(anime.id, anime.idMAL)
+                                }
+                                val batchResults = ani.dantotsu.connections.malsync.MalSyncApi.getBatchAnimeEpisodes(animeIds)
 
-                            // Map results back to anime IDs - always include language info
-                            for (anime in continueWatchingList) {
-                                val result = batchResults[anime.id]
-                                if (result != null && result.lastEp != null) {
-                                    val malSyncEpisode = result.lastEp.total
-                                    val userProgress = anime.userProgress ?: 0
-                                    val languageOption = ani.dantotsu.connections.malsync.LanguageMapper.mapLanguage(result.id)
+                                // Map results back to anime IDs - always include language info
+                                for (anime in continueWatchingList) {
+                                    val result = batchResults[anime.id]
+                                    if (result != null && result.lastEp != null) {
+                                        val malSyncEpisode = result.lastEp.total
+                                        val userProgress = anime.userProgress ?: 0
+                                        val languageOption = ani.dantotsu.connections.malsync.LanguageMapper.mapLanguage(result.id)
 
-                                    // Always add language info for display
-                                    unreleasedInfo[anime.id] = ani.dantotsu.connections.malsync.UnreleasedEpisodeInfo(
-                                        mediaId = anime.id,
-                                        lastEpisode = malSyncEpisode,
-                                        languageId = result.id,
-                                        languageDisplay = languageOption.displayName,
-                                        userProgress = userProgress
-                                    )
+                                        // Always add language info for display
+                                        unreleasedInfo[anime.id] = ani.dantotsu.connections.malsync.UnreleasedEpisodeInfo(
+                                            mediaId = anime.id,
+                                            lastEpisode = malSyncEpisode,
+                                            languageId = result.id,
+                                            languageDisplay = languageOption.displayName,
+                                            userProgress = userProgress
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -334,8 +337,8 @@ class HomeFragment : Fragment() {
                                 binding.homeWatchingRecyclerView.visibility = View.VISIBLE
                                 binding.homeWatchingRecyclerView.layoutAnimation =
                                     LayoutAnimationController(setSlideIn(), 0.25f)
-                            } else {
-                                // No MALSync data available, show standard adapter
+                                } else {
+                                // No MALSync data available or MALSync disabled, show standard adapter
                                 binding.homeWatchingRecyclerView.adapter = MediaAdaptor(0, continueWatchingList, requireActivity())
                                 binding.homeWatchingRecyclerView.layoutManager = LinearLayoutManager(
                                     requireContext(),
@@ -400,33 +403,36 @@ class HomeFragment : Fragment() {
             binding.homePlannedAnimeEmpty.visibility = View.GONE
             if (plannedList != null) {
                 if (plannedList.isNotEmpty()) {
-                    // Fetch MALSync data using batch endpoint
+                    // Fetch MALSync data using batch endpoint (skipped if MALSync disabled)
                     scope.launch {
                         val plannedInfo = mutableMapOf<Int, ani.dantotsu.connections.malsync.UnreleasedEpisodeInfo>()
 
-                        withContext(Dispatchers.IO) {
-                            // Collect pairs of (anilistId, malId)
-                            val animeIds = plannedList.map { anime ->
-                                Pair(anime.id, anime.idMAL)
-                            }
-                            val batchResults = ani.dantotsu.connections.malsync.MalSyncApi.getBatchAnimeEpisodes(animeIds)
+                        val malMode2 = PrefManager.getVal<String>(PrefName.MalSyncCheckMode) ?: "both"
+                        if (PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled) && malMode2 != "manga") {
+                            withContext(Dispatchers.IO) {
+                                // Collect pairs of (anilistId, malId)
+                                val animeIds = plannedList.map { anime ->
+                                    Pair(anime.id, anime.idMAL)
+                                }
+                                val batchResults = ani.dantotsu.connections.malsync.MalSyncApi.getBatchAnimeEpisodes(animeIds)
 
-                            // Map results back to anime IDs - always include language info
-                            for (anime in plannedList) {
-                                val result = batchResults[anime.id]
-                                if (result != null && result.lastEp != null) {
-                                    val malSyncEpisode = result.lastEp.total
-                                    val userProgress = anime.userProgress ?: 0
-                                    val languageOption = ani.dantotsu.connections.malsync.LanguageMapper.mapLanguage(result.id)
+                                // Map results back to anime IDs - always include language info
+                                for (anime in plannedList) {
+                                    val result = batchResults[anime.id]
+                                    if (result != null && result.lastEp != null) {
+                                        val malSyncEpisode = result.lastEp.total
+                                        val userProgress = anime.userProgress ?: 0
+                                        val languageOption = ani.dantotsu.connections.malsync.LanguageMapper.mapLanguage(result.id)
 
-                                    // Always add language info for display
-                                    plannedInfo[anime.id] = ani.dantotsu.connections.malsync.UnreleasedEpisodeInfo(
-                                        mediaId = anime.id,
-                                        lastEpisode = malSyncEpisode,
-                                        languageId = result.id,
-                                        languageDisplay = languageOption.displayName,
-                                        userProgress = userProgress
-                                    )
+                                        // Always add language info for display
+                                        plannedInfo[anime.id] = ani.dantotsu.connections.malsync.UnreleasedEpisodeInfo(
+                                            mediaId = anime.id,
+                                            lastEpisode = malSyncEpisode,
+                                            languageId = result.id,
+                                            languageDisplay = languageOption.displayName,
+                                            userProgress = userProgress
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -510,7 +516,12 @@ class HomeFragment : Fragment() {
             if (hasError) {
                 binding.homeUnreadChaptersEmptyText.text = getString(R.string.error_fetching_unread_chapters)
             } else {
-                binding.homeUnreadChaptersEmptyText.text = getString(R.string.no_unread_chapters)
+                val malMode = PrefManager.getVal<String>(PrefName.MalSyncCheckMode) ?: "both"
+                binding.homeUnreadChaptersEmptyText.text = when {
+                    !PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled) -> getString(R.string.malsync_disabled_home)
+                    malMode == "anime" -> getString(R.string.malsync_anime_only_home)
+                    else -> getString(R.string.no_unread_chapters)
+                }
             }
         }
 
@@ -524,22 +535,28 @@ class HomeFragment : Fragment() {
                         val unreadInfo = mutableMapOf<Int, ani.dantotsu.connections.malsync.UnreadChapterInfo>()
 
                         withContext(Dispatchers.IO) {
-                            // Collect pairs of (anilistId, malId) - prefer MAL ID, fallback to AniList ID
-                            val mediaIds = unreadList.map { media ->
-                                Pair(media.id, media.idMAL)
-                            }
-                            val batchResults = ani.dantotsu.connections.malsync.MalSyncApi.getBatchProgressByMedia(mediaIds)
+                            // Only perform MalSync batch if preference enabled and check mode allows manga
+                            val malMode3 = PrefManager.getVal<String>(PrefName.MalSyncCheckMode) ?: "both"
+                            if (!PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled) || malMode3 == "anime") {
+                                ani.dantotsu.util.Logger.log("HomeFragment: MALSync disabled or set to anime-only; skipping unread chapters MalSync fetch")
+                            } else {
+                                // Collect pairs of (anilistId, malId) - prefer MAL ID, fallback to AniList ID
+                                val mediaIds = unreadList.map { media ->
+                                    Pair(media.id, media.idMAL)
+                                }
+                                val batchResults = ani.dantotsu.connections.malsync.MalSyncApi.getBatchProgressByMedia(mediaIds)
 
-                            // Map results back to media IDs
-                            for (media in unreadList) {
-                                val result = batchResults[media.id]
-                                if (result != null && result.lastEp != null) {
-                                    unreadInfo[media.id] = ani.dantotsu.connections.malsync.UnreadChapterInfo(
-                                        mediaId = media.id,
-                                        lastChapter = result.lastEp.total,
-                                        source = result.source,
-                                        userProgress = media.userProgress ?: 0
-                                    )
+                                // Map results back to media IDs
+                                for (media in unreadList) {
+                                    val result = batchResults[media.id]
+                                    if (result != null && result.lastEp != null) {
+                                        unreadInfo[media.id] = ani.dantotsu.connections.malsync.UnreadChapterInfo(
+                                            mediaId = media.id,
+                                            lastChapter = result.lastEp.total,
+                                            source = result.source,
+                                            userProgress = media.userProgress ?: 0
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -576,6 +593,13 @@ class HomeFragment : Fragment() {
                                 binding.homeUnreadChaptersRecyclerView.layoutAnimation =
                                     LayoutAnimationController(setSlideIn(), 0.25f)
                             } else {
+                                // Show a helpful message when MALSync is disabled
+                                val malModeEmpty = PrefManager.getVal<String>(PrefName.MalSyncCheckMode) ?: "both"
+                                binding.homeUnreadChaptersEmptyText.text = when {
+                                    !PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled) -> getString(R.string.malsync_disabled_home)
+                                    malModeEmpty == "anime" -> getString(R.string.malsync_anime_only_home)
+                                    else -> getString(R.string.no_unread_chapters)
+                                }
                                 binding.homeUnreadChaptersEmpty.visibility = View.VISIBLE
                             }
                             binding.homeUnreadChaptersMore.visibility = View.VISIBLE

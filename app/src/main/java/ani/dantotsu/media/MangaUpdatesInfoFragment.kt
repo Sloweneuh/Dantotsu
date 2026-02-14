@@ -1135,38 +1135,47 @@ class MangaUpdatesInfoFragment : Fragment() {
             bind.root.tag = "dynamic_mu_section"
         }
 
-        // Unlink button
-        val unlinkBtn =
+        // Only show unlink button if this media has a manually-saved MU link
+        val isManualSelection =
+            PrefManager.getNullableCustomVal<String>(
+                "mangaupdates_link_${media.id}",
+                null,
+                String::class.java
+            ) != null
+
+        if (isManualSelection) {
+            val unlinkBtn =
                 com.google.android.material.button.MaterialButton(requireContext()).apply {
-                    text = resources.getString(R.string.unlink_mangaupdates)
-                    icon =
-                            androidx.appcompat.content.res.AppCompatResources.getDrawable(
-                                    requireContext(),
-                                    ani.dantotsu.R.drawable.ic_round_close_24
-                            )
-                    iconGravity =
-                            com.google.android.material.button.MaterialButton.ICON_GRAVITY_START
-                    layoutParams =
-                            android.widget.LinearLayout.LayoutParams(
-                                            android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
-                                            android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
-                                    )
-                                    .apply {
-                                        val margin = 16f.px
-                                        setMargins(margin, margin, margin, margin)
-                                    }
-                    setOnClickListener {
-                        loaded = false
-                        model.removeMangaUpdatesLink(media.id)
-                        android.widget.Toast.makeText(
-                                        requireContext(),
-                                        getString(R.string.mangaupdates_entry_unlinked),
-                                        android.widget.Toast.LENGTH_SHORT
-                                )
-                                .show()
-                    }
-                    tag = "dynamic_mu_section"
+                text = resources.getString(R.string.unlink_mangaupdates)
+                icon =
+                    androidx.appcompat.content.res.AppCompatResources.getDrawable(
+                        requireContext(),
+                        ani.dantotsu.R.drawable.ic_round_close_24
+                    )
+                iconGravity =
+                    com.google.android.material.button.MaterialButton.ICON_GRAVITY_START
+                layoutParams =
+                    android.widget.LinearLayout.LayoutParams(
+                            android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                            android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+                        )
+                        .apply {
+                            val margin = 16f.px
+                            setMargins(margin, margin, margin, margin)
+                        }
+                setOnClickListener {
+                    loaded = false
+                    model.removeMangaUpdatesLink(media.id)
+                    android.widget.Toast.makeText(
+                            requireContext(),
+                            getString(R.string.mangaupdates_entry_unlinked),
+                            android.widget.Toast.LENGTH_SHORT
+                        )
+                        .show()
                 }
-        parent.addView(unlinkBtn)
+                tag = "dynamic_mu_section"
+                }
+            parent.addView(unlinkBtn)
+        }
     }
 }
