@@ -155,7 +155,9 @@ class MediaAdaptor(
                     b.itemCompactStatus.visibility = if (!b.itemCompactStatus.text.isNullOrBlank()) View.VISIBLE else View.GONE
                     // Synopsis preview (stripped from HTML) and user progress
                     try {
-                        val synopsis = HtmlCompat.fromHtml(media.description ?: "", HtmlCompat.FROM_HTML_MODE_LEGACY).toString()
+                        val rawDesc = media.description ?: ""
+                        val parsed = HtmlCompat.fromHtml(rawDesc, HtmlCompat.FROM_HTML_MODE_LEGACY).toString()
+                        val synopsis = if (parsed.isNullOrBlank() || parsed == "null") activity.getString(R.string.no_description_available) else parsed
                         b.itemCompactSynopsis.text = synopsis
                         b.itemCompactSynopsis.movementMethod = ScrollingMovementMethod()
                         b.itemCompactSynopsis.scrollTo(0, 0)
@@ -167,7 +169,7 @@ class MediaAdaptor(
                             false
                         }
                     } catch (e: Exception) {
-                        b.itemCompactSynopsis.text = ""
+                        b.itemCompactSynopsis.text = activity.getString(R.string.no_description_available)
                         b.itemCompactSynopsis.scrollTo(0, 0)
                     }
                     b.itemUserProgressLarge.text = (media.userProgress ?: "~").toString()

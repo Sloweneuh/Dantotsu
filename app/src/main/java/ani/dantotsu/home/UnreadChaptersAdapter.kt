@@ -145,7 +145,9 @@ class UnreadChaptersAdapter(
 
             // Synopsis preview (strip HTML) and make it scrollable
             try {
-                val synopsis = androidx.core.text.HtmlCompat.fromHtml(media.description ?: "", androidx.core.text.HtmlCompat.FROM_HTML_MODE_LEGACY).toString()
+                val rawDesc = media.description ?: ""
+                val parsed = androidx.core.text.HtmlCompat.fromHtml(rawDesc, androidx.core.text.HtmlCompat.FROM_HTML_MODE_LEGACY).toString()
+                val synopsis = if (parsed.isNullOrBlank() || parsed == "null") root.context.getString(R.string.no_description_available) else parsed
                 itemCompactSynopsis.text = synopsis
                 itemCompactSynopsis.movementMethod = android.text.method.ScrollingMovementMethod()
                 itemCompactSynopsis.scrollTo(0, 0)
@@ -157,7 +159,7 @@ class UnreadChaptersAdapter(
                     false
                 }
             } catch (e: Exception) {
-                itemCompactSynopsis.text = ""
+                itemCompactSynopsis.text = root.context.getString(R.string.no_description_available)
                 itemCompactSynopsis.scrollTo(0, 0)
             }
 
