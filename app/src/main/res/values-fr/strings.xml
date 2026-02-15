@@ -1000,6 +1000,8 @@
     <string name="selected_time_zone">Fuseau horaire</string>
     <string name="selected_no_time_zone">Aucun fuseau horaire sélectionné</string>
     <string name="selected_row_order">Ordre de liste par défaut</string>
+    <string name="reroll">Relancer</string>
+    <string name="cover_image_description">Image de couverture</string>
     <string name="custom_anime_list">Listes d\'Anime personnalisées</string>
     <string name="custom_manga_list">Listes de Manga personnalisées</string>
     <string name="delete_custom_list">Supprimer la liste personnalisée</string>

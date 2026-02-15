@@ -168,6 +168,12 @@ class MangaReaderActivity : AppCompatActivity() {
     }
 
     private fun toggleAutoscroll() {
+        // Only allow autoscroll when using Continuous layout
+        if (defaultSettings.layout != CurrentReaderSettings.Layouts.CONTINUOUS) {
+            // Inform user and do not toggle
+            try { snackString(getString(R.string.autoscroll_only_continuous)) } catch (_: Exception) {}
+            return
+        }
         if (autoscrollOn) stopAutoscroll() else startAutoscroll()
     }
 
@@ -426,9 +432,14 @@ class MangaReaderActivity : AppCompatActivity() {
             toggleAutoscroll()
         }
 
-        // Start autoscroll if enabled in preferences
+        // Start autoscroll if enabled in preferences and layout allows it
         if (PrefManager.getVal(PrefName.AutoScrollEnabled)) {
-            startAutoscroll()
+            if (defaultSettings.layout == CurrentReaderSettings.Layouts.CONTINUOUS) {
+                startAutoscroll()
+            } else {
+                // disable the stored preference if layout doesn't support autoscroll
+                PrefManager.setVal(PrefName.AutoScrollEnabled, false)
+            }
         }
 
         //Next Chapter
@@ -569,6 +580,14 @@ class MangaReaderActivity : AppCompatActivity() {
 
         saveReaderSettings("${media.id}_current_settings", defaultSettings)
         hideSystemBars()
+
+        // Show autoscroll control only for Continuous layout
+        binding.mangaReaderAutoscroll.visibility = if (defaultSettings.layout == CurrentReaderSettings.Layouts.CONTINUOUS) View.VISIBLE else View.GONE
+        if (autoscrollOn && defaultSettings.layout != CurrentReaderSettings.Layouts.CONTINUOUS) {
+            // stop and clear preference when switching away from continuous
+            stopAutoscroll()
+            PrefManager.setVal(PrefName.AutoScrollEnabled, false)
+        }
 
         //true colors
         SubsamplingScaleImageView.setPreferredBitmapConfig(

@@ -373,6 +373,8 @@
     <string name="selected_time_zone">Timezone</string>
     <string name="selected_no_time_zone">No Timezone selected</string>
     <string name="selected_row_order">Default List Order</string>
+    <string name="reroll">Reroll</string>
+    <string name="cover_image_description">Cover image</string>
     <string name="custom_anime_list">Custom Anime Lists</string>
     <string name="custom_manga_list">Custom Manga Lists</string>
     <string name="delete_custom_list">Delete Custom List</string>
@@ -1039,6 +1041,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="reader_settings_desc">All the Reader related settings</string>
     <string name="autoscroll">Autoscroll</string>
     <string name="autoscroll_speed">Autoscroll speed</string>
+    <string name="autoscroll_only_continuous">Autoscroll is only available in Continuous layout</string>
     <string name="purge_manga_downloads_desc">Delete all downloaded Manga</string>
     <string name="purge_novel_downloads_desc">Delete all downloaded Novels</string>
     <string name="include_list_desc">Include list items in Manga explore page</string>

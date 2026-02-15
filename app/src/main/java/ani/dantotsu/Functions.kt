@@ -1370,7 +1370,23 @@ fun blurImage(imageView: ImageView, banner: String?) {
         val radius = PrefManager.getVal<Float>(PrefName.BlurRadius).toInt()
         val sampling = PrefManager.getVal<Float>(PrefName.BlurSampling).toInt()
         val context = imageView.context
-        if (!(context as Activity).isDestroyed) {
+        // Safely resolve Activity from context (context can be a ContextThemeWrapper in dialogs)
+        val activity = when (context) {
+            is Activity -> context
+            is android.content.ContextWrapper -> {
+                var base = context
+                var act: Activity? = null
+                while (base is android.content.ContextWrapper) {
+                    if (base is Activity) { act = base; break }
+                    val b = base.baseContext
+                    if (b is android.content.ContextWrapper) base = b else { base = object : android.content.ContextWrapper(b) {} }
+                }
+                act
+            }
+            else -> null
+        }
+        // Proceed if activity is not destroyed or if we couldn't resolve an Activity (use context directly)
+        if (activity == null || !activity.isDestroyed) {
             val url = PrefManager.getVal<String>(PrefName.ImageUrl).ifEmpty { banner }
             if (PrefManager.getVal(PrefName.BlurBanners)) {
                 Glide.with(context as Context)

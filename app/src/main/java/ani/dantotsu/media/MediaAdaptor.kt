@@ -323,14 +323,17 @@ class MediaAdaptor(
     }
 
     fun randomOptionClick() {
-        val media = if (!mediaList.isNullOrEmpty()) {
-            mediaList.random()
-        } else {
-            null
-        }
-        media?.let {
-            val index = mediaList?.indexOf(it) ?: -1
-            clicked(index, null)
+        if (!mediaList.isNullOrEmpty()) {
+            try {
+                val listCopy = ArrayList(mediaList)
+                MediaRandomDialogFragment.newInstance(listCopy)
+                    .show(activity.supportFragmentManager, "random")
+            } catch (e: Exception) {
+                // fallback to previous behavior
+                val media = mediaList.random()
+                val index = mediaList.indexOf(media)
+                clicked(index, null)
+            }
         }
     }
 

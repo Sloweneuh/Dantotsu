@@ -184,7 +184,6 @@
                 android:alpha="0.9"
                 android:textSize="12sp"
                 android:paddingTop="4dp"
-                android:scrollbars="vertical"
                 android:focusable="true"
                 android:focusableInTouchMode="true"
                 android:isScrollContainer="true"

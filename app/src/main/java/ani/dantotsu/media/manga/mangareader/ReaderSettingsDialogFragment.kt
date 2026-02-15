@@ -11,6 +11,7 @@ import ani.dantotsu.settings.CurrentReaderSettings
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.settings.CurrentReaderSettings.Directions
+import android.widget.Toast
 import com.google.android.material.slider.Slider
 
 class ReaderSettingsDialogFragment : BottomSheetDialogFragment() {
@@ -82,6 +83,15 @@ class ReaderSettingsDialogFragment : BottomSheetDialogFragment() {
                     resources.getStringArray(R.array.manga_layouts)[settings.layout.ordinal]
                 activity.applySettings()
                 paddingAvailable(settings.layout.ordinal != 0)
+                // only allow autoscroll when using continuous layout
+                val autoscrollAllowed = settings.layout == CurrentReaderSettings.Layouts.CONTINUOUS
+                binding.readerAutoscrollEnabled.isEnabled = autoscrollAllowed
+                if (!autoscrollAllowed) {
+                    // disable autoscroll preference and stop any active autoscroll
+                    PrefManager.setVal(PrefName.AutoScrollEnabled, false)
+                    binding.readerAutoscrollEnabled.isChecked = false
+                    activity.stopAutoscroll()
+                }
             }
         }
 
@@ -166,11 +176,24 @@ class ReaderSettingsDialogFragment : BottomSheetDialogFragment() {
             activity.applySettings()
         }
 
-        // Autoscroll enabled
+        // Autoscroll enabled - only valid for Continuous layout
         binding.readerAutoscrollEnabled.isChecked = PrefManager.getVal(PrefName.AutoScrollEnabled)
+        binding.readerAutoscrollEnabled.isEnabled = settings.layout == CurrentReaderSettings.Layouts.CONTINUOUS
         binding.readerAutoscrollEnabled.setOnCheckedChangeListener { _, isChecked ->
-            PrefManager.setVal(PrefName.AutoScrollEnabled, isChecked)
-            if (isChecked) activity.startAutoscroll() else activity.stopAutoscroll()
+            if (isChecked) {
+                if (settings.layout == CurrentReaderSettings.Layouts.CONTINUOUS) {
+                    PrefManager.setVal(PrefName.AutoScrollEnabled, true)
+                    activity.startAutoscroll()
+                } else {
+                    // Prevent enabling autoscroll for non-continuous layouts
+                    Toast.makeText(requireContext(), R.string.autoscroll_only_continuous, Toast.LENGTH_SHORT).show()
+                    binding.readerAutoscrollEnabled.isChecked = false
+                    PrefManager.setVal(PrefName.AutoScrollEnabled, false)
+                }
+            } else {
+                PrefManager.setVal(PrefName.AutoScrollEnabled, false)
+                activity.stopAutoscroll()
+            }
         }
 
         // Autoscroll speed (clamp stored preference to slider bounds)

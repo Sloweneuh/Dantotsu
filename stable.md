@@ -1,15 +1,9 @@
-# 3.6.0
-
-- **Features:**
-  - Autoscroll
-    - You can autoscroll when reading manga, with a button on the reader
-    - The scroll speed can also be changed in reader settings, as well as a toggle to enable autoscroll by default
-  - Connections settings
-    - You can now disable info fetching and tab display for MAL, Comick MangaUpdates and MALSync
-    - You can choose whether MALSync checks for manga, anime or both
+# 3.6.1
 
 - **Changes:**
-  - Updated the list view display to improve text readeability
+  - Updated the random pick display to a card, to allow spamming without additionnal API calls
+  - Removed the visible scrollbar from list view item synopsis
+  - Added a max amount of lines that the manga title can take on the reader
 
 - **Bugfixes:**
-  - Fixed an issue causing the Unlink button to appear all the time on the MangaUpdates tab
+  - Prevented autoscroll from being useable in reading layouts other than "Continuous"
