@@ -2,6 +2,9 @@ package ani.dantotsu.home
 
 import android.animation.ObjectAnimator
 import android.content.Intent
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.IntentFilter
 import android.graphics.drawable.Animatable
 import android.os.Build
 import android.os.Bundle
@@ -33,6 +36,7 @@ import ani.dantotsu.databinding.FragmentHomeBinding
 import ani.dantotsu.home.status.UserStatusAdapter
 import ani.dantotsu.loadImage
 import ani.dantotsu.media.Media
+import ani.dantotsu.connections.malsync.UnreadChapterInfo
 import ani.dantotsu.media.MediaAdaptor
 import ani.dantotsu.media.MediaListViewActivity
 import ani.dantotsu.media.user.ListActivity
@@ -63,6 +67,71 @@ import android.widget.LinearLayout
 class HomeFragment : Fragment() {
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
+    private val unreadCacheReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            try {
+                refreshUnreadFromCache()
+            } catch (e: Exception) {
+                ani.dantotsu.util.Logger.log("unreadCacheReceiver error: ${e.message}")
+            }
+        }
+    }
+    // Helper: merge cached UnreadChapterInfo (from prefs) with current list's progress
+    private fun mergedCachedInfoFor(list: List<Media>?): Map<Int, UnreadChapterInfo> {
+        // Load cached unread info map (malsync results)
+        val cachedUnreadInfo: Map<Int, UnreadChapterInfo> = try {
+            @Suppress("UNCHECKED_CAST")
+            ani.dantotsu.settings.saving.PrefManager.getNullableCustomVal(
+                "cached_unread_info",
+                null,
+                java.util.HashMap::class.java
+            ) as? Map<Int, UnreadChapterInfo> ?: mapOf()
+        } catch (e: Exception) {
+            mapOf()
+        }
+        if (list.isNullOrEmpty()) return cachedUnreadInfo
+        val currentById = list.associateBy { it.id }
+        return cachedUnreadInfo.mapValues { (id, info) ->
+            val updatedProgress = currentById[id]?.userProgress ?: info.userProgress
+            info.copy(userProgress = updatedProgress)
+        }
+    }
+
+    // Helper: determine last chapter number for a media, preferring MALSync info, then local chapters, then totalChapters
+    private fun getLastChapterForMedia(media: Media, infoMap: Map<Int, UnreadChapterInfo>?): Int? {
+        val info = infoMap?.get(media.id)
+        if (info?.lastChapter != null) return info.lastChapter
+        val manga = media.manga
+        if (manga != null) {
+            val nums = manga.chapters?.values
+                ?.mapNotNull { ani.dantotsu.media.MediaNameAdapter.findChapterNumber(it.number)?.toInt() }
+            if (!nums.isNullOrEmpty()) return nums.maxOrNull()
+            if (manga.totalChapters != null) return manga.totalChapters
+        }
+        return null
+    }
+
+    // Helper to update refresh alignment (used by unread UI)
+    private fun updateUnreadRefreshAlignment() {
+        try {
+            val moreVisible = binding.homeUnreadChaptersMore.visibility == View.VISIBLE
+            val refreshContainer = binding.homeUnreadChaptersRefresh.parent as? FrameLayout
+            // adjust the FrameLayout (container) width so the refresh button can align to end
+            val parentLp = refreshContainer?.layoutParams as? LinearLayout.LayoutParams
+            if (parentLp != null) {
+                parentLp.width = if (moreVisible) LinearLayout.LayoutParams.WRAP_CONTENT else LinearLayout.LayoutParams.MATCH_PARENT
+                refreshContainer.layoutParams = parentLp
+            }
+
+            val refreshLp = binding.homeUnreadChaptersRefresh.layoutParams as? FrameLayout.LayoutParams
+            if (refreshLp != null) {
+                refreshLp.gravity = Gravity.END or Gravity.CENTER_VERTICAL
+                binding.homeUnreadChaptersRefresh.layoutParams = refreshLp
+            }
+        } catch (e: Exception) {
+            ani.dantotsu.util.Logger.log("updateUnreadRefreshAlignment error: ${e.message}")
+        }
+    }
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -83,60 +152,7 @@ class HomeFragment : Fragment() {
         val scope = lifecycleScope
         Logger.log("HomeFragment")
 
-        fun updateUnreadRefreshAlignment() {
-            try {
-                val moreVisible = binding.homeUnreadChaptersMore.visibility == View.VISIBLE
-                val refreshContainer = binding.homeUnreadChaptersRefresh.parent as? FrameLayout
-                // adjust the FrameLayout (container) width so the refresh button can align to end
-                val parentLp = refreshContainer?.layoutParams as? LinearLayout.LayoutParams
-                if (parentLp != null) {
-                    parentLp.width = if (moreVisible) LinearLayout.LayoutParams.WRAP_CONTENT else LinearLayout.LayoutParams.MATCH_PARENT
-                    refreshContainer.layoutParams = parentLp
-                }
-
-                val refreshLp = binding.homeUnreadChaptersRefresh.layoutParams as? FrameLayout.LayoutParams
-                if (refreshLp != null) {
-                    refreshLp.gravity = Gravity.END or Gravity.CENTER_VERTICAL
-                    binding.homeUnreadChaptersRefresh.layoutParams = refreshLp
-                }
-            } catch (e: Exception) {
-                ani.dantotsu.util.Logger.log("updateUnreadRefreshAlignment error: ${e.message}")
-            }
-        }
-        // Load cached unread info map (malsync results) so it is available to observers
-        val cachedUnreadInfo: Map<Int, ani.dantotsu.connections.malsync.UnreadChapterInfo> = try {
-            @Suppress("UNCHECKED_CAST")
-            ani.dantotsu.settings.saving.PrefManager.getNullableCustomVal(
-                "cached_unread_info",
-                null,
-                java.util.HashMap::class.java
-            ) as? Map<Int, ani.dantotsu.connections.malsync.UnreadChapterInfo> ?: mapOf()
-        } catch (e: Exception) {
-            mapOf()
-        }
-        // Helper to merge cached unreadInfo with current manga userProgress
-        fun mergedCachedInfoFor(list: List<ani.dantotsu.media.Media>?): Map<Int, ani.dantotsu.connections.malsync.UnreadChapterInfo> {
-            if (list.isNullOrEmpty()) return cachedUnreadInfo
-            val currentById = list.associateBy { it.id }
-            return cachedUnreadInfo.mapValues { (id, info) ->
-                val updatedProgress = currentById[id]?.userProgress ?: info.userProgress
-                info.copy(userProgress = updatedProgress)
-            }
-        }
-
-        // Helper to determine the last chapter number for a media, preferring MALSync info, then local chapters, then totalChapters
-        fun getLastChapterForMedia(media: ani.dantotsu.media.Media, infoMap: Map<Int, ani.dantotsu.connections.malsync.UnreadChapterInfo>?): Int? {
-            val info = infoMap?.get(media.id)
-            if (info?.lastChapter != null) return info.lastChapter
-            val manga = media.manga
-            if (manga != null) {
-                val nums = manga.chapters?.values
-                    ?.mapNotNull { ani.dantotsu.media.MediaNameAdapter.findChapterNumber(it.number)?.toInt() }
-                if (!nums.isNullOrEmpty()) return nums.maxOrNull()
-                if (manga.totalChapters != null) return manga.totalChapters
-            }
-            return null
-        }
+        // class-level helpers `updateUnreadRefreshAlignment`, `mergedCachedInfoFor`, and `getLastChapterForMedia` are defined at class scope
         fun load() {
             Logger.log("Loading HomeFragment")
             if (activity != null && _binding != null) lifecycleScope.launch(Dispatchers.Main) {
@@ -705,8 +721,8 @@ class HomeFragment : Fragment() {
                                 }
                             } else {
                                 // No fresh MALSync data. Prefer cached unreadInfo when available.
-                                if (cachedUnreadInfo.isNotEmpty()) {
-                                        val merged = mergedCachedInfoFor(model.getMangaContinue().value)
+                                val merged = mergedCachedInfoFor(model.getMangaContinue().value)
+                                if (merged.isNotEmpty()) {
                                         // Filter cached results using merged info
                                         val filteredCached = unreadList.filter { media ->
                                             val last = getLastChapterForMedia(media, merged)
@@ -934,68 +950,7 @@ class HomeFragment : Fragment() {
         }
 
         // Refresh unread UI from cached unread list without performing MALSync network check
-        fun refreshUnreadFromCache() {
-            try {
-                val cached = model.getUnreadChapters().value
-                val currentManga = model.getMangaContinue().value
-                if (cached == null) return
-
-                // Load cached unread info map (malsync results) to preserve source/lastEp
-                val cachedUnreadInfo = try {
-                    @Suppress("UNCHECKED_CAST")
-                    ani.dantotsu.settings.saving.PrefManager.getNullableCustomVal(
-                        "cached_unread_info",
-                        null,
-                        java.util.HashMap::class.java
-                    ) as? Map<Int, ani.dantotsu.connections.malsync.UnreadChapterInfo> ?: mapOf()
-                } catch (e: Exception) {
-                    mapOf()
-                }
-
-                // Filter cached unread to existing currentManga entries and update userProgress
-                val filtered = cached.mapNotNull { cachedMedia: ani.dantotsu.media.Media ->
-                    val updated = currentManga?.firstOrNull { it.id == cachedMedia.id }
-                    if (updated != null) {
-                        // If user progress changed, use the newer progress value
-                        cachedMedia.userProgress = updated.userProgress
-                        cachedMedia
-                    } else null
-                }
-
-                if (filtered.isNotEmpty()) {
-                    val merged = mergedCachedInfoFor(currentManga)
-                    // Further filter cached results to remove items the user has already caught up to
-                    val filteredCached = filtered.filter { media ->
-                        val last = getLastChapterForMedia(media, merged)
-                        val progress = merged[media.id]?.userProgress ?: media.userProgress ?: 0
-                        last == null || last > progress
-                    }
-                    if (filteredCached.isNotEmpty()) {
-                        binding.homeUnreadChaptersRecyclerView.adapter = UnreadChaptersAdapter(filteredCached, merged)
-                        binding.homeUnreadChaptersRecyclerView.layoutManager = LinearLayoutManager(
-                            requireContext(), LinearLayoutManager.HORIZONTAL, false
-                        )
-                        binding.homeUnreadChaptersRecyclerView.visibility = View.VISIBLE
-                        binding.homeUnreadChaptersEmpty.visibility = View.GONE
-                        binding.homeUnreadChaptersRecyclerView.layoutAnimation = LayoutAnimationController(setSlideIn(), 0.25f)
-                        binding.homeUnreadChaptersRecyclerView.post {
-                            binding.homeUnreadChaptersRecyclerView.scheduleLayoutAnimation()
-                        }
-                    } else {
-                        binding.homeUnreadChaptersRecyclerView.visibility = View.GONE
-                        binding.homeUnreadChaptersEmpty.visibility = View.VISIBLE
-                    }
-                } else {
-                    binding.homeUnreadChaptersRecyclerView.visibility = View.GONE
-                    binding.homeUnreadChaptersEmpty.visibility = View.VISIBLE
-                }
-                binding.homeUnreadChaptersProgressBar.visibility = View.GONE
-                binding.homeUnreadChaptersMore.visibility = View.VISIBLE
-                updateUnreadRefreshAlignment()
-            } catch (e: Exception) {
-                ani.dantotsu.util.Logger.log("refreshUnreadFromCache error: ${e.message}")
-            }
-        }
+        // This is implemented as a class-level method below so it can be triggered by broadcasts.
 
         var running = false
         val live = Refresh.activity.getOrPut(1) { MutableLiveData(true) }
@@ -1026,6 +981,8 @@ class HomeFragment : Fragment() {
                     var empty = true
                     val homeLayoutShow: List<Boolean> = PrefManager.getVal(PrefName.HomeLayout)
 
+
+    
                     withContext(Dispatchers.Main) {
                         homeLayoutShow.indices.forEach { i ->
                             if (homeLayoutShow.elementAt(i)) {
@@ -1070,5 +1027,87 @@ class HomeFragment : Fragment() {
             binding.homeNotificationCount.text = Anilist.unreadNotificationCount.toString()
         }
         super.onResume()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        try {
+            requireContext().registerReceiver(unreadCacheReceiver, IntentFilter(ani.dantotsu.notifications.unread.UnreadCache.ACTION_CACHE_UPDATED))
+        } catch (e: Exception) {
+            ani.dantotsu.util.Logger.log("HomeFragment.onStart registerReceiver error: ${e.message}")
+        }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        try {
+            requireContext().unregisterReceiver(unreadCacheReceiver)
+        } catch (e: Exception) {
+            ani.dantotsu.util.Logger.log("HomeFragment.onStop unregisterReceiver error: ${e.message}")
+        }
+    }
+
+    // Class-level implementation of cached refresh so external triggers can call it
+    private fun refreshUnreadFromCache() {
+        try {
+            val cached = model.getUnreadChapters().value
+            val currentManga = model.getMangaContinue().value
+            if (cached == null) return
+
+            // Load cached unread info map (malsync results) to preserve source/lastEp
+            val cachedUnreadInfo = try {
+                @Suppress("UNCHECKED_CAST")
+                ani.dantotsu.settings.saving.PrefManager.getNullableCustomVal(
+                    "cached_unread_info",
+                    null,
+                    java.util.HashMap::class.java
+                ) as? Map<Int, ani.dantotsu.connections.malsync.UnreadChapterInfo> ?: mapOf()
+            } catch (e: Exception) {
+                mapOf()
+            }
+
+            // Filter cached unread to existing currentManga entries and update userProgress
+            val filtered = cached.mapNotNull { cachedMedia: ani.dantotsu.media.Media ->
+                val updated = currentManga?.firstOrNull { it.id == cachedMedia.id }
+                if (updated != null) {
+                    // If user progress changed, use the newer progress value
+                    cachedMedia.userProgress = updated.userProgress
+                    cachedMedia
+                } else null
+            }
+
+            if (filtered.isNotEmpty()) {
+                val merged = mergedCachedInfoFor(currentManga)
+                // Further filter cached results to remove items the user has already caught up to
+                val filteredCached = filtered.filter { media ->
+                    val last = getLastChapterForMedia(media, merged)
+                    val progress = merged[media.id]?.userProgress ?: media.userProgress ?: 0
+                    last == null || last > progress
+                }
+                if (filteredCached.isNotEmpty()) {
+                    binding.homeUnreadChaptersRecyclerView.adapter = UnreadChaptersAdapter(filteredCached, merged)
+                    binding.homeUnreadChaptersRecyclerView.layoutManager = LinearLayoutManager(
+                        requireContext(), LinearLayoutManager.HORIZONTAL, false
+                    )
+                    binding.homeUnreadChaptersRecyclerView.visibility = View.VISIBLE
+                    binding.homeUnreadChaptersEmpty.visibility = View.GONE
+                    binding.homeUnreadChaptersRecyclerView.layoutAnimation = LayoutAnimationController(setSlideIn(), 0.25f)
+                    binding.homeUnreadChaptersRecyclerView.post {
+                        binding.homeUnreadChaptersRecyclerView.scheduleLayoutAnimation()
+                    }
+                } else {
+                    binding.homeUnreadChaptersRecyclerView.visibility = View.GONE
+                    binding.homeUnreadChaptersEmpty.visibility = View.VISIBLE
+                }
+            } else {
+                binding.homeUnreadChaptersRecyclerView.visibility = View.GONE
+                binding.homeUnreadChaptersEmpty.visibility = View.VISIBLE
+            }
+            binding.homeUnreadChaptersProgressBar.visibility = View.GONE
+            binding.homeUnreadChaptersMore.visibility = View.VISIBLE
+            updateUnreadRefreshAlignment()
+        } catch (e: Exception) {
+            ani.dantotsu.util.Logger.log("refreshUnreadFromCache error: ${e.message}")
+        }
     }
 }

@@ -196,6 +196,14 @@ class UnreadChapterNotificationTask : Task {
 
                     Logger.log("UnreadChapterNotificationTask: found ${unreadInfo.size} manga with unread chapters")
 
+                    // Persist MALSync results and cached unread chapters so Home can show them when app is opened
+                    try {
+                        UnreadCache.save(context, unreadInfo, mangaList)
+                        UnreadCache.broadcastUpdate(context)
+                    } catch (e: Exception) {
+                        Logger.log("UnreadChapterNotificationTask: Failed to cache/broadcast unread results: ${e.message}")
+                    }
+
                     // Get previously notified chapters
                     val notifiedKey = "notified_unread_chapters"
                     val notified = getNotifiedChapters(context, notifiedKey)
