@@ -19,6 +19,9 @@ import ani.dantotsu.media.MediaSingleton
 import ani.dantotsu.media.manga.MangaChapter
 import ani.dantotsu.others.getSerialized
 import ani.dantotsu.tryWith
+import ani.dantotsu.parsers.DynamicMangaParser
+import ani.dantotsu.util.customAlertDialog
+import eu.kanade.tachiyomi.source.online.HttpSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.Serializable
@@ -44,6 +47,37 @@ class ChapterLoaderDialog : BottomSheetDialogFragment() {
 
         model.getMedia().observe(viewLifecycleOwner) { m ->
             if (m != null && !loaded) {
+                // If chapter title/number contains a lock emoji, show premium dialog instead of loading
+                val hasLock = (chp.title?.contains("🔒") == true) || (chp.number.contains("🔒"))
+                if (hasLock) {
+                    val parser = model.mangaReadSources?.get(m.selected!!.sourceIndex) as? DynamicMangaParser
+                    val sourceName = parser?.name
+                        ?: (parser?.extension?.sources?.getOrNull(parser.sourceLanguage)?.name ?: getString(R.string.open_in_browser))
+
+                    requireContext().customAlertDialog().apply {
+                        setTitle(getString(R.string.premium_chapter_title))
+                        setMessage(getString(R.string.premium_chapter_message, sourceName))
+                        setPosButton(R.string.open_in_browser) {
+                            // Try to open chapter in browser
+                            if (parser != null) {
+                                val httpSource = parser.extension.sources.getOrNull(parser.sourceLanguage) as? HttpSource
+                                if (httpSource != null) {
+                                    try {
+                                        val url = httpSource.getChapterUrl(chp.sChapter)
+                                        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
+                                        startActivity(intent)
+                                    } catch (_: Exception) {
+                                    }
+                                }
+                            }
+                        }
+                        setNegButton(R.string.cancel)
+                        show()
+                    }
+                    dismiss()
+                    return@observe
+                }
+
                 loaded = true
                 binding.selectorAutoText.text = chp.title
                 lifecycleScope.launch(Dispatchers.IO) {

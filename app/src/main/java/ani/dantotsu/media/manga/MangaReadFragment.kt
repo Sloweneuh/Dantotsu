@@ -459,6 +459,26 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
 
     fun onMangaChapterClick(i: MangaChapter) {
         model.continueMedia = false
+
+        // If chapter title/number contains a lock emoji, show premium dialog instead of opening reader
+        val hasLock = (i.title?.contains("🔒") == true) || (i.number.contains("🔒"))
+        if (hasLock) {
+            val parser = model.mangaReadSources?.get(media.selected!!.sourceIndex) as? ani.dantotsu.parsers.DynamicMangaParser
+            val sourceName = parser?.name
+                ?: (parser?.extension?.sources?.getOrNull(parser.sourceLanguage)?.name ?: getString(R.string.open_in_browser))
+
+            requireContext().customAlertDialog().apply {
+                setTitle(getString(R.string.premium_chapter_title))
+                setMessage(getString(R.string.premium_chapter_message, sourceName))
+                setPosButton(R.string.open_in_browser) {
+                    openChapterInBrowser(i)
+                }
+                setNegButton(R.string.cancel)
+                show()
+            }
+            return
+        }
+
         media.manga?.chapters?.get(i.uniqueNumber())?.let {
             media.manga?.selectedChapter = i
             model.saveSelected(media.id, media.selected!!)

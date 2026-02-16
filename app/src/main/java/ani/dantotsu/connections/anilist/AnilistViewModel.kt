@@ -95,20 +95,29 @@ class AnilistHomeViewModel : ViewModel() {
     fun getHidden(): LiveData<ArrayList<Media>> = hidden
 
     private val unreadChapters: MutableLiveData<ArrayList<Media>> =
-        MutableLiveData<ArrayList<Media>>(null)
+        // Attempt to load cached unread chapters from preferences so they survive restarts
+        MutableLiveData<ArrayList<Media>>(
+            PrefManager.getNullableCustomVal("cached_unread_chapters", null, ArrayList::class.java) as? ArrayList<Media>
+        )
 
     fun getUnreadChapters(): LiveData<ArrayList<Media>> = unreadChapters
+
+    private val unreadChaptersLoading: MutableLiveData<Boolean> = MutableLiveData(false)
+
+    fun getUnreadChaptersLoading(): LiveData<Boolean> = unreadChaptersLoading
 
     private val unreadChaptersError: MutableLiveData<Boolean> = MutableLiveData(false)
 
     fun getUnreadChaptersError(): LiveData<Boolean> = unreadChaptersError
 
     suspend fun initUnreadChapters() {
+        unreadChaptersLoading.postValue(true)
         val currentManga = mangaContinue.value
         if (currentManga == null || currentManga.isEmpty()) {
             // Always post a value (even if empty) to ensure UI updates and hides progress bar
             unreadChapters.postValue(arrayListOf())
             unreadChaptersError.postValue(false)
+            unreadChaptersLoading.postValue(false)
             return
         }
 
@@ -156,11 +165,25 @@ class AnilistHomeViewModel : ViewModel() {
             }
 
             unreadChapters.postValue(unreadList)
+            // Persist cached results so they are available after app restart
+            try {
+                PrefManager.setCustomVal("cached_unread_chapters", unreadList)
+            } catch (e: Exception) {
+                ani.dantotsu.util.Logger.log("Failed to cache unread chapters: ${e.message}")
+            }
             unreadChaptersError.postValue(false)
+            unreadChaptersLoading.postValue(false)
         } catch (e: Exception) {
             // On error, post empty list and set error flag
             unreadChapters.postValue(arrayListOf())
+            // Update cache to empty on error to avoid showing stale positives
+            try {
+                PrefManager.setCustomVal("cached_unread_chapters", arrayListOf<Media>())
+            } catch (e: Exception) {
+                ani.dantotsu.util.Logger.log("Failed to clear cached unread chapters: ${e.message}")
+            }
             unreadChaptersError.postValue(true)
+            unreadChaptersLoading.postValue(false)
         }
     }
 

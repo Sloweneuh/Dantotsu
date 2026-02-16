@@ -311,9 +311,9 @@ class MediaRandomDialogFragment : DialogFragment() {
     companion object {
         fun newInstance(list: ArrayList<Media>): MediaRandomDialogFragment {
             val frag = MediaRandomDialogFragment()
-            val args = Bundle()
-            args.putSerializable("list", list)
-            frag.arguments = args
+            // Avoid putting large lists into fragment arguments (causes TransactionTooLargeException
+            // when the system saves fragment state). Set the list directly on the fragment instance.
+            frag.mediaList = list
             return frag
         }
     }

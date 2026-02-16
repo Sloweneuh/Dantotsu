@@ -68,6 +68,10 @@ class ExtensionsActivity : AppCompatActivity() {
             )
         }
 
+        binding.extensionBack.setOnClickListener {
+            onBackPressedDispatcher.onBackPressed()
+        }
+
         val tabLayout = findViewById<TabLayout>(R.id.tabLayout)
         val viewPager = findViewById<ViewPager2>(R.id.viewPager)
         viewPager.offscreenPageLimit = 1

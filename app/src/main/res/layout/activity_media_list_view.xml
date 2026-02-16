@@ -18,11 +18,22 @@
                 android:layout_height="match_parent"
                 android:orientation="horizontal">
 
+                <ImageButton
+                    android:id="@+id/listBack"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_marginStart="8dp"
+                    android:layout_gravity="center_vertical"
+                    android:background="?android:attr/selectableItemBackground"
+                    app:srcCompat="@drawable/ic_round_arrow_back_ios_new_24"
+                    app:tint="?attr/colorOnBackground"
+                    tools:ignore="ContentDescription,ImageContrastCheck" />
+
                 <TextView
                     android:id="@+id/listTitle"
                     android:layout_width="0dp"
                     android:layout_height="48dp"
-                    android:layout_marginStart="24dp"
+                    android:layout_marginStart="8dp"
                     android:layout_weight="1"
                     android:ellipsize="end"
                     android:fontFamily="@font/poppins_bold"

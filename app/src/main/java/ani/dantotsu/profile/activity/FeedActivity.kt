@@ -33,6 +33,8 @@ class FeedActivity : AppCompatActivity() {
         binding.notificationToolbar.updateLayoutParams<ViewGroup.MarginLayoutParams> {
             topMargin = statusBarHeight
         }
+        // Hide settings icon for Activities feed (uses same layout as notifications)
+        binding.notificationSettings.visibility = View.GONE
         navBar = binding.notificationNavBar
         binding.root.updateLayoutParams<ViewGroup.MarginLayoutParams> {
             bottomMargin = navBarHeight

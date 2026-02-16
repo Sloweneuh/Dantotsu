@@ -1,9 +1,13 @@
-# 3.6.1
+# 3.6.2
 
 - **Changes:**
-  - Updated the random pick display to a card, to allow spamming without additionnal API calls
-  - Removed the visible scrollbar from list view item synopsis
-  - Added a max amount of lines that the manga title can take on the reader
+  - Added a warning when trying to load a paid chapter, with a link to the chapter on the source's website
+  - Added buttons to come back from some pages without having to use the android button
+  - Updated logic for the Unread Chapters section of the homepage to make reloading the homepage faster.
+    - Uses cached data from regular checks
+    - Added a button to start a manual check
 
 - **Bugfixes:**
-  - Prevented autoscroll from being useable in reading layouts other than "Continuous"
+  - Fixed a crash that occurs when turning the phone screen off while the random pick card was visible
+  - Restored missing media opening animations for some sections of the homepage
+  - Removed a useless settings icon in the activities page

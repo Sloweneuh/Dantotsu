@@ -275,6 +275,7 @@
     <string name="restart_app_extra">Redémarrez l\'application pour appliquer les changements</string>
     <string name="next">Suivant</string>
     <string name="previous">Précédent</string>
+    <string name="back">Retour</string>
     <string name="current_page">Page actuelle</string>
     <string name="dubbed">Doublé</string>
     <string name="subbed">Sous-titré</string>
@@ -823,6 +824,8 @@
     <string name="test_results">Résultats des tests</string>
     <string name="extensions_selected">%1$d extension(s) sélectionnée(s)</string>
     <string name="open_in_browser">Ouvrir dans le navigateur</string>
+    <string name="premium_chapter_title">Chapitre premium</string>
+    <string name="premium_chapter_message">Ce chapitre est un chapitre premium sur %1$s. Vous devez payer et le lire sur le site web.</string>
 
     <string name="extension_repo_added">Dépôt d\'extension %1$s ajouté</string>
     <string name="invalid_file_type">Type de fichier invalide</string>
@@ -1179,6 +1182,7 @@
     <string name="skip_loading_extension_icons_desc">Ne pas charger les icônes des extensions sur la page des extensions</string>
     <string name="NSFWExtention_desc">Activer les extensions 18+ depuis la recherche (Peut supprimer certaines extensions utiles)</string>
     <string name="autoscroll_speed">Vitesse de défilement</string>
+    <string name="autoscroll_only_continuous">Le défilement automatique n\'est disponible que dans le mode de lecture continu</string>
     <string name="purge_manga_downloads_desc">Supprimer tous les Manga téléchargés</string>
     <string name="purge_novel_downloads_desc">Supprimer tous les Romans téléchargés</string>
     <string name="include_list_desc">Inclure les éléments de la liste dans la page d\'exploration Manga</string>

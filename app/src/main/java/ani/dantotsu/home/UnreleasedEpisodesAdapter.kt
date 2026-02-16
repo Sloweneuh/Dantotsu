@@ -4,6 +4,8 @@ import android.content.Intent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.app.ActivityOptionsCompat
+import androidx.core.view.ViewCompat
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
@@ -137,12 +139,18 @@ class UnreleasedEpisodesAdapter(
 
             // Handle click to open media details
             val clickAction = {
-                ContextCompat.startActivity(
-                    root.context,
-                    Intent(root.context, ani.dantotsu.media.MediaDetailsActivity::class.java)
-                        .putExtra("media", media),
-                    null
-                )
+                val intent = Intent(root.context, ani.dantotsu.media.MediaDetailsActivity::class.java)
+                    .putExtra("media", media)
+                val activity = (root.context as? androidx.fragment.app.FragmentActivity)
+                val options = if (activity != null) {
+                    ActivityOptionsCompat.makeSceneTransitionAnimation(
+                        activity,
+                        itemCompactImage,
+                        ViewCompat.getTransitionName(itemCompactImage)!!
+                    ).toBundle()
+                } else null
+
+                ContextCompat.startActivity(root.context, intent, options)
             }
             root.setSafeOnClickListener { clickAction() }
             itemCompactImage.setSafeOnClickListener { clickAction() }
@@ -263,12 +271,18 @@ class UnreleasedEpisodesAdapter(
 
             // Handle click to open media details
             val clickAction = {
-                ContextCompat.startActivity(
-                    root.context,
-                    Intent(root.context, ani.dantotsu.media.MediaDetailsActivity::class.java)
-                        .putExtra("media", media),
-                    null
-                )
+                val intent = Intent(root.context, ani.dantotsu.media.MediaDetailsActivity::class.java)
+                    .putExtra("media", media)
+                val activity = (root.context as? androidx.fragment.app.FragmentActivity)
+                val options = if (activity != null) {
+                    ActivityOptionsCompat.makeSceneTransitionAnimation(
+                        activity,
+                        itemCompactImage,
+                        ViewCompat.getTransitionName(itemCompactImage)!!
+                    ).toBundle()
+                } else null
+
+                ContextCompat.startActivity(root.context, intent, options)
             }
             root.setSafeOnClickListener { clickAction() }
             itemCompactImage.setSafeOnClickListener { clickAction() }

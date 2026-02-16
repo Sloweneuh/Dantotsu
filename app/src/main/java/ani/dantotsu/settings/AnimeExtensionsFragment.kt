@@ -57,8 +57,6 @@ class AnimeExtensionsFragment : Fragment(),
             }
         }
 
-        viewModel.invalidatePager() // Force a refresh of the pager
-
         return binding.root
     }
 

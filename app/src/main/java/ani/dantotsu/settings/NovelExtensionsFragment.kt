@@ -61,9 +61,6 @@ class NovelExtensionsFragment : Fragment(),
                 adapter.submitData(pagingData)
             }
         }
-
-
-        viewModel.invalidatePager() // Force a refresh of the pager
         return binding.root
     }
 

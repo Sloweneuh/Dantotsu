@@ -75,6 +75,10 @@ class ListActivity : AppCompatActivity() {
             R.string.user_list, intent.getStringExtra("username"),
             if (anime) getString(R.string.anime) else getString(R.string.manga)
         )
+
+        binding.listBack.setOnClickListener {
+            finish()
+        }
         binding.listTabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab?) {
                 this@ListActivity.selectedTabIdx = tab?.position ?: 0

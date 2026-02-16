@@ -4,6 +4,8 @@ import android.content.Intent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.app.ActivityOptionsCompat
+import androidx.core.view.ViewCompat
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
@@ -14,6 +16,7 @@ import ani.dantotsu.databinding.ItemUnreadChapterBinding
 import ani.dantotsu.loadImage
 import ani.dantotsu.media.Media
 import ani.dantotsu.setSafeOnClickListener
+import ani.dantotsu.media.MediaNameAdapter
 
 class UnreadChaptersAdapter(
     private val mediaList: List<Media>,
@@ -51,7 +54,20 @@ class UnreadChaptersAdapter(
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         val media = mediaList[position]
-        val info = unreadInfo[media.id] ?: return
+        val info = unreadInfo[media.id] ?: run {
+            // Try to derive the last known chapter from the manga chapters list if available
+            val derivedLast = media.manga?.chapters?.values
+                ?.mapNotNull { MediaNameAdapter.findChapterNumber(it.number)?.toInt() }
+                ?.maxOrNull()
+                ?: media.manga?.totalChapters
+                ?: 0
+            ani.dantotsu.connections.malsync.UnreadChapterInfo(
+                mediaId = media.id,
+                lastChapter = derivedLast,
+                source = "",
+                userProgress = media.userProgress ?: 0
+            )
+        }
 
         when (holder) {
             is CompactViewHolder -> bindCompactView(holder.binding, media, info)
@@ -72,7 +88,8 @@ class UnreadChaptersAdapter(
             itemCompactUserProgress.text = info.userProgress.toString()
 
             val totalChapters = media.manga?.totalChapters ?: "~"
-            itemCompactTotal.text = " | ${info.lastChapter} | $totalChapters"
+            val lastChapterDisplay = if (info.lastChapter > 0) info.lastChapter.toString() else "?"
+            itemCompactTotal.text = " | $lastChapterDisplay | $totalChapters"
 
             // Show source as badge on top of cover (icon + short code) to match anime badge
                 if (!info.source.isNullOrBlank()) {
@@ -101,14 +118,20 @@ class UnreadChaptersAdapter(
 
             // Handle click to open media details
             val clickAction = {
-                ContextCompat.startActivity(
-                    root.context,
-                    Intent(root.context, ani.dantotsu.media.MediaDetailsActivity::class.java)
-                        .putExtra("media", media)
-                        .putExtra("source", info.source)
-                        .putExtra("lastChapter", info.lastChapter),
-                    null
-                )
+                val intent = Intent(root.context, ani.dantotsu.media.MediaDetailsActivity::class.java)
+                    .putExtra("media", media)
+                    .putExtra("source", info.source)
+                    .putExtra("lastChapter", info.lastChapter)
+                val activity = (root.context as? androidx.fragment.app.FragmentActivity)
+                val options = if (activity != null) {
+                    ActivityOptionsCompat.makeSceneTransitionAnimation(
+                        activity,
+                        itemCompactImage,
+                        ViewCompat.getTransitionName(itemCompactImage)!!
+                    ).toBundle()
+                } else null
+
+                ContextCompat.startActivity(root.context, intent, options)
             }
             root.setSafeOnClickListener { clickAction() }
             itemCompactImage.setSafeOnClickListener { clickAction() }
@@ -138,9 +161,10 @@ class UnreadChaptersAdapter(
 
             // Set progress info - show: userProgress / (lastChapter | totalChapters)
             val totalChapters = media.manga?.totalChapters ?: "~"
+            val lastChapterDisplay = if (info.lastChapter > 0) info.lastChapter.toString() else "?"
             itemUserProgressLarge.text = (info.userProgress).toString()
             itemProgressSeparator.visibility = View.VISIBLE
-            itemCompactTotal.text = "${info.lastChapter} | $totalChapters"
+            itemCompactTotal.text = "$lastChapterDisplay | $totalChapters"
             itemTotal.text = ""
 
             // Synopsis preview (strip HTML) and make it scrollable

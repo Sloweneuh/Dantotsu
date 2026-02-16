@@ -117,6 +117,10 @@ class MediaListViewActivity : AppCompatActivity() {
         val text = "${intent.getStringExtra("title")} (${mediaList.count()})"
         binding.listTitle.text = text
 
+        binding.listBack.setOnClickListener {
+            finish()
+        }
+
         // Check if we have unread chapter info or unreleased episode info to display
         when {
             localUnreadInfo != null -> {

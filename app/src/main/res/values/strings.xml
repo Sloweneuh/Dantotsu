@@ -357,6 +357,7 @@
     <string name="restart_app_extra">Restart the app to apply changes</string>
     <string name="next">Next</string>
     <string name="previous">Previous</string>
+    <string name="back">Back</string>
     <string name="current_page">Current Page</string>
     <string name="dubbed">Dubbed</string>
     <string name="subbed">Subbed</string>
@@ -1205,6 +1206,8 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="test_results">Test Results</string>
     <string name="extensions_selected">%1$d extension(s) selected</string>
     <string name="open_in_browser">Open in browser</string>
+    <string name="premium_chapter_title">Premium chapter</string>
+    <string name="premium_chapter_message">This chapter is a premium chapter on %1$s.\nYou will need to pay and read it on the website.</string>
 
     <!-- Toast Messages -->
     <string name="extension_repo_added">%1$s Extension Repo added</string>

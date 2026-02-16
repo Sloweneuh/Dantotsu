@@ -20,6 +20,17 @@
             app:cardCornerRadius="16dp"
             app:cardElevation="0dp">
 
+            <ImageButton
+                android:id="@+id/extensionBack"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?android:attr/selectableItemBackground"
+                android:padding="12dp"
+                android:contentDescription="@string/back"
+                app:srcCompat="@drawable/ic_round_arrow_back_ios_new_24"
+                app:tint="?attr/colorOnBackground"
+                tools:ignore="SpeakableTextPresentCheck" />
+
         </androidx.cardview.widget.CardView>
 
         <TextView

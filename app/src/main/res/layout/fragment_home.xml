@@ -726,6 +726,25 @@
                         android:text="@string/unread_chapters"
                         android:textSize="16sp" />
 
+
+                    <FrameLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="match_parent"
+                        android:layout_marginEnd="8dp">
+
+                        <ImageButton
+                            android:id="@+id/homeUnreadChaptersRefresh"
+                            android:layout_width="wrap_content"
+                            android:layout_height="match_parent"
+                            android:padding="8dp"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:src="@drawable/ic_round_refresh_24"
+                            android:contentDescription="@string/refresh"
+                            android:visibility="visible"
+                            tools:ignore="ImageContrastCheck" />
+
+                    </FrameLayout>
+
                     <ImageView
                         android:id="@+id/homeUnreadChaptersMore"
                         android:layout_width="wrap_content"
