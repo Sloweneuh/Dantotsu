@@ -622,7 +622,7 @@ class HomeFragment : Fragment() {
         binding.homeUnreadChaptersRecyclerView.visibility = View.GONE
         binding.homeUnreadChaptersEmpty.visibility = View.GONE
         binding.homeUnreadChapters.visibility = View.VISIBLE
-        binding.homeUnreadChaptersMore.visibility = View.INVISIBLE
+        binding.homeUnreadChaptersMore.visibility = View.GONE
         updateUnreadRefreshAlignment()
 
         // Observe error state to show appropriate message
@@ -727,7 +727,7 @@ class HomeFragment : Fragment() {
                                         val filteredCached = unreadList.filter { media ->
                                             val last = getLastChapterForMedia(media, merged)
                                             val progress = merged[media.id]?.userProgress ?: media.userProgress ?: 0
-                                            last == null || last > progress
+                                            last != null && last > progress
                                         }
                                         binding.homeUnreadChaptersRecyclerView.adapter =
                                             UnreadChaptersAdapter(filteredCached, merged)
@@ -1082,7 +1082,7 @@ class HomeFragment : Fragment() {
                 val filteredCached = filtered.filter { media ->
                     val last = getLastChapterForMedia(media, merged)
                     val progress = merged[media.id]?.userProgress ?: media.userProgress ?: 0
-                    last == null || last > progress
+                    last != null && last > progress
                 }
                 if (filteredCached.isNotEmpty()) {
                     binding.homeUnreadChaptersRecyclerView.adapter = UnreadChaptersAdapter(filteredCached, merged)
