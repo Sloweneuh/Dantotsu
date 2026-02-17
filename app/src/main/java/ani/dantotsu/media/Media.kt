@@ -163,6 +163,21 @@ fun Media?.deleteFromList(
                     try {
                         Anilist.mutation.deleteList(listId)
                         MAL.query.deleteList(media.anime != null, media.idMAL)
+                        // If this media links to MangaUpdates, attempt to remove it from MU lists as well
+                        try {
+                            val muLink = media.externalLinks.firstOrNull { link ->
+                                try { link.size >= 2 && link[1]?.contains("mangaupdates") == true } catch (e: Exception) { false }
+                            }
+                            if (muLink != null) {
+                                val muUrl = muLink[1] ?: ""
+                                val identifier = muUrl.substringAfterLast('/').substringBefore('?')
+                                if (identifier.isNotBlank()) {
+                                    ani.dantotsu.connections.mangaupdates.MangaUpdates.removeListEntry(identifier)
+                                }
+                            }
+                        } catch (e: Exception) {
+                            ani.dantotsu.util.Logger.log("MU removeListEntry failed: ${e.message}")
+                        }
 
                         val removeList = PrefManager.getCustomVal("removeList", setOf<Int>())
                         PrefManager.setCustomVal(

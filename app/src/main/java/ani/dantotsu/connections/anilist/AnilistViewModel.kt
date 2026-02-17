@@ -19,9 +19,11 @@ import ani.dantotsu.snackString
 import ani.dantotsu.tryWithSuspend
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import ani.dantotsu.util.Logger
 
 suspend fun getUserId(context: Context, block: () -> Unit) {
     if (!Anilist.initialized && PrefManager.getVal<String>(PrefName.AnilistToken) != "") {
@@ -188,7 +190,89 @@ class AnilistHomeViewModel : ViewModel() {
     }
 
     suspend fun initHomePage() {
-        val res = Anilist.query.initHomePage()
+        val res = Anilist.query.initHomePage().toMutableMap()
+        // Merge MangaUpdates user lists into AniList manga lists when available
+        try {
+            // Try to ensure we have an MU token (will attempt saved login)
+            val muLoggedIn = try {
+                ani.dantotsu.connections.mangaupdates.MangaUpdates.getSavedToken()
+            } catch (_: Exception) { false }
+
+            if (muLoggedIn) {
+                val muListsResp = ani.dantotsu.connections.mangaupdates.MangaUpdates.getUserLists()
+                if (muListsResp?.lists != null) {
+                    // Collect unique identifiers
+                    val ids = mutableSetOf<String>()
+                    muListsResp.lists.forEach { list ->
+                        list.entries?.forEach { entry ->
+                            entry.seriesId?.let { ids.add(it.toString()) }
+                            entry.seriesSlug?.let { ids.add(it) }
+                            entry.seriesUrl?.let { url ->
+                                val last = url.substringAfterLast('/').substringBefore('?')
+                                if (last.isNotBlank()) ids.add(last)
+                            }
+                        }
+                    }
+
+                    // Fetch series details in parallel
+                    val seriesRecords = try {
+                        coroutineScope {
+                            val deferred = ids.map { ident ->
+                                async(Dispatchers.IO) {
+                                    try {
+                                        ani.dantotsu.connections.mangaupdates.MangaUpdates.getSeriesFromUrl(ident)
+                                    } catch (e: Exception) {
+                                        null
+                                    }
+                                }
+                            }
+                            deferred.awaitAll().filterNotNull()
+                        }
+                    } catch (e: Exception) {
+                        listOf<ani.dantotsu.connections.mangaupdates.MUSeriesRecord>()
+                    }
+
+                    val muMedia = seriesRecords.map { ani.dantotsu.connections.mangaupdates.MangaUpdates.seriesToMedia(it) }
+
+                    // Merge into appropriate lists (best-effort mapping)
+                    val currentManga = res["currentManga"] ?: arrayListOf<Media>()
+                    val plannedManga = res["currentMangaPlanned"] ?: arrayListOf<Media>()
+                    val favoriteManga = res["favoriteManga"] ?: arrayListOf<Media>()
+
+                    muListsResp.lists.forEach { list ->
+                        list.entries?.forEach { entry ->
+                            // Determine target list per-entry using MU entry.status when available
+                            val statusLower = entry.status?.lowercase()
+                            val target = when (statusLower) {
+                                "wish" -> plannedManga
+                                "read", "unfinished", "complete", "hold" -> currentManga
+                                else -> currentManga
+                            }
+
+                            // try to find matching Media from fetched muMedia
+                            val candidates = listOfNotNull(
+                                entry.seriesId?.toString(),
+                                entry.seriesSlug,
+                                entry.seriesUrl?.substringAfterLast('/')?.substringBefore('?')
+                            )
+                            val found = muMedia.firstOrNull { m ->
+                                candidates.any { id ->
+                                    m.externalLinks.any { link -> link.size >= 2 && (link[1]?.contains(id) == true) } || m.id.toString() == id
+                                }
+                            }
+                            if (found != null && target.none { it.id == found.id }) target.add(found)
+                        }
+                    }
+
+                    // Put merged lists back
+                    res["currentManga"] = currentManga
+                    res["currentMangaPlanned"] = plannedManga
+                    res["favoriteManga"] = favoriteManga
+                }
+            }
+        } catch (e: Exception) {
+            Logger.log("MangaUpdates merge failed: ${e.message}")
+        }
         // Always post a value (even if empty) to ensure UI updates and hides progress bars
         animeContinue.postValue(res["currentAnime"] ?: arrayListOf())
         animeFav.postValue(res["favoriteAnime"] ?: arrayListOf())

@@ -1,6 +1,8 @@
 package ani.dantotsu.connections.mangaupdates
 
 import ani.dantotsu.Mapper
+import ani.dantotsu.media.Media
+import ani.dantotsu.media.manga.Manga
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.tryWithSuspend
@@ -13,6 +15,12 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.TimeUnit
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 object MangaUpdates {
     private const val BASE_URL = "https://api.mangaupdates.com/v1"
@@ -164,6 +172,219 @@ object MangaUpdates {
         PrefManager.removeVal(PrefName.MangaUpdatesPassword)
         PrefManager.removeVal(PrefName.MangaUpdatesToken)
         Logger.log("MangaUpdates: Logged out")
+    }
+
+    /**
+     * Fetch the logged-in user's lists from MangaUpdates API
+     * Endpoint: GET /v1/lists
+     */
+    suspend fun getUserLists(): MUListsResponse? {
+        return tryWithSuspend {
+            if (token.isNullOrBlank()) return@tryWithSuspend null
+
+            val request = Request.Builder()
+                .url("$BASE_URL/lists")
+                .get()
+                .addHeader("Authorization", "Bearer $token")
+                .build()
+
+            val response = withContext(Dispatchers.IO) {
+                httpClient.newCall(request).execute()
+            }
+
+            val responseBody = extractBody(response)
+            if (!response.isSuccessful || responseBody.isNullOrBlank()) {
+                Logger.log("MangaUpdates Lists: Failed with code ${response.code}")
+                return@tryWithSuspend null
+            }
+
+            // If the API returned a JSON array (common template), parse it directly to avoid
+            // a failed attempt to decode into an object which would throw.
+            val trimmed = responseBody.trim()
+            val listsResp = when {
+                trimmed.startsWith("[") -> {
+                    try {
+                        val arrayLists: List<MUList> = Mapper.parse(trimmed)
+                        MUListsResponse(lists = arrayLists)
+                    } catch (e: Exception) {
+                        Logger.log("MangaUpdates Lists: array direct parse failed -> ${e.message}, trying generic json mapping")
+                        try {
+                            val jsonElem = Mapper.json.parseToJsonElement(trimmed)
+                            if (jsonElem is kotlinx.serialization.json.JsonArray) {
+                                val mapped = jsonElem.mapNotNull { el ->
+                                    try {
+                                        val obj = el.jsonObject
+                                        val id = obj["list_id"]?.jsonPrimitive?.content?.toLongOrNull()
+                                            ?: obj["id"]?.jsonPrimitive?.content?.toLongOrNull()
+                                        val name = obj["title"]?.jsonPrimitive?.content
+                                            ?: obj["name"]?.jsonPrimitive?.content
+                                        val desc = obj["description"]?.jsonPrimitive?.content
+                                        MUList(id = id, name = name, description = desc, entries = null)
+                                    } catch (_: Exception) {
+                                        null
+                                    }
+                                }
+                                MUListsResponse(lists = mapped)
+                            } else null
+                        } catch (e2: Exception) {
+                            Logger.log("MangaUpdates Lists: generic json mapping failed -> ${e2.message}")
+                            null
+                        }
+                    }
+                }
+                else -> {
+                    try {
+                        Mapper.parse<MUListsResponse>(responseBody)
+                    } catch (e: Exception) {
+                        Logger.log("MangaUpdates Lists: parse fallback -> ${e.message}")
+                        null
+                    }
+                }
+            }
+
+            // If lists were returned but entries are not included, fetch them per-list
+            listsResp?.lists?.forEach { list ->
+                try {
+                    if (list.entries.isNullOrEmpty()) {
+                        val lid = list.id
+                        if (lid != null) {
+                            val fetched = getListSeries(lid)
+                            if (!fetched.isNullOrEmpty()) list.entries = fetched
+                        }
+                    }
+                } catch (e: Exception) {
+                    Logger.log("MangaUpdates Lists: failed to fetch entries for list ${list.id} -> ${e.message}")
+                }
+            }
+
+            Logger.log("MangaUpdates Lists: fetched ${listsResp?.lists?.size ?: 0} lists, total entries populated: ${listsResp?.lists?.sumOf { it.entries?.size ?: 0 } ?: 0}")
+
+            listsResp
+        }
+    }
+
+    /**
+     * Fetch the series entries for a given list id. The MU API may expose this under
+     * multiple endpoints; try common variants and return parsed entries when possible.
+     */
+    suspend fun getListSeries(listId: Long): List<MUListEntry>? {
+        return tryWithSuspend {
+            if (token.isNullOrBlank()) return@tryWithSuspend null
+
+            val candidateUrls = listOf(
+                "$BASE_URL/lists/$listId/series",
+                "$BASE_URL/lists/series?list_id=$listId",
+                "$BASE_URL/lists/$listId"
+            )
+
+            for (u in candidateUrls) {
+                try {
+                    val request = Request.Builder().url(u).get().apply {
+                        if (!token.isNullOrBlank()) addHeader("Authorization", "Bearer $token")
+                    }.build()
+
+                    val response = withContext(Dispatchers.IO) { httpClient.newCall(request).execute() }
+                    val body = extractBody(response) ?: continue
+                    if (!response.isSuccessful) continue
+
+                    // Try direct parse as list of MUListEntry
+                    try {
+                        val parsed: List<MUListEntry> = Mapper.parse(body)
+                        if (parsed.isNotEmpty()) return@tryWithSuspend parsed
+                    } catch (_: Exception) {
+                    }
+
+                    // Try parse as object containing "series" or "entries" array
+                    try {
+                        val je = Mapper.json.parseToJsonElement(body)
+                        val arr = when {
+                            je.jsonObject["series"] != null -> je.jsonObject["series"]!!.jsonArray
+                            je.jsonObject["entries"] != null -> je.jsonObject["entries"]!!.jsonArray
+                            else -> null
+                        }
+                        if (arr != null) {
+                            val mapped = arr.mapNotNull { el ->
+                                try {
+                                    Mapper.parse<MUListEntry>(el.toString())
+                                } catch (_: Exception) {
+                                    null
+                                }
+                            }
+                            if (mapped.isNotEmpty()) return@tryWithSuspend mapped
+                        }
+                    } catch (_: Exception) {
+                    }
+                } catch (_: Exception) {
+                }
+            }
+
+            null
+        }
+    }
+
+    /**
+     * Convenience: return a set of series identifiers (either numeric id as string or slug)
+     * that are present in any of the user's lists.
+     */
+    suspend fun getUserListSeriesIds(): Set<String> {
+        return tryWithSuspend {
+            val resp = getUserLists() ?: return@tryWithSuspend emptySet<String>()
+            val ids = mutableSetOf<String>()
+            resp.lists?.forEach { list ->
+                list.entries?.forEach { entry ->
+                    entry.seriesId?.let { ids.add(it.toString()) }
+                    entry.seriesSlug?.let { ids.add(it) }
+                    entry.seriesUrl?.let { url ->
+                        // try to extract slug or id from URL
+                        val last = url.substringAfterLast('/').substringBefore('?')
+                        if (last.isNotBlank()) ids.add(last)
+                    }
+                }
+            }
+            ids
+        } ?: emptySet()
+    }
+
+    /**
+     * Check whether a given series identifier (numeric id or slug) is present
+     * in the logged-in user's lists.
+     */
+    suspend fun isSeriesOnUserLists(seriesIdentifier: String): Boolean {
+        if (seriesIdentifier.isBlank()) return false
+        val ids = getUserListSeriesIds()
+        if (ids.isEmpty()) return false
+        return ids.contains(seriesIdentifier) || ids.contains(seriesIdentifier.trim())
+    }
+
+    /**
+     * Convert a MUSeriesRecord into a local `Media` instance representing a manga.
+     * IDs are negated to avoid colliding with AniList IDs (which are positive).
+     */
+    fun seriesToMedia(series: MUSeriesRecord): Media {
+        val sid = series.seriesId.toInt()
+        val id = if (sid != 0) -sid else -(series.seriesId.hashCode())
+        val name = series.title ?: "Unknown"
+        val cover = series.image?.url?.original ?: series.image?.url?.thumb
+        val manga = Manga(totalChapters = series.latest_chapter?.toInt() ?: 0)
+
+        val media = Media(
+            manga = manga,
+            id = id,
+            idMAL = null,
+            typeMAL = null,
+            name = name,
+            nameRomaji = name,
+            userPreferredName = name,
+            cover = cover,
+            banner = null,
+            relation = null,
+            favourites = null,
+            isAdult = false,
+            isFav = false
+        )
+        // external link to MU
+        media.externalLinks.add(arrayListOf("MangaUpdates", series.url))
+        return media
     }
 
     /**
@@ -453,6 +674,96 @@ object MangaUpdates {
             Logger.log("MangaUpdates GetFromUrl: All methods failed for '$urlOrId'")
             null
         }
+    }
+
+    /**
+     * Resolve an identifier (numeric id or slug) into a numeric series ID if possible
+     */
+    private suspend fun resolveToSeriesId(identifier: String): Long? {
+        // Try numeric first
+        val numeric = identifier.toLongOrNull()
+        if (numeric != null) return numeric
+        // Try getSeriesFromUrl which handles slugs
+        return tryWithSuspend {
+            val rec = getSeriesFromUrl(identifier)
+            rec?.seriesId
+        }
+    }
+
+    /**
+     * Edit or add a series entry on the logged-in user's MangaUpdates lists.
+     * This is a best-effort implementation using the /lists/series endpoint.
+     * @param identifier numeric id or slug for the series
+     * @param progress optional progress (e.g., chapter number)
+     * @param status optional status string (e.g., "reading", "completed")
+     * @param isPrivate optional privacy flag
+     * @return true if request succeeded
+     */
+    suspend fun editListEntry(
+        identifier: String,
+        progress: Int?,
+        status: String?,
+        isPrivate: Boolean?
+    ): Boolean {
+        return tryWithSuspend(false) {
+            if (token.isNullOrBlank()) return@tryWithSuspend false
+
+            val seriesId = resolveToSeriesId(identifier) ?: return@tryWithSuspend false
+
+            val payload = mutableMapOf<String, Any?>()
+            payload["series_id"] = seriesId
+            if (progress != null) payload["progress"] = progress
+            if (!status.isNullOrBlank()) payload["status"] = status
+            if (isPrivate != null) payload["private"] = isPrivate
+
+            val jsonBody = Mapper.json.encodeToString(payload)
+            val requestBody = jsonBody.toRequestBody("application/json".toMediaTypeOrNull())
+
+            val request = Request.Builder()
+                .url("$BASE_URL/lists/series")
+                .post(requestBody)
+                .addHeader("Authorization", "Bearer $token")
+                .build()
+
+            val response = withContext(Dispatchers.IO) { httpClient.newCall(request).execute() }
+            val responseBody = extractBody(response)
+            if (!response.isSuccessful) {
+                Logger.log("MangaUpdates editListEntry failed: code=${response.code}, body=${responseBody}")
+                return@tryWithSuspend false
+            }
+            true
+        } ?: false
+    }
+
+    /**
+     * Remove a series entry from the logged-in user's MangaUpdates lists.
+     * @param identifier numeric id or slug for the series
+     * @return true if removal succeeded
+     */
+    suspend fun removeListEntry(identifier: String): Boolean {
+        return tryWithSuspend(false) {
+            if (token.isNullOrBlank()) return@tryWithSuspend false
+
+            val seriesId = resolveToSeriesId(identifier) ?: return@tryWithSuspend false
+
+            val payload = mapOf("series_id" to seriesId)
+            val jsonBody = Mapper.json.encodeToString(payload)
+            val requestBody = jsonBody.toRequestBody("application/json".toMediaTypeOrNull())
+
+            val request = Request.Builder()
+                .url("$BASE_URL/lists/series/delete")
+                .post(requestBody)
+                .addHeader("Authorization", "Bearer $token")
+                .build()
+
+            val response = withContext(Dispatchers.IO) { httpClient.newCall(request).execute() }
+            val responseBody = extractBody(response)
+            if (!response.isSuccessful) {
+                Logger.log("MangaUpdates removeListEntry failed: code=${response.code}, body=${responseBody}")
+                return@tryWithSuspend false
+            }
+            true
+        } ?: false
     }
 
     /**

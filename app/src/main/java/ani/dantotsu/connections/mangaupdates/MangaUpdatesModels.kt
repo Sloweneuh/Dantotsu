@@ -210,3 +210,30 @@ data class MUAvatar(
     val width: Int? = null
 )
 
+/**
+ * Models for user lists endpoint (/v1/lists)
+ */
+@Serializable
+data class MUListEntry(
+    @SerialName("series_id") val seriesId: Long? = null,
+    @SerialName("series_slug") val seriesSlug: String? = null,
+    @SerialName("series_url") val seriesUrl: String? = null,
+    val status: String? = null,
+    val notes: String? = null
+)
+
+@Serializable
+data class MUList(
+    val id: Long? = null,
+    val name: String? = null,
+    val description: String? = null,
+    // Make entries mutable so callers can populate them when the lists endpoint
+    // returns only metadata (no entries).
+    var entries: List<MUListEntry>? = null
+)
+
+@Serializable
+data class MUListsResponse(
+    val lists: List<MUList>? = null
+)
+

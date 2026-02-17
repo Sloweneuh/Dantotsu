@@ -365,6 +365,26 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                                     startD,
                                     endD
                                 )
+                                // Update MangaUpdates lists when applicable
+                                try {
+                                    val muLink = media.externalLinks.firstOrNull { link ->
+                                        try { link.size >= 2 && link[1]?.contains("mangaupdates") == true } catch (e: Exception) { false }
+                                    }
+                                    if (muLink != null) {
+                                        val muUrl = muLink[1] ?: ""
+                                        val identifier = muUrl.substringAfterLast('/').substringBefore('?')
+                                        if (identifier.isNotBlank()) {
+                                            ani.dantotsu.connections.mangaupdates.MangaUpdates.editListEntry(
+                                                identifier,
+                                                progress,
+                                                status,
+                                                media?.isListPrivate
+                                            )
+                                        }
+                                    }
+                                } catch (e: Exception) {
+                                    ani.dantotsu.util.Logger.log("MU editListEntry failed from MediaListDialogFragment: ${e.message}")
+                                }
                             }
                         }
                         if (remove == true) {

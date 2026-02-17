@@ -131,6 +131,23 @@ class MediaAdaptor(
                         b.itemCompactTotal.text = " | ${media.manga.totalChapters ?: "~"}"
                     }
                     b.itemCompactProgressContainer.visibility = if (fav) View.GONE else View.VISIBLE
+                    try {
+                        val isMU = media.externalLinks.any { link ->
+                            try {
+                                link.size >= 2 && (link[1]?.contains("mangaupdates.com") == true)
+                            } catch (e: Exception) {
+                                false
+                            }
+                        }
+                        if (isMU) {
+                            b.itemCompactSourceCard.visibility = View.VISIBLE
+                            b.itemCompactSource.text = "MU"
+                        } else {
+                            b.itemCompactSourceCard.visibility = View.GONE
+                        }
+                    } catch (e: Exception) {
+                        // ignore
+                    }
                 }
             }
 

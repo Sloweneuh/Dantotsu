@@ -31,6 +31,26 @@ fun updateProgress(media: Media, number: String) {
                         a, null,
                         if (media.userStatus == "REPEATING") media.userStatus!! else "CURRENT"
                     )
+                    // If media has a MangaUpdates external link, update MU lists too
+                    try {
+                        val muLink = media.externalLinks.firstOrNull { link ->
+                            try { link.size >= 2 && link[1]?.contains("mangaupdates") == true } catch (e: Exception) { false }
+                        }
+                        if (muLink != null) {
+                            val muUrl = muLink[1] ?: ""
+                            val identifier = muUrl.substringAfterLast('/').substringBefore('?')
+                            if (identifier.isNotBlank()) {
+                                ani.dantotsu.connections.mangaupdates.MangaUpdates.editListEntry(
+                                    identifier,
+                                    a,
+                                    if (media.userStatus == "REPEATING") media.userStatus else "CURRENT",
+                                    null
+                                )
+                            }
+                        }
+                    } catch (e: Exception) {
+                        ani.dantotsu.util.Logger.log("MU editListEntry failed from UpdateProgress: ${e.message}")
+                    }
                     toast(currContext()?.getString(R.string.setting_progress, a))
                 }
                 media.userProgress = a
