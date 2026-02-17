@@ -731,6 +731,15 @@ class HomeFragment : Fragment() {
                                         }
                                         binding.homeUnreadChaptersRecyclerView.adapter =
                                             UnreadChaptersAdapter(filteredCached, merged)
+                                        binding.homeUnreadChaptersMore.setOnClickListener { i ->
+                                            MediaListViewActivity.passedMedia = ArrayList(filteredCached)
+                                            MediaListViewActivity.passedUnreadInfo = merged
+                                            ContextCompat.startActivity(
+                                                i.context, Intent(i.context, MediaListViewActivity::class.java)
+                                                    .putExtra("title", getString(R.string.unread_chapters)),
+                                                null
+                                            )
+                                        }
                                         binding.homeUnreadChaptersRecyclerView.layoutManager = LinearLayoutManager(
                                             requireContext(),
                                             LinearLayoutManager.HORIZONTAL,
@@ -1089,6 +1098,15 @@ class HomeFragment : Fragment() {
                     binding.homeUnreadChaptersRecyclerView.layoutManager = LinearLayoutManager(
                         requireContext(), LinearLayoutManager.HORIZONTAL, false
                     )
+                    binding.homeUnreadChaptersMore.setOnClickListener { i ->
+                        MediaListViewActivity.passedMedia = ArrayList(filteredCached)
+                        MediaListViewActivity.passedUnreadInfo = merged
+                        ContextCompat.startActivity(
+                            i.context, Intent(i.context, MediaListViewActivity::class.java)
+                                .putExtra("title", getString(R.string.unread_chapters)),
+                            null
+                        )
+                    }
                     binding.homeUnreadChaptersRecyclerView.visibility = View.VISIBLE
                     binding.homeUnreadChaptersEmpty.visibility = View.GONE
                     binding.homeUnreadChaptersRecyclerView.layoutAnimation = LayoutAnimationController(setSlideIn(), 0.25f)
