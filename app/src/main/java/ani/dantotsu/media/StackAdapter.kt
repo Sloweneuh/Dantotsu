@@ -72,15 +72,16 @@ class StackAdapter(private val items: List<MALStack>, private val isAnime: Boole
                 val overlay = View(ctx)
                 val ovWidth = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 12f, dm).toInt()
                 val ovLp = FrameLayout.LayoutParams(ovWidth, baseH)
+                // position overlay so it straddles the right edge of the top cover (half over the top, half over the one beneath)
+                val overlayMargin = i * offsetPx + (widthForIndex - ovWidth / 2)
+                ovLp.marginStart = overlayMargin
                 overlay.layoutParams = ovLp
-                // translate overlay to the right edge of the top image
-                val overlayX = (i * offsetPx + widthForIndex - ovWidth).toFloat()
-                overlay.translationX = overlayX
                 overlay.setBackgroundResource(R.drawable.stack_right_shadow)
-                overlay.elevation = (count + 10).toFloat()
+                // ensure shadow sits beneath the top cover: set elevation just below the top image's elevation
+                overlay.elevation = kotlin.math.max(0f, (count - i - 1).toFloat())
                 overlay.isClickable = false
                 container.addView(overlay)
-                overlay.bringToFront()
+                // do not bring to front; keep shadow under top cover
             }
         }
         holder.title.text = item.name
