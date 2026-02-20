@@ -515,7 +515,8 @@
     <string name="read_num">"Lu "</string>
     <string name="episodes_out_of">" sur "</string>
     <string name="chapters_out_of">" sur "</string>
-    <string name="no_description_available">"Aucune description disponible"</string>
+    <string name="no_description_available">Aucune description disponible</string>
+    <string name="stack_entries_suffix"> entrées</string>
 
     <string-array name="manga_directions">
         <item>Haut vers bas</item>

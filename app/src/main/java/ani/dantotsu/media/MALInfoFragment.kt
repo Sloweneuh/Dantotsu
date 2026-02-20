@@ -34,6 +34,8 @@ import kotlinx.coroutines.launch
 import ani.dantotsu.setSafeOnClickListener
 import kotlinx.coroutines.withContext
 import java.net.URLEncoder
+import ani.dantotsu.connections.mal.MALStack
+import ani.dantotsu.media.StackAdapter
 
 class MALInfoFragment : Fragment() {
     private var _binding: FragmentMediaInfoBinding? = null
@@ -492,7 +494,7 @@ class MALInfoFragment : Fragment() {
                 // Batch fetch missing recommendations from AniList
                 val batchFetched = withContext(Dispatchers.IO) {
                     try {
-                        Anilist.query.getMediaBatch(missingMalIds, mal = true)
+                        Anilist.query.getMediaBatch(missingMalIds, mal = true, mediaType = "ANIME")
                     } catch (e: Exception) {
                         emptyList<Media>()
                     }
@@ -527,6 +529,41 @@ class MALInfoFragment : Fragment() {
                         startActivity(
                             Intent(requireContext(), MediaListViewActivity::class.java)
                                 .putExtra("title", getString(R.string.recommended))
+                        )
+                    }
+                    parent.addView(bind.root)
+                }
+            }
+        }
+
+        // Stacks (interest stacks) - scraped from MAL page since API doesn't expose them
+        if (!offline) {
+            lifecycleScope.launch {
+                val stacks = withContext(Dispatchers.IO) {
+                    try {
+                        MAL.query.getStacks(malId, true)
+                    } catch (e: Exception) { emptyList<MALStack>() }
+                }
+                if (stacks.isNotEmpty()) {
+                    val bind = ItemTitleRecyclerBinding.inflate(
+                        LayoutInflater.from(context),
+                        parent,
+                        false
+                    )
+                    bind.itemTitle.text = "Stacks"
+                    bind.itemRecycler.adapter = StackAdapter(stacks, true)
+                    bind.itemRecycler.layoutManager = LinearLayoutManager(
+                        requireContext(),
+                        LinearLayoutManager.HORIZONTAL,
+                        false
+                    )
+                    bind.itemMore.visibility = View.VISIBLE
+                    bind.itemMore.setSafeOnClickListener {
+                        StackListViewActivity.passedStacks = ArrayList(stacks)
+                        startActivity(
+                            Intent(requireContext(), StackListViewActivity::class.java)
+                                .putExtra("title", "Interest Stacks")
+                                .putExtra("isAnime", true)
                         )
                     }
                     parent.addView(bind.root)
@@ -710,6 +747,42 @@ class MALInfoFragment : Fragment() {
                         startActivity(
                             Intent(requireContext(), MediaListViewActivity::class.java)
                                 .putExtra("title", getString(R.string.recommended))
+                        )
+                    }
+                    parent.addView(bind.root)
+                }
+            }
+        }
+
+        
+        // Stacks (interest stacks) - scraped from MAL page since API doesn't expose them
+        if (!offline) {
+            lifecycleScope.launch {
+                val stacks = withContext(Dispatchers.IO) {
+                    try {
+                        MAL.query.getStacks(malId, false)
+                    } catch (e: Exception) { emptyList<MALStack>() }
+                }
+                if (stacks.isNotEmpty()) {
+                    val bind = ItemTitleRecyclerBinding.inflate(
+                        LayoutInflater.from(context),
+                        parent,
+                        false
+                    )
+                    bind.itemTitle.text = "Stacks"
+                    bind.itemRecycler.adapter = StackAdapter(stacks, false)
+                    bind.itemRecycler.layoutManager = LinearLayoutManager(
+                        requireContext(),
+                        LinearLayoutManager.HORIZONTAL,
+                        false
+                    )
+                    bind.itemMore.visibility = View.VISIBLE
+                    bind.itemMore.setSafeOnClickListener {
+                        StackListViewActivity.passedStacks = ArrayList(stacks)
+                        startActivity(
+                            Intent(requireContext(), StackListViewActivity::class.java)
+                                .putExtra("title", "Interest Stacks")
+                                .putExtra("isAnime", false)
                         )
                     }
                     parent.addView(bind.root)

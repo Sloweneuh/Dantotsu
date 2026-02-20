@@ -39,6 +39,7 @@ import java.io.ObjectOutputStream
 import java.io.Serializable
 import java.util.Calendar
 import kotlin.system.measureTimeMillis
+import ani.dantotsu.util.Logger
 
 class AnilistQueries {
     /**
@@ -49,22 +50,42 @@ class AnilistQueries {
      * @param ids List of IDs
      * @param mal If true, treat IDs as MAL IDs, otherwise AniList IDs
      */
-    suspend fun getMediaBatch(ids: List<Int>, mal: Boolean = false): List<Media> {
+    suspend fun getMediaBatch(ids: List<Int>, mal: Boolean = false, mediaType: String? = null): List<Media> {
         if (ids.isEmpty()) return emptyList()
         val idsString = ids.joinToString(",")
+        Logger.log("AnilistQueries.getMediaBatch: requested ids=$idsString mal=$mal")
         val idField = if (mal) "idMal" else "id"
         val fieldClause = "${idField}_in: [$idsString]"
+        val typeClause = if (mediaType != null) "type: $mediaType, " else ""
+
+        // Do not force a media type filter here (MANGA/ANIME) — stacks can contain anime or manga.
         val query = """
             {
                 Page(perPage: ${ids.size}) {
-                    media($fieldClause, type: MANGA) {
+                    media(${typeClause}${fieldClause}) {
                         ${standardMediaInformation()}
                     }
                 }
             }
         """.trimIndent()
+
         val response = executeQuery<Query.Page>(query, force = true)?.data?.page
-        return response?.media?.map { Media(it) } ?: emptyList()
+        val fetched = response?.media?.map { Media(it) } ?: emptyList()
+
+        Logger.log("AnilistQueries.getMediaBatch: fetched count=${fetched.size} fetched_ids=${fetched.map { it.idMAL ?: it.id }}")
+
+        // Preserve ordering according to requested ids: map by id or idMal and then iterate input ids
+        return if (mal) {
+            val byMal = fetched.filter { it.idMAL != null }.associateBy { it.idMAL!! }
+            val ordered = ids.mapNotNull { byMal[it] }
+            Logger.log("AnilistQueries.getMediaBatch: ordered result ids=${ordered.map { it.idMAL ?: it.id }}")
+            ordered
+        } else {
+            val byId = fetched.associateBy { it.id }
+            val ordered = ids.mapNotNull { byId[it] }
+            Logger.log("AnilistQueries.getMediaBatch: ordered result ids=${ordered.map { it.idMAL ?: it.id }}")
+            ordered
+        }
     }
 
     suspend fun getUserData(): Boolean {

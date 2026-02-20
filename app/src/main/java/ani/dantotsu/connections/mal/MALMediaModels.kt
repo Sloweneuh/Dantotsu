@@ -167,3 +167,12 @@ data class MALStatusStatistics(
     @SerialName("plan_to_read") val planToRead: String? = null
 )
 
+@Serializable
+data class MALStack(
+    val url: String,
+    val covers: List<String> = emptyList(),
+    val name: String,
+    val entries: Int = 0,
+    val description: String? = null
+)
+
