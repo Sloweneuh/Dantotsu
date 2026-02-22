@@ -215,7 +215,7 @@ class MALQueries {
      * for the media contained in that stack (order preserved). This will be used to resolve to
      * AniList media via batch lookup.
      */
-    suspend fun getStackEntries(stackUrl: String): List<Int> {
+    suspend fun getStackEntries(stackUrl: String): List<MALStackEntry> {
         return try {
             val headers = mapOf(
                 "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36"
@@ -225,27 +225,28 @@ class MALQueries {
             if (baseUrl.startsWith("/")) baseUrl = "https://myanimelist.net$baseUrl"
             else if (!baseUrl.startsWith("http")) baseUrl = "https://myanimelist.net/$baseUrl"
 
-            val ids = mutableListOf<Int>()
+            val ids = mutableListOf<MALStackEntry>()
             var offset = 0
             val perPage = 20
             var safety = 0
 
-            // request the tile view which contains the .tile-anime-list container
-            val tileBase = if (baseUrl.contains("?")) "$baseUrl&view_style=tile" else "$baseUrl?view_style=tile"
+            // request the list view which contains the .list-anime-list container
+            val listBase = if (baseUrl.contains("?")) "$baseUrl&view_style=list" else "$baseUrl?view_style=list"
 
             while (true) {
-                val url = if (offset == 0) tileBase else "$tileBase&offset=$offset"
+                val url = if (offset == 0) listBase else "$listBase&offset=$offset"
                 Logger.log("MALQueries.getStackEntries: fetching $url")
                 val doc = client.get(url, headers).document
 
-                // prefer the .tile-anime-list container (it is used for both anime and manga stacks)
-                val container = doc.selectFirst(".tile-anime-list")
+                // prefer the .list-anime-list container (list view for stacks)
+                val container = doc.selectFirst(".list-anime-list")
                 if (container != null) {
-                    val blocks = container.select(".seasonal-anime")
+                    val blocks = container.select(".seasonal-anime, .seasonal-anime.js-seasonal-anime")
                     for (el in blocks) {
                         // prefer explicit title link or image link
                         val candidates = el.select(".title a[href], .image a[href], a[href]")
                         var found: Int? = null
+                        var introText: String? = null
                         for (cand in candidates) {
                             val href = cand.attr("href")
                             // try direct anime/manga link
@@ -261,8 +262,10 @@ class MALQueries {
                                 break
                             }
                         }
-                        if (found != null && !ids.contains(found)) {
-                            ids.add(found)
+                        // extract intro text if present in list view
+                        introText = el.selectFirst(".intro")?.text()?.trim()
+                        if (found != null && ids.none { it.id == found }) {
+                            ids.add(MALStackEntry(id = found, intro = introText))
                             Logger.log("MALQueries.getStackEntries: found id $found on $url")
                         }
                     }
@@ -271,7 +274,10 @@ class MALQueries {
                     val fallback = doc.select(".seasonal-anime")
                     for (el in fallback) {
                         val link = el.selectFirst("a[href]")?.attr("href") ?: continue
-                        Regex("/(anime|manga)/(\\d+)").find(link)?.groups?.get(2)?.value?.toIntOrNull()?.let { ids.add(it) }
+                        Regex("/(anime|manga)/(\\d+)").find(link)?.groups?.get(2)?.value?.toIntOrNull()?.let {
+                            val introText = el.selectFirst(".intro")?.text()?.trim()
+                            ids.add(MALStackEntry(id = it, intro = introText))
+                        }
                     }
                 }
 
@@ -286,7 +292,7 @@ class MALQueries {
                 if (safety > 100) break
             }
 
-            Logger.log("MALQueries.getStackEntries: extracted ids=$ids for stackUrl=$stackUrl")
+            Logger.log("MALQueries.getStackEntries: extracted ids=${ids.map{it.id}} for stackUrl=$stackUrl")
             ids
         } catch (e: Exception) {
             emptyList()

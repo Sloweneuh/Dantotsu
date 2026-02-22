@@ -19,7 +19,7 @@ android {
         applicationId "ani.dantotsu"
         minSdk = 21
         targetSdk = 35
-        versionName "3.7.0"
+        versionName "3.7.1"
         def (major, minor, patch) = versionName.split("\\.").collect { it.toInteger() }
         versionCode = major * 1_000_000 + minor * 1_000 + patch
         signingConfig signingConfigs.debug

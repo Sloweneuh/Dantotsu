@@ -95,8 +95,23 @@ class MediaAdaptor(
                 val media = mediaList?.getOrNull(position)
                 if (media != null) {
                     b.itemCompactImage.loadImage(media.cover)
-                    b.itemCompactOngoing.isVisible =
-                        media.status == currActivity()!!.getString(R.string.status_releasing)
+                    run {
+                        val status = media.status ?: ""
+                        val releasingStr = currActivity()!!.getString(R.string.status_releasing)
+                        val hiatusStr = currActivity()!!.getString(R.string.status_hiatus)
+                        val isReleasing = status == releasingStr
+                        val isHiatus = status.equals(hiatusStr, ignoreCase = true)
+                        if (isReleasing || isHiatus) {
+                            b.itemCompactOngoing.isVisible = true
+                            try {
+                                val dot = b.itemCompactOngoing.getChildAt(0)
+                                if (isHiatus) dot?.setBackgroundResource(R.drawable.item_hiatus) else dot?.setBackgroundResource(R.drawable.item_ongoing)
+                            } catch (e: Exception) {
+                            }
+                        } else {
+                            b.itemCompactOngoing.isVisible = false
+                        }
+                    }
                     b.itemCompactTitle.text = media.userPreferredName
                     b.itemCompactScore.text =
                         ((if (media.userScore == 0) (media.meanScore
@@ -130,6 +145,7 @@ class MediaAdaptor(
                         )
                         b.itemCompactTotal.text = " | ${media.manga.totalChapters ?: "~"}"
                     }
+                    // compact layout has no info button; skip showing MAL intro here
                     b.itemCompactProgressContainer.visibility = if (fav) View.GONE else View.VISIBLE
                 }
             }
@@ -141,8 +157,23 @@ class MediaAdaptor(
                 if (media != null) {
                     b.itemCompactImage.loadImage(media.cover)
                     blurImage(b.itemCompactBanner, media.banner ?: media.cover)
-                    b.itemCompactOngoing.isVisible =
-                        media.status == currActivity()!!.getString(R.string.status_releasing)
+                    run {
+                        val status = media.status ?: ""
+                        val releasingStr = currActivity()!!.getString(R.string.status_releasing)
+                        val hiatusStr = currActivity()!!.getString(R.string.status_hiatus)
+                        val isReleasing = status == releasingStr
+                        val isHiatus = status.equals(hiatusStr, ignoreCase = true)
+                        if (isReleasing || isHiatus) {
+                            b.itemCompactOngoing.isVisible = true
+                            try {
+                                val dot = b.itemCompactOngoing.getChildAt(0)
+                                if (isHiatus) dot?.setBackgroundResource(R.drawable.item_hiatus) else dot?.setBackgroundResource(R.drawable.item_ongoing)
+                            } catch (e: Exception) {
+                            }
+                        } else {
+                            b.itemCompactOngoing.isVisible = false
+                        }
+                    }
                     b.itemCompactTitle.text = media.userPreferredName
                     b.itemCompactScore.text =
                         ((if (media.userScore == 0) (media.meanScore
@@ -197,6 +228,94 @@ class MediaAdaptor(
                         val end = mediaList.size - start
                         notifyItemRangeInserted(start, end)
                     }
+                    // Info button: show scraped MAL intro if available (large layout)
+                    try {
+                        if (!activity.isFinishing && media.malIntro != null && media.malIntro!!.isNotBlank()) {
+                            b.itemInfoButton.visibility = View.VISIBLE
+                            b.itemInfoButton.setOnClickListener {
+                                try {
+                                    val inflater = LayoutInflater.from(activity)
+                                    val popupView = inflater.inflate(R.layout.speech_bubble_popup, null)
+                                    val popupText = popupView.findViewById<android.widget.TextView>(R.id.popupText)
+                                    popupText.text = media.malIntro
+                                    // reduce background opacity for the bubble programmatically
+                                    try {
+                                        popupText.background?.mutate()?.alpha = (0.85f * 255).toInt()
+                                    } catch (ignored: Exception) {
+                                    }
+
+                                    val popup = android.widget.PopupWindow(
+                                        popupView,
+                                        android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                                        android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                                        true
+                                    )
+                                    popup.isOutsideTouchable = true
+                                    popup.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+
+                                    // measure popup and decide whether to show above or below the button
+                                    popupView.measure(
+                                        android.view.View.MeasureSpec.UNSPECIFIED,
+                                        android.view.View.MeasureSpec.UNSPECIFIED
+                                    )
+                                    val pw = popupView.measuredWidth
+                                    val ph = popupView.measuredHeight
+                                    val loc = IntArray(2)
+                                    // use getLocationInWindow to align with showAtLocation coordinates
+                                    b.itemInfoButton.getLocationInWindow(loc)
+                                    val bx = loc[0]
+                                    val by = loc[1]
+                                    val buttonWidth = b.itemInfoButton.width
+
+                                    val screenHeight = activity.resources.displayMetrics.heightPixels
+
+                                    // offset to center popup horizontally relative to button
+                                    val xOff = (buttonWidth - pw) / 2
+
+                                    // if not enough space above, show below; otherwise show above
+                                    val showAbove = by - ph > 0
+                                    val arrowTop = popupView.findViewById<android.widget.ImageView>(R.id.popupArrowTop)
+                                    val arrowBottom = popupView.findViewById<android.widget.ImageView>(R.id.popupArrowBottom)
+                                    if (showAbove) {
+                                        // show bubble above button: use bottom arrow (arrow points down)
+                                        arrowTop?.visibility = View.GONE
+                                        arrowBottom?.visibility = View.VISIBLE
+                                        arrowBottom?.rotation = 0f
+
+                                        // compute absolute screen coords so arrow centers exactly over button
+                                        val decor = activity.window.decorView
+                                        val screenX = bx + buttonWidth / 2 - pw / 2
+                                        val screenY = by - ph
+                                        popup.showAtLocation(decor, android.view.Gravity.NO_GRAVITY, screenX, screenY)
+                                    } else {
+                                        // show bubble below button: show top arrow and rotate it to point up
+                                        arrowBottom?.visibility = View.GONE
+                                        arrowTop?.visibility = View.VISIBLE
+                                        arrowTop?.rotation = 180f
+
+                                        val decor = activity.window.decorView
+                                        val screenX = bx + buttonWidth / 2 - pw / 2
+                                        val screenY = by + b.itemInfoButton.height
+                                        popup.showAtLocation(decor, android.view.Gravity.NO_GRAVITY, screenX, screenY)
+                                    }
+                                } catch (e: Exception) {
+                                    // fallback to dialog on error
+                                    try {
+                                        androidx.appcompat.app.AlertDialog.Builder(activity)
+                                            .setTitle(activity.getString(R.string.info))
+                                            .setMessage(media.malIntro)
+                                            .setPositiveButton(android.R.string.ok, null)
+                                            .show()
+                                    } catch (ignored: Exception) {
+                                    }
+                                }
+                            }
+                        } else {
+                            b.itemInfoButton.visibility = View.GONE
+                        }
+                    } catch (e: Exception) {
+                        b.itemInfoButton.visibility = View.GONE
+                    }
                 }
             }
 
@@ -218,8 +337,23 @@ class MediaAdaptor(
                         if (bannerAnimations) b.itemCompactBanner else b.itemCompactBannerNoKen,
                         media.banner ?: media.cover
                     )
-                    b.itemCompactOngoing.isVisible =
-                        media.status == currActivity()!!.getString(R.string.status_releasing)
+                    run {
+                        val status = media.status ?: ""
+                        val releasingStr = currActivity()!!.getString(R.string.status_releasing)
+                        val hiatusStr = currActivity()!!.getString(R.string.status_hiatus)
+                        val isReleasing = status == releasingStr
+                        val isHiatus = status.equals(hiatusStr, ignoreCase = true)
+                        if (isReleasing || isHiatus) {
+                            b.itemCompactOngoing.isVisible = true
+                            try {
+                                val dot = b.itemCompactOngoing.getChildAt(0)
+                                if (isHiatus) dot?.setBackgroundResource(R.drawable.item_hiatus) else dot?.setBackgroundResource(R.drawable.item_ongoing)
+                            } catch (e: Exception) {
+                            }
+                        } else {
+                            b.itemCompactOngoing.isVisible = false
+                        }
+                    }
                     b.itemCompactTitle.text = media.userPreferredName
                     b.itemCompactScore.text =
                         ((if (media.userScore == 0) (media.meanScore
@@ -270,8 +404,23 @@ class MediaAdaptor(
                         if (bannerAnimations) b.itemCompactBanner else b.itemCompactBannerNoKen,
                         media.banner ?: media.cover
                     )
-                    b.itemCompactOngoing.isVisible =
-                        media.status == currActivity()!!.getString(R.string.status_releasing)
+                    run {
+                        val status = media.status ?: ""
+                        val releasingStr = currActivity()!!.getString(R.string.status_releasing)
+                        val hiatusStr = currActivity()!!.getString(R.string.status_hiatus)
+                        val isReleasing = status == releasingStr
+                        val isHiatus = status.equals(hiatusStr, ignoreCase = true)
+                        if (isReleasing || isHiatus) {
+                            b.itemCompactOngoing.isVisible = true
+                            try {
+                                val dot = b.itemCompactOngoing.getChildAt(0)
+                                if (isHiatus) dot?.setBackgroundResource(R.drawable.item_hiatus) else dot?.setBackgroundResource(R.drawable.item_ongoing)
+                            } catch (e: Exception) {
+                            }
+                        } else {
+                            b.itemCompactOngoing.isVisible = false
+                        }
+                    }
                     b.itemCompactTitle.text = media.userPreferredName
                     b.itemCompactScore.text =
                         ((if (media.userScore == 0) (media.meanScore

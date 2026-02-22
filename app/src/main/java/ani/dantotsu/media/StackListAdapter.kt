@@ -41,9 +41,10 @@ class StackListAdapter(private val items: List<MALStack>, private val isAnime: B
                     }
                     activity.lifecycleScope.launch {
                         Toast.makeText(ctx, "Loading stack...", Toast.LENGTH_SHORT).show()
-                        val malIds = withContext(Dispatchers.IO) {
+                        val entries = withContext(Dispatchers.IO) {
                             MALQueries().getStackEntries(item.url)
                         }
+                        val malIds = entries.map { it.id }
                         if (malIds.isEmpty()) {
                             Toast.makeText(ctx, "No entries found", Toast.LENGTH_SHORT).show()
                             return@launch
@@ -59,7 +60,18 @@ class StackListAdapter(private val items: List<MALStack>, private val isAnime: B
                             Toast.makeText(ctx, "No AniList matches found", Toast.LENGTH_SHORT).show()
                             return@launch
                         }
-                        MediaListViewActivity.passedMedia = ArrayList(fetched)
+                            // attach MAL intro text to matched Media objects when available
+                            try {
+                                for (m in fetched) {
+                                    val malId = m.idMAL
+                                    val entry = entries.find { it.id == malId }
+                                    if (entry != null) m.malIntro = entry.intro
+                                }
+                            } catch (e: Exception) {
+                                // ignore mapping errors
+                            }
+
+                            MediaListViewActivity.passedMedia = ArrayList(fetched)
                         val i = Intent(ctx, MediaListViewActivity::class.java)
                         i.putExtra("title", item.name)
                         ctx.startActivity(i)

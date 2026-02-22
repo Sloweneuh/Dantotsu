@@ -176,3 +176,9 @@ data class MALStack(
     val description: String? = null
 )
 
+@Serializable
+data class MALStackEntry(
+    val id: Int,
+    val intro: String? = null
+)
+

@@ -83,6 +83,7 @@ data class Media(
     var externalLinks: ArrayList<ArrayList<String?>> = arrayListOf(),
 
     var nameMAL: String? = null,
+    var malIntro: String? = null,
     var shareLink: String? = null,
     var selected: Selected? = null,
     var streamingEpisodes: List<MediaStreamingEpisode>? = null,

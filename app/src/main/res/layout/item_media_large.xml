@@ -154,26 +154,58 @@
             android:padding="12dp"
             android:layout_marginStart="6dp">
 
-            <TextView
-                android:id="@+id/itemCompactTitle"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:ellipsize="end"
-                android:fontFamily="@font/poppins_bold"
-                android:maxLines="3"
-                android:textSize="14dp"
-                android:transitionName="mediaTitle"
-                tools:ignore="SpUsage"
-                tools:text="@string/slogan" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
 
-            <TextView
-                android:id="@+id/itemCompactStatus"
+                <TextView
+                    android:id="@+id/itemCompactTitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:fontFamily="@font/poppins_bold"
+                    android:maxLines="3"
+                    android:textSize="14dp"
+                    android:transitionName="mediaTitle"
+                    tools:ignore="SpUsage"
+                    tools:text="@string/slogan" />
+
+                <!-- info button moved down to the status row -->
+
+            </LinearLayout>
+
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:alpha="0.66"
-                android:textSize="12sp"
-                android:paddingTop="2dp"
-                tools:text="RELEASING" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingTop="2dp">
+
+                <TextView
+                    android:id="@+id/itemCompactStatus"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:alpha="0.66"
+                    android:textSize="12sp"
+                    tools:text="RELEASING" />
+
+                <ImageButton
+                    android:id="@+id/itemInfoButton"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:layout_marginStart="8dp"
+                    android:backgroundTint="?attr/colorPrimaryVariant"
+                    android:contentDescription="Info"
+                    android:scaleType="center"
+                    android:visibility="gone"
+                    app:srcCompat="@drawable/ic_round_info_24"
+                    android:background="?attr/selectableItemBackgroundBorderless" />
+
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/itemCompactSynopsis"
