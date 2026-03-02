@@ -1,11 +1,14 @@
 package ani.dantotsu.media
 
 import android.os.Bundle
+import android.text.util.Linkify
 import android.view.View
 import android.view.ViewGroup
 import android.view.Window
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.text.HtmlCompat
 import androidx.core.view.updateLayoutParams
 import androidx.recyclerview.widget.GridLayoutManager
 import ani.dantotsu.R
@@ -13,6 +16,7 @@ import ani.dantotsu.databinding.ActivityMediaListViewBinding
 import ani.dantotsu.getThemeColor
 import ani.dantotsu.hideSystemBarsExtendView
 import ani.dantotsu.initActivity
+import ani.dantotsu.others.CustomBottomDialog
 import ani.dantotsu.others.getSerialized
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
@@ -50,6 +54,32 @@ class MediaListViewActivity : AppCompatActivity() {
         window.navigationBarColor = primaryColor
         binding.listAppBar.setBackgroundColor(primaryColor)
         binding.listTitle.setTextColor(primaryTextColor)
+        binding.listTitle.isSelected = true
+
+        val description = passedDescription
+        if (passedDescription != null) passedDescription = null
+        if (!description.isNullOrBlank()) {
+            binding.listDescription.visibility = View.VISIBLE
+            binding.listDescription.setOnClickListener {
+                val descView = TextView(this).apply {
+                    setPadding(32, 16, 32, 16)
+                    text = HtmlCompat.fromHtml(description, HtmlCompat.FROM_HTML_MODE_LEGACY)
+                    textSize = 14f
+                    movementMethod = android.text.method.LinkMovementMethod.getInstance()
+                }
+                Linkify.addLinks(descView, Linkify.WEB_URLS)
+                StackListAdapter.interceptLinks(
+                    descView,
+                    getThemeColor(com.google.android.material.R.attr.colorPrimary),
+                    intent.getBooleanExtra("isAnime", false)
+                )
+                CustomBottomDialog.newInstance().apply {
+                    setTitleText(intent.getStringExtra("title") ?: "")
+                    addView(descView)
+                }.show(supportFragmentManager, "stackDesc")
+            }
+        }
+
         val screenWidth = resources.displayMetrics.run { widthPixels / density }
         val mediaList =
             passedMedia ?: intent.getSerialized("media") as? ArrayList<Media> ?: ArrayList()
@@ -146,5 +176,6 @@ class MediaListViewActivity : AppCompatActivity() {
         var passedMedia: ArrayList<Media>? = null
         var passedUnreadInfo: Map<Int, ani.dantotsu.connections.malsync.UnreadChapterInfo>? = null
         var passedUnreleasedInfo: Map<Int, ani.dantotsu.connections.malsync.UnreleasedEpisodeInfo>? = null
+        var passedDescription: String? = null
     }
 }

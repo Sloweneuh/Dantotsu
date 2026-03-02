@@ -249,8 +249,24 @@ class UnreleasedEpisodesAdapter(
                 itemCompactLanguageBG.visibility = View.GONE
             }
 
-            // Hide ongoing indicator (not applicable here)
-            itemCompactOngoing.visibility = View.GONE
+            // Show releasing/hiatus status dot
+            run {
+                val releasingStr = root.context.getString(R.string.status_releasing)
+                val hiatusStr = root.context.getString(R.string.status_hiatus)
+                val st = media.status ?: ""
+                val isReleasing = st == releasingStr
+                val isHiatus = st.equals(hiatusStr, ignoreCase = true)
+                if (isReleasing || isHiatus) {
+                    itemCompactOngoing.visibility = View.VISIBLE
+                    try {
+                        val dot = itemCompactOngoing.getChildAt(0)
+                        if (isHiatus) dot?.setBackgroundResource(R.drawable.item_hiatus)
+                        else dot?.setBackgroundResource(R.drawable.item_ongoing)
+                    } catch (e: Exception) { }
+                } else {
+                    itemCompactOngoing.visibility = View.GONE
+                }
+            }
 
             // Show media status between title and synopsis when available
             itemCompactStatus.text = media.status ?: ""

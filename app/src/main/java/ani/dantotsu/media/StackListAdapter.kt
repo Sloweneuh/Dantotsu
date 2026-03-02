@@ -130,8 +130,10 @@ class StackListAdapter(private val items: List<MALStack>, private val isAnime: B
                             }
 
                             MediaListViewActivity.passedMedia = ArrayList(fetched)
+                            MediaListViewActivity.passedDescription = item.description
                         val i = Intent(ctx, MediaListViewActivity::class.java)
                         i.putExtra("title", item.name)
+                        i.putExtra("isAnime", isAnime)
                         ctx.startActivity(i)
                     }
                 }
