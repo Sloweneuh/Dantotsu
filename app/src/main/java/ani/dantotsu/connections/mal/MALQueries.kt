@@ -184,7 +184,7 @@ class MALQueries {
                     val statText = el.selectFirst(".detail .foot .stat")?.text() ?: ""
                     val entries = Regex("(\\d+)\\s*Entries", RegexOption.IGNORE_CASE).find(statText)?.groups?.get(1)?.value?.toIntOrNull()
                         ?: Regex("(\\d+)").find(statText)?.groups?.get(1)?.value?.toIntOrNull() ?: 0
-                    val description = el.selectFirst(".detail .text")?.text()?.trim()
+                    val description = el.selectFirst(".detail .text")?.html()?.trim()
                     stacks.add(MALStack(url = link, covers = covers, name = name, entries = entries, description = description))
                 }
 
@@ -207,6 +207,27 @@ class MALQueries {
             stacks
         } catch (e: Exception) {
             emptyList()
+        }
+    }
+
+    /**
+     * Fetch just the title of a MAL interest stack from its page.
+     */
+    suspend fun getStackName(stackUrl: String): String? {
+        return try {
+            val headers = mapOf(
+                "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36"
+            )
+            var url = stackUrl
+            if (url.startsWith("/")) url = "https://myanimelist.net$url"
+            else if (!url.startsWith("http")) url = "https://myanimelist.net/$url"
+            val doc = client.get(url, headers).document
+            // Try h2.title first, then h1, then fall back to <title> tag stripped of " - MyAnimeList.net"
+            doc.selectFirst("h2.title")?.text()?.takeIf { it.isNotBlank() }
+                ?: doc.selectFirst("h1")?.text()?.takeIf { it.isNotBlank() }
+                ?: doc.title().substringBefore(" - MyAnimeList.net").takeIf { it.isNotBlank() }
+        } catch (e: Exception) {
+            null
         }
     }
 

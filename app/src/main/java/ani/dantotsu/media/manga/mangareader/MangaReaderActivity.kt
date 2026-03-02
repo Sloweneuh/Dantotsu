@@ -1095,11 +1095,12 @@ class MangaReaderActivity : AppCompatActivity() {
         if (maxChapterPage - currentChapterPage <= 1 && !loading)
             scope.launch(Dispatchers.IO) {
                 loading = true
-                model.loadMangaChapterImages(
-                    chapters[chaptersArr.getOrNull(currentChapterIndex + 1) ?: return@launch]!!,
-                    media.selected!!,
-                    false
-                )
+                val nextKey = chaptersArr.getOrNull(currentChapterIndex + 1) ?: return@launch
+                val nextChapter = chapters[nextKey] ?: return@launch
+                val isPremium = (nextChapter.title?.contains("🔒") == true) || nextChapter.number.contains("🔒")
+                if (!isPremium) {
+                    model.loadMangaChapterImages(nextChapter, media.selected!!, false)
+                }
                 loading = false
             }
     }

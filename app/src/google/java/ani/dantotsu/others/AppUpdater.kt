@@ -51,13 +51,14 @@ object AppUpdater {
         val downloadUrl: String? = null
     )
 
-    private suspend fun fetchUpdateInfo(repo: String, isDebug: Boolean): Pair<String, String>? {
+    private suspend fun fetchUpdateInfo(repo: String, isDebug: Boolean): Triple<String, String, String?>? {
         return try {
             fetchFromGithub(repo, isDebug)
         } catch (e: Exception) {
             Logger.log("Github fetch failed, trying fallback: ${e.message}")
             try {
-                fetchFromFallback(isDebug)
+                val (md, version) = fetchFromFallback(isDebug)
+                Triple(md, version, null)
             } catch (e: Exception) {
                 Logger.log("Fallback fetch failed: ${e.message}")
                 null
@@ -65,21 +66,25 @@ object AppUpdater {
         }
     }
 
-    private suspend fun fetchFromGithub(repo: String, isDebug: Boolean): Pair<String, String> {
+    private suspend fun fetchFromGithub(repo: String, isDebug: Boolean): Triple<String, String, String?> {
+        val res = client.get("https://api.github.com/repos/$repo/releases")
+            .parsed<JsonArray>().map {
+                Mapper.json.decodeFromJsonElement<GithubResponse>(it)
+            }
         return if (isDebug) {
-            val res = client.get("https://api.github.com/repos/$repo/releases")
-                .parsed<JsonArray>().map {
-                    Mapper.json.decodeFromJsonElement<GithubResponse>(it)
-                }
             val r = res.filter { it.prerelease }.filter { !it.tagName.contains("fdroid") }
                 .maxByOrNull {
                     it.timeStamp()
                 } ?: throw Exception("No Pre Release Found")
-            val v = r.tagName.substringAfter("v", "")
-            (r.body ?: "") to v.ifEmpty { throw Exception("Weird Version : ${r.tagName}") }
+            val v = r.tagName.removePrefix("v")
+            Triple(r.body ?: "", v.ifEmpty { throw Exception("Weird Version : ${r.tagName}") }, r.name)
         } else {
-            val res = client.get("https://raw.githubusercontent.com/$repo/main/stable.md").text
-            res to res.substringAfter("# ").substringBefore("\n")
+            val r = res.filter { !it.prerelease }.filter { !it.tagName.contains("fdroid") }
+                .maxByOrNull {
+                    it.timeStamp()
+                } ?: throw Exception("No Stable Release Found")
+            val v = r.tagName.removePrefix("v")
+            Triple(r.body ?: "", v.ifEmpty { throw Exception("Weird Version : ${r.tagName}") }, r.name)
         }
     }
 
@@ -89,9 +94,8 @@ object AppUpdater {
         return response.changelog to response.version
     }
 
-    private suspend fun fetchApkUrl(repo: String, version: String, isDebug: Boolean, stableMd: String? = null): String? {
-        // For stable builds: stable.md supplies the version; construct the canonical GitHub releases download URL
-        // This keeps the stable path to a single network call (we already fetched stable.md to get version).
+    private suspend fun fetchApkUrl(repo: String, version: String, isDebug: Boolean): String? {
+        // For stable builds: construct the canonical GitHub releases download URL from the version.
         if (!isDebug) {
             try {
                 // Most repos publish the APK under a predictable asset name — default to the app-google-release.apk used by CI
@@ -145,17 +149,14 @@ object AppUpdater {
         if (post) snackString(currContext()?.getString(R.string.checking_for_update))
         val repo = activity.getString(R.string.repo)
         tryWithSuspend {
-            val (md, version) = fetchUpdateInfo(repo, BuildConfig.DEBUG) ?: return@tryWithSuspend
+            val (md, version, releaseName) = fetchUpdateInfo(repo, BuildConfig.DEBUG) ?: return@tryWithSuspend
 
             Logger.log("Git Version : $version")
             val dontShow = PrefManager.getCustomVal("dont_ask_for_update_$version", false)
             if (compareVersion(version) && !dontShow && !activity.isDestroyed) activity.runOnUiThread {
                 CustomBottomDialog.newInstance().apply {
-                    setTitleText(
-                        "${if (BuildConfig.DEBUG) "Beta " else ""}Update " + currContext()!!.getString(
-                            R.string.available
-                        )
-                    )
+                    val updateLabel = "${if (BuildConfig.DEBUG) "Beta " else ""}Update " + currContext()!!.getString(R.string.available)
+                    setTitleText(if (!releaseName.isNullOrBlank()) "$updateLabel — $releaseName" else updateLabel)
                     addView(
                         TextView(activity).apply {
                             val markWon = try {
@@ -178,7 +179,7 @@ object AppUpdater {
                     setPositiveButton(currContext()!!.getString(R.string.lets_go)) {
                         MainScope().launch(Dispatchers.IO) {
                             try {
-                                val apkUrl = fetchApkUrl(repo, version, BuildConfig.DEBUG, md)
+                                val apkUrl = fetchApkUrl(repo, version, BuildConfig.DEBUG)
                                 if (apkUrl != null) {
                                     activity.downloadUpdate(version, apkUrl)
                                 } else {
@@ -297,6 +298,7 @@ object AppUpdater {
         val htmlUrl: String,
         @SerialName("tag_name")
         val tagName: String,
+        val name: String? = null,
         val prerelease: Boolean,
         @SerialName("created_at")
         val createdAt: String,

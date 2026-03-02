@@ -98,6 +98,7 @@ class MediaRandomDialogFragment : DialogFragment() {
             val parsed = HtmlCompat.fromHtml(rawDesc, HtmlCompat.FROM_HTML_MODE_LEGACY).toString()
             synopsisText.text = if (parsed.isBlank() || parsed == "null") getString(R.string.no_description_available) else parsed
             synopsisText.movementMethod = ScrollingMovementMethod()
+            synopsisText.scrollTo(0, 0)
             progressText.text = (media.userProgress ?: "~").toString()
             totalText.text = when {
                 media.anime != null -> (media.anime.totalEpisodes ?: "~").toString()

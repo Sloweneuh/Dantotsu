@@ -12,14 +12,32 @@ import ani.dantotsu.R
 import ani.dantotsu.connections.mal.MALStack
 import ani.dantotsu.connections.mal.MALQueries
 import ani.dantotsu.connections.anilist.Anilist
+import ani.dantotsu.connections.malsync.MalSyncApi
+import ani.dantotsu.connections.malsync.LanguageMapper
+import ani.dantotsu.connections.malsync.UnreadChapterInfo
+import ani.dantotsu.connections.malsync.UnreleasedEpisodeInfo
 import ani.dantotsu.databinding.ItemStackLargeBinding
 import ani.dantotsu.getAppString
 import ani.dantotsu.loadImage
-import android.text.method.ScrollingMovementMethod
+import ani.dantotsu.settings.saving.PrefManager
+import ani.dantotsu.settings.saving.PrefName
+import android.text.method.LinkMovementMethod
+import android.text.util.Linkify
 import android.util.Log
+import ani.dantotsu.getThemeColor
+import androidx.core.text.HtmlCompat
+import android.content.Context
+import android.text.SpannableString
+import android.text.TextPaint
+import android.text.style.ClickableSpan
+import android.text.style.ForegroundColorSpan
+import android.text.style.URLSpan
 import android.util.TypedValue
 import android.view.MotionEvent
+import android.view.View
 import android.widget.FrameLayout
+import android.widget.TextView
+import ani.dantotsu.media.MediaDetailsActivity
 import com.bumptech.glide.Glide
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -69,6 +87,46 @@ class StackListAdapter(private val items: List<MALStack>, private val isAnime: B
                                 }
                             } catch (e: Exception) {
                                 // ignore mapping errors
+                            }
+
+                            // Fetch MALSync progress/source data if enabled
+                            if (PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled)) {
+                                val mediaIds = fetched.map { Pair(it.id, it.idMAL) }
+                                if (isAnime) {
+                                    val batchResults = withContext(Dispatchers.IO) {
+                                        try { MalSyncApi.getBatchAnimeEpisodes(mediaIds) } catch (e: Exception) { emptyMap() }
+                                    }
+                                    val infoMap = mutableMapOf<Int, UnreleasedEpisodeInfo>()
+                                    for (m in fetched) {
+                                        val result = batchResults[m.id] ?: continue
+                                        val lastEp = result.lastEp ?: continue
+                                        val langOption = LanguageMapper.mapLanguage(result.id)
+                                        infoMap[m.id] = UnreleasedEpisodeInfo(
+                                            mediaId = m.id,
+                                            lastEpisode = lastEp.total,
+                                            languageId = result.id,
+                                            languageDisplay = langOption.displayName,
+                                            userProgress = m.userProgress ?: 0
+                                        )
+                                    }
+                                    if (infoMap.isNotEmpty()) MediaListViewActivity.passedUnreleasedInfo = infoMap
+                                } else {
+                                    val batchResults = withContext(Dispatchers.IO) {
+                                        try { MalSyncApi.getBatchProgressByMedia(mediaIds) } catch (e: Exception) { emptyMap() }
+                                    }
+                                    val infoMap = mutableMapOf<Int, UnreadChapterInfo>()
+                                    for (m in fetched) {
+                                        val result = batchResults[m.id] ?: continue
+                                        val lastEp = result.lastEp ?: continue
+                                        infoMap[m.id] = UnreadChapterInfo(
+                                            mediaId = m.id,
+                                            lastChapter = lastEp.total,
+                                            source = result.source,
+                                            userProgress = m.userProgress ?: 0
+                                        )
+                                    }
+                                    if (infoMap.isNotEmpty()) MediaListViewActivity.passedUnreadInfo = infoMap
+                                }
                             }
 
                             MediaListViewActivity.passedMedia = ArrayList(fetched)
@@ -161,10 +219,21 @@ class StackListAdapter(private val items: List<MALStack>, private val isAnime: B
         b.itemCompactBanner.loadImage(item.covers.firstOrNull())
         // title
         b.itemCompactTitle.text = item.name
-        // synopsis / description (show placeholder when blank and enable scrolling)
-        val desc = if (item.description.isNullOrBlank()) b.root.context.getString(R.string.no_description_available) else item.description
-        b.itemCompactSynopsis.text = desc
-        b.itemCompactSynopsis.movementMethod = ScrollingMovementMethod()
+        // synopsis / description (show placeholder when blank, parse HTML links and enable scrolling)
+        val rawDesc = item.description
+        if (rawDesc.isNullOrBlank()) {
+            b.itemCompactSynopsis.text = b.root.context.getString(R.string.no_description_available)
+        } else {
+            b.itemCompactSynopsis.text = HtmlCompat.fromHtml(rawDesc, HtmlCompat.FROM_HTML_MODE_LEGACY)
+        }
+        // Apply Linkify for bare URLs that aren't wrapped in <a> tags
+        Linkify.addLinks(b.itemCompactSynopsis, Linkify.WEB_URLS)
+        // Replace URLSpans with custom spans that open in-app when possible
+        interceptLinks(
+            b.itemCompactSynopsis,
+            b.root.context.getThemeColor(com.google.android.material.R.attr.colorPrimary),
+            isAnime
+        )
         // Allow inner TextView to handle vertical scroll inside RecyclerView
         b.itemCompactSynopsis.setOnTouchListener { v, ev ->
             v.parent?.requestDisallowInterceptTouchEvent(true)
@@ -178,4 +247,100 @@ class StackListAdapter(private val items: List<MALStack>, private val isAnime: B
     }
 
     override fun getItemCount(): Int = items.size
+
+    companion object {
+        private val anilistMediaRegex = Regex("""https://anilist\.co/(anime|manga)/(\d+)""")
+        private val malMediaRegex = Regex("""https://myanimelist\.net/(anime|manga)/(\d+)""")
+        private val malStackRegex = Regex("""https://myanimelist\.net/stacks/(\d+)""")
+
+        /** Replaces all URLSpan instances with custom ClickableSpans that open in-app for known URLs. */
+        fun interceptLinks(textView: TextView, linkColor: Int, isAnime: Boolean) {
+            val spannable = SpannableString(textView.text)
+            val urlSpans = spannable.getSpans(0, spannable.length, URLSpan::class.java)
+            for (urlSpan in urlSpans) {
+                val start = spannable.getSpanStart(urlSpan)
+                val end = spannable.getSpanEnd(urlSpan)
+                val flags = spannable.getSpanFlags(urlSpan)
+                val url = urlSpan.url
+                spannable.removeSpan(urlSpan)
+                spannable.setSpan(ForegroundColorSpan(linkColor), start, end, flags)
+                spannable.setSpan(object : ClickableSpan() {
+                    override fun onClick(widget: View) = openLink(widget.context, url, isAnime)
+                    override fun updateDrawState(ds: TextPaint) {
+                        ds.color = linkColor
+                        ds.isUnderlineText = true
+                    }
+                }, start, end, flags)
+            }
+            textView.text = spannable
+            textView.movementMethod = LinkMovementMethod.getInstance()
+        }
+
+        fun openLink(context: Context, url: String, isAnime: Boolean = false) {
+            // AniList media page
+            val anilistMatch = anilistMediaRegex.find(url)
+            if (anilistMatch != null) {
+                val id = anilistMatch.groupValues[2].toIntOrNull()
+                if (id != null) {
+                    context.startActivity(
+                        Intent(context, MediaDetailsActivity::class.java).putExtra("mediaId", id)
+                    )
+                    return
+                }
+            }
+            // MAL media page
+            val malMatch = malMediaRegex.find(url)
+            if (malMatch != null) {
+                val id = malMatch.groupValues[2].toIntOrNull()
+                if (id != null) {
+                    context.startActivity(
+                        Intent(context, MediaDetailsActivity::class.java)
+                            .putExtra("mediaId", id)
+                            .putExtra("mal", true)
+                    )
+                    return
+                }
+            }
+            // MAL interest stack page — fetch entries and open in-app
+            val stackMatch = malStackRegex.find(url)
+            if (stackMatch != null) {
+                val activity = context as? AppCompatActivity
+                if (activity != null) {
+                    activity.lifecycleScope.launch {
+                        Toast.makeText(context, "Loading stack...", Toast.LENGTH_SHORT).show()
+                        val queries = MALQueries()
+                        val (entries, stackName) = withContext(Dispatchers.IO) {
+                            Pair(
+                                try { queries.getStackEntries(url) } catch (e: Exception) { emptyList() },
+                                try { queries.getStackName(url) } catch (e: Exception) { null }
+                            )
+                        }
+                        val malIds = entries.map { it.id }
+                        if (malIds.isEmpty()) {
+                            Toast.makeText(context, "No entries found", Toast.LENGTH_SHORT).show()
+                            return@launch
+                        }
+                        val fetched = withContext(Dispatchers.IO) {
+                            try {
+                                Anilist.query.getMediaBatch(malIds, mal = true, mediaType = if (isAnime) "ANIME" else "MANGA")
+                            } catch (e: Exception) { emptyList() }
+                        }
+                        if (fetched.isEmpty()) {
+                            Toast.makeText(context, "No AniList matches found", Toast.LENGTH_SHORT).show()
+                            return@launch
+                        }
+                        MediaListViewActivity.passedMedia = ArrayList(fetched)
+                        context.startActivity(
+                            Intent(context, MediaListViewActivity::class.java)
+                                .putExtra("title", stackName ?: "Stack")
+                        )
+                    }
+                    return
+                }
+            }
+            try {
+                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+            } catch (_: Exception) {}
+        }
+    }
 }
