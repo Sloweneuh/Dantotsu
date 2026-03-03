@@ -98,6 +98,19 @@ class HomeFragment : Fragment() {
     }
 
     // Helper: determine last chapter number for a media, preferring MALSync info, then local chapters, then totalChapters
+    private fun isMalSyncDisabledForManga(): Boolean {
+        val enabled = PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled)
+        val mode = PrefManager.getVal<String>(PrefName.MalSyncCheckMode) ?: "both"
+        return !enabled || mode == "anime"
+    }
+
+    private fun updateUnreadRefreshButtonState() {
+        if (_binding == null) return
+        val disabled = isMalSyncDisabledForManga()
+        binding.homeUnreadChaptersRefresh.isEnabled = !disabled
+        binding.homeUnreadChaptersRefresh.alpha = if (disabled) 0.38f else 1f
+    }
+
     private fun getLastChapterForMedia(media: Media, infoMap: Map<Int, UnreadChapterInfo>?): Int? {
         val info = infoMap?.get(media.id)
         if (info?.lastChapter != null) return info.lastChapter
@@ -211,10 +224,12 @@ class HomeFragment : Fragment() {
                 }
             }
         }
+        updateUnreadRefreshButtonState()
 
         // Observe loading state to rotate refresh icon while a check runs
         model.getUnreadChaptersLoading().observe(viewLifecycleOwner) { loading ->
-            binding.homeUnreadChaptersRefresh.isEnabled = !loading
+            binding.homeUnreadChaptersRefresh.isEnabled = !loading && !isMalSyncDisabledForManga()
+            binding.homeUnreadChaptersRefresh.alpha = if (!loading && isMalSyncDisabledForManga()) 0.38f else 1f
             if (loading) {
                 if (refreshAnimator == null) {
                     refreshAnimator = android.animation.ObjectAnimator.ofFloat(
@@ -1034,6 +1049,7 @@ class HomeFragment : Fragment() {
             binding.homeNotificationCount.isVisible = Anilist.unreadNotificationCount > 0
                     && PrefManager.getVal<Boolean>(PrefName.ShowNotificationRedDot) == true
             binding.homeNotificationCount.text = Anilist.unreadNotificationCount.toString()
+            updateUnreadRefreshButtonState()
         }
         super.onResume()
     }
