@@ -109,7 +109,25 @@ class UserInterfaceSettingsActivity : AppCompatActivity() {
             PrefManager.setVal(PrefName.SmallView, isChecked)
             restartApp()
         }
+        binding.uiSettingsShowAnimeTab.isChecked = PrefManager.getVal(PrefName.ShowAnimeTab)
+        binding.uiSettingsShowAnimeTab.setOnCheckedChangeListener { _, isChecked ->
+            PrefManager.setVal(PrefName.ShowAnimeTab, isChecked)
+            // If disabling and the default start-up tab was Anime, reset to Home
+            if (!isChecked && PrefManager.getVal<Int>(PrefName.DefaultStartUpTab) == 0) {
+                PrefManager.setVal(PrefName.DefaultStartUpTab, 1)
+            }
+            restartApp()
+        }
 
+        binding.uiSettingsShowMangaTab.isChecked = PrefManager.getVal(PrefName.ShowMangaTab)
+        binding.uiSettingsShowMangaTab.setOnCheckedChangeListener { _, isChecked ->
+            PrefManager.setVal(PrefName.ShowMangaTab, isChecked)
+            // If disabling and the default start-up tab was Manga, reset to Home
+            if (!isChecked && PrefManager.getVal<Int>(PrefName.DefaultStartUpTab) == 2) {
+                PrefManager.setVal(PrefName.DefaultStartUpTab, 1)
+            }
+            restartApp()
+        }
         binding.uiSettingsImmersive.isChecked = PrefManager.getVal(PrefName.ImmersiveMode)
         binding.uiSettingsImmersive.setOnCheckedChangeListener { _, isChecked ->
             PrefManager.setVal(PrefName.ImmersiveMode, isChecked)

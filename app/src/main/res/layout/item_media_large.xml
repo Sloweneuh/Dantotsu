@@ -238,7 +238,7 @@
                     android:id="@+id/itemProgressSeparator"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:alpha="0.66"
+                        android:alpha="0.58"
                         android:text=" | "
                         android:textSize="14dp"
                         tools:ignore="TextContrastCheck" />
@@ -248,6 +248,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textSize="14dp"
+                    android:alpha="0.58"
                     tools:ignore="SpUsage,TextContrastCheck"
                     tools:text="??" />
 
@@ -255,7 +256,7 @@
                     android:id="@+id/itemTotal"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:alpha="0.66"
+                    android:alpha="0.58"
                     android:text="@string/eps"
                     android:textSize="14dp"
                     tools:ignore="SpUsage" />

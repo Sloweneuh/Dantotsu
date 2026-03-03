@@ -345,6 +345,10 @@
 
     <string name="startUpTab">Default Start Up Tab</string>
     <string name="small_view">Small View in Trending Shows</string>
+    <string name="show_anime_tab">Show Anime Tab</string>
+    <string name="show_anime_tab_desc">Display the Anime tab in the bottom navigation bar</string>
+    <string name="show_manga_tab">Show Manga Tab</string>
+    <string name="show_manga_tab_desc">Display the Manga tab in the bottom navigation bar</string>
     <string name="animations">Animations</string>
     <string name="banner_animations">Banner Animations</string>
     <string name="layout_animations">Layout Animations</string>

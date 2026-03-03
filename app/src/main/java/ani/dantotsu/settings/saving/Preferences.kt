@@ -113,6 +113,8 @@ enum class PrefName(val data: Pref) {
     CommentSortOrder(Pref(Location.UI, String::class, "newest")),
     FollowerLayout(Pref(Location.UI, Int::class, 0)),
     ShowNotificationRedDot(Pref(Location.UI, Boolean::class, true)),
+    ShowAnimeTab(Pref(Location.UI, Boolean::class, true)),
+    ShowMangaTab(Pref(Location.UI, Boolean::class, true)),
 
 
     //Player

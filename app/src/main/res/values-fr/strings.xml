@@ -263,6 +263,7 @@
 
     <string name="startUpTab">Onglet de démarrage par défaut</string>
     <string name="small_view">Petite vue dans les tendances</string>
+    <string name="show_manga_tab_desc">Afficher l\'onglet Manga dans la barre de navigation de la page d\'accueil</string>
     <string name="animations">Animations</string>
     <string name="banner_animations">Animations de bannière</string>
     <string name="layout_animations">Animations de disposition</string>
@@ -1304,4 +1305,7 @@
     <string name="anime_start_format">\nDébut: %1$s</string>
     <string name="anime_end_format">\nFin: %1$s</string>
     <string name="autoscroll">Défilement automatique</string>
+    <string name="show_anime_tab">Afficher l\'onglet Anime</string>
+    <string name="show_anime_tab_desc">Afficher l\'onglet Anime dans la barre de navigation de la page d\'accueil</string>
+    <string name="show_manga_tab">Afficher l\'onglet Manga</string>
 </resources>

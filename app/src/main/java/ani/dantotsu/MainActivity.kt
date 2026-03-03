@@ -272,7 +272,15 @@ class MainActivity : AppCompatActivity() {
                     }
             }
             window.navigationBarColor = ContextCompat.getColor(this, android.R.color.transparent)
-            selectedOption = if (fragment != null) {
+            val showAnime = PrefManager.getVal<Boolean>(PrefName.ShowAnimeTab)
+            val showManga = PrefManager.getVal<Boolean>(PrefName.ShowMangaTab)
+            // Build ordered list of canonical tab indices (0=Anime, 1=Home, 2=Manga)
+            val visibleTabs = buildList {
+                if (showAnime) add(0)
+                add(1) // Home is always visible
+                if (showManga) add(2)
+            }
+            val canonicalSelected = if (fragment != null) {
                 when (fragment) {
                     AnimeFragment::class.java.name -> 0
                     HomeFragment::class.java.name -> 1
@@ -282,29 +290,38 @@ class MainActivity : AppCompatActivity() {
             } else {
                 PrefManager.getVal(PrefName.DefaultStartUpTab)
             }
+            // Map canonical index to actual visible position, fallback to Home
+            selectedOption = visibleTabs.indexOf(canonicalSelected)
+                .takeIf { it >= 0 } ?: visibleTabs.indexOf(1)
             val navbar = binding.includedNavbar.navbar
             bottomBar = navbar
-            navbar.visibility = View.VISIBLE
+            val onlyHomeVisible = visibleTabs.size == 1
+            navbar.visibility = if (onlyHomeVisible) View.GONE else View.VISIBLE
             binding.mainProgressBar.visibility = View.GONE
             val mainViewPager = binding.viewpager
             mainViewPager.isUserInputEnabled = false
             mainViewPager.adapter =
-                ViewPagerAdapter(supportFragmentManager, lifecycle)
+                ViewPagerAdapter(supportFragmentManager, lifecycle, visibleTabs)
             mainViewPager.setPageTransformer(ZoomOutPageTransformer())
-            navbar.selectTabAt(selectedOption)
-            navbar.setOnTabSelectListener(object :
-                AnimatedBottomBar.OnTabSelectListener {
-                override fun onTabSelected(
-                    lastIndex: Int,
-                    lastTab: AnimatedBottomBar.Tab?,
-                    newIndex: Int,
-                    newTab: AnimatedBottomBar.Tab
-                ) {
-                    navbar.animate().translationZ(12f).setDuration(200).start()
-                    selectedOption = newIndex
-                    mainViewPager.setCurrentItem(newIndex, false)
-                }
-            })
+            if (!onlyHomeVisible) {
+                // Remove disabled tabs from navbar (reverse order to avoid index shifting)
+                if (!showManga) navbar.removeTabAt(2)
+                if (!showAnime) navbar.removeTabAt(0)
+                navbar.selectTabAt(selectedOption)
+                navbar.setOnTabSelectListener(object :
+                    AnimatedBottomBar.OnTabSelectListener {
+                    override fun onTabSelected(
+                        lastIndex: Int,
+                        lastTab: AnimatedBottomBar.Tab?,
+                        newIndex: Int,
+                        newTab: AnimatedBottomBar.Tab
+                    ) {
+                        navbar.animate().translationZ(12f).setDuration(200).start()
+                        selectedOption = newIndex
+                        mainViewPager.setCurrentItem(newIndex, false)
+                    }
+                })
+            }
             if (mainViewPager.currentItem != selectedOption) {
                 mainViewPager.post {
                     mainViewPager.setCurrentItem(
@@ -575,18 +592,21 @@ class MainActivity : AppCompatActivity() {
     }
 
     //ViewPager
-    private class ViewPagerAdapter(fragmentManager: FragmentManager, lifecycle: Lifecycle) :
-        FragmentStateAdapter(fragmentManager, lifecycle) {
+    private class ViewPagerAdapter(
+        fragmentManager: FragmentManager,
+        lifecycle: Lifecycle,
+        private val visibleTabs: List<Int>
+    ) : FragmentStateAdapter(fragmentManager, lifecycle) {
 
-        override fun getItemCount(): Int = 3
+        override fun getItemCount(): Int = visibleTabs.size
 
         override fun createFragment(position: Int): Fragment {
-            when (position) {
-                0 -> return AnimeFragment()
-                1 -> return if (Anilist.token != null) HomeFragment() else LoginFragment()
-                2 -> return MangaFragment()
+            return when (visibleTabs[position]) {
+                0 -> AnimeFragment()
+                1 -> if (Anilist.token != null) HomeFragment() else LoginFragment()
+                2 -> MangaFragment()
+                else -> LoginFragment()
             }
-            return LoginFragment()
         }
     }
 

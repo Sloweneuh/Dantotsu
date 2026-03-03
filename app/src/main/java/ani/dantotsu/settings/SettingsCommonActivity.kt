@@ -452,6 +452,19 @@ class SettingsCommonActivity : AppCompatActivity() {
                 layoutManager = LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false)
                 setHasFixedSize(true)
             }
+            val showAnimeTab = PrefManager.getVal<Boolean>(PrefName.ShowAnimeTab)
+            val showMangaTab = PrefManager.getVal<Boolean>(PrefName.ShowMangaTab)
+            // Auto-correct saved default tab if the corresponding tab is now disabled
+            val currentDefault = PrefManager.getVal<Int>(PrefName.DefaultStartUpTab)
+            if ((currentDefault == 0 && !showAnimeTab) || (currentDefault == 2 && !showMangaTab)) {
+                PrefManager.setVal(PrefName.DefaultStartUpTab, 1)
+            }
+            // Show/hide tab picker buttons based on whether the tab is enabled
+            (uiSettingsAnime.parent as? View)?.visibility =
+                if (showAnimeTab) View.VISIBLE else View.GONE
+            (uiSettingsManga.parent as? View)?.visibility =
+                if (showMangaTab) View.VISIBLE else View.GONE
+
             var previousStart: View =
                 when (PrefManager.getVal<Int>(PrefName.DefaultStartUpTab)) {
                     0 -> uiSettingsAnime
