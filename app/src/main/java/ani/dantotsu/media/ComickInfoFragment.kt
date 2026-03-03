@@ -938,9 +938,67 @@ class ComickInfoFragment : Fragment() {
         val rawDescription =
                 comic.parsed
                         ?: comic.desc ?: getString(ani.dantotsu.R.string.no_description_available)
-        val parsedDescription =
-                HtmlCompat.fromHtml(rawDescription, HtmlCompat.FROM_HTML_MODE_LEGACY)
-        binding.mediaInfoDescription.text = tripleTab + parsedDescription
+        // <hr> is used on Comick to separate multiple descriptions. Replace it with a private-use
+        // Unicode marker before HTML parsing, then apply a ReplacementSpan that draws a real
+        // full-width styled line — HtmlCompat.fromHtml silently drops <hr> otherwise.
+        val hrMarker = '\uE000'
+        val htmlWithMarker = rawDescription.replace(
+                Regex("<hr\\s*/?>", RegexOption.IGNORE_CASE),
+                hrMarker.toString()
+        )
+        val parsedHtml = HtmlCompat.fromHtml(htmlWithMarker, HtmlCompat.FROM_HTML_MODE_LEGACY)
+        val spannable = android.text.SpannableStringBuilder(tripleTab).append(parsedHtml)
+        var markerIdx = spannable.indexOf(hrMarker)
+        while (markerIdx >= 0) {
+            spannable.setSpan(
+                    object : android.text.style.ReplacementSpan() {
+                        override fun getSize(
+                                paint: android.graphics.Paint,
+                                text: CharSequence?,
+                                start: Int,
+                                end: Int,
+                                fm: android.graphics.Paint.FontMetricsInt?
+                        ): Int {
+                            fm?.let {
+                                val lh = (paint.descent() - paint.ascent()) * 1.4f
+                                it.ascent = (-lh * 0.7f).toInt()
+                                it.top = it.ascent
+                                it.descent = (lh * 0.5f).toInt()
+                                it.bottom = it.descent
+                            }
+                            return 0
+                        }
+
+                        override fun draw(
+                                canvas: android.graphics.Canvas,
+                                text: CharSequence?,
+                                start: Int,
+                                end: Int,
+                                x: Float,
+                                top: Int,
+                                y: Int,
+                                bottom: Int,
+                                paint: android.graphics.Paint
+                        ) {
+                            val midY = (top + bottom) / 2f
+                            val savedColor = paint.color
+                            val savedWidth = paint.strokeWidth
+                            val savedStyle = paint.style
+                            paint.color = 0x50808080.toInt()
+                            paint.strokeWidth = 1.5f
+                            paint.style = android.graphics.Paint.Style.STROKE
+                            canvas.drawLine(x, midY, canvas.width.toFloat(), midY, paint)
+                            paint.color = savedColor
+                            paint.strokeWidth = savedWidth
+                            paint.style = savedStyle
+                        }
+                    },
+                    markerIdx, markerIdx + 1,
+                    android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+            markerIdx = spannable.indexOf(hrMarker, markerIdx + 1)
+        }
+        binding.mediaInfoDescription.text = spannable
         binding.mediaInfoDescription.setOnClickListener {
             if (binding.mediaInfoDescription.maxLines == 5) {
                 android.animation.ObjectAnimator.ofInt(

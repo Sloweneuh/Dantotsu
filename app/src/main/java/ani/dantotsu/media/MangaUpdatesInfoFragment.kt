@@ -13,6 +13,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import ani.dantotsu.R
+import ani.dantotsu.buildMarkwon
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.connections.mangaupdates.MangaUpdatesLoginDialog
 import ani.dantotsu.copyToClipboard
@@ -824,52 +825,19 @@ class MangaUpdatesInfoFragment : Fragment() {
         }
                 ?: run { binding.mediaInfoFavorites.text = getString(R.string.question_marks) }
 
-        // Description (extract only synopsis, remove any text that was supposed to be
-        // italic/bold/links)
+        // Description — render the full synopsis as Markdown
         val fullDesc =
                 series.description ?: getString(ani.dantotsu.R.string.no_description_available)
 
-        // Remove markdown links entirely
-        val linkPattern = Regex("""\[(.*?)\]\(.*?\)""")
-        val descNoLinks =
-                linkPattern
-                        .replace(fullDesc) { matchResult ->
-                            "" // Remove the entire link, including the text
-                        }
-                        .replace(Regex("""\n{3,}"""), "\n\n")
+        val descCleaned = fullDesc.replace(Regex("""\n{3,}"""), "\n\n").trim()
 
-        val italicPattern = Regex("""\*(.*?)\*""")
-        val boldPattern = Regex("""\*\*(.*?)\*\*""")
-        val parenthesisPattern = Regex("""\((.*?)\)""")
-        val descNoMarkdown =
-                italicPattern
-                        .replace(descNoLinks) { matchResult ->
-                            "" // Remove text inside single asterisks
-                        }
-                        .let { intermediate ->
-                            boldPattern.replace(intermediate) { matchResult ->
-                                "" // Remove text inside double asterisks
-                            }
-                        }
-                        .let { intermediate2 ->
-                            parenthesisPattern.replace(intermediate2) { matchResult ->
-                                "" // Remove text inside parentheses
-                            }
-                        }
-
-        // Remove isolated asterisks, underscores, parentheses and other markdown chars
-        val markdownCharsPattern = Regex("""[\*\_\`\~\|\>\#\-\+\=]""")
-        val descNoMarkdownChars = markdownCharsPattern.replace(descNoMarkdown, "")
-
-        // Remove isolated brackets, parentheses and similar
-        val bracketsPattern = Regex("""[\[\]\(\)\{\}]""")
-        val descNoBrackets = bracketsPattern.replace(descNoMarkdownChars, "")
-
-        // Remove excessive newlines
-        val excessiveNewlinesPattern = Regex("""\n{3,}""")
-        val descCleaned = excessiveNewlinesPattern.replace(descNoBrackets, "\n\n")
-
-        binding.mediaInfoDescription.text = tripleTab + descCleaned.trim()
+        val markwon = buildMarkwon(
+                requireContext(),
+                userInputContent = false,
+                fragment = this,
+                linkResolver = { link -> ani.dantotsu.openLinkInBrowser(link) }
+        )
+        markwon.setMarkdown(binding.mediaInfoDescription, descCleaned)
         binding.mediaInfoDescription.setOnClickListener {
             if (binding.mediaInfoDescription.maxLines == 5) {
                 android.animation.ObjectAnimator.ofInt(

@@ -1482,14 +1482,16 @@ fun buildMarkwon(
     activity: Context,
     userInputContent: Boolean = true,
     fragment: Fragment? = null,
-    anilist: Boolean = false
+    anilist: Boolean = false,
+    linkResolver: ((link: String) -> Unit)? = null
 ): Markwon {
     val glideContext = fragment?.let { Glide.with(it) } ?: Glide.with(activity)
     val markwon = Markwon.builder(activity)
         .usePlugin(object : AbstractMarkwonPlugin() {
             override fun configureConfiguration(builder: MarkwonConfiguration.Builder) {
                 builder.linkResolver { _, link ->
-                    openOrCopyAnilistLink(link)
+                    if (linkResolver != null) linkResolver(link)
+                    else openOrCopyAnilistLink(link)
                 }
             }
         })
