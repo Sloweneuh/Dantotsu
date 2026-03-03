@@ -1308,4 +1308,6 @@
     <string name="show_anime_tab">Afficher l\'onglet Anime</string>
     <string name="show_anime_tab_desc">Afficher l\'onglet Anime dans la barre de navigation de la page d\'accueil</string>
     <string name="show_manga_tab">Afficher l\'onglet Manga</string>
+    <string name="covers">Couvertures</string>
+    <string name="cover_volume_label">Volume %1$s</string>
 </resources>

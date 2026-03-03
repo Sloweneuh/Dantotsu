@@ -437,6 +437,70 @@ object ComickApi {
     }
 
     /**
+     * Scrape the covers page for a comic from comick.dev.
+     * URL pattern: https://comick.dev/comic/{slug}/cover
+     *
+     * The page is Next.js SSR, so the covers are present in the raw HTML.
+     * Each cover is a `div.h-30.relative`:
+     *   - child 1: `<div><img src="https://meo.comick.pictures/{b2key}"></div>`
+     *   - child 2: `<div>…volume number…</div>`
+     *
+     * @param slug The comic slug (e.g., "01-a-transmigrator-s-privilege")
+     * @return List of ComickCover objects, or null on failure
+     */
+    suspend fun getCovers(slug: String): List<ComickCover>? = withContext(Dispatchers.IO) {
+        try {
+            val url = "https://comick.dev/comic/$slug/cover"
+            val request = Request.Builder()
+                .url(url)
+                .header("User-Agent", "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 Chrome/120.0 Mobile Safari/537.36")
+                .build()
+            val response = client.newCall(request).execute()
+            if (!response.isSuccessful) {
+                Logger.log("Comick covers: HTTP ${response.code} for slug=$slug")
+                return@withContext null
+            }
+            val html = response.body.string()
+            val doc = org.jsoup.Jsoup.parse(html)
+
+            // Each cover is inside a `div` whose first immediate child is a `div` containing an img
+            // and the second immediate child is a `div` with the volume badge text.
+            // The wrapper divs have class "h-30 relative".
+            val coverDivs = doc.select("div.relative > div > img[src]")
+                .map { it.parent()?.parent() }
+                .filterNotNull()
+                .distinctBy { it }
+
+            if (coverDivs.isEmpty()) {
+                Logger.log("Comick covers: no cover divs found for slug=$slug")
+                return@withContext null
+            }
+
+            val baseUrl = "https://meo.comick.pictures/"
+            val covers = coverDivs.mapNotNull { wrapper ->
+                val img = wrapper.selectFirst("img[src]") ?: return@mapNotNull null
+                val src = img.attr("src").trim().ifBlank { return@mapNotNull null }
+
+                // Extract b2key from full URL, e.g. "https://meo.comick.pictures/GXZal7.jpg" -> "GXZal7.jpg"
+                val b2key = if (src.startsWith(baseUrl)) src.removePrefix(baseUrl) else src
+
+                // Volume badge: the div sibling that contains only a short number string
+                val vol = wrapper.children()
+                    .firstOrNull { child -> child.tagName() == "div" && child.selectFirst("img") == null }
+                    ?.text()?.trim()?.takeIf { it.isNotBlank() }
+
+                ComickCover(vol = vol, w = null, h = null, b2key = b2key)
+            }
+
+            Logger.log("Comick covers: scraped ${covers.size} covers for slug=$slug")
+            covers.takeIf { it.isNotEmpty() }
+        } catch (e: Exception) {
+            Logger.log("Comick covers error for slug=$slug: ${e.message}")
+            null
+        }
+    }
+
+    /**
      * Search for comics on Comick by title (for user-initiated search)
      * @param query The search query
      * @param allowAdult If false, filters out pornographic content (only allows "safe" and "suggestive")

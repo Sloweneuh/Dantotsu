@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_marginStart="4dp"
+    android:layout_marginEnd="4dp"
+    android:layout_marginTop="4dp"
+    android:layout_marginBottom="4dp">
+
+    <com.google.android.material.imageview.ShapeableImageView
+        android:id="@+id/comickCoverImage"
+        android:layout_width="135dp"
+        android:layout_height="192dp"
+        android:scaleType="centerCrop"
+        app:shapeAppearanceOverlay="@style/roundedImageView"
+        tools:ignore="ContentDescription,ImageContrastCheck"
+        tools:srcCompat="@tools:sample/backgrounds/scenic" />
+
+    <TextView
+        android:id="@+id/comickCoverVolume"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_gravity="top|start"
+        android:background="@drawable/cover_vol_badge"
+        android:gravity="center"
+        android:textColor="?attr/colorOnPrimary"
+        android:textSize="9sp"
+        android:fontFamily="@font/poppins_bold"
+        android:visibility="gone"
+        tools:text="3"
+        tools:visibility="visible" />
+
+</FrameLayout>

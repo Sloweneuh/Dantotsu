@@ -1388,6 +1388,9 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="anime_start_format">\nStart: %1$s</string>
     <string name="anime_end_format">\nEnd: %1$s</string>
 
+    <string name="covers">Covers</string>
+    <string name="cover_volume_label">Volume %1$s</string>
+
 </resources>
 
 

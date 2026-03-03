@@ -1065,6 +1065,56 @@ class ComickInfoFragment : Fragment() {
             }
         }
 
+        // Add Covers section — placeholder is added synchronously so the position is reserved,
+        // then the coroutine fills it in once the network fetch completes.
+        val comickSlug = comic.slug
+        if (!comickSlug.isNullOrBlank() &&
+                parent.findViewWithTag<View>("covers_comick_placeholder") == null
+        ) {
+            val coversPlaceholder = android.widget.FrameLayout(requireContext()).apply {
+                tag = "covers_comick_placeholder"
+                layoutParams = android.widget.LinearLayout.LayoutParams(
+                    android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+            }
+            parent.addView(coversPlaceholder)
+
+            viewLifecycleOwner.lifecycleScope.launch {
+                val covers = withContext(Dispatchers.IO) {
+                    ani.dantotsu.connections.comick.ComickApi.getCovers(comickSlug)
+                }
+                if (!covers.isNullOrEmpty()) {
+                    withContext(Dispatchers.Main) {
+                        if (_binding == null) return@withContext
+                        ani.dantotsu.databinding.ItemTitleRecyclerBinding.inflate(
+                                LayoutInflater.from(context),
+                                coversPlaceholder,
+                                false
+                        ).apply {
+                            itemTitle.setText(R.string.covers)
+                            val coverAdapter = ani.dantotsu.media.ComickCoverAdapter(covers)
+                            itemRecycler.adapter = coverAdapter
+                            itemRecycler.layoutManager =
+                                    androidx.recyclerview.widget.LinearLayoutManager(
+                                            requireContext(),
+                                            androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL,
+                                            false
+                                    )
+                            itemMore.visibility = View.VISIBLE
+                            itemMore.setSafeOnClickListener {
+                                coverAdapter.showGallery(
+                                    itemMore,
+                                    getString(R.string.covers)
+                                )
+                            }
+                            coversPlaceholder.addView(root)
+                        }
+                    }
+                }
+            }
+        }
+
         // Add Anime Info if available
         if (comic.has_anime == true && comic.anime != null) {
             val animeInfo = comic.anime
