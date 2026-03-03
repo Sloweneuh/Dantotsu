@@ -311,12 +311,13 @@ class StackListAdapter(private val items: List<MALStack>, private val isAnime: B
                     activity.lifecycleScope.launch {
                         Toast.makeText(context, "Loading stack...", Toast.LENGTH_SHORT).show()
                         val queries = MALQueries()
-                        val (entries, stackName) = withContext(Dispatchers.IO) {
+                        val (entries, stackInfo) = withContext(Dispatchers.IO) {
                             Pair(
                                 try { queries.getStackEntries(url) } catch (e: Exception) { emptyList() },
-                                try { queries.getStackName(url) } catch (e: Exception) { null }
+                                try { queries.getStackNameAndDescription(url) } catch (e: Exception) { Pair(null, null) }
                             )
                         }
+                        val (stackName, stackDescription) = stackInfo
                         val malIds = entries.map { it.id }
                         if (malIds.isEmpty()) {
                             Toast.makeText(context, "No entries found", Toast.LENGTH_SHORT).show()
@@ -331,10 +332,62 @@ class StackListAdapter(private val items: List<MALStack>, private val isAnime: B
                             Toast.makeText(context, "No AniList matches found", Toast.LENGTH_SHORT).show()
                             return@launch
                         }
+                        // Attach MAL intro text to matched Media objects
+                        try {
+                            for (m in fetched) {
+                                val entry = entries.find { it.id == m.idMAL }
+                                if (entry != null) m.malIntro = entry.intro
+                            }
+                        } catch (e: Exception) { /* ignore */ }
+
+                        // Fetch MALSync progress/source data if enabled
+                        if (PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled)) {
+                            val mediaIds = fetched.map { Pair(it.id, it.idMAL) }
+                            if (isAnime) {
+                                val batchResults = withContext(Dispatchers.IO) {
+                                    try { MalSyncApi.getBatchAnimeEpisodes(mediaIds) } catch (e: Exception) { emptyMap() }
+                                }
+                                val infoMap = mutableMapOf<Int, UnreleasedEpisodeInfo>()
+                                for (m in fetched) {
+                                    val result = batchResults[m.id] ?: continue
+                                    val lastEp = result.lastEp ?: continue
+                                    val langOption = LanguageMapper.mapLanguage(result.id)
+                                    infoMap[m.id] = UnreleasedEpisodeInfo(
+                                        mediaId = m.id,
+                                        lastEpisode = lastEp.total,
+                                        languageId = result.id,
+                                        languageDisplay = langOption.displayName,
+                                        userProgress = m.userProgress ?: 0
+                                    )
+                                }
+                                if (infoMap.isNotEmpty()) MediaListViewActivity.passedUnreleasedInfo = infoMap
+                            } else {
+                                val batchResults = withContext(Dispatchers.IO) {
+                                    try { MalSyncApi.getBatchProgressByMedia(mediaIds) } catch (e: Exception) { emptyMap() }
+                                }
+                                val infoMap = mutableMapOf<Int, UnreadChapterInfo>()
+                                for (m in fetched) {
+                                    val result = batchResults[m.id] ?: continue
+                                    val lastEp = result.lastEp ?: continue
+                                    infoMap[m.id] = UnreadChapterInfo(
+                                        mediaId = m.id,
+                                        lastChapter = lastEp.total,
+                                        source = result.source,
+                                        userProgress = m.userProgress ?: 0
+                                    )
+                                }
+                                if (infoMap.isNotEmpty()) MediaListViewActivity.passedUnreadInfo = infoMap
+                            }
+                        }
+
                         MediaListViewActivity.passedMedia = ArrayList(fetched)
+                        if (!stackDescription.isNullOrBlank()) {
+                            MediaListViewActivity.passedDescription = stackDescription
+                        }
                         context.startActivity(
                             Intent(context, MediaListViewActivity::class.java)
                                 .putExtra("title", stackName ?: "Stack")
+                                .putExtra("isAnime", isAnime)
                         )
                     }
                     return

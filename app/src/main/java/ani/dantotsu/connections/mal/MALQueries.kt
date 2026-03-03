@@ -213,7 +213,13 @@ class MALQueries {
     /**
      * Fetch just the title of a MAL interest stack from its page.
      */
-    suspend fun getStackName(stackUrl: String): String? {
+    suspend fun getStackName(stackUrl: String): String? = getStackNameAndDescription(stackUrl).first
+
+    /**
+     * Fetch both the title and description of a MAL interest stack from its page in a single
+     * HTTP request. Returns a Pair of (name, description) where either can be null.
+     */
+    suspend fun getStackNameAndDescription(stackUrl: String): Pair<String?, String?> {
         return try {
             val headers = mapOf(
                 "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36"
@@ -222,12 +228,15 @@ class MALQueries {
             if (url.startsWith("/")) url = "https://myanimelist.net$url"
             else if (!url.startsWith("http")) url = "https://myanimelist.net/$url"
             val doc = client.get(url, headers).document
-            // Try h2.title first, then h1, then fall back to <title> tag stripped of " - MyAnimeList.net"
-            doc.selectFirst("h2.title")?.text()?.takeIf { it.isNotBlank() }
+            // Title: try h2.title first, then h1, then <title> tag
+            val name = doc.selectFirst("h2.title")?.text()?.takeIf { it.isNotBlank() }
                 ?: doc.selectFirst("h1")?.text()?.takeIf { it.isNotBlank() }
                 ?: doc.title().substringBefore(" - MyAnimeList.net").takeIf { it.isNotBlank() }
+            // Description: use the same .introduction selector as the stack list page
+            val description = doc.selectFirst(".introduction")?.html()?.trim()?.takeIf { it.isNotBlank() }
+            Pair(name, description)
         } catch (e: Exception) {
-            null
+            Pair(null, null)
         }
     }
 
