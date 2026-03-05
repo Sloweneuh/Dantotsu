@@ -760,6 +760,8 @@
     <string name="copy_report">Copier le rapport</string>
     <string name="share_as_file">Partager en fichier</string>
     <string name="hide_in_home_screen">Masquer sur l\'écran d\'accueil</string>
+    <string name="exclude_from_unwatched_episodes">Exclure des vérifications d\'épisodes non regardés</string>
+    <string name="exclude_from_unread_chapters">Exclure des vérifications de chapitres non lus</string>
     <string name="hidden">Masqué</string>
     <string name="no_hidden_items">Aucun élément masqué</string>
     <string name="download_subtitle">Télécharger les sous-titres</string>

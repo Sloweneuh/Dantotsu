@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.AnimationUtils
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.core.app.NotificationCompat
@@ -190,6 +191,8 @@ class ExtensionUpdatesFragment : Fragment() {
         val context = requireContext()
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
+        adapter.setUpdating(item, true)
+
         val subscription: Subscription = when (item) {
             is UpdateItem.AnimeUpdate -> {
                 animeExtensionManager.updateExtension(item.extension)
@@ -198,14 +201,17 @@ class ExtensionUpdatesFragment : Fragment() {
                         { showUpdateNotification(notificationManager, context, "Updating extension", "$it") },
                         { error ->
                             Logger.log(error)
+                            adapter.setUpdating(item, false)
                             showErrorNotification(notificationManager, context, error.message)
                             snackString("Update failed: ${item.name} - ${error.message}")
                             // Continue with next extension even if one fails
                             updateExtensionsSequentially(items)
                         },
                         {
+                            adapter.setUpdating(item, false)
                             showCompleteNotification(notificationManager, context)
                             snackString("Updated: ${item.name}")
+                            loadUpdates() // Refresh list after each update
                             // Continue with next extension
                             updateExtensionsSequentially(items)
                         }
@@ -218,14 +224,17 @@ class ExtensionUpdatesFragment : Fragment() {
                         { showUpdateNotification(notificationManager, context, "Updating extension", "$it") },
                         { error ->
                             Logger.log(error)
+                            adapter.setUpdating(item, false)
                             showErrorNotification(notificationManager, context, error.message)
                             snackString("Update failed: ${item.name} - ${error.message}")
                             // Continue with next extension even if one fails
                             updateExtensionsSequentially(items)
                         },
                         {
+                            adapter.setUpdating(item, false)
                             showCompleteNotification(notificationManager, context)
                             snackString("Updated: ${item.name}")
+                            loadUpdates() // Refresh list after each update
                             // Continue with next extension
                             updateExtensionsSequentially(items)
                         }
@@ -238,14 +247,17 @@ class ExtensionUpdatesFragment : Fragment() {
                         { showUpdateNotification(notificationManager, context, "Updating extension", "$it") },
                         { error ->
                             Logger.log(error)
+                            adapter.setUpdating(item, false)
                             showErrorNotification(notificationManager, context, error.message)
                             snackString("Update failed: ${item.name} - ${error.message}")
                             // Continue with next extension even if one fails
                             updateExtensionsSequentially(items)
                         },
                         {
+                            adapter.setUpdating(item, false)
                             showCompleteNotification(notificationManager, context)
                             snackString("Updated: ${item.name}")
+                            loadUpdates() // Refresh list after each update
                             // Continue with next extension
                             updateExtensionsSequentially(items)
                         }
@@ -325,6 +337,16 @@ class UpdatesAdapter(
     private val skipIcons: Boolean = false
 ) : ListAdapter<UpdateItem, UpdatesAdapter.ViewHolder>(DIFF_CALLBACK) {
 
+    private val updatingKeys = mutableSetOf<String>()
+
+    private fun UpdateItem.key() = "$type::$name"
+
+    fun setUpdating(item: UpdateItem, updating: Boolean) {
+        if (updating) updatingKeys.add(item.key()) else updatingKeys.remove(item.key())
+        val pos = currentList.indexOfFirst { it.key() == item.key() }
+        if (pos != -1) notifyItemChanged(pos)
+    }
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val view = LayoutInflater.from(parent.context)
             .inflate(R.layout.item_extension, parent, false)
@@ -333,7 +355,7 @@ class UpdatesAdapter(
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val item = getItem(position)
-        holder.bind(item, onUpdateClick, skipIcons)
+        holder.bind(item, onUpdateClick, skipIcons, updatingKeys.contains(item.key()))
     }
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -344,7 +366,7 @@ class UpdatesAdapter(
         private val deleteButton: ImageView = view.findViewById(R.id.deleteTextView)
         private val settingsButton: ImageView = view.findViewById(R.id.settingsImageView)
 
-        fun bind(item: UpdateItem, onUpdateClick: (UpdateItem) -> Unit, skipIcons: Boolean) {
+        fun bind(item: UpdateItem, onUpdateClick: (UpdateItem) -> Unit, skipIcons: Boolean, isUpdating: Boolean) {
             nameTextView.text = item.name
             versionTextView.text = buildString {
                 append(item.type)
@@ -361,7 +383,16 @@ class UpdatesAdapter(
             }
 
             updateButton.isVisible = true
-            updateButton.setOnClickListener { onUpdateClick(item) }
+            if (isUpdating) {
+                val rotate = AnimationUtils.loadAnimation(updateButton.context, R.anim.rotate_indefinite)
+                updateButton.startAnimation(rotate)
+                updateButton.isClickable = false
+                updateButton.setOnClickListener(null)
+            } else {
+                updateButton.clearAnimation()
+                updateButton.isClickable = true
+                updateButton.setOnClickListener { onUpdateClick(item) }
+            }
 
             deleteButton.isVisible = false
             settingsButton.isVisible = false

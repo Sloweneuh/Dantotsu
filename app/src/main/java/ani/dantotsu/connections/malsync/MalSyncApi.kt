@@ -1,5 +1,6 @@
 package ani.dantotsu.connections.malsync
 
+import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.util.Logger
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -361,8 +362,11 @@ object MalSyncApi {
      */
     suspend fun getBatchProgressByMedia(
         mediaList: List<Pair<Int, Int?>>,
+        respectExcludeList: Boolean = true,
         onProgress: ((Int, Int, Int, Int) -> Unit)? = null
     ): Map<Int, MalSyncResponse> = withContext(Dispatchers.IO) {
+        val excludeList = if (respectExcludeList) PrefManager.getCustomVal("malSyncBatchExcludeList", setOf<Int>()) else emptySet()
+        val mediaList = mediaList.filter { (anilistId, _) -> anilistId !in excludeList }
         if (mediaList.isEmpty()) return@withContext emptyMap()
 
         if (shouldSkipDueToNetworkFailures()) {
@@ -504,7 +508,9 @@ object MalSyncApi {
      * @param animeList List of pairs containing (anilistId, malId)
      * @return Map of AniList IDs to MalSyncResponse with preferred language
      */
-    suspend fun getBatchAnimeEpisodes(animeList: List<Pair<Int, Int?>>): Map<Int, MalSyncResponse> = withContext(Dispatchers.IO) {
+    suspend fun getBatchAnimeEpisodes(animeList: List<Pair<Int, Int?>>, respectExcludeList: Boolean = true): Map<Int, MalSyncResponse> = withContext(Dispatchers.IO) {
+        val excludeList = if (respectExcludeList) PrefManager.getCustomVal("malSyncBatchExcludeList", setOf<Int>()) else emptySet()
+        val animeList = animeList.filter { (anilistId, _) -> anilistId !in excludeList }
         if (animeList.isEmpty()) return@withContext emptyMap()
 
         if (shouldSkipDueToNetworkFailures()) {

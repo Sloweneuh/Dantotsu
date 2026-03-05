@@ -131,7 +131,7 @@ class UnreadChaptersAdapter(
                     ).toBundle()
                 } else null
 
-                ContextCompat.startActivity(root.context, intent, options)
+                root.context.startActivity(intent, options)
             }
             root.setSafeOnClickListener { clickAction() }
             itemCompactImage.setSafeOnClickListener { clickAction() }
@@ -237,8 +237,7 @@ class UnreadChaptersAdapter(
 
             // Handle click to open media details
             val clickAction = {
-                ContextCompat.startActivity(
-                    root.context,
+                root.context.startActivity(
                     Intent(root.context, ani.dantotsu.media.MediaDetailsActivity::class.java)
                         .putExtra("media", media)
                         .putExtra("source", info.source)

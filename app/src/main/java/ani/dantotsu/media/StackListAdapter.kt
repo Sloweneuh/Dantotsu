@@ -94,7 +94,7 @@ class StackListAdapter(private val items: List<MALStack>, private val isAnime: B
                                 val mediaIds = fetched.map { Pair(it.id, it.idMAL) }
                                 if (isAnime) {
                                     val batchResults = withContext(Dispatchers.IO) {
-                                        try { MalSyncApi.getBatchAnimeEpisodes(mediaIds) } catch (e: Exception) { emptyMap() }
+                                        try { MalSyncApi.getBatchAnimeEpisodes(mediaIds, respectExcludeList = false) } catch (e: Exception) { emptyMap() }
                                     }
                                     val infoMap = mutableMapOf<Int, UnreleasedEpisodeInfo>()
                                     for (m in fetched) {
@@ -112,7 +112,7 @@ class StackListAdapter(private val items: List<MALStack>, private val isAnime: B
                                     if (infoMap.isNotEmpty()) MediaListViewActivity.passedUnreleasedInfo = infoMap
                                 } else {
                                     val batchResults = withContext(Dispatchers.IO) {
-                                        try { MalSyncApi.getBatchProgressByMedia(mediaIds) } catch (e: Exception) { emptyMap() }
+                                        try { MalSyncApi.getBatchProgressByMedia(mediaIds, respectExcludeList = false) } catch (e: Exception) { emptyMap() }
                                     }
                                     val infoMap = mutableMapOf<Int, UnreadChapterInfo>()
                                     for (m in fetched) {
@@ -345,7 +345,7 @@ class StackListAdapter(private val items: List<MALStack>, private val isAnime: B
                             val mediaIds = fetched.map { Pair(it.id, it.idMAL) }
                             if (isAnime) {
                                 val batchResults = withContext(Dispatchers.IO) {
-                                    try { MalSyncApi.getBatchAnimeEpisodes(mediaIds) } catch (e: Exception) { emptyMap() }
+                                    try { MalSyncApi.getBatchAnimeEpisodes(mediaIds, respectExcludeList = false) } catch (e: Exception) { emptyMap() }
                                 }
                                 val infoMap = mutableMapOf<Int, UnreleasedEpisodeInfo>()
                                 for (m in fetched) {
@@ -363,7 +363,7 @@ class StackListAdapter(private val items: List<MALStack>, private val isAnime: B
                                 if (infoMap.isNotEmpty()) MediaListViewActivity.passedUnreleasedInfo = infoMap
                             } else {
                                 val batchResults = withContext(Dispatchers.IO) {
-                                    try { MalSyncApi.getBatchProgressByMedia(mediaIds) } catch (e: Exception) { emptyMap() }
+                                    try { MalSyncApi.getBatchProgressByMedia(mediaIds, respectExcludeList = false) } catch (e: Exception) { emptyMap() }
                                 }
                                 val infoMap = mutableMapOf<Int, UnreadChapterInfo>()
                                 for (m in fetched) {

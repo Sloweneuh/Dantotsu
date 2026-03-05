@@ -302,6 +302,16 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                 binding.mediaListShow.setOnCheckedChangeListener { _, checked ->
                     remove = checked
                 }
+                val malSyncExcludeList = PrefManager.getCustomVal("malSyncBatchExcludeList", setOf<Int>())
+                var malSyncExclude: Boolean? = null
+                binding.mediaListMalSyncExclude.setText(
+                    if (media?.anime != null) R.string.exclude_from_unwatched_episodes
+                    else R.string.exclude_from_unread_chapters
+                )
+                binding.mediaListMalSyncExclude.isChecked = media?.id in malSyncExcludeList
+                binding.mediaListMalSyncExclude.setOnCheckedChangeListener { _, checked ->
+                    malSyncExclude = checked
+                }
                 media?.userRepeat?.apply {
                     binding.mediaListRewatch.setText(this.toString())
                 }
@@ -371,6 +381,11 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                             PrefManager.setCustomVal("removeList", removeList.plus(media!!.id))
                         } else if (remove == false) {
                             PrefManager.setCustomVal("removeList", removeList.minus(media!!.id))
+                        }
+                        if (malSyncExclude == true) {
+                            PrefManager.setCustomVal("malSyncBatchExcludeList", malSyncExcludeList.plus(media!!.id))
+                        } else if (malSyncExclude == false) {
+                            PrefManager.setCustomVal("malSyncBatchExcludeList", malSyncExcludeList.minus(media!!.id))
                         }
                         Refresh.all()
                         snackString(getString(R.string.list_updated))

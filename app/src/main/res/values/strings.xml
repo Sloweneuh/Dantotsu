@@ -404,12 +404,6 @@
     <string name="sort_by_title">Sort by Title</string>
     <string name="sort_by_last_updated">Sort by Last Updated</string>
     <string name="sort_by_score">Sort by Score</string>
-    <string name="sort_by_score_high_to_low">Score (High to Low)</string>
-    <string name="sort_by_score_low_to_high">Score (Low to High)</string>
-    <string name="sort_by_title_a_to_z">Title (A to Z)</string>
-    <string name="sort_by_title_z_to_a">Title (Z to A)</string>
-    <string name="sort_by_last_updated_newest">Last Updated (Newest)</string>
-    <string name="sort_by_last_updated_oldest">Last Updated (Oldest)</string>
     <string name="over_scroll">Over Scroll to Next/Previous Chapter</string>
     <string name="volume_buttons">Change pages with Volume Buttons</string>
     <string name="list_private">Private</string>
@@ -508,8 +502,6 @@
     <string name="do_not_update">Don\'t Update</string>
     <string name="loading_chap_number">Loading Chapter %1$s</string>
     <string name="sort_by_release_date">Sort by Release Date</string>
-    <string name="sort_by_release_date_newest">Release Date (Newest)</string>
-    <string name="sort_by_release_date_oldest">Release Date (Oldest)</string>
     <string name="crop_borders">Crop Borders</string>
     <string name="note">NOTE</string>
 
@@ -1114,6 +1106,8 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="copy_report">Copy Report</string>
     <string name="share_as_file">Share as file</string>
     <string name="hide_in_home_screen">Hide in Home Screen</string>
+    <string name="exclude_from_unwatched_episodes">Exclude from Unwatched Episodes checks</string>
+    <string name="exclude_from_unread_chapters">Exclude from Unread Chapters checks</string>
     <string name="hidden">Hidden</string>
     <string name="no_hidden_items">No Hidden Items</string>
     <string name="download_addon_not_installed">Download Add-on not installed</string>

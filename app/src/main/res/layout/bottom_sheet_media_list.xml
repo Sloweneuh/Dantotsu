@@ -345,6 +345,14 @@
                     android:layout_marginTop="16dp"
                     android:fontFamily="@font/poppins_bold"
                     android:text="@string/hide_in_home_screen" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/mediaListMalSyncExclude"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:fontFamily="@font/poppins_bold" />
+
                 <TextView
                     android:id="@+id/mediaListAddCustomList"
                     android:layout_width="match_parent"
