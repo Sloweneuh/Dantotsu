@@ -10,6 +10,8 @@ import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.AnimationUtils
 import android.widget.ArrayAdapter
 import android.widget.PopupMenu
+import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.DrawableCompat
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -21,6 +23,7 @@ import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.databinding.BottomSheetListFilterBinding
 import ani.dantotsu.databinding.ItemChipBinding
 import com.google.android.material.chip.Chip
+import eu.kanade.tachiyomi.util.system.getResourceColor
 import java.util.Calendar
 
 class ListFilterBottomDialog(
@@ -251,14 +254,30 @@ class ListFilterBottomDialog(
     }
 
     private fun updateCountryIcon() {
-        val icon = when (selectedCountry) {
-            "CN" -> R.drawable.ic_round_globe_china_googlefonts
-            "KR" -> R.drawable.ic_round_globe_south_korea_googlefonts
-            "JP" -> R.drawable.ic_round_globe_japan_googlefonts
-            "TW" -> R.drawable.ic_round_globe_taiwan_googlefonts
-            else -> R.drawable.ic_round_globe_search_googlefonts
+        if (selectedCountry == null) {
+            val drawable = ContextCompat.getDrawable(
+                requireContext(), R.drawable.ic_round_globe_search_googlefonts
+            )!!.mutate()
+            DrawableCompat.setTint(
+                DrawableCompat.wrap(drawable),
+                requireContext().getResourceColor(com.google.android.material.R.attr.colorPrimary)
+            )
+            val size = (35 * resources.displayMetrics.density).toInt()
+            drawable.setBounds(0, 0, size, size)
+            binding.countryFilter.text = ""
+            binding.countryFilter.setCompoundDrawablesRelative(drawable, null, null, null)
+        } else {
+            binding.countryFilter.setCompoundDrawablesRelativeWithIntrinsicBounds(
+                null, null, null, null
+            )
+            binding.countryFilter.text = when (selectedCountry) {
+                "CN" -> "\uD83C\uDDE8\uD83C\uDDF3"
+                "KR" -> "\uD83C\uDDF0\uD83C\uDDF7"
+                "JP" -> "\uD83C\uDDEF\uD83C\uDDF5"
+                "TW" -> "\uD83C\uDDF9\uD83C\uDDFC"
+                else -> "\uD83C\uDF10"
+            }
         }
-        binding.countryFilter.setImageResource(icon)
 
         val bounceAnimation = AnimationUtils.loadAnimation(requireContext(), R.anim.bounce_zoom)
         binding.countryFilter.startAnimation(bounceAnimation)

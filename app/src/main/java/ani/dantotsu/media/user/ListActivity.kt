@@ -139,35 +139,80 @@ class ListActivity : AppCompatActivity() {
             }
         }
 
+        updateSortIcon(anime)
+
         binding.listSort.setOnClickListener {
             val popup = PopupMenu(this, it)
             popup.setOnMenuItemClickListener { item ->
-                val sort = when (item.itemId) {
+                val prefName = if (anime) PrefName.AnimeListSortOrder else PrefName.MangaListSortOrder
+                val currentSort: String = PrefManager.getVal(prefName)
+                // Default directions: score/release/updated → desc, title → asc
+                // If the same base is already selected, flip the direction
+                val baseKey = when (item.itemId) {
                     R.id.score -> "score"
                     R.id.title -> "title"
-                    R.id.updated -> "updatedAt"
                     R.id.release -> "release"
+                    R.id.updated -> "updatedAt"
                     else -> null
+                }
+                val currentBase = currentSort.removeSuffix("_asc").removeSuffix("_desc")
+                val onlyDirectionChanged = baseKey != null && currentBase == baseKey
+                val sort = baseKey?.let { base ->
+                    if (onlyDirectionChanged) {
+                        // Toggle direction only
+                        if (currentSort.endsWith("_asc")) "${base}_desc" else "${base}_asc"
+                    } else {
+                        // New sort: always default to descending
+                        "${base}_desc"
+                    }
                 }
                 PrefManager.setVal(
                     if (anime) PrefName.AnimeListSortOrder else PrefName.MangaListSortOrder,
                     sort ?: ""
                 )
-                binding.listProgressBar.visibility = View.VISIBLE
-                binding.listViewPager.adapter = null
-                scope.launch {
-                    withContext(Dispatchers.IO) {
-                        model.loadLists(
-                            anime,
-                            intent.getIntExtra("userId", 0),
-                            sort
-                        )
+                updateSortIcon(anime)
+                if (onlyDirectionChanged) {
+                    model.reverseLists()
+                } else {
+                    binding.listProgressBar.visibility = View.VISIBLE
+                    binding.listViewPager.adapter = null
+                    scope.launch {
+                        withContext(Dispatchers.IO) {
+                            model.loadLists(
+                                anime,
+                                intent.getIntExtra("userId", 0),
+                                sort
+                            )
+                        }
                     }
                 }
                 true
             }
             popup.inflate(R.menu.list_sort_menu)
+            // Force icons to show in the popup menu
+            try {
+                val field = popup.javaClass.getDeclaredField("mPopup")
+                field.isAccessible = true
+                val helper = field.get(popup)
+                helper.javaClass.getMethod("setForceShowIcon", Boolean::class.java)
+                    .invoke(helper, true)
+            } catch (_: Exception) { }
             popup.show()
+        }
+
+        binding.listSort.setOnLongClickListener {
+            val prefName = if (anime) PrefName.AnimeListSortOrder else PrefName.MangaListSortOrder
+            val currentSort: String = PrefManager.getVal(prefName)
+            if (currentSort.isBlank()) return@setOnLongClickListener true
+            val sort = if (currentSort.endsWith("_asc")) {
+                currentSort.removeSuffix("_asc") + "_desc"
+            } else {
+                currentSort.removeSuffix("_desc") + "_asc"
+            }
+            PrefManager.setVal(prefName, sort)
+            updateSortIcon(anime)
+            model.reverseLists()
+            true
         }
 
         binding.filter.setOnClickListener {
@@ -243,7 +288,7 @@ class ListActivity : AppCompatActivity() {
 
         // Add format chips
         filters.formats.forEach { format ->
-            addFilterChip(format, "Format") {
+            addFilterChip(getString(R.string.filter_format, format), "Format") {
                 val newFilters = filters.copy(formats = filters.formats - format)
                 model.applyFilters(newFilters)
                 updateFilterChips(newFilters)
@@ -252,7 +297,7 @@ class ListActivity : AppCompatActivity() {
 
         // Add status chips
         filters.statuses.forEach { status ->
-            addFilterChip(status, "Status") {
+            addFilterChip(getString(R.string.filter_status, status.replace("_", " ")), "Status") {
                 val newFilters = filters.copy(statuses = filters.statuses - status)
                 model.applyFilters(newFilters)
                 updateFilterChips(newFilters)
@@ -261,7 +306,7 @@ class ListActivity : AppCompatActivity() {
 
         // Add source chips
         filters.sources.forEach { source ->
-            addFilterChip(source, "Source") {
+            addFilterChip(getString(R.string.filter_source, source.replace("_", " ")), "Source") {
                 val newFilters = filters.copy(sources = filters.sources - source)
                 model.applyFilters(newFilters)
                 updateFilterChips(newFilters)
@@ -279,7 +324,7 @@ class ListActivity : AppCompatActivity() {
 
         // Add country chip
         filters.countryOfOrigin?.let { country ->
-            addFilterChip(country, "Country") {
+            addFilterChip(getString(R.string.filter_country, country), "Country") {
                 val newFilters = filters.copy(countryOfOrigin = null)
                 model.applyFilters(newFilters)
                 updateFilterChips(newFilters)
@@ -313,6 +358,17 @@ class ListActivity : AppCompatActivity() {
                 updateFilterChips(newFilters)
             }
         }
+    }
+
+    private fun updateSortIcon(anime: Boolean) {
+        val prefName = if (anime) PrefName.AnimeListSortOrder else PrefName.MangaListSortOrder
+        val currentSort: String = PrefManager.getVal(prefName)
+        val iconRes = if (currentSort.endsWith("_asc")) {
+            R.drawable.ic_round_sort_up_24
+        } else {
+            R.drawable.ic_round_sort_24
+        }
+        binding.listSort.setImageResource(iconRes)
     }
 
     private fun addFilterChip(text: String, @Suppress("UNUSED_PARAMETER") type: String, onRemove: () -> Unit) {

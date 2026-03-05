@@ -47,8 +47,6 @@ class SupportingSearchAdapter(private val activity: SearchActivity, private val 
         binding.searchResultGrid.visibility = View.GONE
         binding.searchResultList.visibility = View.GONE
         binding.searchFilter.visibility = View.GONE
-        binding.searchAdultCheck.visibility = View.GONE
-        binding.searchList.visibility = View.GONE
         binding.searchChipRecycler.visibility = View.GONE
 
         binding.searchBar.hint = activity.searchType.toAnilistString()

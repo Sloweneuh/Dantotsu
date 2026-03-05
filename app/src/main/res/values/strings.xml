@@ -404,6 +404,12 @@
     <string name="sort_by_title">Sort by Title</string>
     <string name="sort_by_last_updated">Sort by Last Updated</string>
     <string name="sort_by_score">Sort by Score</string>
+    <string name="sort_by_score_high_to_low">Score (High to Low)</string>
+    <string name="sort_by_score_low_to_high">Score (Low to High)</string>
+    <string name="sort_by_title_a_to_z">Title (A to Z)</string>
+    <string name="sort_by_title_z_to_a">Title (Z to A)</string>
+    <string name="sort_by_last_updated_newest">Last Updated (Newest)</string>
+    <string name="sort_by_last_updated_oldest">Last Updated (Oldest)</string>
     <string name="over_scroll">Over Scroll to Next/Previous Chapter</string>
     <string name="volume_buttons">Change pages with Volume Buttons</string>
     <string name="list_private">Private</string>
@@ -502,6 +508,8 @@
     <string name="do_not_update">Don\'t Update</string>
     <string name="loading_chap_number">Loading Chapter %1$s</string>
     <string name="sort_by_release_date">Sort by Release Date</string>
+    <string name="sort_by_release_date_newest">Release Date (Newest)</string>
+    <string name="sort_by_release_date_oldest">Release Date (Oldest)</string>
     <string name="crop_borders">Crop Borders</string>
     <string name="note">NOTE</string>
 

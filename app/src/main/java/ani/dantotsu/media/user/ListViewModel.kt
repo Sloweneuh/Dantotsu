@@ -40,6 +40,20 @@ class ListViewModel : ViewModel() {
         }
     }
 
+    fun reverseLists() {
+        val current = lists.value ?: return
+        val reversed = current.mapValues { (_, list) ->
+            ArrayList(list.reversed())
+        }.toMutableMap()
+        lists.postValue(reversed)
+
+        val currentUnfiltered = unfilteredLists.value ?: return
+        val reversedUnfiltered = currentUnfiltered.mapValues { (_, list) ->
+            ArrayList(list.reversed())
+        }.toMutableMap()
+        unfilteredLists.postValue(reversedUnfiltered)
+    }
+
     fun applyFilters(filters: ListFilters) {
         currentFilters.postValue(filters)
 

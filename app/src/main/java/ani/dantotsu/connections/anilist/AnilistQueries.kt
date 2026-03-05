@@ -832,7 +832,7 @@ class AnilistQueries {
         val sort = listSort ?: sortOrder ?: options?.rowOrder
         for (i in sorted.keys) {
             when (sort) {
-                "score" -> sorted[i]?.sortWith { b, a ->
+                "score", "score_desc" -> sorted[i]?.sortWith { b, a ->
                     compareValuesBy(
                         a,
                         b,
@@ -840,9 +840,20 @@ class AnilistQueries {
                         { it.meanScore })
                 }
 
-                "title" -> sorted[i]?.sortWith(compareBy { it.userPreferredName })
-                "updatedAt" -> sorted[i]?.sortWith(compareByDescending { it.userUpdatedAt })
-                "release" -> sorted[i]?.sortWith(compareByDescending { it.startDate })
+                "score_asc" -> sorted[i]?.sortWith { a, b ->
+                    compareValuesBy(
+                        a,
+                        b,
+                        { it.userScore },
+                        { it.meanScore })
+                }
+
+                "title", "title_asc" -> sorted[i]?.sortWith(compareBy { it.userPreferredName })
+                "title_desc" -> sorted[i]?.sortWith(compareByDescending { it.userPreferredName })
+                "updatedAt", "updatedAt_desc" -> sorted[i]?.sortWith(compareByDescending { it.userUpdatedAt })
+                "updatedAt_asc" -> sorted[i]?.sortWith(compareBy { it.userUpdatedAt })
+                "release", "release_desc" -> sorted[i]?.sortWith(compareByDescending { it.startDate })
+                "release_asc" -> sorted[i]?.sortWith(compareBy { it.startDate })
                 "id" -> sorted[i]?.sortWith(compareBy { it.id })
             }
         }

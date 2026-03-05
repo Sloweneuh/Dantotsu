@@ -10,6 +10,9 @@ import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.AnimationUtils
 import android.widget.ArrayAdapter
 import android.widget.PopupMenu
+import android.widget.TextView
+import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.DrawableCompat
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -21,6 +24,7 @@ import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.databinding.BottomSheetSearchFilterBinding
 import ani.dantotsu.databinding.ItemChipBinding
 import com.google.android.material.chip.Chip
+import eu.kanade.tachiyomi.util.system.getResourceColor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -45,6 +49,35 @@ class SearchFilterBottomDialog : BottomSheetDialogFragment() {
     private var exGenres = mutableListOf<String>()
     private var selectedTags = mutableListOf<String>()
     private var exTags = mutableListOf<String>()
+    private var isAdult = false
+    private var listOnly: Boolean? = null
+
+    private fun updateTagsList(includeAdult: Boolean) {
+        val tagsList = if (includeAdult && Anilist.adult) {
+            val adultTags = Anilist.tags?.get(true) ?: listOf()
+            val nonAdultTags = Anilist.tags?.get(false) ?: listOf()
+            (adultTags + nonAdultTags).distinct().sorted()
+        } else {
+            Anilist.tags?.get(false) ?: listOf()
+        }
+        binding.searchFilterTags.adapter = FilterChipAdapter(tagsList) { chip ->
+            val tag = chip.text.toString()
+            chip.isChecked = selectedTags.contains(tag)
+            chip.isCloseIconVisible = exTags.contains(tag)
+            chip.setOnCheckedChangeListener { _, isChecked ->
+                if (isChecked) {
+                    chip.isCloseIconVisible = false
+                    exTags.remove(tag)
+                    selectedTags.add(tag)
+                } else selectedTags.remove(tag)
+            }
+            chip.setOnLongClickListener {
+                chip.isChecked = false
+                chip.isCloseIconVisible = true
+                exTags.add(tag)
+            }
+        }
+    }
     private fun updateChips() {
         binding.searchFilterGenres.adapter?.notifyDataSetChanged()
         binding.searchFilterTags.adapter?.notifyDataSetChanged()
@@ -70,18 +103,50 @@ class SearchFilterBottomDialog : BottomSheetDialogFragment() {
         binding.sortByFilter.setImageResource(filterDrawable)
     }
 
+    private fun setCountryButton(country: String?) {
+        if (country == null) {
+            val drawable = ContextCompat.getDrawable(
+                requireContext(), R.drawable.ic_round_globe_search_googlefonts
+            )!!.mutate()
+            DrawableCompat.setTint(
+                DrawableCompat.wrap(drawable),
+                requireContext().getResourceColor(com.google.android.material.R.attr.colorPrimary)
+            )
+            val size = (35 * resources.displayMetrics.density).toInt()
+            drawable.setBounds(0, 0, size, size)
+            binding.countryFilter.text = ""
+            binding.countryFilter.setCompoundDrawablesRelative(drawable, null, null, null)
+        } else {
+            binding.countryFilter.setCompoundDrawablesRelativeWithIntrinsicBounds(
+                null, null, null, null
+            )
+            binding.countryFilter.text = when (country) {
+                "CN" -> "\uD83C\uDDE8\uD83C\uDDF3"
+                "KR" -> "\uD83C\uDDF0\uD83C\uDDF7"
+                "JP" -> "\uD83C\uDDEF\uD83C\uDDF5"
+                "TW" -> "\uD83C\uDDF9\uD83C\uDDFC"
+                else -> "\uD83C\uDF10"
+            }
+        }
+    }
+
     private fun resetSearchFilter() {
         activity.aniMangaResult.sort = null
         binding.sortByFilter.setImageResource(R.drawable.ic_round_filter_alt_24)
         startBounceZoomAnimation(binding.sortByFilter)
         activity.aniMangaResult.countryOfOrigin = null
-        binding.countryFilter.setImageResource(R.drawable.ic_round_globe_search_googlefonts)
+        setCountryButton(null)
         startBounceZoomAnimation(binding.countryFilter)
 
         selectedGenres.clear()
         exGenres.clear()
         selectedTags.clear()
         exTags.clear()
+        isAdult = false
+        listOnly = null
+        binding.searchTagsAdult.isChecked = false
+        updateTagsList(false)
+        binding.searchListOnly.checkedState = com.google.android.material.checkbox.MaterialCheckBox.STATE_UNCHECKED
         binding.searchStatus.setText("")
         binding.searchSource.setText("")
         binding.searchFormat.setText("")
@@ -102,7 +167,10 @@ class SearchFilterBottomDialog : BottomSheetDialogFragment() {
         exGenres = activity.aniMangaResult.excludedGenres ?: mutableListOf()
         selectedTags = activity.aniMangaResult.tags ?: mutableListOf()
         exTags = activity.aniMangaResult.excludedTags ?: mutableListOf()
+        isAdult = activity.aniMangaResult.isAdult
+        listOnly = activity.aniMangaResult.onList
         setSortByFilterImage()
+        setCountryButton(activity.aniMangaResult.countryOfOrigin)
 
         binding.resetSearchFilter.setOnClickListener {
             val rotateAnimation =
@@ -136,6 +204,8 @@ class SearchFilterBottomDialog : BottomSheetDialogFragment() {
                         startYear = binding.searchYear.text.toString().toIntOrNull()
                         seasonYear = binding.searchYear.text.toString().toIntOrNull()
                         sort = activity.aniMangaResult.sort
+                        this.isAdult = this@SearchFilterBottomDialog.isAdult
+                        onList = this@SearchFilterBottomDialog.listOnly
                         genres = selectedGenres
                         tags = selectedTags
                         excludedGenres = exGenres
@@ -207,31 +277,32 @@ class SearchFilterBottomDialog : BottomSheetDialogFragment() {
             popupMenu.setOnMenuItemClickListener { menuItem ->
                 when (menuItem.itemId) {
                     R.id.country_global -> {
-                        binding.countryFilter.setImageResource(R.drawable.ic_round_globe_search_googlefonts)
+                        activity.aniMangaResult.countryOfOrigin = null
+                        setCountryButton(null)
                         startBounceZoomAnimation(binding.countryFilter)
                     }
 
                     R.id.country_china -> {
                         activity.aniMangaResult.countryOfOrigin = "CN"
-                        binding.countryFilter.setImageResource(R.drawable.ic_round_globe_china_googlefonts)
+                        setCountryButton("CN")
                         startBounceZoomAnimation(binding.countryFilter)
                     }
 
                     R.id.country_south_korea -> {
                         activity.aniMangaResult.countryOfOrigin = "KR"
-                        binding.countryFilter.setImageResource(R.drawable.ic_round_globe_south_korea_googlefonts)
+                        setCountryButton("KR")
                         startBounceZoomAnimation(binding.countryFilter)
                     }
 
                     R.id.country_japan -> {
                         activity.aniMangaResult.countryOfOrigin = "JP"
-                        binding.countryFilter.setImageResource(R.drawable.ic_round_globe_japan_googlefonts)
+                        setCountryButton("JP")
                         startBounceZoomAnimation(binding.countryFilter)
                     }
 
                     R.id.country_taiwan -> {
                         activity.aniMangaResult.countryOfOrigin = "TW"
-                        binding.countryFilter.setImageResource(R.drawable.ic_round_globe_taiwan_googlefonts)
+                        setCountryButton("TW")
                         startBounceZoomAnimation(binding.countryFilter)
                     }
                 }
@@ -253,6 +324,8 @@ class SearchFilterBottomDialog : BottomSheetDialogFragment() {
                 }
                 sort = activity.aniMangaResult.sort
                 countryOfOrigin = activity.aniMangaResult.countryOfOrigin
+                this.isAdult = this@SearchFilterBottomDialog.isAdult
+                onList = this@SearchFilterBottomDialog.listOnly
                 genres = selectedGenres
                 tags = selectedTags
                 excludedGenres = exGenres
@@ -345,27 +418,40 @@ class SearchFilterBottomDialog : BottomSheetDialogFragment() {
         }
         binding.searchGenresGrid.isChecked = false
 
-        binding.searchFilterTags.adapter =
-            FilterChipAdapter(
-                Anilist.tags?.get(activity.aniMangaResult.isAdult) ?: listOf()
-            ) { chip ->
-                val tag = chip.text.toString()
-                chip.isChecked = selectedTags.contains(tag)
-                chip.isCloseIconVisible = exTags.contains(tag)
-                chip.setOnCheckedChangeListener { _, isChecked ->
-                    if (isChecked) {
-                        chip.isCloseIconVisible = false
-                        exTags.remove(tag)
-                        selectedTags.add(tag)
-                    } else
-                        selectedTags.remove(tag)
-                }
-                chip.setOnLongClickListener {
-                    chip.isChecked = false
-                    chip.isCloseIconVisible = true
-                    exTags.add(tag)
+        // List only checkbox (tri-state: unchecked=all, checked=on list, indeterminate=not on list)
+        if (Anilist.userid != null) {
+            binding.searchListOnly.checkedState = when (listOnly) {
+                null -> com.google.android.material.checkbox.MaterialCheckBox.STATE_UNCHECKED
+                true -> com.google.android.material.checkbox.MaterialCheckBox.STATE_CHECKED
+                false -> com.google.android.material.checkbox.MaterialCheckBox.STATE_INDETERMINATE
+            }
+            binding.searchListOnly.addOnCheckedStateChangedListener { _, state ->
+                listOnly = when (state) {
+                    com.google.android.material.checkbox.MaterialCheckBox.STATE_CHECKED -> true
+                    com.google.android.material.checkbox.MaterialCheckBox.STATE_INDETERMINATE -> false
+                    else -> null
                 }
             }
+            binding.searchListOnly.setOnTouchListener { _, event ->
+                (event.actionMasked == android.view.MotionEvent.ACTION_DOWN).also {
+                    if (it) binding.searchListOnly.checkedState =
+                        (binding.searchListOnly.checkedState + 1) % 3
+                }
+            }
+        } else {
+            binding.searchListOnly.visibility = android.view.View.GONE
+        }
+
+        updateTagsList(isAdult)
+        // Adult tags switch
+        binding.searchTagsAdult.isChecked = isAdult
+        if (!Anilist.adult) {
+            binding.searchTagsAdult.visibility = android.view.View.GONE
+        }
+        binding.searchTagsAdult.setOnCheckedChangeListener { _, isChecked ->
+            isAdult = isChecked
+            updateTagsList(isChecked)
+        }
         binding.searchTagsGrid.setOnCheckedChangeListener { _, isChecked ->
             binding.searchFilterTags.layoutManager =
                 if (!isChecked) LinearLayoutManager(binding.root.context, HORIZONTAL, false)
