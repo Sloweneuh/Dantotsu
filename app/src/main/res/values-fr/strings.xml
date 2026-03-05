@@ -603,8 +603,10 @@
     <string name="fav_staff">Personnel favori</string>
 
     <string name="stats">Statistiques</string>
+    <string name="anime_count">Nombre d\'animes</string>
     <string name="days_watched">Jours regardés</string>
     <string name="total_anime">Total Anime</string>
+    <string name="volumes_read">Volumes lus</string>
     <string name="anime_mean_score">Score moyen Anime</string>
     <string name="volume_read">Volumes lus</string>
     <string name="total_manga">Total Manga</string>
@@ -1312,4 +1314,9 @@
     <string name="show_manga_tab">Afficher l\'onglet Manga</string>
     <string name="covers">Couvertures</string>
     <string name="cover_volume_label">Volume %1$s</string>
+    <string name="home_stats_stat1">Stat Accueil 1</string>
+    <string name="home_stats_stat2">Stat Accueil 2</string>
+    <string name="home_stats_select">Sélectionner les stats de l\'accueil</string>
+    <string name="home_stats_select_desc">Choisis quelles stats sont affichées sur l\'accueil</string>
+    <string name="manga_count">Nombre de mangas</string>
 </resources>

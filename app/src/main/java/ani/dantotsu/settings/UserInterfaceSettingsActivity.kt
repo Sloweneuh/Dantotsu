@@ -5,6 +5,7 @@ import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.updateLayoutParams
 import ani.dantotsu.R
+import ani.dantotsu.Refresh
 import ani.dantotsu.databinding.ActivityUserInterfaceSettingsBinding
 import ani.dantotsu.initActivity
 import ani.dantotsu.navBarHeight
@@ -100,6 +101,41 @@ class UserInterfaceSettingsActivity : AppCompatActivity() {
                     restartApp()
                 }
                 setNegButton(R.string.cancel, null)
+                show()
+            }
+        }
+
+        val statOptions = arrayOf(
+            getString(R.string.none),
+            getString(R.string.episodes_watched),
+            getString(R.string.chapters_read),
+            getString(R.string.anime_count),
+            getString(R.string.days_watched),
+            getString(R.string.manga_count),
+            getString(R.string.volumes_read),
+            getString(R.string.anime_mean_score),
+            getString(R.string.manga_mean_score),
+        )
+        binding.uiSettingsHomeStats.setOnClickListener {
+            val dialogView = layoutInflater.inflate(R.layout.dialog_home_stats, null)
+            val dropdown1 = dialogView.findViewById<android.widget.AutoCompleteTextView>(R.id.homeStat1Dropdown)
+            val dropdown2 = dialogView.findViewById<android.widget.AutoCompleteTextView>(R.id.homeStat2Dropdown)
+            val adapter = android.widget.ArrayAdapter(this, R.layout.item_dropdown, statOptions)
+            dropdown1.setAdapter(adapter)
+            dropdown2.setAdapter(adapter)
+            dropdown1.setText(statOptions[PrefManager.getVal<Int>(PrefName.HomeStat1)], false)
+            dropdown2.setText(statOptions[PrefManager.getVal<Int>(PrefName.HomeStat2)], false)
+            customAlertDialog().apply {
+                setTitle(getString(R.string.home_stats_select))
+                setCustomView(dialogView)
+                setPosButton(R.string.ok) {
+                    val sel1 = statOptions.indexOf(dropdown1.text.toString())
+                    val sel2 = statOptions.indexOf(dropdown2.text.toString())
+                    if (sel1 >= 0) PrefManager.setVal(PrefName.HomeStat1, sel1)
+                    if (sel2 >= 0) PrefManager.setVal(PrefName.HomeStat2, sel2)
+                    Refresh.activity[1]?.postValue(true)
+                }
+                setNegButton(R.string.cancel)
                 show()
             }
         }

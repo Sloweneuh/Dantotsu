@@ -32,6 +32,12 @@ object Anilist {
     var bg: String? = null
     var episodesWatched: Int? = null
     var chapterRead: Int? = null
+    var animeCount: Int? = null
+    var minutesWatched: Int? = null
+    var mangaCount: Int? = null
+    var volumesRead: Int? = null
+    var animeMeanScore: Float? = null
+    var mangaMeanScore: Float? = null
     var unreadNotificationCount: Int = 0
 
     var genres: ArrayList<String>? = null
@@ -273,6 +279,12 @@ object Anilist {
         bg = null
         episodesWatched = null
         chapterRead = null
+        animeCount = null
+        minutesWatched = null
+        mangaCount = null
+        volumesRead = null
+        animeMeanScore = null
+        mangaMeanScore = null
         PrefManager.removeVal(PrefName.AnilistToken)
         //logout from comments api
         CommentsAPI.logout()

@@ -331,6 +331,16 @@
     <string name="immersive_mode_info">Requires App restart to fully apply.</string>
     <string name="home_layout_show">Edit Home Sections</string>
     <string name="home_layout_show_and_order">Show, hide and reorder Home sections</string>
+    <string name="home_stats_stat1">Home Stat 1</string>
+    <string name="home_stats_stat2">Home Stat 2</string>
+    <string name="home_stats_select">Select Home Stats</string>
+    <string name="home_stats_select_desc">Choose which stats are displayed on the home screen</string>
+    <string name="anime_count">Anime Count</string>
+    <string name="days_watched">Days Watched</string>
+    <string name="manga_count">Manga Count</string>
+    <string name="volumes_read">Volumes Read</string>
+    <string name="anime_mean_score">Anime Score</string>
+    <string name="manga_mean_score">Manga Score</string>
     <string-array name="home_layouts">
         <item>Continue Watching</item>
         <item>Favourite Anime</item>
@@ -838,12 +848,9 @@
     <string name="fav_staff">Favorite Staff</string>
 
     <string name="stats">Stats</string>
-    <string name="days_watched">Days watched</string>
     <string name="total_anime">Total Anime</string>
-    <string name="anime_mean_score">Anime Mean Score</string>
     <string name="volume_read">Volume read</string>
     <string name="total_manga">Total Manga</string>
-    <string name="manga_mean_score">Manga Mean Score</string>
     <string name="about_me">About me</string>
     <string name="follow">Follow</string>
     <string name="following">Following</string>

@@ -170,8 +170,38 @@ class HomeFragment : Fragment() {
             Logger.log("Loading HomeFragment")
             if (activity != null && _binding != null) lifecycleScope.launch(Dispatchers.Main) {
                 binding.homeUserName.text = Anilist.username
-                binding.homeUserEpisodesWatched.text = Anilist.episodesWatched.toString()
-                binding.homeUserChaptersRead.text = Anilist.chapterRead.toString()
+                // Populate configurable stats
+                fun getStatLabelAndValue(statIndex: Int): Pair<String, String>? {
+                    return when (statIndex) {
+                        1 -> getString(R.string.episodes_watched) to (Anilist.episodesWatched?.toString() ?: "0")
+                        2 -> getString(R.string.chapters_read) to (Anilist.chapterRead?.toString() ?: "0")
+                        3 -> getString(R.string.anime_count) to (Anilist.animeCount?.toString() ?: "0")
+                        4 -> getString(R.string.days_watched) to (((Anilist.minutesWatched ?: 0) / 1440.0).let { if (it == it.toLong().toDouble()) it.toLong().toString() else String.format("%.1f", it) })
+                        5 -> getString(R.string.manga_count) to (Anilist.mangaCount?.toString() ?: "0")
+                        6 -> getString(R.string.volumes_read) to (Anilist.volumesRead?.toString() ?: "0")
+                        7 -> getString(R.string.anime_mean_score) to (Anilist.animeMeanScore?.let { String.format("%.1f", it) } ?: "0")
+                        8 -> getString(R.string.manga_mean_score) to (Anilist.mangaMeanScore?.let { String.format("%.1f", it) } ?: "0")
+                        else -> null
+                    }
+                }
+                val stat1 = PrefManager.getVal<Int>(PrefName.HomeStat1)
+                val stat2 = PrefManager.getVal<Int>(PrefName.HomeStat2)
+                val result1 = getStatLabelAndValue(stat1)
+                val result2 = getStatLabelAndValue(stat2)
+                if (result1 != null) {
+                    binding.homeUserStat1Row.visibility = View.VISIBLE
+                    binding.homeUserStat1Label.text = result1.first
+                    binding.homeUserStat1Value.text = result1.second
+                } else {
+                    binding.homeUserStat1Row.visibility = View.GONE
+                }
+                if (result2 != null) {
+                    binding.homeUserStat2Row.visibility = View.VISIBLE
+                    binding.homeUserStat2Label.text = result2.first
+                    binding.homeUserStat2Value.text = result2.second
+                } else {
+                    binding.homeUserStat2Row.visibility = View.GONE
+                }
                 binding.homeUserAvatar.loadImage(Anilist.avatar)
                 val bannerAnimations: Boolean = PrefManager.getVal(PrefName.BannerAnimations)
                 blurImage(

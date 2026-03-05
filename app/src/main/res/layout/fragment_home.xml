@@ -85,21 +85,22 @@
                                     android:textSize="16sp" />
 
                                 <LinearLayout
+                                    android:id="@+id/homeUserStat1Row"
                                     android:layout_width="match_parent"
                                     android:layout_height="match_parent"
                                     android:orientation="horizontal">
 
                                     <TextView
+                                        android:id="@+id/homeUserStat1Label"
                                         android:layout_width="wrap_content"
                                         android:layout_height="wrap_content"
                                         android:alpha="0.58"
                                         android:fontFamily="@font/poppins"
-                                        android:text="@string/episodes_watched"
                                         android:textSize="12sp"
                                         tools:ignore="TextContrastCheck,TooDeepLayout" />
 
                                     <TextView
-                                        android:id="@+id/homeUserEpisodesWatched"
+                                        android:id="@+id/homeUserStat1Value"
                                         android:layout_width="wrap_content"
                                         android:layout_height="wrap_content"
                                         android:layout_marginStart="4dp"
@@ -109,21 +110,22 @@
                                 </LinearLayout>
 
                                 <LinearLayout
+                                    android:id="@+id/homeUserStat2Row"
                                     android:layout_width="wrap_content"
                                     android:layout_height="match_parent"
                                     android:orientation="horizontal">
 
                                     <TextView
+                                        android:id="@+id/homeUserStat2Label"
                                         android:layout_width="wrap_content"
                                         android:layout_height="wrap_content"
                                         android:alpha="0.58"
                                         android:fontFamily="@font/poppins"
-                                        android:text="@string/chapters_read"
                                         android:textSize="12sp"
                                         tools:ignore="TextContrastCheck" />
 
                                     <TextView
-                                        android:id="@+id/homeUserChaptersRead"
+                                        android:id="@+id/homeUserStat2Value"
                                         android:layout_width="wrap_content"
                                         android:layout_height="wrap_content"
                                         android:layout_marginStart="4dp"

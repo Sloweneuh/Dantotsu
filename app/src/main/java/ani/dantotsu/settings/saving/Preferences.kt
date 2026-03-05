@@ -115,6 +115,8 @@ enum class PrefName(val data: Pref) {
     ShowNotificationRedDot(Pref(Location.UI, Boolean::class, true)),
     ShowAnimeTab(Pref(Location.UI, Boolean::class, true)),
     ShowMangaTab(Pref(Location.UI, Boolean::class, true)),
+    HomeStat1(Pref(Location.UI, Int::class, 1)),
+    HomeStat2(Pref(Location.UI, Int::class, 2)),
 
 
     //Player

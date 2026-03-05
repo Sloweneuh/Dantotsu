@@ -92,7 +92,7 @@ class AnilistQueries {
         val response: Query.Viewer?
         measureTimeMillis {
             response = executeQuery(
-                """{Viewer{name options{timezone titleLanguage staffNameLanguage activityMergeTime airingNotifications displayAdultContent restrictMessagesToFollowing} avatar{medium} bannerImage id mediaListOptions{scoreFormat rowOrder animeList{customLists} mangaList{customLists}} statistics{anime{episodesWatched} manga{chaptersRead}} unreadNotificationCount}}"""
+                """{Viewer{name options{timezone titleLanguage staffNameLanguage activityMergeTime airingNotifications displayAdultContent restrictMessagesToFollowing} avatar{medium} bannerImage id mediaListOptions{scoreFormat rowOrder animeList{customLists} mangaList{customLists}} statistics{anime{count meanScore minutesWatched episodesWatched} manga{count meanScore chaptersRead volumesRead}} unreadNotificationCount}}"""
             )
         }.also { println("time : $it") }
         val user = response?.data?.user ?: return false
@@ -105,6 +105,12 @@ class AnilistQueries {
         Anilist.avatar = user.avatar?.medium
         Anilist.episodesWatched = user.statistics?.anime?.episodesWatched
         Anilist.chapterRead = user.statistics?.manga?.chaptersRead
+        Anilist.animeCount = user.statistics?.anime?.count
+        Anilist.minutesWatched = user.statistics?.anime?.minutesWatched
+        Anilist.mangaCount = user.statistics?.manga?.count
+        Anilist.volumesRead = user.statistics?.manga?.volumesRead
+        Anilist.animeMeanScore = user.statistics?.anime?.meanScore
+        Anilist.mangaMeanScore = user.statistics?.manga?.meanScore
         Anilist.adult = user.options?.displayAdultContent ?: false
         Anilist.unreadNotificationCount = user.unreadNotificationCount ?: 0
         val unread = PrefManager.getVal<Int>(PrefName.UnreadCommentNotifications)
