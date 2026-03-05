@@ -35,6 +35,7 @@ import jp.wasabeef.glide.transformations.BlurTransformation
 class MediaRandomDialogFragment : DialogFragment() {
 
     private var mediaList: ArrayList<Media> = arrayListOf()
+    private var shuffledQueue: ArrayDeque<Media> = ArrayDeque()
     private var current: Media? = null
     private var currentCoverTarget: CustomTarget<Drawable>? = null
     private var currentBackgroundTarget: CustomTarget<Drawable>? = null
@@ -109,7 +110,16 @@ class MediaRandomDialogFragment : DialogFragment() {
 
         fun pickRandom(animate: Boolean = true) {
             if (mediaList.isNotEmpty()) {
-                val next = mediaList.random()
+                if (shuffledQueue.isEmpty()) {
+                    val shuffled = mediaList.toMutableList().also { it.shuffle() }
+                    // If the first item in the new shuffle is the same as the current one
+                    // and there's more than one item, swap it to the back to avoid immediate repeats
+                    if (shuffled.size > 1 && shuffled.first().id == current?.id) {
+                        shuffled.add(shuffled.removeAt(0))
+                    }
+                    shuffledQueue.addAll(shuffled)
+                }
+                val next = shuffledQueue.removeFirst()
                 // If there is a cover url try to preload it before flipping so the animation shows the loaded image
                 val url = next.cover
                 val backgroundUrl = next.banner ?: next.cover
