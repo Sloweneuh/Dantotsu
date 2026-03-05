@@ -234,7 +234,9 @@ class SearchActivity : AppCompatActivity() {
                 if (!v.canScrollVertically(1)) {
                     if (model.hasNextPage(searchType) && model.resultsIsNotEmpty(searchType) && !loading) {
                         scope.launch(Dispatchers.IO) {
+                            loading = true
                             model.loadNextPage(searchType)
+                            loading = false
                         }
                     }
                 }
