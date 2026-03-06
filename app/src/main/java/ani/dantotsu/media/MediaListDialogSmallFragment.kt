@@ -286,6 +286,11 @@ class MediaListDialogSmallFragment : BottomSheetDialogFragment() {
         binding.mediaListMalSyncExclude.setOnCheckedChangeListener { _, checked ->
             malSyncExclude = checked
         }
+        val initialProgress = media.userProgress
+        val initialScore = if (media.userScore != 0) media.userScore else null
+        val initialStatus = statuses[statusStrings.indexOf(userStatus)]
+        val initialIsListPrivate = media.isListPrivate
+
         binding.mediaListSave.setOnClickListener {
             scope.launch {
                 withContext(Dispatchers.IO) {
@@ -295,22 +300,28 @@ class MediaListDialogSmallFragment : BottomSheetDialogFragment() {
                             ?.times(10))?.toInt()
                         val status =
                             statuses[statusStrings.indexOf(_binding?.mediaListStatus?.text.toString())]
-                        Anilist.mutation.editList(
-                            media.id,
-                            progress,
-                            score,
-                            null,
-                            null,
-                            status,
-                            media.isListPrivate
-                        )
-                        MAL.query.editList(
-                            media.idMAL,
-                            media.anime != null,
-                            progress,
-                            score,
-                            status
-                        )
+                        val anilistChanged = progress != initialProgress
+                            || score != initialScore
+                            || status != initialStatus
+                            || media.isListPrivate != initialIsListPrivate
+                        if (anilistChanged) {
+                            Anilist.mutation.editList(
+                                media.id,
+                                progress,
+                                score,
+                                null,
+                                null,
+                                status,
+                                media.isListPrivate
+                            )
+                            MAL.query.editList(
+                                media.idMAL,
+                                media.anime != null,
+                                progress,
+                                score,
+                                status
+                            )
+                        }
                     }
                 }
                 if (remove == true) {

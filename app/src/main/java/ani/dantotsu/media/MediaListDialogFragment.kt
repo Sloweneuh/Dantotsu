@@ -325,6 +325,7 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                         (parent as? ViewGroup)?.removeView(this)
                     }
 
+                val initialCustomLists = media?.inCustomListsOf?.toMap() ?: emptyMap()
                 media?.inCustomListsOf?.forEach {
                     MaterialSwitch(requireContext()).apply {
                         isChecked = it.value
@@ -336,6 +337,15 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                     }
                 }
 
+
+                val initialProgress = media?.userProgress
+                val initialScore = if ((media?.userScore ?: 0) != 0) media!!.userScore else null
+                val initialStatus = statuses[statusStrings.indexOf(userStatus)]
+                val initialRewatch = media?.userRepeat
+                val initialNotes = media?.notes ?: ""
+                val initialStartD = start.date
+                val initialEndD = end.date
+                val initialIsListPrivate = media?.isListPrivate ?: false
 
                 binding.mediaListSave.setOnClickListener {
                     scope.launch {
@@ -353,28 +363,39 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                                 val notes = _binding?.mediaListNotes?.text?.toString()
                                 val startD = start.date
                                 val endD = end.date
-                                Anilist.mutation.editList(
-                                    media!!.id,
-                                    progress,
-                                    score,
-                                    rewatch,
-                                    notes,
-                                    status,
-                                    media?.isListPrivate ?: false,
-                                    startD,
-                                    endD,
-                                    media?.inCustomListsOf?.mapNotNull { if (it.value) it.key else null }
-                                )
-                                MAL.query.editList(
-                                    media!!.idMAL,
-                                    media!!.anime != null,
-                                    progress,
-                                    score,
-                                    status,
-                                    rewatch,
-                                    startD,
-                                    endD
-                                )
+                                val anilistChanged = progress != initialProgress
+                                    || score != initialScore
+                                    || status != initialStatus
+                                    || rewatch != initialRewatch
+                                    || (notes ?: "") != initialNotes
+                                    || startD != initialStartD
+                                    || endD != initialEndD
+                                    || (media?.isListPrivate ?: false) != initialIsListPrivate
+                                    || (media?.inCustomListsOf ?: emptyMap<String, Boolean>()) != initialCustomLists
+                                if (anilistChanged) {
+                                    Anilist.mutation.editList(
+                                        media!!.id,
+                                        progress,
+                                        score,
+                                        rewatch,
+                                        notes,
+                                        status,
+                                        media?.isListPrivate ?: false,
+                                        startD,
+                                        endD,
+                                        media?.inCustomListsOf?.mapNotNull { if (it.value) it.key else null }
+                                    )
+                                    MAL.query.editList(
+                                        media!!.idMAL,
+                                        media!!.anime != null,
+                                        progress,
+                                        score,
+                                        status,
+                                        rewatch,
+                                        startD,
+                                        endD
+                                    )
+                                }
                             }
                         }
                         if (remove == true) {
