@@ -10,13 +10,15 @@ import ani.dantotsu.BuildConfig
 import ani.dantotsu.R
 import ani.dantotsu.connections.discord.Discord
 import ani.dantotsu.connections.mal.MAL
+import ani.dantotsu.connections.mangaupdates.MUMedia
+import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.media.Media
+import ani.dantotsu.tryWithSuspend
 import ani.dantotsu.others.AppUpdater
 import ani.dantotsu.profile.User
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.snackString
-import ani.dantotsu.tryWithSuspend
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -93,6 +95,20 @@ class AnilistHomeViewModel : ViewModel() {
         MutableLiveData<ArrayList<Media>>(null)
 
     fun getHidden(): LiveData<ArrayList<Media>> = hidden
+
+    private val muHomeLists: MutableLiveData<Map<String, List<MUMedia>>?> = MutableLiveData(null)
+    fun getMuHomeLists(): LiveData<Map<String, List<MUMedia>>?> = muHomeLists
+    suspend fun initMuHomeLists() {
+        if (MangaUpdates.token == null ||
+            !ani.dantotsu.settings.saving.PrefManager.getVal<Boolean>(ani.dantotsu.settings.saving.PrefName.MangaUpdatesListEnabled)
+        ) {
+            muHomeLists.postValue(emptyMap())
+            return
+        }
+        tryWithSuspend {
+            muHomeLists.postValue(MangaUpdates.getAllUserLists())
+        }
+    }
 
     private val unreadChapters: MutableLiveData<ArrayList<Media>> =
         // Attempt to load cached unread chapters from preferences so they survive restarts
@@ -245,6 +261,7 @@ class AnilistHomeViewModel : ViewModel() {
         Anilist.getSavedToken()
         MAL.getSavedToken()
         Discord.getSavedToken()
+        ani.dantotsu.connections.mangaupdates.MangaUpdates.getSavedToken()
         if (!BuildConfig.FLAVOR.contains("fdroid")) {
             if (PrefManager.getVal(PrefName.CheckUpdate))
                 context.lifecycleScope.launch(Dispatchers.IO) {
@@ -465,7 +482,7 @@ class AnilistMangaViewModel : ViewModel() {
 class AnilistSearch : ViewModel() {
 
     enum class SearchType {
-        ANIME, MANGA, CHARACTER, STAFF, STUDIO, USER;
+        ANIME, MANGA, CHARACTER, STAFF, STUDIO, USER, MANGAUPDATES;
 
         companion object {
 
@@ -477,6 +494,7 @@ class AnilistSearch : ViewModel() {
                     STAFF -> "STAFF"
                     STUDIO -> "STUDIO"
                     USER -> "USER"
+                    MANGAUPDATES -> "MANGAUPDATES"
                 }
             }
 
@@ -488,6 +506,7 @@ class AnilistSearch : ViewModel() {
                     "STAFF" -> STAFF
                     "STUDIO" -> STUDIO
                     "USER" -> USER
+                    "MANGAUPDATES" -> MANGAUPDATES
                     else -> throw IllegalArgumentException("Invalid search type")
                 }
             }
@@ -516,6 +535,10 @@ class AnilistSearch : ViewModel() {
     private val userResult: MutableLiveData<UserSearchResults?> =
         MutableLiveData<UserSearchResults?>(null)
 
+    lateinit var muSearchResults: MUSearchResults
+    private val muResult: MutableLiveData<MUSearchResults?> =
+        MutableLiveData<MUSearchResults?>(null)
+
     fun <T> getSearch(type: SearchType): MutableLiveData<T?> {
         return when (type) {
             SearchType.ANIME, SearchType.MANGA -> aniMangaResult as MutableLiveData<T?>
@@ -523,6 +546,7 @@ class AnilistSearch : ViewModel() {
             SearchType.STUDIO -> studioResult as MutableLiveData<T?>
             SearchType.STAFF -> staffResult as MutableLiveData<T?>
             SearchType.USER -> userResult as MutableLiveData<T?>
+            SearchType.MANGAUPDATES -> muResult as MutableLiveData<T?>
         }
     }
 
@@ -533,6 +557,7 @@ class AnilistSearch : ViewModel() {
             SearchType.STUDIO -> loadStudiosSearch(studioSearchResults)
             SearchType.STAFF -> loadStaffSearch(staffSearchResults)
             SearchType.USER -> loadUserSearch(userSearchResults)
+            SearchType.MANGAUPDATES -> loadMuSearch(muSearchResults)
         }
     }
 
@@ -543,6 +568,7 @@ class AnilistSearch : ViewModel() {
             SearchType.STUDIO -> loadNextStudiosPage(studioSearchResults)
             SearchType.STAFF -> loadNextStaffPage(staffSearchResults)
             SearchType.USER -> loadNextUserPage(userSearchResults)
+            SearchType.MANGAUPDATES -> loadNextMuPage(muSearchResults)
         }
     }
 
@@ -553,6 +579,7 @@ class AnilistSearch : ViewModel() {
             SearchType.STUDIO -> studioSearchResults.hasNextPage
             SearchType.STAFF -> staffSearchResults.hasNextPage
             SearchType.USER -> userSearchResults.hasNextPage
+            SearchType.MANGAUPDATES -> muSearchResults.hasNextPage
         }
     }
 
@@ -563,6 +590,7 @@ class AnilistSearch : ViewModel() {
             SearchType.STUDIO -> studioSearchResults.results.isNotEmpty()
             SearchType.STAFF -> staffSearchResults.results.isNotEmpty()
             SearchType.USER -> userSearchResults.results.isNotEmpty()
+            SearchType.MANGAUPDATES -> muSearchResults.results.isNotEmpty()
         }
     }
 
@@ -573,6 +601,7 @@ class AnilistSearch : ViewModel() {
             SearchType.STUDIO -> studioSearchResults.results.size
             SearchType.STAFF -> staffSearchResults.results.size
             SearchType.USER -> userSearchResults.results.size
+            SearchType.MANGAUPDATES -> muSearchResults.results.size
         }
     }
 
@@ -583,6 +612,7 @@ class AnilistSearch : ViewModel() {
             SearchType.STUDIO -> studioSearchResults.results.clear()
             SearchType.STAFF -> staffSearchResults.results.clear()
             SearchType.USER -> userSearchResults.results.clear()
+            SearchType.MANGAUPDATES -> muSearchResults.results.clear()
         }
     }
 
@@ -688,6 +718,12 @@ class AnilistSearch : ViewModel() {
             r.search,
         )
     )
+
+    private suspend fun loadMuSearch(r: MUSearchResults) =
+        muResult.postValue(MangaUpdates.searchSeriesPaged(r, 1))
+
+    private suspend fun loadNextMuPage(r: MUSearchResults) =
+        muResult.postValue(MangaUpdates.searchSeriesPaged(r, r.page + 1))
 }
 
 class GenresViewModel : ViewModel() {

@@ -27,20 +27,99 @@ data class MULoginContext(
 @Serializable
 data class MUSearchRequest(
     val search: String,
-    val stype: String = "title"
+    val stype: String = "title",
+    val page: Int = 1,
+    val perpage: Int = -1,
+    val type: List<String>? = null,
+    val year: Int? = null,
+    val genre: List<String>? = null,
+    val exclude_genre: List<String>? = null,
+    val include_categories: List<String>? = null,
+    val exclude_categories: List<String>? = null,
+)
+
+@Serializable
+data class MUCategorySearchRequest(
+    val search: String = "",
+    val orderby: String = "alpha",
+    val page: Int = 1,
+    val perpage: Int = -1
+)
+
+@Serializable
+data class MUCategorySearchResponse(
+    @SerialName("total_hits") val totalHits: Int? = null,
+    val page: Int? = null,
+    @SerialName("per_page") val perPage: Int? = null,
+    val results: List<MUCategorySearchEntry>? = null
+)
+
+@Serializable
+data class MUCategorySearchEntry(
+    val category: MUCategory? = null
+)
+
+@Serializable
+data class MUProgressUpdateRequest(
+    val series: MUProgressUpdateSeries,
+    @SerialName("list_id") val listId: Int,
+    val status: MUProgressUpdateStatus,
+    val priority: Int? = null
+)
+
+@Serializable
+data class MUProgressUpdateSeries(
+    val id: Long,
+    val title: String? = null
+)
+
+@Serializable
+data class MUProgressUpdateStatus(
+    val volume: Int? = null,
+    val chapter: Int? = null
 )
 
 @Serializable
 data class MUSearchResponse(
     @SerialName("total_hits") val totalHits: Int? = null,
+    val page: Int? = null,
+    @SerialName("per_page") val perPage: Int? = null,
     val results: List<MUSearchResult>? = null
 )
 
 @Serializable
 data class MUSearchResult(
     val record: MUSeriesRecord? = null,
-    val hit_title: String? = null
+    val hit_title: String? = null,
+    val metadata: MUSearchResultMetadata? = null
 )
+
+@Serializable
+data class MUSearchResultMetadata(
+    @SerialName("user_list") val userList: MUSearchResultUserList? = null
+)
+
+@Serializable
+data class MUSearchResultUserList(
+    @SerialName("list_id") val listId: Int? = null,
+    val status: MUProgressUpdateStatus? = null
+)
+
+fun MUSearchResult.toMUMedia(): MUMedia? {
+    val r = record ?: return null
+    return MUMedia(
+        id = r.seriesId,
+        title = r.title,
+        url = r.url,
+        coverUrl = r.image?.url?.run { original ?: thumb },
+        listId = metadata?.userList?.listId ?: -1,
+        userChapter = metadata?.userList?.status?.chapter,
+        userVolume = metadata?.userList?.status?.volume,
+        latestChapter = r.latest_chapter?.toInt(),
+        bayesianRating = r.bayesian_rating?.toDoubleOrNull(),
+        priority = null
+    )
+}
 
 @Serializable
 data class MUSeriesRecord(
@@ -208,5 +287,83 @@ data class MUAvatar(
     val extension: String? = null,
     val height: Int? = null,
     val width: Int? = null
+)
+
+// ── User-list models ──────────────────────────────────────────────────────────
+
+@Serializable
+data class MUListSearchRequest(
+    val search: String? = null,
+    val page: Int = 1,
+    @SerialName("per_page") val perPage: Int = -1
+)
+
+@Serializable
+data class MUListResponse(
+    @SerialName("total_hits") val totalHits: Int? = null,
+    val page: Int? = null,
+    @SerialName("per_page") val perPage: Int? = null,
+    val list: MUListInfo? = null,
+    val results: List<MUListEntry>? = null
+)
+
+@Serializable
+data class MUListInfo(
+    @SerialName("list_id") val listId: Int? = null,
+    val title: String? = null,
+    val description: String? = null,
+    val type: String? = null
+)
+
+@Serializable
+data class MUListEntry(
+    val record: MUListRecord? = null,
+    val metadata: MUListEntryMetadata? = null
+)
+
+@Serializable
+data class MUListRecord(
+    val series: MUListSeries? = null,
+    @SerialName("list_id") val listId: Int? = null,
+    val status: MUReadingStatus? = null,
+    val priority: Int? = null,
+    @SerialName("time_added") val timeAdded: MUTimestamp? = null
+)
+
+@Serializable
+data class MUListSeries(
+    val id: Long,
+    val url: String? = null,
+    val title: String? = null
+)
+
+@Serializable
+data class MUReadingStatus(
+    val volume: Int? = null,
+    val chapter: Int? = null
+)
+
+@Serializable
+data class MUListEntryMetadata(
+    val series: MUListSeriesMetadata? = null,
+    @SerialName("user_rating") val userRating: Double? = null
+)
+
+@Serializable
+data class MUListSeriesMetadata(
+    @SerialName("bayesian_rating") val bayesianRating: Double? = null,
+    @SerialName("latest_chapter") val latestChapter: Int? = null,
+    @SerialName("last_updated") val lastUpdated: MUTimestamp? = null
+)
+
+/** Represents a list entry returned by /v1/lists (includes custom lists). */
+@Serializable
+data class MUUserList(
+    @SerialName("list_id") val listId: Int,
+    val title: String? = null,
+    val description: String? = null,
+    val type: String? = null,
+    val icon: String? = null,
+    val custom: Boolean = false
 )
 

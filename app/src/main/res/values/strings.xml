@@ -193,6 +193,8 @@
     <string name="titles">Titles</string>
 
     <string name="anilist_settings">Anilist Settings</string>
+    <string name="mangaupdates_settings">MangaUpdates Settings</string>
+    <string name="mangaupdates_settings_desc">Configure MangaUpdates integration</string>
     <string name="connections_settings">Connections</string>
     <string name="connections_desc">Enable or disable external connections and info tabs</string>
     <string name="disable_comick">Enable Comick</string>
@@ -201,6 +203,16 @@
     <string name="disable_mal_desc">Toggle fetching MAL data and MAL tab</string>
     <string name="disable_mangaupdates">Enable MangaUpdates</string>
     <string name="disable_mangaupdates_desc">Toggle fetching MangaUpdates data and tab</string>
+    <string name="mu_list_fetch_enabled">MangaUpdates lists</string>
+    <string name="mu_list_fetch_enabled_desc">Fetch and show MangaUpdates reading lists on home screen and in list view</string>
+    <string name="mu_custom_list_mapping">Custom List Mapping</string>
+    <string name="mu_custom_list_mapping_desc">Configure how custom MangaUpdates lists are fetched</string>
+    <string name="mu_custom_list_mapping_hint">Choose how each custom list maps to a reading category. \u201cSeparate\u201d shows it as its own section in the reading list.</string>
+    <string name="mu_custom_list_mapping_empty">No custom lists found on your MangaUpdates account</string>
+    <string name="mu_tab_enabled">MangaUpdates tab</string>
+    <string name="mu_tab_enabled_desc">Show the MangaUpdates info tab in manga details</string>
+    <string name="mu_filter_categories">Categories</string>
+    <string name="mu_filter_year_hint">e.g. 2020</string>
     <string name="disable_malsync">Enable MALSync Info</string>
     <string name="disable_malsync_desc">Toggle fetching MALSync info and related display</string>
     <string name="malsync_checks_dialog_title">MALSync checks</string>
@@ -474,6 +486,7 @@
     <string name="open_on_mangaupdates">Open on MangaUpdates</string>
     <string name="anime_adaptation">Anime Adaptation</string>
     <string name="user_lists">User Lists</string>
+    <string name="mu_user_list">%1$s\'s MangaUpdates List</string>
     <string name="categories">Categories</string>
     <string name="authors">Authors</string>
     <string name="publishers">Publishers</string>
@@ -641,6 +654,13 @@
     <string name="episode_num">"Episode %1$s"</string>
     <string name="chapter">"Chapter "</string>
     <string name="chapter_num">"Chapter %1$s"</string>
+    <string name="volume">Volume</string>
+    <string name="error_update_progress">Failed to update progress</string>
+    <string name="mu_status_reading">Reading</string>
+    <string name="mu_status_planning">Planning</string>
+    <string name="mu_status_completed">Completed</string>
+    <string name="mu_status_dropped">Dropped</string>
+    <string name="mu_status_paused">Paused</string>
     <string name="just_released">- Newly released!</string>
     <string name="checking_subscriptions_title">Checking Subscriptions</string>
     <string name="checking_unread_chapters_title">Checking Unread Chapters</string>
@@ -1202,6 +1222,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="failed_to_load_image">Failed to load image</string>
     <string name="retry">Retry</string>
     <string name="studios">Studios</string>
+    <string name="mu_series_search">MangaUpdates</string>
     <string name="external_links">External links</string>
     <string name="quicklinks">Quicklinks</string>
     <string name="mu_search_title">Search on MangaUpdates</string>

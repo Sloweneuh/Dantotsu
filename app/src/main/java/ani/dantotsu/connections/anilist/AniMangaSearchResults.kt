@@ -1,6 +1,7 @@
 package ani.dantotsu.connections.anilist
 
 import ani.dantotsu.R
+import ani.dantotsu.connections.mangaupdates.MUMedia
 import ani.dantotsu.currContext
 import ani.dantotsu.media.Author
 import ani.dantotsu.media.Character
@@ -149,3 +150,52 @@ data class UserSearchResults(
     override var results: MutableList<User>,
     override var hasNextPage: Boolean,
 ) : SearchResults<User>, Serializable
+
+data class MUSearchResults(
+    override var search: String?,
+    override var page: Int = 1,
+    override var results: MutableList<MUMedia>,
+    override var hasNextPage: Boolean,
+    var format: String? = null,
+    var year: Int? = null,
+    var genres: MutableList<String>? = null,
+    var excludedGenres: MutableList<String>? = null,
+    var categories: MutableList<String>? = null,
+    var excludedCategories: MutableList<String>? = null,
+) : SearchResults<MUMedia>, Serializable {
+    fun toChipList(): List<AniMangaSearchResults.SearchChip> {
+        val list = mutableListOf<AniMangaSearchResults.SearchChip>()
+        format?.let { list.add(AniMangaSearchResults.SearchChip("MU_FORMAT", it)) }
+        year?.let { list.add(AniMangaSearchResults.SearchChip("MU_YEAR", it.toString())) }
+        genres?.forEach { list.add(AniMangaSearchResults.SearchChip("MU_GENRE", it)) }
+        excludedGenres?.forEach {
+            list.add(
+                AniMangaSearchResults.SearchChip(
+                    "MU_EXCL_GENRE",
+                    currContext()!!.getString(R.string.filter_exclude, it)
+                )
+            )
+        }
+        categories?.forEach { list.add(AniMangaSearchResults.SearchChip("MU_CAT", it)) }
+        excludedCategories?.forEach {
+            list.add(
+                AniMangaSearchResults.SearchChip(
+                    "MU_EXCL_CAT",
+                    currContext()!!.getString(R.string.filter_exclude, it)
+                )
+            )
+        }
+        return list
+    }
+
+    fun removeChip(chip: AniMangaSearchResults.SearchChip) {
+        when (chip.type) {
+            "MU_FORMAT" -> format = null
+            "MU_YEAR" -> year = null
+            "MU_GENRE" -> genres?.remove(chip.text)
+            "MU_EXCL_GENRE" -> excludedGenres?.removeAll { chip.text.endsWith(it) }
+            "MU_CAT" -> categories?.remove(chip.text)
+            "MU_EXCL_CAT" -> excludedCategories?.removeAll { chip.text.endsWith(it) }
+        }
+    }
+}

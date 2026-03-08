@@ -53,6 +53,10 @@ class SearchBottomSheet : BottomSheetDialogFragment() {
             startActivity(requireContext(), SearchType.USER)
             dismiss()
         }
+        binding.muSearch.setOnClickListener {
+            startActivity(requireContext(), SearchType.MANGAUPDATES)
+            dismiss()
+        }
     }
 
     private fun startActivity(context: Context, type: SearchType) {

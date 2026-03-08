@@ -18,9 +18,11 @@ import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.anilist.AnilistSearch
 import ani.dantotsu.connections.anilist.AnilistSearch.SearchType
 import ani.dantotsu.connections.anilist.CharacterSearchResults
+import ani.dantotsu.connections.anilist.MUSearchResults
 import ani.dantotsu.connections.anilist.StaffSearchResults
 import ani.dantotsu.connections.anilist.StudioSearchResults
 import ani.dantotsu.connections.anilist.UserSearchResults
+import ani.dantotsu.connections.mangaupdates.MUMediaAdapter
 import ani.dantotsu.databinding.ActivitySearchBinding
 import ani.dantotsu.initActivity
 import ani.dantotsu.navBarHeight
@@ -49,6 +51,7 @@ class SearchActivity : AppCompatActivity() {
     private lateinit var studioAdaptor: StudioAdapter
     private lateinit var staffAdaptor: AuthorAdapter
     private lateinit var usersAdapter: UsersAdapter
+    private lateinit var muSearchAdaptor: MUMediaAdapter
 
     private lateinit var progressAdapter: ProgressAdapter
     private lateinit var concatAdapter: ConcatAdapter
@@ -59,8 +62,10 @@ class SearchActivity : AppCompatActivity() {
     lateinit var studioResult: StudioSearchResults
     lateinit var staffResult: StaffSearchResults
     lateinit var userResult: UserSearchResults
+    lateinit var muSearchResult: MUSearchResults
 
     lateinit var updateChips: (() -> Unit)
+    var updateMuChips: (() -> Unit)? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -179,6 +184,23 @@ class SearchActivity : AppCompatActivity() {
                     usersAdapter = UsersAdapter(model.userSearchResults.results, grid = true)
                 }
             }
+
+            SearchType.MANGAUPDATES -> {
+                if (model.notSet) {
+                    model.notSet = false
+                    val muGenres = intent.getStringArrayListExtra("genres")
+                        ?.toMutableList()
+                        ?: intent.getStringExtra("genre")?.let { mutableListOf(it) }
+                    model.muSearchResults = MUSearchResults(
+                        search = intent.getStringExtra("query"),
+                        results = mutableListOf(),
+                        hasNextPage = false,
+                        genres = muGenres
+                    )
+                }
+                muSearchResult = model.muSearchResults
+                muSearchAdaptor = MUMediaAdapter(model.muSearchResults.results)
+            }
         }
 
         progressAdapter = ProgressAdapter(searched = model.searched)
@@ -222,6 +244,10 @@ class SearchActivity : AppCompatActivity() {
 
             SearchType.USER -> {
                 ConcatAdapter(headerAdaptor, usersAdapter, progressAdapter)
+            }
+
+            SearchType.MANGAUPDATES -> {
+                ConcatAdapter(headerAdaptor, muSearchAdaptor, progressAdapter)
             }
         }
 
@@ -349,6 +375,28 @@ class SearchActivity : AppCompatActivity() {
                     }
                 }
             }
+
+            SearchType.MANGAUPDATES -> {
+                model.getSearch<MUSearchResults>(searchType).observe(this) {
+                    if (it != null) {
+                        model.muSearchResults.apply {
+                            search = it.search
+                            page = it.page
+                            hasNextPage = it.hasNextPage
+                            format = it.format
+                            year = it.year
+                            genres = it.genres
+                            excludedGenres = it.excludedGenres
+                            categories = it.categories
+                            excludedCategories = it.excludedCategories
+                        }
+                        val prev = model.muSearchResults.results.size
+                        model.muSearchResults.results.addAll(it.results)
+                        muSearchAdaptor.notifyItemRangeInserted(prev, it.results.size)
+                        progressAdapter.bar?.isVisible = it.hasNextPage
+                    }
+                }
+            }
         }
 
         progressAdapter.ready.observe(this) {
@@ -400,6 +448,11 @@ class SearchActivity : AppCompatActivity() {
                 usersAdapter.notifyItemRangeRemoved(0, model.userSearchResults.results.size)
                 model.userSearchResults.results.clear()
             }
+
+            SearchType.MANGAUPDATES -> {
+                muSearchAdaptor.notifyItemRangeRemoved(0, model.muSearchResults.results.size)
+                model.muSearchResults.results.clear()
+            }
         }
         progressAdapter.bar?.visibility = View.GONE
     }
@@ -430,6 +483,10 @@ class SearchActivity : AppCompatActivity() {
 
                 SearchType.USER -> {
                     usersAdapter.notifyItemRangeRemoved(0, size)
+                }
+
+                SearchType.MANGAUPDATES -> {
+                    muSearchAdaptor.notifyItemRangeRemoved(0, size)
                 }
             }
         }

@@ -1,6 +1,7 @@
 package ani.dantotsu.connections.mangaupdates
 
 import ani.dantotsu.Mapper
+import ani.dantotsu.connections.anilist.MUSearchResults
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.tryWithSuspend
@@ -26,6 +27,9 @@ object MangaUpdates {
     var token: String? = null
     var username: String? = null
     var avatar: String? = null
+
+    /** Cache of associated/synonym titles keyed by series id, populated on [getSeriesDetails] calls. */
+    val synonymsCache = mutableMapOf<Long, List<String>>()
 
     /**
      * Login to MangaUpdates API and obtain a JWT token
@@ -167,6 +171,94 @@ object MangaUpdates {
     }
 
     /**
+     * Paginated series search for use in the global search screen.
+     */
+    suspend fun searchSeriesPaged(
+        r: MUSearchResults,
+        page: Int = 1,
+        perPage: Int = -1
+    ): MUSearchResults? {
+        return tryWithSuspend {
+            val searchRequest = MUSearchRequest(
+                search = r.search ?: "",
+                stype = "title",
+                page = page,
+                perpage = perPage,
+                type = r.format?.let { listOf(it) },
+                year = r.year,
+                genre = r.genres?.takeIf { it.isNotEmpty() },
+                exclude_genre = r.excludedGenres?.takeIf { it.isNotEmpty() },
+                include_categories = r.categories?.takeIf { it.isNotEmpty() },
+                exclude_categories = r.excludedCategories?.takeIf { it.isNotEmpty() },
+            )
+            val jsonBody = Mapper.json.encodeToString(searchRequest)
+            val requestBody = jsonBody.toRequestBody("application/json".toMediaTypeOrNull())
+            val request = Request.Builder()
+                .url("$BASE_URL/series/search")
+                .post(requestBody)
+                .apply { if (!token.isNullOrBlank()) addHeader("Authorization", "Bearer $token") }
+                .build()
+            val response = withContext(Dispatchers.IO) { httpClient.newCall(request).execute() }
+            val responseBody = extractBody(response)
+            if (!response.isSuccessful || responseBody == null || responseBody.isBlank()) return@tryWithSuspend null
+            val searchResponse = Mapper.parse<MUSearchResponse>(responseBody)
+            val results = searchResponse.results?.mapNotNull { it.toMUMedia() }?.toMutableList() ?: mutableListOf()
+            val totalHits = searchResponse.totalHits ?: 0
+            MUSearchResults(
+                search = r.search,
+                page = page,
+                results = results,
+                hasNextPage = perPage != -1 && page * perPage < totalHits,
+                format = r.format,
+                year = r.year,
+                genres = r.genres,
+                excludedGenres = r.excludedGenres,
+                categories = r.categories,
+                excludedCategories = r.excludedCategories,
+            )
+        }
+    }
+
+    /**
+     * Fetch all available genres from MangaUpdates.
+     */
+    suspend fun getGenres(): List<String> {
+        return tryWithSuspend {
+            val request = Request.Builder()
+                .url("$BASE_URL/genres")
+                .get()
+                .apply { if (!token.isNullOrBlank()) addHeader("Authorization", "Bearer $token") }
+                .build()
+            val response = withContext(Dispatchers.IO) { httpClient.newCall(request).execute() }
+            val responseBody = extractBody(response)
+            if (!response.isSuccessful || responseBody.isNullOrBlank()) return@tryWithSuspend emptyList()
+            Mapper.parse<List<MUGenre>>(responseBody).mapNotNull { it.genre }
+        } ?: emptyList()
+    }
+
+    /**
+     * Search/fetch available categories from MangaUpdates.
+     */
+    suspend fun getCategories(query: String = ""): List<String> {
+        return tryWithSuspend {
+            val searchRequest = MUCategorySearchRequest(search = query, orderby = "alpha", page = 1, perpage = -1)
+            val jsonBody = Mapper.json.encodeToString(searchRequest)
+            val requestBody = jsonBody.toRequestBody("application/json".toMediaTypeOrNull())
+            val request = Request.Builder()
+                .url("$BASE_URL/categories/search")
+                .post(requestBody)
+                .apply { if (!token.isNullOrBlank()) addHeader("Authorization", "Bearer $token") }
+                .build()
+            val response = withContext(Dispatchers.IO) { httpClient.newCall(request).execute() }
+            val responseBody = extractBody(response)
+            if (!response.isSuccessful || responseBody.isNullOrBlank()) return@tryWithSuspend emptyList()
+            Mapper.parse<MUCategorySearchResponse>(responseBody).results
+                ?.mapNotNull { it.category?.category }
+                ?: emptyList()
+        } ?: emptyList()
+    }
+
+    /**
      * Search for a series by title
      * @param title The title to search for
      * @return Search response with results
@@ -243,6 +335,9 @@ object MangaUpdates {
 
             val seriesDetails = Mapper.parse<MUSeriesRecord>(responseBody)
             Logger.log("MangaUpdates GetSeries: Retrieved details for '${seriesDetails.title}'")
+            // Cache synonyms for search
+            val synonyms = seriesDetails.associated?.mapNotNull { it.title } ?: emptyList()
+            if (synonyms.isNotEmpty()) synonymsCache[seriesDetails.seriesId] = synonyms
             seriesDetails
         }
     }
@@ -495,5 +590,172 @@ object MangaUpdates {
         } catch (_: Exception) {
             null
         }
+    }
+
+    /**
+     * Fetch all entries for a specific list (0=Reading, 1=Planning, 2=Completed, 3=Dropped, 4=Paused).
+     */
+    suspend fun getUserList(listId: Int, page: Int = 1, perPage: Int = -1): MUListResponse? {
+        return tryWithSuspend {
+            if (token.isNullOrBlank()) {
+                Logger.log("MangaUpdates GetUserList: No token available")
+                return@tryWithSuspend null
+            }
+
+            val requestBody = Mapper.json.encodeToString(
+                MUListSearchRequest(page = page, perPage = perPage)
+            ).toRequestBody("application/json".toMediaTypeOrNull())
+
+            val request = Request.Builder()
+                .url("$BASE_URL/lists/$listId/search")
+                .post(requestBody)
+                .addHeader("Authorization", "Bearer $token")
+                .build()
+
+            val response = withContext(Dispatchers.IO) { httpClient.newCall(request).execute() }
+            val responseBody = extractBody(response)
+            if (!response.isSuccessful || responseBody.isNullOrBlank()) {
+                Logger.log("MangaUpdates GetUserList[$listId]: Failed with code ${response.code}")
+                return@tryWithSuspend null
+            }
+
+            val result = Mapper.parse<MUListResponse>(responseBody)
+            Logger.log("MangaUpdates GetUserList[$listId]: ${result.totalHits} hits")
+            result
+        }
+    }
+
+    /**
+     * Update reading progress for a series already in the user's list.
+     * @param seriesId Numeric series ID
+     * @param seriesTitle Series title (used in request body; may be null)
+     * @param listId List to update (0=Reading, 1=Planning, 2=Completed, 3=Dropped, 4=Paused)
+     * @param chapter Chapter progress (null = leave unchanged)
+     * @param volume  Volume progress  (null = leave unchanged)
+     * @return true on success
+     */
+    suspend fun updateProgress(
+        seriesId: Long,
+        seriesTitle: String?,
+        listId: Int,
+        chapter: Int?,
+        volume: Int?
+    ): Boolean {
+        return tryWithSuspend {
+            if (token.isNullOrBlank()) {
+                Logger.log("MangaUpdates UpdateProgress: No token available")
+                return@tryWithSuspend false
+            }
+
+            val payload = listOf(
+                MUProgressUpdateRequest(
+                    series = MUProgressUpdateSeries(id = seriesId, title = seriesTitle),
+                    listId = listId,
+                    status = MUProgressUpdateStatus(volume = volume, chapter = chapter)
+                )
+            )
+
+            val body = Mapper.json.encodeToString(payload)
+                .toRequestBody("application/json".toMediaTypeOrNull())
+
+            val request = Request.Builder()
+                .url("$BASE_URL/lists/series/update")
+                .post(body)
+                .addHeader("Authorization", "Bearer $token")
+                .build()
+
+            val response = withContext(Dispatchers.IO) { httpClient.newCall(request).execute() }
+            val ok = response.isSuccessful
+            Logger.log("MangaUpdates UpdateProgress[$seriesId]: ${response.code}")
+            ok
+        } ?: false
+    }
+
+    /**
+     * Remove a series from all user lists.
+     * @return true on success
+     */
+    suspend fun removeFromList(seriesId: Long): Boolean {
+        return tryWithSuspend {
+            if (token.isNullOrBlank()) {
+                Logger.log("MangaUpdates RemoveFromList: No token available")
+                return@tryWithSuspend false
+            }
+            val payload = listOf(mapOf("series" to mapOf("id" to seriesId)))
+            val body = Mapper.json.encodeToString(payload)
+                .toRequestBody("application/json".toMediaTypeOrNull())
+            val request = Request.Builder()
+                .url("$BASE_URL/lists/series/delete")
+                .post(body)
+                .addHeader("Authorization", "Bearer $token")
+                .build()
+            val response = withContext(Dispatchers.IO) { httpClient.newCall(request).execute() }
+            Logger.log("MangaUpdates RemoveFromList[$seriesId]: ${response.code}")
+            response.isSuccessful
+        } ?: false
+    }
+
+    /**
+     * Fetch all lists for the authenticated user from /v1/lists,
+     * including custom lists.
+     */
+    suspend fun getUserListsMeta(): List<MUUserList> {
+        return tryWithSuspend {
+            if (token.isNullOrBlank()) return@tryWithSuspend emptyList<MUUserList>()
+            val request = Request.Builder()
+                .url("$BASE_URL/lists")
+                .get()
+                .addHeader("Authorization", "Bearer $token")
+                .build()
+            val response = withContext(Dispatchers.IO) { httpClient.newCall(request).execute() }
+            val body = extractBody(response) ?: return@tryWithSuspend emptyList<MUUserList>()
+            Mapper.parse<List<MUUserList>>(body)
+        } ?: emptyList()
+    }
+
+    suspend fun getAllUserLists(): Map<String, List<MUMedia>> {
+        val statusNames = listOf("Reading", "Planning", "Completed", "Dropped", "Paused")
+        val result = mutableMapOf<String, MutableList<MUMedia>>()
+
+        for ((listId, name) in statusNames.withIndex()) {
+            val entries = mutableListOf<MUListEntry>()
+            var page = 1
+            while (true) {
+                val response = getUserList(listId, page) ?: break
+                entries += response.results.orEmpty()
+                val total = response.totalHits ?: 0
+                if (entries.size >= total) break
+                page++
+            }
+            if (entries.isNotEmpty()) {
+                result.getOrPut(name) { mutableListOf() }.addAll(entries.mapNotNull { it.toMUMedia(listId) })
+            }
+        }
+
+        // Fetch custom lists according to user-configured mapping
+        val mappingJson = PrefManager.getVal<String>(PrefName.MuCustomListMapping)
+        if (mappingJson.isNotBlank()) {
+            tryWithSuspend {
+                val mapping = Mapper.json.decodeFromString<Map<String, String>>(mappingJson)
+                for ((listIdStr, targetBucket) in mapping) {
+                    val listId = listIdStr.toIntOrNull() ?: continue
+                    val entries = mutableListOf<MUListEntry>()
+                    var page = 1
+                    while (true) {
+                        val response = getUserList(listId, page) ?: break
+                        entries += response.results.orEmpty()
+                        val total = response.totalHits ?: 0
+                        if (entries.size >= total) break
+                        page++
+                    }
+                    if (entries.isNotEmpty()) {
+                        result.getOrPut(targetBucket) { mutableListOf() }
+                            .addAll(entries.mapNotNull { it.toMUMedia(listId) })
+                    }
+                }
+            }
+        }
+
+        return result.mapValues { it.value.toList() }
     }
 }

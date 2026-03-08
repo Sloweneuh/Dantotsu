@@ -16,6 +16,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
 import ani.dantotsu.R
 import ani.dantotsu.Refresh
+import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.databinding.ActivityListBinding
 import ani.dantotsu.getThemeColor
 import ani.dantotsu.hideSystemBarsExtendView
@@ -36,6 +37,14 @@ class ListActivity : AppCompatActivity() {
     private val scope = lifecycleScope
     private var selectedTabIdx = 0
     private val model: ListViewModel by viewModels()
+    /** Position of the dedicated MangaUpdates aggregate tab in the ViewPager, or -1 if absent. */
+    private var muTabPosition: Int = -1
+    /** Position where the first "Separate" custom MU tab is inserted (before the aggregate tab). */
+    private var muSeparateTabsStart: Int = -1
+    /** Keys of "Separate" custom MU lists that get their own tabs before [muTabPosition]. */
+    private var muSeparateTabs: List<String> = emptyList()
+    private val muStandardKeys = setOf("Reading", "Planning", "Completed", "Dropped", "Paused")
+    private var anime: Boolean = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -71,6 +80,7 @@ class ListActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         val anime = intent.getBooleanExtra("anime", true)
+        this.anime = anime
         binding.listTitle.text = getString(
             R.string.user_list, intent.getStringExtra("username"),
             if (anime) getString(R.string.anime) else getString(R.string.manga)
@@ -89,31 +99,9 @@ class ListActivity : AppCompatActivity() {
         })
 
         model.getLists().observe(this) {
-            val defaultKeys = listOf(
-                "Reading",
-                "Watching",
-                "Completed",
-                "Paused",
-                "Dropped",
-                "Planning",
-                "Favourites",
-                "Rewatching",
-                "Rereading",
-                "All"
-            )
-            val userKeys: Array<String> = resources.getStringArray(R.array.keys)
-
             if (it != null) {
                 binding.listProgressBar.visibility = View.GONE
-                binding.listViewPager.adapter = ListViewPagerAdapter(it.size, false, this)
-                val keys = it.keys.toList()
-                    .map { key -> userKeys.getOrNull(defaultKeys.indexOf(key)) ?: key }
-                val values = it.values.toList()
-                val savedTab = this.selectedTabIdx
-                TabLayoutMediator(binding.listTabLayout, binding.listViewPager) { tab, position ->
-                    tab.text = "${keys[position]} (${values[position].size})"
-                }.attach()
-                binding.listViewPager.setCurrentItem(savedTab, false)
+                buildTabs(it, model.getFilteredMuLists().value)
             }
         }
 
@@ -122,6 +110,13 @@ class ListActivity : AppCompatActivity() {
             if (filters != null) {
                 updateFilterChips(filters)
             }
+        }
+
+        // Update tab counts once MU lists finish loading (or when search filters them)
+        model.getFilteredMuLists().observe(this) { muMap ->
+            if (muMap == null) return@observe
+            val aniMap = model.getLists().value ?: return@observe
+            buildTabs(aniMap, muMap)
         }
 
         val live = Refresh.activity.getOrPut(this.hashCode()) { MutableLiveData(true) }
@@ -358,6 +353,94 @@ class ListActivity : AppCompatActivity() {
                 updateFilterChips(newFilters)
             }
         }
+    }
+
+    private fun buildTabs(
+        aniMap: Map<String, ArrayList<ani.dantotsu.media.Media>>,
+        muMap: Map<String, List<ani.dantotsu.connections.mangaupdates.MUMedia>>?
+    ) {
+        val defaultKeys = listOf(
+            "Reading", "Watching", "Completed", "Paused", "Dropped",
+            "Planning", "Favourites", "Rewatching", "Rereading", "All"
+        )
+        val userKeys: Array<String> = resources.getStringArray(R.array.keys)
+        val aniKeysList = aniMap.keys.toList()
+        val aniValuesList = aniMap.values.toList()
+
+        val showMuTab = !anime && MangaUpdates.token != null
+        val allAniIdx = aniKeysList.indexOf("All")
+        val insertAt = if (allAniIdx >= 0) allAniIdx else aniKeysList.size
+
+        // Only include non-empty MU separate tabs
+        muSeparateTabs = if (showMuTab && muMap != null) {
+            muMap.keys.filter { k -> k !in muStandardKeys && (muMap[k]?.isNotEmpty() == true) }
+        } else emptyList()
+
+        // Include only anilist entries that have at least one item (anilist + matching MU)
+        val aniBeforeIndices = mutableListOf<Int>()
+        val aniAfterIndices = mutableListOf<Int>()
+        for (i in aniKeysList.indices) {
+            val aniKey = aniKeysList[i]
+            val aniCount = aniValuesList[i].size
+            val muCount = when {
+                !showMuTab || muMap == null -> 0
+                aniKey == "All" -> muMap.values.sumOf { it.size }
+                else -> muMap[aniKey]?.size ?: 0
+            }
+            if (aniCount + muCount > 0) {
+                if (i < insertAt) aniBeforeIndices.add(i) else aniAfterIndices.add(i)
+            }
+        }
+        val aniIndices = aniBeforeIndices + aniAfterIndices
+
+        // Show MU aggregate tab only when there are any MU items
+        val totalMu = if (showMuTab && muMap != null) muMap.values.sumOf { it.size } else 0
+        muSeparateTabsStart = if (showMuTab) aniBeforeIndices.size else -1
+        muTabPosition = if (showMuTab && (totalMu > 0 || muSeparateTabs.isNotEmpty()))
+            aniBeforeIndices.size + muSeparateTabs.size else -1
+
+        val totalSize = aniIndices.size + muSeparateTabs.size + (if (muTabPosition >= 0) 1 else 0)
+        val savedTab = selectedTabIdx.coerceIn(0, (totalSize - 1).coerceAtLeast(0))
+
+        binding.listViewPager.adapter = ListViewPagerAdapter(
+            aniIndices, false, this, muTabPosition, muSeparateTabs
+        )
+
+        TabLayoutMediator(binding.listTabLayout, binding.listViewPager) { tab, position ->
+            when {
+                muTabPosition >= 0 && position == muTabPosition -> {
+                    tab.text = "MangaUpdates ($totalMu)"
+                }
+                muTabPosition >= 0 && muSeparateTabsStart >= 0 &&
+                        position in muSeparateTabsStart until muTabPosition -> {
+                    val key = muSeparateTabs[position - muSeparateTabsStart]
+                    tab.text = "$key (${muMap?.get(key)?.size ?: 0})"
+                }
+                muTabPosition >= 0 && position > muTabPosition -> {
+                    val aniIdxInList = position - muSeparateTabs.size - 1
+                    val origIdx = aniIndices[aniIdxInList]
+                    val aniKey = aniKeysList[origIdx]
+                    val muCount = when {
+                        aniKey == "All" -> muMap?.values?.sumOf { it.size } ?: 0
+                        else -> muMap?.get(aniKey)?.size ?: 0
+                    }
+                    val displayKey = userKeys.getOrNull(defaultKeys.indexOf(aniKey)) ?: aniKey
+                    tab.text = "$displayKey (${aniValuesList[origIdx].size + muCount})"
+                }
+                else -> {
+                    val origIdx = aniIndices[position]
+                    val aniKey = aniKeysList[origIdx]
+                    val muCount = when {
+                        !showMuTab || muMap == null -> 0
+                        aniKey == "All" -> muMap.values.sumOf { it.size }
+                        else -> muMap[aniKey]?.size ?: 0
+                    }
+                    val displayKey = userKeys.getOrNull(defaultKeys.indexOf(aniKey)) ?: aniKey
+                    tab.text = "$displayKey (${aniValuesList[origIdx].size + muCount})"
+                }
+            }
+        }.attach()
+        binding.listViewPager.setCurrentItem(savedTab, false)
     }
 
     private fun updateSortIcon(anime: Boolean) {

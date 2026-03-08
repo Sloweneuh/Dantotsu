@@ -6,7 +6,10 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.recyclerview.widget.ConcatAdapter
 import androidx.recyclerview.widget.GridLayoutManager
+import ani.dantotsu.connections.mangaupdates.MUMedia
+import ani.dantotsu.connections.mangaupdates.MUMediaAdapter
 import ani.dantotsu.databinding.FragmentListBinding
 import ani.dantotsu.media.Media
 import ani.dantotsu.media.MediaAdaptor
@@ -19,6 +22,9 @@ class ListFragment : Fragment() {
     private var calendar = false
     private var grid: Boolean? = null
     private var list: MutableList<Media>? = null
+    private var muList: List<MUMedia>? = null
+    private var mediaAdaptor: MediaAdaptor? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         arguments?.let {
@@ -41,15 +47,18 @@ class ListFragment : Fragment() {
         val screenWidth = resources.displayMetrics.run { widthPixels / density }
 
         fun update() {
-            if (grid != null && list != null) {
-                val adapter = MediaAdaptor(if (grid!!) 0 else 1, list!!, requireActivity(), true)
-                binding.listRecyclerView.layoutManager =
-                    GridLayoutManager(
-                        requireContext(),
-                        if (grid!!) (screenWidth / 120f).toInt() else 1
-                    )
-                binding.listRecyclerView.adapter = adapter
-            }
+            val g = grid ?: return
+            val aniList = list ?: return
+            val muItems = muList ?: emptyList()
+
+            val spanCount = if (g) (screenWidth / 120f).toInt() else 1
+            val anilistAdaptor = MediaAdaptor(if (g) 0 else 1, aniList, requireActivity(), true)
+            mediaAdaptor = anilistAdaptor
+            val muAdaptor = MUMediaAdapter(muItems)
+
+            val layoutManager = GridLayoutManager(requireContext(), spanCount)
+            binding.listRecyclerView.layoutManager = layoutManager
+            binding.listRecyclerView.adapter = ConcatAdapter(anilistAdaptor, muAdaptor)
         }
 
         if (calendar) {
@@ -63,11 +72,26 @@ class ListFragment : Fragment() {
             grid = true
         } else {
             val model: ListViewModel by activityViewModels()
-            model.getLists().observe(viewLifecycleOwner) {
-                if (it != null) {
-                    list = it.values.toList().getOrNull(pos!!)
+
+            fun resolveMuList(
+                aniMap: Map<String, *>?,
+                muMap: Map<String, List<MUMedia>>?
+            ): List<MUMedia>? {
+                if (muMap == null) return null
+                val key = aniMap?.keys?.toList()?.getOrNull(pos!!) ?: return null
+                return if (key == "All") muMap.values.flatten() else muMap[key]
+            }
+
+            model.getLists().observe(viewLifecycleOwner) { aniMap ->
+                if (aniMap != null) {
+                    list = aniMap.values.toList().getOrNull(pos!!)
+                    muList = resolveMuList(aniMap, model.getFilteredMuLists().value)
                     update()
                 }
+            }
+            model.getFilteredMuLists().observe(viewLifecycleOwner) { muMap ->
+                muList = resolveMuList(model.getLists().value, muMap)
+                update()
             }
             model.grid.observe(viewLifecycleOwner) {
                 grid = it
@@ -77,8 +101,7 @@ class ListFragment : Fragment() {
     }
 
     fun randomOptionClick() {
-        val adapter = binding.listRecyclerView.adapter as MediaAdaptor
-        adapter.randomOptionClick()
+        mediaAdaptor?.randomOptionClick()
     }
 
     companion object {

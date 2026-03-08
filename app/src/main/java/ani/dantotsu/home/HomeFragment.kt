@@ -31,6 +31,7 @@ import ani.dantotsu.bottomBar
 import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.anilist.AnilistHomeViewModel
 import ani.dantotsu.connections.anilist.getUserId
+import ani.dantotsu.connections.mangaupdates.MUMedia
 import ani.dantotsu.currContext
 import ani.dantotsu.databinding.FragmentHomeBinding
 import ani.dantotsu.home.status.UserStatusAdapter
@@ -826,16 +827,56 @@ class HomeFragment : Fragment() {
             }
         }
 
-        initRecyclerView(
-            model.getMangaContinue(),
-            binding.homeContinueReadingContainer,
-            binding.homeReadingRecyclerView,
-            binding.homeReadingProgressBar,
-            binding.homeReadingEmpty,
-            binding.homeContinueRead,
-            binding.homeContinueReadMore,
-            getString(R.string.continue_reading)
-        )
+        // Combined Continue Reading (Anilist + MU Reading)
+        binding.homeContinueReadingContainer.visibility = View.VISIBLE
+        binding.homeReadingProgressBar.visibility = View.VISIBLE
+        binding.homeReadingRecyclerView.visibility = View.GONE
+        binding.homeReadingEmpty.visibility = View.GONE
+        binding.homeContinueRead.visibility = View.VISIBLE
+        binding.homeContinueReadMore.visibility = View.INVISIBLE
+
+        var mangaContinueData: ArrayList<Media>? = null
+        var muHomeListsData: Map<String, List<ani.dantotsu.connections.mangaupdates.MUMedia>>? = null
+
+        fun renderContinueReading() {
+            val aniItems = mangaContinueData ?: return
+            val muItems = muHomeListsData?.get("Reading") ?: emptyList()
+            binding.homeReadingRecyclerView.visibility = View.GONE
+            binding.homeReadingEmpty.visibility = View.GONE
+            if (aniItems.isNotEmpty() || muItems.isNotEmpty()) {
+                val combined: List<Any> =
+                    (aniItems.map { it to (it.userUpdatedAt ?: 0L) } +
+                     muItems.map { it to (it.updatedAt ?: 0L) })
+                        .sortedByDescending { (_, ts) -> ts }
+                        .map { (item, _) -> item }
+                binding.homeReadingRecyclerView.adapter = MergedReadingAdapter(combined)
+                binding.homeReadingRecyclerView.layoutManager = LinearLayoutManager(
+                    requireContext(), LinearLayoutManager.HORIZONTAL, false
+                )
+                binding.homeContinueReadMore.setOnClickListener { i ->
+                    MediaListViewActivity.passedMedia = aniItems
+                    ContextCompat.startActivity(
+                        i.context, Intent(i.context, MediaListViewActivity::class.java)
+                            .putExtra("title", getString(R.string.continue_reading)), null
+                    )
+                }
+                binding.homeReadingRecyclerView.visibility = View.VISIBLE
+                binding.homeReadingRecyclerView.layoutAnimation =
+                    LayoutAnimationController(setSlideIn(), 0.25f)
+            } else {
+                binding.homeReadingEmpty.visibility = View.VISIBLE
+            }
+            binding.homeContinueReadMore.visibility = View.VISIBLE
+            binding.homeContinueRead.visibility = View.VISIBLE
+            binding.homeContinueReadMore.startAnimation(setSlideUp())
+            binding.homeContinueRead.startAnimation(setSlideUp())
+            binding.homeReadingProgressBar.visibility = View.GONE
+        }
+
+        model.getMangaContinue().observe(viewLifecycleOwner) {
+            mangaContinueData = it
+            renderContinueReading()
+        }
         binding.homeReadingBrowseButton.setOnClickListener {
             bottomBar.selectTabAt(2)
         }
@@ -851,16 +892,60 @@ class HomeFragment : Fragment() {
             getString(R.string.fav_manga)
         )
 
-        initRecyclerView(
-            model.getMangaPlanned(),
-            binding.homePlannedMangaContainer,
-            binding.homePlannedMangaRecyclerView,
-            binding.homePlannedMangaProgressBar,
-            binding.homePlannedMangaEmpty,
-            binding.homePlannedManga,
-            binding.homePlannedMangaMore,
-            getString(R.string.planned_manga)
-        )
+        // Combined Planned Manga (Anilist + MU Planning)
+        binding.homePlannedMangaContainer.visibility = View.VISIBLE
+        binding.homePlannedMangaProgressBar.visibility = View.VISIBLE
+        binding.homePlannedMangaRecyclerView.visibility = View.GONE
+        binding.homePlannedMangaEmpty.visibility = View.GONE
+        binding.homePlannedManga.visibility = View.VISIBLE
+        binding.homePlannedMangaMore.visibility = View.INVISIBLE
+
+        var mangaPlannedData: ArrayList<Media>? = null
+
+        fun renderPlannedManga() {
+            val aniItems = mangaPlannedData ?: return
+            val muItems = muHomeListsData?.get("Planning") ?: emptyList()
+            binding.homePlannedMangaRecyclerView.visibility = View.GONE
+            binding.homePlannedMangaEmpty.visibility = View.GONE
+            if (aniItems.isNotEmpty() || muItems.isNotEmpty()) {
+                val combined: List<Any> =
+                    (aniItems.map { it to (it.userUpdatedAt ?: 0L) } +
+                     muItems.map { it to (it.updatedAt ?: 0L) })
+                        .sortedByDescending { (_, ts) -> ts }
+                        .map { (item, _) -> item }
+                binding.homePlannedMangaRecyclerView.adapter = MergedReadingAdapter(combined)
+                binding.homePlannedMangaRecyclerView.layoutManager = LinearLayoutManager(
+                    requireContext(), LinearLayoutManager.HORIZONTAL, false
+                )
+                binding.homePlannedMangaMore.setOnClickListener { i ->
+                    MediaListViewActivity.passedMedia = aniItems
+                    ContextCompat.startActivity(
+                        i.context, Intent(i.context, MediaListViewActivity::class.java)
+                            .putExtra("title", getString(R.string.planned_manga)), null
+                    )
+                }
+                binding.homePlannedMangaRecyclerView.visibility = View.VISIBLE
+                binding.homePlannedMangaRecyclerView.layoutAnimation =
+                    LayoutAnimationController(setSlideIn(), 0.25f)
+            } else {
+                binding.homePlannedMangaEmpty.visibility = View.VISIBLE
+            }
+            binding.homePlannedMangaMore.visibility = View.VISIBLE
+            binding.homePlannedManga.visibility = View.VISIBLE
+            binding.homePlannedMangaMore.startAnimation(setSlideUp())
+            binding.homePlannedManga.startAnimation(setSlideUp())
+            binding.homePlannedMangaProgressBar.visibility = View.GONE
+        }
+
+        model.getMangaPlanned().observe(viewLifecycleOwner) {
+            mangaPlannedData = it
+            renderPlannedManga()
+        }
+        model.getMuHomeLists().observe(viewLifecycleOwner) {
+            muHomeListsData = it
+            if (mangaContinueData != null) renderContinueReading()
+            if (mangaPlannedData != null) renderPlannedManga()
+        }
         binding.homePlannedMangaBrowseButton.setOnClickListener {
             bottomBar.selectTabAt(2)
         }
@@ -1049,7 +1134,8 @@ class HomeFragment : Fragment() {
 
                     val initHomePage = async(Dispatchers.IO) { model.initHomePage() }
                     val initUserStatus = async(Dispatchers.IO) { model.initUserStatus() }
-                    awaitAll(initHomePage,initUserStatus)
+                    val initMuHomeLists = async(Dispatchers.IO) { model.initMuHomeLists() }
+                    awaitAll(initHomePage, initUserStatus, initMuHomeLists)
 
                     // After home data is refreshed, update the unread display using cached results
                     withContext(Dispatchers.Main) {

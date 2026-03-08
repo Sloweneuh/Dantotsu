@@ -89,7 +89,11 @@ data class Media(
     var streamingEpisodes: List<MediaStreamingEpisode>? = null,
     var idKitsu: String? = null,
 
-    var cameFromContinue: Boolean = false
+    var cameFromContinue: Boolean = false,
+
+    /** Set only for MangaUpdates-sourced media; triggers MU progress update instead of Anilist. */
+    var muSeriesId: Long? = null,
+    var muListId: Int? = null
 ) : Serializable {
 
     constructor(apiMedia: ApiMedia) : this(

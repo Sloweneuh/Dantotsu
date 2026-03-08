@@ -1020,10 +1020,13 @@ class MangaUpdatesInfoFragment : Fragment() {
                 bind.itemTitleAction.visibility = View.VISIBLE
                 bind.itemTitleAction.text = getString(ani.dantotsu.R.string.search_all)
                 bind.itemTitleAction.setOnClickListener {
-                    // Combine all genres with underscores
-                    val allGenres = genreNames.joinToString("_")
-                    val url = "https://www.mangaupdates.com/series?genre=$allGenres"
-                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                    startActivity(
+                        Intent(requireContext(), SearchActivity::class.java).apply {
+                            putExtra("type", "MANGAUPDATES")
+                            putExtra("search", true)
+                            putStringArrayListExtra("genres", ArrayList(genreNames))
+                        }
+                    )
                 }
             }
 
@@ -1040,9 +1043,13 @@ class MangaUpdatesInfoFragment : Fragment() {
                     chip.text = genre
                     chip.isClickable = true
                     chip.setOnClickListener {
-                        // Open MangaUpdates genre search
-                        val url = "https://www.mangaupdates.com/series?genre=$genre"
-                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                        startActivity(
+                            Intent(requireContext(), SearchActivity::class.java).apply {
+                                putExtra("type", "MANGAUPDATES")
+                                putExtra("search", true)
+                                putExtra("genre", genre)
+                            }
+                        )
                     }
                     chip.setOnLongClickListener {
                         copyToClipboard(genre)

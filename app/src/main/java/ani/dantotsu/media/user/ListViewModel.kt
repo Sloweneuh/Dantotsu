@@ -4,6 +4,8 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import ani.dantotsu.connections.anilist.Anilist
+import ani.dantotsu.connections.mangaupdates.MUMedia
+import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.media.Media
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
@@ -18,12 +20,27 @@ class ListViewModel : ViewModel() {
     val currentFilters = MutableLiveData<ListFilters>(ListFilters())
     private var currentSearchQuery: String = ""
 
+    private val muLists = MutableLiveData<Map<String, List<MUMedia>>>()
+    fun getMuLists(): LiveData<Map<String, List<MUMedia>>> = muLists
+
+    private val filteredMuLists = MutableLiveData<Map<String, List<MUMedia>>>()
+    fun getFilteredMuLists(): LiveData<Map<String, List<MUMedia>>> = filteredMuLists
+
     fun getLists(): LiveData<MutableMap<String, ArrayList<Media>>> = lists
 
     suspend fun loadLists(anime: Boolean, userId: Int, sortOrder: String? = null) {
         tryWithSuspend {
             val res = Anilist.query.getMediaLists(anime, userId, sortOrder)
             unfilteredLists.postValue(res)
+
+            // Load MangaUpdates lists alongside Anilist for manga
+            if (!anime && MangaUpdates.token != null &&
+                ani.dantotsu.settings.saving.PrefManager.getVal<Boolean>(ani.dantotsu.settings.saving.PrefName.MangaUpdatesListEnabled)
+            ) {
+                val muResult = MangaUpdates.getAllUserLists()
+                muLists.postValue(muResult)
+                filteredMuLists.postValue(muResult)
+            }
 
             // Reapply current filters if they exist
             val filters = currentFilters.value
@@ -187,6 +204,8 @@ class ListViewModel : ViewModel() {
         currentSearchQuery = query  // Save current search query
 
         if (query.isEmpty()) {
+            // Restore full MU list when search is cleared
+            filteredMuLists.postValue(muLists.value)
             // When search is cleared, reapply current filters if they exist
             val filters = currentFilters.value
             if (filters != null && !filters.isEmpty()) {
@@ -210,6 +229,18 @@ class ListViewModel : ViewModel() {
 
     private fun performSearch(query: String, filters: ListFilters?) {
         val q = normalize(query)
+
+        // Filter MU items by title or synonyms
+        val rawMuLists = muLists.value
+        if (rawMuLists != null) {
+            filteredMuLists.postValue(rawMuLists.mapValues { (_, list) ->
+                list.filter { mu ->
+                    normalize(mu.title).contains(q) ||
+                        MangaUpdates.synonymsCache[mu.id]
+                            ?.any { normalize(it).contains(q) } == true
+                }
+            })
+        }
 
         // Determine which list to search: if filters are active, search filtered list; otherwise search all
         val baseList = if (filters != null && !filters.isEmpty()) {
@@ -239,6 +270,7 @@ class ListViewModel : ViewModel() {
     }
 
     fun unfilterLists() {
+        filteredMuLists.postValue(muLists.value)
         // When unfiltering for search, check if we should reapply saved filters
         val filters = currentFilters.value
         if (filters != null && !filters.isEmpty()) {

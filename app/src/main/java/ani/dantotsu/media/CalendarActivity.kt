@@ -92,7 +92,7 @@ class CalendarActivity : AppCompatActivity() {
         model.getCalendar().observe(this) {
             if (it != null) {
                 binding.listProgressBar.visibility = View.GONE
-                binding.listViewPager.adapter = ListViewPagerAdapter(it.size, true, this)
+                binding.listViewPager.adapter = ListViewPagerAdapter((0 until it.size).toList(), true, this)
                 val keys = it.keys.toList()
                 val values = it.values.toList()
                 val savedTab = this.selectedTabIdx

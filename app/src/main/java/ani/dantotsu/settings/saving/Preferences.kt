@@ -70,6 +70,9 @@ enum class PrefName(val data: Pref) {
     ComickEnabled(Pref(Location.General, Boolean::class, true)),
     MalEnabled(Pref(Location.General, Boolean::class, true)),
     MangaUpdatesEnabled(Pref(Location.General, Boolean::class, true)),
+    MangaUpdatesListEnabled(Pref(Location.General, Boolean::class, true)),
+    MuCustomListMapping(Pref(Location.General, String::class, "")),
+    MuCustomListTitles(Pref(Location.General, String::class, "")),
     MalSyncInfoEnabled(Pref(Location.General, Boolean::class, true)),
     MalSyncCheckMode(Pref(Location.General, String::class, "both")),
 

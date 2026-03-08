@@ -296,6 +296,17 @@ class SettingsAccountActivity : AppCompatActivity() {
                 ),
                 Settings(
                     type = 1,
+                    name = getString(R.string.mangaupdates_settings),
+                    desc = getString(R.string.mangaupdates_settings_desc),
+                    icon = R.drawable.ic_round_mangaupdates_24,
+                    onClick = {
+                        startActivity(Intent(context, MangaUpdatesSettingsActivity::class.java))
+                    },
+                    isActivity = true,
+                    isVisible = MangaUpdates.token != null
+                ),
+                Settings(
+                    type = 1,
                     name = getString(R.string.connections_settings),
                     desc = getString(R.string.connections_desc),
                     icon = R.drawable.ic_link_2_24,

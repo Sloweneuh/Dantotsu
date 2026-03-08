@@ -132,6 +132,8 @@
         <activity android:name=".others.calc.CalcActivity"
             android:parentActivityName=".MainActivity" />
         <activity android:name=".settings.AnilistSettingsActivity"/>
+        <activity android:name=".settings.MangaUpdatesSettingsActivity"/>
+        <activity android:name=".settings.MUCustomListMappingActivity"/>
         <activity android:name=".settings.UserInterfaceSettingsActivity" />
         <activity android:name=".settings.PlayerSettingsActivity" />
         <activity android:name=".settings.ReaderSettingsActivity" />
@@ -236,6 +238,7 @@
             android:name=".media.CalendarActivity"
             android:parentActivityName=".MainActivity" />
         <activity android:name=".media.user.ListActivity" />
+        <activity android:name=".connections.mangaupdates.MUMediaDetailsActivity" />
         <activity
             android:name=".profile.SingleStatActivity"
             android:parentActivityName=".profile.ProfileActivity" />

@@ -52,14 +52,6 @@ class SettingsConnectionsActivity : AppCompatActivity() {
             ),
             Settings(
                 type = 2,
-                name = getString(R.string.disable_mangaupdates),
-                desc = getString(R.string.disable_mangaupdates_desc),
-                icon = R.drawable.ic_round_mangaupdates_24,
-                isChecked = PrefManager.getVal<Boolean>(PrefName.MangaUpdatesEnabled),
-                switch = { isChecked, _ -> PrefManager.setVal(PrefName.MangaUpdatesEnabled, isChecked) }
-            ),
-            Settings(
-                type = 2,
                 name = getString(R.string.disable_malsync),
                 desc = getString(R.string.disable_malsync_desc),
                 icon = R.drawable.ic_malsync,
