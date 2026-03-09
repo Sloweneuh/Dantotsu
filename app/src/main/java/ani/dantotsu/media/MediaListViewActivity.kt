@@ -12,9 +12,11 @@ import androidx.core.text.HtmlCompat
 import androidx.core.view.updateLayoutParams
 import androidx.recyclerview.widget.GridLayoutManager
 import ani.dantotsu.R
+import ani.dantotsu.connections.mangaupdates.MUMedia
 import ani.dantotsu.databinding.ActivityMediaListViewBinding
 import ani.dantotsu.getThemeColor
 import ani.dantotsu.hideSystemBarsExtendView
+import ani.dantotsu.home.MergedReadingAdapter
 import ani.dantotsu.initActivity
 import ani.dantotsu.others.CustomBottomDialog
 import ani.dantotsu.others.getSerialized
@@ -85,6 +87,9 @@ class MediaListViewActivity : AppCompatActivity() {
             passedMedia ?: intent.getSerialized("media") as? ArrayList<Media> ?: ArrayList()
         if (passedMedia != null) passedMedia = null
 
+        val muMediaList: ArrayList<MUMedia> = passedMuMedia ?: arrayListOf()
+        if (passedMuMedia != null) passedMuMedia = null
+
         // Store unread info locally for use in changeView
         val localUnreadInfo = passedUnreadInfo
         if (passedUnreadInfo != null) passedUnreadInfo = null
@@ -93,30 +98,47 @@ class MediaListViewActivity : AppCompatActivity() {
         val localUnreleasedInfo = passedUnreleasedInfo
         if (passedUnreleasedInfo != null) passedUnreleasedInfo = null
 
+        // Build a timestamp-sorted merged list when MU items are present
+        val combinedItems: List<Any>? = if (muMediaList.isNotEmpty()) {
+            (mediaList.map { it to (it.userUpdatedAt ?: 0L) } +
+             muMediaList.map { it to (it.updatedAt ?: 0L) })
+                .sortedByDescending { (_, ts) -> ts }
+                .map { (item, _) -> item }
+        } else null
+
         val view = PrefManager.getCustomVal("mediaView", 0)
-        var mediaView: View = when (view) {
+        var mediaView: android.widget.ImageView = when (view) {
             1 -> binding.mediaList
             0 -> binding.mediaGrid
             else -> binding.mediaGrid
         }
 
-        // Set initial button states - selected button at full alpha, other at 0.33f
+        // Set initial button states - selected button fully opaque, other at ~33%
         when (view) {
             1 -> {
-                binding.mediaList.alpha = 1f
-                binding.mediaGrid.alpha = 0.33f
+                binding.mediaList.imageAlpha = 255
+                binding.mediaGrid.imageAlpha = 84
             }
             else -> {
-                binding.mediaGrid.alpha = 1f
-                binding.mediaList.alpha = 0.33f
+                binding.mediaGrid.imageAlpha = 255
+                binding.mediaList.imageAlpha = 84
             }
         }
 
-        fun changeView(mode: Int, current: View) {
-            mediaView.alpha = 0.33f
+        fun changeView(mode: Int, current: android.widget.ImageView) {
+            mediaView.imageAlpha = 84
             mediaView = current
-            current.alpha = 1f
+            current.imageAlpha = 255
             PrefManager.setCustomVal("mediaView", mode)
+
+            if (combinedItems != null) {
+                binding.mediaRecyclerView.adapter = MergedReadingAdapter(combinedItems, mode)
+                binding.mediaRecyclerView.layoutManager = GridLayoutManager(
+                    this,
+                    if (mode == 1) 1 else (screenWidth / 120f).toInt()
+                )
+                return
+            }
 
             // Use custom adapter based on what info we have
             when {
@@ -144,15 +166,18 @@ class MediaListViewActivity : AppCompatActivity() {
         binding.mediaGrid.setOnClickListener {
             changeView(0, binding.mediaGrid)
         }
-        val text = "${intent.getStringExtra("title")} (${mediaList.count()})"
+        val totalCount = combinedItems?.count() ?: mediaList.count()
+        val text = "${intent.getStringExtra("title")} ($totalCount)"
         binding.listTitle.text = text
 
         binding.listBack.setOnClickListener {
             finish()
         }
 
-        // Check if we have unread chapter info or unreleased episode info to display
-        when {
+        // Initial adapter setup
+        if (combinedItems != null) {
+            binding.mediaRecyclerView.adapter = MergedReadingAdapter(combinedItems, view)
+        } else when {
             localUnreadInfo != null -> {
                 // Use custom adapter for unread chapters (manga)
                 binding.mediaRecyclerView.adapter = ani.dantotsu.home.UnreadChaptersAdapter(mediaList, localUnreadInfo, view)
@@ -174,6 +199,7 @@ class MediaListViewActivity : AppCompatActivity() {
 
     companion object {
         var passedMedia: ArrayList<Media>? = null
+        var passedMuMedia: ArrayList<MUMedia>? = null
         var passedUnreadInfo: Map<Int, ani.dantotsu.connections.malsync.UnreadChapterInfo>? = null
         var passedUnreleasedInfo: Map<Int, ani.dantotsu.connections.malsync.UnreleasedEpisodeInfo>? = null
         var passedDescription: String? = null

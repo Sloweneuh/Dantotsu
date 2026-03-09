@@ -26,6 +26,7 @@ import ani.dantotsu.parsers.HAnimeSources
 import ani.dantotsu.parsers.HMangaSources
 import ani.dantotsu.parsers.MangaSources
 import ani.dantotsu.px
+import ani.dantotsu.stripSpansOnPaste
 import ani.dantotsu.tryWithSuspend
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -262,6 +263,12 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
 
                                 // 5) Add Comick English titles
                                 list.addAll(comickTitles)
+
+                                // 6) Add MangaUpdates associated/synonym titles
+                                model.mangaUpdatesSeries.value?.associated
+                                    ?.mapNotNull { it.title?.trim() }
+                                    ?.filter { it.isNotBlank() }
+                                    ?.forEach { if (!list.contains(it)) list.add(it) }
                             }
                         } catch (_: Throwable) {
                         }
@@ -320,6 +327,7 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
                     }
                 }
 
+                binding.searchBarText.stripSpansOnPaste()
                 binding.searchBarText.setOnEditorActionListener { _, actionId, _ ->
                     return@setOnEditorActionListener when (actionId) {
                         EditorInfo.IME_ACTION_SEARCH -> {

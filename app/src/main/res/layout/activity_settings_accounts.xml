@@ -340,6 +340,15 @@
 
             </LinearLayout>
 
+            <ImageView
+                android:id="@+id/settingsMangaUpdatesHelp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="@string/account_help"
+                android:padding="16dp"
+                android:src="@drawable/ic_round_help_24"
+                app:tint="?attr/colorPrimary" />
+
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/settingsMangaUpdatesAvatarContainer"
                 android:layout_width="51dp"

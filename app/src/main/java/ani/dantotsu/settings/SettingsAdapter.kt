@@ -41,6 +41,10 @@ class SettingsAdapter(private val settings: ArrayList<Settings>) :
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         val settings = settings[position]
+        holder.itemView.visibility = if (settings.isVisible) View.VISIBLE else View.GONE
+        holder.itemView.layoutParams = holder.itemView.layoutParams?.apply {
+            height = if (settings.isVisible) ViewGroup.LayoutParams.WRAP_CONTENT else 0
+        }
         when (settings.type) {
             1 -> {
                 val b = (holder as SettingsViewHolder).binding
@@ -60,7 +64,6 @@ class SettingsAdapter(private val settings: ArrayList<Settings>) :
                     settings.onLongClick?.invoke()
                     true
                 }
-                b.settingsLayout.visibility = if (settings.isVisible) View.VISIBLE else View.GONE
                 b.settingsIconRight.visibility =
                     if (settings.isActivity) View.VISIBLE else View.GONE
                 b.attachView.visibility = if (settings.attach != null) View.VISIBLE else View.GONE
@@ -86,7 +89,6 @@ class SettingsAdapter(private val settings: ArrayList<Settings>) :
                     settings.onLongClick?.invoke()
                     true
                 }
-                b.settingsLayout.visibility = if (settings.isVisible) View.VISIBLE else View.GONE
                 settings.attachToSwitch?.invoke(b)
             }
         }

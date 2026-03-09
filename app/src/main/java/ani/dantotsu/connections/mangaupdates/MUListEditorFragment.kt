@@ -10,8 +10,6 @@ import androidx.core.view.updateLayoutParams
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import ani.dantotsu.BottomSheetDialogFragment
-import ani.dantotsu.InputFilterMinMax
-import android.text.InputFilter.LengthFilter
 import ani.dantotsu.R
 import ani.dantotsu.Refresh
 import ani.dantotsu.databinding.BottomSheetMediaListBinding
@@ -112,16 +110,7 @@ class MUListEditorFragment : BottomSheetDialogFragment() {
         // Chapter progress
         val latestChapter = muMedia.latestChapter
         binding.mediaListProgress.setText(muMedia.userChapter?.toString() ?: "")
-        if (latestChapter != null && latestChapter > 0) {
-            binding.mediaListProgress.filters =
-                arrayOf(
-                    InputFilterMinMax(0.0, latestChapter.toDouble(), binding.mediaListStatus),
-                    LengthFilter(latestChapter.toString().length)
-                )
-            binding.mediaListProgressLayout.suffixText = " / $latestChapter / ??"
-        } else {
-            binding.mediaListProgressLayout.suffixText = " / ??"
-        }
+        binding.mediaListProgressLayout.suffixText = if (latestChapter != null && latestChapter > 0) " / $latestChapter / ??" else " / ??"
         binding.mediaListProgressLayout.suffixTextView.updateLayoutParams {
             height = ViewGroup.LayoutParams.MATCH_PARENT
         }
@@ -130,10 +119,7 @@ class MUListEditorFragment : BottomSheetDialogFragment() {
         // +1 button
         binding.mediaListIncrement.setOnClickListener {
             val current = binding.mediaListProgress.text.toString().toIntOrNull() ?: 0
-            val cap = latestChapter
-            if (cap == null || current < cap) {
-                binding.mediaListProgress.setText("${current + 1}")
-            }
+            binding.mediaListProgress.setText("${current + 1}")
         }
 
         // Save

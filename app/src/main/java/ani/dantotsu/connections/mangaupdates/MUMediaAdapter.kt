@@ -60,7 +60,7 @@ class MUMediaAdapter(private val items: List<MUMedia>) :
                 scope.launch {
                     val url = withContext(Dispatchers.IO) {
                         MangaUpdates.getSeriesDetails(item.id)
-                            ?.image?.url?.run { thumb ?: original }
+                            ?.image?.url?.run { original ?: thumb }
                     }
                     coverCache[item.id] = url
                     fetchingIds.remove(item.id)

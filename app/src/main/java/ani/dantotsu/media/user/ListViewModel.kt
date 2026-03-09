@@ -7,6 +7,7 @@ import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.mangaupdates.MUMedia
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.media.Media
+import ani.dantotsu.media.user.TrackerFilter
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.tryWithSuspend
@@ -26,33 +27,48 @@ class ListViewModel : ViewModel() {
     private val filteredMuLists = MutableLiveData<Map<String, List<MUMedia>>>()
     fun getFilteredMuLists(): LiveData<Map<String, List<MUMedia>>> = filteredMuLists
 
+    /** Synchronous backing store for MU data — updated before postValue so reads are never stale. */
+    private var rawMuData: Map<String, List<MUMedia>>? = null
+
+    /** The sort order that was last passed to [loadLists], used to re-apply MU sorting. */
+    private var activeSortOrder: String? = null
+
     fun getLists(): LiveData<MutableMap<String, ArrayList<Media>>> = lists
 
     suspend fun loadLists(anime: Boolean, userId: Int, sortOrder: String? = null) {
         tryWithSuspend {
+            activeSortOrder = sortOrder
             val res = Anilist.query.getMediaLists(anime, userId, sortOrder)
             unfilteredLists.postValue(res)
 
-            // Load MangaUpdates lists alongside Anilist for manga
-            if (!anime && MangaUpdates.token != null &&
+            // Load MangaUpdates lists alongside Anilist for manga — only for the logged-in user
+            if (!anime && userId == ani.dantotsu.connections.anilist.Anilist.userid &&
+                MangaUpdates.token != null &&
                 ani.dantotsu.settings.saving.PrefManager.getVal<Boolean>(ani.dantotsu.settings.saving.PrefName.MangaUpdatesListEnabled)
             ) {
                 val muResult = MangaUpdates.getAllUserLists()
-                muLists.postValue(muResult)
-                filteredMuLists.postValue(muResult)
+                val sortedMuResult = sortMuLists(muResult, sortOrder)
+                rawMuData = sortedMuResult    // synchronous — always up-to-date
+                muLists.postValue(sortedMuResult)  // async notification for observers
             }
 
-            // Reapply current filters if they exist
-            val filters = currentFilters.value
-            if (filters != null && !filters.isEmpty()) {
-                val filteredLists = res.mapValues { entry ->
-                    entry.value.filter { media ->
-                        matchesFilters(media, filters)
-                    }.let { ArrayList(it) }
-                }.toMutableMap()
-                lists.postValue(filteredLists)
+            // Reapply search + filters so any active UI state is preserved after a refresh
+            if (currentSearchQuery.isNotEmpty()) {
+                performSearch(currentSearchQuery, currentFilters.value)
             } else {
-                lists.postValue(res)
+                val filters = currentFilters.value
+                if (filters != null && !filters.isEmpty()) {
+                    val filteredLists = res.mapValues { entry ->
+                        entry.value.filter { media ->
+                            matchesFilters(media, filters)
+                        }.let { ArrayList(it) }
+                    }.toMutableMap()
+                    lists.postValue(filteredLists)
+                } else {
+                    lists.postValue(res)
+                }
+                // No active search: show all MU items unfiltered
+                filteredMuLists.postValue(rawMuData ?: emptyMap())
             }
         }
     }
@@ -69,6 +85,27 @@ class ListViewModel : ViewModel() {
             ArrayList(list.reversed())
         }.toMutableMap()
         unfilteredLists.postValue(reversedUnfiltered)
+
+        // Reverse MU lists too when sorted by updatedAt
+        if (activeSortOrder?.startsWith("updatedAt") == true) {
+            rawMuData = rawMuData?.mapValues { (_, list) -> list.reversed() }
+            muLists.postValue(rawMuData ?: emptyMap())
+            filteredMuLists.postValue(
+                filteredMuLists.value?.mapValues { (_, list) -> list.reversed() } ?: emptyMap()
+            )
+        }
+    }
+
+    private fun sortMuLists(
+        data: Map<String, List<MUMedia>>,
+        sortOrder: String?
+    ): Map<String, List<MUMedia>> {
+        if (sortOrder?.startsWith("updatedAt") != true) return data
+        val descending = !sortOrder.endsWith("_asc")
+        return data.mapValues { (_, list) ->
+            if (descending) list.sortedByDescending { it.updatedAt ?: 0L }
+            else list.sortedBy { it.updatedAt ?: 0L }
+        }
     }
 
     fun applyFilters(filters: ListFilters) {
@@ -83,18 +120,31 @@ class ListViewModel : ViewModel() {
         // No active search, just apply filters
         if (filters.isEmpty()) {
             lists.postValue(unfilteredLists.value)
+            filteredMuLists.postValue(rawMuData ?: emptyMap())
             return
         }
 
         val currentLists = unfilteredLists.value ?: return
 
-        val filteredLists = currentLists.mapValues { entry ->
-            entry.value.filter { media ->
-                matchesFilters(media, filters)
-            }.let { ArrayList(it) }
-        }.toMutableMap()
-
+        // Anilist items: hidden entirely when MU-only tracker filter is active
+        val filteredLists = if (filters.trackerFilter == TrackerFilter.MU_ONLY) {
+            currentLists.mapValues { ArrayList<Media>() }.toMutableMap()
+        } else {
+            currentLists.mapValues { entry ->
+                entry.value.filter { media ->
+                    matchesFilters(media, filters)
+                }.let { ArrayList(it) }
+            }.toMutableMap()
+        }
         lists.postValue(filteredLists)
+
+        // MU items: hidden when AniList-only tracker filter is active, or when any AniList-only filter is active
+        val filteredMu = if (filters.trackerFilter == TrackerFilter.ANILIST_ONLY || filters.hasAnilistOnlyFilters()) {
+            emptyMap()
+        } else {
+            rawMuData ?: emptyMap()
+        }
+        filteredMuLists.postValue(filteredMu)
     }
 
     private fun matchesFilters(media: Media, filters: ListFilters): Boolean {
@@ -204,10 +254,12 @@ class ListViewModel : ViewModel() {
         currentSearchQuery = query  // Save current search query
 
         if (query.isEmpty()) {
-            // Restore full MU list when search is cleared
-            filteredMuLists.postValue(muLists.value)
-            // When search is cleared, reapply current filters if they exist
+            // Restore MU list respecting tracker filter and AniList-only filters
             val filters = currentFilters.value
+            val hideMu = filters?.trackerFilter == TrackerFilter.ANILIST_ONLY ||
+                filters?.hasAnilistOnlyFilters() == true
+            filteredMuLists.postValue(if (hideMu) emptyMap() else rawMuData ?: emptyMap())
+            // When search is cleared, reapply current filters if they exist
             if (filters != null && !filters.isEmpty()) {
                 // Don't call applyFilters here to avoid resetting currentSearchQuery
                 val currentLists = unfilteredLists.value ?: return
@@ -230,16 +282,30 @@ class ListViewModel : ViewModel() {
     private fun performSearch(query: String, filters: ListFilters?) {
         val q = normalize(query)
 
-        // Filter MU items by title or synonyms
-        val rawMuLists = muLists.value
+        // Filter MU items by title or synonyms (skip when AniList-only tracker or AniList-only filters are active)
+        val rawMuLists = rawMuData
         if (rawMuLists != null) {
-            filteredMuLists.postValue(rawMuLists.mapValues { (_, list) ->
-                list.filter { mu ->
-                    normalize(mu.title).contains(q) ||
-                        MangaUpdates.synonymsCache[mu.id]
-                            ?.any { normalize(it).contains(q) } == true
+            val hideMu = filters?.trackerFilter == TrackerFilter.ANILIST_ONLY ||
+                filters?.hasAnilistOnlyFilters() == true
+            val muResult = if (hideMu) {
+                emptyMap()
+            } else {
+                rawMuLists.mapValues { (_, list) ->
+                    list.filter { mu ->
+                        normalize(mu.title).contains(q) ||
+                            MangaUpdates.synonymsCache[mu.id]
+                                ?.any { normalize(it).contains(q) } == true
+                    }
                 }
-            })
+            }
+            filteredMuLists.postValue(muResult)
+        }
+
+        // If MU-only, suppress all Anilist results
+        if (filters?.trackerFilter == TrackerFilter.MU_ONLY) {
+            val currentLists = unfilteredLists.value ?: return
+            lists.postValue(currentLists.mapValues { ArrayList<Media>() }.toMutableMap())
+            return
         }
 
         // Determine which list to search: if filters are active, search filtered list; otherwise search all

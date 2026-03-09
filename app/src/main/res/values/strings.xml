@@ -195,6 +195,17 @@
     <string name="anilist_settings">Anilist Settings</string>
     <string name="mangaupdates_settings">MangaUpdates Settings</string>
     <string name="mangaupdates_settings_desc">Configure MangaUpdates integration</string>
+    <string name="mangaupdates_account_help">How does MangaUpdates work\?</string>
+    <string name="full_mangaupdates_account_help">
+        Anilist doesn\'t have an entry for every manga out there, and that\'s where MangaUpdates comes in. By logging in with your MangaUpdates account, Dantotsu can fetch additional manga details and reading lists from MangaUpdates to complement the data from Anilist.
+        \n\n Logging in with your MangaUpdates account adds the following features:
+        \n - Search for manga on MangaUpdates and add them to your MangaUpdates lists
+        \n - MangaUpdates lists are shown alongside Anilist lists
+        \n - Reading progress is tracked to MangaUpdates (separately from Anilist progress)
+        \n - MangaUpdates info tab for Anilist manga with additional manga details
+        \n\n The MangaUpdates API is far more limited than Anilist\'s, so some features might be slow or more limited compared to the MangaUpdates website.
+        \n\n *Note that MangaUpdates integration is optional and only adds additional features for manga. Dantotsu will continue to work perfectly fine without logging in to MangaUpdates.*
+    </string>
     <string name="connections_settings">Connections</string>
     <string name="connections_desc">Enable or disable external connections and info tabs</string>
     <string name="disable_comick">Enable Comick</string>
@@ -794,6 +805,11 @@
     <string name="filter_source">"Source : %1$s"</string>
     <string name="filter_format">"Format : %1$s"</string>
     <string name="filter_country">"Country : %1$s"</string>
+    <string name="tracker">Tracker</string>
+    <string name="filter_tracker">"Tracker : %1$s"</string>
+    <string name="filter_tracker_both">Both</string>
+    <string name="filter_tracker_anilist">AniList</string>
+    <string name="filter_tracker_mu">MangaUpdates</string>
     <string name="filter_sort">"Sort : %1$s"</string>
     <string name="filter_exclude">"Not %1$s"</string>
     <string name="search_by_image">Search by Image</string>

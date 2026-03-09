@@ -136,7 +136,7 @@ data class Media(
         this.isListPrivate = mediaList.private ?: false
         this.userScore = mediaList.score?.toInt() ?: 0
         this.userStatus = mediaList.status?.toString()
-        this.userUpdatedAt = mediaList.updatedAt?.toLong()
+        this.userUpdatedAt = mediaList.updatedAt?.toLong()?.times(1000)
         this.genres =
             mediaList.media?.genres?.toMutableList() as? ArrayList<String>? ?: arrayListOf()
         // Extract additional fields from media object

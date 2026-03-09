@@ -43,6 +43,7 @@ import ani.dantotsu.media.MediaDetailsActivity
 import ani.dantotsu.media.MediaType
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.setSafeOnClickListener
+import ani.dantotsu.stripSpansOnPaste
 import ani.dantotsu.settings.SettingsDialogFragment
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
@@ -108,6 +109,7 @@ class OfflineAnimeFragment : Fragment(), OfflineAnimeSearchListener {
         materialCardView.setCardBackgroundColor((color and 0x00FFFFFF) or 0x28000000)
 
         val searchView = view.findViewById<AutoCompleteTextView>(R.id.animeSearchBarText)
+        searchView.stripSpansOnPaste()
         searchView.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) {
             }

@@ -855,6 +855,7 @@ class HomeFragment : Fragment() {
                 )
                 binding.homeContinueReadMore.setOnClickListener { i ->
                     MediaListViewActivity.passedMedia = aniItems
+                    MediaListViewActivity.passedMuMedia = ArrayList(muItems)
                     ContextCompat.startActivity(
                         i.context, Intent(i.context, MediaListViewActivity::class.java)
                             .putExtra("title", getString(R.string.continue_reading)), null
@@ -919,6 +920,7 @@ class HomeFragment : Fragment() {
                 )
                 binding.homePlannedMangaMore.setOnClickListener { i ->
                     MediaListViewActivity.passedMedia = aniItems
+                    MediaListViewActivity.passedMuMedia = ArrayList(muItems)
                     ContextCompat.startActivity(
                         i.context, Intent(i.context, MediaListViewActivity::class.java)
                             .putExtra("title", getString(R.string.planned_manga)), null

@@ -32,6 +32,12 @@ const val PREF_MU_LAST_READ_PREFIX = "mu_last_read_"
 fun MUListEntry.toMUMedia(listId: Int): MUMedia? {
     val series = record?.series ?: return null
     val savedTs = PrefManager.getNullableCustomVal<Long>("$PREF_MU_LAST_READ_PREFIX${series.id}", null, Long::class.java)
+    // Server-side timestamp (Unix seconds → ms); present on all devices after a list fetch
+    val serverTs = record.timeAdded?.timestamp?.let { it * 1000L }
+    val updatedAt = when {
+        savedTs != null && serverTs != null -> maxOf(savedTs, serverTs)
+        else -> savedTs ?: serverTs
+    }
     return MUMedia(
         id = series.id,
         title = series.title,
@@ -42,6 +48,6 @@ fun MUListEntry.toMUMedia(listId: Int): MUMedia? {
         latestChapter = metadata?.series?.latestChapter,
         bayesianRating = metadata?.series?.bayesianRating,
         priority = record.priority,
-        updatedAt = savedTs
+        updatedAt = updatedAt
     )
 }

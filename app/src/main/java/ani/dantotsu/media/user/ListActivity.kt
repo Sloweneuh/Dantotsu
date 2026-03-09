@@ -16,6 +16,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
 import ani.dantotsu.R
 import ani.dantotsu.Refresh
+import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.databinding.ActivityListBinding
 import ani.dantotsu.getThemeColor
@@ -23,6 +24,7 @@ import ani.dantotsu.hideSystemBarsExtendView
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.statusBarHeight
+import ani.dantotsu.stripSpansOnPaste
 import ani.dantotsu.themes.ThemeManager
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
@@ -236,6 +238,7 @@ class ListActivity : AppCompatActivity() {
             // will trigger searchLists("") which handles filter reapplication
         }
 
+        binding.searchViewText.stripSpansOnPaste()
         binding.searchViewText.addTextChangedListener {
             model.searchLists(binding.searchViewText.text.toString())
         }
@@ -349,6 +352,22 @@ class ListActivity : AppCompatActivity() {
         if (filters.yearRange != Pair(1970, 2028)) {
             addFilterChip("Years: ${filters.yearRange.first}-${filters.yearRange.second}", "YearRange") {
                 val newFilters = filters.copy(yearRange = Pair(1970, 2028))
+                model.applyFilters(newFilters)
+                updateFilterChips(newFilters)
+            }
+        }
+
+        // Add tracker chip (manga + logged-in user + MU account only)
+        if (!anime && filters.trackerFilter != TrackerFilter.BOTH &&
+            MangaUpdates.token != null && intent.getIntExtra("userId", 0) == Anilist.userid
+        ) {
+            val label = when (filters.trackerFilter) {
+                TrackerFilter.ANILIST_ONLY -> getString(R.string.filter_tracker_anilist)
+                TrackerFilter.MU_ONLY     -> getString(R.string.filter_tracker_mu)
+                else                      -> ""
+            }
+            addFilterChip(getString(R.string.filter_tracker, label), "Tracker") {
+                val newFilters = filters.copy(trackerFilter = TrackerFilter.BOTH)
                 model.applyFilters(newFilters)
                 updateFilterChips(newFilters)
             }

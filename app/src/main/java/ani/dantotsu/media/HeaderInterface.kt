@@ -8,6 +8,7 @@ import android.view.animation.AlphaAnimation
 import android.view.animation.Animation
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.databinding.ItemSearchHeaderBinding
+import ani.dantotsu.stripSpansOnPaste
 
 abstract class HeaderInterface : RecyclerView.Adapter<HeaderInterface.SearchHeaderViewHolder>() {
     private val itemViewType = 6969
@@ -20,6 +21,7 @@ abstract class HeaderInterface : RecyclerView.Adapter<HeaderInterface.SearchHead
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SearchHeaderViewHolder {
         val binding =
             ItemSearchHeaderBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+        binding.searchBarText.stripSpansOnPaste()
         return SearchHeaderViewHolder(binding)
     }
 

@@ -23,6 +23,7 @@ import ani.dantotsu.navBarHeight
 import ani.dantotsu.px
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
+import ani.dantotsu.stripSpansOnPaste
 import ani.dantotsu.util.Logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -472,6 +473,7 @@ class MangaUpdatesInfoFragment : Fragment() {
                     )
             val searchBar =
                     searchView.findViewById<android.widget.AutoCompleteTextView>(R.id.searchBarText)
+            searchBar.stripSpansOnPaste()
             val searchProgress =
                     searchView.findViewById<android.widget.ProgressBar>(R.id.searchProgress)
             val emptyMessage = searchView.findViewById<android.widget.TextView>(R.id.emptyMessage)
@@ -838,6 +840,7 @@ class MangaUpdatesInfoFragment : Fragment() {
                 linkResolver = { link -> ani.dantotsu.openLinkInBrowser(link) }
         )
         markwon.setMarkdown(binding.mediaInfoDescription, descCleaned)
+        binding.mediaInfoDescription.movementMethod = android.text.method.LinkMovementMethod.getInstance()
         binding.mediaInfoDescription.setOnClickListener {
             if (binding.mediaInfoDescription.maxLines == 5) {
                 android.animation.ObjectAnimator.ofInt(

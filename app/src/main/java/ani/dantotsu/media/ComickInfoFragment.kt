@@ -27,6 +27,7 @@ import ani.dantotsu.px
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.setSafeOnClickListener
+import ani.dantotsu.stripSpansOnPaste
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -402,6 +403,7 @@ class ComickInfoFragment : Fragment() {
                     )
             val searchBar =
                     searchView.findViewById<android.widget.AutoCompleteTextView>(R.id.searchBarText)
+            searchBar.stripSpansOnPaste()
             val searchProgress =
                     searchView.findViewById<android.widget.ProgressBar>(R.id.searchProgress)
             val emptyMessage = searchView.findViewById<android.widget.TextView>(R.id.emptyMessage)

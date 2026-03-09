@@ -69,6 +69,19 @@ class SettingsAccountActivity : AppCompatActivity() {
                 }.show(supportFragmentManager, "dialog")
             }
 
+            settingsMangaUpdatesHelp.setOnClickListener {
+                CustomBottomDialog.newInstance().apply {
+                    setTitleText(context.getString(R.string.mangaupdates_account_help))
+                    addView(
+                        TextView(it.context).apply {
+                            val markWon = Markwon.builder(it.context)
+                                .usePlugin(SoftBreakAddsNewLinePlugin.create()).build()
+                            markWon.setMarkdown(this, context.getString(R.string.full_mangaupdates_account_help))
+                        }
+                    )
+                }.show(supportFragmentManager, "dialog")
+            }
+
             fun reload() {
                 if (Anilist.token != null) {
                     settingsAnilistLogin.setText(R.string.logout)
@@ -92,6 +105,8 @@ class SettingsAccountActivity : AppCompatActivity() {
                     settingsMALLoginRequired.visibility = View.GONE
                     settingsMALLogin.visibility = View.VISIBLE
                     settingsMALUsername.visibility = View.VISIBLE
+                    settingsMangaUpdatesLoginContainer.visibility = View.VISIBLE
+                    settingsRecyclerView.visibility = View.VISIBLE
 
                     if (MAL.token != null) {
                         settingsMALLogin.setText(R.string.logout)
@@ -126,6 +141,7 @@ class SettingsAccountActivity : AppCompatActivity() {
                     settingsMALLoginRequired.visibility = View.VISIBLE
                     settingsMALLogin.visibility = View.GONE
                     settingsMALUsername.visibility = View.GONE
+                    settingsMangaUpdatesLoginContainer.visibility = View.GONE
                 }
 
                 if (Discord.token != null) {
@@ -258,80 +274,82 @@ class SettingsAccountActivity : AppCompatActivity() {
                         loginDialog.show(supportFragmentManager, "mangaupdates_login")
                     }
                 }
+
+                settingsRecyclerView.adapter = SettingsAdapter(
+                    arrayListOf(
+                        Settings(
+                            type = 2,
+                            name = getString(R.string.enable_rpc),
+                            desc = getString(R.string.enable_rpc_desc),
+                            icon = R.drawable.interests_24,
+                            isChecked = PrefManager.getVal(PrefName.rpcEnabled),
+                            switch = { isChecked, _ ->
+                                PrefManager.setVal(PrefName.rpcEnabled, isChecked)
+                            },
+                            isVisible = Discord.token != null,
+                            attachToSwitch = {
+                                it.settingsExtraIcon.visibility = View.VISIBLE
+                                it.settingsExtraIcon.setImageResource(R.drawable.ic_round_settings_24)
+                                it.settingsExtraIcon.setOnClickListener {
+                                    DiscordDialogFragment().show(supportFragmentManager, "dialog")
+                                }
+                            }
+                        ),
+                        Settings(
+                            type = 1,
+                            name = getString(R.string.anilist_settings),
+                            desc = getString(R.string.alsettings_desc),
+                            icon = R.drawable.ic_anilist,
+                            onClick = {
+                                lifecycleScope.launch {
+                                    Anilist.query.getUserData()
+                                    startActivity(Intent(context, AnilistSettingsActivity::class.java))
+                                }
+                            },
+                            isActivity = true
+                        ),
+                        Settings(
+                            type = 1,
+                            name = getString(R.string.mangaupdates_settings),
+                            desc = getString(R.string.mangaupdates_settings_desc),
+                            icon = R.drawable.ic_round_mangaupdates_24,
+                            onClick = {
+                                startActivity(Intent(context, MangaUpdatesSettingsActivity::class.java))
+                            },
+                            isActivity = true,
+                            isVisible = MangaUpdates.token != null
+                        ),
+                        Settings(
+                            type = 1,
+                            name = getString(R.string.connections_settings),
+                            desc = getString(R.string.connections_desc),
+                            icon = R.drawable.ic_link_2_24,
+                            onClick = {
+                                startActivity(Intent(context, SettingsConnectionsActivity::class.java))
+                            },
+                            isActivity = true
+                        ),
+                        Settings(
+                            type = 2,
+                            name = getString(R.string.comments_button),
+                            desc = getString(R.string.comments_button_desc),
+                            icon = R.drawable.ic_round_comment_24,
+                            isChecked = PrefManager.getVal<Int>(PrefName.CommentsEnabled) == 1,
+                            switch = { isChecked, _ ->
+                                PrefManager.setVal(PrefName.CommentsEnabled, if (isChecked) 1 else 2)
+                                reload()
+                            },
+                            isVisible = Anilist.token != null
+                        ),
+                    )
+                )
+                if (settingsRecyclerView.layoutManager == null) {
+                    settingsRecyclerView.layoutManager =
+                        LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false)
+                }
             }
             reload()
         }
-        binding.settingsRecyclerView.adapter = SettingsAdapter(
-            arrayListOf(
-                Settings(
-                    type = 2,
-                    name = getString(R.string.enable_rpc),
-                    desc = getString(R.string.enable_rpc_desc),
-                    icon = R.drawable.interests_24,
-                    isChecked = PrefManager.getVal(PrefName.rpcEnabled),
-                    switch = { isChecked, _ ->
-                        PrefManager.setVal(PrefName.rpcEnabled, isChecked)
-                    },
-                    isVisible = Discord.token != null,
-                    attachToSwitch = {
-                        it.settingsExtraIcon.visibility = View.VISIBLE
-                        it.settingsExtraIcon.setImageResource(R.drawable.ic_round_settings_24)
-                        it.settingsExtraIcon.setOnClickListener {
-                            DiscordDialogFragment().show(supportFragmentManager, "dialog")
-                        }
-                    }
-                ),
-                Settings(
-                    type = 1,
-                    name = getString(R.string.anilist_settings),
-                    desc = getString(R.string.alsettings_desc),
-                    icon = R.drawable.ic_anilist,
-                    onClick = {
-                        lifecycleScope.launch {
-                            Anilist.query.getUserData()
-                            startActivity(Intent(context, AnilistSettingsActivity::class.java))
-                        }
-                    },
-                    isActivity = true
-                ),
-                Settings(
-                    type = 1,
-                    name = getString(R.string.mangaupdates_settings),
-                    desc = getString(R.string.mangaupdates_settings_desc),
-                    icon = R.drawable.ic_round_mangaupdates_24,
-                    onClick = {
-                        startActivity(Intent(context, MangaUpdatesSettingsActivity::class.java))
-                    },
-                    isActivity = true,
-                    isVisible = MangaUpdates.token != null
-                ),
-                Settings(
-                    type = 1,
-                    name = getString(R.string.connections_settings),
-                    desc = getString(R.string.connections_desc),
-                    icon = R.drawable.ic_link_2_24,
-                    onClick = {
-                        startActivity(Intent(context, SettingsConnectionsActivity::class.java))
-                    },
-                    isActivity = true
-                ),
-                Settings(
-                    type = 2,
-                    name = getString(R.string.comments_button),
-                    desc = getString(R.string.comments_button_desc),
-                    icon = R.drawable.ic_round_comment_24,
-                    isChecked = PrefManager.getVal<Int>(PrefName.CommentsEnabled) == 1,
-                    switch = { isChecked, _ ->
-                        PrefManager.setVal(PrefName.CommentsEnabled, if (isChecked) 1 else 2)
-                        reload()
-                    },
-                    isVisible = Anilist.token != null
-                ),
-            )
-        )
-        binding.settingsRecyclerView.layoutManager =
-            LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false)
-
     }
 
     fun reload() {

@@ -10,6 +10,7 @@ import androidx.core.content.ContextCompat
 import ani.dantotsu.BottomSheetDialogFragment
 import ani.dantotsu.connections.anilist.AnilistSearch.SearchType
 import ani.dantotsu.connections.anilist.AnilistSearch.SearchType.Companion.toAnilistString
+import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.databinding.BottomSheetSearchBinding
 import ani.dantotsu.media.SearchActivity
 
@@ -53,6 +54,7 @@ class SearchBottomSheet : BottomSheetDialogFragment() {
             startActivity(requireContext(), SearchType.USER)
             dismiss()
         }
+        binding.muSearch.visibility = if (MangaUpdates.token != null) View.VISIBLE else View.GONE
         binding.muSearch.setOnClickListener {
             startActivity(requireContext(), SearchType.MANGAUPDATES)
             dismiss()

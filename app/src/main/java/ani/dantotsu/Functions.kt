@@ -41,8 +41,11 @@ import android.os.PowerManager
 import android.os.SystemClock
 import android.provider.Settings
 import android.telephony.TelephonyManager
+import android.text.Editable
 import android.text.InputFilter
+import android.text.ParcelableSpan
 import android.text.Spanned
+import android.text.TextWatcher
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.GestureDetector
@@ -1592,4 +1595,15 @@ fun String.decodeBase64ToString(): String {
         Logger.log(e)
         ""
     }
+}
+
+fun AutoCompleteTextView.stripSpansOnPaste() {
+    addTextChangedListener(object : TextWatcher {
+        override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
+        override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {}
+        override fun afterTextChanged(s: Editable) {
+            val spans = s.getSpans(0, s.length, ParcelableSpan::class.java)
+            if (spans.isNotEmpty()) spans.forEach { s.removeSpan(it) }
+        }
+    })
 }

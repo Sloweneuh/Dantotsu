@@ -24,6 +24,7 @@ import ani.dantotsu.parsers.ParserTestActivity
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.statusBarHeight
+import ani.dantotsu.stripSpansOnPaste
 import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.util.customAlertDialog
 import com.google.android.material.tabs.TabLayout
@@ -112,6 +113,7 @@ class ExtensionsActivity : AppCompatActivity() {
         }
 
         val searchView: AutoCompleteTextView = findViewById(R.id.searchViewText)
+        searchView.stripSpansOnPaste()
 
         tabLayout.addOnTabSelectedListener(
             object : TabLayout.OnTabSelectedListener {

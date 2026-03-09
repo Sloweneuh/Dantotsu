@@ -167,6 +167,16 @@
 
     <string name="anilist_settings">Paramètres Anilist</string>
     <string name="mangaupdates_settings_desc">Configurer l\'intégration MangaUpdates</string>
+    <string name="full_mangaupdates_account_help">
+        Anilist ne répertorie pas tous les mangas existants, et c\'est là qu\'intervient MangaUpdates. En vous connectant avec votre compte MangaUpdates, Dantotsu peut récupérer des informations supplémentaires sur les mangas ainsi que vos listes de lecture depuis MangaUpdates, en complément des données d\'Anilist.
+        \n\n Se connecter avec votre compte MangaUpdates ajoute les fonctionnalités suivantes :
+        \n - Rechercher des mangas sur MangaUpdates et les ajouter à vos listes MangaUpdates
+        \n - Les listes MangaUpdates sont affichées aux côtés des listes Anilist
+        \n - La progression de lecture est enregistrée sur MangaUpdates (séparément de la progression Anilist)
+        \n - Un onglet d\'informations MangaUpdates pour les mangas Anilist avec des détails supplémentaires
+        \n\n L\'API MangaUpdates est bien plus limitée que celle d\'Anilist, certaines fonctionnalités peuvent donc être plus lentes ou plus limitées que sur le site MangaUpdates.
+        \n\n *Notez que l\'intégration MangaUpdates est optionnelle et n\'ajoute des fonctionnalités supplémentaires que pour les mangas. Dantotsu continuera à fonctionner parfaitement sans connexion à MangaUpdates.*
+    </string>
     <string name="connections_settings">Connexions</string>
     <string name="connections_desc">Activer ou désactiver les connexions externes et les onglets d\'information</string>
     <string name="disable_comick">Activer Comick</string>
@@ -1340,4 +1350,5 @@
     <string name="mu_list_fetch_enabled">Listes MangaUpdates</string>
     <string name="mu_list_fetch_enabled_desc">Récupérer et afficher les listes MangaUpdates sur l\'accueil et les vues listes</string>
     <string name="volume">Volume</string>
+    <string name="mangaupdates_account_help">Comment fonctionne MangaUpdates \?</string>
 </resources>

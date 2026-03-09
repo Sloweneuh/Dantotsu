@@ -20,6 +20,7 @@ import androidx.recyclerview.widget.RecyclerView.VERTICAL
 import ani.dantotsu.BottomSheetDialogFragment
 import ani.dantotsu.R
 import ani.dantotsu.connections.anilist.Anilist
+import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.databinding.BottomSheetListFilterBinding
 import ani.dantotsu.databinding.ItemChipBinding
 import com.google.android.material.chip.Chip
@@ -45,6 +46,7 @@ class ListFilterBottomDialog(
     private var selectedCountry: String? = currentFilters.countryOfOrigin
     private var scoreRange = currentFilters.scoreRange
     private var yearRange = currentFilters.yearRange
+    private var selectedTrackerFilter: TrackerFilter = currentFilters.trackerFilter
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -63,6 +65,7 @@ class ListFilterBottomDialog(
         setupChipLists()
         setupButtons()
         setupCountryFilter()
+        setupTrackerFilter()
     }
 
     private fun setupDropdowns() {
@@ -211,10 +214,38 @@ class ListFilterBottomDialog(
                 yearRange = Pair(
                     binding.listFilterYearRange.values[0].toInt(),
                     binding.listFilterYearRange.values[1].toInt()
-                )
+                ),
+                trackerFilter = selectedTrackerFilter
             )
             onApply(filters)
             dismiss()
+        }
+    }
+
+    private fun setupTrackerFilter() {
+        if (isAnime || MangaUpdates.token == null) return
+        binding.listFilterTrackerCont.visibility = View.VISIBLE
+        val options = listOf(
+            getString(R.string.filter_tracker_both),
+            getString(R.string.filter_tracker_anilist),
+            getString(R.string.filter_tracker_mu)
+        )
+        binding.listFilterTracker.setAdapter(
+            ArrayAdapter(requireContext(), R.layout.item_dropdown, options)
+        )
+        binding.listFilterTracker.setText(
+            when (selectedTrackerFilter) {
+                TrackerFilter.ANILIST_ONLY -> options[1]
+                TrackerFilter.MU_ONLY     -> options[2]
+                else                      -> options[0]
+            }, false
+        )
+        binding.listFilterTracker.setOnItemClickListener { _, _, position, _ ->
+            selectedTrackerFilter = when (position) {
+                1    -> TrackerFilter.ANILIST_ONLY
+                2    -> TrackerFilter.MU_ONLY
+                else -> TrackerFilter.BOTH
+            }
         }
     }
 
@@ -294,6 +325,8 @@ class ListFilterBottomDialog(
         selectedCountry = null
         scoreRange = Pair(0.0f, 10.0f)
         yearRange = Pair(1970, 2028)
+        selectedTrackerFilter = TrackerFilter.BOTH
+        binding.listFilterTracker.setText(getString(R.string.filter_tracker_both), false)
 
         binding.listFilterSource.setText("")
         binding.listFilterFormat.setText("")
@@ -340,6 +373,8 @@ class ListFilterBottomDialog(
     }
 }
 
+enum class TrackerFilter { BOTH, ANILIST_ONLY, MU_ONLY }
+
 data class ListFilters(
     val genres: List<String> = emptyList(),
     val tags: List<String> = emptyList(),
@@ -350,13 +385,23 @@ data class ListFilters(
     val year: Int? = null,
     val countryOfOrigin: String? = null,
     val scoreRange: Pair<Float, Float> = Pair(0.0f, 10.0f),
-    val yearRange: Pair<Int, Int> = Pair(1970, 2028)
+    val yearRange: Pair<Int, Int> = Pair(1970, 2028),
+    val trackerFilter: TrackerFilter = TrackerFilter.BOTH
 ) {
     fun isEmpty(): Boolean {
         return genres.isEmpty() && tags.isEmpty() && formats.isEmpty() &&
                 statuses.isEmpty() && sources.isEmpty() && season == null &&
                 year == null && countryOfOrigin == null &&
-                scoreRange == Pair(0.0f, 10.0f) && yearRange == Pair(1970, 2028)
+                scoreRange == Pair(0.0f, 10.0f) && yearRange == Pair(1970, 2028) &&
+                trackerFilter == TrackerFilter.BOTH
+    }
+
+    /** True when any filter that cannot be applied to MU entries is active. */
+    fun hasAnilistOnlyFilters(): Boolean {
+        return genres.isNotEmpty() || tags.isNotEmpty() || formats.isNotEmpty() ||
+                statuses.isNotEmpty() || sources.isNotEmpty() || season != null ||
+                year != null || countryOfOrigin != null ||
+                scoreRange != Pair(0.0f, 10.0f) || yearRange != Pair(1970, 2028)
     }
 
     // Convert display score (0.0-10.0) to internal score (0-100)
