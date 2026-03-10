@@ -671,6 +671,10 @@ class HomeFragment : Fragment() {
         binding.homeUnreadChaptersMore.visibility = View.GONE
         updateUnreadRefreshAlignment()
 
+        // Shared state so both the unread observer and the MU-lists observer can re-render together
+        var lastUnreadAniList: List<Media> = emptyList()
+        var lastUnreadInfoMap: Map<Int, UnreadChapterInfo> = emptyMap()
+
         // Observe error state to show appropriate message
         model.getUnreadChaptersError().observe(viewLifecycleOwner) { hasError ->
             if (hasError) {
@@ -727,6 +731,11 @@ class HomeFragment : Fragment() {
                         }
 
                         withContext(Dispatchers.Main) {
+                            val muUnread = model.getMuHomeLists().value?.get("Reading")
+                                ?.filter { it.latestChapter != null && it.latestChapter > (it.userChapter ?: 0) }
+                                ?.sortedBy { (it.latestChapter ?: 0) - (it.userChapter ?: 0) }
+                                ?: emptyList()
+
                             if (unreadInfo.isNotEmpty()) {
                                 // Sort by unread chapters (least unread first)
                                 val sortedList = unreadList.sortedBy { media ->
@@ -737,10 +746,13 @@ class HomeFragment : Fragment() {
                                         Int.MAX_VALUE // Put items without info at the end
                                     }
                                 }
+                                lastUnreadAniList = sortedList
+                                lastUnreadInfoMap = unreadInfo
+                                val combined: List<Any> = sortedList + muUnread
 
                                 // Show live MALSync results (do not filter — fresh data may include new unread chapters)
                                 binding.homeUnreadChaptersRecyclerView.adapter =
-                                    UnreadChaptersAdapter(sortedList, unreadInfo)
+                                    UnreadChaptersAdapter(combined, unreadInfo)
                                 binding.homeUnreadChaptersRecyclerView.layoutManager = LinearLayoutManager(
                                     requireContext(),
                                     LinearLayoutManager.HORIZONTAL,
@@ -775,8 +787,11 @@ class HomeFragment : Fragment() {
                                             val progress = merged[media.id]?.userProgress ?: media.userProgress ?: 0
                                             last != null && last > progress
                                         }
+                                        lastUnreadAniList = filteredCached
+                                        lastUnreadInfoMap = merged
+                                        val combined: List<Any> = filteredCached + muUnread
                                         binding.homeUnreadChaptersRecyclerView.adapter =
-                                            UnreadChaptersAdapter(filteredCached, merged)
+                                            UnreadChaptersAdapter(combined, merged)
                                         binding.homeUnreadChaptersMore.setOnClickListener { i ->
                                             MediaListViewActivity.passedMedia = ArrayList(filteredCached)
                                             MediaListViewActivity.passedUnreadInfo = merged
@@ -792,11 +807,28 @@ class HomeFragment : Fragment() {
                                             false
                                         )
                                         binding.homeUnreadChaptersRecyclerView.visibility = View.VISIBLE
+                                        binding.homeUnreadChaptersEmpty.visibility = View.GONE
                                         binding.homeUnreadChaptersRecyclerView.layoutAnimation =
                                             LayoutAnimationController(setSlideIn(), 0.25f)
                                         binding.homeUnreadChaptersRecyclerView.post {
                                             binding.homeUnreadChaptersRecyclerView.scheduleLayoutAnimation()
                                         }
+                                } else if (muUnread.isNotEmpty()) {
+                                    // No MALSync data but MU has unread — show MU-only list
+                                    lastUnreadAniList = emptyList()
+                                    lastUnreadInfoMap = emptyMap()
+                                    binding.homeUnreadChaptersRecyclerView.adapter =
+                                        UnreadChaptersAdapter(muUnread, emptyMap())
+                                    binding.homeUnreadChaptersRecyclerView.layoutManager = LinearLayoutManager(
+                                        requireContext(),
+                                        LinearLayoutManager.HORIZONTAL,
+                                        false
+                                    )
+                                    binding.homeUnreadChaptersMore.setOnClickListener {}
+                                    binding.homeUnreadChaptersRecyclerView.visibility = View.VISIBLE
+                                    binding.homeUnreadChaptersEmpty.visibility = View.GONE
+                                    binding.homeUnreadChaptersRecyclerView.layoutAnimation =
+                                        LayoutAnimationController(setSlideIn(), 0.25f)
                                 } else {
                                     // Show a helpful message when MALSync is disabled
                                     val malModeEmpty = PrefManager.getVal<String>(PrefName.MalSyncCheckMode) ?: "both"
@@ -817,7 +849,25 @@ class HomeFragment : Fragment() {
                         }
                     }
                 } else {
-                    binding.homeUnreadChaptersEmpty.visibility = View.VISIBLE
+                    // unreadList is empty — still show MU items if any have unread chapters
+                    val muUnread = model.getMuHomeLists().value?.get("Reading")
+                        ?.filter { it.latestChapter != null && it.latestChapter > (it.userChapter ?: 0) }
+                        ?.sortedBy { (it.latestChapter ?: 0) - (it.userChapter ?: 0) }
+                        ?: emptyList()
+                    lastUnreadAniList = emptyList()
+                    lastUnreadInfoMap = emptyMap()
+                    if (muUnread.isNotEmpty()) {
+                        binding.homeUnreadChaptersRecyclerView.adapter =
+                            UnreadChaptersAdapter(muUnread, emptyMap())
+                        binding.homeUnreadChaptersRecyclerView.layoutManager = LinearLayoutManager(
+                            requireContext(), LinearLayoutManager.HORIZONTAL, false
+                        )
+                        binding.homeUnreadChaptersRecyclerView.visibility = View.VISIBLE
+                        binding.homeUnreadChaptersRecyclerView.layoutAnimation =
+                            LayoutAnimationController(setSlideIn(), 0.25f)
+                    } else {
+                        binding.homeUnreadChaptersEmpty.visibility = View.VISIBLE
+                    }
                     binding.homeUnreadChaptersMore.visibility = View.VISIBLE
                     binding.homeUnreadChapters.visibility = View.VISIBLE
                     binding.homeUnreadChaptersMore.startAnimation(setSlideUp())
@@ -947,6 +997,23 @@ class HomeFragment : Fragment() {
             muHomeListsData = it
             if (mangaContinueData != null) renderContinueReading()
             if (mangaPlannedData != null) renderPlannedManga()
+            // Update the unread chapters section with latest MU items
+            val muUnread = it?.get("Reading")
+                ?.filter { mu -> mu.latestChapter != null && mu.latestChapter > (mu.userChapter ?: 0) }
+                ?.sortedBy { mu -> (mu.latestChapter ?: 0) - (mu.userChapter ?: 0) }
+                ?: emptyList()
+            val combined: List<Any> = lastUnreadAniList + muUnread
+            if (combined.isNotEmpty()) {
+                binding.homeUnreadChaptersRecyclerView.adapter =
+                    UnreadChaptersAdapter(combined, lastUnreadInfoMap)
+                if (binding.homeUnreadChaptersRecyclerView.layoutManager == null) {
+                    binding.homeUnreadChaptersRecyclerView.layoutManager = LinearLayoutManager(
+                        requireContext(), LinearLayoutManager.HORIZONTAL, false
+                    )
+                }
+                binding.homeUnreadChaptersRecyclerView.visibility = View.VISIBLE
+                binding.homeUnreadChaptersEmpty.visibility = View.GONE
+            }
         }
         binding.homePlannedMangaBrowseButton.setOnClickListener {
             bottomBar.selectTabAt(2)
@@ -1228,7 +1295,12 @@ class HomeFragment : Fragment() {
                     last != null && last > progress
                 }
                 if (filteredCached.isNotEmpty()) {
-                    binding.homeUnreadChaptersRecyclerView.adapter = UnreadChaptersAdapter(filteredCached, merged)
+                    val muUnread = model.getMuHomeLists().value?.get("Reading")
+                        ?.filter { it.latestChapter != null && it.latestChapter > (it.userChapter ?: 0) }
+                        ?.sortedBy { (it.latestChapter ?: 0) - (it.userChapter ?: 0) }
+                        ?: emptyList()
+                    val combined: List<Any> = filteredCached + muUnread
+                    binding.homeUnreadChaptersRecyclerView.adapter = UnreadChaptersAdapter(combined, merged)
                     binding.homeUnreadChaptersRecyclerView.layoutManager = LinearLayoutManager(
                         requireContext(), LinearLayoutManager.HORIZONTAL, false
                     )

@@ -82,16 +82,19 @@ class MUMediaAdapter(private val items: List<MUMedia>) :
         b.itemCompactTotal.text = if (showLatest) " | $latest | ~" else " | ~"
         b.itemCompactProgressContainer.visibility = View.VISIBLE
 
-        // Rating in score area; orange tint marks item as MU-sourced
+        // Rating in score area
         val rating = item.bayesianRating
         if (rating != null && rating > 0.0) {
             b.itemCompactScore.text = String.format("%.1f", rating)
             b.itemCompactScoreBG.visibility = View.VISIBLE
             b.itemCompactScoreBG.backgroundTintList =
-                ColorStateList.valueOf(Color.parseColor("#FF6B00"))
+                ColorStateList.valueOf(Color.WHITE)
         } else {
             b.itemCompactScoreBG.visibility = View.GONE
         }
+
+        // MangaUpdates source badge
+        b.itemCompactSourceBadge.visibility = View.VISIBLE
 
         b.root.setOnClickListener {
             val intent = Intent(it.context, MUMediaDetailsActivity::class.java)

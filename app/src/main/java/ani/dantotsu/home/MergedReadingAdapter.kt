@@ -117,6 +117,7 @@ class MergedReadingAdapter(
             b.itemCompactTotal.text = " | ${media.manga.totalChapters ?: "~"}"
         }
         b.itemCompactProgressContainer.visibility = View.VISIBLE
+        b.itemCompactSourceBadge.visibility = View.GONE
 
         b.root.setSafeOnClickListener {
             ContextCompat.startActivity(
@@ -167,8 +168,11 @@ class MergedReadingAdapter(
         b.itemCompactOngoing.visibility = View.GONE
         b.itemCompactType.visibility = View.GONE
 
-        b.itemCompactUserProgress.text = (item.userChapter ?: "~").toString()
-        b.itemCompactTotal.text = " | ${item.latestChapter ?: "~"}"
+        val userChapter = item.userChapter
+        b.itemCompactUserProgress.text = userChapter?.toString() ?: "~"
+        val latest = item.latestChapter
+        val showLatest = latest != null && latest > 0 && (userChapter == null || latest > userChapter)
+        b.itemCompactTotal.text = if (showLatest) " | $latest | ~" else " | ~"
         b.itemCompactProgressContainer.visibility = View.VISIBLE
 
         val rating = item.bayesianRating
@@ -176,10 +180,12 @@ class MergedReadingAdapter(
             b.itemCompactScore.text = String.format("%.1f", rating)
             b.itemCompactScoreBG.visibility = View.VISIBLE
             b.itemCompactScoreBG.backgroundTintList =
-                ColorStateList.valueOf(Color.parseColor("#FF6B00"))
+                ColorStateList.valueOf(Color.WHITE)
         } else {
             b.itemCompactScoreBG.visibility = View.GONE
         }
+
+        b.itemCompactSourceBadge.visibility = View.VISIBLE
 
         b.root.setOnClickListener {
             val intent = Intent(it.context, MUMediaDetailsActivity::class.java)
@@ -250,6 +256,8 @@ class MergedReadingAdapter(
             )
         }
         b.itemCompactType.visibility = View.GONE
+        b.itemCompactLanguageBG.visibility = View.GONE
+        b.itemCompactSourceBadge.visibility = View.GONE
 
         b.root.setSafeOnClickListener {
             ContextCompat.startActivity(
@@ -334,10 +342,13 @@ class MergedReadingAdapter(
             b.itemCompactScore.text = String.format("%.1f", rating)
             b.itemCompactScoreBG.visibility = View.VISIBLE
             b.itemCompactScoreBG.backgroundTintList =
-                ColorStateList.valueOf(Color.parseColor("#FF6B00"))
+                ColorStateList.valueOf(Color.WHITE)
         } else {
             b.itemCompactScoreBG.visibility = View.GONE
         }
+
+        b.itemCompactLanguageBG.visibility = View.GONE
+        b.itemCompactSourceBadge.visibility = View.VISIBLE
 
         b.root.setSafeOnClickListener {
             val intent = Intent(ctx, MUMediaDetailsActivity::class.java)

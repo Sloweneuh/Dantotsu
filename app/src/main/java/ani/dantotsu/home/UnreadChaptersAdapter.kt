@@ -1,28 +1,52 @@
 package ani.dantotsu.home
 
+import android.annotation.SuppressLint
 import android.content.Intent
+import android.content.res.ColorStateList
+import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.core.app.ActivityOptionsCompat
 import androidx.core.view.ViewCompat
 import androidx.core.content.ContextCompat
+import androidx.fragment.app.FragmentActivity
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
 import ani.dantotsu.blurImage
 import ani.dantotsu.connections.malsync.UnreadChapterInfo
+import ani.dantotsu.connections.mangaupdates.MUListEditorFragment
+import ani.dantotsu.connections.mangaupdates.MUMedia
+import ani.dantotsu.connections.mangaupdates.MUMediaDetailsActivity
+import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.databinding.ItemMediaLargeBinding
 import ani.dantotsu.databinding.ItemUnreadChapterBinding
 import ani.dantotsu.loadImage
 import ani.dantotsu.media.Media
 import ani.dantotsu.setSafeOnClickListener
 import ani.dantotsu.media.MediaNameAdapter
+import java.io.Serializable
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class UnreadChaptersAdapter(
-    private val mediaList: List<Media>,
+    private val items: List<Any>,  // List<Media | MUMedia>
     private val unreadInfo: Map<Int, UnreadChapterInfo>,
     private var type: Int = 0 // 0 = grid/compact, 1 = list/large
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+
+    private val coverCache = mutableMapOf<Long, String?>()
+    private val fetchingIds = mutableSetOf<Long>()
+    private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+
+    override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
+        super.onDetachedFromRecyclerView(recyclerView)
+        scope.cancel()
+    }
 
     inner class CompactViewHolder(val binding: ItemUnreadChapterBinding) :
         RecyclerView.ViewHolder(binding.root)
@@ -53,25 +77,31 @@ class UnreadChaptersAdapter(
     }
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
-        val media = mediaList[position]
-        val info = unreadInfo[media.id] ?: run {
-            // Try to derive the last known chapter from the manga chapters list if available
-            val derivedLast = media.manga?.chapters?.values
-                ?.mapNotNull { MediaNameAdapter.findChapterNumber(it.number)?.toInt() }
-                ?.maxOrNull()
-                ?: media.manga?.totalChapters
-                ?: 0
-            ani.dantotsu.connections.malsync.UnreadChapterInfo(
-                mediaId = media.id,
-                lastChapter = derivedLast,
-                source = "",
-                userProgress = media.userProgress ?: 0
-            )
-        }
-
-        when (holder) {
-            is CompactViewHolder -> bindCompactView(holder.binding, media, info)
-            is LargeViewHolder -> bindLargeView(holder.binding, media, info)
+        when (val item = items[position]) {
+            is MUMedia -> when (holder) {
+                is CompactViewHolder -> bindMuCompactView(holder.binding, item)
+                is LargeViewHolder -> bindMuLargeView(holder.binding, item)
+            }
+            is Media -> {
+                val info = unreadInfo[item.id] ?: run {
+                    // Try to derive the last known chapter from the manga chapters list if available
+                    val derivedLast = item.manga?.chapters?.values
+                        ?.mapNotNull { MediaNameAdapter.findChapterNumber(it.number)?.toInt() }
+                        ?.maxOrNull()
+                        ?: item.manga?.totalChapters
+                        ?: 0
+                    ani.dantotsu.connections.malsync.UnreadChapterInfo(
+                        mediaId = item.id,
+                        lastChapter = derivedLast,
+                        source = "",
+                        userProgress = item.userProgress ?: 0
+                    )
+                }
+                when (holder) {
+                    is CompactViewHolder -> bindCompactView(holder.binding, item, info)
+                    is LargeViewHolder -> bindLargeView(holder.binding, item, info)
+                }
+            }
         }
     }
 
@@ -92,6 +122,7 @@ class UnreadChaptersAdapter(
             itemCompactTotal.text = " | $lastChapterDisplay | $totalChapters"
 
             // Show source as badge on top of cover (icon + short code) to match anime badge
+            itemCompactSourceBadge.visibility = View.GONE
                 if (!info.source.isNullOrBlank()) {
                     // Show full source name in badge and hide icon
                     itemCompactLanguageIcon.visibility = View.GONE
@@ -188,6 +219,7 @@ class UnreadChaptersAdapter(
             }
 
             // Show source as a badge on top of the cover (icon + short code), hide side relation
+            itemCompactSourceBadge.visibility = View.GONE
             val sourceDisplay = info.source
                 if (!sourceDisplay.isNullOrBlank()) {
                     // Show full source name in badge and hide icon
@@ -196,6 +228,7 @@ class UnreadChaptersAdapter(
                     itemCompactLanguageBG.visibility = View.VISIBLE
                     itemCompactType.visibility = View.GONE
                 } else {
+                    itemCompactLanguageBG.visibility = View.GONE
                     itemCompactType.visibility = View.GONE
                 }
 
@@ -261,6 +294,126 @@ class UnreadChaptersAdapter(
         }
     }
 
-    override fun getItemCount(): Int = mediaList.size
+    override fun getItemCount(): Int = items.size
+
+    private fun loadMuCover(item: MUMedia, load: (String?) -> Unit) {
+        when {
+            item.coverUrl != null -> {
+                coverCache[item.id] = item.coverUrl
+                load(item.coverUrl)
+            }
+            coverCache.containsKey(item.id) -> load(coverCache[item.id])
+            fetchingIds.add(item.id) -> {
+                load(null)
+                scope.launch {
+                    val url = withContext(Dispatchers.IO) {
+                        MangaUpdates.getSeriesDetails(item.id)
+                            ?.image?.url?.run { original ?: thumb }
+                    }
+                    coverCache[item.id] = url
+                    fetchingIds.remove(item.id)
+                    val pos = items.indexOfFirst { it is MUMedia && it.id == item.id }
+                    if (pos != -1) notifyItemChanged(pos)
+                }
+            }
+            else -> load(null)
+        }
+    }
+
+    @SuppressLint("SetTextI18n")
+    private fun bindMuCompactView(binding: ItemUnreadChapterBinding, item: MUMedia) {
+        binding.apply {
+            loadMuCover(item) { itemCompactImage.loadImage(it) }
+            itemCompactTitle.text = item.title ?: ""
+
+            val userChapter = item.userChapter
+            itemCompactUserProgress.text = userChapter?.toString() ?: "~"
+            val latest = item.latestChapter
+            val showLatest = latest != null && latest > 0 && (userChapter == null || latest > userChapter)
+            itemCompactTotal.text = if (showLatest) " | $latest | ~" else " | ~"
+
+            // MU logo badge
+            itemCompactLanguageBG.visibility = View.GONE
+            itemCompactSourceBadge.visibility = View.VISIBLE
+            itemCompactSource.visibility = View.GONE
+
+            val rating = item.bayesianRating
+            if (rating != null && rating > 0.0) {
+                itemCompactScore.text = String.format("%.1f", rating)
+                itemCompactScoreBG.backgroundTintList = ColorStateList.valueOf(Color.WHITE)
+                itemCompactScoreBG.visibility = View.VISIBLE
+            } else {
+                itemCompactScoreBG.visibility = View.GONE
+            }
+
+            val clickAction = {
+                root.context.startActivity(
+                    Intent(root.context, MUMediaDetailsActivity::class.java)
+                        .putExtra("muMedia", item as Serializable)
+                )
+            }
+            root.setSafeOnClickListener { clickAction() }
+            itemCompactImage.setSafeOnClickListener { clickAction() }
+            itemCompactTitle.setSafeOnClickListener { clickAction() }
+
+            itemCompactImage.setOnLongClickListener {
+                val fm = (it.context as? FragmentActivity)?.supportFragmentManager
+                if (fm != null && fm.findFragmentByTag("muListEditor") == null) {
+                    MUListEditorFragment.newInstance(item).show(fm, "muListEditor")
+                }
+                true
+            }
+        }
+    }
+
+    @SuppressLint("SetTextI18n")
+    private fun bindMuLargeView(binding: ItemMediaLargeBinding, item: MUMedia) {
+        binding.apply {
+            loadMuCover(item) { url ->
+                itemCompactImage.loadImage(url)
+                blurImage(itemCompactBanner, url)
+            }
+            itemCompactTitle.text = item.title ?: ""
+            itemCompactOngoing.visibility = View.GONE
+            itemCompactType.visibility = View.GONE
+            itemCompactStatus.text = ""
+            itemCompactStatus.visibility = View.GONE
+            itemCompactSynopsis.text = ""
+
+            val userChapter = item.userChapter
+            itemUserProgressLarge.text = userChapter?.toString() ?: "~"
+            itemProgressSeparator.visibility = View.VISIBLE
+            val latest = item.latestChapter
+            itemCompactTotal.text = latest?.toString() ?: "??"
+            itemTotal.text = " " + root.context.getString(R.string.chapter_plural)
+
+            // MU logo badge
+            itemCompactLanguageBG.visibility = View.GONE
+            itemCompactSourceBadge.visibility = View.VISIBLE
+
+            val rating = item.bayesianRating
+            if (rating != null && rating > 0.0) {
+                itemCompactScore.text = String.format("%.1f", rating)
+                itemCompactScoreBG.backgroundTintList = ColorStateList.valueOf(Color.WHITE)
+                itemCompactScoreBG.visibility = View.VISIBLE
+            } else {
+                itemCompactScoreBG.visibility = View.GONE
+            }
+
+            root.setSafeOnClickListener {
+                root.context.startActivity(
+                    Intent(root.context, MUMediaDetailsActivity::class.java)
+                        .putExtra("muMedia", item as Serializable)
+                )
+            }
+            itemCompactImage.setOnLongClickListener {
+                val fm = (it.context as? FragmentActivity)?.supportFragmentManager
+                if (fm != null && fm.findFragmentByTag("muListEditor") == null) {
+                    MUListEditorFragment.newInstance(item).show(fm, "muListEditor")
+                }
+                true
+            }
+        }
+    }
 }
 
