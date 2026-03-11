@@ -1,5 +1,7 @@
 package ani.dantotsu.connections.mangaupdates
 
+import ani.dantotsu.media.Media
+import ani.dantotsu.media.manga.Manga
 import ani.dantotsu.settings.saving.PrefManager
 import java.io.Serializable
 
@@ -22,6 +24,22 @@ data class MUMedia(
     /** Local timestamp (ms) of the last time the user updated progress for this series. */
     val updatedAt: Long? = null
 ) : Serializable
+
+/** Converts a [MUMedia] into a minimal [Media] suitable for display and random-pick. */
+fun MUMedia.toMedia(): Media = Media(
+    id = (id and 0x7FFFFFFF).toInt(),
+    name = title,
+    nameRomaji = title ?: "",
+    userPreferredName = title ?: "",
+    cover = coverUrl,
+    banner = coverUrl,
+    isAdult = false,
+    manga = Manga(totalChapters = latestChapter),
+    format = "MANGA",
+    userProgress = userChapter,
+    muSeriesId = id,
+    muListId = listId,
+)
 
 const val PREF_MU_LAST_READ_PREFIX = "mu_last_read_"
 

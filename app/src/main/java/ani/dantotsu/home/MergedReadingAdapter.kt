@@ -15,7 +15,7 @@ import ani.dantotsu.blurImage
 import ani.dantotsu.connections.mangaupdates.MUListEditorFragment
 import ani.dantotsu.connections.mangaupdates.MUMedia
 import ani.dantotsu.connections.mangaupdates.MUMediaDetailsActivity
-import ani.dantotsu.connections.mangaupdates.MangaUpdates
+import ani.dantotsu.connections.mangaupdates.MUDetailsCache
 import ani.dantotsu.currActivity
 import ani.dantotsu.databinding.ItemMediaCompactBinding
 import ani.dantotsu.databinding.ItemMediaLargeBinding
@@ -23,14 +23,14 @@ import ani.dantotsu.loadImage
 import ani.dantotsu.media.Media
 import ani.dantotsu.media.MediaDetailsActivity
 import ani.dantotsu.media.MediaListDialogSmallFragment
+import android.text.method.LinkMovementMethod
+import android.text.util.Linkify
 import androidx.fragment.app.FragmentActivity
 import ani.dantotsu.setSafeOnClickListener
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.io.Serializable
 
 /**
@@ -44,10 +44,16 @@ class MergedReadingAdapter(
     private val type: Int = 0
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
-    private val coverCache = mutableMapOf<Long, String?>()
-    private val descriptionCache = mutableMapOf<Long, String?>()
-    private val fetchingIds = mutableSetOf<Long>()
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+
+    override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
+        super.onAttachedToRecyclerView(recyclerView)
+        val muIds = items.filterIsInstance<MUMedia>().filter { it.coverUrl == null }.map { it.id }
+        MUDetailsCache.prefetch(scope, muIds) { id ->
+            val pos = items.indexOfFirst { it is MUMedia && it.id == id }
+            if (pos != -1) notifyItemChanged(pos)
+        }
+    }
 
     override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
         super.onDetachedFromRecyclerView(recyclerView)
@@ -138,31 +144,9 @@ class MergedReadingAdapter(
     }
 
     private fun bindMuMedia(b: ItemMediaCompactBinding, item: MUMedia) {
-        when {
-            item.coverUrl != null -> {
-                coverCache[item.id] = item.coverUrl
-                b.itemCompactImage.loadImage(item.coverUrl)
-            }
-            coverCache.containsKey(item.id) -> {
-                val url = coverCache[item.id]
-                if (url != null) b.itemCompactImage.loadImage(url)
-                else b.itemCompactImage.setImageResource(0)
-            }
-            fetchingIds.add(item.id) -> {
-                b.itemCompactImage.setImageResource(0)
-                scope.launch {
-                    val url = withContext(Dispatchers.IO) {
-                        MangaUpdates.getSeriesDetails(item.id)
-                            ?.image?.url?.run { original ?: thumb }
-                    }
-                    coverCache[item.id] = url
-                    fetchingIds.remove(item.id)
-                    val pos = items.indexOfFirst { it is MUMedia && it.id == item.id }
-                    if (pos != -1) notifyItemChanged(pos)
-                }
-            }
-            else -> b.itemCompactImage.setImageResource(0)
-        }
+        val coverUrl = item.coverUrl ?: MUDetailsCache.get(item.id)?.coverUrl
+        if (coverUrl != null) b.itemCompactImage.loadImage(coverUrl)
+        else b.itemCompactImage.setImageResource(0)
 
         b.itemCompactTitle.text = item.title ?: ""
         b.itemCompactOngoing.visibility = View.GONE
@@ -227,13 +211,14 @@ class MergedReadingAdapter(
 
         try {
             val rawDesc = media.description ?: ""
-            val parsed = HtmlCompat.fromHtml(rawDesc, HtmlCompat.FROM_HTML_MODE_LEGACY).toString()
-            b.itemCompactSynopsis.text = if (parsed.isNullOrBlank() || parsed == "null")
+            val parsed = HtmlCompat.fromHtml(rawDesc, HtmlCompat.FROM_HTML_MODE_LEGACY)
+            b.itemCompactSynopsis.text = if (parsed.isBlank() || parsed.toString() == "null")
                 ctx.getString(R.string.no_description_available) else parsed
         } catch (e: Exception) {
             b.itemCompactSynopsis.text = ctx.getString(R.string.no_description_available)
         }
-        b.itemCompactSynopsis.movementMethod = android.text.method.ScrollingMovementMethod()
+        Linkify.addLinks(b.itemCompactSynopsis, Linkify.WEB_URLS)
+        b.itemCompactSynopsis.movementMethod = LinkMovementMethod.getInstance()
         b.itemCompactSynopsis.scrollTo(0, 0)
         b.itemCompactSynopsis.setOnTouchListener { v, event ->
             when (event.action) {
@@ -279,38 +264,13 @@ class MergedReadingAdapter(
 
     private fun bindMuMediaLarge(b: ItemMediaLargeBinding, item: MUMedia) {
         val ctx = b.root.context
-
-        val loadCover: (String?) -> Unit = { url ->
-            if (url != null) {
-                b.itemCompactImage.loadImage(url)
-                blurImage(b.itemCompactBanner, url)
-            } else {
-                b.itemCompactImage.setImageResource(0)
-            }
-        }
-
-        when {
-            item.coverUrl != null -> {
-                coverCache[item.id] = item.coverUrl
-                loadCover(item.coverUrl)
-            }
-            coverCache.containsKey(item.id) -> loadCover(coverCache[item.id])
-            fetchingIds.add(item.id) -> {
-                b.itemCompactImage.setImageResource(0)
-                scope.launch {
-                    val details = withContext(Dispatchers.IO) {
-                        MangaUpdates.getSeriesDetails(item.id)
-                    }
-                    val url = details?.image?.url?.run { original ?: thumb }
-                    val desc = details?.description
-                    coverCache[item.id] = url
-                    descriptionCache[item.id] = desc
-                    fetchingIds.remove(item.id)
-                    val pos = items.indexOfFirst { it is MUMedia && it.id == item.id }
-                    if (pos != -1) notifyItemChanged(pos)
-                }
-            }
-            else -> b.itemCompactImage.setImageResource(0)
+        val cached = MUDetailsCache.get(item.id)
+        val coverUrl = item.coverUrl ?: cached?.coverUrl
+        if (coverUrl != null) {
+            b.itemCompactImage.loadImage(coverUrl)
+            blurImage(b.itemCompactBanner, coverUrl)
+        } else {
+            b.itemCompactImage.setImageResource(0)
         }
 
         b.itemCompactTitle.text = item.title ?: ""
@@ -319,11 +279,12 @@ class MergedReadingAdapter(
         b.itemCompactStatus.text = ""
         b.itemCompactStatus.visibility = View.GONE
 
-        val cachedDesc = descriptionCache[item.id]
-        b.itemCompactSynopsis.text = if (cachedDesc != null)
-            HtmlCompat.fromHtml(cachedDesc, HtmlCompat.FROM_HTML_MODE_LEGACY)
+        val desc = cached?.description
+        b.itemCompactSynopsis.text = if (desc != null)
+            HtmlCompat.fromHtml(desc, HtmlCompat.FROM_HTML_MODE_LEGACY)
         else ""
-        b.itemCompactSynopsis.movementMethod = android.text.method.LinkMovementMethod.getInstance()
+        Linkify.addLinks(b.itemCompactSynopsis, Linkify.WEB_URLS)
+        b.itemCompactSynopsis.movementMethod = LinkMovementMethod.getInstance()
         b.itemCompactSynopsis.scrollTo(0, 0)
         b.itemCompactSynopsis.setOnTouchListener { v, event ->
             when (event.action) {

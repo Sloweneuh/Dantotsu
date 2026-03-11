@@ -3,7 +3,9 @@ package ani.dantotsu.media.user
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import ani.dantotsu.connections.anilist.Anilist
+import ani.dantotsu.connections.mangaupdates.MUDetailsCache
 import ani.dantotsu.connections.mangaupdates.MUMedia
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.media.Media
@@ -50,6 +52,8 @@ class ListViewModel : ViewModel() {
                 val sortedMuResult = sortMuLists(muResult, sortOrder)
                 rawMuData = sortedMuResult    // synchronous — always up-to-date
                 muLists.postValue(sortedMuResult)  // async notification for observers
+                val allMuIds = sortedMuResult.values.flatten().filter { it.coverUrl == null }.map { it.id }
+                MUDetailsCache.prefetch(viewModelScope, allMuIds)
             }
 
             // Reapply search + filters so any active UI state is preserved after a refresh

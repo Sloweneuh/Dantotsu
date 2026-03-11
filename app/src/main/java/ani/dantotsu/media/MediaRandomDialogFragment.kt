@@ -31,6 +31,14 @@ import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
 import com.bumptech.glide.request.RequestOptions
 import jp.wasabeef.glide.transformations.BlurTransformation
+import ani.dantotsu.connections.mangaupdates.MUDetailsCache
+import ani.dantotsu.connections.mangaupdates.MangaUpdates
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MediaRandomDialogFragment : DialogFragment() {
 
@@ -39,6 +47,7 @@ class MediaRandomDialogFragment : DialogFragment() {
     private var current: Media? = null
     private var currentCoverTarget: CustomTarget<Drawable>? = null
     private var currentBackgroundTarget: CustomTarget<Drawable>? = null
+    private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -106,6 +115,46 @@ class MediaRandomDialogFragment : DialogFragment() {
                 media.manga != null -> (media.manga.totalChapters ?: "~").toString()
                 else -> "~"
             }
+            // If this is a MangaUpdates item, apply cached details first then fetch if still missing
+            val muId = media.muSeriesId
+            if (muId != null) {
+                val cached = MUDetailsCache.get(muId)
+                if (cached != null) {
+                    if (media.cover.isNullOrBlank() && !cached.coverUrl.isNullOrBlank()) {
+                        media.cover = cached.coverUrl
+                        media.banner = cached.coverUrl
+                        coverImage.loadImage(cached.coverUrl)
+                        blurImage(cardBackground, cached.coverUrl)
+                    }
+                    if (media.description.isNullOrBlank() && !cached.description.isNullOrBlank()) {
+                        media.description = cached.description
+                        val p = HtmlCompat.fromHtml(cached.description!!, HtmlCompat.FROM_HTML_MODE_LEGACY).toString()
+                        synopsisText.text = p.ifBlank { getString(R.string.no_description_available) }
+                    }
+                }
+                if (media.cover.isNullOrBlank() || media.description.isNullOrBlank()) {
+                    scope.launch {
+                        val details = withContext(Dispatchers.IO) {
+                            MangaUpdates.getSeriesDetails(muId)
+                        }
+                        if (details != null && current?.id == media.id) {
+                            val coverUrl = details.image?.url?.run { original ?: thumb }
+                            if (!coverUrl.isNullOrBlank()) {
+                                media.cover = coverUrl
+                                media.banner = coverUrl
+                                coverImage.loadImage(coverUrl)
+                                blurImage(cardBackground, coverUrl)
+                            }
+                            val desc = details.description
+                            if (!desc.isNullOrBlank() && current?.id == media.id) {
+                                media.description = desc
+                                val p = HtmlCompat.fromHtml(desc, HtmlCompat.FROM_HTML_MODE_LEGACY).toString()
+                                synopsisText.text = p.ifBlank { getString(R.string.no_description_available) }
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         fun pickRandom(animate: Boolean = true) {
@@ -124,13 +173,9 @@ class MediaRandomDialogFragment : DialogFragment() {
                 val url = next.cover
                 val backgroundUrl = next.banner ?: next.cover
                 if (url.isNullOrEmpty() && backgroundUrl.isNullOrEmpty()) {
-                    // no cover to preload — bind immediately (no animation)
+                    // no cover to preload — bind directly, using performFlip for consistent animation
                     if (animate) {
-                        card.animate().rotationY(90f).setDuration(180).withEndAction {
-                            bindMedia(next)
-                            card.rotationY = -90f
-                            card.animate().rotationY(0f).setDuration(180).setInterpolator(AccelerateDecelerateInterpolator()).start()
-                        }.start()
+                        performFlip(card) { bindMedia(next) }
                     } else {
                         bindMedia(next)
                     }
@@ -336,5 +381,6 @@ class MediaRandomDialogFragment : DialogFragment() {
         currentBackgroundTarget?.let { Glide.with(requireContext()).clear(it) }
         currentCoverTarget = null
         currentBackgroundTarget = null
+        scope.cancel()
     }
 }

@@ -18,11 +18,13 @@ import ani.dantotsu.connections.malsync.UnreadChapterInfo
 import ani.dantotsu.connections.mangaupdates.MUListEditorFragment
 import ani.dantotsu.connections.mangaupdates.MUMedia
 import ani.dantotsu.connections.mangaupdates.MUMediaDetailsActivity
-import ani.dantotsu.connections.mangaupdates.MangaUpdates
+import ani.dantotsu.connections.mangaupdates.MUDetailsCache
 import ani.dantotsu.databinding.ItemMediaLargeBinding
 import ani.dantotsu.databinding.ItemUnreadChapterBinding
 import ani.dantotsu.loadImage
 import ani.dantotsu.media.Media
+import android.text.method.LinkMovementMethod
+import android.text.util.Linkify
 import ani.dantotsu.setSafeOnClickListener
 import ani.dantotsu.media.MediaNameAdapter
 import java.io.Serializable
@@ -30,8 +32,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class UnreadChaptersAdapter(
     private val items: List<Any>,  // List<Media | MUMedia>
@@ -39,9 +39,16 @@ class UnreadChaptersAdapter(
     private var type: Int = 0 // 0 = grid/compact, 1 = list/large
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
-    private val coverCache = mutableMapOf<Long, String?>()
-    private val fetchingIds = mutableSetOf<Long>()
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+
+    override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
+        super.onAttachedToRecyclerView(recyclerView)
+        val muIds = items.filterIsInstance<MUMedia>().filter { it.coverUrl == null }.map { it.id }
+        MUDetailsCache.prefetch(scope, muIds) { id ->
+            val pos = items.indexOfFirst { it is MUMedia && it.id == id }
+            if (pos != -1) notifyItemChanged(pos)
+        }
+    }
 
     override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
         super.onDetachedFromRecyclerView(recyclerView)
@@ -201,10 +208,10 @@ class UnreadChaptersAdapter(
             // Synopsis preview (strip HTML) and make it scrollable
             try {
                 val rawDesc = media.description ?: ""
-                val parsed = androidx.core.text.HtmlCompat.fromHtml(rawDesc, androidx.core.text.HtmlCompat.FROM_HTML_MODE_LEGACY).toString()
-                val synopsis = if (parsed.isNullOrBlank() || parsed == "null") root.context.getString(R.string.no_description_available) else parsed
-                itemCompactSynopsis.text = synopsis
-                itemCompactSynopsis.movementMethod = android.text.method.ScrollingMovementMethod()
+                val parsed = androidx.core.text.HtmlCompat.fromHtml(rawDesc, androidx.core.text.HtmlCompat.FROM_HTML_MODE_LEGACY)
+                itemCompactSynopsis.text = if (parsed.isBlank() || parsed.toString() == "null") root.context.getString(R.string.no_description_available) else parsed
+                Linkify.addLinks(itemCompactSynopsis, Linkify.WEB_URLS)
+                itemCompactSynopsis.movementMethod = LinkMovementMethod.getInstance()
                 itemCompactSynopsis.scrollTo(0, 0)
                 itemCompactSynopsis.setOnTouchListener { v, event ->
                     when (event.action) {
@@ -296,34 +303,10 @@ class UnreadChaptersAdapter(
 
     override fun getItemCount(): Int = items.size
 
-    private fun loadMuCover(item: MUMedia, load: (String?) -> Unit) {
-        when {
-            item.coverUrl != null -> {
-                coverCache[item.id] = item.coverUrl
-                load(item.coverUrl)
-            }
-            coverCache.containsKey(item.id) -> load(coverCache[item.id])
-            fetchingIds.add(item.id) -> {
-                load(null)
-                scope.launch {
-                    val url = withContext(Dispatchers.IO) {
-                        MangaUpdates.getSeriesDetails(item.id)
-                            ?.image?.url?.run { original ?: thumb }
-                    }
-                    coverCache[item.id] = url
-                    fetchingIds.remove(item.id)
-                    val pos = items.indexOfFirst { it is MUMedia && it.id == item.id }
-                    if (pos != -1) notifyItemChanged(pos)
-                }
-            }
-            else -> load(null)
-        }
-    }
-
     @SuppressLint("SetTextI18n")
     private fun bindMuCompactView(binding: ItemUnreadChapterBinding, item: MUMedia) {
         binding.apply {
-            loadMuCover(item) { itemCompactImage.loadImage(it) }
+            itemCompactImage.loadImage(item.coverUrl ?: MUDetailsCache.get(item.id)?.coverUrl)
             itemCompactTitle.text = item.title ?: ""
 
             val userChapter = item.userChapter
@@ -369,16 +352,23 @@ class UnreadChaptersAdapter(
     @SuppressLint("SetTextI18n")
     private fun bindMuLargeView(binding: ItemMediaLargeBinding, item: MUMedia) {
         binding.apply {
-            loadMuCover(item) { url ->
-                itemCompactImage.loadImage(url)
-                blurImage(itemCompactBanner, url)
-            }
+            val cached = MUDetailsCache.get(item.id)
+            val coverUrl = item.coverUrl ?: cached?.coverUrl
+            itemCompactImage.loadImage(coverUrl)
+            blurImage(itemCompactBanner, coverUrl)
             itemCompactTitle.text = item.title ?: ""
             itemCompactOngoing.visibility = View.GONE
             itemCompactType.visibility = View.GONE
             itemCompactStatus.text = ""
             itemCompactStatus.visibility = View.GONE
-            itemCompactSynopsis.text = ""
+            val desc = cached?.description
+            if (desc != null) {
+                itemCompactSynopsis.text = androidx.core.text.HtmlCompat.fromHtml(desc, androidx.core.text.HtmlCompat.FROM_HTML_MODE_LEGACY)
+                Linkify.addLinks(itemCompactSynopsis, Linkify.WEB_URLS)
+                itemCompactSynopsis.movementMethod = LinkMovementMethod.getInstance()
+            } else {
+                itemCompactSynopsis.text = ""
+            }
 
             val userChapter = item.userChapter
             itemUserProgressLarge.text = userChapter?.toString() ?: "~"

@@ -99,15 +99,18 @@ class AnilistHomeViewModel : ViewModel() {
     private val muHomeLists: MutableLiveData<Map<String, List<MUMedia>>?> = MutableLiveData(null)
     fun getMuHomeLists(): LiveData<Map<String, List<MUMedia>>?> = muHomeLists
     suspend fun initMuHomeLists() {
+        // Ensure token is in memory — loadMain() may not have completed yet
+        if (MangaUpdates.token.isNullOrBlank()) {
+            MangaUpdates.getSavedToken()
+        }
         if (MangaUpdates.token == null ||
             !ani.dantotsu.settings.saving.PrefManager.getVal<Boolean>(ani.dantotsu.settings.saving.PrefName.MangaUpdatesListEnabled)
         ) {
             muHomeLists.postValue(emptyMap())
             return
         }
-        tryWithSuspend {
-            muHomeLists.postValue(MangaUpdates.getAllUserLists())
-        }
+        val result = tryWithSuspend { MangaUpdates.getAllUserLists() }
+        muHomeLists.postValue(result ?: emptyMap())
     }
 
     private val unreadChapters: MutableLiveData<ArrayList<Media>> =
@@ -204,16 +207,27 @@ class AnilistHomeViewModel : ViewModel() {
     }
 
     suspend fun initHomePage() {
-        val res = Anilist.query.initHomePage()
-        // Always post a value (even if empty) to ensure UI updates and hides progress bars
-        animeContinue.postValue(res["currentAnime"] ?: arrayListOf())
-        animeFav.postValue(res["favoriteAnime"] ?: arrayListOf())
-        animePlanned.postValue(res["currentAnimePlanned"] ?: arrayListOf())
-        mangaContinue.postValue(res["currentManga"] ?: arrayListOf())
-        mangaFav.postValue(res["favoriteManga"] ?: arrayListOf())
-        mangaPlanned.postValue(res["currentMangaPlanned"] ?: arrayListOf())
-        recommendation.postValue(res["recommendations"] ?: arrayListOf())
-        hidden.postValue(res["hidden"] ?: arrayListOf())
+        try {
+            val res = Anilist.query.initHomePage()
+            // Always post a value (even if empty) to ensure UI updates and hides progress bars
+            animeContinue.postValue(res["currentAnime"] ?: arrayListOf())
+            animeFav.postValue(res["favoriteAnime"] ?: arrayListOf())
+            animePlanned.postValue(res["currentAnimePlanned"] ?: arrayListOf())
+            mangaContinue.postValue(res["currentManga"] ?: arrayListOf())
+            mangaFav.postValue(res["favoriteManga"] ?: arrayListOf())
+            mangaPlanned.postValue(res["currentMangaPlanned"] ?: arrayListOf())
+            recommendation.postValue(res["recommendations"] ?: arrayListOf())
+            hidden.postValue(res["hidden"] ?: arrayListOf())
+        } catch (e: Exception) {
+            animeContinue.postValue(arrayListOf())
+            animeFav.postValue(arrayListOf())
+            animePlanned.postValue(arrayListOf())
+            mangaContinue.postValue(arrayListOf())
+            mangaFav.postValue(arrayListOf())
+            mangaPlanned.postValue(arrayListOf())
+            recommendation.postValue(arrayListOf())
+            hidden.postValue(arrayListOf())
+        }
     }
 
     suspend fun initHomePageWithUserStatus() {

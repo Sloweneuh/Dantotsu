@@ -14,6 +14,8 @@ import ani.dantotsu.databinding.ItemMediaLargeBinding
 import ani.dantotsu.databinding.ItemUnreleasedEpisodeBinding
 import ani.dantotsu.loadImage
 import ani.dantotsu.media.Media
+import android.text.method.LinkMovementMethod
+import android.text.util.Linkify
 import ani.dantotsu.setSafeOnClickListener
 
 class UnreleasedEpisodesAdapter(
@@ -202,10 +204,10 @@ class UnreleasedEpisodesAdapter(
             // Synopsis preview (strip HTML) and make it scrollable
             try {
                 val rawDesc = media.description ?: ""
-                val parsed = androidx.core.text.HtmlCompat.fromHtml(rawDesc, androidx.core.text.HtmlCompat.FROM_HTML_MODE_LEGACY).toString()
-                val synopsis = if (parsed.isNullOrBlank() || parsed == "null") root.context.getString(R.string.no_description_available) else parsed
-                itemCompactSynopsis.text = synopsis
-                itemCompactSynopsis.movementMethod = android.text.method.ScrollingMovementMethod()
+                val parsed = androidx.core.text.HtmlCompat.fromHtml(rawDesc, androidx.core.text.HtmlCompat.FROM_HTML_MODE_LEGACY)
+                itemCompactSynopsis.text = if (parsed.isBlank() || parsed.toString() == "null") root.context.getString(R.string.no_description_available) else parsed
+                Linkify.addLinks(itemCompactSynopsis, Linkify.WEB_URLS)
+                itemCompactSynopsis.movementMethod = LinkMovementMethod.getInstance()
                 itemCompactSynopsis.scrollTo(0, 0)
                 itemCompactSynopsis.setOnTouchListener { v, event ->
                     when (event.action) {

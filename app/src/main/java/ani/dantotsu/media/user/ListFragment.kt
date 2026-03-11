@@ -10,9 +10,11 @@ import androidx.recyclerview.widget.ConcatAdapter
 import androidx.recyclerview.widget.GridLayoutManager
 import ani.dantotsu.connections.mangaupdates.MUMedia
 import ani.dantotsu.connections.mangaupdates.MUMediaAdapter
+import ani.dantotsu.connections.mangaupdates.toMedia
 import ani.dantotsu.databinding.FragmentListBinding
 import ani.dantotsu.media.Media
 import ani.dantotsu.media.MediaAdaptor
+import ani.dantotsu.media.MediaRandomDialogFragment
 import ani.dantotsu.media.OtherDetailsViewModel
 
 class ListFragment : Fragment() {
@@ -101,7 +103,13 @@ class ListFragment : Fragment() {
     }
 
     fun randomOptionClick() {
-        mediaAdaptor?.randomOptionClick()
+        val aniItems: List<Media> = list ?: emptyList()
+        val muItems: List<Media> = (muList ?: emptyList()).map { it.toMedia() }
+        val combined = ArrayList(aniItems + muItems)
+        if (combined.isNotEmpty()) {
+            MediaRandomDialogFragment.newInstance(combined)
+                .show(parentFragmentManager, "random")
+        }
     }
 
     companion object {

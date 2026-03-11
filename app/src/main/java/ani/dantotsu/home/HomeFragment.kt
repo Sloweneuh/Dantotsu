@@ -889,7 +889,9 @@ class HomeFragment : Fragment() {
         var muHomeListsData: Map<String, List<ani.dantotsu.connections.mangaupdates.MUMedia>>? = null
 
         fun renderContinueReading() {
-            val aniItems = mangaContinueData ?: return
+            // Return only if neither source has loaded yet
+            if (mangaContinueData == null && muHomeListsData == null) return
+            val aniItems: List<Media> = mangaContinueData ?: emptyList()
             val muItems = muHomeListsData?.get("Reading") ?: emptyList()
             binding.homeReadingRecyclerView.visibility = View.GONE
             binding.homeReadingEmpty.visibility = View.GONE
@@ -904,7 +906,7 @@ class HomeFragment : Fragment() {
                     requireContext(), LinearLayoutManager.HORIZONTAL, false
                 )
                 binding.homeContinueReadMore.setOnClickListener { i ->
-                    MediaListViewActivity.passedMedia = aniItems
+                    MediaListViewActivity.passedMedia = ArrayList(aniItems)
                     MediaListViewActivity.passedMuMedia = ArrayList(muItems)
                     ContextCompat.startActivity(
                         i.context, Intent(i.context, MediaListViewActivity::class.java)
@@ -954,7 +956,9 @@ class HomeFragment : Fragment() {
         var mangaPlannedData: ArrayList<Media>? = null
 
         fun renderPlannedManga() {
-            val aniItems = mangaPlannedData ?: return
+            // Return only if neither source has loaded yet
+            if (mangaPlannedData == null && muHomeListsData == null) return
+            val aniItems: List<Media> = mangaPlannedData ?: emptyList()
             val muItems = muHomeListsData?.get("Planning") ?: emptyList()
             binding.homePlannedMangaRecyclerView.visibility = View.GONE
             binding.homePlannedMangaEmpty.visibility = View.GONE
@@ -969,7 +973,7 @@ class HomeFragment : Fragment() {
                     requireContext(), LinearLayoutManager.HORIZONTAL, false
                 )
                 binding.homePlannedMangaMore.setOnClickListener { i ->
-                    MediaListViewActivity.passedMedia = aniItems
+                    MediaListViewActivity.passedMedia = ArrayList(aniItems)
                     MediaListViewActivity.passedMuMedia = ArrayList(muItems)
                     ContextCompat.startActivity(
                         i.context, Intent(i.context, MediaListViewActivity::class.java)
@@ -995,8 +999,8 @@ class HomeFragment : Fragment() {
         }
         model.getMuHomeLists().observe(viewLifecycleOwner) {
             muHomeListsData = it
-            if (mangaContinueData != null) renderContinueReading()
-            if (mangaPlannedData != null) renderPlannedManga()
+            renderContinueReading()
+            renderPlannedManga()
             // Update the unread chapters section with latest MU items
             val muUnread = it?.get("Reading")
                 ?.filter { mu -> mu.latestChapter != null && mu.latestChapter > (mu.userChapter ?: 0) }

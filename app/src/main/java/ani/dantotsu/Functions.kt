@@ -139,6 +139,7 @@ import io.noties.markwon.html.HtmlPlugin
 import io.noties.markwon.html.TagHandlerNoOp
 import io.noties.markwon.image.AsyncDrawable
 import io.noties.markwon.image.glide.GlideImagesPlugin
+import io.noties.markwon.linkify.LinkifyPlugin
 import jp.wasabeef.glide.transformations.BlurTransformation
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.delay
@@ -1500,6 +1501,7 @@ fun buildMarkwon(
         })
 
         .usePlugin(SoftBreakAddsNewLinePlugin.create())
+        .usePlugin(LinkifyPlugin.create())
         .usePlugin(StrikethroughPlugin.create())
         .usePlugin(TablePlugin.create(activity))
         .usePlugin(TaskListPlugin.create(activity))

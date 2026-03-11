@@ -8,7 +8,9 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.recyclerview.widget.GridLayoutManager
 import ani.dantotsu.connections.mangaupdates.MUMediaAdapter
+import ani.dantotsu.connections.mangaupdates.toMedia
 import ani.dantotsu.databinding.FragmentListBinding
+import ani.dantotsu.media.MediaRandomDialogFragment
 
 /**
  * A tab fragment that shows MangaUpdates list entries.
@@ -21,6 +23,7 @@ class MUOnlyListFragment : Fragment() {
     private var _binding: FragmentListBinding? = null
     private val binding get() = _binding!!
     private var listKey: String? = null
+    private var currentItems: List<ani.dantotsu.connections.mangaupdates.MUMedia> = emptyList()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,7 +45,7 @@ class MUOnlyListFragment : Fragment() {
         val screenWidth = resources.displayMetrics.run { widthPixels / density }
 
         var currentGrid = model.grid.value ?: false
-        var currentItems: List<ani.dantotsu.connections.mangaupdates.MUMedia> = run {
+        currentItems = run {
             val muMap = model.getFilteredMuLists().value
             if (listKey != null) muMap?.get(listKey) ?: emptyList()
             else muMap?.values?.flatten() ?: emptyList()
@@ -71,6 +74,14 @@ class MUOnlyListFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    fun randomOptionClick() {
+        val combined = ArrayList(currentItems.map { it.toMedia() })
+        if (combined.isNotEmpty()) {
+            MediaRandomDialogFragment.newInstance(combined)
+                .show(parentFragmentManager, "random")
+        }
     }
 
     companion object {

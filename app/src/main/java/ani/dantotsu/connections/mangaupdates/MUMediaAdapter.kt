@@ -13,16 +13,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.io.Serializable
 
 class MUMediaAdapter(private val items: List<MUMedia>) :
     RecyclerView.Adapter<MUMediaAdapter.ViewHolder>() {
 
-    // null value = fetch was attempted but no URL found; key absent = not yet tried
-    private val coverCache = mutableMapOf<Long, String?>()
-    private val fetchingIds = mutableSetOf<Long>()
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
     inner class ViewHolder(val binding: ItemMediaCompactBinding) :
@@ -35,6 +30,15 @@ class MUMediaAdapter(private val items: List<MUMedia>) :
 
     override fun getItemCount(): Int = items.size
 
+    override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
+        super.onAttachedToRecyclerView(recyclerView)
+        val idsToFetch = items.filter { it.coverUrl == null }.map { it.id }
+        MUDetailsCache.prefetch(scope, idsToFetch) { id ->
+            val pos = items.indexOfFirst { it.id == id }
+            if (pos != -1) notifyItemChanged(pos)
+        }
+    }
+
     override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
         super.onDetachedFromRecyclerView(recyclerView)
         scope.cancel()
@@ -44,32 +48,10 @@ class MUMediaAdapter(private val items: List<MUMedia>) :
         val item = items[position]
         val b = holder.binding
 
-        // Lazy-load cover: use cached URL if available, otherwise fetch series details once
-        when {
-            item.coverUrl != null -> {
-                coverCache[item.id] = item.coverUrl
-                b.itemCompactImage.loadImage(item.coverUrl)
-            }
-            coverCache.containsKey(item.id) -> {
-                val url = coverCache[item.id]
-                if (url != null) b.itemCompactImage.loadImage(url)
-                else b.itemCompactImage.setImageResource(0)
-            }
-            fetchingIds.add(item.id) -> {
-                b.itemCompactImage.setImageResource(0)
-                scope.launch {
-                    val url = withContext(Dispatchers.IO) {
-                        MangaUpdates.getSeriesDetails(item.id)
-                            ?.image?.url?.run { original ?: thumb }
-                    }
-                    coverCache[item.id] = url
-                    fetchingIds.remove(item.id)
-                    val pos = items.indexOfFirst { it.id == item.id }
-                    if (pos != -1) notifyItemChanged(pos)
-                }
-            }
-            else -> b.itemCompactImage.setImageResource(0)
-        }
+        // Cover: use inline URL if present, else read from cache (populated by prefetch)
+        val coverUrl = item.coverUrl ?: MUDetailsCache.get(item.id)?.coverUrl
+        if (coverUrl != null) b.itemCompactImage.loadImage(coverUrl)
+        else b.itemCompactImage.setImageResource(0)
         b.itemCompactTitle.text = item.title ?: ""
         b.itemCompactOngoing.visibility = View.GONE
         b.itemCompactType.visibility = View.GONE

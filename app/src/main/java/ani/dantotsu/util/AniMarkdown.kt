@@ -38,6 +38,18 @@ class AniMarkdown { //istg anilist has the worst api
             }
         }
 
+        private fun String.convertPlainUrlsToHtml(): String {
+            // Match plain-text URLs not already inside an HTML attribute (href/src/etc.)
+            val urlRegex = Regex("""(?<![="'(\[])https?://\S+""")
+            return urlRegex.replace(this) { matchResult ->
+                var url = matchResult.value
+                // Strip common trailing punctuation that shouldn't be part of the URL
+                url = url.trimEnd('.', ',', ';', ':', '!', '?', ')', ']')
+                val suffix = matchResult.value.substring(url.length)
+                """<a href="$url">$url</a>$suffix"""
+            }
+        }
+
         private fun String.convertYoutubeToHtml(): String {
             val regex = """<div class='youtube' id='(.*?)'></div>""".toRegex()
             return regex.replace(this) { matchResult ->
@@ -89,6 +101,7 @@ class AniMarkdown { //istg anilist has the worst api
                 .convertNestedImageToHtml()
                 .convertImageToHtml()
                 .convertLinkToHtml()
+                .convertPlainUrlsToHtml()
                 .convertYoutubeToHtml()
                 .convertCenterToHtml()
                 .replaceLeftovers()

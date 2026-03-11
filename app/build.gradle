@@ -19,7 +19,7 @@ android {
         applicationId "ani.dantotsu"
         minSdk = 21
         targetSdk = 35
-        versionName "3.8.2"
+        versionName "3.8.3"
         def (major, minor, patch) = versionName.split("\\.").collect { it.toInteger() }
         versionCode = major * 1_000_000 + minor * 1_000 + patch
         signingConfig signingConfigs.debug
@@ -154,6 +154,7 @@ dependencies {
     implementation "io.noties.markwon:ext-tasklist:$markwon_version"
     implementation "io.noties.markwon:html:$markwon_version"
     implementation "io.noties.markwon:image-glide:$markwon_version"
+    implementation "io.noties.markwon:linkify:$markwon_version"
 
 //  Groupie
     ext.groupie_version = '2.10.1'

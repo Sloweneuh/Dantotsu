@@ -1,6 +1,8 @@
 package ani.dantotsu.media
 
 import android.annotation.SuppressLint
+import android.text.method.LinkMovementMethod
+import android.text.util.Linkify
 import androidx.core.text.HtmlCompat
 import android.text.method.ScrollingMovementMethod
 import android.view.MotionEvent
@@ -189,10 +191,10 @@ class MediaAdaptor(
                     // Synopsis preview (stripped from HTML) and user progress
                     try {
                         val rawDesc = media.description ?: ""
-                        val parsed = HtmlCompat.fromHtml(rawDesc, HtmlCompat.FROM_HTML_MODE_LEGACY).toString()
-                        val synopsis = if (parsed.isNullOrBlank() || parsed == "null") activity.getString(R.string.no_description_available) else parsed
-                        b.itemCompactSynopsis.text = synopsis
-                        b.itemCompactSynopsis.movementMethod = ScrollingMovementMethod()
+                        val parsed = HtmlCompat.fromHtml(rawDesc, HtmlCompat.FROM_HTML_MODE_LEGACY)
+                        b.itemCompactSynopsis.text = if (parsed.isBlank() || parsed.toString() == "null") activity.getString(R.string.no_description_available) else parsed
+                        Linkify.addLinks(b.itemCompactSynopsis, Linkify.WEB_URLS)
+                        b.itemCompactSynopsis.movementMethod = LinkMovementMethod.getInstance()
                         b.itemCompactSynopsis.scrollTo(0, 0)
                         b.itemCompactSynopsis.setOnTouchListener { v, event ->
                             when (event.action) {

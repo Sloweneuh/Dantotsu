@@ -226,9 +226,12 @@ class ListActivity : AppCompatActivity() {
             //get the current tab
             val currentTab =
                 binding.listTabLayout.getTabAt(binding.listTabLayout.selectedTabPosition)
-            val currentFragment =
-                supportFragmentManager.findFragmentByTag("f" + currentTab?.position.toString()) as? ListFragment
-            currentFragment?.randomOptionClick()
+            val tag = "f" + currentTab?.position.toString()
+            val currentFragment = supportFragmentManager.findFragmentByTag(tag)
+            when (currentFragment) {
+                is ListFragment -> currentFragment.randomOptionClick()
+                is MUOnlyListFragment -> currentFragment.randomOptionClick()
+            }
         }
 
         binding.search.setOnClickListener {
