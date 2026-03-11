@@ -1,14 +1,18 @@
 package ani.dantotsu.connections.mangaupdates
 
 import android.animation.ObjectAnimator
+import android.content.Intent
 import android.content.res.Configuration
 import android.os.Bundle
 import android.text.SpannableStringBuilder
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.AccelerateDecelerateInterpolator
+import android.widget.ImageView
+import android.widget.LinearLayout
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.text.bold
 import androidx.core.text.color
 import androidx.core.view.marginBottom
@@ -37,6 +41,7 @@ import ani.dantotsu.others.getSerialized
 import ani.dantotsu.Mapper
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
+import ani.dantotsu.snackString
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
 import androidx.lifecycle.MutableLiveData
@@ -129,6 +134,9 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
             muSeriesId = muMedia.id,
             muListId = muMedia.listId,
         )
+        // Add MU URL to external links so ComickInfoFragment can validate Comick entries by MU link
+        val muUrl = muMedia.url ?: "https://www.mangaupdates.com/series/${muMedia.id.toString(36)}"
+        media.externalLinks.add(arrayListOf(null, muUrl))
         media.selected = model.loadSelected(media)
         model.setMedia(media)
 
@@ -223,6 +231,12 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
             if (supportFragmentManager.findFragmentByTag("muListEditor") == null)
                 MUListEditorFragment.newInstance(muMedia).show(supportFragmentManager, "muListEditor")
         }
+        binding.mediaAddToList.setOnLongClickListener {
+            val mediaId = (muMedia.id and 0x7FFFFFFF).toInt()
+            PrefManager.setCustomVal("${mediaId}_progressDialog", true)
+            snackString(getString(R.string.auto_update_reset))
+            true
+        }
 
         // Hide other Anilist-specific UI elements
         binding.mediaFav.visibility = View.GONE
@@ -231,18 +245,63 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         binding.mediaLanguageButton.visibility = View.GONE
         binding.mediaUnreadSource?.visibility = View.GONE
 
-        // Share button — opens a share sheet with the MangaUpdates series URL
-        if (!muMedia.url.isNullOrBlank()) {
-            binding.mediaShare.setOnClickListener {
-                val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                    type = "text/plain"
-                    putExtra(android.content.Intent.EXTRA_TEXT, muMedia.url)
-                    putExtra(android.content.Intent.EXTRA_SUBJECT, muMedia.title ?: "")
-                }
-                startActivity(android.content.Intent.createChooser(shareIntent, muMedia.title ?: ""))
+        // Share button — shows a dialog with available links (MangaUpdates, Comick)
+        binding.mediaShare.setOnClickListener {
+            val linkOptions = mutableListOf<Triple<String, String, Int>>()
+
+            val muUrl = muMedia.url ?: "https://www.mangaupdates.com/series/${muMedia.id.toString(36)}"
+            linkOptions.add(Triple("MangaUpdates", muUrl, R.drawable.ic_round_mangaupdates_24))
+
+            val comickSlug = model.comickSlug.value
+            if (comickSlug != null) {
+                linkOptions.add(Triple("Comick", "https://comick.io/comic/$comickSlug", R.drawable.ic_round_comick_24))
             }
-        } else {
-            binding.mediaShare.visibility = View.GONE
+
+            val dialog = androidx.appcompat.app.AlertDialog.Builder(this, R.style.MyPopup).create()
+            val titleView = android.widget.TextView(this).apply {
+                setText(R.string.share)
+                textSize = 20f
+                gravity = android.view.Gravity.CENTER
+                setPadding(32, 32, 32, 16)
+                setTextColor(getThemeColor(com.google.android.material.R.attr.colorOnSurface))
+            }
+            dialog.setCustomTitle(titleView)
+
+            val iconLayout = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = android.view.Gravity.CENTER
+                setPadding(32, 16, 32, 32)
+            }
+
+            linkOptions.forEach { (label, link, iconRes) ->
+                val iconButton = ImageView(this).apply {
+                    setImageResource(iconRes)
+                    val size = (56 * resources.displayMetrics.density).toInt()
+                    layoutParams = LinearLayout.LayoutParams(size, size).apply { setMargins(16, 0, 16, 0) }
+                    setPadding(12, 12, 12, 12)
+                    setColorFilter(
+                        ContextCompat.getColor(context, R.color.bg_opp),
+                        android.graphics.PorterDuff.Mode.SRC_IN
+                    )
+                    val outValue = android.util.TypedValue()
+                    context.theme.resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, outValue, true)
+                    setBackgroundResource(outValue.resourceId)
+                    contentDescription = label
+                    setOnClickListener {
+                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, link)
+                            putExtra(Intent.EXTRA_SUBJECT, "${muMedia.title ?: ""} - $label")
+                        }
+                        startActivity(Intent.createChooser(shareIntent, "Share $label link"))
+                        dialog.dismiss()
+                    }
+                }
+                iconLayout.addView(iconButton)
+            }
+
+            dialog.setView(iconLayout)
+            dialog.show()
         }
 
         binding.mediaClose.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
@@ -320,9 +379,8 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
     ) : FragmentStateAdapter(fragmentManager, lifecycle) {
         override fun getItemCount() = 2
         override fun createFragment(position: Int): Fragment = when (position) {
-            0 -> MUMediaInfoFragment()
-            1 -> MangaReadFragment()
-            else -> MUMediaInfoFragment()
+            0 -> MUMediaInfoContainerFragment()
+            else -> MangaReadFragment()
         }
     }
 

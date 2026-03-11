@@ -183,6 +183,14 @@
     <string name="disable_comick_desc">Activer ou désactiver la récupération des données Comick et l\'onglet Comick</string>
     <string name="disable_mal">Activer MyAnimeList (MAL)</string>
     <string name="disable_mal_desc">Activer ou désactiver la récupération des données MAL et l\'onglet MAL</string>
+    <string name="mal_connections_help">Comment fonctionne le bouton MAL ?</string>
+    <string name="full_mal_connections_help">
+        Activer MAL ajoute les fonctionnalités suivantes :
+        \n - **Onglet MAL** — un onglet d\'informations supplémentaire dans les détails du contenu avec des données propres à MAL (scores, genres, staff, recommandations, etc.)
+        \n - **Stacks MAL** — informations supplémentaires affichées sur l\'écran d\'accueil basées sur votre liste MAL
+        \n\n **Désactiver MAL masque uniquement l\'onglet MAL et les stacks. Cela ne désactive PAS la synchronisation de la progression.**
+        \n\n La synchronisation de la progression vers votre compte MAL est contrôlée séparément — connectez votre compte MAL dans les paramètres **Comptes** et la synchronisation se fait automatiquement en parallèle de votre activité Anilist.
+    </string>
     <string name="disable_mangaupdates">Activer MangaUpdates</string>
     <string name="disable_mangaupdates_desc">Activer ou désactiver la récupération des données MangaUpdates et l\'onglet MangaUpdates</string>
     <string name="mu_filter_year_hint">ex: 2020</string>
@@ -195,6 +203,25 @@
     <string name="mu_tab_enabled_desc">Afficher l\'onglet informations MangaUpdates dans les détails du manga</string>
     <string name="disable_malsync">Activer les infos MALSync</string>
     <string name="disable_malsync_desc">Activer ou désactiver la récupération des infos MALSync et leur affichage associé</string>
+    <string name="comick_connections_help">Comment fonctionne Comick ?</string>
+    <string name="full_comick_connections_help">
+        Comick est un agrégateur de mangas que Dantotsu utilise pour enrichir les entrées manga avec des données supplémentaires.
+        \n\n Activer Comick ajoute les fonctionnalités suivantes :
+        \n - **Onglet Comick** — un onglet d\'informations supplémentaire dans les détails manga avec données de chapitres et illustrations depuis Comick
+        \n - **Liaison MangaUpdates** — les données Comick sont utilisées pour trouver et lier automatiquement la série MangaUpdates correspondante
+        \n - **Images de couverture** — des couvertures alternatives ou en haute résolution peuvent être récupérées depuis Comick
+        \n\n Aucun compte Comick n\'est requis. Toutes les données sont récupérées anonymement via l\'API publique de Comick. **L\'API de Comick ne prend pas en charge les opérations de compte.**
+        \n\n *Désactiver Comick masque l\'onglet Comick et arrête toute récupération de données associée. La liaison automatique avec MangaUpdates sera également désactivée.*
+    </string>
+    <string name="malsync_connections_help">Comment fonctionne MALSync ?</string>
+    <string name="full_malsync_connections_help">
+        MALSync est une base de données de correspondances maintenue par la communauté, qui relie les titres entre différents sites de suivi d\'anime et de manga (Anilist, MAL, Comick, MangaUpdates, etc.).
+        \n\n Activer MALSync ajoute les fonctionnalités suivantes :
+        \n - **Liaison améliorée** — Dantotsu utilise MALSync pour faire correspondre avec précision les titres Anilist avec leurs équivalents sur Comick et MangaUpdates
+        \n - **Suivi de la progression des sorties** — MALSync fournit des informations de sortie à jour pour les épisodes d\'anime et les chapitres de manga, utilisées notamment pour le suivi des chapitres non lus et les notifications de sortie
+        \n\n Vous pouvez configurer si MALSync est utilisé pour les **Manga**, les **Anime** ou les **Deux** via l\'icône de paramètres à côté du bouton.
+        \n\n Aucun compte requis. Les données MALSync sont récupérées anonymement via l\'API publique.
+    </string>
     <string name="home_layout_show_and_order">Afficher, masquer et réorganiser les sections de l\'accueil</string>
     <string name="extension_settings">Extensions</string>
     <string name="downloads">Téléchargements</string>

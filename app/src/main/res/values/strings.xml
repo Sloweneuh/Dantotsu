@@ -212,6 +212,14 @@
     <string name="disable_comick_desc">Toggle fetching Comick data and Comick tab</string>
     <string name="disable_mal">Enable MyAnimeList (MAL)</string>
     <string name="disable_mal_desc">Toggle fetching MAL data and MAL tab</string>
+    <string name="mal_connections_help">How does the MAL toggle work\?</string>
+    <string name="full_mal_connections_help">
+        Enabling MAL adds the following features:
+        \n - **MAL tab** — an extra info tab in media details with MAL-specific data (scores, genres, staff, recommendations, etc.)
+        \n - **MAL stacks** — additional info displayed on the home screen based on your MAL list
+        \n\n **Disabling MAL only hides the MAL tab and stacks. It does NOT disable progress syncing.**
+        \n\n Progress syncing to your MAL account is controlled separately — connect your MAL account in **Accounts** settings and syncing happens automatically alongside your Anilist activity.
+    </string>
     <string name="disable_mangaupdates">Enable MangaUpdates</string>
     <string name="disable_mangaupdates_desc">Toggle fetching MangaUpdates data and tab</string>
     <string name="mu_list_fetch_enabled">MangaUpdates lists</string>
@@ -226,6 +234,25 @@
     <string name="mu_filter_year_hint">e.g. 2020</string>
     <string name="disable_malsync">Enable MALSync Info</string>
     <string name="disable_malsync_desc">Toggle fetching MALSync info and related display</string>
+    <string name="comick_connections_help">How does Comick work\?</string>
+    <string name="full_comick_connections_help">
+        Comick is a manga aggregator that Dantotsu uses to enhance manga entries with additional data.
+        \n\n Enabling Comick adds the following features:
+        \n - **Comick tab** — an extra info tab in manga details with chapter data and cover art from Comick
+        \n - **MangaUpdates linking** — Comick data is used to automatically find and link the matching MangaUpdates series
+        \n - **Cover images** — higher-resolution or alternative covers may be sourced from Comick
+        \n\n No Comick account is required. All data is fetched anonymously from the public Comick API. **The Comick API doesn\'t support account operations.**
+        \n\n *Disabling Comick hides the Comick tab and stops all related data fetching. MangaUpdates auto-linking will also be disabled.*
+    </string>
+    <string name="malsync_connections_help">How does MALSync work\?</string>
+    <string name="full_malsync_connections_help">
+        MALSync is a community-maintained mapping database that connects titles across different anime and manga tracking sites (Anilist, MAL, Comick, MangaUpdates, etc.).
+        \n\n Enabling MALSync adds the following features:
+        \n - **Improved linking** — Dantotsu uses MALSync to accurately match Anilist titles with their counterparts on Comick and MangaUpdates
+        \n - **Release progress tracking** — MALSync provides up-to-date release information for anime episodes and manga chapters, which can be used for features like unread chapter tracking and release notifications
+        \n\n You can configure whether MALSync is used for **Manga**, **Anime**, or **Both** using the settings icon next to the toggle.
+        \n\n No account is required. MALSync data is fetched anonymously from the public API.
+    </string>
     <string name="malsync_checks_dialog_title">MALSync checks</string>
     <string name="malsync_checks_option_manga">Manga</string>
     <string name="malsync_checks_option_anime">Anime</string>
@@ -1412,6 +1439,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
 
 
     <!-- MangaUpdates / Comick -->
+    <string name="comick">Comick</string>
     <string name="mangaupdates_requires_internet">MangaUpdates requires an internet connection</string>
     <string name="comick_requires_internet">Comick data requires an internet connection</string>
     <string name="linked_mangaupdates_entry">Successfully linked to MangaUpdates entry</string>

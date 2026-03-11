@@ -115,6 +115,12 @@ class SettingsAccountActivity : AppCompatActivity() {
                             restartMainActivity.isEnabled = true
                             reload()
                         }
+                        if (MAL.username == null) {
+                            lifecycleScope.launch {
+                                MAL.query.getUserData()
+                                reload()
+                            }
+                        }
                         settingsMALUsername.visibility = View.VISIBLE
                         settingsMALUsername.text = MAL.username
                         settingsMALAvatar.loadImage(MAL.avatar)

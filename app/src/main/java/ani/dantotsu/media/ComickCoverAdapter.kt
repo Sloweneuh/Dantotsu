@@ -13,6 +13,8 @@ import ani.dantotsu.R
 import ani.dantotsu.connections.comick.ComickCover
 import ani.dantotsu.databinding.ItemComickCoverBinding
 import ani.dantotsu.loadImage
+import com.bumptech.glide.Glide
+import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions.withCrossFade
 
 class ComickCoverAdapter(
     private val covers: List<ComickCover>
@@ -36,7 +38,16 @@ class ComickCoverAdapter(
             val b2key = cover.b2key
             if (!b2key.isNullOrBlank()) {
                 val thumbUrl = buildThumbUrl(b2key)
-                comickCoverImage.loadImage(thumbUrl)
+                val fullUrl = "https://meo.comick.pictures/$b2key"
+                Glide.with(comickCoverImage.context)
+                    .load(thumbUrl)
+                    .transition(withCrossFade())
+                    .error(
+                        Glide.with(comickCoverImage.context)
+                            .load(fullUrl)
+                            .transition(withCrossFade())
+                    )
+                    .into(comickCoverImage)
             } else {
                 comickCoverImage.setImageResource(R.drawable.ic_round_menu_book_24)
             }

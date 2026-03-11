@@ -147,6 +147,8 @@ class MediaAdaptor(
                     }
                     // compact layout has no info button; skip showing MAL intro here
                     b.itemCompactProgressContainer.visibility = if (fav) View.GONE else View.VISIBLE
+                    b.itemCompactSourceBadge.visibility =
+                        if (media.muSeriesId != null) View.VISIBLE else View.GONE
                 }
             }
 
@@ -316,6 +318,8 @@ class MediaAdaptor(
                     } catch (e: Exception) {
                         b.itemInfoButton.visibility = View.GONE
                     }
+                    b.itemCompactSourceBadge.visibility =
+                        if (media.muSeriesId != null) View.VISIBLE else View.GONE
                 }
             }
 
@@ -558,22 +562,43 @@ class MediaAdaptor(
         if ((mediaList?.size ?: 0) > position && position != -1) {
             val media = mediaList?.get(position)
             if (bitmap != null) MediaSingleton.bitmap = bitmap
-            ContextCompat.startActivity(
-                activity,
-                Intent(activity, MediaDetailsActivity::class.java).putExtra(
-                    "media",
-                    media as Serializable
-                ),
-                if (itemCompactImage != null) {
-                    ActivityOptionsCompat.makeSceneTransitionAnimation(
-                        activity,
-                        itemCompactImage,
-                        ViewCompat.getTransitionName(itemCompactImage)!!
-                    ).toBundle()
-                } else {
-                    null
-                }
-            )
+            val muSeriesId = media?.muSeriesId
+            val transition = if (itemCompactImage != null) {
+                ActivityOptionsCompat.makeSceneTransitionAnimation(
+                    activity,
+                    itemCompactImage,
+                    ViewCompat.getTransitionName(itemCompactImage)!!
+                ).toBundle()
+            } else null
+            if (muSeriesId != null) {
+                val muMedia = ani.dantotsu.connections.mangaupdates.MUMedia(
+                    id = muSeriesId,
+                    title = media.name,
+                    url = media.shareLink ?: "https://www.mangaupdates.com/series/${muSeriesId.toString(36)}",
+                    coverUrl = media.cover,
+                    listId = media.muListId ?: 0,
+                    userChapter = media.userProgress,
+                    userVolume = null,
+                    latestChapter = null,
+                    bayesianRating = null,
+                    priority = null,
+                )
+                ContextCompat.startActivity(
+                    activity,
+                    Intent(activity, ani.dantotsu.connections.mangaupdates.MUMediaDetailsActivity::class.java)
+                        .putExtra("muMedia", muMedia as Serializable),
+                    transition
+                )
+            } else {
+                ContextCompat.startActivity(
+                    activity,
+                    Intent(activity, MediaDetailsActivity::class.java).putExtra(
+                        "media",
+                        media as Serializable
+                    ),
+                    transition
+                )
+            }
         }
     }
 

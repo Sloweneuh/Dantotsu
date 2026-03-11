@@ -224,18 +224,18 @@ data class MUPublication(
 @Serializable
 data class MURecommendation(
     @SerialName("series_id") val seriesId: Long? = null,
-    val title: String? = null,
-    val url: String? = null,
-    val description: String? = null,
+    @SerialName("series_name") val seriesName: String? = null,
+    @SerialName("series_url") val seriesUrl: String? = null,
+    @SerialName("series_image") val seriesImage: MUSeriesImage? = null,
     val weight: Int? = null
 )
 
 @Serializable
 data class MUCategoryRecommendation(
     @SerialName("series_id") val seriesId: Long? = null,
-    val title: String? = null,
-    val url: String? = null,
-    val description: String? = null,
+    @SerialName("series_name") val seriesName: String? = null,
+    @SerialName("series_url") val seriesUrl: String? = null,
+    @SerialName("series_image") val seriesImage: MUSeriesImage? = null,
     val weight: Int? = null
 )
 

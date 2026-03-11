@@ -3,6 +3,7 @@ package ani.dantotsu.settings
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.updateLayoutParams
 import androidx.core.content.ContextCompat
@@ -10,11 +11,14 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import ani.dantotsu.R
 import ani.dantotsu.databinding.ActivitySettingsConnectionsBinding
 import ani.dantotsu.initActivity
+import ani.dantotsu.others.CustomBottomDialog
 import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.util.customAlertDialog
+import io.noties.markwon.Markwon
+import io.noties.markwon.SoftBreakAddsNewLinePlugin
 
 class SettingsConnectionsActivity : AppCompatActivity() {
     private lateinit var binding: ActivitySettingsConnectionsBinding
@@ -40,7 +44,25 @@ class SettingsConnectionsActivity : AppCompatActivity() {
                 desc = getString(R.string.disable_comick_desc),
                 icon = R.drawable.ic_round_comick_24,
                 isChecked = PrefManager.getVal<Boolean>(PrefName.ComickEnabled),
-                switch = { isChecked, _ -> PrefManager.setVal(PrefName.ComickEnabled, isChecked) }
+                switch = { isChecked, _ -> PrefManager.setVal(PrefName.ComickEnabled, isChecked) },
+                attachToSwitch = { b ->
+                    b.settingsExtraIcon.visibility = View.VISIBLE
+                    b.settingsExtraIcon.setImageDrawable(
+                        ContextCompat.getDrawable(this, R.drawable.ic_round_help_24)
+                    )
+                    b.settingsExtraIcon.setOnClickListener {
+                        CustomBottomDialog.newInstance().apply {
+                            setTitleText(this@SettingsConnectionsActivity.getString(R.string.comick_connections_help))
+                            addView(
+                                TextView(it.context).apply {
+                                    val markWon = Markwon.builder(it.context)
+                                        .usePlugin(SoftBreakAddsNewLinePlugin.create()).build()
+                                    markWon.setMarkdown(this, this@SettingsConnectionsActivity.getString(R.string.full_comick_connections_help))
+                                }
+                            )
+                        }.show(supportFragmentManager, "comick_help")
+                    }
+                }
             ),
             Settings(
                 type = 2,
@@ -48,7 +70,25 @@ class SettingsConnectionsActivity : AppCompatActivity() {
                 desc = getString(R.string.disable_mal_desc),
                 icon = R.drawable.ic_myanimelist,
                 isChecked = PrefManager.getVal<Boolean>(PrefName.MalEnabled),
-                switch = { isChecked, _ -> PrefManager.setVal(PrefName.MalEnabled, isChecked) }
+                switch = { isChecked, _ -> PrefManager.setVal(PrefName.MalEnabled, isChecked) },
+                attachToSwitch = { b ->
+                    b.settingsExtraIcon.visibility = View.VISIBLE
+                    b.settingsExtraIcon.setImageDrawable(
+                        ContextCompat.getDrawable(this, R.drawable.ic_round_help_24)
+                    )
+                    b.settingsExtraIcon.setOnClickListener {
+                        CustomBottomDialog.newInstance().apply {
+                            setTitleText(this@SettingsConnectionsActivity.getString(R.string.mal_connections_help))
+                            addView(
+                                TextView(it.context).apply {
+                                    val markWon = Markwon.builder(it.context)
+                                        .usePlugin(SoftBreakAddsNewLinePlugin.create()).build()
+                                    markWon.setMarkdown(this, this@SettingsConnectionsActivity.getString(R.string.full_mal_connections_help))
+                                }
+                            )
+                        }.show(supportFragmentManager, "mal_help")
+                    }
+                }
             ),
             Settings(
                 type = 2,
@@ -58,11 +98,25 @@ class SettingsConnectionsActivity : AppCompatActivity() {
                 isChecked = PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled),
                 switch = { isChecked, _ -> PrefManager.setVal(PrefName.MalSyncInfoEnabled, isChecked) },
                 attachToSwitch = { b ->
-                    // Show a small settings icon to configure whether MALSync checks manga, anime or both
+                    // Show a small settings icon to configure whether MALSync checks manga, anime or both.
+                    // Long-click the icon to show the MALSync help dialog.
                     b.settingsExtraIcon.visibility = View.VISIBLE
                     b.settingsExtraIcon.setImageDrawable(
                         ContextCompat.getDrawable(this, R.drawable.ic_round_settings_24)
                     )
+                    b.settingsExtraIcon.setOnLongClickListener {
+                        CustomBottomDialog.newInstance().apply {
+                            setTitleText(this@SettingsConnectionsActivity.getString(R.string.malsync_connections_help))
+                            addView(
+                                TextView(it.context).apply {
+                                    val markWon = Markwon.builder(it.context)
+                                        .usePlugin(SoftBreakAddsNewLinePlugin.create()).build()
+                                    markWon.setMarkdown(this, this@SettingsConnectionsActivity.getString(R.string.full_malsync_connections_help))
+                                }
+                            )
+                        }.show(supportFragmentManager, "malsync_help")
+                        true
+                    }
                     // Update description to reflect current mode
                     val mode = PrefManager.getVal<String>(PrefName.MalSyncCheckMode)
                     val modeText = when (mode) {
@@ -99,6 +153,16 @@ class SettingsConnectionsActivity : AppCompatActivity() {
                                     R.string.malsync_checks_desc,
                                     options[i]
                                 )
+                            }
+                            setNeutralButton("?") {
+                                CustomBottomDialog.newInstance().apply {
+                                    setTitleText(this@SettingsConnectionsActivity.getString(R.string.malsync_connections_help))
+                                    addView(TextView(this@SettingsConnectionsActivity).apply {
+                                        val markWon = Markwon.builder(this@SettingsConnectionsActivity)
+                                            .usePlugin(SoftBreakAddsNewLinePlugin.create()).build()
+                                        markWon.setMarkdown(this, this@SettingsConnectionsActivity.getString(R.string.full_malsync_connections_help))
+                                    })
+                                }.show(supportFragmentManager, "malsync_help")
                             }
                             show()
                         }

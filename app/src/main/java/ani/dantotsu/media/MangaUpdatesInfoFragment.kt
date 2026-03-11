@@ -14,8 +14,12 @@ import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import ani.dantotsu.R
 import ani.dantotsu.buildMarkwon
+import ani.dantotsu.connections.anilist.Anilist
+import ani.dantotsu.connections.comick.ComickApi
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.connections.mangaupdates.MangaUpdatesLoginDialog
+import ani.dantotsu.media.manga.Manga
+import ani.dantotsu.setSafeOnClickListener
 import ani.dantotsu.copyToClipboard
 import ani.dantotsu.databinding.FragmentMediaInfoBinding
 import ani.dantotsu.isOnline
@@ -95,10 +99,10 @@ class MangaUpdatesInfoFragment : Fragment() {
 
         // New: observe preloaded series details and display immediately if available
         model.mangaUpdatesSeries.observe(viewLifecycleOwner) { series ->
-            if (series != null) {
-                Logger.log(
-                        "MangaUpdates Fragment: ViewModel provided series: title=${series.title}, genres=${series.genres?.size ?: 0}"
-                )
+            if (series != null && !loaded) {
+                // If media isn't available yet, bail out — checkAndDisplay will retry when it is
+                val media = currentMedia ?: return@observe
+
                 // Avoid re-rendering the same series; allow rendering if UI is empty or showing
                 // fallback
                 val currentTitle = binding.mediaInfoName.text?.toString()?.trim()
@@ -110,11 +114,10 @@ class MangaUpdatesInfoFragment : Fragment() {
                     return@observe
                 }
 
-                // Display the series (displaySeriesDetails will clear fallbacks and mark loaded)
+                // Display the series (displaySeriesDetails sets loaded = true internally)
                 binding.mediaInfoProgressBar.visibility = View.GONE
                 binding.mediaInfoContainer.visibility = View.VISIBLE
-                currentMedia?.let { displaySeriesDetails(series, it, model) }
-                loaded = true
+                displaySeriesDetails(series, media, model)
             }
         }
     }
@@ -150,6 +153,13 @@ class MangaUpdatesInfoFragment : Fragment() {
             Logger.log("MangaUpdates Fragment: Login status = $isLoggedIn")
 
             withContext(Dispatchers.Main) {
+                // Guard: if another coroutine or observer already rendered the series, bail out.
+                // Multiple observers can launch concurrent coroutines before loaded=true is set;
+                // this prevents the second (or third) coroutine from clearing and re-rendering,
+                // and specifically prevents the "else" branch from setting container GONE after
+                // displaySeriesDetails already made it visible.
+                if (loaded) return@withContext
+
                 // If the ViewModel did not provide a MU link, try to find one in the media's
                 // external links
                 var effectiveMuLink = muLink
@@ -639,7 +649,10 @@ class MangaUpdatesInfoFragment : Fragment() {
     ) {
         val muLink = "https://www.mangaupdates.com/series/${series.seriesId.toString(36)}"
         val model: MediaDetailsViewModel by activityViewModels()
-        model.saveMangaUpdatesLink(media.id, muLink, series)
+
+        // Persist the link immediately (without posting partial series to LiveData — the search
+        // API returns an abbreviated MUSeriesRecord that lacks genres, categories, synonyms, etc.)
+        model.saveMangaUpdatesLink(media.id, muLink)
 
         // Clear the search view and restore the original layout
         val frameLayout =
@@ -651,13 +664,31 @@ class MangaUpdatesInfoFragment : Fragment() {
             parent.addView(binding.mediaInfoContainer)
         }
 
-        // Observer will handle displaying details since we updated LiveData via ViewModel
+        // Block observer re-renders while we fetch full details; show progress
+        loaded = true
+        binding.mediaInfoProgressBar.visibility = View.VISIBLE
+        binding.mediaInfoContainer.visibility = View.GONE
+
         android.widget.Toast.makeText(
                         requireContext(),
                         getString(R.string.linked_mangaupdates_entry),
                         android.widget.Toast.LENGTH_SHORT
                 )
                 .show()
+
+        // Search results only carry a partial MUSeriesRecord (no genres, categories, synonyms,
+        // anime adaptation, etc.). Fetch the full detail record before rendering so all dynamic
+        // sections are populated correctly.
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            val fullSeries = MangaUpdates.getSeriesDetails(series.seriesId) ?: series
+            withContext(Dispatchers.Main) {
+                if (_binding == null) return@withContext
+                loaded = false
+                displaySeriesDetails(fullSeries, media, model)
+                // Update ViewModel with full data; postValue fires after loaded=true, so observers bail
+                model.saveMangaUpdatesLink(media.id, muLink, fullSeries)
+            }
+        }
     }
 
     private fun showNoDataWithSearch(media: Media) {
@@ -1111,9 +1142,158 @@ class MangaUpdatesInfoFragment : Fragment() {
                 }
             }
             bind.root.tag = "dynamic_mu_section"
+            parent.addView(bind.root)
+        }
+        // Recommendations — merge series recommendations and category recommendations, deduplicating by seriesId
+        val allRecs = buildList<ani.dantotsu.connections.mangaupdates.MURecommendation> {
+            series.recommendations?.let { addAll(it) }
+            series.category_recommendations?.forEach { cat ->
+                add(ani.dantotsu.connections.mangaupdates.MURecommendation(
+                    seriesId = cat.seriesId,
+                    seriesName = cat.seriesName,
+                    seriesUrl = cat.seriesUrl,
+                    seriesImage = cat.seriesImage,
+                    weight = cat.weight,
+                ))
+            }
+        }.distinctBy { it.seriesId }
+        if (allRecs.isNotEmpty() &&
+                parent.findViewWithTag<View>("recommendations_mu") == null
+        ) {
+            viewLifecycleOwner.lifecycleScope.launch {
+                val currentMuSeriesId = media.muSeriesId
+                val currentAnilistId = media.id
+                val anilistRecommendations = model.getMedia().value?.recommendations
+                val anilistById = anilistRecommendations?.associateBy { it.id } ?: emptyMap()
+                val recommendedMedia = mutableListOf<Media>()
+
+                val recAnilistPairs = mutableListOf<Pair<Int, Int>>()
+                val recMuMedia = mutableMapOf<Int, Media>()
+
+                val comickEnabled = ani.dantotsu.settings.saving.PrefManager.getVal<Boolean>(
+                    ani.dantotsu.settings.saving.PrefName.ComickEnabled
+                )
+
+                for ((index, rec) in allRecs.withIndex()) {
+                    val recSeriesId = rec.seriesId ?: continue
+                    if (recSeriesId == currentMuSeriesId) continue
+                    val recName = rec.seriesName ?: continue
+                    val coverUrl = rec.seriesImage?.url?.original ?: rec.seriesImage?.url?.thumb
+                    if (!comickEnabled) {
+                        recMuMedia[index] = Media(
+                            id = (recSeriesId and 0x7FFFFFFF).toInt(),
+                            name = recName,
+                            nameRomaji = recName,
+                            userPreferredName = recName,
+                            cover = coverUrl,
+                            banner = coverUrl,
+                            isAdult = false,
+                            manga = Manga(),
+                            format = "MANGA",
+                            muSeriesId = recSeriesId,
+                        )
+                        continue
+                    }
+                    try {
+                        val slug = withContext(Dispatchers.IO) {
+                            ComickApi.searchAndMatchComicByMuId(listOf(recName), recSeriesId)
+                        }
+                        if (slug != null) {
+                            val details = withContext(Dispatchers.IO) { ComickApi.getComicDetails(slug) }
+                            val anilistId = details?.comic?.links?.al?.toIntOrNull()
+                            if (anilistId != null && anilistId != currentAnilistId) {
+                                recAnilistPairs.add(Pair(index, anilistId))
+                            } else {
+                                recMuMedia[index] = Media(
+                                    id = (recSeriesId and 0x7FFFFFFF).toInt(),
+                                    name = recName,
+                                    nameRomaji = recName,
+                                    userPreferredName = recName,
+                                    cover = coverUrl,
+                                    banner = coverUrl,
+                                    isAdult = false,
+                                    manga = Manga(),
+                                    format = "MANGA",
+                                    muSeriesId = recSeriesId,
+                                )
+                            }
+                        } else {
+                            recMuMedia[index] = Media(
+                                id = (recSeriesId and 0x7FFFFFFF).toInt(),
+                                name = recName,
+                                nameRomaji = recName,
+                                userPreferredName = recName,
+                                cover = coverUrl,
+                                banner = coverUrl,
+                                isAdult = false,
+                                manga = Manga(),
+                                format = "MANGA",
+                                muSeriesId = recSeriesId,
+                            )
+                        }
+                    } catch (e: Exception) {
+                        continue
+                    }
+                }
+
+                val indexToMedia = mutableMapOf<Int, Media>()
+                indexToMedia.putAll(recMuMedia)
+
+                if (recAnilistPairs.isNotEmpty()) {
+                    val allAnilistIds = recAnilistPairs.map { it.second }
+                    val missingIds = allAnilistIds.filter { anilistById[it] == null }
+                    val batchFetched = if (missingIds.isNotEmpty()) {
+                        withContext(Dispatchers.IO) {
+                            try {
+                                Anilist.query.getMediaBatch(missingIds)
+                            } catch (e: Exception) {
+                                emptyList()
+                            }
+                        }
+                    } else emptyList()
+                    val batchById = batchFetched.associateBy { it.id }
+                    for ((index, anilistId) in recAnilistPairs) {
+                        val m = anilistById[anilistId] ?: batchById[anilistId]
+                        if (m != null) indexToMedia[index] = m
+                    }
+                }
+
+                for (index in indexToMedia.keys.sorted()) {
+                    indexToMedia[index]?.let { recommendedMedia.add(it) }
+                }
+
+                if (recommendedMedia.isNotEmpty()) {
+                    withContext(Dispatchers.Main) {
+                        if (_binding == null) return@withContext
+                        ani.dantotsu.databinding.ItemTitleRecyclerBinding.inflate(
+                                LayoutInflater.from(context),
+                                parent,
+                                false
+                        ).apply {
+                            itemTitle.setText(ani.dantotsu.R.string.recommended)
+                            itemRecycler.adapter = MediaAdaptor(0, recommendedMedia, requireActivity())
+                            itemRecycler.layoutManager =
+                                androidx.recyclerview.widget.LinearLayoutManager(
+                                    requireContext(),
+                                    androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL,
+                                    false
+                                )
+                            itemMore.visibility = View.VISIBLE
+                            itemMore.setSafeOnClickListener {
+                                MediaListViewActivity.passedMedia = ArrayList(recommendedMedia)
+                                startActivity(
+                                    Intent(requireContext(), MediaListViewActivity::class.java)
+                                        .putExtra("title", getString(ani.dantotsu.R.string.recommended))
+                                )
+                            }
+                            root.tag = "dynamic_mu_section"
+                            parent.addView(root)
+                        }
+                    }
+                }
+            }
         }
 
-        // Only show unlink button if this media has a manually-saved MU link
         val isManualSelection =
             PrefManager.getNullableCustomVal<String>(
                 "mangaupdates_link_${media.id}",

@@ -544,16 +544,18 @@ class MALInfoFragment : Fragment() {
                         MAL.query.getStacks(malId, true)
                     } catch (e: Exception) { emptyList<MALStack>() }
                 }
+                val ctx = context ?: return@launch
+                if (_binding == null) return@launch
                 if (stacks.isNotEmpty()) {
                     val bind = ItemTitleRecyclerBinding.inflate(
-                        LayoutInflater.from(context),
+                        LayoutInflater.from(ctx),
                         parent,
                         false
                     )
                     bind.itemTitle.text = "Stacks"
                     bind.itemRecycler.adapter = StackAdapter(stacks, true)
                     bind.itemRecycler.layoutManager = LinearLayoutManager(
-                        requireContext(),
+                        ctx,
                         LinearLayoutManager.HORIZONTAL,
                         false
                     )
@@ -561,7 +563,7 @@ class MALInfoFragment : Fragment() {
                     bind.itemMore.setSafeOnClickListener {
                         StackListViewActivity.passedStacks = ArrayList(stacks)
                         startActivity(
-                            Intent(requireContext(), StackListViewActivity::class.java)
+                            Intent(ctx, StackListViewActivity::class.java)
                                 .putExtra("title", "Interest Stacks")
                                 .putExtra("isAnime", true)
                         )
@@ -763,16 +765,18 @@ class MALInfoFragment : Fragment() {
                         MAL.query.getStacks(malId, false)
                     } catch (e: Exception) { emptyList<MALStack>() }
                 }
+                val ctx = context ?: return@launch
+                if (_binding == null) return@launch
                 if (stacks.isNotEmpty()) {
                     val bind = ItemTitleRecyclerBinding.inflate(
-                        LayoutInflater.from(context),
+                        LayoutInflater.from(ctx),
                         parent,
                         false
                     )
                     bind.itemTitle.text = "Stacks"
                     bind.itemRecycler.adapter = StackAdapter(stacks, false)
                     bind.itemRecycler.layoutManager = LinearLayoutManager(
-                        requireContext(),
+                        ctx,
                         LinearLayoutManager.HORIZONTAL,
                         false
                     )
@@ -780,7 +784,7 @@ class MALInfoFragment : Fragment() {
                     bind.itemMore.setSafeOnClickListener {
                         StackListViewActivity.passedStacks = ArrayList(stacks)
                         startActivity(
-                            Intent(requireContext(), StackListViewActivity::class.java)
+                            Intent(ctx, StackListViewActivity::class.java)
                                 .putExtra("title", "Interest Stacks")
                                 .putExtra("isAnime", false)
                         )

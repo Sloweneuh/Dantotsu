@@ -67,6 +67,25 @@ object ComickApi {
             }
         }
 
+        // Check if mu link matches any MangaUpdates external link
+        val mu = comickLinks.mu?.trim()
+        if (!mu.isNullOrBlank()) {
+            val muNumeric = mu.toLongOrNull()
+            val possibleMuUrls = buildList {
+                if (muNumeric != null) {
+                    add(normalizeUrl("https://www.mangaupdates.com/series.html?id=$muNumeric"))
+                    add(normalizeUrl("https://www.mangaupdates.com/series/${muNumeric.toString(36)}"))
+                }
+                add(normalizeUrl("https://www.mangaupdates.com/series/$mu"))
+            }.filterNotNull()
+            val muMatchFound = normalizedExternalLinks.any { extLink -> possibleMuUrls.any { it == extLink } }
+            Logger.log("Comick: MU link check - found match: $muMatchFound (mu: $mu)")
+            if (muMatchFound) {
+                Logger.log("Comick: ✓ Validated by matching mu link: ${comickLinks.mu}")
+                return true
+            }
+        }
+
         Logger.log("Comick: ✗ No matching links found")
         return false
     }
@@ -498,6 +517,45 @@ object ComickApi {
             Logger.log("Comick covers error for slug=$slug: ${e.message}")
             null
         }
+    }
+
+    /**
+     * Search for a Comick entry matching a MangaUpdates series by checking only [ComickLinks.mu].
+     * Tries each title in order, fetches full details for each result, and returns the slug of
+     * the comic whose `links.mu` equals the numeric or base-36 representation of [muSeriesId].
+     */
+    suspend fun searchAndMatchComicByMuId(
+        titles: List<String>,
+        muSeriesId: Long
+    ): String? = withContext(Dispatchers.IO) {
+        val muIdNumeric = muSeriesId.toString()          // e.g. "123456"
+        val muIdBase36  = muSeriesId.toString(36)        // e.g. "abc12"
+
+        for (title in titles) {
+            if (title.isBlank()) continue
+            val encodedTitle = java.net.URLEncoder.encode(title, "UTF-8")
+            val url = "https://api.comick.dev/v1.0/search/?type=comic&page=1&limit=5&showall=false&q=$encodedTitle&t=false"
+            val request = Request.Builder().url(url).build()
+            val response = try { client.newCall(request).execute() } catch (e: Exception) { continue }
+            val body = response.body.string()
+            if (!response.isSuccessful || body.isNullOrEmpty() || body == "[]") continue
+
+            val type = object : com.google.gson.reflect.TypeToken<List<ComickSearchResult>>() {}.type
+            val results: List<ComickSearchResult> = try { gson.fromJson(body, type) } catch (e: Exception) { continue }
+
+            val candidates = mutableListOf<ComickComic>()
+            for (result in results) {
+                val details = getComicDetails(result.slug ?: continue, useCache = false) ?: continue
+                val mu = details.comic?.links?.mu?.trim() ?: continue
+                if (mu == muIdNumeric || mu == muIdBase36) {
+                    details.comic?.let { candidates.add(it) }
+                }
+            }
+            if (candidates.isNotEmpty()) {
+                return@withContext candidates.maxByOrNull { it.user_follow_count ?: 0 }?.slug
+            }
+        }
+        null
     }
 
     /**
