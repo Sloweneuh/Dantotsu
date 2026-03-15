@@ -47,6 +47,8 @@ import ani.dantotsu.themes.ThemeManager
 import androidx.lifecycle.MutableLiveData
 import com.flaviofaria.kenburnsview.RandomTransitionGenerator
 import com.google.android.material.appbar.AppBarLayout
+import android.util.Log
+import android.widget.Toast
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -104,8 +106,12 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
+
+        // Apply the selected theme before inflating the layout
+        ThemeManager(this).applyTheme()
         super.onCreate(savedInstanceState)
 
+        Log.d("MUMediaDetailsActivity", "onCreate called with intent: $intent")
         // Set up binding and content view first
         binding = ActivityMediaBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -113,8 +119,10 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         // Handle deep link: https://www.mangaupdates.com/series/{slugOrId}
         val action = intent?.action
         val data = intent?.data
+        Log.d("MUMediaDetailsActivity", "Intent action: $action, data: $data")
         if (Intent.ACTION_VIEW == action && data != null && data.host == "www.mangaupdates.com" && data.pathSegments?.firstOrNull() == "series") {
             val slugOrId = data.pathSegments.getOrNull(1)
+            Log.d("MUMediaDetailsActivity", "Deep link detected, slugOrId: $slugOrId, pathSegments: ${data.pathSegments}")
             // Show loading overlay, hide main content
             binding.loadingOverlay?.visibility = View.VISIBLE
             // Ensure loading bar uses colorPrimary
@@ -129,6 +137,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
                 val details = MangaUpdates.getSeriesFromUrl(slugOrId)
                 withContext(Dispatchers.Main) {
                     if (details != null) {
+                        Log.d("MUMediaDetailsActivity", "MangaUpdates.getSeriesFromUrl returned details: $details")
                         // Convert to MUMedia
                         val muMedia = MUMedia(
                             id = details.seriesId,
@@ -152,13 +161,18 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
                         binding.commentMessageContainer?.visibility = View.VISIBLE
                         launchMediaDetails(muMedia)
                     } else {
+                        Log.e("MUMediaDetailsActivity", "No details found for slugOrId: $slugOrId, finishing activity.")
+                        Toast.makeText(this@MUMediaDetailsActivity, "No details found for this MangaUpdates link.", Toast.LENGTH_LONG).show()
                         finish()
                     }
                 }
             }
             return
         } else {
+            Log.w("MUMediaDetailsActivity", "Intent did not match deep link, attempting to getSerialized(muMedia)")
             muMedia = intent?.getSerialized("muMedia") ?: run {
+                Log.e("MUMediaDetailsActivity", "muMedia is null, finishing activity.")
+                Toast.makeText(this@MUMediaDetailsActivity, "No media data found, closing.", Toast.LENGTH_LONG).show()
                 finish()
                 return
             }

@@ -27,13 +27,27 @@ fun updateProgress(media: Media, number: String) {
         CoroutineScope(Dispatchers.IO).launch {
             val a = number.toFloatOrNull()?.toInt()
             if ((a ?: 0) > (media.userProgress ?: -1)) {
-                val ok = MangaUpdates.updateProgress(
-                    seriesId    = muSeriesId,
-                    seriesTitle = media.name,
-                    listId      = media.muListId ?: 0,
-                    chapter     = a,
-                    volume      = null
-                )
+                val listId = media.muListId ?: -1
+                val ok = if (listId == -1) {
+                    // Not in user list, add to list (default to Reading)
+                    val added = MangaUpdates.addToList(
+                        seriesId = muSeriesId,
+                        seriesTitle = media.name,
+                        listId = 0, // 0 = Reading
+                        chapter = a,
+                        volume = null
+                    )
+                    if (added) media.muListId = 0
+                    added
+                } else {
+                    MangaUpdates.updateProgress(
+                        seriesId    = muSeriesId,
+                        seriesTitle = media.name,
+                        listId      = listId,
+                        chapter     = a,
+                        volume      = null
+                    )
+                }
                 if (ok) {
                     PrefManager.setCustomVal(
                         "${ani.dantotsu.connections.mangaupdates.PREF_MU_LAST_READ_PREFIX}$muSeriesId",
