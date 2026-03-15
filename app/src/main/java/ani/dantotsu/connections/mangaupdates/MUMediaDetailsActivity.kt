@@ -135,11 +135,23 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
             binding.commentMessageContainer?.visibility = View.INVISIBLE
             lifecycleScope.launch(Dispatchers.IO) {
                 val details = MangaUpdates.getSeriesFromUrl(slugOrId)
-                withContext(Dispatchers.Main) {
-                    if (details != null) {
-                        Log.d("MUMediaDetailsActivity", "MangaUpdates.getSeriesFromUrl returned details: $details")
-                        // Convert to MUMedia
-                        val muMedia = MUMedia(
+                var muMedia: MUMedia? = null
+                if (details != null) {
+                    // Try to find user list entry for this series
+                    val allUserLists = MangaUpdates.getAllUserLists()
+                    val userEntry = allUserLists.values.flatten().find { it.id == details.seriesId }
+                    muMedia = if (userEntry != null) {
+                        // Use the user's list entry (with progress, listId, etc.)
+                        userEntry.copy(
+                            title = details.title,
+                            url = "https://www.mangaupdates.com/series/$slugOrId",
+                            coverUrl = details.image?.url?.original ?: details.image?.url?.thumb,
+                            latestChapter = details.latest_chapter?.toInt(),
+                            bayesianRating = details.bayesian_rating?.toDoubleOrNull()
+                        )
+                    } else {
+                        // Not in user list, use details only
+                        MUMedia(
                             id = details.seriesId,
                             title = details.title,
                             url = "https://www.mangaupdates.com/series/$slugOrId",
@@ -151,6 +163,11 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
                             bayesianRating = details.bayesian_rating?.toDoubleOrNull(),
                             priority = null
                         )
+                    }
+                }
+                withContext(Dispatchers.Main) {
+                    if (muMedia != null) {
+                        Log.d("MUMediaDetailsActivity", "MangaUpdates.getSeriesFromUrl returned details: $details, userEntry: ${muMedia.listId}")
                         // Hide loading, show content
                         binding.loadingOverlay?.visibility = View.GONE
                         binding.mediaAppBar?.visibility = View.VISIBLE
