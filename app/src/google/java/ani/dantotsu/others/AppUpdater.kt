@@ -284,6 +284,15 @@ object AppUpdater {
                     data = uri
                 }
                 context.startActivity(installIntent)
+                // Try to delete the APK after starting the install intent
+                try {
+                    val apkFile = java.io.File(it)
+                    if (apkFile.exists()) {
+                        apkFile.delete()
+                    }
+                } catch (e: Exception) {
+                    logError(e)
+                }
             }
         } catch (e: Exception) {
             logError(e)

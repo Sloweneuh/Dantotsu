@@ -134,6 +134,8 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
             binding.mediaCover?.visibility = View.INVISIBLE
             binding.commentMessageContainer?.visibility = View.INVISIBLE
             lifecycleScope.launch(Dispatchers.IO) {
+                // Ensure we are logged in and have a token before fetching user lists
+                MangaUpdates.getSavedToken()
                 val details = MangaUpdates.getSeriesFromUrl(slugOrId)
                 var muMedia: MUMedia? = null
                 if (details != null) {
