@@ -76,7 +76,9 @@ data class MUProgressUpdateSeries(
 @Serializable
 data class MUProgressUpdateStatus(
     val volume: Int? = null,
-    val chapter: Int? = null
+    val chapter: Int? = null,
+    @SerialName("increment_volume") val incrementVolume: Int? = null,
+    @SerialName("increment_chapter") val incrementChapter: Int? = null
 )
 
 @Serializable

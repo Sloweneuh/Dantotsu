@@ -238,7 +238,14 @@
             android:name=".media.CalendarActivity"
             android:parentActivityName=".MainActivity" />
         <activity android:name=".media.user.ListActivity" />
-        <activity android:name=".connections.mangaupdates.MUMediaDetailsActivity" />
+        <activity android:name=".connections.mangaupdates.MUMediaDetailsActivity" android:exported="true">
+            <intent-filter android:label="Open MangaUpdates Series">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="www.mangaupdates.com" android:pathPrefix="/series/" />
+            </intent-filter>
+        </activity>
         <activity
             android:name=".profile.SingleStatActivity"
             android:parentActivityName=".profile.ProfileActivity" />

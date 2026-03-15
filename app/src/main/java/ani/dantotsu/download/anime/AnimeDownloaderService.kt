@@ -227,19 +227,20 @@ class AnimeDownloaderService : Service() {
                 val outputDir = getSubDirectory(
                     this@AnimeDownloaderService,
                     MediaType.ANIME,
-                    true,
+                    false,
                     task.title,
                     task.episode
                 ) ?: throw Exception("Failed to create output directory")
 
                 val extension = ffExtension!!.getFileExtension()
-                outputDir.findFile("${task.getTaskName().findValidName()}.${extension.first}")
-                    ?.delete()
+                val outputFileName = "${task.getTaskName()}.${extension.first}"
+
+                outputDir.findFile(outputFileName)?.delete()
 
                 val outputFile =
                     outputDir.createFile(
                         extension.second,
-                        "${task.getTaskName()}.${extension.first}"
+                        outputFileName
                     )
                         ?: throw Exception("Failed to create output file")
 
@@ -284,8 +285,6 @@ class AnimeDownloaderService : Service() {
                 currentTasks.find { it.getTaskName() == task.getTaskName() }?.sessionId =
                     ffTask
 
-                saveMediaInfo(task, baseOutputDir)
-
                 // periodically check if the download is complete
                 while (ffExtension.getState(ffTask) != "COMPLETED") {
                     if (ffExtension.getState(ffTask) == "FAILED") {
@@ -305,14 +304,7 @@ class AnimeDownloaderService : Service() {
                         }
                         toast("${getTaskName(task.title, task.episode)} Download failed")
                         Logger.log("Download failed: ${ffExtension.getStackTrace(ffTask)}")
-                        downloadsManager.removeDownload(
-                            DownloadedType(
-                                task.title,
-                                task.episode,
-                                MediaType.ANIME,
-                            ),
-                            false
-                        ) {}
+                        cleanupFailedDownload(outputDir, outputFile)
                         Injekt.get<CrashlyticsInterface>().logException(
                             Exception(
                                 "Anime Download failed:" +
@@ -323,7 +315,7 @@ class AnimeDownloaderService : Service() {
                             )
                         )
                         currentTasks.removeAll { it.getTaskName() == task.getTaskName() }
-                        broadcastDownloadFailed(task.episode)
+                        broadcastDownloadFailed(task.episode, task.sourceMedia?.id)
                         break
                     }
                     builder.setProgress(
@@ -332,7 +324,8 @@ class AnimeDownloaderService : Service() {
                     )
                     broadcastDownloadProgress(
                         task.episode,
-                        percent.coerceAtMost(99)
+                        percent.coerceAtMost(99),
+                        task.sourceMedia?.id
                     )
                     if (notifi) {
                         withContext(Dispatchers.Main) {
@@ -358,14 +351,7 @@ class AnimeDownloaderService : Service() {
                             }
                         }
                         snackString("${getTaskName(task.title, task.episode)} Download failed")
-                        downloadsManager.removeDownload(
-                            DownloadedType(
-                                task.title,
-                                task.episode,
-                                MediaType.ANIME
-                            ),
-                            false
-                        ) {}
+                        cleanupFailedDownload(outputDir, outputFile)
                         Injekt.get<CrashlyticsInterface>().logException(
                             Exception(
                                 "Anime Download failed:" +
@@ -376,7 +362,7 @@ class AnimeDownloaderService : Service() {
                             )
                         )
                         currentTasks.removeAll { it.getTaskName() == task.getTaskName() }
-                        broadcastDownloadFailed(task.episode)
+                        broadcastDownloadFailed(task.episode, task.sourceMedia?.id)
                         return@withContext
                     }
                     Logger.log("Download completed")
@@ -398,16 +384,16 @@ class AnimeDownloaderService : Service() {
                         task.getTaskName(),
                         task.video.file.url
                     ).apply()
-                    downloadsManager.addDownload(
-                        DownloadedType(
-                            task.title,
-                            task.episode,
-                            MediaType.ANIME,
-                        )
+                    saveMediaInfo(task, baseOutputDir)
+                    val downloadType = DownloadedType(
+                        task.title,
+                        task.episode,
+                        MediaType.ANIME,
+                        size = bytesToMegabytes(outputFile.length())
                     )
-
+                    downloadsManager.addDownload(downloadType)
                     currentTasks.removeAll { it.getTaskName() == task.getTaskName() }
-                    broadcastDownloadFinished(task.episode)
+                    broadcastDownloadFinished(task.episode, task.sourceMedia?.id, downloadType.size)
                 } else throw Exception("Download failed")
 
             } catch (e: Exception) {
@@ -417,7 +403,7 @@ class AnimeDownloaderService : Service() {
                     e.printStackTrace()
                     Injekt.get<CrashlyticsInterface>().logException(e)
                 }
-                broadcastDownloadFailed(task.episode)
+                broadcastDownloadFailed(task.episode, task.sourceMedia?.id)
             }
         }
     }
@@ -458,14 +444,14 @@ class AnimeDownloaderService : Service() {
                         episode.thumb = downloadImage(
                             task.episodeImage,
                             episodeDirectory,
-                            "episodeImage.jpg"
+                            "episodeImage.jpg",
+                            replaceExisting = false
                         )?.let {
                             FileUrl(
                                 it
                             )
                         }
                     }
-                    downloadImage(task.episodeImage, episodeDirectory, "episodeImage.jpg")
                 }
 
                 val jsonString = gson.toJson(media)
@@ -488,7 +474,12 @@ class AnimeDownloaderService : Service() {
         }
     }
 
-    private suspend fun downloadImage(url: String, directory: DocumentFile, name: String): String? =
+    private suspend fun downloadImage(
+        url: String,
+        directory: DocumentFile,
+        name: String,
+        replaceExisting: Boolean = true
+    ): String? =
         withContext(Dispatchers.IO) {
             var connection: HttpURLConnection? = null
             println("Downloading url $url")
@@ -499,7 +490,9 @@ class AnimeDownloaderService : Service() {
                     throw Exception("Server returned HTTP ${connection.responseCode} ${connection.responseMessage}")
                 }
 
-                directory.findFile(name)?.forceDelete(this@AnimeDownloaderService)
+                if (replaceExisting) {
+                    directory.findFile(name)?.forceDelete(this@AnimeDownloaderService)
+                }
                 val file =
                     directory.createFile("image/jpeg", name) ?: throw Exception("File not created")
                 file.openOutputStream(this@AnimeDownloaderService, false).use { output ->
@@ -524,6 +517,24 @@ class AnimeDownloaderService : Service() {
             }
         }
 
+    private fun bytesToMegabytes(bytes: Long): Double {
+        if (bytes <= 0L) return 0.0
+        return bytes / 1_000_000.0
+    }
+
+    private fun cleanupFailedDownload(outputDir: DocumentFile, outputFile: DocumentFile) {
+        try {
+            outputFile.delete()
+        } catch (_: Exception) {
+        }
+        try {
+            if (outputDir.listFiles().isEmpty()) {
+                outputDir.delete()
+            }
+        } catch (_: Exception) {
+        }
+    }
+
     private fun broadcastDownloadStarted(episodeNumber: String) {
         val intent = Intent(AnimeWatchFragment.ACTION_DOWNLOAD_STARTED).apply {
             putExtra(AnimeWatchFragment.EXTRA_EPISODE_NUMBER, episodeNumber)
@@ -531,24 +542,28 @@ class AnimeDownloaderService : Service() {
         sendBroadcast(intent)
     }
 
-    private fun broadcastDownloadFinished(episodeNumber: String) {
+    private fun broadcastDownloadFinished(episodeNumber: String, mediaId: Int?, size: Double?) {
         val intent = Intent(AnimeWatchFragment.ACTION_DOWNLOAD_FINISHED).apply {
             putExtra(AnimeWatchFragment.EXTRA_EPISODE_NUMBER, episodeNumber)
+            putExtra("mediaId", mediaId)
+            putExtra("size", size)
         }
         sendBroadcast(intent)
     }
 
-    private fun broadcastDownloadFailed(episodeNumber: String) {
+    private fun broadcastDownloadFailed(episodeNumber: String, mediaId: Int?) {
         val intent = Intent(AnimeWatchFragment.ACTION_DOWNLOAD_FAILED).apply {
             putExtra(AnimeWatchFragment.EXTRA_EPISODE_NUMBER, episodeNumber)
+            putExtra("mediaId", mediaId)
         }
         sendBroadcast(intent)
     }
 
-    private fun broadcastDownloadProgress(episodeNumber: String, progress: Int) {
+    private fun broadcastDownloadProgress(episodeNumber: String, progress: Int, mediaId: Int?) {
         val intent = Intent(AnimeWatchFragment.ACTION_DOWNLOAD_PROGRESS).apply {
             putExtra(AnimeWatchFragment.EXTRA_EPISODE_NUMBER, episodeNumber)
             putExtra("progress", progress)
+            putExtra("mediaId", mediaId)
         }
         sendBroadcast(intent)
     }
@@ -602,4 +617,21 @@ object AnimeServiceDataSingleton {
 
     @Volatile
     var isServiceRunning: Boolean = false
+}
+
+object AnimeDownloader{
+    private val activeDownloads = mutableMapOf<Int, MutableSet<String>>()
+
+    fun startDownload(mediaId: Int, episodeNumber: String) {
+        activeDownloads.getOrPut(mediaId) { mutableSetOf() }.add(episodeNumber)
+    }
+    fun stopDownload(mediaId: Int, episodeNumber: String) {
+        activeDownloads[mediaId]?.remove(episodeNumber)
+        if (activeDownloads[mediaId]?.isEmpty() == true) {
+            activeDownloads.remove(mediaId)
+        }
+    }
+    fun isDownloading(mediaId: Int, episodeNumber: String): Boolean {
+        return activeDownloads[mediaId]?.contains(episodeNumber) == true
+    }
 }

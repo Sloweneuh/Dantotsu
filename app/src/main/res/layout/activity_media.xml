@@ -489,6 +489,22 @@
             tools:srcCompat="@tools:sample/backgrounds/scenic[2]" />
     </androidx.cardview.widget.CardView>
 
+        <!-- Loading indicator overlay -->
+        <FrameLayout
+            android:id="@+id/loadingOverlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="?android:colorBackground"
+            android:visibility="gone">
+            <ProgressBar
+                android:id="@+id/loadingProgressBar"
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:layout_gravity="center"
+                style="?android:attr/progressBarStyle"
+            />
+        </FrameLayout>
+
     <FrameLayout
         android:id="@+id/fragmentExtensionsContainer"
         android:layout_width="match_parent"

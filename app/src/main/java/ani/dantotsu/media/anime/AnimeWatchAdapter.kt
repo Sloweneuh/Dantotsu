@@ -10,6 +10,7 @@ import android.widget.LinearLayout
 import android.widget.NumberPicker
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.content.ContextCompat
+import androidx.core.content.ContextCompat.getString
 import androidx.core.content.ContextCompat.startActivity
 import androidx.core.net.toUri
 import androidx.core.view.isGone
@@ -323,29 +324,61 @@ class AnimeWatchAdapter(
                     }
                 }
 
-                // Multi download
+                //implement Multi download
+                downloadNo.setText("0")
                 mediaDownloadTop.setOnClickListener {
+                    // Alert dialog asking for the number of Episodes to download
                     fragment.requireContext().customAlertDialog().apply {
-                        setTitle(fragment.getString(R.string.multi_episode_downloader))
-                        setMessage(fragment.getString(R.string.enter_number_of_episodes))
+                        setTitle("Multi Episode Downloader")
+                        setMessage("Enter the number of episodes to download")
                         val input = NumberPicker(currContext())
                         input.minValue = 1
-                        input.maxValue = 30
+                        input.maxValue = 20
                         input.value = 1
                         setCustomView(input)
                         setPosButton(R.string.ok) {
-                            // use input.value
+                            downloadNo.setText("${input.value}")
                         }
                         setNegButton(R.string.cancel)
                         show()
                     }
                 }
 
+                resetProgress.setOnClickListener {
+                    fragment.requireContext().customAlertDialog().apply {
+                        setTitle(" Delete Progress for all episodes of ${media.nameRomaji}")
+                        setMessage("This will delete all the locally stored progress for all episodes")
+                        setPosButton(R.string.ok) {
+                            val prefix = "${media.id}_"
+                            val regex = Regex("^${prefix}\\d+$")
+                            val keysToDelete = PrefManager.getAllCustomValsForMedia(prefix)
+                                .keys
+                                .filter { it.matches(regex) }
+
+                            keysToDelete.forEach { key ->
+                                PrefManager.removeCustomVal(key)
+                            }
+
+                            snackString("Deleted the progress of episodes for ${media.nameRomaji}")
+                        }
+                        setNegButton(R.string.no)
+                        show()
+                    }
+                }
+
+                resetProgressDef.text = getString(currContext()!!, R.string.clear_stored_episode)
+
+                // Hidden
+                mangaScanlatorContainer.visibility = View.GONE
+                //animeDownloadContainer.visibility = View.GONE
                 fragment.requireContext().customAlertDialog().apply {
                     setTitle(fragment.getString(R.string.options))
                     setCustomView(root)
                     setPosButton("OK") {
                         if (run) fragment.onIconPressed(style, reversed)
+                        if (downloadNo.text.toString() != "0") {
+                            fragment.multiDownload(n = downloadNo.text.toString().toInt())
+                        }
                         if (refresh) fragment.loadEpisodes(source, true)
                     }
                     setNegButton("Cancel") {

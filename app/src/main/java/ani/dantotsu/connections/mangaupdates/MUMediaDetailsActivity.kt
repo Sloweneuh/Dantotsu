@@ -53,13 +53,14 @@ import kotlinx.coroutines.withContext
 import nl.joery.animatedbottombar.AnimatedBottomBar
 import kotlin.math.abs
 
+
 class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedListener {
 
     private lateinit var binding: ActivityMediaBinding
     private val model: MediaDetailsViewModel by viewModels()
     private var selected = 0
     private lateinit var navBar: AnimatedBottomBar
-    private lateinit var muMedia: MUMedia
+    internal lateinit var muMedia: MUMedia
 
     private var currentChapter: Int? = null
 
@@ -101,14 +102,80 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         binding.mediaTotal.visibility = View.VISIBLE
     }
 
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        muMedia = intent.getSerialized("muMedia") ?: run {
-            finish()
-            return
-        }
+        // Set up binding and content view first
+        binding = ActivityMediaBinding.inflate(layoutInflater)
+        setContentView(binding.root)
 
+        // Handle deep link: https://www.mangaupdates.com/series/{slugOrId}
+        val action = intent?.action
+        val data = intent?.data
+        if (Intent.ACTION_VIEW == action && data != null && data.host == "www.mangaupdates.com" && data.pathSegments?.firstOrNull() == "series") {
+            val slugOrId = data.pathSegments.getOrNull(1)
+            // Show loading overlay, hide main content
+            binding.loadingOverlay?.visibility = View.VISIBLE
+            // Ensure loading bar uses colorPrimary
+            binding.loadingProgressBar?.indeterminateTintList = android.content.res.ColorStateList.valueOf(getThemeColor(com.google.android.material.R.attr.colorPrimary))
+            binding.mediaAppBar?.visibility = View.INVISIBLE
+            binding.mediaViewPagerContainer?.visibility = View.INVISIBLE
+            binding.mediaBottomBar?.visibility = View.INVISIBLE
+            binding.mediaClose?.visibility = View.INVISIBLE
+            binding.mediaCover?.visibility = View.INVISIBLE
+            binding.commentMessageContainer?.visibility = View.INVISIBLE
+            lifecycleScope.launch(Dispatchers.IO) {
+                val details = MangaUpdates.getSeriesFromUrl(slugOrId)
+                withContext(Dispatchers.Main) {
+                    if (details != null) {
+                        // Convert to MUMedia
+                        val muMedia = MUMedia(
+                            id = details.seriesId,
+                            title = details.title,
+                            url = "https://www.mangaupdates.com/series/$slugOrId",
+                            coverUrl = details.image?.url?.original ?: details.image?.url?.thumb,
+                            listId = -1,
+                            userChapter = null,
+                            userVolume = null,
+                            latestChapter = details.latest_chapter?.toInt(),
+                            bayesianRating = details.bayesian_rating?.toDoubleOrNull(),
+                            priority = null
+                        )
+                        // Hide loading, show content
+                        binding.loadingOverlay?.visibility = View.GONE
+                        binding.mediaAppBar?.visibility = View.VISIBLE
+                        binding.mediaViewPagerContainer?.visibility = View.VISIBLE
+                        binding.mediaBottomBar?.visibility = View.VISIBLE
+                        binding.mediaClose?.visibility = View.VISIBLE
+                        binding.mediaCover?.visibility = View.VISIBLE
+                        binding.commentMessageContainer?.visibility = View.VISIBLE
+                        launchMediaDetails(muMedia)
+                    } else {
+                        finish()
+                    }
+                }
+            }
+            return
+        } else {
+            muMedia = intent?.getSerialized("muMedia") ?: run {
+                finish()
+                return
+            }
+            // Show content immediately for normal launches
+            binding.loadingOverlay?.visibility = View.GONE
+            binding.mediaAppBar?.visibility = View.VISIBLE
+            binding.mediaViewPagerContainer?.visibility = View.VISIBLE
+            binding.mediaBottomBar?.visibility = View.VISIBLE
+            binding.mediaClose?.visibility = View.VISIBLE
+            binding.mediaCover?.visibility = View.VISIBLE
+            binding.commentMessageContainer?.visibility = View.VISIBLE
+            launchMediaDetails(muMedia)
+        }
+    }
+
+    private fun launchMediaDetails(muMedia: MUMedia) {
+        this.muMedia = muMedia
         ThemeManager(this).applyTheme()
         initActivity(this)
 
@@ -228,8 +295,17 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         binding.mediaAddToList.visibility = View.VISIBLE
 
         binding.mediaAddToList.setOnClickListener {
-            if (supportFragmentManager.findFragmentByTag("muListEditor") == null)
-                MUListEditorFragment.newInstance(muMedia).show(supportFragmentManager, "muListEditor")
+            if (supportFragmentManager.findFragmentByTag("muListEditor") == null) {
+                // Use the latest values from model.getMedia() if available
+                val currentMedia = model.getMedia().value
+                val updatedMuMedia = if (currentMedia != null && currentMedia.muSeriesId == muMedia.id) {
+                    muMedia.copy(
+                        listId = currentMedia.muListId ?: muMedia.listId,
+                        userChapter = currentMedia.userProgress ?: muMedia.userChapter
+                    )
+                } else muMedia
+                MUListEditorFragment.newInstance(updatedMuMedia).show(supportFragmentManager, "muListEditor")
+            }
         }
         binding.mediaAddToList.setOnLongClickListener {
             val mediaId = (muMedia.id and 0x7FFFFFFF).toInt()
@@ -343,7 +419,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
                 val currentMedia = model.getMedia().value
                 if (currentMedia != null) {
                     currentMedia.userProgress?.let { currentChapter = it }
-                    currentMedia.muListId?.let { muMedia = muMedia.copy(listId = it) }
+                    currentMedia.muListId?.let { this@MUMediaDetailsActivity.muMedia = muMedia.copy(listId = it) }
                     // Re-post so MangaReadFragment (which observes getMedia) re-renders
                     model.setMedia(currentMedia)
                 }

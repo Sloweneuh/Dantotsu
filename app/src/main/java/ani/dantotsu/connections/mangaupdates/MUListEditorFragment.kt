@@ -109,7 +109,7 @@ class MUListEditorFragment : BottomSheetDialogFragment() {
 
         // Chapter progress
         val latestChapter = muMedia.latestChapter
-        binding.mediaListProgress.setText(muMedia.userChapter?.toString() ?: "")
+        binding.mediaListProgress.setText(muMedia.userChapter?.toString() ?: "1")
         binding.mediaListProgressLayout.suffixText = if (latestChapter != null && latestChapter > 0) " / $latestChapter / ??" else " / ??"
         binding.mediaListProgressLayout.suffixTextView.updateLayoutParams {
             height = ViewGroup.LayoutParams.MATCH_PARENT
@@ -140,13 +140,23 @@ class MUListEditorFragment : BottomSheetDialogFragment() {
             }
             scope.launch {
                 withContext(Dispatchers.IO) {
-                    MangaUpdates.updateProgress(
-                        seriesId = muMedia.id,
-                        seriesTitle = muMedia.title,
-                        listId = newListId,
-                        chapter = newChapter,
-                        volume = null
-                    )
+                    if (initialListId == -1) {
+                        MangaUpdates.addToList(
+                            seriesId = muMedia.id,
+                            seriesTitle = muMedia.title,
+                            listId = newListId,
+                            chapter = newChapter,
+                            volume = null
+                        )
+                    } else {
+                        MangaUpdates.updateProgress(
+                            seriesId = muMedia.id,
+                            seriesTitle = muMedia.title,
+                            listId = newListId,
+                            chapter = newChapter,
+                            volume = null
+                        )
+                    }
                     PrefManager.setCustomVal(
                         "$PREF_MU_LAST_READ_PREFIX${muMedia.id}",
                         System.currentTimeMillis()
@@ -175,6 +185,12 @@ class MUListEditorFragment : BottomSheetDialogFragment() {
                     media.userProgress = null
                     media.muListId = null
                     model.setMedia(media)
+                    // Force reload of external data (including MangaUpdates)
+                    model.preloadExternalData(media)
+                }
+                // Also update the parent activity's muMedia so the next editor open uses defaults
+                (activity as? MUMediaDetailsActivity)?.let { act ->
+                    act.muMedia = act.muMedia.copy(listId = -1, userChapter = null)
                 }
                 Refresh.all()
                 snackString(getString(R.string.deleted_from_list))

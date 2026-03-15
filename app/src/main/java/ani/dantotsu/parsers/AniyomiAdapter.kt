@@ -54,7 +54,9 @@ class DynamicAnimeParser(extension: AnimeExtension.Installed) : AnimeParser() {
     override val name = extension.name
     override val saveName = extension.name
     override val hostUrl =
-        (extension.sources.first() as? AnimeHttpSource)?.baseUrl ?: extension.sources.first().name
+        extension.sources.firstOrNull()?.let {
+            (it as? AnimeHttpSource)?.baseUrl ?: it.name
+        } ?: extension.name
     override val isNSFW = extension.isNsfw
     override val icon = extension.icon
 
@@ -65,9 +67,11 @@ class DynamicAnimeParser(extension: AnimeExtension.Installed) : AnimeParser() {
         }
 
     private fun getDub(): Boolean {
+        if (extension.sources.isEmpty()) return false
         if (sourceLanguage >= extension.sources.size) {
             sourceLanguage = extension.sources.size - 1
         }
+        if (sourceLanguage < 0) return false
         val configurableSource = extension.sources[sourceLanguage] as? ConfigurableAnimeSource
             ?: return false
         currContext()?.let { context ->
@@ -89,9 +93,11 @@ class DynamicAnimeParser(extension: AnimeExtension.Installed) : AnimeParser() {
     }
 
     private fun setDub(setDub: Boolean) {
+        if (extension.sources.isEmpty()) return
         if (sourceLanguage >= extension.sources.size) {
             sourceLanguage = extension.sources.size - 1
         }
+        if (sourceLanguage < 0) return
         val configurableSource = extension.sources[sourceLanguage] as? ConfigurableAnimeSource
             ?: return
         val type = when (setDub) {
@@ -115,7 +121,10 @@ class DynamicAnimeParser(extension: AnimeExtension.Installed) : AnimeParser() {
     }
 
     override fun isDubAvailableSeparately(sourceLang: Int?): Boolean {
-        val configurableSource = extension.sources[sourceLanguage] as? ConfigurableAnimeSource
+        if (extension.sources.isEmpty()) return false
+        val lang = sourceLang ?: sourceLanguage
+        if (lang !in extension.sources.indices) return false
+        val configurableSource = extension.sources[lang] as? ConfigurableAnimeSource
             ?: return false
         currContext()?.let { context ->
             Logger.log("isDubAvailableSeparately: ${configurableSource.getPreferenceKey()}")
@@ -140,6 +149,7 @@ class DynamicAnimeParser(extension: AnimeExtension.Installed) : AnimeParser() {
         extra: Map<String, String>?,
         sAnime: SAnime
     ): List<Episode> {
+        if (extension.sources.isEmpty()) return emptyList()
         val source = try {
             extension.sources[sourceLanguage]
         } catch (e: Exception) {
@@ -149,6 +159,7 @@ class DynamicAnimeParser(extension: AnimeExtension.Installed) : AnimeParser() {
             ?: return emptyList())
         try {
             val res = source.getEpisodeList(sAnime)
+            if (res.isEmpty()) return emptyList()
 
             val sortedEpisodes = if (res[0].episode_number == -1f) {
                 // Find the number in the string and sort by that number
@@ -217,6 +228,7 @@ class DynamicAnimeParser(extension: AnimeExtension.Installed) : AnimeParser() {
         extra: Map<String, String>?,
         sEpisode: SEpisode
     ): List<VideoServer> {
+        if (extension.sources.isEmpty()) return emptyList()
         val source = try {
             extension.sources[sourceLanguage]
         } catch (e: Exception) {
@@ -250,6 +262,7 @@ class DynamicAnimeParser(extension: AnimeExtension.Installed) : AnimeParser() {
     }
 
     override suspend fun search(query: String): List<ShowResponse> {
+        if (extension.sources.isEmpty()) return emptyList()
         val source = try {
             extension.sources[sourceLanguage]
         } catch (e: Exception) {

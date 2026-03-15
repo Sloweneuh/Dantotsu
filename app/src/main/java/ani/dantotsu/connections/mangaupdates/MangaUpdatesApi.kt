@@ -347,7 +347,7 @@ object MangaUpdates {
      * @param urlSlug The alphanumeric URL slug (e.g., "7j43f8y")
      * @return The numeric series ID or null if not found
      */
-    suspend fun lookupSeriesIdFromSlug(urlSlug: String): Long? {
+    suspend fun lookupSeriesIdFromSlug(urlSlug: String?): Long? {
         return tryWithSuspend {
             // First, try to scrape the title from the webpage
             val title = scrapeWebTitle(urlSlug)
@@ -365,7 +365,7 @@ object MangaUpdates {
 
             // Try to find exact match by URL
             val exactMatch = searchResults.results?.firstOrNull { result ->
-                result.record?.url?.contains(urlSlug) == true
+                urlSlug?.let { result.record?.url?.contains(it) == true } == true
             }
 
             if (exactMatch != null) {
@@ -386,7 +386,7 @@ object MangaUpdates {
      * @param urlSlug The URL slug
      * @return The manga title or null if scraping failed
      */
-    private suspend fun scrapeWebTitle(urlSlug: String): String? {
+    private suspend fun scrapeWebTitle(urlSlug: String?): String? {
         return tryWithSuspend {
             val pageUrl = "$WEB_URL/series/$urlSlug"
             val request = Request.Builder()
@@ -465,10 +465,10 @@ object MangaUpdates {
      * @param urlOrId The URL slug (e.g., "7j43f8y") or numeric ID
      * @return Series details or null if not found
      */
-    suspend fun getSeriesFromUrl(urlOrId: String): MUSeriesRecord? {
+    suspend fun getSeriesFromUrl(urlOrId: String?): MUSeriesRecord? {
         return tryWithSuspend {
             // Prefer resolving the canonical numeric identifier via the page's JSON-LD script
-            val numericIdFromInput = urlOrId.toLongOrNull()
+            val numericIdFromInput = urlOrId?.toLongOrNull()
 
             // Build the page URL to fetch: numeric input uses series.html?id=..., slug uses /series/<slug>
             val pageUrl = if (numericIdFromInput != null) {
@@ -554,7 +554,7 @@ object MangaUpdates {
      * Try to fetch series details directly using the slug/identifier
      * Some identifiers may work directly with the API
      */
-    private suspend fun tryDirectApiCall(identifier: String): MUSeriesRecord? {
+    private suspend fun tryDirectApiCall(identifier: String?): MUSeriesRecord? {
         return tryWithSuspend {
             val request = Request.Builder()
                 .url("$BASE_URL/series/$identifier")
@@ -626,6 +626,58 @@ object MangaUpdates {
     }
 
     /**
+     * Add a series to a user list (POST /lists/series)
+     * @param seriesId Numeric series ID
+     * @param seriesTitle Series title (used in request body; may be null)
+     * @param listId List to add to (0=Reading, 1=Planning, 2=Completed, 3=Dropped, 4=Paused)
+     * @param chapter Chapter progress (null = 0)
+     * @param volume  Volume progress  (null = 0)
+     * @return true on success
+     */
+    suspend fun addToList(
+        seriesId: Long,
+        seriesTitle: String?,
+        listId: Int,
+        chapter: Int?,
+        volume: Int?
+    ): Boolean {
+        return tryWithSuspend {
+            if (token.isNullOrBlank()) {
+                Logger.log("MangaUpdates AddToList: No token available")
+                return@tryWithSuspend false
+            }
+
+            val payload = listOf(
+                MUProgressUpdateRequest(
+                    series = MUProgressUpdateSeries(id = seriesId, title = seriesTitle),
+                    listId = listId,
+                    status = MUProgressUpdateStatus(
+                        volume = volume ?: 0,
+                        chapter = chapter ?: 0,
+                        incrementVolume = 0,
+                        incrementChapter = 0
+                    ),
+                    priority = 0
+                )
+            )
+
+            val body = Mapper.json.encodeToString(payload)
+                .toRequestBody("application/json".toMediaTypeOrNull())
+
+            val request = Request.Builder()
+                .url("$BASE_URL/lists/series")
+                .post(body)
+                .addHeader("Authorization", "Bearer $token")
+                .build()
+
+            val response = withContext(Dispatchers.IO) { httpClient.newCall(request).execute() }
+            val ok = response.isSuccessful
+            Logger.log("MangaUpdates AddToList[$seriesId]: ${response.code}")
+            ok
+        } ?: false
+    }
+
+    /**
      * Update reading progress for a series already in the user's list.
      * @param seriesId Numeric series ID
      * @param seriesTitle Series title (used in request body; may be null)
@@ -651,7 +703,13 @@ object MangaUpdates {
                 MUProgressUpdateRequest(
                     series = MUProgressUpdateSeries(id = seriesId, title = seriesTitle),
                     listId = listId,
-                    status = MUProgressUpdateStatus(volume = volume, chapter = chapter)
+                    status = MUProgressUpdateStatus(
+                        volume = volume ?: 0,
+                        chapter = chapter ?: 0,
+                        incrementVolume = 0,
+                        incrementChapter = 0
+                    ),
+                    priority = 0
                 )
             )
 
@@ -681,7 +739,7 @@ object MangaUpdates {
                 Logger.log("MangaUpdates RemoveFromList: No token available")
                 return@tryWithSuspend false
             }
-            val payload = listOf(mapOf("series" to mapOf("id" to seriesId)))
+            val payload = listOf(seriesId)
             val body = Mapper.json.encodeToString(payload)
                 .toRequestBody("application/json".toMediaTypeOrNull())
             val request = Request.Builder()
