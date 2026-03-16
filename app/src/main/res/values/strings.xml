@@ -244,6 +244,8 @@
         \n\n No Comick account is required. All data is fetched anonymously from the public Comick API. **The Comick API doesn\'t support account operations.**
         \n\n *Disabling Comick hides the Comick tab and stops all related data fetching. MangaUpdates auto-linking will also be disabled.*
     </string>
+        <string name="switch_to_anilist_title">AniList media found</string>
+        <string name="switch_to_anilist_message">This MangaUpdates media has an Anilist counterpart. Would you like to open the AniList media instead?</string>
     <string name="malsync_connections_help">How does MALSync work\?</string>
     <string name="full_malsync_connections_help">
         MALSync is a community-maintained mapping database that connects titles across different anime and manga tracking sites (Anilist, MAL, Comick, MangaUpdates, etc.).

@@ -21,11 +21,11 @@
         app:boxCornerRadiusTopEnd="28dp"
         app:boxCornerRadiusTopStart="28dp"
         app:boxStrokeColor="@color/text_input_layout_stroke_color"
-        app:endIconMode="clear_text"
+        app:endIconMode="dropdown_menu"
         app:hintAnimationEnabled="true"
         app:startIconDrawable="@drawable/ic_round_search_24">
 
-        <AutoCompleteTextView
+        <com.google.android.material.textfield.MaterialAutoCompleteTextView
             android:id="@+id/searchBarText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

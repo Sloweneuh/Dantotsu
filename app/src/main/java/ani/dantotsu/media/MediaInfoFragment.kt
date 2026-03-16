@@ -185,50 +185,43 @@ class MediaInfoFragment : Fragment() {
     ): Boolean {
         val isAnime = media.anime != null
 
-        val url =
-                when (position) {
-                    0 -> {
-                        // AniList
-                        "https://anilist.co/${if (isAnime) "anime" else "manga"}/${media.id}"
-                    }
-                    1 -> {
-                        // MAL
-                        val mediaType = if (isAnime) "anime" else "manga"
-                        if (media.idMAL != null) {
-                            "https://myanimelist.net/$mediaType/${media.idMAL}"
-                        } else {
-                            "https://myanimelist.net/$mediaType.php?q=${
-                        java.net.URLEncoder.encode(media.userPreferredName, "utf-8")
-                    }&cat=$mediaType"
-                        }
-                    }
-                    2 -> {
-                        // Comick tab (manga only)
-                        if (isAnime) return false
-                        val comickSlug = model.comickSlug.value
-                        if (comickSlug != null) {
-                            "https://comick.dev/comic/$comickSlug"
-                        } else {
-                            "https://comick.dev/search?q=${
-                        java.net.URLEncoder.encode(media.userPreferredName, "utf-8").replace("+", "%20")
-                    }"
-                        }
-                    }
-                    3 -> {
-                        // MangaUpdates tab (manga only)
-                        if (isAnime) return false
-                        val muLink = model.mangaUpdatesLink.value
-                        if (muLink != null) {
-                            muLink
-                        } else {
-                            val encoded =
-                                    java.net.URLEncoder.encode(media.userPreferredName, "utf-8")
-                                            .replace("+", "%20")
-                            "https://www.mangaupdates.com/series?search=$encoded"
-                        }
-                    }
-                    else -> return false
+        // Build tab types dynamically (same order as setupTabs) so indexes match enabled tabs
+        val tabTypes = mutableListOf<String>()
+        tabTypes.add("anilist")
+        if (PrefManager.getVal<Boolean>(PrefName.MalEnabled)) tabTypes.add("mal")
+        if (!isAnime && PrefManager.getVal<Boolean>(PrefName.ComickEnabled)) tabTypes.add("comick")
+        if (!isAnime && PrefManager.getVal<Boolean>(PrefName.MangaUpdatesEnabled)) tabTypes.add("mangaupdates")
+
+        val type = tabTypes.getOrNull(position) ?: return false
+
+        val url = when (type) {
+            "anilist" -> "https://anilist.co/${if (isAnime) "anime" else "manga"}/${media.id}"
+            "mal" -> {
+                val mediaType = if (isAnime) "anime" else "manga"
+                if (media.idMAL != null) {
+                    "https://myanimelist.net/$mediaType/${media.idMAL}"
+                } else {
+                    "https://myanimelist.net/$mediaType.php?q=${java.net.URLEncoder.encode(media.userPreferredName, "utf-8")}&cat=$mediaType"
                 }
+            }
+            "comick" -> {
+                val comickSlug = model.comickSlug.value
+                if (comickSlug != null) {
+                    "https://comick.dev/comic/$comickSlug"
+                } else {
+                    "https://comick.dev/search?q=${java.net.URLEncoder.encode(media.userPreferredName, "utf-8").replace("+", "%20") }"
+                }
+            }
+            "mangaupdates" -> {
+                val muLink = model.mangaUpdatesLink.value
+                if (muLink != null) muLink
+                else {
+                    val encoded = java.net.URLEncoder.encode(media.userPreferredName, "utf-8").replace("+", "%20")
+                    "https://www.mangaupdates.com/series?search=$encoded"
+                }
+            }
+            else -> return false
+        }
 
         startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
         return true

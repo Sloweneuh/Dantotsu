@@ -52,6 +52,9 @@ import android.widget.Toast
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import ani.dantotsu.connections.comick.ComickApi
+import androidx.appcompat.app.AlertDialog
+import kotlinx.coroutines.CoroutineScope
 import nl.joery.animatedbottombar.AnimatedBottomBar
 import kotlin.math.abs
 
@@ -65,6 +68,9 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
     internal lateinit var muMedia: MUMedia
 
     private var currentChapter: Int? = null
+
+    // Track last AniList suggestion shown to avoid repeat dialogs
+    private var lastSuggestedAniListId: Int? = null
 
     private val muStatusNames = listOf("Reading", "Planning", "Completed", "Dropped", "Paused")
 
@@ -458,6 +464,37 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
                 }
                 progress()
                 live.postValue(false)
+            }
+        }
+
+        // Observe Comick slug changes and suggest switching to AniList media if the Comick
+        // entry contains an AniList link and the current media is a MangaUpdates entry.
+        val model: MediaDetailsViewModel by viewModels()
+        model.comickSlug.observe(this) { slug ->
+            if (slug.isNullOrBlank()) return@observe
+            // Avoid duplicate suggestions for the same AniList ID
+            lifecycleScope.launch {
+                try {
+                    val comickData = withContext(Dispatchers.IO) { ComickApi.getComicDetails(slug) }
+                    val anilistId = comickData?.comic?.links?.al?.toIntOrNull()
+                    val currentAnilistId = model.getMedia().value?.id
+                    val isMuMedia = model.getMedia().value?.muSeriesId != null
+                    if (anilistId != null && isMuMedia && anilistId != currentAnilistId && lastSuggestedAniListId != anilistId) {
+                        lastSuggestedAniListId = anilistId
+                        AlertDialog.Builder(this@MUMediaDetailsActivity, R.style.MyPopup)
+                            .setTitle(getString(R.string.switch_to_anilist_title).takeIf { resources.getIdentifier("switch_to_anilist_title", "string", this@MUMediaDetailsActivity.packageName) != 0 } ?: "Switch to AniList media?")
+                            .setMessage(getString(R.string.switch_to_anilist_message).takeIf { resources.getIdentifier("switch_to_anilist_message", "string", this@MUMediaDetailsActivity.packageName) != 0 } ?: "This Comick entry is linked to an AniList media. Would you like to open the AniList media instead?")
+                            .setPositiveButton(android.R.string.ok) { _, _ ->
+                                val intent = android.content.Intent(this@MUMediaDetailsActivity, ani.dantotsu.media.MediaDetailsActivity::class.java)
+                                intent.putExtra("mediaId", anilistId)
+                                startActivity(intent)
+                            }
+                            .setNegativeButton(android.R.string.cancel, null)
+                            .show()
+                    }
+                } catch (_: Exception) {
+                    // ignore errors silently
+                }
             }
         }
     }

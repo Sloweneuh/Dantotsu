@@ -74,6 +74,42 @@ class MUMediaInfoContainerFragment : Fragment() {
 
         TabLayoutMediator(binding.mediaInfoTabLayout, binding.mediaInfoViewPager) { tab, position ->
             tab.setIcon(tabs[position].iconRes)
+
+            // Long-press the tab icon to open the corresponding external page in browser
+            tab.view.setOnLongClickListener {
+                val media = model.getMedia().value
+                when (position) {
+                    0 -> {
+                        // MangaUpdates tab: prefer ViewModel link, fall back to search
+                        val muLink = model.mangaUpdatesLink.value ?: run {
+                            media?.externalLinks?.firstOrNull { entry ->
+                                entry.getOrNull(1)?.contains("mangaupdates", ignoreCase = true) == true ||
+                                        entry.getOrNull(0)?.contains("mangaupdates", ignoreCase = true) == true
+                            }?.getOrNull(1) ?: media?.userPreferredName
+                        }
+                        val url = if (muLink != null && muLink.contains("mangaupdates", ignoreCase = true)) muLink
+                        else {
+                            val encoded = java.net.URLEncoder.encode(media?.userPreferredName ?: "", "utf-8").replace("+", "%20")
+                            "https://www.mangaupdates.com/series?search=$encoded"
+                        }
+                        startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+                        true
+                    }
+                    1 -> {
+                        // Comick tab: open Comick comic page if slug known, else search
+                        val comickSlug = model.comickSlug.value
+                        val url = if (!comickSlug.isNullOrBlank()) {
+                            "https://comick.dev/comic/$comickSlug"
+                        } else {
+                            val encoded = java.net.URLEncoder.encode(media?.userPreferredName ?: "", "utf-8").replace("+", "%20")
+                            "https://comick.dev/search?q=$encoded"
+                        }
+                        startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+                        true
+                    }
+                    else -> false
+                }
+            }
         }.attach()
 
         // Dim the Comick tab icon until a slug is confirmed

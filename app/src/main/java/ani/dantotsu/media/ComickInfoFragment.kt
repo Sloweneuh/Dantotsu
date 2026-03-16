@@ -16,6 +16,7 @@ import ani.dantotsu.R
 import ani.dantotsu.connections.comick.ComickApi
 import ani.dantotsu.connections.comick.ComickResponse
 import ani.dantotsu.connections.malsync.MalSyncApi
+import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.copyToClipboard
 import ani.dantotsu.databinding.FragmentMediaInfoBinding
 import ani.dantotsu.databinding.ItemChipBinding
@@ -295,54 +296,57 @@ class ComickInfoFragment : Fragment() {
 
     private fun showQuickSearchModal(media: Media) {
         val context = requireContext()
-        val titles = ArrayList<String>()
-        titles.add(media.userPreferredName)
-        if (media.nameRomaji != media.userPreferredName) {
-            titles.add(media.nameRomaji)
-        }
+        // Build titles list, and include MU alternate titles if available.
+        viewLifecycleOwner.lifecycleScope.launch {
+            val titles = ArrayList<String>()
+            titles.add(media.userPreferredName)
+            if (media.nameRomaji != media.userPreferredName) titles.add(media.nameRomaji)
 
-        // Filter English titles
-        val englishSynonyms = filterEnglishTitles(media.synonyms)
-        englishSynonyms.forEach { if (!titles.contains(it)) titles.add(it) }
+            // Filter English titles from media synonyms
+            val englishSynonyms = filterEnglishTitles(media.synonyms)
+            englishSynonyms.forEach { if (!titles.contains(it)) titles.add(it) }
 
-        val modal =
-                ani.dantotsu.others.CustomBottomDialog.newInstance().apply {
-                    setTitleText(context.getString(R.string.search_on_comick_title))
-
-                    // Add each title as a clickable TextView
-                    titles.forEach { title ->
-                        val textView =
-                                android.widget.TextView(context).apply {
-                                    text = title
-                                    textSize = 16f
-                                    val padding = 16f.px
-                                    setPadding(padding, padding, padding, padding)
-                                    setTextColor(
-                                            androidx.core.content.ContextCompat.getColor(
-                                                    context,
-                                                    R.color.bg_opp
-                                            )
-                                    )
-                                    // Use a simple rounded background with ripple effect
-                                    val outValue = android.util.TypedValue()
-                                    context.theme.resolveAttribute(
-                                            android.R.attr.selectableItemBackground,
-                                            outValue,
-                                            true
-                                    )
-                                    setBackgroundResource(outValue.resourceId)
-                                    isClickable = true
-                                    isFocusable = true
-                                    setOnClickListener {
-                                        // Perform search and show results in-tab
-                                        showComickSearchResults(media, title)
-                                        dismiss()
-                                    }
-                                }
-                        addView(textView)
-                    }
+            // If this media is linked to a MangaUpdates series, try to include MU associated titles
+            val muId = media.muSeriesId
+            if (muId != null) {
+                // Try cache first
+                val cached = MangaUpdates.synonymsCache[muId]
+                val muTitles = if (!cached.isNullOrEmpty()) cached else withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    MangaUpdates.getSeriesDetails(muId)?.associated?.mapNotNull { it.title } ?: emptyList()
                 }
-        modal.show(parentFragmentManager, "comick_quick_search")
+                muTitles.forEach { t ->
+                    // Filter English-ish titles and avoid duplicates
+                    if (!titles.contains(t) && filterEnglishTitles(listOf(t)).isNotEmpty()) titles.add(t)
+                }
+            }
+
+            val modal = ani.dantotsu.others.CustomBottomDialog.newInstance().apply {
+                setTitleText(context.getString(R.string.search_on_comick_title))
+
+                // Add each title as a clickable TextView
+                titles.forEach { title ->
+                    val textView = android.widget.TextView(context).apply {
+                        text = title
+                        textSize = 16f
+                        val padding = 16f.px
+                        setPadding(padding, padding, padding, padding)
+                        setTextColor(androidx.core.content.ContextCompat.getColor(context, R.color.bg_opp))
+                        val outValue = android.util.TypedValue()
+                        context.theme.resolveAttribute(android.R.attr.selectableItemBackground, outValue, true)
+                        setBackgroundResource(outValue.resourceId)
+                        isClickable = true
+                        isFocusable = true
+                        setOnClickListener {
+                            // Perform search and show results in-tab
+                            showComickSearchResults(media, title)
+                            dismiss()
+                        }
+                    }
+                    addView(textView)
+                }
+            }
+            modal.show(parentFragmentManager, "comick_quick_search")
+        }
     }
 
     private fun showComickSearchResults(media: Media, initialQuery: String) {
