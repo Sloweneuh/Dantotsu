@@ -16,10 +16,7 @@ import ani.dantotsu.databinding.ItemComickCoverBinding
 import ani.dantotsu.loadImage
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions.withCrossFade
-import android.graphics.Matrix
-import android.view.MotionEvent
-import android.view.GestureDetector
-import android.view.ScaleGestureDetector
+// removed zoom gesture imports (zoom controls disabled)
 import androidx.appcompat.widget.AppCompatImageView
 
 class ComickCoverAdapter(
@@ -27,77 +24,10 @@ class ComickCoverAdapter(
 ) : RecyclerView.Adapter<ComickCoverAdapter.ViewHolder>() {
 
     /** Simple ImageView with pinch-to-zoom and pan support using Matrix and ScaleGestureDetector. */
+    // Zoom controls removed: plain image view that lets ViewPager handle gestures
     private class ZoomImageView(context: android.content.Context) : AppCompatImageView(context) {
-        private val matrix = Matrix()
-        private var scale = 1f
-        private var minScale = 1f
-        private var maxScale = 4f
-        private var lastX = 0f
-        private var lastY = 0f
-        private var isPanning = false
-
-        private val scaleDetector = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
-            override fun onScale(detector: ScaleGestureDetector): Boolean {
-                val factor = detector.scaleFactor
-                val prev = scale
-                scale = (scale * factor).coerceIn(minScale, maxScale)
-                val f = scale / prev
-                matrix.postScale(f, f, detector.focusX, detector.focusY)
-                imageMatrix = matrix
-                return true
-            }
-        })
-
-        private val gestureDetector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
-            override fun onDoubleTap(e: MotionEvent): Boolean {
-                val target = if (scale > minScale + 0.01f) minScale else (minScale * 2.5f).coerceAtMost(maxScale)
-                val f = target / scale
-                matrix.postScale(f, f, e.x, e.y)
-                imageMatrix = matrix
-                scale = target
-                return true
-            }
-        })
-
         init {
-            scaleType = ScaleType.MATRIX
-        }
-
-        override fun onTouchEvent(event: MotionEvent): Boolean {
-            gestureDetector.onTouchEvent(event)
-            scaleDetector.onTouchEvent(event)
-            when (event.actionMasked) {
-                MotionEvent.ACTION_DOWN -> {
-                    lastX = event.x
-                    lastY = event.y
-                    isPanning = false
-                }
-                MotionEvent.ACTION_MOVE -> {
-                    if (!scaleDetector.isInProgress && scale > minScale) {
-                        val dx = event.x - lastX
-                        val dy = event.y - lastY
-                        matrix.postTranslate(dx, dy)
-                        imageMatrix = matrix
-                        isPanning = true
-                        lastX = event.x
-                        lastY = event.y
-                    }
-                }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    if (!isPanning && !scaleDetector.isInProgress) performClick()
-                    isPanning = false
-                }
-            }
-
-            // Prevent parent from intercepting while interacting
-            parent?.requestDisallowInterceptTouchEvent(scaleDetector.isInProgress || scale > minScale || isPanning)
-
-            return true
-        }
-
-        override fun performClick(): Boolean {
-            super.performClick()
-            return true
+            scaleType = ScaleType.FIT_CENTER
         }
     }
 
@@ -114,7 +44,8 @@ class ComickCoverAdapter(
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        val cover = covers[position]
+        // Display covers in reverse order: oldest first
+        val cover = covers[covers.size - 1 - position]
         holder.binding.apply {
             val b2key = cover.b2key
             if (!b2key.isNullOrBlank()) {
@@ -169,14 +100,16 @@ class ComickCoverAdapter(
         val dialog = Dialog(context)
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
 
-        // Root layout
+        // Root layout (gallery) — use fully opaque surface color for background
         val root = android.widget.LinearLayout(context).apply {
             orientation = android.widget.LinearLayout.VERTICAL
             val typedValue = android.util.TypedValue()
             context.theme.resolveAttribute(
                 com.google.android.material.R.attr.colorSurface, typedValue, true
             )
-                                // Do not dismiss on image tap — background overlay handles outside taps
+            // Force alpha to 100% while preserving RGB
+            val opaqueSurface = (typedValue.data and 0x00FFFFFF) or (0xFF shl 24)
+            setBackgroundColor(opaqueSurface)
         }
 
         // Title bar
@@ -265,40 +198,19 @@ class ComickCoverAdapter(
             offscreenPageLimit = 1
         }
 
-        // Compute bottom offsets so we can position volume label above the dots
-        val dotsBottomMargin = (24 * dm.density).toInt()
-        val volBottomMargin = dotsBottomMargin + (20 * dm.density).toInt()
+        // Compute bottom offsets so we can position volume label above the page counter
+        val counterBottomMargin = (24 * dm.density).toInt()
+        val volBottomMargin = counterBottomMargin + (20 * dm.density).toInt()
 
-        // Page dots indicator (small circles) — positioned centered at bottom; volume label will sit above them
-        val dots = android.widget.LinearLayout(context).apply {
-            orientation = android.widget.LinearLayout.HORIZONTAL
+        // Page counter (e.g. "3 / 12") — centered at bottom; volume label will sit above it
+        val counterView = android.widget.TextView(context).apply {
+            setTextColor(android.graphics.Color.WHITE)
+            textSize = 14f
             layoutParams = FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.WRAP_CONTENT,
                 FrameLayout.LayoutParams.WRAP_CONTENT
-            ).apply { gravity = android.view.Gravity.BOTTOM or android.view.Gravity.CENTER_HORIZONTAL; setMargins(0, 0, 0, dotsBottomMargin) }
-        }
-
-        // Cap the number of visible dots to avoid overflow when there are many covers.
-        val MAX_DOTS = 7
-        val dotCount = if (covers.size <= MAX_DOTS) covers.size else MAX_DOTS
-        val half = MAX_DOTS / 2
-        var windowStart = if (covers.size <= MAX_DOTS) 0 else ((startIndex - half).coerceIn(0, covers.size - MAX_DOTS))
-
-        // Build dots for the current window
-        for (i in 0 until dotCount) {
-            val size = (8 * dm.density).toInt()
-            val margin = (6 * dm.density).toInt()
-            val dot = View(context).apply {
-                layoutParams = android.widget.LinearLayout.LayoutParams(size, size).apply { setMargins(margin, 0, margin, 0) }
-                background = android.graphics.drawable.GradientDrawable().apply {
-                    shape = android.graphics.drawable.GradientDrawable.OVAL
-                    setColor(android.graphics.Color.WHITE)
-                }
-                // Map dot index to absolute cover index and highlight accordingly
-                val absoluteIndex = windowStart + i
-                alpha = if (absoluteIndex == startIndex) 1f else 0.25f
-            }
-            dots.addView(dot)
+            ).apply { gravity = android.view.Gravity.BOTTOM or android.view.Gravity.CENTER_HORIZONTAL; setMargins(0, 0, 0, counterBottomMargin) }
+            text = "${startIndex + 1} / ${covers.size}"
         }
 
         // Pager adapter (uses ZoomImageView for pinch-to-zoom)
@@ -338,7 +250,8 @@ class ComickCoverAdapter(
                 val container = holder.itemView as FrameLayout
                 val zoomView = container.getChildAt(0) as ZoomImageView
                 val volLabel = container.getChildAt(1) as TextView
-                val cover = covers[position]
+                // Pager should use the same display order (oldest first)
+                val cover = covers[covers.size - 1 - position]
                 val b2key = cover.b2key
                 if (!b2key.isNullOrBlank()) {
                     val fullUrl = "https://meo.comick.pictures/$b2key"
@@ -377,15 +290,34 @@ class ComickCoverAdapter(
                 if (image != null) {
                     val loc = IntArray(2)
                     image.getLocationOnScreen(loc)
-                    val rect = Rect(loc[0], loc[1], loc[0] + image.width, loc[1] + image.height)
+                    val drawable = image.drawable
                     val x = ev.rawX.toInt()
                     val y = ev.rawY.toInt()
-                    if (!rect.contains(x, y)) {
-                        dialog.dismiss()
-                        return@setOnTouchListener true
+                    if (drawable != null && drawable.intrinsicWidth > 0 && drawable.intrinsicHeight > 0) {
+                        val dw = drawable.intrinsicWidth.toFloat()
+                        val dh = drawable.intrinsicHeight.toFloat()
+                        val vw = image.width.toFloat()
+                        val vh = image.height.toFloat()
+                        val scale = kotlin.math.min(vw / dw, vh / dh)
+                        val dispW = (dw * scale).toInt()
+                        val dispH = (dh * scale).toInt()
+                        val left = loc[0] + ((vw - dispW) / 2).toInt()
+                        val top = loc[1] + ((vh - dispH) / 2).toInt()
+                        val rect = Rect(left, top, left + dispW, top + dispH)
+                        if (!rect.contains(x, y)) {
+                            dialog.dismiss()
+                            return@setOnTouchListener true
+                        }
+                        return@setOnTouchListener false
+                    } else {
+                        // Fallback to view bounds
+                        val rect = Rect(loc[0], loc[1], loc[0] + image.width, loc[1] + image.height)
+                        if (!rect.contains(x, y)) {
+                            dialog.dismiss()
+                            return@setOnTouchListener true
+                        }
+                        return@setOnTouchListener false
                     }
-                    // Inside image: don't consume, let pager/image handle it
-                    return@setOnTouchListener false
                 } else {
                     // No image found — dismiss on overlay touch
                     dialog.dismiss()
@@ -394,27 +326,16 @@ class ComickCoverAdapter(
             }
         }
 
-        // Add pager and dots first, then overlay on top so overlay can decide whether to consume taps
+        // Add pager and counter first, then overlay on top so overlay can decide whether to consume taps
         root.addView(pager)
-        root.addView(dots)
+        root.addView(counterView)
         root.addView(touchOverlay)
 
         // Update dots on page changes — when there are more covers than dots, slide the window
         pager.registerOnPageChangeCallback(object : androidx.viewpager2.widget.ViewPager2.OnPageChangeCallback() {
             override fun onPageSelected(position: Int) {
-                if (covers.size <= MAX_DOTS) {
-                    // Direct mapping when count fits
-                    for (i in 0 until dots.childCount) {
-                        dots.getChildAt(i).alpha = if (i == position) 1f else 0.25f
-                    }
-                } else {
-                    // Recompute window start to keep the selected dot centered when possible
-                    windowStart = (position - half).coerceIn(0, covers.size - MAX_DOTS)
-                    for (i in 0 until dots.childCount) {
-                        val absoluteIndex = windowStart + i
-                        dots.getChildAt(i).alpha = if (absoluteIndex == position) 1f else 0.25f
-                    }
-                }
+                // Update counter text
+                counterView.text = "${position + 1} / ${covers.size}"
             }
         })
 
