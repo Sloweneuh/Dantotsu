@@ -213,6 +213,7 @@
         \n\n Aucun compte Comick n\'est requis. Toutes les données sont récupérées anonymement via l\'API publique de Comick. **L\'API de Comick ne prend pas en charge les opérations de compte.**
         \n\n *Désactiver Comick masque l\'onglet Comick et arrête toute récupération de données associée. La liaison automatique avec MangaUpdates sera également désactivée.*
     </string>
+    <string name="switch_to_anilist_message">Ce média MangaUpdates a un équivalent sur Anilist. Voulez-vous ouvrir le média ?</string>
     <string name="malsync_connections_help">Comment fonctionne MALSync ?</string>
     <string name="full_malsync_connections_help">
         MALSync est une base de données de correspondances maintenue par la communauté, qui relie les titres entre différents sites de suivi d\'anime et de manga (Anilist, MAL, Comick, MangaUpdates, etc.).
@@ -462,6 +463,7 @@
     <string name="copied_to_clipboard">Copié dans le presse-papiers</string>
     <string name="first_episode">C\'est le 1er épisode !</string>
     <string name="autoplay_cancelled">Lecture auto annulée, pas d\'interaction depuis plus d\'1 heure.</string>
+    <string name="empty_episodes_list">Liste des épisodes est vide. Veuillez réessayer</string>
     <string name="stream_selection_empty">Aucun flux disponible ! Essayez une autre source.</string>
     <string name="logging_in_mal">Connexion à MAL</string>
     <string name="getting_user_data">Récupération des données utilisateur</string>
@@ -1168,6 +1170,7 @@
     <string name="filter_source">"Source : %1$s"</string>
     <string name="filter_format">"Format : %1$s"</string>
     <string name="filter_country">"Pays : %1$s"</string>
+    <string name="filter_tracker_mu">MangaUpdates</string>
     <string name="filter_sort">"Tri : %1$s"</string>
     <string name="filter_exclude">"Pas %1$s"</string>
     <string name="discord_try_again">Essayez de vous reconnecter</string>
@@ -1340,6 +1343,7 @@
     <string name="search_sub_myanimelist">Aucun média correspondant existant sur MyAnimeList. \n Vous pouvez essayer de chercher sur le site.</string>
     <string name="search_sub_mangaupdates">Aucun média correspondant trouvé sur MangaUpdates. \n Vous pouvez essayer de le rechercher et ajouter manuellement.</string>
 
+    <string name="comick">Comick</string>
     <string name="mangaupdates_requires_internet">MangaUpdates requiert une connexion internet</string>
     <string name="comick_requires_internet">Comick data requiert une connexion internet</string>
     <string name="linked_mangaupdates_entry">MangaUpdates lié avec succès</string>
@@ -1378,4 +1382,9 @@
     <string name="mu_list_fetch_enabled_desc">Récupérer et afficher les listes MangaUpdates sur l\'accueil et les vues listes</string>
     <string name="volume">Volume</string>
     <string name="mangaupdates_account_help">Comment fonctionne MangaUpdates \?</string>
+    <string name="switch_to_anilist_title">Média Anilist trouvé</string>
+    <string name="tracker">Tracker</string>
+    <string name="filter_tracker">Tracker : %1$s</string>
+    <string name="filter_tracker_both">Les deux</string>
+    <string name="filter_tracker_anilist">Anilist</string>
 </resources>
