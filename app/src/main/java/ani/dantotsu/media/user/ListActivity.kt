@@ -38,6 +38,12 @@ class ListActivity : AppCompatActivity() {
     private lateinit var binding: ActivityListBinding
     private val scope = lifecycleScope
     private var selectedTabIdx = 0
+    // Base label of the selected tab without the count suffix, e.g. "Reading" or "MangaUpdates"
+    private var selectedTabBase: String? = null
+    // When the user is actively searching, preserve the tab base so rebuilds don't
+    // jump away while results update asynchronously.
+    // Prefer preserving a stable tab tag key when possible (set on tabs during build).
+    private var preservedTabKeyDuringSearch: String? = null
     private val model: ListViewModel by viewModels()
     /** Position of the dedicated MangaUpdates aggregate tab in the ViewPager, or -1 if absent. */
     private var muTabPosition: Int = -1
@@ -94,6 +100,10 @@ class ListActivity : AppCompatActivity() {
         binding.listTabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab?) {
                 this@ListActivity.selectedTabIdx = tab?.position ?: 0
+                // Save the base label (drop any trailing " (count)") so we can restore the
+                // same logical tab after tabs are rebuilt/filtered.
+                val text = tab?.text?.toString()
+                selectedTabBase = text?.let { it.replace(Regex(" \\(.+\\)$"), "") }
             }
 
             override fun onTabUnselected(tab: TabLayout.Tab?) {}
@@ -243,7 +253,16 @@ class ListActivity : AppCompatActivity() {
 
         binding.searchViewText.stripSpansOnPaste()
         binding.searchViewText.addTextChangedListener {
-            model.searchLists(binding.searchViewText.text.toString())
+            val q = binding.searchViewText.text.toString()
+            if (q.isNotEmpty()) {
+                val curTab = binding.listTabLayout.getTabAt(binding.listTabLayout.selectedTabPosition)
+                // Prefer stable tag, fallback to text-based key prefixed with TEXT:
+                preservedTabKeyDuringSearch = curTab?.tag as? String ?: curTab?.text?.toString()
+                    ?.replace(Regex(" \\(.+\\)$"), "")?.let { "TEXT:$it" }
+            } else {
+                preservedTabKeyDuringSearch = null
+            }
+            model.searchLists(q)
         }
     }
 
@@ -424,6 +443,14 @@ class ListActivity : AppCompatActivity() {
         val totalSize = aniIndices.size + muSeparateTabs.size + (if (muTabPosition >= 0) 1 else 0)
         val savedTab = selectedTabIdx.coerceIn(0, (totalSize - 1).coerceAtLeast(0))
 
+        // Capture the currently visible tab base BEFORE we reset the adapter. When the
+        // adapter is replaced and TabLayoutMediator attaches it may immediately select
+        // the first tab and trigger our OnTabSelected listener, overwriting
+        // `selectedTabBase`. Preserve the pre-rebuild base here for reliable restoration.
+        val prevTabText = binding.listTabLayout.getTabAt(binding.listTabLayout.selectedTabPosition)
+            ?.text?.toString()
+        val prevTabBase = prevTabText?.replace(Regex(" \\(.+\\)$"), "")
+
         binding.listViewPager.adapter = ListViewPagerAdapter(
             aniIndices, false, this, muTabPosition, muSeparateTabs
         )
@@ -432,11 +459,13 @@ class ListActivity : AppCompatActivity() {
             when {
                 muTabPosition >= 0 && position == muTabPosition -> {
                     tab.text = "MangaUpdates ($totalMu)"
+                    tab.tag = "MU:AGGREGATE"
                 }
                 muTabPosition >= 0 && muSeparateTabsStart >= 0 &&
                         position in muSeparateTabsStart until muTabPosition -> {
                     val key = muSeparateTabs[position - muSeparateTabsStart]
                     tab.text = "$key (${muMap?.get(key)?.size ?: 0})"
+                    tab.tag = "MU:SEPARATE:$key"
                 }
                 muTabPosition >= 0 && position > muTabPosition -> {
                     val aniIdxInList = position - muSeparateTabs.size - 1
@@ -448,6 +477,7 @@ class ListActivity : AppCompatActivity() {
                     }
                     val displayKey = userKeys.getOrNull(defaultKeys.indexOf(aniKey)) ?: aniKey
                     tab.text = "$displayKey (${aniValuesList[origIdx].size + muCount})"
+                    tab.tag = "ANI:$aniKey"
                 }
                 else -> {
                     val origIdx = aniIndices[position]
@@ -459,10 +489,37 @@ class ListActivity : AppCompatActivity() {
                     }
                     val displayKey = userKeys.getOrNull(defaultKeys.indexOf(aniKey)) ?: aniKey
                     tab.text = "$displayKey (${aniValuesList[origIdx].size + muCount})"
+                    tab.tag = "ANI:$aniKey"
                 }
             }
         }.attach()
-        binding.listViewPager.setCurrentItem(savedTab, false)
+        // Try to find a tab whose stable tag matches the preserved key (if any),
+        // otherwise fall back to matching text.
+        var finalTab = savedTab
+        val matchKey = preservedTabKeyDuringSearch ?: prevTabText?.let { it.replace(Regex(" \\(.+\\)$"), "") }
+        if (matchKey != null) {
+            for (i in 0 until totalSize) {
+                val tab = binding.listTabLayout.getTabAt(i)
+                val tag = tab?.tag as? String
+                if (tag != null && matchKey.startsWith("TEXT:").not()) {
+                    // If we have a preserved tag (not a TEXT: fallback), match tags directly
+                    if (tag.equals(matchKey, ignoreCase = true)) {
+                        finalTab = i
+                        break
+                    }
+                } else {
+                    // Fallback: compare text base with TEXT: payload or plain matchKey
+                    val tabText = tab?.text?.toString() ?: continue
+                    val tabBase = tabText.replace(Regex(" \\(.+\\)$"), "")
+                    val targetBase = if (matchKey.startsWith("TEXT:")) matchKey.removePrefix("TEXT:") else matchKey
+                    if (tabBase.equals(targetBase, ignoreCase = true)) {
+                        finalTab = i
+                        break
+                    }
+                }
+            }
+        }
+        binding.listViewPager.setCurrentItem(finalTab, false)
     }
 
     private fun updateSortIcon(anime: Boolean) {
