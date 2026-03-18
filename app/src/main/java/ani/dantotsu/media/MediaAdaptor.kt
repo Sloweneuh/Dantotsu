@@ -47,6 +47,7 @@ class MediaAdaptor(
     private val matchParent: Boolean = false,
     private val viewPager: ViewPager2? = null,
     private val fav: Boolean = false,
+    private val fromMalStack: Boolean = false,
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
@@ -122,9 +123,20 @@ class MediaAdaptor(
                         b.root.context,
                         (if (media.userScore != 0) R.drawable.item_user_score else R.drawable.item_score)
                     )
+                    // mirror score badge tint on other top badges when available
                     b.itemCompactUserProgress.text = (media.userProgress ?: "~").toString()
                     if (media.relation != null) {
                         b.itemCompactRelation.text = "${media.relation}  "
+                        b.itemCompactType.visibility = View.VISIBLE
+                    } else if (fromMalStack && media.format != null && media.format.equals("NOVEL", true)) {
+                        // Only show Novel label when adapter was created for a MAL stack
+                        b.itemCompactRelation.text = "Novel"
+                        b.itemCompactTypeImage.setImageDrawable(
+                            AppCompatResources.getDrawable(
+                                activity,
+                                R.drawable.ic_round_import_contacts_24
+                            )
+                        )
                         b.itemCompactType.visibility = View.VISIBLE
                     } else {
                         b.itemCompactType.visibility = View.GONE
@@ -186,6 +198,7 @@ class MediaAdaptor(
                         b.root.context,
                         (if (media.userScore != 0) R.drawable.item_user_score else R.drawable.item_score)
                     )
+                    // mirror score badge tint on other top badges when available
                     b.itemCompactStatus.text = media.status ?: ""
                     b.itemCompactStatus.visibility = if (!b.itemCompactStatus.text.isNullOrBlank()) View.VISIBLE else View.GONE
                     // Synopsis preview (stripped from HTML) and user progress
@@ -208,6 +221,27 @@ class MediaAdaptor(
                         b.itemCompactSynopsis.scrollTo(0, 0)
                     }
                     b.itemUserProgressLarge.text = (media.userProgress ?: "~").toString()
+                    // Show 'Novel' badge when media is a novel (format == NOVEL)
+                    try {
+                        if (media.relation != null) {
+                            b.itemCompactRelation.text = "${media.relation}  "
+                            b.itemCompactType.visibility = View.VISIBLE
+                        } else if (fromMalStack && media.format != null && media.format.equals("NOVEL", true)) {
+                            // Only show Novel label when adapter was created for a MAL stack
+                            b.itemCompactRelation.text = "Novel"
+                            b.itemCompactTypeImage.setImageDrawable(
+                                AppCompatResources.getDrawable(
+                                    activity,
+                                    R.drawable.ic_round_import_contacts_24
+                                )
+                            )
+                            b.itemCompactType.visibility = View.VISIBLE
+                        } else {
+                            b.itemCompactType.visibility = View.GONE
+                        }
+                    } catch (e: Exception) {
+                        b.itemCompactType.visibility = View.GONE
+                    }
                     if (media.anime != null) {
                         val itemTotal = " " + if ((media.anime.totalEpisodes
                                 ?: 0) != 1
@@ -368,6 +402,7 @@ class MediaAdaptor(
                         b.root.context,
                         (if (media.userScore != 0) R.drawable.item_user_score else R.drawable.item_score)
                     )
+                    // mirror score badge tint on other top badges when available
                     if (media.anime != null) {
                         b.itemTotal.text = " " + if ((media.anime.totalEpisodes
                                 ?: 0) != 1

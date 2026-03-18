@@ -83,6 +83,7 @@ class MediaListViewActivity : AppCompatActivity() {
         }
 
         val screenWidth = resources.displayMetrics.run { widthPixels / density }
+        val fromMalStack = passedMedia != null
         val mediaList =
             passedMedia ?: intent.getSerialized("media") as? ArrayList<Media> ?: ArrayList()
         if (passedMedia != null) passedMedia = null
@@ -150,10 +151,10 @@ class MediaListViewActivity : AppCompatActivity() {
                     // Anime with unreleased episodes
                     binding.mediaRecyclerView.adapter = ani.dantotsu.home.UnreleasedEpisodesAdapter(mediaList, localUnreleasedInfo, mode)
                 }
-                else -> {
+                    else -> {
                     // Standard adapter
-                    binding.mediaRecyclerView.adapter = MediaAdaptor(mode, mediaList, this)
-                }
+                    binding.mediaRecyclerView.adapter = MediaAdaptor(mode, mediaList, this, fromMalStack = fromMalStack)
+                    }
             }
             binding.mediaRecyclerView.layoutManager = GridLayoutManager(
                 this,
@@ -188,7 +189,7 @@ class MediaListViewActivity : AppCompatActivity() {
             }
             else -> {
                 // Use standard adapter
-                binding.mediaRecyclerView.adapter = MediaAdaptor(view, mediaList, this)
+                binding.mediaRecyclerView.adapter = MediaAdaptor(view, mediaList, this, fromMalStack = fromMalStack)
             }
         }
         binding.mediaRecyclerView.layoutManager = GridLayoutManager(

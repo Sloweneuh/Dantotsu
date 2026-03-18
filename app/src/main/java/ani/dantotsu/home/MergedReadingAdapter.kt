@@ -109,6 +109,14 @@ class MergedReadingAdapter(
             ctx,
             if (media.userScore != 0) R.drawable.item_user_score else R.drawable.item_score
         )
+        try {
+            val isUser = media.userScore != 0
+            b.itemCompactSourceBadge.setBackgroundResource(
+                if (isUser) R.drawable.item_language_badge_user else R.drawable.item_language_badge
+            )
+            b.itemCompactSourceBadge.backgroundTintList = b.itemCompactScoreBG.backgroundTintList
+        } catch (e: Exception) {
+        }
         b.itemCompactUserProgress.text = (media.userProgress ?: "~").toString()
         if (media.relation != null) {
             b.itemCompactRelation.text = "${media.relation}  "
@@ -165,6 +173,10 @@ class MergedReadingAdapter(
             b.itemCompactScoreBG.visibility = View.VISIBLE
             b.itemCompactScoreBG.backgroundTintList =
                 ColorStateList.valueOf(Color.WHITE)
+            try {
+                b.itemCompactSourceBadge.backgroundTintList = b.itemCompactScoreBG.backgroundTintList
+            } catch (e: Exception) {
+            }
         } else {
             b.itemCompactScoreBG.visibility = View.GONE
         }
@@ -206,6 +218,18 @@ class MergedReadingAdapter(
             ctx,
             if (media.userScore != 0) R.drawable.item_user_score else R.drawable.item_score
         )
+        try {
+            val isUser = media.userScore != 0
+            b.itemCompactLanguageBG.setBackgroundResource(
+                if (isUser) R.drawable.item_language_badge_user else R.drawable.item_language_badge
+            )
+            b.itemCompactLanguageBG.backgroundTintList = b.itemCompactScoreBG.backgroundTintList
+            b.itemCompactSourceBadge.setBackgroundResource(
+                if (isUser) R.drawable.item_language_badge_user else R.drawable.item_language_badge
+            )
+            b.itemCompactSourceBadge.backgroundTintList = b.itemCompactScoreBG.backgroundTintList
+        } catch (e: Exception) {
+        }
         b.itemCompactStatus.text = media.status ?: ""
         b.itemCompactStatus.visibility = if (!b.itemCompactStatus.text.isNullOrBlank()) View.VISIBLE else View.GONE
 
@@ -304,6 +328,18 @@ class MergedReadingAdapter(
             b.itemCompactScoreBG.visibility = View.VISIBLE
             b.itemCompactScoreBG.backgroundTintList =
                 ColorStateList.valueOf(Color.WHITE)
+            try {
+                val _bg = b.itemCompactScoreBG.background
+                if (_bg != null) {
+                    val _copy = _bg.constantState?.newDrawable()?.mutate()
+                    b.itemCompactLanguageBG.background = _copy
+                    b.itemCompactLanguageBG.backgroundTintList = b.itemCompactScoreBG.backgroundTintList
+                    val _copy2 = _bg.constantState?.newDrawable()?.mutate()
+                    b.itemCompactSourceBadge.background = _copy2
+                    b.itemCompactSourceBadge.backgroundTintList = b.itemCompactScoreBG.backgroundTintList
+                }
+            } catch (e: Exception) {
+            }
         } else {
             b.itemCompactScoreBG.visibility = View.GONE
         }

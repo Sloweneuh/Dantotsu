@@ -224,9 +224,11 @@ class ComickCoverAdapter(
                 }
                 val zoomView = ZoomImageView(parent.context).apply {
                     layoutParams = FrameLayout.LayoutParams(
-                        FrameLayout.LayoutParams.MATCH_PARENT,
-                        FrameLayout.LayoutParams.MATCH_PARENT
+                        FrameLayout.LayoutParams.WRAP_CONTENT,
+                        FrameLayout.LayoutParams.WRAP_CONTENT,
+                        android.view.Gravity.CENTER
                     )
+                    adjustViewBounds = true
                     scaleType = ImageView.ScaleType.FIT_CENTER
                 }
                 container.addView(zoomView)
@@ -290,34 +292,14 @@ class ComickCoverAdapter(
                 if (image != null) {
                     val loc = IntArray(2)
                     image.getLocationOnScreen(loc)
-                    val drawable = image.drawable
                     val x = ev.rawX.toInt()
                     val y = ev.rawY.toInt()
-                    if (drawable != null && drawable.intrinsicWidth > 0 && drawable.intrinsicHeight > 0) {
-                        val dw = drawable.intrinsicWidth.toFloat()
-                        val dh = drawable.intrinsicHeight.toFloat()
-                        val vw = image.width.toFloat()
-                        val vh = image.height.toFloat()
-                        val scale = kotlin.math.min(vw / dw, vh / dh)
-                        val dispW = (dw * scale).toInt()
-                        val dispH = (dh * scale).toInt()
-                        val left = loc[0] + ((vw - dispW) / 2).toInt()
-                        val top = loc[1] + ((vh - dispH) / 2).toInt()
-                        val rect = Rect(left, top, left + dispW, top + dispH)
-                        if (!rect.contains(x, y)) {
-                            dialog.dismiss()
-                            return@setOnTouchListener true
-                        }
-                        return@setOnTouchListener false
-                    } else {
-                        // Fallback to view bounds
-                        val rect = Rect(loc[0], loc[1], loc[0] + image.width, loc[1] + image.height)
-                        if (!rect.contains(x, y)) {
-                            dialog.dismiss()
-                            return@setOnTouchListener true
-                        }
-                        return@setOnTouchListener false
+                    val rect = Rect(loc[0], loc[1], loc[0] + image.width, loc[1] + image.height)
+                    if (!rect.contains(x, y)) {
+                        dialog.dismiss()
+                        return@setOnTouchListener true
                     }
+                    return@setOnTouchListener false
                 } else {
                     // No image found — dismiss on overlay touch
                     dialog.dismiss()

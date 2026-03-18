@@ -149,6 +149,21 @@ class UnreadChaptersAdapter(
                     root.context,
                     if (media.userScore != 0) R.drawable.item_user_score else R.drawable.item_score
                 )
+                // use badge variant that matches score corners when user score exists
+                try {
+                    val isUser = media.userScore != 0
+                    itemCompactLanguageBG.setBackgroundResource(
+                        if (isUser) R.drawable.item_language_badge_user else R.drawable.item_language_badge
+                    )
+                    itemCompactLanguageBG.backgroundTintList = itemCompactScoreBG.backgroundTintList
+                } catch (e: Exception) {}
+                try {
+                    val isUser = media.userScore != 0
+                    itemCompactSourceBadge.setBackgroundResource(
+                        if (isUser) R.drawable.item_language_badge_user else R.drawable.item_language_badge
+                    )
+                    itemCompactSourceBadge.backgroundTintList = itemCompactScoreBG.backgroundTintList
+                } catch (e: Exception) {}
                 itemCompactScoreBG.visibility = View.VISIBLE
             } else {
                 itemCompactScoreBG.visibility = View.GONE
@@ -270,6 +285,21 @@ class UnreadChaptersAdapter(
                     root.context,
                     if (media.userScore != 0) R.drawable.item_user_score else R.drawable.item_score
                 )
+                // use badge variant that matches score corners when user score exists
+                try {
+                    val isUser = media.userScore != 0
+                    itemCompactLanguageBG.setBackgroundResource(
+                        if (isUser) R.drawable.item_language_badge_user else R.drawable.item_language_badge
+                    )
+                    itemCompactLanguageBG.backgroundTintList = itemCompactScoreBG.backgroundTintList
+                } catch (e: Exception) {}
+                try {
+                    val isUser = media.userScore != 0
+                    itemCompactSourceBadge.setBackgroundResource(
+                        if (isUser) R.drawable.item_language_badge_user else R.drawable.item_language_badge
+                    )
+                    itemCompactSourceBadge.backgroundTintList = itemCompactScoreBG.backgroundTintList
+                } catch (e: Exception) {}
                 itemCompactScoreBG.visibility = View.VISIBLE
             } else {
                 itemCompactScoreBG.visibility = View.GONE
@@ -324,6 +354,23 @@ class UnreadChaptersAdapter(
             if (rating != null && rating > 0.0) {
                 itemCompactScore.text = String.format("%.1f", rating)
                 itemCompactScoreBG.backgroundTintList = ColorStateList.valueOf(Color.WHITE)
+                // mirror score badge background drawable (and tint) to language/source badges when present
+                try {
+                    val _bg = itemCompactScoreBG.background
+                    if (_bg != null) {
+                        val _copy = _bg.constantState?.newDrawable()?.mutate()
+                        itemCompactLanguageBG.background = _copy
+                        itemCompactLanguageBG.backgroundTintList = itemCompactScoreBG.backgroundTintList
+                    }
+                } catch (e: Exception) {}
+                try {
+                    val _bg2 = itemCompactScoreBG.background
+                    if (_bg2 != null) {
+                        val _copy2 = _bg2.constantState?.newDrawable()?.mutate()
+                        itemCompactSourceBadge.background = _copy2
+                        itemCompactSourceBadge.backgroundTintList = itemCompactScoreBG.backgroundTintList
+                    }
+                } catch (e: Exception) {}
                 itemCompactScoreBG.visibility = View.VISIBLE
             } else {
                 itemCompactScoreBG.visibility = View.GONE
@@ -385,6 +432,23 @@ class UnreadChaptersAdapter(
             if (rating != null && rating > 0.0) {
                 itemCompactScore.text = String.format("%.1f", rating)
                 itemCompactScoreBG.backgroundTintList = ColorStateList.valueOf(Color.WHITE)
+                // mirror score badge background drawable (and tint) to language/source badges when present
+                try {
+                    val _bg = itemCompactScoreBG.background
+                    if (_bg != null) {
+                        val _copy = _bg.constantState?.newDrawable()?.mutate()
+                        itemCompactLanguageBG.background = _copy
+                        itemCompactLanguageBG.backgroundTintList = itemCompactScoreBG.backgroundTintList
+                    }
+                } catch (e: Exception) {}
+                try {
+                    val _bg2 = itemCompactScoreBG.background
+                    if (_bg2 != null) {
+                        val _copy2 = _bg2.constantState?.newDrawable()?.mutate()
+                        itemCompactSourceBadge.background = _copy2
+                        itemCompactSourceBadge.backgroundTintList = itemCompactScoreBG.backgroundTintList
+                    }
+                } catch (e: Exception) {}
                 itemCompactScoreBG.visibility = View.VISIBLE
             } else {
                 itemCompactScoreBG.visibility = View.GONE
