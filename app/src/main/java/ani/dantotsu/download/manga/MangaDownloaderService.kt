@@ -9,6 +9,8 @@ import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.pdf.PdfDocument
 import android.os.Build
 import android.os.IBinder
 import android.widget.Toast
@@ -216,10 +218,27 @@ class MangaDownloaderService : Service() {
 
                 outputDir.deleteRecursively(this@MangaDownloaderService, true)
 
+                val bitmaps = mutableListOf<Bitmap>()
                 var farthest = 0
                 for ((index, image) in task.imageData.withIndex()) {
                     if (deferredMap.size >= task.simultaneousDownloads) {
-                        deferredMap.values.awaitAll()
+                        for (entry in deferredMap) {
+                            val bitmap = entry.value.await()
+                            if (bitmap != null) {
+                                bitmaps.add(bitmap)
+                                farthest++
+                                builder.setProgress(task.imageData.size, farthest, false)
+                                broadcastDownloadProgress(
+                                    task.uniqueName,
+                                    farthest * 100 / task.imageData.size
+                                )
+                                if (notifi) {
+                                    withContext(Dispatchers.Main) {
+                                        notificationManager.notify(NOTIFICATION_ID, builder.build())
+                                    }
+                                }
+                            }
+                        }
                         deferredMap.clear()
                     }
 
@@ -243,11 +262,18 @@ class MangaDownloaderService : Service() {
                             throw Exception("${task.chapter} - Unable to download all pages after $retryCount attempts. Try again.")
                         }
 
-                        saveToDisk("${index.ofLength(3)}.jpg", outputDir, bitmap)
+                        bitmap
+                    }
+                }
+
+                deferredMap.values.awaitAll()
+
+                for (entry in deferredMap) {
+                    val bitmap = entry.value.await()
+                    if (bitmap != null) {
+                        bitmaps.add(bitmap)
                         farthest++
-
                         builder.setProgress(task.imageData.size, farthest, false)
-
                         broadcastDownloadProgress(
                             task.uniqueName,
                             farthest * 100 / task.imageData.size
@@ -257,11 +283,17 @@ class MangaDownloaderService : Service() {
                                 notificationManager.notify(NOTIFICATION_ID, builder.build())
                             }
                         }
-                        bitmap
                     }
                 }
 
-                deferredMap.values.awaitAll()
+                if (task.format == 1) {
+                    createPdfFromBitmaps(bitmaps, outputDir, "${task.chapter}.pdf")
+                } else {
+                    // Save individual images
+                    for ((index, bitmap) in bitmaps.withIndex()) {
+                        saveToDisk("${index.ofLength(3)}.jpg", outputDir, bitmap)
+                    }
+                }
 
                 withContext(Dispatchers.Main) {
                     builder.setContentText("${task.title} - ${task.chapter} Download complete")
@@ -309,6 +341,32 @@ class MangaDownloaderService : Service() {
         } catch (e: Exception) {
             println("Exception while saving image: ${e.message}")
             snackString("Exception while saving image: ${e.message}")
+            Injekt.get<CrashlyticsInterface>().logException(e)
+        }
+    }
+
+    private fun createPdfFromBitmaps(bitmaps: List<Bitmap>, directory: DocumentFile, fileName: String) {
+        try {
+            val pdfDocument = PdfDocument()
+            for ((index, bitmap) in bitmaps.withIndex()) {
+                val pageInfo = PdfDocument.PageInfo.Builder(bitmap.width, bitmap.height, index + 1).create()
+                val page = pdfDocument.startPage(pageInfo)
+                val canvas = page.canvas
+                canvas.drawBitmap(bitmap, 0f, 0f, null)
+                pdfDocument.finishPage(page)
+            }
+
+            directory.findFile(fileName)?.forceDelete(this)
+            val file = directory.createFile("application/pdf", fileName) ?: throw Exception("PDF file not created")
+
+            file.openOutputStream(this, false).use { outputStream ->
+                if (outputStream == null) throw Exception("Output stream is null")
+                pdfDocument.writeTo(outputStream)
+            }
+            pdfDocument.close()
+        } catch (e: Exception) {
+            println("Exception while creating PDF: ${e.message}")
+            snackString("Exception while creating PDF: ${e.message}")
             Injekt.get<CrashlyticsInterface>().logException(e)
         }
     }
@@ -435,6 +493,7 @@ class MangaDownloaderService : Service() {
         val sourceMedia: Media? = null,
         val retries: Int = 2,
         val simultaneousDownloads: Int = 2,
+        val format: Int = 0,
     ) {
         val uniqueName: String
             get() = "$chapter-$scanlator"

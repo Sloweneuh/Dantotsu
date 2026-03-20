@@ -518,6 +518,25 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
                     )
                 }
             }
+
+            val defaultFormat = PrefManager.getVal<Int>(PrefName.MangaDownloadFormat)
+            requireContext().customAlertDialog().apply {
+                setTitle("Download Format")
+                setMessage("Choose download format:")
+                setPosButton("Images") {
+                    downloadChapter(i, 0)
+                }
+                setNegButton("PDF") {
+                    downloadChapter(i, 1)
+                }
+                setNeutralButton("Cancel", null)
+                show()
+            }
+        }
+    }
+
+    private fun downloadChapter(i: MangaChapter, format: Int) {
+        activity?.let {
             fun continueDownload() {
                 model.continueMedia = false
                 media.manga?.chapters?.get(i.uniqueNumber())?.let { chapter ->
@@ -535,7 +554,8 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
                                 imageData = images,
                                 sourceMedia = media,
                                 retries = 25,
-                                simultaneousDownloads = 2
+                                simultaneousDownloads = 2,
+                                format = format
                             )
 
                             MangaServiceDataSingleton.downloadQueue.offer(downloadTask)
