@@ -263,6 +263,9 @@
             android:name=".media.MediaListViewActivity"
             android:parentActivityName=".MainActivity" />
         <activity
+            android:name=".media.MediaEquivalentsActivity"
+            android:parentActivityName=".MainActivity" />
+        <activity
             android:name=".media.StackListViewActivity"
             android:parentActivityName=".MainActivity" />
         <activity

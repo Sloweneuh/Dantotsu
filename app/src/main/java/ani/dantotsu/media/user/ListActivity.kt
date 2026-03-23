@@ -131,6 +131,35 @@ class ListActivity : AppCompatActivity() {
             buildTabs(aniMap, muMap)
         }
 
+        // Show find-equivalents button when MU lists are present
+        model.getFilteredMuLists().observe(this) { muMap ->
+            val hasMu = muMap != null && muMap.values.flatten().isNotEmpty()
+            binding.listFindEquivalents.isVisible = hasMu
+            if (hasMu) {
+                binding.listFindEquivalents.setOnClickListener {
+                    val dialog = ani.dantotsu.others.CustomBottomDialog.newInstance()
+                    dialog.setTitleText(getString(R.string.search_equivalents_confirm_title))
+                    val tv = android.widget.TextView(this@ListActivity).apply {
+                        setPadding(32, 16, 32, 16)
+                        text = getString(R.string.search_equivalents_confirm_text)
+                        textSize = 14f
+                    }
+                    dialog.addView(tv)
+                    dialog.setNegativeButton(getString(R.string.cancel)) {}
+                    dialog.setPositiveButton(getString(R.string.proceed)) {
+                        try {
+                            // Collect all MU items across lists
+                            val allMu = muMap.values.flatten().toMutableList()
+                            ani.dantotsu.media.MediaEquivalentsActivity.passedMuMedia = ArrayList(allMu)
+                            val intent = android.content.Intent(this@ListActivity, ani.dantotsu.media.MediaEquivalentsActivity::class.java)
+                            startActivity(intent)
+                        } catch (_: Exception) {}
+                    }
+                    dialog.show(supportFragmentManager, "mu_equivalents_confirm")
+                }
+            }
+        }
+
         val live = Refresh.activity.getOrPut(this.hashCode()) { MutableLiveData(true) }
         live.observe(this) {
             if (it) {

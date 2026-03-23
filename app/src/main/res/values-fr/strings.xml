@@ -608,6 +608,7 @@
     <string name="time_range">De %1$s à %2$s</string>
     <string name="invalid_url">URL invalide</string>
     <string name="no_anilist_id_found">Aucun ID Anilist trouvé</string>
+    <string name="no_comick_entry_found">Aucune entrée Comick trouvée</string>
     <string name="error_loading_image">Erreur de chargement de l\'image</string>
     <string name="discord_logout_success">Déconnexion réussie</string>
     <string name="warning">Avertissement</string>

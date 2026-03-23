@@ -385,6 +385,9 @@
     <string name="immersive_mode_info">Requires App restart to fully apply.</string>
     <string name="home_layout_show">Edit Home Sections</string>
     <string name="home_layout_show_and_order">Show, hide and reorder Home sections</string>
+    <string name="search_equivalents_confirm_title">Search for AniList equivalents</string>
+    <string name="search_equivalents_confirm_text">This will try to find AniList equivalents for every MangaUpdates entry in this list. This may take a while. Continue?</string>
+    <string name="proceed">Proceed</string>
     <string name="home_stats_stat1">Home Stat 1</string>
     <string name="home_stats_stat2">Home Stat 2</string>
     <string name="home_stats_select">Select Home Stats</string>
@@ -850,6 +853,7 @@
     <string name="time_range">From %1$s to %2$s</string>
     <string name="invalid_url">Invalid URL</string>
     <string name="no_anilist_id_found">No Anilist ID found</string>
+    <string name="no_comick_entry_found">No Comick entry found</string>
     <string name="error_loading_image">Error loading image</string>
     <string name="discord_logout_success">Successfully Logged Out</string>
     <string name="discord_try_again">Try logging-in again</string>
@@ -1469,6 +1473,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
 
     <string name="covers">Covers</string>
     <string name="cover_volume_label">Volume %1$s</string>
+    <string name="search_equivalents">Search equivalents</string>
 
 </resources>
 
