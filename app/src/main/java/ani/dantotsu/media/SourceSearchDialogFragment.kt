@@ -28,6 +28,13 @@ import ani.dantotsu.parsers.MangaSources
 import ani.dantotsu.px
 import ani.dantotsu.stripSpansOnPaste
 import ani.dantotsu.tryWithSuspend
+import android.content.Intent
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.method.LinkMovementMethod
+import android.text.style.ClickableSpan
+import android.view.View
+import ani.dantotsu.settings.ExtensionsActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -112,6 +119,8 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
                         val query = queryOverride ?: _binding?.searchBarText?.text?.toString() ?: return@launch
                         _binding?.searchProgressContainer?.visibility = View.VISIBLE
                         _binding?.searchRecyclerView?.visibility = View.GONE
+                        // Hide any previous empty/error placeholder immediately when starting a new search
+                        _binding?.searchEmptyContainer?.visibility = View.GONE
 
                         // Start a UI watchdog to ensure spinner is hidden even if an extension blocks
                         searchWatchdog?.let { _binding?.searchProgress?.removeCallbacks(it) }
@@ -137,9 +146,9 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
                                     null
                                 }
                             }
-                            if (results == null) {
-                                timedOut = true
-                            }
+                                if (results == null) {
+                                    timedOut = true
+                                }
                         } catch (_: Throwable) {
                             results = null
                         } finally {
@@ -157,12 +166,49 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
                                     requireActivity(),
                                     clamp(requireActivity().resources.displayMetrics.widthPixels / 124f.px, 1, 4)
                                 )
+                                // Hide any empty/error placeholder
+                                _binding?.searchEmptyContainer?.visibility = View.GONE
                             } else {
-                                _binding?.searchRecyclerView?.visibility = View.VISIBLE
+                                // Show empty state with different messages depending on cause
+                                _binding?.searchRecyclerView?.visibility = View.GONE
                                 _binding?.searchRecyclerView?.adapter = null
-                                if (timedOut) {
-                                    withContext(Dispatchers.Main) {
-                                        ani.dantotsu.snackString(getString(R.string.search_timeout))
+                                _binding?.searchEmptyContainer?.visibility = View.VISIBLE
+                                val emptyTextView = _binding?.searchEmptyText
+                                withContext(Dispatchers.Main) {
+                                    when {
+                                        timedOut -> {
+                                            emptyTextView?.text = getString(R.string.search_timeout)
+                                            ani.dantotsu.snackString(getString(R.string.search_timeout))
+                                        }
+                                        results == null -> {
+                                            val msg = getString(R.string.search_fetch_error)
+                                            val target = getString(R.string.search_fetch_error).substringAfter("Check your connection or ").substringBefore(", then try again.")
+                                            try {
+                                                val spannable = SpannableString(msg)
+                                                val start = msg.indexOf(target)
+                                                if (start >= 0) {
+                                                    val end = start + target.length
+                                                    spannable.setSpan(object : ClickableSpan() {
+                                                        override fun onClick(widget: View) {
+                                                            try {
+                                                                val intent = Intent(requireContext(), ExtensionsActivity::class.java)
+                                                                startActivity(intent)
+                                                            } catch (_: Throwable) {}
+                                                        }
+                                                    }, start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                                                    emptyTextView?.text = spannable
+                                                    emptyTextView?.movementMethod = LinkMovementMethod.getInstance()
+                                                } else {
+                                                    emptyTextView?.text = msg
+                                                }
+                                            } catch (_: Throwable) {
+                                                emptyTextView?.text = getString(R.string.search_fetch_error)
+                                            }
+                                        }
+                                        else -> {
+                                            // No results found
+                                            emptyTextView?.text = getString(R.string.search_no_results)
+                                        }
                                     }
                                 }
                             }

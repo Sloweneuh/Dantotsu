@@ -891,15 +891,19 @@ class MangaUpdatesInfoFragment : Fragment() {
         // Now add additional sections to the container
         val parent = binding.mediaInfoContainer
 
-        // Clear any previously added dynamic views to prevent duplicates
-        // Keep only the static views from the layout (everything before the first
-        // ItemTitleTextBinding)
+        // Clear any previously added dynamic views to prevent duplicates.
+        // Keep only the static views from the layout.
         val viewsToRemove = mutableListOf<View>()
         for (i in 0 until parent.childCount) {
             val child = parent.getChildAt(i)
-            // Remove any views that were dynamically added (they'll have specific binding types)
-            // We identify them by checking if they're NOT part of the original layout
-            if (child.tag == "dynamic_mu_section") {
+            val tag = child.tag
+            if (tag is String && (
+                        tag == "dynamic_mu_section" ||
+                                tag.contains("_mu") ||
+                                tag == "unlink_mangaupdates_button" ||
+                                tag == "recommendations_mu"
+                        )
+            ) {
                 viewsToRemove.add(child)
             }
         }
@@ -1302,6 +1306,9 @@ class MangaUpdatesInfoFragment : Fragment() {
             ) != null
 
         if (isManualSelection) {
+            // Remove any previous unlink button so we don't duplicate it
+            parent.findViewWithTag<View>("unlink_mangaupdates_button")?.let { parent.removeView(it) }
+
             val unlinkBtn =
                 com.google.android.material.button.MaterialButton(requireContext()).apply {
                 text = resources.getString(R.string.unlink_mangaupdates)
@@ -1331,7 +1338,7 @@ class MangaUpdatesInfoFragment : Fragment() {
                         )
                         .show()
                 }
-                tag = "dynamic_mu_section"
+                tag = "unlink_mangaupdates_button"
                 }
             parent.addView(unlinkBtn)
         }

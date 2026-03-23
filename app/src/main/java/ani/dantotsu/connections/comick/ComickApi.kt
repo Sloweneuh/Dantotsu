@@ -2,10 +2,13 @@ package ani.dantotsu.connections.comick
 
 import ani.dantotsu.util.Logger
 import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import org.jsoup.Jsoup
+import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
 
 object ComickApi {
@@ -111,20 +114,28 @@ object ComickApi {
             country = primary.country ?: allComics.firstNotNullOfOrNull { it.country },
             status = primary.status ?: allComics.firstNotNullOfOrNull { it.status },
             year = primary.year ?: allComics.firstNotNullOfOrNull { it.year },
-            bayesian_rating = primary.bayesian_rating ?: allComics.firstNotNullOfOrNull { it.bayesian_rating },
-            rating_count = primary.rating_count ?: allComics.firstNotNullOfOrNull { it.rating_count },
+            bayesian_rating = primary.bayesian_rating
+                ?: allComics.firstNotNullOfOrNull { it.bayesian_rating },
+            rating_count = primary.rating_count
+                ?: allComics.firstNotNullOfOrNull { it.rating_count },
             follow_rank = primary.follow_rank ?: allComics.firstNotNullOfOrNull { it.follow_rank },
-            user_follow_count = primary.user_follow_count ?: allComics.firstNotNullOfOrNull { it.user_follow_count },
+            user_follow_count = primary.user_follow_count
+                ?: allComics.firstNotNullOfOrNull { it.user_follow_count },
             last_chapter = highestLastChapter ?: primary.last_chapter, // Use highest last_chapter
-            chapter_count = primary.chapter_count ?: allComics.firstNotNullOfOrNull { it.chapter_count },
+            chapter_count = primary.chapter_count
+                ?: allComics.firstNotNullOfOrNull { it.chapter_count },
             demographic = primary.demographic ?: allComics.firstNotNullOfOrNull { it.demographic },
-            final_chapter = primary.final_chapter ?: allComics.firstNotNullOfOrNull { it.final_chapter },
-            final_volume = primary.final_volume ?: allComics.firstNotNullOfOrNull { it.final_volume },
+            final_chapter = primary.final_chapter
+                ?: allComics.firstNotNullOfOrNull { it.final_chapter },
+            final_volume = primary.final_volume
+                ?: allComics.firstNotNullOfOrNull { it.final_volume },
             has_anime = primary.has_anime ?: allComics.firstNotNullOfOrNull { it.has_anime },
             anime = primary.anime ?: allComics.firstNotNullOfOrNull { it.anime },
             mu_comics = primary.mu_comics ?: allComics.firstNotNullOfOrNull { it.mu_comics },
-            translation_completed = primary.translation_completed ?: allComics.firstNotNullOfOrNull { it.translation_completed },
-            content_rating = primary.content_rating ?: allComics.firstNotNullOfOrNull { it.content_rating },
+            translation_completed = primary.translation_completed
+                ?: allComics.firstNotNullOfOrNull { it.translation_completed },
+            content_rating = primary.content_rating
+                ?: allComics.firstNotNullOfOrNull { it.content_rating },
             md_titles = primary.md_titles?.takeIf { it.isNotEmpty() }
                 ?: allComics.firstNotNullOfOrNull { it.md_titles?.takeIf { list -> list.isNotEmpty() } },
             md_comic_md_genres = primary.md_comic_md_genres?.takeIf { it.isNotEmpty() }
@@ -133,7 +144,9 @@ object ComickApi {
                 ?: allComics.firstNotNullOfOrNull { it.md_covers?.takeIf { list -> list.isNotEmpty() } },
             links = primary.links ?: allComics.firstNotNullOfOrNull { it.links },
             recommendations = primary.recommendations?.takeIf { it.isNotEmpty() }
-                ?: allComics.firstNotNullOfOrNull { it.recommendations?.takeIf { list -> list.isNotEmpty() } }
+                ?: allComics.firstNotNullOfOrNull { it.recommendations?.takeIf { list -> list.isNotEmpty() } },
+            reviews = primary.reviews?.takeIf { it.isNotEmpty() }
+                ?: allComics.firstNotNullOfOrNull { it.reviews?.takeIf { list -> list.isNotEmpty() } }
         )
     }
 
@@ -351,7 +364,7 @@ object ComickApi {
         externalLinks: List<String>? = null
     ): Any? {
         try {
-            val encodedTitle = java.net.URLEncoder.encode(title, "UTF-8")
+            val encodedTitle = URLEncoder.encode(title, "UTF-8")
             val url = "https://api.comick.dev/v1.0/search/?type=comic&page=1&limit=5&showall=false&q=$encodedTitle&t=false"
             val request = Request.Builder()
                 .url(url)
@@ -370,7 +383,7 @@ object ComickApi {
                 return null
             }
 
-            val type = object : com.google.gson.reflect.TypeToken<List<ComickSearchResult>>() {}.type
+            val type = object : TypeToken<List<ComickSearchResult>>() {}.type
             val searchResults: List<ComickSearchResult> = gson.fromJson(body, type)
 
             // Collect all matching results with their comic data
@@ -480,7 +493,7 @@ object ComickApi {
                 return@withContext null
             }
             val html = response.body.string()
-            val doc = org.jsoup.Jsoup.parse(html)
+            val doc = Jsoup.parse(html)
 
             // Each cover is inside a `div` whose first immediate child is a `div` containing an img
             // and the second immediate child is a `div` with the volume badge text.
@@ -533,14 +546,14 @@ object ComickApi {
 
         for (title in titles) {
             if (title.isBlank()) continue
-            val encodedTitle = java.net.URLEncoder.encode(title, "UTF-8")
+            val encodedTitle = URLEncoder.encode(title, "UTF-8")
             val url = "https://api.comick.dev/v1.0/search/?type=comic&page=1&limit=5&showall=false&q=$encodedTitle&t=false"
             val request = Request.Builder().url(url).build()
             val response = try { client.newCall(request).execute() } catch (e: Exception) { continue }
             val body = response.body.string()
             if (!response.isSuccessful || body.isNullOrEmpty() || body == "[]") continue
 
-            val type = object : com.google.gson.reflect.TypeToken<List<ComickSearchResult>>() {}.type
+            val type = object : TypeToken<List<ComickSearchResult>>() {}.type
             val results: List<ComickSearchResult> = try { gson.fromJson(body, type) } catch (e: Exception) { continue }
 
             val candidates = mutableListOf<ComickComic>()
@@ -566,7 +579,7 @@ object ComickApi {
      */
     suspend fun searchComics(query: String, allowAdult: Boolean = true): List<ComickComic>? = withContext(Dispatchers.IO) {
         try {
-            val encodedQuery = java.net.URLEncoder.encode(query, "UTF-8")
+            val encodedQuery = URLEncoder.encode(query, "UTF-8")
             val url = "https://api.comick.dev/v1.0/search/?type=comic&page=1&limit=25&showall=false&q=$encodedQuery&t=false"
             val request = Request.Builder()
                 .url(url)

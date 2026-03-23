@@ -47,6 +47,10 @@ class ReviewViewActivity : AppCompatActivity() {
         }
         setContentView(binding.root)
         review = intent.getSerializableExtra("review") as Query.Review
+        // Close/back button
+        try {
+            binding.closeButton.setOnClickListener { finish() }
+        } catch (_: Throwable) {}
         binding.userName.text = review.user?.name
         binding.userAvatar.loadImage(review.user?.avatar?.medium)
         binding.userTime.text = ActivityItemBuilder.getDateTime(review.createdAt)

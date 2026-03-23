@@ -1,6 +1,10 @@
 package ani.dantotsu.connections.comick
 
 import java.io.Serializable
+import java.time.Instant
+import java.time.format.DateTimeParseException
+import com.google.gson.annotations.SerializedName
+import com.google.gson.JsonElement
 
 data class ComickResponse(
     val comic: ComickComic?,
@@ -34,7 +38,8 @@ data class ComickComic(
     val md_comic_md_genres: List<ComickGenre>?,
     val md_covers: List<ComickCover>?,
     val links: ComickLinks?,
-    val recommendations: List<ComickRecommendation>?
+    val recommendations: List<ComickRecommendation>?,
+    val reviews: List<ComickRawReview>?
 ) : Serializable
 
 data class ComickFirstChapter(
@@ -124,4 +129,72 @@ data class ComickCover(
     val h: Int?,
     val b2key: String?
 ) : Serializable
+
+data class ComickTraits(
+    val username: String?,
+    val email: String?
+) : Serializable
+
+data class ComickIdentity(
+    val traits: ComickTraits?
+) : Serializable
+
+data class ComickRawReview(
+    val id: String?,
+    val content: String?,
+    val rating: Int?,
+    @SerializedName("created_at") val created_at: String?,
+    val identities: JsonElement?
+) : Serializable
+
+data class ComickReview(
+    val id: String?,
+    val username: String?,
+    val email: String?,
+    val content: String?,
+    val rating: Int?,
+    val createdAt: Int?
+) : Serializable
+
+fun ComickRawReview.toComickReview(): ComickReview {
+    val unixSeconds = try {
+        if (created_at.isNullOrBlank()) null else Instant.parse(created_at).epochSecond.toInt()
+    } catch (e: DateTimeParseException) {
+        null
+    }
+
+    var email: String? = null
+    var username: String? = null
+    try {
+        identities?.let { elem ->
+            if (elem.isJsonArray) {
+                val arr = elem.asJsonArray
+                if (arr.size() > 0 && arr[0].isJsonObject) {
+                    val first = arr[0].asJsonObject
+                    if (first.has("traits") && first.get("traits").isJsonObject) {
+                        val traits = first.getAsJsonObject("traits")
+                        if (traits.has("email")) email = traits.get("email").asString
+                        if (traits.has("username")) username = traits.get("username").asString
+                    }
+                }
+            } else if (elem.isJsonObject) {
+                val obj = elem.asJsonObject
+                if (obj.has("traits") && obj.get("traits").isJsonObject) {
+                    val traits = obj.getAsJsonObject("traits")
+                    if (traits.has("email")) email = traits.get("email").asString
+                    if (traits.has("username")) username = traits.get("username").asString
+                }
+            }
+        }
+    } catch (_: Exception) {}
+
+    return ComickReview(
+        id = id ?: java.util.UUID.randomUUID().toString(),
+        username = username,
+        email = email,
+        content = content,
+        rating = rating,
+        createdAt = unixSeconds
+    )
+}
 

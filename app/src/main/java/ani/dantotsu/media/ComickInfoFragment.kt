@@ -15,6 +15,7 @@ import androidx.lifecycle.lifecycleScope
 import ani.dantotsu.R
 import ani.dantotsu.connections.comick.ComickApi
 import ani.dantotsu.connections.comick.ComickResponse
+import ani.dantotsu.connections.comick.toComickReview
 import ani.dantotsu.connections.malsync.MalSyncApi
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.copyToClipboard
@@ -32,6 +33,7 @@ import ani.dantotsu.stripSpansOnPaste
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.xwray.groupie.GroupieAdapter
 
 class ComickInfoFragment : Fragment() {
     private var _binding: FragmentMediaInfoBinding? = null
@@ -686,6 +688,24 @@ class ComickInfoFragment : Fragment() {
         }
 
         val parent = binding.mediaInfoContainer
+
+        // Remove any previously added dynamic Comick views to prevent duplicates
+        val toRemove = mutableListOf<View>()
+        for (i in 0 until parent.childCount) {
+            val child = parent.getChildAt(i)
+            val tag = child.tag
+            if (tag is String && (
+                        tag.contains("_comick") ||
+                                tag == "reviews_comick_placeholder" ||
+                                tag == "reviews_comick" ||
+                                tag == "covers_comick_placeholder" ||
+                                tag == "unlink_comick_button"
+                        )
+            ) {
+                toRemove.add(child)
+            }
+        }
+        toRemove.forEach { parent.removeView(it) }
         val comic = comickData.comic
         if (comic == null) {
             ani.dantotsu.util.Logger.log("Comick: comic data is null")
@@ -1428,39 +1448,96 @@ class ComickInfoFragment : Fragment() {
                                         )
                                         }
                                         root.tag = "recommendations_comick"
-                                        parent.addView(root)
+                                        // If a reviews placeholder exists, insert recommendations before it
+                                        val reviewsPlaceholder = parent.findViewWithTag<View>("reviews_comick_placeholder")
+                                        if (reviewsPlaceholder != null) {
+                                            val idx = parent.indexOfChild(reviewsPlaceholder)
+                                            parent.addView(root, idx)
+                                        } else {
+                                            parent.addView(root)
+                                        }
                                 }
                     }
                 }
             }
         }
 
-        // Add "Unlink" button at the bottom if this is a manual selection
-        if (isManualSelection && media != null) {
-            val unlinkButton =
-                    com.google.android.material.button.MaterialButton(requireContext()).apply {
-                        text = resources.getString(R.string.unlink_comick)
-                        icon =
-                                androidx.appcompat.content.res.AppCompatResources.getDrawable(
-                                        requireContext(),
-                                        R.drawable.ic_round_close_24
-                                )
-                        iconGravity =
-                                com.google.android.material.button.MaterialButton.ICON_GRAVITY_START
-                        layoutParams =
-                                android.widget.LinearLayout.LayoutParams(
-                                                android.widget.LinearLayout.LayoutParams
-                                                        .MATCH_PARENT,
-                                                android.widget.LinearLayout.LayoutParams
-                                                        .WRAP_CONTENT
-                                        )
-                                        .apply {
-                                            val margin = 16f.px
-                                            setMargins(margin, margin, margin, margin)
-                                        }
-                        setOnClickListener { unlinkComickSelection(media) }
+        // Add Comick reviews (attempt to fetch and display immediately after recommendations)
+        if (!comickSlug.isNullOrBlank() && parent.findViewWithTag<View>("reviews_comick") == null) {
+            val reviewsPlaceholder = android.widget.FrameLayout(requireContext()).apply {
+                tag = "reviews_comick_placeholder"
+                layoutParams = android.widget.LinearLayout.LayoutParams(
+                    android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+            }
+            parent.addView(reviewsPlaceholder)
+
+            viewLifecycleOwner.lifecycleScope.launch {
+                // Prefer embedded reviews from the comic payload when available
+                val embedded = comic.reviews
+                val reviews = if (!embedded.isNullOrEmpty()) {
+                    embedded.mapNotNull { try { it.toComickReview() } catch (e: Exception) { null } }
+                } else {
+                    emptyList()
+                }
+
+                if (!reviews.isNullOrEmpty()) {
+                    withContext(Dispatchers.Main) {
+                        if (_binding == null) return@withContext
+                        ani.dantotsu.databinding.ItemTitleRecyclerBinding.inflate(
+                                LayoutInflater.from(context),
+                                reviewsPlaceholder,
+                                false
+                        ).apply {
+                            itemTitle.setText(ani.dantotsu.R.string.reviews)
+                            val groupAdapter = GroupieAdapter()
+                            reviews.forEach { rev ->
+                                groupAdapter.add(ComickReviewAdapter(rev))
+                            }
+                            itemRecycler.adapter = groupAdapter
+                            itemRecycler.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(requireContext())
+                            itemMore.visibility = View.GONE
+                            root.tag = "reviews_comick"
+                            reviewsPlaceholder.addView(root)
+                        }
                     }
-            parent.addView(unlinkButton) // Add as last child
+                }
+            }
+        }
+
+        // Defer unlink button placement to the end to guarantee it's the last child.
+        // If an unlink button already exists, move it to the end; otherwise add it now.
+        val existingUnlink = parent.findViewWithTag<View>("unlink_comick_button")
+        if (existingUnlink != null) {
+            parent.removeView(existingUnlink)
+            parent.addView(existingUnlink)
+        } else if (isManualSelection && media != null) {
+            val unlinkButton =
+                com.google.android.material.button.MaterialButton(requireContext()).apply {
+                text = resources.getString(R.string.unlink_comick)
+                icon =
+                    androidx.appcompat.content.res.AppCompatResources.getDrawable(
+                        requireContext(),
+                        R.drawable.ic_round_close_24
+                    )
+                iconGravity =
+                    com.google.android.material.button.MaterialButton.ICON_GRAVITY_START
+                layoutParams =
+                    android.widget.LinearLayout.LayoutParams(
+                            android.widget.LinearLayout.LayoutParams
+                                .MATCH_PARENT,
+                            android.widget.LinearLayout.LayoutParams
+                                .WRAP_CONTENT
+                        )
+                        .apply {
+                            val margin = 16f.px
+                            setMargins(margin, margin, margin, margin)
+                        }
+                setOnClickListener { unlinkComickSelection(media) }
+                tag = "unlink_comick_button"
+                }
+            parent.addView(unlinkButton)
         }
     }
 }

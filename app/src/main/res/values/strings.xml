@@ -170,6 +170,8 @@
         Nothing came up from this source.\n
         Let\'s look elsewhere.
     </string>
+    <string name="search_no_results">No results found for your query.</string>
+    <string name="search_fetch_error">Couldn\'t fetch results. Check your connection or test the source, then try again.</string>
     <string name="download_not_found">
         Your downloads are feeling a bit lonely…\n
         Try downloading something.

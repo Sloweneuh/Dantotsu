@@ -1076,6 +1076,8 @@
     <string name="true_colors_info">(Mode couleur 32 bits) Réduit le banding sur les images, peut affecter les performances.</string>
     <string name="wrap_images_info">Surtout utile pour les grands appareils, supprime l\'espace entre les images, s\'il existe.</string>
     <string name="search_timeout">La recherche a expiré. Cette source peut être lente sur votre réseau.</string>
+    <string name="search_no_results">Aucun résultat trouvé pour votre recherche.</string>
+    <string name="search_fetch_error">Impossible de récupérer les résultats. Vérifiez votre connexion ou testez la source, puis réessayez.</string>
     <string name="open_animanga_directly_info">Ouvrir la recherche Anime/Manga directement sur leurs pages respectives</string>
     <string name="timestamp_proxy_desc">Utile si vous obtenez des échecs de Handshake</string>
     <string name="account_help">Comment ça marche \?</string>

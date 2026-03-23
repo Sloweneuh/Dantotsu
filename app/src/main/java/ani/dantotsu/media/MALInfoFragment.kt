@@ -476,6 +476,16 @@ class MALInfoFragment : Fragment() {
             parent.addView(bind.root)
         }
 
+        // Placeholder to anchor stacks/recommendations ordering
+        val stacksPlaceholder = android.widget.FrameLayout(requireContext()).apply {
+            tag = "stacks_mal_placeholder"
+            layoutParams = android.widget.LinearLayout.LayoutParams(
+                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        }
+        parent.addView(stacksPlaceholder)
+
         // Recommendations - Show MAL's recommendations but reuse AniList data for matches
         if (malData.recommendations.isNotEmpty() && !offline) {
             lifecycleScope.launch {
@@ -531,7 +541,15 @@ class MALInfoFragment : Fragment() {
                                 .putExtra("title", getString(R.string.recommended))
                         )
                     }
-                    parent.addView(bind.root)
+                    // Tag recommendations so stacks can identify them, and insert before placeholder so stacks remain after.
+                    bind.root.tag = "recommendations_mal"
+                    val placeholder = parent.findViewWithTag<View>("stacks_mal_placeholder")
+                    if (placeholder != null) {
+                        val idx = parent.indexOfChild(placeholder)
+                        parent.addView(bind.root, idx)
+                    } else {
+                        parent.addView(bind.root)
+                    }
                 }
             }
         }
@@ -568,7 +586,20 @@ class MALInfoFragment : Fragment() {
                                 .putExtra("isAnime", true)
                         )
                     }
-                    parent.addView(bind.root)
+                    // If recommendations exist, insert stacks after recommendations; otherwise insert before placeholder.
+                    val recView = parent.findViewWithTag<View>("recommendations_mal")
+                    if (recView != null) {
+                        val recIdx = parent.indexOfChild(recView)
+                        parent.addView(bind.root, recIdx + 1)
+                    } else {
+                        val placeholder = parent.findViewWithTag<View>("stacks_mal_placeholder")
+                        if (placeholder != null) {
+                            val idx = parent.indexOfChild(placeholder)
+                            parent.addView(bind.root, idx)
+                        } else {
+                            parent.addView(bind.root)
+                        }
+                    }
                 }
             }
         }
@@ -751,7 +782,15 @@ class MALInfoFragment : Fragment() {
                                 .putExtra("title", getString(R.string.recommended))
                         )
                     }
-                    parent.addView(bind.root)
+                    // Tag recommendations so stacks can identify them and ensure order
+                    bind.root.tag = "recommendations_mal"
+                    val placeholder = parent.findViewWithTag<View>("stacks_mal_placeholder")
+                    if (placeholder != null) {
+                        val idx = parent.indexOfChild(placeholder)
+                        parent.addView(bind.root, idx)
+                    } else {
+                        parent.addView(bind.root)
+                    }
                 }
             }
         }
