@@ -373,6 +373,50 @@ class AniListInfoFragment : Fragment() {
                     parent.addView(bind.root)
                 }
 
+                    // Fetch MALSync quicklinks and show them under External Links (if enabled)
+                    try {
+                        val mediaTypeLower = if (media.anime != null) "anime" else "manga"
+                        // Show quicklinks whenever MALSync info is enabled (include anime and manga)
+                        if (PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled)) {
+                            lifecycleScope.launch {
+                                val quicklinks = withContext(Dispatchers.IO) {
+                                    try {
+                                        MalSyncApi.getQuicklinks(media.id, media.idMAL, mediaTypeLower)
+                                    } catch (_: Throwable) { null }
+                                }
+                                if (quicklinks?.Sites != null && quicklinks.Sites.isNotEmpty()) {
+                                    try {
+                                        // Create a chips block for quicklinks (one chip per site). Clicking a chip opens a bottom sheet with that site's entries.
+                                        val bindQuick = ItemTitleChipgroupBinding.inflate(LayoutInflater.from(context), parent, false)
+                                        bindQuick.itemTitle.setText(R.string.quicklinks)
+
+                                        quicklinks.Sites.entries.forEach { (siteName, entriesMap) ->
+                                            // Skip Comick quicklinks (handled separately)
+                                            if (siteName.equals("Comick", true) || siteName.contains("comick", true)) return@forEach
+                                            try {
+                                                val chip = ItemChipBinding.inflate(LayoutInflater.from(context), bindQuick.itemChipGroup, false).root
+                                                val displayName = if (entriesMap.size > 1) "$siteName (${entriesMap.size})" else siteName
+                                                chip.text = displayName
+                                                chip.setOnClickListener {
+                                                    try {
+                                                        val list = ArrayList(entriesMap.values)
+                                                        QuicklinksBottomSheetFragment.newInstance(siteName, list).show(childFragmentManager, "quicklinks_$siteName")
+                                                    } catch (_: Throwable) {}
+                                                }
+                                                bindQuick.itemChipGroup.addView(chip)
+                                            } catch (_: Throwable) {}
+                                        }
+
+                                        // Insert after external_links block if present, otherwise append
+                                        val extIndex = (0 until parent.childCount).firstOrNull { parent.getChildAt(it).tag == "external_links" } ?: -1
+                                        bindQuick.root.tag = "quicklinks_chips"
+                                        if (extIndex >= 0) parent.addView(bindQuick.root, extIndex + 1) else parent.addView(bindQuick.root)
+                                    } catch (_: Throwable) {}
+                                }
+                            }
+                        }
+                    } catch (_: Throwable) {}
+
                 // Quicklinks removed - use tabs instead
 
                 if (media.synonyms.isNotEmpty()) {

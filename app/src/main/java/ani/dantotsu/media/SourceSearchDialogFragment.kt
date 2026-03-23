@@ -33,7 +33,6 @@ import android.text.SpannableString
 import android.text.Spanned
 import android.text.method.LinkMovementMethod
 import android.text.style.ClickableSpan
-import android.view.View
 import ani.dantotsu.settings.ExtensionsActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
