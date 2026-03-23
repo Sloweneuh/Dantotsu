@@ -407,10 +407,19 @@ class AniListInfoFragment : Fragment() {
                                             } catch (_: Throwable) {}
                                         }
 
-                                        // Insert after external_links block if present, otherwise append
+                                        // Insert after external_links block if present. If not present,
+                                        // insert right after the synopsis text so quicklinks appear under it.
                                         val extIndex = (0 until parent.childCount).firstOrNull { parent.getChildAt(it).tag == "external_links" } ?: -1
                                         bindQuick.root.tag = "quicklinks_chips"
-                                        if (extIndex >= 0) parent.addView(bindQuick.root, extIndex + 1) else parent.addView(bindQuick.root)
+                                        if (extIndex >= 0) {
+                                            parent.addView(bindQuick.root, extIndex + 1)
+                                        } else {
+                                            // Find the synopsis view and insert after it, otherwise append
+                                            val synopsisIndex = (0 until parent.childCount).firstOrNull {
+                                                parent.getChildAt(it).id == R.id.mediaInfoDescription
+                                            } ?: -1
+                                            if (synopsisIndex >= 0) parent.addView(bindQuick.root, synopsisIndex + 1) else parent.addView(bindQuick.root)
+                                        }
                                     } catch (_: Throwable) {}
                                 }
                             }
