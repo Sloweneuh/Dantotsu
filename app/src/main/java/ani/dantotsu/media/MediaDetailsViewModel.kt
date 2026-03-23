@@ -44,6 +44,8 @@ class MediaDetailsViewModel : ViewModel() {
     val mangaUpdatesLink = MutableLiveData<String?>(null)
     val shouldShowSearchModal = MutableLiveData(false)
     val comickLoaded = MutableLiveData(false)
+    // Holds the full Comick API response when available so other fragments can reuse it
+    val comickData = MutableLiveData<ani.dantotsu.connections.comick.ComickResponse?>(null)
     val mangaUpdatesLoaded = MutableLiveData(false)
     val mangaUpdatesLoading = MutableLiveData(false)
 

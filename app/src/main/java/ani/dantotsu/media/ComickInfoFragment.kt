@@ -257,6 +257,8 @@ class ComickInfoFragment : Fragment() {
                 }
 
                 model.comickLoaded.postValue(true)
+                // Publish fetched ComickResponse so other tabs can reuse titles/details
+                model.comickData.postValue(comickData)
                 loaded = true
                 binding.mediaInfoProgressBar.visibility = View.GONE
                 binding.mediaInfoContainer.visibility = View.VISIBLE
@@ -385,10 +387,23 @@ class ComickInfoFragment : Fragment() {
 
             // Build list of title options for dropdown
             val titleOptions = mutableListOf<String>()
+            // Always include primary names from Media
             titleOptions.add(media.userPreferredName)
             if (media.nameRomaji != media.userPreferredName) {
                 titleOptions.add(media.nameRomaji)
             }
+
+            // If this media is MangaUpdates-sourced, include MU series titles (preloaded in ViewModel)
+            val model: MediaDetailsViewModel by activityViewModels()
+            val muSeries = try { model.mangaUpdatesSeries.value } catch (_: Exception) { null }
+            if (media.muSeriesId != null && muSeries != null) {
+                muSeries.title?.let { if (it.isNotBlank() && !titleOptions.contains(it)) titleOptions.add(it) }
+                muSeries.associated?.forEach { assoc ->
+                    assoc.title?.let { if (it.isNotBlank() && !titleOptions.contains(it)) titleOptions.add(it) }
+                }
+            }
+
+            // Add English synonyms from Media
             val englishSynonyms = filterEnglishTitles(media.synonyms)
             englishSynonyms.forEach { if (!titleOptions.contains(it)) titleOptions.add(it) }
 
@@ -573,6 +588,7 @@ class ComickInfoFragment : Fragment() {
                     }
 
                     model.comickLoaded.postValue(true)
+                    model.comickData.postValue(comickData)
                     loaded = true
 
                     // Clear the search view and restore the original layout

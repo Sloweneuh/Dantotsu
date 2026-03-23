@@ -471,175 +471,149 @@ class MangaUpdatesInfoFragment : Fragment() {
         val frameLayout = binding.mediaInfoContainer.parent as? ViewGroup
 
         frameLayout?.let { container ->
-            // IMPORTANT: Remove all previous views to prevent overlap
-            container.removeAllViews()
+            val model: MediaDetailsViewModel by activityViewModels()
 
-            // Inflate search layout
-            val searchView = layoutInflater.inflate(R.layout.fragment_search_page, container, false)
+            // Build title options and fetch remote titles (Comick / MU preload) before rendering UI
+            viewLifecycleOwner.lifecycleScope.launch {
+                val titleOptions = mutableListOf<String>()
+                titleOptions.add(media.userPreferredName)
+                if (media.nameRomaji != media.userPreferredName) titleOptions.add(media.nameRomaji)
 
-            val searchBarLayout =
-                    searchView.findViewById<com.google.android.material.textfield.TextInputLayout>(
-                            R.id.searchBarLayout
-                    )
-            val searchBar =
-                    searchView.findViewById<android.widget.AutoCompleteTextView>(R.id.searchBarText)
-            searchBar.stripSpansOnPaste()
-            val searchProgress =
-                    searchView.findViewById<android.widget.ProgressBar>(R.id.searchProgress)
-            val emptyMessage = searchView.findViewById<android.widget.TextView>(R.id.emptyMessage)
-            val recyclerView =
-                    searchView.findViewById<androidx.recyclerview.widget.RecyclerView>(
-                            R.id.searchRecyclerView
-                    )
+                // Do not include MangaUpdates titles here — quick-search is only for AniList/Comick
 
-            // Build list of title options for dropdown
-            val titleOptions = mutableListOf<String>()
-            titleOptions.add(media.userPreferredName)
-            if (media.nameRomaji != media.userPreferredName) {
-                titleOptions.add(media.nameRomaji)
-            }
-            val englishSynonyms =
+                // If Comick data is available in ViewModel (fetched by Comick tab), reuse it for titles
+                val comickResponse = try { model.comickData.value } catch (_: Exception) { null }
+                if (comickResponse != null) {
+                    comickResponse.comic?.title?.let { t -> if (t.isNotBlank() && !titleOptions.contains(t)) titleOptions.add(t) }
+                    comickResponse.comic?.md_titles?.filter { it.lang?.equals("en", true) == true }
+                        ?.mapNotNull { it.title }
+                        ?.forEach { t -> if (!titleOptions.contains(t)) titleOptions.add(t) }
+                }
+
+                // Add English synonyms from Media
+                val englishSynonyms =
                     media.synonyms.filter { title ->
                         if (title.isBlank()) return@filter false
                         val hasCJK =
-                                title.any { char ->
-                                    char.code in 0x3040..0x309F ||
-                                            char.code in 0x30A0..0x30FF ||
-                                            char.code in 0x4E00..0x9FFF ||
-                                            char.code in 0xAC00..0xD7AF ||
-                                            char.code in 0x1100..0x11FF
-                                }
+                            title.any { char ->
+                                char.code in 0x3040..0x309F ||
+                                char.code in 0x30A0..0x30FF ||
+                                char.code in 0x4E00..0x9FFF ||
+                                char.code in 0xAC00..0xD7AF ||
+                                char.code in 0x1100..0x11FF
+                            }
                         !hasCJK
                     }
-            englishSynonyms.forEach { if (!titleOptions.contains(it)) titleOptions.add(it) }
+                englishSynonyms.forEach { if (!titleOptions.contains(it)) titleOptions.add(it) }
 
-            // Set up RecyclerView
-            recyclerView.layoutManager =
-                    androidx.recyclerview.widget.GridLayoutManager(
+                // Now render the UI on the main thread
+                withContext(Dispatchers.Main) {
+                    // IMPORTANT: Remove all previous views to prevent overlap
+                    container.removeAllViews()
+
+                    // Inflate search layout
+                    val searchView = layoutInflater.inflate(R.layout.fragment_search_page, container, false)
+
+                    val searchBarLayout =
+                        searchView.findViewById<com.google.android.material.textfield.TextInputLayout>(R.id.searchBarLayout)
+                    val searchBar = searchView.findViewById<android.widget.AutoCompleteTextView>(R.id.searchBarText)
+                    searchBar.stripSpansOnPaste()
+                    val searchProgress = searchView.findViewById<android.widget.ProgressBar>(R.id.searchProgress)
+                    val emptyMessage = searchView.findViewById<android.widget.TextView>(R.id.emptyMessage)
+                    val recyclerView = searchView.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.searchRecyclerView)
+
+                    // Set up RecyclerView
+                    recyclerView.layoutManager =
+                        androidx.recyclerview.widget.GridLayoutManager(
                             fragmentContext,
                             androidx.core.math.MathUtils.clamp(
-                                    fragmentContext.resources.displayMetrics.widthPixels / 124f.px,
-                                    1,
-                                    4
+                                fragmentContext.resources.displayMetrics.widthPixels / 124f.px,
+                                1,
+                                4
                             )
-                    )
+                        )
 
-            // Set initial query
-            searchBar.setText(initialQuery)
+                    // Set initial query
+                    searchBar.setText(initialQuery)
 
-            // Function to perform search - define early so it can be used in dropdown
-            fun performSearch(query: String) {
-                if (query.isBlank()) return
+                    // Function to perform search - define early so it can be used in dropdown
+                    fun performSearch(query: String) {
+                        if (query.isBlank()) return
 
-                searchProgress.visibility = View.VISIBLE
-                emptyMessage.visibility = View.GONE
-                recyclerView.visibility = View.GONE
+                        searchProgress.visibility = View.VISIBLE
+                        emptyMessage.visibility = View.GONE
+                        recyclerView.visibility = View.GONE
 
-                viewLifecycleOwner.lifecycleScope.launch {
-                    try {
-                        val results =
-                                withContext(Dispatchers.IO) { MangaUpdates.searchSeries(query) }
-
-                        withContext(Dispatchers.Main) {
-                            searchProgress.visibility = View.GONE
-                            if (results?.results.isNullOrEmpty()) {
-                                emptyMessage.visibility = View.VISIBLE
-                                recyclerView.visibility = View.GONE
-                            } else {
-                                emptyMessage.visibility = View.GONE
-                                recyclerView.visibility = View.VISIBLE
-                                recyclerView.adapter =
-                                        MangaUpdatesSearchAdapter(results!!.results!!) {
-                                                selectedResult ->
-                                            // Save the selection
-                                            selectedResult.record?.let { series ->
-                                                saveMangaUpdatesSelection(media, series)
+                        viewLifecycleOwner.lifecycleScope.launch {
+                            try {
+                                val results = withContext(Dispatchers.IO) { MangaUpdates.searchSeries(query) }
+                                withContext(Dispatchers.Main) {
+                                    searchProgress.visibility = View.GONE
+                                    if (results?.results.isNullOrEmpty()) {
+                                        emptyMessage.visibility = View.VISIBLE
+                                        recyclerView.visibility = View.GONE
+                                    } else {
+                                        emptyMessage.visibility = View.GONE
+                                        recyclerView.visibility = View.VISIBLE
+                                        recyclerView.adapter =
+                                            MangaUpdatesSearchAdapter(results!!.results!!) { selectedResult ->
+                                                selectedResult.record?.let { series -> saveMangaUpdatesSelection(media, series) }
                                             }
-                                        }
+                                    }
+                                }
+                            } catch (e: Exception) {
+                                withContext(Dispatchers.Main) {
+                                    searchProgress.visibility = View.GONE
+                                    emptyMessage.visibility = View.VISIBLE
+                                    emptyMessage.text = fragmentContext.getString(R.string.error_loading_data)
+                                    android.widget.Toast.makeText(fragmentContext, getString(R.string.error_message, e.message ?: ""), android.widget.Toast.LENGTH_SHORT).show()
+                                }
                             }
                         }
-                    } catch (e: Exception) {
-                        withContext(Dispatchers.Main) {
-                            searchProgress.visibility = View.GONE
-                            emptyMessage.visibility = View.VISIBLE
-                            emptyMessage.text =
-                                    fragmentContext.getString(R.string.error_loading_data)
-                            android.widget.Toast.makeText(
-                                            fragmentContext,
-                                            getString(R.string.error_message, e.message ?: ""),
-                                            android.widget.Toast.LENGTH_SHORT
-                                    )
-                                    .show()
+                    }
+
+                    // Add dropdown icon to search bar if there are multiple titles
+                    if (titleOptions.size > 1) {
+                        searchBarLayout.endIconMode = com.google.android.material.textfield.TextInputLayout.END_ICON_DROPDOWN_MENU
+                        searchBarLayout.setEndIconOnClickListener {
+                            val adapter = android.widget.ArrayAdapter(fragmentContext, R.layout.item_titles_dropdown, titleOptions)
+                            val popup = androidx.appcompat.widget.ListPopupWindow(fragmentContext)
+                            popup.anchorView = searchBar
+                            popup.setAdapter(adapter)
+                            popup.isModal = true
+                            searchBarLayout.post {
+                                popup.width = searchBarLayout.width
+                                popup.verticalOffset = searchBarLayout.height
+                                popup.setBackgroundDrawable(androidx.core.content.ContextCompat.getDrawable(fragmentContext, R.drawable.dropdown_background))
+                                try { popup.listView?.elevation = 12f } catch (_: Throwable) {}
+                                popup.show()
+                            }
+                            popup.setOnItemClickListener { _, _, position, _ ->
+                                val selected = titleOptions[position]
+                                searchBar.setText(selected)
+                                popup.dismiss()
+                                performSearch(selected)
+                            }
                         }
                     }
-                }
-            }
 
-            // Add dropdown icon to search bar if there are multiple titles
-            if (titleOptions.size > 1) {
-                searchBarLayout.endIconMode =
-                        com.google.android.material.textfield.TextInputLayout.END_ICON_DROPDOWN_MENU
-
-                // Set up dropdown when end icon is clicked
-                searchBarLayout.setEndIconOnClickListener {
-                    val adapter =
-                            android.widget.ArrayAdapter(
-                                    fragmentContext,
-                                    R.layout.item_titles_dropdown,
-                                    titleOptions
-                            )
-                    val popup = androidx.appcompat.widget.ListPopupWindow(fragmentContext)
-                    popup.anchorView = searchBar
-                    popup.setAdapter(adapter)
-                    popup.isModal = true
-
-                    searchBarLayout.post {
-                        popup.width = searchBarLayout.width
-                        popup.verticalOffset = searchBarLayout.height
-                        popup.setBackgroundDrawable(
-                                androidx.core.content.ContextCompat.getDrawable(
-                                        fragmentContext,
-                                        R.drawable.dropdown_background
-                                )
-                        )
-                        try {
-                            popup.listView?.elevation = 12f
-                        } catch (_: Throwable) {}
-                        popup.show()
+                    // Set up search listener
+                    searchBar.setOnEditorActionListener { _, actionId, _ ->
+                        if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH) {
+                            performSearch(searchBar.text.toString())
+                            val imm = fragmentContext.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
+                            imm?.hideSoftInputFromWindow(searchBar.windowToken, 0)
+                            true
+                        } else false
                     }
 
-                    popup.setOnItemClickListener { _, _, position, _ ->
-                        val selected = titleOptions[position]
-                        searchBar.setText(selected)
-                        popup.dismiss()
-                        // Automatically perform the search
-                        performSearch(selected)
-                    }
+                    // Add the search view to the container
+                    container.addView(searchView)
+
+                    // Perform initial search
+                    performSearch(initialQuery)
                 }
             }
-
-            // Set up search listener
-            searchBar.setOnEditorActionListener { _, actionId, _ ->
-                if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH) {
-                    performSearch(searchBar.text.toString())
-                    // Hide keyboard
-                    val imm =
-                            fragmentContext.getSystemService(
-                                    android.content.Context.INPUT_METHOD_SERVICE
-                            ) as?
-                                    android.view.inputmethod.InputMethodManager
-                    imm?.hideSoftInputFromWindow(searchBar.windowToken, 0)
-                    true
-                } else {
-                    false
-                }
-            }
-
-            // Add the search view to the container
-            container.addView(searchView)
-
-            // Perform initial search
-            performSearch(initialQuery)
         }
     }
 
