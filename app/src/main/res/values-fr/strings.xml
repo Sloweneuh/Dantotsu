@@ -524,6 +524,7 @@
 
     <string name="read_on_dantotsu">Lire sur Dantotsu</string>
     <string name="watch_on_dantotsu">Regarder sur Dantotsu</string>
+    <string name="discord_no_tracker_link">Pas de lien de suivi (caché)</string>
     <string name="view_profile_in_dantotsu">Voir le profil dans Dantotsu</string>
     <string name="continue_episode">Continuer : Épisode %1$s%2$s\n%3$s</string>
     <string name="filler_tag"> - Filler</string>
@@ -1104,6 +1105,7 @@
     <string name="subscriptions_info">Durée pour que Dantotsu vérifie périodiquement les nouveaux épisodes/chapitres pour vos abonnements</string>
     <string name="discord_nothing_button">Afficher uniquement le bouton de lien anime/manga</string>
     <string name="discord_anilist_button">Afficher le lien anime/manga + bouton profil AniList</string>
+    <string name="discord_view_profile">Voir Profil</string>
     <string name="jobless_message">MINCE ! TU ES VRAIMENT AU CHÔMAGE\nTU AS ATTEINT LA FIN</string>
     <string name="file_manager_not_found">Impossible de trouver un gestionnaire de fichiers pour ouvrir la carte SD</string>
     <string name="long_click_to_check_update">Appui long pour vérifier les mises à jour de l\'application</string>
@@ -1375,6 +1377,7 @@
     <string name="show_manga_tab">Afficher l\'onglet Manga</string>
     <string name="covers">Couvertures</string>
     <string name="cover_volume_label">Volume %1$s</string>
+    <string name="proceed">Continuer</string>
     <string name="home_stats_stat1">Stat Accueil 1</string>
     <string name="home_stats_stat2">Stat Accueil 2</string>
     <string name="home_stats_select">Sélectionner les stats de l\'accueil</string>
@@ -1390,4 +1393,17 @@
     <string name="filter_tracker">Tracker : %1$s</string>
     <string name="filter_tracker_both">Les deux</string>
     <string name="filter_tracker_anilist">Anilist</string>
+    <string name="search_equivalents_confirm_title">Rechercher des équivalents sur Anilist</string>
+    <string name="view_my_mal">Voir mon profil MAL</string>
+    <string name="discord_preview">Aperçu</string>
+    <string name="discord_playing_game">Joue à un jeu</string>
+    <string name="discord_just_now">Maintenant</string>
+    <string name="discord_select_service">Sélectionner le service et liens d\'îcones</string>
+    <string name="discord_dantotsu_mode">Mode Dantotsu</string>
+    <string name="discord_anilist_mode">Mode Anilist</string>
+    <string name="discord_mal_mode">Mode MAL</string>
+    <string name="discord_anime_presence">Présence Anime</string>
+    <string name="discord_manga_presence">Présence Manga</string>
+    <string name="search_equivalents">Rechercher des équivalents</string>
+    <string name="search_equivalents_confirm_text">Cela va tenter de trouver des équivalents AniList pour chaque entrée MangaUpdates de cette liste. Cela peut prendre un certain temps. Continuer ?</string>
 </resources>

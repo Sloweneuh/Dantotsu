@@ -2,6 +2,8 @@ package ani.dantotsu.connections.mal
 
 import ani.dantotsu.client
 import ani.dantotsu.connections.anilist.api.FuzzyDate
+import ani.dantotsu.settings.saving.PrefManager
+import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.tryWithSuspend
 import ani.dantotsu.util.Logger
 import kotlinx.serialization.Serializable
@@ -46,6 +48,7 @@ class MALQueries {
         MAL.userid = res.id
         MAL.username = res.name
         MAL.avatar = res.picture
+        PrefManager.setVal(PrefName.MALUserName, res.name)
 
         return true
     }

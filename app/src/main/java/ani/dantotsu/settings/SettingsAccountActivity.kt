@@ -155,15 +155,6 @@ class SettingsAccountActivity : AppCompatActivity() {
                     val avatar = PrefManager.getVal(PrefName.DiscordAvatar, null as String?)
                     val username = PrefManager.getVal(PrefName.DiscordUserName, null as String?)
 
-                    // If user info is missing, fetch it
-                    if (id == null || username == null) {
-                        lifecycleScope.launch {
-                            Discord.fetchUserInfo()
-                            // Reload to display the fetched info
-                            reload()
-                        }
-                    }
-
                     if (id != null && avatar != null) {
                         settingsDiscordAvatar.loadImage("https://cdn.discordapp.com/avatars/$id/$avatar.png")
                         settingsDiscordAvatar.setOnClickListener {
