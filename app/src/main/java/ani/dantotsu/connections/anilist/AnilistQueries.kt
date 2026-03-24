@@ -140,9 +140,10 @@ class AnilistQueries {
         return true
     }
 
-    suspend fun getMedia(id: Int, mal: Boolean = false): Media? {
+    suspend fun getMedia(id: Int, mal: Boolean = false, type: String? = null): Media? {
+	    val typeArg = if (type != null) "type: $type," else ""
         val response = executeQuery<Query.Media>(
-            """{Media(${if (!mal) "id:" else "idMal:"}$id){id idMal status chapters episodes nextAiringEpisode{episode}type meanScore isAdult isFavourite format bannerImage coverImage{large}title{english romaji userPreferred}mediaListEntry{progress private score(format:POINT_100)status}}}""",
+            """{Media($typeArg${if (!mal) "id:" else "idMal:"}$id){id idMal status chapters episodes nextAiringEpisode{episode}type meanScore isAdult isFavourite format bannerImage coverImage{large}title{english romaji userPreferred}mediaListEntry{progress private score(format:POINT_100)status}}}""",
             force = true
         )
         val fetchedMedia = response?.data?.media ?: return null
@@ -175,15 +176,10 @@ class AnilistQueries {
                         }
 
                         media.trailer = fetchedMedia.trailer?.let { i ->
-                            if (i.site != null && i.site.toString().lowercase() == "youtube" && i.id != null) {
-                                // Clean the video ID and construct proper embed URL
-                                val videoId = i.id.toString().trim().trim('"').trim()
-                                if (videoId.isNotEmpty()) {
-                                    // Use youtube-nocookie.com for better embed support
-                                    "https://www.youtube-nocookie.com/embed/$videoId?enablejsapi=1&autoplay=0&modestbranding=1&rel=0"
-                                } else null
-                            } else null
-                        }
+	                        if (i.site != null && i.site.toString() == "youtube")
+	                            i.id.toString().trim('"')
+	                        else null
+	                    }
 
                         fetchedMedia.synonyms?.apply {
                             media.synonyms = arrayListOf()
