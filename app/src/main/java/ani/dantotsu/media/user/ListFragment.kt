@@ -10,6 +10,7 @@ import androidx.recyclerview.widget.ConcatAdapter
 import androidx.recyclerview.widget.GridLayoutManager
 import ani.dantotsu.connections.mangaupdates.MUMedia
 import ani.dantotsu.connections.mangaupdates.MUMediaAdapter
+import ani.dantotsu.home.MergedReadingAdapter
 import ani.dantotsu.connections.mangaupdates.toMedia
 import ani.dantotsu.databinding.FragmentListBinding
 import ani.dantotsu.media.Media
@@ -54,13 +55,81 @@ class ListFragment : Fragment() {
             val muItems = muList ?: emptyList()
 
             val spanCount = if (g) (screenWidth / 120f).toInt() else 1
-            val anilistAdaptor = MediaAdaptor(if (g) 0 else 1, aniList, requireActivity(), true)
-            mediaAdaptor = anilistAdaptor
-            val muAdaptor = MUMediaAdapter(muItems)
 
             val layoutManager = GridLayoutManager(requireContext(), spanCount)
             binding.listRecyclerView.layoutManager = layoutManager
-            binding.listRecyclerView.adapter = ConcatAdapter(anilistAdaptor, muAdaptor)
+
+            // If there are MU items, merge them with AniList items into a single sorted list
+            if (muItems.isNotEmpty()) {
+                // Build a combined list of Any (Media | MUMedia)
+                val combined: List<Any> = aniList.map { it as Any } + muItems
+
+                // Determine the current sort preference (use Manga sort when MU present)
+                val isManga = aniList.firstOrNull()?.manga != null || muItems.isNotEmpty()
+                val prefName = if (isManga) ani.dantotsu.settings.saving.PrefName.MangaListSortOrder else ani.dantotsu.settings.saving.PrefName.AnimeListSortOrder
+                val sortPref: String = ani.dantotsu.settings.saving.PrefManager.getVal<String>(prefName)
+                val baseKey = sortPref.removeSuffix("_asc").removeSuffix("_desc")
+                val ascending = sortPref.endsWith("_asc")
+
+                val mergedItems: List<Any> = if (baseKey.isBlank()) {
+                    // No explicit sort: keep AniList order then MU items
+                    combined
+                } else {
+                    // Sort by the requested key, mapping MU fields to comparable values
+                    fun extractComparable(item: Any): Comparable<Any?> {
+                        return when (baseKey) {
+                            "score" -> when (item) {
+                                is ani.dantotsu.media.Media -> {
+                                    val v = if (item.userScore != 0) item.userScore.toDouble() else (item.meanScore?.toDouble() ?: 0.0)
+                                    v as Comparable<Any?>
+                                }
+                                is MUMedia -> ((item.bayesianRating ?: 0.0) * 10.0) as Comparable<Any?>
+                                else -> 0.0 as Comparable<Any?>
+                            }
+                            "title" -> when (item) {
+                                is ani.dantotsu.media.Media -> item.userPreferredName.lowercase() as Comparable<Any?>
+                                is MUMedia -> (item.title ?: "").lowercase() as Comparable<Any?>
+                                else -> "" as Comparable<Any?>
+                            }
+                            "release" -> when (item) {
+                                is ani.dantotsu.media.Media -> ((item.startDate?.year ?: Int.MIN_VALUE).toLong()) as Comparable<Any?>
+                                is MUMedia -> 0L as Comparable<Any?>
+                                else -> 0L as Comparable<Any?>
+                            }
+                            "updatedAt" -> when (item) {
+                                is ani.dantotsu.media.Media -> (item.userUpdatedAt ?: 0L) as Comparable<Any?>
+                                is MUMedia -> (item.updatedAt ?: 0L) as Comparable<Any?>
+                                else -> 0L as Comparable<Any?>
+                            }
+                            else -> when (item) {
+                                is ani.dantotsu.media.Media -> (item.userUpdatedAt ?: 0L) as Comparable<Any?>
+                                is MUMedia -> (item.updatedAt ?: 0L) as Comparable<Any?>
+                                else -> 0L as Comparable<Any?>
+                            }
+                        }
+                    }
+
+                    val comparator = Comparator<Any> { a: Any, b: Any ->
+                        val va = extractComparable(a)
+                        val vb = extractComparable(b)
+                        return@Comparator try {
+                            @Suppress("UNCHECKED_CAST")
+                            (va as Comparable<Any?>).compareTo(vb as Any?)
+                        } catch (_: Exception) { 0 }
+                    }
+
+                    val sorted = combined.sortedWith(comparator)
+                    if (ascending) sorted else sorted.reversed()
+                }
+
+                val mergedAdapter = MergedReadingAdapter(mergedItems, if (g) 0 else 1)
+                mediaAdaptor = null
+                binding.listRecyclerView.adapter = mergedAdapter
+            } else {
+                val anilistAdaptor = MediaAdaptor(if (g) 0 else 1, aniList, requireActivity(), true)
+                mediaAdaptor = anilistAdaptor
+                binding.listRecyclerView.adapter = anilistAdaptor
+            }
         }
 
         if (calendar) {

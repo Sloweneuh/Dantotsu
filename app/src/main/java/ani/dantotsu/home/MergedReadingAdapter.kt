@@ -109,6 +109,7 @@ class MergedReadingAdapter(
             ctx,
             if (media.userScore != 0) R.drawable.item_user_score else R.drawable.item_score
         )
+        b.itemCompactScoreBG.visibility = View.VISIBLE
         try {
             val isUser = media.userScore != 0
             b.itemCompactSourceBadge.setBackgroundResource(
@@ -218,6 +219,7 @@ class MergedReadingAdapter(
             ctx,
             if (media.userScore != 0) R.drawable.item_user_score else R.drawable.item_score
         )
+        b.itemCompactScoreBG.visibility = View.VISIBLE
         try {
             val isUser = media.userScore != 0
             b.itemCompactLanguageBG.setBackgroundResource(
