@@ -26,6 +26,7 @@ import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.stripSpansOnPaste
 import ani.dantotsu.themes.ThemeManager
+import ani.dantotsu.toast
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
 import kotlinx.coroutines.Dispatchers
@@ -104,6 +105,9 @@ class ListActivity : AppCompatActivity() {
                 // same logical tab after tabs are rebuilt/filtered.
                 val text = tab?.text?.toString()
                 selectedTabBase = text?.let { it.replace(Regex(" \\(.+\\)$"), "") }
+                // Update find-equivalents visibility when the selected tab changes
+                val hasMu = model.getFilteredMuLists().value != null && model.getFilteredMuLists().value!!.values.flatten().isNotEmpty()
+                binding.listFindEquivalents.isVisible = hasMu && muTabPosition >= 0 && this@ListActivity.selectedTabIdx == muTabPosition
             }
 
             override fun onTabUnselected(tab: TabLayout.Tab?) {}
@@ -131,10 +135,11 @@ class ListActivity : AppCompatActivity() {
             buildTabs(aniMap, muMap)
         }
 
-        // Show find-equivalents button when MU lists are present
+        // Show find-equivalents button when MU lists are present (only on MU tab)
         model.getFilteredMuLists().observe(this) { muMap ->
             val hasMu = muMap != null && muMap.values.flatten().isNotEmpty()
-            binding.listFindEquivalents.isVisible = hasMu
+            // Only show the button if MU lists exist AND the user is on the MangaUpdates tab
+            binding.listFindEquivalents.isVisible = hasMu && muTabPosition >= 0 && selectedTabIdx == muTabPosition
             if (hasMu) {
                 binding.listFindEquivalents.setOnClickListener {
                     val dialog = ani.dantotsu.others.CustomBottomDialog.newInstance()
@@ -145,7 +150,9 @@ class ListActivity : AppCompatActivity() {
                         textSize = 14f
                     }
                     dialog.addView(tv)
-                    dialog.setNegativeButton(getString(R.string.cancel)) {}
+                    dialog.setNegativeButton(getString(R.string.cancel)) {
+                        dialog.dismiss()
+                    }
                     dialog.setPositiveButton(getString(R.string.proceed)) {
                         try {
                             // Collect all MU items across lists
@@ -154,6 +161,7 @@ class ListActivity : AppCompatActivity() {
                             val intent = android.content.Intent(this@ListActivity, ani.dantotsu.media.MediaEquivalentsActivity::class.java)
                             startActivity(intent)
                         } catch (_: Exception) {}
+                        dialog.dismiss()
                     }
                     dialog.show(supportFragmentManager, "mu_equivalents_confirm")
                 }
