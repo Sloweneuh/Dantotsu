@@ -147,6 +147,15 @@ class DiscordDialogFragment : BottomSheetDialogFragment() {
             else -> binding.radioDantotsu.isChecked = true
         }
 
+        // Update radio labels depending on whether Manga tab is selected.
+        if (isMangaTabSelected) {
+            binding.radioAnilist.text = getString(R.string.discord_anilist_mode_manga)
+            binding.radioMal.text = getString(R.string.discord_mal_mode_manga)
+        } else {
+            binding.radioAnilist.text = getString(R.string.discord_anilist_mode)
+            binding.radioMal.text = getString(R.string.discord_mal_mode)
+        }
+
         val showIcon = if (isMangaTabSelected) {
             PrefManager.getVal(PrefName.DiscordRPCShowIconManga, true)
         } else {

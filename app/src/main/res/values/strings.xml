@@ -597,6 +597,8 @@
     <string name="discord_dantotsu_mode">Dantotsu Mode</string>
     <string name="discord_anilist_mode">AniList Mode</string>
     <string name="discord_mal_mode">MAL Mode</string>
+    <string name="discord_anilist_mode_manga">AniList/MangaUpdates Mode</string>
+    <string name="discord_mal_mode_manga">MAL/MangaUpdates Mode</string>
     <string name="discord_anime_presence">Anime Presence</string>
     <string name="discord_manga_presence">Manga Presence</string>
     <string name="discord_no_tracker_link">No Tracker Link (Hidden)</string>

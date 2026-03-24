@@ -499,6 +499,14 @@ class MangaReaderActivity : AppCompatActivity() {
                 if ((isOnline(context) && !offline) && Discord.token != null && !incognito && rpcenabled) {
                     lifecycleScope.launch {
                         val buttons = mutableListOf<RPC.Link>()
+                        // Prefer the MangaUpdates sharing link for MU-sourced media; fallback to computed URL only if shareLink is missing
+                        val muUrl = if (media.muSeriesId != null) {
+                            media.shareLink?.takeIf { it.contains("mangaupdates") }
+                                ?: "https://www.mangaupdates.com/series/${media.muSeriesId!!.toString(36)}"
+                        } else null
+                        muUrl?.let { buttons.add(RPC.Link("View on MangaUpdates", it)) }
+
+                        // Fallback / additional trackers
                         buttons.add(RPC.Link("View Manga", "https://anilist.co/manga/${media.id}/"))
                         media.idMAL?.let {
                             buttons.add(RPC.Link("View on MyAnimeList", "https://myanimelist.net/manga/$it"))

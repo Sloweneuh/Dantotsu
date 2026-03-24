@@ -95,4 +95,6 @@ object Discord {
         "https://cdn.myanimelist.net/img/sp/icon/apple-touch-icon-256.png"
     const val small_Image_Simkl: String =
         "https://eu.simkl.in/img_favicon/v2/favicon-192x192.png"
+    const val small_Image_MangaUpdates: String =
+        "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ8HPq8qdXYifvxu8XdsbuSiE4vjlLYw4k8kg&s"
 }

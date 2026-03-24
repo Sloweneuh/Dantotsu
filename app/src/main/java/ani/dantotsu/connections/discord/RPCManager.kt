@@ -261,30 +261,61 @@ object RPCManager {
         val mode = if (isManga) PrefManager.getVal(PrefName.DiscordRPCModeManga, "dantotsu") else PrefManager.getVal(PrefName.DiscordRPCModeAnime, "dantotsu")
         val useIconPref = if (isManga) PrefManager.getVal<Boolean>(PrefName.DiscordRPCShowIconManga, true) else PrefManager.getVal<Boolean>(PrefName.DiscordRPCShowIconAnime, true)
 
-        // Select Small Icon based on mode
-        val (smallIconUrl, smallIconText) = if (useIconPref && mode != "nothing") {
-            when (mode) {
-                "anilist" -> Discord.small_Image_AniList to "AniList"
-                "mal" -> Discord.small_Image_MAL to "MyAnimeList"
-                else -> Discord.small_Image to "Dantotsu"
-            }
-        } else {
-            null to null
-        }
+        // Small icon will be chosen after we inspect available tracker links
+        var smallIconUrl: String? = null
+        var smallIconText: String? = null
 
         // Build Buttons based on mode
         val buttons = mutableListOf<DiscordActivity.Button>()
         if (mode != "nothing") {
             // Button 1: Media Link (Primary Tracker)
-            val trackers = runCatching { data.buttons.filter { it.url.contains("anilist.co") || it.url.contains("myanimelist.net") } }.getOrDefault(emptyList())
-            val primaryTracker = when (mode) {
-                "mal" -> trackers.find { it.url.contains("myanimelist.net") } ?: trackers.find { it.url.contains("anilist.co") }
-                else -> trackers.find { it.url.contains("anilist.co") } ?: trackers.find { it.url.contains("myanimelist.net") }
+            val trackers = runCatching {
+                data.buttons.filter {
+                    it.url.contains("anilist.co") || it.url.contains("myanimelist.net") || it.url.contains("mangaupdates.com")
+                }
+            }.getOrDefault(emptyList())
+
+            // Prefer MangaUpdates for manga reading when available, otherwise fall back to mode order
+            val primaryTracker = if (isManga) {
+                trackers.find { it.url.contains("mangaupdates.com") }
+                    ?: when (mode) {
+                        "mal" -> trackers.find { it.url.contains("myanimelist.net") }
+                            ?: trackers.find { it.url.contains("anilist.co") }
+                        "anilist" -> trackers.find { it.url.contains("anilist.co") }
+                            ?: trackers.find { it.url.contains("myanimelist.net") }
+                        else -> trackers.firstOrNull()
+                    }
+            } else {
+                when (mode) {
+                    "mal" -> trackers.find { it.url.contains("myanimelist.net") }
+                        ?: trackers.find { it.url.contains("mangaupdates.com") }
+                        ?: trackers.find { it.url.contains("anilist.co") }
+                    "anilist" -> trackers.find { it.url.contains("anilist.co") }
+                        ?: trackers.find { it.url.contains("mangaupdates.com") }
+                        ?: trackers.find { it.url.contains("myanimelist.net") }
+                    else -> trackers.firstOrNull()
+                }
             }
             
             primaryTracker?.let {
                 if (it.url.isValidUrl()) {
                     buttons.add(DiscordActivity.Button(label = it.label, url = it.url))
+                }
+            }
+
+            // Decide small icon based on selected mode and available tracker (MangaUpdates override)
+            if (useIconPref && mode != "nothing") {
+                when (mode) {
+                    "anilist" -> { smallIconUrl = Discord.small_Image_AniList; smallIconText = "AniList" }
+                    "mal" -> { smallIconUrl = Discord.small_Image_MAL; smallIconText = "MyAnimeList" }
+                    else -> { smallIconUrl = Discord.small_Image; smallIconText = "Dantotsu" }
+                }
+
+                primaryTracker?.let {
+                    if (it.url.contains("mangaupdates.com")) {
+                        smallIconUrl = Discord.small_Image_MangaUpdates
+                        smallIconText = "MangaUpdates"
+                    }
                 }
             }
 
@@ -314,14 +345,14 @@ object RPCManager {
             statusDisplayType = 0,
             details = data.details,
             state = data.state,
-            assets = DiscordActivity.Assets(
-                largeImage = data.largeImage?.url,
-                largeText = data.largeImage?.label,
-                largeUrl = null,
-                smallImage = smallIconUrl,
-                smallText = smallIconText,
-                smallUrl = null,
-            ),
+                assets = DiscordActivity.Assets(
+                    largeImage = data.largeImage?.url,
+                    largeText = data.largeImage?.label,
+                    largeUrl = null,
+                    smallImage = smallIconUrl,
+                    smallText = smallIconText,
+                    smallUrl = null,
+                ),
             timestamps = if (data.startTimestamp != null)
                 DiscordActivity.Timestamps(
                     start = data.startTimestamp,

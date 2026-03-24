@@ -1400,8 +1400,10 @@
     <string name="discord_just_now">Maintenant</string>
     <string name="discord_select_service">Sélectionner le service et liens d\'îcones</string>
     <string name="discord_dantotsu_mode">Mode Dantotsu</string>
-    <string name="discord_anilist_mode">Mode Anilist</string>
+    <string name="discord_anilist_mode">Mode AniList</string>
     <string name="discord_mal_mode">Mode MAL</string>
+    <string name="discord_anilist_mode_manga">Mode AniList/MangaUpdates</string>
+    <string name="discord_mal_mode_manga">Mode MAL/MangaUpdates</string>
     <string name="discord_anime_presence">Présence Anime</string>
     <string name="discord_manga_presence">Présence Manga</string>
     <string name="search_equivalents">Rechercher des équivalents</string>
