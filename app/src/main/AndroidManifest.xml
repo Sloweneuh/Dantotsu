@@ -115,18 +115,23 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
 
-                <data android:mimeType="application/epub+zip"/>
-                <data android:mimeType="application/x-mobipocket-ebook" />
-                <data android:mimeType="application/vnd.amazon.ebook" />
-                <data android:mimeType="application/fb2+zip" />
-                <data android:mimeType="application/vnd.comicbook+zip" />
-                <data android:pathPattern=".*\\.epub" />
-                <data android:pathPattern=".*\\.mobi" />
-                <data android:pathPattern=".*\\.kf8" />
-                <data android:pathPattern=".*\\.fb2" />
-                <data android:pathPattern=".*\\.cbz" />
-                <data android:scheme="content" />
-                <data android:scheme="file" />
+                <!-- EPUB -->
+                <data android:scheme="content" android:mimeType="application/epub+zip" />
+                <data android:scheme="file" android:pathPattern=".*\\.epub" />
+
+                <!-- MOBI / KF8 -->
+                <data android:scheme="content" android:mimeType="application/x-mobipocket-ebook" />
+                <data android:scheme="content" android:mimeType="application/vnd.amazon.ebook" />
+                <data android:scheme="file" android:pathPattern=".*\\.mobi" />
+                <data android:scheme="file" android:pathPattern=".*\\.kf8" />
+
+                <!-- FB2 -->
+                <data android:scheme="content" android:mimeType="application/fb2+zip" />
+                <data android:scheme="file" android:pathPattern=".*\\.fb2" />
+
+                <!-- Comicbook ZIP (CBZ) -->
+                <data android:scheme="content" android:mimeType="application/vnd.comicbook+zip" />
+                <data android:scheme="file" android:pathPattern=".*\\.cbz" />
             </intent-filter>
         </activity>
         <activity android:name=".others.calc.CalcActivity"
@@ -414,14 +419,13 @@
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
-                <data android:scheme="content" />
-                <data android:scheme="file" />
 
-                <data android:pathPattern=".*\\.ani" />
-                <data android:pathPattern=".*\\.sani" />
+                <!-- Ani / Sani files - require matching scheme + type/pattern -->
+                <data android:scheme="content" android:mimeType="application/x-ani" />
+                <data android:scheme="file" android:pathPattern=".*\\.ani" />
 
-                <data android:mimeType="application/x-ani" />
-                <data android:mimeType="application/x-sani" />
+                <data android:scheme="content" android:mimeType="application/x-sani" />
+                <data android:scheme="file" android:pathPattern=".*\\.sani" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
