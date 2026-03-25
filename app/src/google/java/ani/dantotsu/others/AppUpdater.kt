@@ -253,7 +253,7 @@ object AppUpdater {
         }
         if (id == -1L) return
         ContextCompat.registerReceiver(
-            this,
+            applicationContext,
             object : BroadcastReceiver() {
                 @SuppressLint("Range")
                 override fun onReceive(context: Context?, intent: Intent?) {
@@ -262,8 +262,16 @@ object AppUpdater {
                             DownloadManager.EXTRA_DOWNLOAD_ID, id
                         ) ?: id
 
+                        // Try to get the downloaded file uri and start installer
                         downloadManager.getUriForDownloadedFile(downloadId)?.let {
                             openApk(this@downloadUpdate, it)
+                        }
+
+                        // Remove the download record and file from DownloadManager to avoid leftover APKs
+                        try {
+                            downloadManager.remove(downloadId)
+                        } catch (e: Exception) {
+                            logError(e)
                         }
                     } catch (e: Exception) {
                         logError(e)
@@ -284,15 +292,7 @@ object AppUpdater {
                     data = uri
                 }
                 context.startActivity(installIntent)
-                // Try to delete the APK after starting the install intent
-                try {
-                    val apkFile = java.io.File(it)
-                    if (apkFile.exists()) {
-                        apkFile.delete()
-                    }
-                } catch (e: Exception) {
-                    logError(e)
-                }
+                // File removal is handled via DownloadManager removal in the download receiver.
             }
         } catch (e: Exception) {
             logError(e)

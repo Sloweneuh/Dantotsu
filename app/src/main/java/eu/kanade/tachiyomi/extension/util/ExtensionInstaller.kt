@@ -209,6 +209,10 @@ class ExtensionInstaller(private val context: Context) {
      */
     fun updateInstallStep(downloadId: Long, step: InstallStep) {
         downloadsRelay.call(downloadId to step)
+        // Cleanup download file/record once installation is finished (installed or error/idle).
+        if (step.isCompleted()) {
+            deleteDownloadById(downloadId)
+        }
     }
 
     /**
@@ -220,6 +224,26 @@ class ExtensionInstaller(private val context: Context) {
         val downloadId = activeDownloads.remove(pkgName)
         if (downloadId != null) {
             downloadManager.remove(downloadId)
+        }
+        if (activeDownloads.isEmpty()) {
+            downloadReceiver.unregister()
+        }
+    }
+
+    /**
+     * Deletes the download for the given download id.
+     * This will remove any mapping containing the id and remove the download from the DownloadManager.
+     */
+    private fun deleteDownloadById(downloadId: Long) {
+        // Try to remove any mapping that references this download id
+        val entry = activeDownloads.entries.find { it.value == downloadId }
+        if (entry != null) {
+            activeDownloads.remove(entry.key)
+        }
+        try {
+            downloadManager.remove(downloadId)
+        } catch (_: Exception) {
+            // ignore removal errors
         }
         if (activeDownloads.isEmpty()) {
             downloadReceiver.unregister()
