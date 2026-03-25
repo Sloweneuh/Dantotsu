@@ -159,7 +159,9 @@ class NovelExtensionAdapter(private val clickListener: OnNovelInstallClickListen
     }
 
     override fun onBindViewHolder(holder: NovelExtensionViewHolder, position: Int) {
-        val extension = getItem(position)
+        val pos = holder.bindingAdapterPosition
+        if (pos == RecyclerView.NO_POSITION) return
+        val extension = getItem(pos)
         if (extension != null) {
             if (!skipIcons) {
                 Glide.with(holder.itemView.context)

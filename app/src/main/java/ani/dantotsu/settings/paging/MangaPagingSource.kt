@@ -157,7 +157,9 @@ class MangaExtensionAdapter(private val clickListener: OnMangaInstallClickListen
     }
 
     override fun onBindViewHolder(holder: MangaExtensionViewHolder, position: Int) {
-        val extension = getItem(position)
+        val pos = holder.bindingAdapterPosition
+        if (pos == RecyclerView.NO_POSITION) return
+        val extension = getItem(pos)
         if (extension != null) {
             if (!skipIcons) {
                 Glide.with(holder.itemView.context)
