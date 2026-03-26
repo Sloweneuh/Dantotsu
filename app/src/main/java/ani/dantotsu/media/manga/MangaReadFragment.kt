@@ -133,6 +133,7 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
 
         gridLayoutManager.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
             override fun getSpanSize(position: Int): Int {
+                if (position < 0 || position >= chapterAdapter.itemCount) return maxGridSize
                 val style = chapterAdapter.getItemViewType(position)
 
                 return when (position) {
@@ -663,19 +664,36 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
         model.saveSelected(media.id, selected)
         headerAdapter.handleChapters()
         chapterAdapter.notifyItemRangeRemoved(0, chapterAdapter.arr.size)
-        var arr: ArrayList<MangaChapter> = arrayListOf()
+        var chapList: ArrayList<MangaChapter> = arrayListOf()
         if (media.manga!!.chapters != null) {
             val end = if (end != null && end!! < media.manga!!.chapters!!.size) end else null
-            arr.addAll(
+            chapList.addAll(
                 media.manga!!.chapters!!.values.toList()
                     .slice(start..(end ?: (media.manga!!.chapters!!.size - 1)))
             )
             if (reverse)
-                arr = (arr.reversed() as? ArrayList<MangaChapter>) ?: arr
+                chapList = (chapList.reversed() as? ArrayList<MangaChapter>) ?: chapList
         }
-        chapterAdapter.arr = arr
+        // Build display list with gap placeholders between non-consecutive chapters
+        val displayList = ArrayList<MangaChapterListItem>()
+        for (i in chapList.indices) {
+            displayList.add(MangaChapterListItem.Chapter(chapList[i]))
+            if (i < chapList.size - 1) {
+                val currNum = MediaNameAdapter.findChapterNumber(chapList[i].number)
+                val nextNum = MediaNameAdapter.findChapterNumber(chapList[i + 1].number)
+                if (currNum != null && nextNum != null) {
+                    val lo = minOf(currNum, nextNum)
+                    val hi = maxOf(currNum, nextNum)
+                    val missing = hi.toInt() - lo.toInt() - 1
+                    if (missing > 0) {
+                        displayList.add(MangaChapterListItem.Gap(lo, hi, missing))
+                    }
+                }
+            }
+        }
+        chapterAdapter.arr = displayList
         chapterAdapter.updateType(style ?: PrefManager.getVal(PrefName.MangaDefaultView))
-        chapterAdapter.notifyItemRangeInserted(0, arr.size)
+        chapterAdapter.notifyItemRangeInserted(0, displayList.size)
     }
 
     override fun onDestroy() {

@@ -10,6 +10,7 @@ import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
 import ani.dantotsu.connections.updateProgress
 import ani.dantotsu.currContext
+import ani.dantotsu.databinding.ItemChapterGapBinding
 import ani.dantotsu.databinding.ItemChapterListBinding
 import ani.dantotsu.databinding.ItemEpisodeCompactBinding
 import ani.dantotsu.media.Media
@@ -29,43 +30,71 @@ class MangaChapterAdapter(
     private val media: Media,
     private val fragment: MangaReadFragment,
     private val mangaReadSources: ani.dantotsu.parsers.MangaReadSources,
-    var arr: ArrayList<MangaChapter> = arrayListOf(),
+    var arr: ArrayList<MangaChapterListItem> = arrayListOf(),
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+
+    companion object {
+        private const val VIEW_TYPE_LIST = 0
+        private const val VIEW_TYPE_COMPACT = 1
+        private const val VIEW_TYPE_GAP = 2
+    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         return when (viewType) {
-            1 -> ChapterCompactViewHolder(
+            VIEW_TYPE_COMPACT -> ChapterCompactViewHolder(
                 ItemEpisodeCompactBinding.inflate(
-                    LayoutInflater.from(parent.context),
-                    parent,
-                    false
+                    LayoutInflater.from(parent.context), parent, false
                 )
             )
-
-            0 -> ChapterListViewHolder(
+            VIEW_TYPE_LIST -> ChapterListViewHolder(
                 ItemChapterListBinding.inflate(
-                    LayoutInflater.from(parent.context),
-                    parent,
-                    false
+                    LayoutInflater.from(parent.context), parent, false
                 )
             )
-
+            VIEW_TYPE_GAP -> ChapterGapViewHolder(
+                ItemChapterGapBinding.inflate(
+                    LayoutInflater.from(parent.context), parent, false
+                )
+            )
             else -> throw IllegalArgumentException()
         }
     }
 
     override fun getItemViewType(position: Int): Int {
-        return type
+        if (position < 0 || position >= arr.size) return VIEW_TYPE_LIST
+        return when (arr[position]) {
+            is MangaChapterListItem.Gap -> VIEW_TYPE_GAP
+            is MangaChapterListItem.Chapter -> if (type == VIEW_TYPE_COMPACT) VIEW_TYPE_COMPACT else VIEW_TYPE_LIST
+        }
     }
 
     override fun getItemCount(): Int = arr.size
+
+    // Helper to find the adapter position of a chapter by its unique number
+    private fun chapterIndexOf(chapterNumber: String): Int {
+        return arr.indexOfFirst {
+            it is MangaChapterListItem.Chapter && it.chapter.uniqueNumber() == chapterNumber
+        }
+    }
+
+    // Helper to get actual chapter count after a given adapter position (for multi-op dialogs)
+    private fun chapterCountFrom(adapterPosition: Int): Int {
+        return arr.drop(adapterPosition).count { it is MangaChapterListItem.Chapter }
+    }
+
+    inner class ChapterGapViewHolder(val binding: ItemChapterGapBinding) :
+        RecyclerView.ViewHolder(binding.root)
 
     inner class ChapterCompactViewHolder(val binding: ItemEpisodeCompactBinding) :
         RecyclerView.ViewHolder(binding.root) {
         init {
             itemView.setOnClickListener {
-                if (0 <= bindingAdapterPosition && bindingAdapterPosition < arr.size)
-                    fragment.onMangaChapterClick(arr[bindingAdapterPosition])
+                val pos = bindingAdapterPosition
+                if (pos in 0 until arr.size) {
+                    val item = arr[pos]
+                    if (item is MangaChapterListItem.Chapter)
+                        fragment.onMangaChapterClick(item.chapter)
+                }
             }
         }
     }
@@ -75,30 +104,25 @@ class MangaChapterAdapter(
 
     fun startDownload(chapterNumber: String) {
         activeDownloads.add(chapterNumber)
-        // Find the position of the chapter and notify only that item
-        val position = arr.indexOfFirst { it.uniqueNumber() == chapterNumber }
-        if (position != -1) {
-            notifyItemChanged(position)
-        }
+        val position = chapterIndexOf(chapterNumber)
+        if (position != -1) notifyItemChanged(position)
     }
 
     fun stopDownload(chapterNumber: String) {
         activeDownloads.remove(chapterNumber)
         downloadedChapters.add(chapterNumber)
-        // Find the position of the chapter and notify only that item
-        val position = arr.indexOfFirst { it.uniqueNumber() == chapterNumber }
+        val position = chapterIndexOf(chapterNumber)
         if (position != -1) {
-            arr[position].progress = "Downloaded"
+            (arr[position] as? MangaChapterListItem.Chapter)?.chapter?.progress = "Downloaded"
             notifyItemChanged(position)
         }
     }
 
     fun deleteDownload(chapterNumber: MangaChapter) {
         downloadedChapters.remove(chapterNumber.uniqueNumber())
-        // Find the position of the chapter and notify only that item
-        val position = arr.indexOfFirst { it.uniqueNumber() == chapterNumber.uniqueNumber() }
+        val position = chapterIndexOf(chapterNumber.uniqueNumber())
         if (position != -1) {
-            arr[position].progress = ""
+            (arr[position] as? MangaChapterListItem.Chapter)?.chapter?.progress = ""
             notifyItemChanged(position)
         }
     }
@@ -106,57 +130,50 @@ class MangaChapterAdapter(
     fun purgeDownload(chapterNumber: String) {
         activeDownloads.remove(chapterNumber)
         downloadedChapters.remove(chapterNumber)
-        // Find the position of the chapter and notify only that item
-        val position = arr.indexOfFirst { it.uniqueNumber() == chapterNumber }
+        val position = chapterIndexOf(chapterNumber)
         if (position != -1) {
-            arr[position].progress = ""
+            (arr[position] as? MangaChapterListItem.Chapter)?.chapter?.progress = ""
             notifyItemChanged(position)
         }
     }
 
     fun updateDownloadProgress(chapterNumber: String, progress: Int) {
-        // Find the position of the chapter and notify only that item
-        val position = arr.indexOfFirst { it.uniqueNumber() == chapterNumber }
+        val position = chapterIndexOf(chapterNumber)
         if (position != -1) {
-            arr[position].progress = "Downloading: ${progress}%"
-
+            (arr[position] as? MangaChapterListItem.Chapter)?.chapter?.progress = "Downloading: ${progress}%"
             notifyItemChanged(position)
         }
     }
 
     fun downloadNChaptersFrom(position: Int, n: Int) {
-        //download next n chapters
         if (position < 0 || position >= arr.size) return
-        for (i in 0..<n) {
-            if (position + i < arr.size) {
-                val chapter = arr[position + i]
-                val chapterNumber = chapter.uniqueNumber()
-                if (activeDownloads.contains(chapterNumber)) {
-                    //do nothing
-                    continue
-                } else if (downloadedChapters.contains(chapterNumber)) {
-                    //do nothing
-                    continue
-                } else {
-                    fragment.onMangaChapterDownloadClick(chapter)
-                }
+        var count = 0
+        for (i in position until arr.size) {
+            if (count >= n) break
+            val item = arr[i]
+            if (item !is MangaChapterListItem.Chapter) continue
+            count++
+            val chapterNumber = item.chapter.uniqueNumber()
+            if (!activeDownloads.contains(chapterNumber) && !downloadedChapters.contains(chapterNumber)) {
+                fragment.onMangaChapterDownloadClick(item.chapter)
             }
         }
     }
 
-    fun deleteNChaptersFrom(position: Int, n: Int){
-        //delete next n chapters
+    fun deleteNChaptersFrom(position: Int, n: Int) {
         if (position < 0 || position >= arr.size) return
-        for (i in 0..<n) {
-            if (position + i < arr.size) {
-                val chapter = arr[position + i]
-                val chapterNumber = chapter.uniqueNumber()
-                if(activeDownloads.contains(chapterNumber)){
-                    fragment.onMangaChapterStopDownloadClick(chapter)
-                }
-                else if (downloadedChapters.contains(chapterNumber)) {
-                    fragment.onMangaChapterRemoveDownloadClick(chapter)
-                }
+        var count = 0
+        for (i in position until arr.size) {
+            if (count >= n) break
+            val item = arr[i]
+            if (item !is MangaChapterListItem.Chapter) continue
+            count++
+            val chapterNumber = item.chapter.uniqueNumber()
+            when {
+                activeDownloads.contains(chapterNumber) ->
+                    fragment.onMangaChapterStopDownloadClick(item.chapter)
+                downloadedChapters.contains(chapterNumber) ->
+                    fragment.onMangaChapterRemoveDownloadClick(item.chapter)
             }
         }
     }
@@ -164,6 +181,7 @@ class MangaChapterAdapter(
     inner class ChapterListViewHolder(val binding: ItemChapterListBinding) :
         RecyclerView.ViewHolder(binding.root) {
         private val activeCoroutines = mutableSetOf<String>()
+
         fun bind(chapterNumber: String, progress: String?) {
             if (progress != null) {
                 binding.itemChapterTitle.visibility = View.VISIBLE
@@ -173,40 +191,32 @@ class MangaChapterAdapter(
                 binding.itemChapterTitle.text = ""
             }
             if (activeDownloads.contains(chapterNumber)) {
-                // Show spinner
                 binding.itemDownload.setImageResource(R.drawable.ic_sync)
                 startOrContinueRotation(chapterNumber) {
                     binding.itemDownload.rotation = 0f
                 }
             } else if (downloadedChapters.contains(chapterNumber)) {
-                // Show checkmark
                 binding.itemDownload.setImageResource(R.drawable.ic_circle_check)
                 binding.itemDownload.postDelayed({
                     binding.itemDownload.setImageResource(R.drawable.ic_round_delete_24)
                     binding.itemDownload.rotation = 0f
                 }, 1000)
             } else {
-                // Show download icon
                 binding.itemDownload.setImageResource(R.drawable.ic_download_24)
                 binding.itemDownload.rotation = 0f
             }
-
         }
 
         private fun startOrContinueRotation(chapterNumber: String, resetRotation: () -> Unit) {
             if (!isRotationCoroutineRunningFor(chapterNumber)) {
                 val scope = fragment.lifecycle.coroutineScope
                 scope.launch {
-                    // Add chapter number to active coroutines set
                     activeCoroutines.add(chapterNumber)
                     while (activeDownloads.contains(chapterNumber)) {
                         binding.itemDownload.animate().rotationBy(360f).setDuration(1000)
-                            .setInterpolator(
-                                LinearInterpolator()
-                            ).start()
+                            .setInterpolator(LinearInterpolator()).start()
                         delay(1000)
                     }
-                    // Remove chapter number from active coroutines set
                     activeCoroutines.remove(chapterNumber)
                     resetRotation()
                 }
@@ -219,42 +229,53 @@ class MangaChapterAdapter(
 
         init {
             itemView.setOnClickListener {
-                if (0 <= bindingAdapterPosition && bindingAdapterPosition < arr.size)
-                    fragment.onMangaChapterClick(arr[bindingAdapterPosition])
+                val pos = bindingAdapterPosition
+                if (pos in 0 until arr.size) {
+                    val item = arr[pos]
+                    if (item is MangaChapterListItem.Chapter)
+                        fragment.onMangaChapterClick(item.chapter)
+                }
             }
             binding.itemDownload.setOnClickListener {
-                if (0 <= bindingAdapterPosition && bindingAdapterPosition < arr.size) {
-                    val chapter = arr[bindingAdapterPosition]
+                val pos = bindingAdapterPosition
+                if (pos in 0 until arr.size) {
+                    val item = arr[pos] as? MangaChapterListItem.Chapter ?: return@setOnClickListener
+                    val chapter = item.chapter
                     val chapterNumber = chapter.uniqueNumber()
-                    if (activeDownloads.contains(chapterNumber)) {
-                        fragment.onMangaChapterStopDownloadClick(chapter)
-                        return@setOnClickListener
-                    } else if (downloadedChapters.contains(chapterNumber)) {
-                        it.context.customAlertDialog().apply {
-                            setTitle(it.context.getString(R.string.delete_chapter))
-                            setMessage(it.context.getString(R.string.are_you_sure_delete_item, chapterNumber))
-                            setPosButton(R.string.delete) {
-                                fragment.onMangaChapterRemoveDownloadClick(chapter)
-                            }
-                            setNegButton(R.string.cancel)
-                            show()
+                    when {
+                        activeDownloads.contains(chapterNumber) -> {
+                            fragment.onMangaChapterStopDownloadClick(chapter)
+                            return@setOnClickListener
                         }
-                        return@setOnClickListener
-                    } else {
-                        fragment.onMangaChapterDownloadClick(chapter)
+                        downloadedChapters.contains(chapterNumber) -> {
+                            it.context.customAlertDialog().apply {
+                                setTitle(it.context.getString(R.string.delete_chapter))
+                                setMessage(it.context.getString(R.string.are_you_sure_delete_item, chapterNumber))
+                                setPosButton(R.string.delete) {
+                                    fragment.onMangaChapterRemoveDownloadClick(chapter)
+                                }
+                                setNegButton(R.string.cancel)
+                                show()
+                            }
+                            return@setOnClickListener
+                        }
+                        else -> fragment.onMangaChapterDownloadClick(chapter)
                     }
                 }
             }
             binding.itemDownload.setOnLongClickListener {
-                if (0 <= bindingAdapterPosition && bindingAdapterPosition < arr.size){
-                    val chapterNumber = arr[bindingAdapterPosition].uniqueNumber()
-                    if(activeDownloads.contains(chapterNumber) || downloadedChapters.contains(chapterNumber)){
+                val pos = bindingAdapterPosition
+                if (pos in 0 until arr.size) {
+                    val item = arr[pos] as? MangaChapterListItem.Chapter ?: return@setOnLongClickListener true
+                    val chapterNumber = item.chapter.uniqueNumber()
+                    val chaptersAvailable = chapterCountFrom(pos)
+                    if (activeDownloads.contains(chapterNumber) || downloadedChapters.contains(chapterNumber)) {
                         fragment.requireContext().customAlertDialog().apply {
                             setTitle("Multi Chapter Deleter")
                             setMessage("Enter the number of chapters to delete")
                             val input = NumberPicker(currContext())
                             input.minValue = 1
-                            input.maxValue = itemCount - bindingAdapterPosition
+                            input.maxValue = chaptersAvailable
                             input.value = 1
                             setCustomView(input)
                             setPosButton(R.string.ok) {
@@ -262,7 +283,7 @@ class MangaChapterAdapter(
                                     setTitle("Delete Chapters")
                                     setMessage("Are you sure you want to delete the next ${input.value} chapters?")
                                     setPosButton(R.string.yes) {
-                                        deleteNChaptersFrom(bindingAdapterPosition, input.value)
+                                        deleteNChaptersFrom(pos, input.value)
                                     }
                                     setNegButton(R.string.no)
                                 }.show()
@@ -270,19 +291,17 @@ class MangaChapterAdapter(
                             setNegButton(R.string.cancel)
                             show()
                         }
-                    }
-                    else{
-                        //Alert dialog asking for the number of chapters to download
+                    } else {
                         it.context.customAlertDialog().apply {
                             setTitle("Multi Chapter Downloader")
                             setMessage("Enter the number of chapters to download")
                             val input = NumberPicker(currContext())
                             input.minValue = 1
-                            input.maxValue = itemCount - bindingAdapterPosition
+                            input.maxValue = chaptersAvailable
                             input.value = 1
                             setCustomView(input)
                             setPosButton("OK") {
-                                downloadNChaptersFrom(bindingAdapterPosition, input.value)
+                                downloadNChaptersFrom(pos, input.value)
                             }
                             setNegButton("Cancel")
                             show()
@@ -293,36 +312,41 @@ class MangaChapterAdapter(
             }
 
             binding.itemChapterBrowser.setOnClickListener {
-                if (0 <= bindingAdapterPosition && bindingAdapterPosition < arr.size) {
-                    fragment.openChapterInBrowser(arr[bindingAdapterPosition])
+                val pos = bindingAdapterPosition
+                if (pos in 0 until arr.size) {
+                    val item = arr[pos] as? MangaChapterListItem.Chapter ?: return@setOnClickListener
+                    fragment.openChapterInBrowser(item.chapter)
                 }
             }
-
         }
     }
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         when (holder) {
+            is ChapterGapViewHolder -> {
+                val gap = arr[position] as MangaChapterListItem.Gap
+                val ctx = holder.binding.root.context
+                holder.binding.itemChapterGapText.text = if (gap.count == 1)
+                    ctx.getString(R.string.chapter_missing_single)
+                else
+                    ctx.getString(R.string.chapters_missing, gap.count)
+            }
+
             is ChapterCompactViewHolder -> {
+                val item = arr[position] as? MangaChapterListItem.Chapter ?: return
+                val ep = item.chapter
                 val binding = holder.binding
-                setAnimation(fragment.requireContext(), holder.binding.root)
-                val ep = arr[position]
+                setAnimation(fragment.requireContext(), binding.root)
                 val parsedNumber = MediaNameAdapter.findChapterNumber(ep.number)?.toInt()
                 binding.itemEpisodeNumber.text = parsedNumber?.toString() ?: ep.number
 
-
                 if (media.userProgress != null) {
-                    if ((MediaNameAdapter.findChapterNumber(ep.number)
-                            ?: 9999f) <= media.userProgress!!.toFloat()
-                    )
+                    if ((MediaNameAdapter.findChapterNumber(ep.number) ?: 9999f) <= media.userProgress!!.toFloat()) {
                         binding.itemEpisodeViewedCover.visibility = View.VISIBLE
-                    else {
+                    } else {
                         binding.itemEpisodeViewedCover.visibility = View.GONE
                         binding.itemEpisodeCont.setOnLongClickListener {
-                            updateProgress(
-                                media,
-                                MediaNameAdapter.findChapterNumber(ep.number).toString()
-                            )
+                            updateProgress(media, MediaNameAdapter.findChapterNumber(ep.number).toString())
                             true
                         }
                     }
@@ -330,13 +354,13 @@ class MangaChapterAdapter(
             }
 
             is ChapterListViewHolder -> {
+                val item = arr[position] as? MangaChapterListItem.Chapter ?: return
+                val ep = item.chapter
                 val binding = holder.binding
-                val ep = arr[position]
                 holder.bind(ep.uniqueNumber(), ep.progress)
-                setAnimation(fragment.requireContext(), holder.binding.root)
+                setAnimation(fragment.requireContext(), binding.root)
                 binding.itemChapterNumber.text = ep.number
 
-                // Show browser button if it's a dynamic parser with HttpSource
                 setupChapterBrowserButton(binding.itemChapterBrowser)
 
                 if (ep.date != null) {
@@ -346,9 +370,7 @@ class MangaChapterAdapter(
                 if (ep.scanlator != null) {
                     binding.itemChapterDateLayout.visibility = View.VISIBLE
                     binding.itemChapterScan.text = ep.scanlator.replaceFirstChar {
-                        if (it.isLowerCase()) it.titlecase(
-                            Locale.ROOT
-                        ) else it.toString()
+                        if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString()
                     }
                 }
                 if (formatDate(ep.date) == "" || ep.scanlator == null) {
@@ -360,19 +382,14 @@ class MangaChapterAdapter(
                 } else binding.itemChapterTitle.visibility = View.VISIBLE
 
                 if (media.userProgress != null) {
-                    if ((MediaNameAdapter.findChapterNumber(ep.number)
-                            ?: 9999f) <= media.userProgress!!.toFloat()
-                    ) {
+                    if ((MediaNameAdapter.findChapterNumber(ep.number) ?: 9999f) <= media.userProgress!!.toFloat()) {
                         binding.itemEpisodeViewedCover.visibility = View.VISIBLE
                         binding.itemEpisodeViewed.visibility = View.VISIBLE
                     } else {
                         binding.itemEpisodeViewedCover.visibility = View.GONE
                         binding.itemEpisodeViewed.visibility = View.GONE
                         binding.root.setOnLongClickListener {
-                            updateProgress(
-                                media,
-                                MediaNameAdapter.findChapterNumber(ep.number).toString()
-                            )
+                            updateProgress(media, MediaNameAdapter.findChapterNumber(ep.number).toString())
                             true
                         }
                     }
@@ -389,13 +406,10 @@ class MangaChapterAdapter(
     }
 
     private fun formatDate(timestamp: Long?): String {
-        timestamp ?: return "" // Return empty string if timestamp is null
+        timestamp ?: return ""
 
         val targetDate = Date(timestamp)
-
-        if (targetDate < Date(946684800000L)) { // January 1, 2000 (who want dates before that?)
-            return ""
-        }
+        if (targetDate < Date(946684800000L)) return ""
 
         val currentDate = Date()
         val difference = currentDate.time - targetDate.time
@@ -404,14 +418,12 @@ class MangaChapterAdapter(
             0L -> {
                 val hoursDifference = difference / (1000 * 60 * 60)
                 val minutesDifference = (difference / (1000 * 60)) % 60
-
                 when {
                     hoursDifference > 0 -> "$hoursDifference hour${if (hoursDifference > 1) "s" else ""} ago"
                     minutesDifference > 0 -> "$minutesDifference minute${if (minutesDifference > 1) "s" else ""} ago"
                     else -> "Just now"
                 }
             }
-
             1L -> "1 day ago"
             in 2..6 -> "$daysDifference days ago"
             else -> SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(targetDate)
@@ -422,14 +434,9 @@ class MangaChapterAdapter(
         val parser = mangaReadSources[media.selected!!.sourceIndex]
         if (parser is DynamicMangaParser) {
             val httpSource = parser.extension.sources.getOrNull(parser.sourceLanguage) as? HttpSource
-            if (httpSource != null) {
-                button.visibility = View.VISIBLE
-            } else {
-                button.visibility = View.GONE
-            }
+            button.visibility = if (httpSource != null) View.VISIBLE else View.GONE
         } else {
             button.visibility = View.GONE
         }
     }
-
 }
