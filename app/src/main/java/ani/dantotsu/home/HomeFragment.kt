@@ -1292,8 +1292,12 @@ class HomeFragment : Fragment() {
 
             if (filtered.isNotEmpty()) {
                 val merged = mergedCachedInfoFor(currentManga)
-                // Further filter cached results to remove items the user has already caught up to
+                val excludeList = ani.dantotsu.settings.saving.PrefManager.getCustomVal(
+                    "malSyncBatchExcludeList", setOf<Int>()
+                )
+                // Further filter cached results to remove items the user has already caught up to or excluded
                 val filteredCached = filtered.filter { media ->
+                    if (media.id in excludeList) return@filter false
                     val last = getLastChapterForMedia(media, merged)
                     val progress = merged[media.id]?.userProgress ?: media.userProgress ?: 0
                     last != null && last > progress

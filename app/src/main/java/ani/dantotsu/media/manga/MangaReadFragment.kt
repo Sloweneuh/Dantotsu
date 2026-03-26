@@ -396,12 +396,14 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
     fun openSettings(pkg: MangaExtension.Installed) {
         val changeUIVisibility: (Boolean) -> Unit = { show ->
             val activity = activity
-            if (activity is MediaDetailsActivity && isAdded) {
-                activity.findViewById<AppBarLayout>(R.id.mediaAppBar).isVisible = show
+            val isKnownActivity = activity is MediaDetailsActivity ||
+                activity is ani.dantotsu.connections.mangaupdates.MUMediaDetailsActivity
+            if (isKnownActivity && isAdded) {
+                activity!!.findViewById<AppBarLayout>(R.id.mediaAppBar).isVisible = show
                 activity.findViewById<ViewPager2>(R.id.mediaViewPager).isVisible = show
                 activity.findViewById<CardView>(R.id.mediaCover).isVisible = show
                 activity.findViewById<CardView>(R.id.mediaClose).isVisible = show
-                activity.navBar.isVisible = show
+                activity.findViewById<nl.joery.animatedbottombar.AnimatedBottomBar>(R.id.mediaBottomBar).isVisible = show
                 activity.findViewById<FrameLayout>(R.id.fragmentExtensionsContainer).isGone = show
             }
         }
