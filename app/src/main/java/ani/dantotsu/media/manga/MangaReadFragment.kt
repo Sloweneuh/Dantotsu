@@ -133,16 +133,14 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
 
         gridLayoutManager.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
             override fun getSpanSize(position: Int): Int {
-                if (position < 0 || position >= chapterAdapter.itemCount) return maxGridSize
-                val style = chapterAdapter.getItemViewType(position)
-
-                return when (position) {
-                    0 -> maxGridSize
-                    else -> when (style) {
-                        0 -> maxGridSize
-                        1 -> 1
-                        else -> maxGridSize
-                    }
+                if (position == 0) return maxGridSize  // header
+                // Map combined-adapter position to chapter-adapter local position
+                val localPos = position - headerAdapter.itemCount
+                if (localPos < 0 || localPos >= chapterAdapter.itemCount) return maxGridSize
+                return when (chapterAdapter.getItemViewType(localPos)) {
+                    MangaChapterAdapter.VIEW_TYPE_COMPACT -> 1
+                    MangaChapterAdapter.VIEW_TYPE_GAP_COMPACT -> 1
+                    else -> maxGridSize
                 }
             }
         }
@@ -675,6 +673,7 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
                 chapList = (chapList.reversed() as? ArrayList<MangaChapter>) ?: chapList
         }
         // Build display list with gap placeholders between non-consecutive chapters
+        val isCompact = (style ?: PrefManager.getVal(PrefName.MangaDefaultView)) == 1
         val displayList = ArrayList<MangaChapterListItem>()
         for (i in chapList.indices) {
             displayList.add(MangaChapterListItem.Chapter(chapList[i]))
@@ -686,7 +685,15 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
                     val hi = maxOf(currNum, nextNum)
                     val missing = hi.toInt() - lo.toInt() - 1
                     if (missing > 0) {
-                        displayList.add(MangaChapterListItem.Gap(lo, hi, missing))
+                        if (isCompact) {
+                            // One placeholder per missing chapter, each carries its chapter number
+                            for (n in 1..missing) {
+                                val chNum = lo.toInt() + n
+                                displayList.add(MangaChapterListItem.Gap(chNum.toFloat(), chNum.toFloat(), 1))
+                            }
+                        } else {
+                            displayList.add(MangaChapterListItem.Gap(lo, hi, missing))
+                        }
                     }
                 }
             }

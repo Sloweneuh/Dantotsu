@@ -11,6 +11,7 @@ import ani.dantotsu.R
 import ani.dantotsu.connections.updateProgress
 import ani.dantotsu.currContext
 import ani.dantotsu.databinding.ItemChapterGapBinding
+import ani.dantotsu.databinding.ItemChapterGapCompactBinding
 import ani.dantotsu.databinding.ItemChapterListBinding
 import ani.dantotsu.databinding.ItemEpisodeCompactBinding
 import ani.dantotsu.media.Media
@@ -34,9 +35,10 @@ class MangaChapterAdapter(
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     companion object {
-        private const val VIEW_TYPE_LIST = 0
-        private const val VIEW_TYPE_COMPACT = 1
-        private const val VIEW_TYPE_GAP = 2
+        const val VIEW_TYPE_LIST = 0
+        const val VIEW_TYPE_COMPACT = 1
+        const val VIEW_TYPE_GAP = 2
+        const val VIEW_TYPE_GAP_COMPACT = 3
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
@@ -56,6 +58,11 @@ class MangaChapterAdapter(
                     LayoutInflater.from(parent.context), parent, false
                 )
             )
+            VIEW_TYPE_GAP_COMPACT -> ChapterGapCompactViewHolder(
+                ItemChapterGapCompactBinding.inflate(
+                    LayoutInflater.from(parent.context), parent, false
+                )
+            )
             else -> throw IllegalArgumentException()
         }
     }
@@ -63,7 +70,7 @@ class MangaChapterAdapter(
     override fun getItemViewType(position: Int): Int {
         if (position < 0 || position >= arr.size) return VIEW_TYPE_LIST
         return when (arr[position]) {
-            is MangaChapterListItem.Gap -> VIEW_TYPE_GAP
+            is MangaChapterListItem.Gap -> if (type == VIEW_TYPE_COMPACT) VIEW_TYPE_GAP_COMPACT else VIEW_TYPE_GAP
             is MangaChapterListItem.Chapter -> if (type == VIEW_TYPE_COMPACT) VIEW_TYPE_COMPACT else VIEW_TYPE_LIST
         }
     }
@@ -83,6 +90,9 @@ class MangaChapterAdapter(
     }
 
     inner class ChapterGapViewHolder(val binding: ItemChapterGapBinding) :
+        RecyclerView.ViewHolder(binding.root)
+
+    inner class ChapterGapCompactViewHolder(val binding: ItemChapterGapCompactBinding) :
         RecyclerView.ViewHolder(binding.root)
 
     inner class ChapterCompactViewHolder(val binding: ItemEpisodeCompactBinding) :
@@ -330,6 +340,11 @@ class MangaChapterAdapter(
                     ctx.getString(R.string.chapter_missing_single)
                 else
                     ctx.getString(R.string.chapters_missing, gap.count)
+            }
+
+            is ChapterGapCompactViewHolder -> {
+                val gap = arr[position] as MangaChapterListItem.Gap
+                holder.binding.itemChapterGapCompactNumber.text = gap.fromNumber.toInt().toString()
             }
 
             is ChapterCompactViewHolder -> {
