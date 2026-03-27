@@ -1,6 +1,8 @@
 package ani.dantotsu.media.user
 
 import android.os.Bundle
+import android.text.SpannableString
+import android.text.style.ForegroundColorSpan
 import android.view.View
 import android.view.ViewGroup
 import android.view.Window
@@ -9,6 +11,7 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.PopupMenu
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.DrawableCompat
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
 import androidx.core.widget.addTextChangedListener
@@ -206,8 +209,8 @@ class ListActivity : AppCompatActivity() {
                         // Toggle direction only
                         if (currentSort.endsWith("_asc")) "${base}_desc" else "${base}_asc"
                     } else {
-                        // New sort: always default to descending
-                        "${base}_desc"
+                        // New sort: title defaults to ascending (A→Z), others to descending
+                        if (base == "title") "${base}_asc" else "${base}_desc"
                     }
                 }
                 PrefManager.setVal(
@@ -241,6 +244,31 @@ class ListActivity : AppCompatActivity() {
                 helper.javaClass.getMethod("setForceShowIcon", Boolean::class.java)
                     .invoke(helper, true)
             } catch (_: Exception) { }
+            // Highlight the currently active sort method with colorPrimary
+            val prefName2 = if (anime) PrefName.AnimeListSortOrder else PrefName.MangaListSortOrder
+            val activeSort: String = PrefManager.getVal(prefName2)
+            val activeBase = activeSort.removeSuffix("_asc").removeSuffix("_desc")
+            val activeItemId = when (activeBase) {
+                "score"     -> R.id.score
+                "title"     -> R.id.title
+                "release"   -> R.id.release
+                "updatedAt" -> R.id.updated
+                else        -> null
+            }
+            if (activeItemId != null) {
+                val primary = getThemeColor(com.google.android.material.R.attr.colorPrimary)
+                val activeItem = popup.menu.findItem(activeItemId)
+                activeItem?.let { menuItem ->
+                    val span = SpannableString(menuItem.title)
+                    span.setSpan(ForegroundColorSpan(primary), 0, span.length, 0)
+                    menuItem.title = span
+                    menuItem.icon?.let { icon ->
+                        val tinted = DrawableCompat.wrap(icon.mutate())
+                        DrawableCompat.setTint(tinted, primary)
+                        menuItem.icon = tinted
+                    }
+                }
+            }
             popup.show()
         }
 
@@ -427,6 +455,15 @@ class ListActivity : AppCompatActivity() {
             }
             addFilterChip(getString(R.string.filter_tracker, label), "Tracker") {
                 val newFilters = filters.copy(trackerFilter = TrackerFilter.BOTH)
+                model.applyFilters(newFilters)
+                updateFilterChips(newFilters)
+            }
+        }
+
+        // Add English licenced chip
+        if (filters.englishLicenced) {
+            addFilterChip(getString(R.string.filter_english_licenced), "EnglishLicenced") {
+                val newFilters = filters.copy(englishLicenced = false)
                 model.applyFilters(newFilters)
                 updateFilterChips(newFilters)
             }

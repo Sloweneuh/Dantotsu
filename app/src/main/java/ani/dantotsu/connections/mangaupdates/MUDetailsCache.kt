@@ -17,7 +17,7 @@ import java.util.concurrent.ConcurrentHashMap
  * Bind views synchronously via [get] — returns null until the fetch completes.
  */
 object MUDetailsCache {
-    data class Detail(val coverUrl: String?, val description: String?)
+    data class Detail(val coverUrl: String?, val description: String?, val hasEnglishPublisher: Boolean? = null)
 
     private val cache = ConcurrentHashMap<Long, Detail>()
     private val fetching: MutableSet<Long> = Collections.synchronizedSet(mutableSetOf())
@@ -41,7 +41,8 @@ object MUDetailsCache {
                     val record = MangaUpdates.getSeriesDetails(id)
                     cache[id] = Detail(
                         coverUrl = record?.image?.url?.run { original ?: thumb },
-                        description = record?.description
+                        description = record?.description,
+                        hasEnglishPublisher = record?.licensed
                     )
                 } finally {
                     fetching.remove(id)

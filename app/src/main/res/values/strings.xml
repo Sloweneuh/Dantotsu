@@ -866,6 +866,7 @@
     <string name="filter_tracker_both">Both</string>
     <string name="filter_tracker_anilist">AniList</string>
     <string name="filter_tracker_mu">MangaUpdates</string>
+    <string name="filter_english_licenced">English Licenced</string>
     <string name="filter_sort">"Sort : %1$s"</string>
     <string name="filter_exclude">"Not %1$s"</string>
     <string name="search_by_image">Search by Image</string>
