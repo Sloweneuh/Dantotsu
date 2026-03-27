@@ -462,7 +462,6 @@ class SearchActivity : AppCompatActivity() {
     fun search() {
         headerAdaptor.setHistoryVisibility(false)
         val size = model.size(searchType)
-        model.clearResults(searchType)
         binding.searchRecyclerView.post {
             when (searchType) {
                 SearchType.ANIME, SearchType.MANGA -> {
@@ -489,6 +488,7 @@ class SearchActivity : AppCompatActivity() {
                     muSearchAdaptor.notifyItemRangeRemoved(0, size)
                 }
             }
+            model.clearResults(searchType)
         }
 
         progressAdapter.bar?.visibility = View.VISIBLE
