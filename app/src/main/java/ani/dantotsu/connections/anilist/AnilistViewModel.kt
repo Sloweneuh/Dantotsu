@@ -144,7 +144,6 @@ class AnilistHomeViewModel : ViewModel() {
             // Respect MALSync preference: if disabled or set to anime-only, skip MalSync fetch and return empty list
             val malMode = PrefManager.getVal<String>(PrefName.MalSyncCheckMode) ?: "both"
             if (!PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled) || malMode == "anime") {
-                ani.dantotsu.util.Logger.log("AnilistViewModel: MALSync disabled or set to anime-only; skipping unread chapters MalSync fetch")
                 unreadChapters.postValue(arrayListOf())
                 unreadChaptersError.postValue(false)
                 return

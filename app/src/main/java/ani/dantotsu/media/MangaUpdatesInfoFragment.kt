@@ -76,7 +76,6 @@ class MangaUpdatesInfoFragment : Fragment() {
         // Observe login status in background
         lifecycleScope.launch(Dispatchers.IO) {
             isLoggedIn = MangaUpdates.getSavedToken()
-            Logger.log("MangaUpdates Fragment: Login status = $isLoggedIn")
         }
 
         // Observe both media and MU link
@@ -144,13 +143,9 @@ class MangaUpdatesInfoFragment : Fragment() {
 
         val seriesIdentifier = muLink?.let { extractMUIdentifier(it) } ?: ""
 
-        Logger.log(
-                "MangaUpdates Fragment: checkAndDisplay decision: muLink=$muLink, muHasLoaded=$muHasLoaded, isLoggedIn(approx)=$isLoggedIn"
-        )
         // Check login status and decide
         lifecycleScope.launch(Dispatchers.IO) {
             isLoggedIn = MangaUpdates.getSavedToken()
-            Logger.log("MangaUpdates Fragment: Login status = $isLoggedIn")
 
             withContext(Dispatchers.Main) {
                 // Guard: if another coroutine or observer already rendered the series, bail out.
@@ -184,26 +179,18 @@ class MangaUpdatesInfoFragment : Fragment() {
                 val tmpLink = effectiveMuLink
                 if (tmpLink != null) {
                     val link = tmpLink.trim()
-                    Logger.log("MangaUpdates Fragment: Using MU link (vm or external): $link")
                     // derive identifier from the effective link
                     val seriesIdentifier = extractMUIdentifier(link)
-                    Logger.log("MangaUpdates Fragment: Derived seriesIdentifier=$seriesIdentifier")
 
                     if (isLoggedIn && seriesIdentifier.isNotBlank()) {
                         // Try to use ViewModel's preloaded data first
                         val preloaded = model.mangaUpdatesSeries.value
                         if (preloaded != null) {
                             // Display immediately and mark loaded
-                            Logger.log(
-                                    "MangaUpdates Fragment: Using preloaded series from ViewModel: ${preloaded.title}"
-                            )
                             displaySeriesDetails(preloaded, media, model)
                             loaded = true
                         } else {
                             // Need to fetch now -> show progress and wait for observer to populate
-                            Logger.log(
-                                    "MangaUpdates Fragment: Fetching details for $seriesIdentifier"
-                            )
                             binding.mediaInfoProgressBar.visibility = View.VISIBLE
                             binding.mediaInfoContainer.visibility = View.GONE
                             // Do not set loaded; observer will display when data arrives
@@ -383,8 +370,7 @@ class MangaUpdatesInfoFragment : Fragment() {
                     }
 
             container.addView(notLoggedInView)
-            Logger.log("MangaUpdates Fragment: Added not-logged-in fallback view for link=$muLink")
-            // We've shown a fallback view; mark as loaded so we don't attempt to re-render
+444            // We've shown a fallback view; mark as loaded so we don't attempt to re-render
             loaded = true
         }
     }
@@ -729,9 +715,6 @@ class MangaUpdatesInfoFragment : Fragment() {
 
         // We are now displaying real series data; mark as loaded so observers won't overwrite later
         loaded = true
-        Logger.log(
-                "MangaUpdates Fragment: displaySeriesDetails - title=${series.title}, descriptionPresent=${!series.description.isNullOrBlank()}"
-        )
         val tripleTab = "\t\t\t"
 
         // Set up the standard fields first

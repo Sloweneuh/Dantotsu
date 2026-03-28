@@ -96,7 +96,6 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                                     media!!.idMAL,
                                     preferredLanguage
                                 )
-                                ani.dantotsu.util.Logger.log("MediaListDialog: MALSync anime result for ${media!!.nameRomaji}: lastEpisode=${malSyncResult?.lastEp?.total}, language=$preferredLanguage")
 
                                 if (malSyncResult?.lastEp?.total != null) {
                                     val malSyncEpisode = malSyncResult.lastEp.total
@@ -107,22 +106,18 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                                         val suffixText = when {
                                             // If lastEp < userProgress: show userProgress / total
                                             malSyncEpisode < userProgress -> {
-                                                ani.dantotsu.util.Logger.log("MediaListDialog: lastEp ($malSyncEpisode) < userProgress ($userProgress), showing: / ${total ?: "??"}")
                                                 " / ${total ?: "??"}"
                                             }
                                             // If lastEp == total: show userProgress / total
                                             total != null && malSyncEpisode == total -> {
-                                                ani.dantotsu.util.Logger.log("MediaListDialog: lastEp ($malSyncEpisode) == total ($total), showing: / $total")
                                                 " / $total"
                                             }
                                             // If lastEp < total: show userProgress / lastEp / total
                                             total != null && malSyncEpisode < total -> {
-                                                ani.dantotsu.util.Logger.log("MediaListDialog: lastEp ($malSyncEpisode) < total ($total), showing: / $malSyncEpisode / $total")
                                                 " / $malSyncEpisode / $total"
                                             }
                                             // Default: show userProgress / lastEp (when no total or lastEp > total)
                                             else -> {
-                                                ani.dantotsu.util.Logger.log("MediaListDialog: Default case, showing: / $malSyncEpisode")
                                                 // Update filters if MALSync has more episodes than AniList total
                                                 if (total == null || malSyncEpisode > total) {
                                                     _binding?.mediaListProgress?.filters =
@@ -146,9 +141,6 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                     // Check if AniList has totalChapters
                     total = media!!.manga!!.totalChapters
 
-                    // Debug logging
-                    ani.dantotsu.util.Logger.log("MediaListDialog: manga=${media!!.nameRomaji}, totalChapters=${media!!.manga!!.totalChapters}, total=$total")
-
                     if (total != null) {
                         binding.mediaListProgress.filters =
                             arrayOf(
@@ -164,7 +156,6 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                         scope.launch(Dispatchers.IO) {
                         try {
                             val malSyncResult = ani.dantotsu.connections.malsync.MalSyncApi.getLastChapter(media!!.id, media!!.idMAL)
-                            ani.dantotsu.util.Logger.log("MediaListDialog: MALSync result for ${media!!.nameRomaji}: lastChapter=${malSyncResult?.lastEp?.total}, total=$total")
                             if (malSyncResult?.lastEp?.total != null) {
                                 val malSyncChapter = malSyncResult.lastEp.total
                                 val userProgress = media!!.userProgress ?: 0
@@ -177,12 +168,8 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                                                            (total == null || malSyncChapter < total)
 
                                     if (shouldShowMalSync) {
-                                        ani.dantotsu.util.Logger.log("MediaListDialog: Showing MALSync chapter $malSyncChapter for display (userProgress=$userProgress, anilistTotal=$total)")
-
                                         // Update suffix text with MALSync data, showing " / X / Y" or " / X / ?" to indicate it's temporary
                                         _binding?.mediaListProgressLayout?.suffixText = " / $malSyncChapter / ${total ?: '?'}"
-                                    } else {
-                                        ani.dantotsu.util.Logger.log("MediaListDialog: Not showing MALSync (malSync=$malSyncChapter, userProgress=$userProgress, anilistTotal=$total)")
                                     }
                                 }
                             }
@@ -194,7 +181,6 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                 }
 
                 // Set initial suffix text
-                ani.dantotsu.util.Logger.log("MediaListDialog: Setting initial suffix text with total=$total")
                 binding.mediaListProgressLayout.suffixText = " / ${total ?: '?'}"
                 binding.mediaListProgressLayout.suffixTextView.updateLayoutParams {
                     height = ViewGroup.LayoutParams.MATCH_PARENT

@@ -707,7 +707,6 @@ class HomeFragment : Fragment() {
                             // Only perform MalSync batch if preference enabled and check mode allows manga
                             val malMode3 = PrefManager.getVal<String>(PrefName.MalSyncCheckMode) ?: "both"
                             if (!PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled) || malMode3 == "anime") {
-                                ani.dantotsu.util.Logger.log("HomeFragment: MALSync disabled or set to anime-only; skipping unread chapters MalSync fetch")
                             } else {
                                 // Collect pairs of (anilistId, malId) - prefer MAL ID, fallback to AniList ID
                                 val mediaIds = unreadList.map { media ->

@@ -115,7 +115,6 @@ object MangaUpdates {
 
             // Store avatar URL if available
             avatar = profile.avatar?.url
-            Logger.log("MangaUpdates Profile: Retrieved profile for '${profile.username}', avatar: ${avatar != null}")
 
             profile
         }
@@ -140,11 +139,9 @@ object MangaUpdates {
         val savedPassword = PrefManager.getNullableVal<String>(PrefName.MangaUpdatesPassword, null)
 
         if (savedUsername != null && savedPassword != null) {
-            Logger.log("MangaUpdates: Found saved credentials, attempting login")
             return login(savedUsername, savedPassword)
         }
 
-        Logger.log("MangaUpdates: No saved credentials found")
         return false
     }
 
@@ -291,7 +288,6 @@ object MangaUpdates {
             }
 
             val searchResponse = Mapper.parse<MUSearchResponse>(responseBody)
-            Logger.log("MangaUpdates Search: Found ${searchResponse.totalHits} results for '$title'")
             searchResponse
         }
     }
@@ -315,7 +311,6 @@ object MangaUpdates {
 
             // If unauthorized and we have a token, retry with authentication
             if (response.code == 401 && !token.isNullOrBlank()) {
-                Logger.log("MangaUpdates GetSeries: Public API failed, retrying with auth")
                 val authRequest = Request.Builder()
                     .url("$BASE_URL/series/$seriesId")
                     .get()
@@ -334,7 +329,6 @@ object MangaUpdates {
             }
 
             val seriesDetails = Mapper.parse<MUSeriesRecord>(responseBody)
-            Logger.log("MangaUpdates GetSeries: Retrieved details for '${seriesDetails.title}'")
             // Cache synonyms for search
             val synonyms = seriesDetails.associated?.mapNotNull { it.title } ?: emptyList()
             if (synonyms.isNotEmpty()) synonymsCache[seriesDetails.seriesId] = synonyms
@@ -359,7 +353,6 @@ object MangaUpdates {
             // Search for the series
             val searchResults = searchSeries(title)
             if (searchResults?.results.isNullOrEmpty()) {
-                Logger.log("MangaUpdates Lookup: No results found for title '$title'")
                 return@tryWithSuspend null
             }
 
@@ -370,13 +363,11 @@ object MangaUpdates {
 
             if (exactMatch != null) {
                 val seriesId = exactMatch.record?.seriesId
-                Logger.log("MangaUpdates Lookup: Found exact match - ID $seriesId for slug '$urlSlug'")
                 return@tryWithSuspend seriesId
             }
 
             // No exact match, return first result
             val firstResult = searchResults.results?.firstOrNull()?.record
-            Logger.log("MangaUpdates Lookup: No exact match, using first result - ID ${firstResult?.seriesId}")
             firstResult?.seriesId
         }
     }
@@ -449,7 +440,6 @@ object MangaUpdates {
                         !title.contains(">") &&
                         !title.contains("</title>")) {
 
-                        Logger.log("MangaUpdates Scrape: Extracted title '$title' from webpage")
                         return@tryWithSuspend title
                     }
                 }
@@ -477,8 +467,6 @@ object MangaUpdates {
                 "$WEB_URL/series/$urlOrId"
             }
 
-            Logger.log("MangaUpdates GetFromUrl: Fetching page for canonical id extraction: $pageUrl")
-
             try {
                 val pageRequest = Request.Builder().url(pageUrl).get().build()
                 val pageResponse = withContext(Dispatchers.IO) { httpClient.newCall(pageRequest).execute() }
@@ -494,7 +482,6 @@ object MangaUpdates {
                             val idMatch = idRegexSimple.find(jsonLd)
                             val ldId = idMatch?.groupValues?.get(1)?.toLongOrNull()
                             if (ldId != null) {
-                                Logger.log("MangaUpdates GetFromUrl: Found JSON-LD identifier $ldId, trying numeric API")
                                 val byLdId = getSeriesDetails(ldId)
                                 if (byLdId != null) return@tryWithSuspend byLdId
                             }
@@ -507,17 +494,14 @@ object MangaUpdates {
                 // If JSON-LD not present or didn't yield a working id, try fallback routes.
                 // 1) If input was numeric, try the numeric API (might still work)
                 if (numericIdFromInput != null) {
-                    Logger.log("MangaUpdates GetFromUrl: Trying numeric API for input id $numericIdFromInput as fallback")
                     val directById = getSeriesDetails(numericIdFromInput)
                     if (directById != null) return@tryWithSuspend directById
                 }
 
                 // 2) Try to check the final request URL to get a slug
                 val finalUrl = pageResponse.request.url.toString()
-                Logger.log("MangaUpdates GetFromUrl: Page final URL: $finalUrl")
                 val possibleSlug = finalUrl.substringAfterLast('/').substringBefore('?')
                 if (possibleSlug.isNotBlank() && possibleSlug != numericIdFromInput?.toString()) {
-                    Logger.log("MangaUpdates GetFromUrl: Found possible slug '$possibleSlug', trying slug-based API")
                     val bySlug = tryDirectApiCall(possibleSlug)
                     if (bySlug != null) return@tryWithSuspend bySlug
 
@@ -530,7 +514,6 @@ object MangaUpdates {
             }
 
             // Final fallback: try direct slug/id API and then search
-            Logger.log("MangaUpdates GetFromUrl: Falling back to direct API and search for '$urlOrId'")
             // Try direct API call with given identifier (slug or id string)
             val directResult = tryDirectApiCall(urlOrId)
             if (directResult != null) return@tryWithSuspend directResult
@@ -545,7 +528,6 @@ object MangaUpdates {
             val seriesId = lookupSeriesIdFromSlug(urlOrId)
             if (seriesId != null) return@tryWithSuspend getSeriesDetails(seriesId)
 
-            Logger.log("MangaUpdates GetFromUrl: All methods failed for '$urlOrId'")
             null
         }
     }
@@ -672,7 +654,6 @@ object MangaUpdates {
 
             val response = withContext(Dispatchers.IO) { httpClient.newCall(request).execute() }
             val ok = response.isSuccessful
-            Logger.log("MangaUpdates AddToList[$seriesId]: ${response.code}")
             ok
         } ?: false
     }
@@ -724,7 +705,6 @@ object MangaUpdates {
 
             val response = withContext(Dispatchers.IO) { httpClient.newCall(request).execute() }
             val ok = response.isSuccessful
-            Logger.log("MangaUpdates UpdateProgress[$seriesId]: ${response.code}")
             ok
         } ?: false
     }
@@ -748,7 +728,6 @@ object MangaUpdates {
                 .addHeader("Authorization", "Bearer $token")
                 .build()
             val response = withContext(Dispatchers.IO) { httpClient.newCall(request).execute() }
-            Logger.log("MangaUpdates RemoveFromList[$seriesId]: ${response.code}")
             response.isSuccessful
         } ?: false
     }

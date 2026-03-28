@@ -102,9 +102,7 @@ class ComickInfoFragment : Fragment() {
         }
 
         model.getMedia().observe(viewLifecycleOwner) { media ->
-            ani.dantotsu.util.Logger.log("Comick: ========== OBSERVER TRIGGERED ==========")
             val m = media ?: return@observe
-            ani.dantotsu.util.Logger.log("Comick: Media object is not null")
             if (!loaded) {
                 loadComickData(m, model)
             }
@@ -112,11 +110,6 @@ class ComickInfoFragment : Fragment() {
     }
 
     private fun loadComickData(media: Media, model: MediaDetailsViewModel) {
-        ani.dantotsu.util.Logger.log("Comick: Not yet loaded, will process")
-        ani.dantotsu.util.Logger.log("Comick: Starting to load data for ${media.userPreferredName}")
-        ani.dantotsu.util.Logger.log(
-                "Comick: Media has ${media.externalLinks.size} external links at observer trigger"
-        )
         viewLifecycleOwner.lifecycleScope.launch {
             try {
                 binding.mediaInfoProgressBar.visibility = View.VISIBLE
@@ -134,14 +127,10 @@ class ComickInfoFragment : Fragment() {
                                     String::class.java
                             )
                     if (savedSlug != null) {
-                        ani.dantotsu.util.Logger.log(
-                                "Comick: Found saved slug '$savedSlug' in preferences"
-                        )
                         comickSlug = savedSlug
                         model.comickSlug.postValue(savedSlug)
                     } else {
                         // Data not preloaded yet, fetch it now
-                        ani.dantotsu.util.Logger.log("Comick: Fetching slug (not preloaded)")
 
                         val titlesToTry = mutableListOf<String>()
                         media.name?.let { titlesToTry.add(it) }
@@ -152,13 +141,11 @@ class ComickInfoFragment : Fragment() {
 
                         comickSlug = if (media.muSeriesId != null) {
                             // MU media: match only by links.mu == muSeriesId
-                            ani.dantotsu.util.Logger.log("Comick: MU media — matching by MU series ID ${media.muSeriesId}")
                             withContext(Dispatchers.IO) {
                                 ComickApi.searchAndMatchComicByMuId(titlesToTry, media.muSeriesId!!)
                             }
                         } else {
                             // AniList media: full search with MalSync + ID validation
-                            ani.dantotsu.util.Logger.log("Comick: Checking MalSync for slug")
                             val malMode = PrefManager.getVal<String>(PrefName.MalSyncCheckMode) ?: "both"
                             val mediaType = if (media.anime != null) "anime" else "manga"
                             val quicklinks = if (PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled) && (malMode == "both" || malMode == mediaType)) {
@@ -181,10 +168,8 @@ class ComickInfoFragment : Fragment() {
                                 ?.firstOrNull { it.key.equals("Comick", true) || it.key.contains("comick", true) }
                                 ?.value?.values?.mapNotNull { it.identifier }
                                 ?: emptyList()
-                            ani.dantotsu.util.Logger.log("Comick: MalSync returned ${malSyncSlugs.size} slug(s): $malSyncSlugs")
 
                             val externalLinkUrls = media.externalLinks.mapNotNull { it.getOrNull(1) }
-                            ani.dantotsu.util.Logger.log("Comick: Found ${externalLinkUrls.size} external link(s) for validation")
 
                             withContext(Dispatchers.IO) {
                                 if (titlesToTry.isNotEmpty()) {
@@ -200,13 +185,11 @@ class ComickInfoFragment : Fragment() {
                         }
                     }
                 } else {
-                    ani.dantotsu.util.Logger.log("Comick: Using preloaded slug '$comickSlug'")
                 }
 
                 if (_binding == null) return@launch
 
                 if (comickSlug == null) {
-                    ani.dantotsu.util.Logger.log("Comick: No slug found, showing search")
                     model.comickSlug.postValue(null)
                     model.comickLoaded.postValue(true)
                     loaded = true
@@ -216,7 +199,6 @@ class ComickInfoFragment : Fragment() {
                     return@launch
                 }
 
-                ani.dantotsu.util.Logger.log("Comick: Found slug '$comickSlug', fetching details")
                 // Store the slug in ViewModel so the tab can use it
                 model.comickSlug.postValue(comickSlug)
                 val comickData =
@@ -233,7 +215,6 @@ class ComickInfoFragment : Fragment() {
                     return@launch
                 }
 
-                ani.dantotsu.util.Logger.log("Comick: Got comic data, displaying info")
 
                 // Store MangaUpdates link if available, but check for manual override first
                 // Only update MangaUpdates link if MangaUpdates integration is enabled
@@ -264,7 +245,6 @@ class ComickInfoFragment : Fragment() {
                 binding.mediaInfoContainer.visibility = View.VISIBLE
 
                 displayComickInfo(comickData)
-                ani.dantotsu.util.Logger.log("Comick: Display complete")
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 model.comickSlug.postValue(null)
@@ -870,14 +850,6 @@ class ComickInfoFragment : Fragment() {
         // Parse final_chapter string to Double for comparison
         val finalChapterNum = finalChapterStr?.toDoubleOrNull()
 
-        // Debug logging
-        ani.dantotsu.util.Logger.log(
-                "Comick: Latest Chapter Debug - lastChapter=$lastChapter, finalChapter=$finalChapterStr, finalChapterNum=$finalChapterNum"
-        )
-        ani.dantotsu.util.Logger.log(
-                "Comick: Status - isCompleted=$isCompleted, isTranslationCompleted=$isTranslationCompleted"
-        )
-
         // Hide latest chapter if:
         // 1. Both status and translation are completed
         // 2. Latest chapter exists and final chapter exists
@@ -888,8 +860,6 @@ class ComickInfoFragment : Fragment() {
                         lastChapter != null &&
                         finalChapterNum != null &&
                         lastChapter >= finalChapterNum
-
-        ani.dantotsu.util.Logger.log("Comick: shouldHideLatestChapter=$shouldHideLatestChapter")
 
         // Latest Chapter - hide if both status and translation are completed and latest >= final
         if (shouldHideLatestChapter) {
@@ -1172,11 +1142,9 @@ class ComickInfoFragment : Fragment() {
 
         // Add Genres section - grouped by type (Genre, Format, Theme)
         val genres = comic.md_comic_md_genres
-        ani.dantotsu.util.Logger.log("Comick: genres list size = ${genres?.size}")
         if (!genres.isNullOrEmpty()) {
             // Group genres by their type (case-insensitive)
             val genresByGroup = genres.mapNotNull { it.md_genres }.groupBy { it.group?.lowercase() }
-            ani.dantotsu.util.Logger.log("Comick: genresByGroup = ${genresByGroup.keys}")
 
             // Order: Genre (Genres), Theme, Format, Content
             val orderedGroups =
@@ -1190,12 +1158,10 @@ class ComickInfoFragment : Fragment() {
             orderedGroups.forEach { (groupType, label) ->
                 // Check if this specific genre type section already exists
                 if (parent.findViewWithTag<View>("genres_${groupType}_comick") != null) {
-                    ani.dantotsu.util.Logger.log("Comick: Tag already exists for $groupType")
                     return@forEach
                 }
 
                 val groupGenres = genresByGroup[groupType]
-                ani.dantotsu.util.Logger.log("Comick: $groupType has ${groupGenres?.size} genres")
                 if (groupGenres.isNullOrEmpty()) return@forEach
 
                 // Use single-line chip group for genres
@@ -1213,15 +1179,11 @@ class ComickInfoFragment : Fragment() {
                     val genreName =
                             genre.name
                                     ?: run {
-                                        ani.dantotsu.util.Logger.log("Comick: Genre has no name")
                                         return@forEach
                                     }
                     val genreSlug =
                             genre.slug
                                     ?: run {
-                                        ani.dantotsu.util.Logger.log(
-                                                "Comick: Genre '$genreName' has no slug"
-                                        )
                                         return@forEach
                                     }
 
@@ -1261,10 +1223,8 @@ class ComickInfoFragment : Fragment() {
                     chipCount++
                 }
 
-                ani.dantotsu.util.Logger.log("Comick: Added $chipCount chips for $groupType")
                 bind.root.tag = "genres_${groupType}_comick"
                 parent.addView(bind.root)
-                ani.dantotsu.util.Logger.log("Comick: Added genre section for $groupType to parent")
             }
         }
 

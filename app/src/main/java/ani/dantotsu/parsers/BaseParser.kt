@@ -89,10 +89,6 @@ abstract class BaseParser {
             setUserText("Searching : ${mediaObj.mainName()}")
             Logger.log("Searching : ${mediaObj.mainName()}")
             val results = search(mediaObj.mainName())
-            //log all results
-            results.forEach {
-                Logger.log("Result: ${it.name}")
-            }
             val sortedResults = if (results.isNotEmpty()) {
                 results.sortedByDescending {
                     FuzzySearch.ratio(

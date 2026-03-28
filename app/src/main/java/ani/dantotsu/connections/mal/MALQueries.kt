@@ -268,7 +268,6 @@ class MALQueries {
 
             while (true) {
                 val url = if (offset == 0) listBase else "$listBase&offset=$offset"
-                Logger.log("MALQueries.getStackEntries: fetching $url")
                 val doc = client.get(url, headers).document
 
                 // prefer the .list-anime-list container (list view for stacks)
@@ -299,7 +298,6 @@ class MALQueries {
                         introText = el.selectFirst(".intro")?.text()?.trim()
                         if (found != null && ids.none { it.id == found }) {
                             ids.add(MALStackEntry(id = found, intro = introText))
-                            Logger.log("MALQueries.getStackEntries: found id $found on $url")
                         }
                     }
                 } else {
@@ -325,7 +323,6 @@ class MALQueries {
                 if (safety > 100) break
             }
 
-            Logger.log("MALQueries.getStackEntries: extracted ids=${ids.map{it.id}} for stackUrl=$stackUrl")
             ids
         } catch (e: Exception) {
             emptyList()

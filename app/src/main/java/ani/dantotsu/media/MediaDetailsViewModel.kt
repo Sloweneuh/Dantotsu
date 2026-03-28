@@ -122,9 +122,6 @@ class MediaDetailsViewModel : ViewModel() {
 
                 // Extract external link URLs for validation
                 val externalLinkUrls = media.externalLinks.mapNotNull { it.getOrNull(1) }
-                ani.dantotsu.util.Logger.log(
-                        "Comick Preload: Found ${externalLinkUrls.size} external link(s) for validation: $externalLinkUrls"
-                )
 
                 // Check if user has manually saved a slug for this media first
                 // If Comick is disabled, skip searching and clear related LiveData
@@ -148,9 +145,6 @@ class MediaDetailsViewModel : ViewModel() {
                     } else null
                 val comickSlugValue = if (ani.dantotsu.settings.saving.PrefManager.getVal<Boolean>(ani.dantotsu.settings.saving.PrefName.ComickEnabled)) {
                     if (savedSlug != null) {
-                        ani.dantotsu.util.Logger.log(
-                                "Comick Preload: Found saved slug '$savedSlug' in preferences"
-                        )
                         savedSlug
                     } else if (titlesToTry.isNotEmpty()) {
                         comickApi.searchAndMatchComic(
@@ -190,9 +184,6 @@ class MediaDetailsViewModel : ViewModel() {
                                 try {
                                     val seriesDetails =
                                             MangaUpdates.getSeriesFromUrl(seriesIdentifier)
-                                    ani.dantotsu.util.Logger.log(
-                                            "MediaDetailsViewModel: Preload fetched series for id=$seriesIdentifier -> title=${seriesDetails?.title}"
-                                    )
                                     mangaUpdatesSeries.postValue(seriesDetails)
                                 } catch (e: Exception) {
                                     mangaUpdatesSeries.postValue(null)
@@ -209,9 +200,6 @@ class MediaDetailsViewModel : ViewModel() {
                 }
 
                 if (savedMULink != null) {
-                    ani.dantotsu.util.Logger.log(
-                            "MediaDetailsViewModel: Found saved MangaUpdates link '$savedMULink'"
-                    )
                     mangaUpdatesLink.postValue(savedMULink)
                     fetchMUSeries(savedMULink)
                 } else if (comickSlugValue != null && ani.dantotsu.settings.saving.PrefManager.getVal<Boolean>(ani.dantotsu.settings.saving.PrefName.MangaUpdatesEnabled)) {
@@ -268,17 +256,11 @@ class MediaDetailsViewModel : ViewModel() {
         if (seriesIdentifier.isBlank()) return
         // Allow explicit fetch requests from the fragment even if a preload previously set
         // loading=true.
-        Logger.log(
-                "MediaDetailsViewModel: fetchMangaUpdatesSeriesByIdentifier starting for id=$seriesIdentifier"
-        )
         mangaUpdatesLoading.postValue(true)
         mangaUpdatesError.postValue(null)
         MainScope().launch(Dispatchers.IO) {
             try {
                 val series = MangaUpdates.getSeriesFromUrl(seriesIdentifier)
-                Logger.log(
-                        "MediaDetailsViewModel: Fallback fetch result for id=$seriesIdentifier -> title=${series?.title}"
-                )
                 mangaUpdatesSeries.postValue(series)
                 mangaUpdatesLoaded.postValue(true)
             } catch (e: Exception) {
@@ -534,7 +516,6 @@ class MediaDetailsViewModel : ViewModel() {
     }
 
     fun setEpisode(ep: Episode?, who: String) {
-        Logger.log("set episode ${ep?.number} - $who")
         episode.postValue(ep)
         MainScope().launch(Dispatchers.Main) { episode.value = null }
     }
@@ -584,7 +565,6 @@ class MediaDetailsViewModel : ViewModel() {
             mangaChapters
 
     suspend fun loadMangaChapters(media: Media, i: Int, invalidate: Boolean = false) {
-        Logger.log("Loading Manga Chapters : $mangaLoaded")
         if (!mangaLoaded.containsKey(i) || invalidate)
                 tryWithSuspend {
                     mangaLoaded[i] =
@@ -666,7 +646,6 @@ class MediaDetailsViewModel : ViewModel() {
         val key = "mangaupdates_link_${mediaId}"
         val serialized = link // String is handled natively
         ani.dantotsu.settings.saving.PrefManager.setCustomVal(key, serialized)
-        ani.dantotsu.util.Logger.log("MediaDetailsViewModel: Saved MU link for $mediaId: $link")
 
         mangaUpdatesLink.postValue(link)
 
@@ -682,7 +661,6 @@ class MediaDetailsViewModel : ViewModel() {
     fun removeMangaUpdatesLink(mediaId: Int) {
         val key = "mangaupdates_link_${mediaId}"
         ani.dantotsu.settings.saving.PrefManager.removeCustomVal(key)
-        ani.dantotsu.util.Logger.log("MediaDetailsViewModel: Removed MU link for $mediaId")
 
         mangaUpdatesLink.postValue(null)
         mangaUpdatesSeries.postValue(null)
