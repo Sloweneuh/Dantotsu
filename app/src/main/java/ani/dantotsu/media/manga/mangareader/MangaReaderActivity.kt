@@ -96,6 +96,7 @@ import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
 import java.util.Timer
 import java.util.TimerTask
+import kotlin.math.abs
 import kotlin.math.min
 import kotlin.properties.Delegates
 
@@ -441,15 +442,34 @@ class MangaReaderActivity : AppCompatActivity() {
         binding.mangaReaderNextChap.setOnClickListener {
             binding.mangaReaderNextChapter.performClick()
         }
+        fun showGapWarningThenRun(targetIndex: Int, action: () -> Unit) {
+            val missing = countMissingChapters(currentChapterIndex, targetIndex)
+            if (missing > 0) {
+                val title = if (missing == 1) getString(R.string.chapter_gap_warning_title)
+                            else getString(R.string.chapter_gap_warning_title_plural)
+                val message = if (missing == 1) getString(R.string.chapter_gap_warning_message_single)
+                              else getString(R.string.chapter_gap_warning_message, missing)
+                customAlertDialog().apply {
+                    setTitle(title)
+                    setMessage(message)
+                    setPosButton(R.string.ok) { action() }
+                    setNegButton(R.string.cancel)
+                    show()
+                }
+            } else {
+                action()
+            }
+        }
+
         binding.mangaReaderNextChapter.setOnClickListener {
             if (directionRLBT) {
-                if (currentChapterIndex > 0) change(currentChapterIndex - 1)
+                if (currentChapterIndex > 0) showGapWarningThenRun(currentChapterIndex - 1) {
+                    change(currentChapterIndex - 1)
+                }
                 else snackString(getString(R.string.first_chapter))
             } else {
-                if (chaptersArr.size > currentChapterIndex + 1) progress {
-                    change(
-                        currentChapterIndex + 1
-                    )
+                if (chaptersArr.size > currentChapterIndex + 1) showGapWarningThenRun(currentChapterIndex + 1) {
+                    progress { change(currentChapterIndex + 1) }
                 }
                 else snackString(getString(R.string.next_chapter_not_found))
             }
@@ -460,14 +480,14 @@ class MangaReaderActivity : AppCompatActivity() {
         }
         binding.mangaReaderPreviousChapter.setOnClickListener {
             if (directionRLBT) {
-                if (chaptersArr.size > currentChapterIndex + 1) progress {
-                    change(
-                        currentChapterIndex + 1
-                    )
+                if (chaptersArr.size > currentChapterIndex + 1) showGapWarningThenRun(currentChapterIndex + 1) {
+                    progress { change(currentChapterIndex + 1) }
                 }
                 else snackString(getString(R.string.next_chapter_not_found))
             } else {
-                if (currentChapterIndex > 0) change(currentChapterIndex - 1)
+                if (currentChapterIndex > 0) showGapWarningThenRun(currentChapterIndex - 1) {
+                    change(currentChapterIndex - 1)
+                }
                 else snackString(getString(R.string.first_chapter))
             }
         }
@@ -1083,6 +1103,12 @@ class MangaReaderActivity : AppCompatActivity() {
                 }
                 loading = false
             }
+    }
+
+    private fun countMissingChapters(fromIndex: Int, toIndex: Int): Int {
+        val fromNum = MediaNameAdapter.findChapterNumber(chapters[chaptersArr[fromIndex]]?.number ?: "") ?: return 0
+        val toNum = MediaNameAdapter.findChapterNumber(chapters[chaptersArr[toIndex]]?.number ?: "") ?: return 0
+        return (abs(toNum.toInt() - fromNum.toInt()) - 1).coerceAtLeast(0)
     }
 
     private fun progress(runnable: Runnable) {

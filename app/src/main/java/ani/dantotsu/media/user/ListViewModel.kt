@@ -146,7 +146,8 @@ class ListViewModel : ViewModel() {
         val filteredMu = if (filters.trackerFilter == TrackerFilter.ANILIST_ONLY || filters.hasAnilistOnlyFilters()) {
             emptyMap()
         } else {
-            rawMuData ?: emptyMap()
+            val base = rawMuData ?: emptyMap()
+            if (filters.englishLicenced) filterMuByEnglishLicenced(base) else base
         }
         filteredMuLists.postValue(filteredMu)
     }
@@ -230,6 +231,11 @@ class ListViewModel : ViewModel() {
             }
         }
 
+        // English licenced - must have a non-blank English title
+        if (filters.englishLicenced && media.name.isNullOrBlank()) {
+            return false
+        }
+
         return true
     }
 
@@ -262,7 +268,10 @@ class ListViewModel : ViewModel() {
             val filters = currentFilters.value
             val hideMu = filters?.trackerFilter == TrackerFilter.ANILIST_ONLY ||
                 filters?.hasAnilistOnlyFilters() == true
-            filteredMuLists.postValue(if (hideMu) emptyMap() else rawMuData ?: emptyMap())
+            val muBase = if (hideMu) emptyMap() else rawMuData ?: emptyMap()
+            filteredMuLists.postValue(
+                if (!hideMu && filters?.englishLicenced == true) filterMuByEnglishLicenced(muBase) else muBase
+            )
             // When search is cleared, reapply current filters if they exist
             if (filters != null && !filters.isEmpty()) {
                 // Don't call applyFilters here to avoid resetting currentSearchQuery
@@ -296,9 +305,12 @@ class ListViewModel : ViewModel() {
             } else {
                 rawMuLists.mapValues { (_, list) ->
                     list.filter { mu ->
-                        normalize(mu.title).contains(q) ||
+                        val matchesSearch = normalize(mu.title).contains(q) ||
                             MangaUpdates.synonymsCache[mu.id]
                                 ?.any { normalize(it).contains(q) } == true
+                        val matchesEnglish = filters?.englishLicenced != true ||
+                            MUDetailsCache.get(mu.id)?.hasEnglishPublisher == true
+                        matchesSearch && matchesEnglish
                     }
                 }
             }
@@ -337,6 +349,12 @@ class ListViewModel : ViewModel() {
         }.toMutableMap()
 
         lists.postValue(filteredLists)
+    }
+
+    private fun filterMuByEnglishLicenced(
+        data: Map<String, List<MUMedia>>
+    ): Map<String, List<MUMedia>> = data.mapValues { (_, list) ->
+        list.filter { mu -> MUDetailsCache.get(mu.id)?.hasEnglishPublisher == true }
     }
 
     fun unfilterLists() {

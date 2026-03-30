@@ -47,6 +47,7 @@ class ListFilterBottomDialog(
     private var scoreRange = currentFilters.scoreRange
     private var yearRange = currentFilters.yearRange
     private var selectedTrackerFilter: TrackerFilter = currentFilters.trackerFilter
+    private var englishLicenced: Boolean = currentFilters.englishLicenced
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -66,6 +67,7 @@ class ListFilterBottomDialog(
         setupButtons()
         setupCountryFilter()
         setupTrackerFilter()
+        setupEnglishLicencedFilter()
     }
 
     private fun setupDropdowns() {
@@ -215,10 +217,20 @@ class ListFilterBottomDialog(
                     binding.listFilterYearRange.values[0].toInt(),
                     binding.listFilterYearRange.values[1].toInt()
                 ),
-                trackerFilter = selectedTrackerFilter
+                trackerFilter = selectedTrackerFilter,
+                englishLicenced = englishLicenced
             )
             onApply(filters)
             dismiss()
+        }
+    }
+
+    private fun setupEnglishLicencedFilter() {
+        if (isAnime) return
+        binding.listFilterEnglishLicencedCont.visibility = View.VISIBLE
+        binding.listFilterEnglishLicenced.isChecked = englishLicenced
+        binding.listFilterEnglishLicenced.setOnCheckedChangeListener { _, isChecked ->
+            englishLicenced = isChecked
         }
     }
 
@@ -327,6 +339,8 @@ class ListFilterBottomDialog(
         yearRange = Pair(1970, 2028)
         selectedTrackerFilter = TrackerFilter.BOTH
         binding.listFilterTracker.setText(getString(R.string.filter_tracker_both), false)
+        englishLicenced = false
+        binding.listFilterEnglishLicenced.isChecked = false
 
         binding.listFilterSource.setText("")
         binding.listFilterFormat.setText("")
@@ -386,14 +400,15 @@ data class ListFilters(
     val countryOfOrigin: String? = null,
     val scoreRange: Pair<Float, Float> = Pair(0.0f, 10.0f),
     val yearRange: Pair<Int, Int> = Pair(1970, 2028),
-    val trackerFilter: TrackerFilter = TrackerFilter.BOTH
+    val trackerFilter: TrackerFilter = TrackerFilter.BOTH,
+    val englishLicenced: Boolean = false
 ) {
     fun isEmpty(): Boolean {
         return genres.isEmpty() && tags.isEmpty() && formats.isEmpty() &&
                 statuses.isEmpty() && sources.isEmpty() && season == null &&
                 year == null && countryOfOrigin == null &&
                 scoreRange == Pair(0.0f, 10.0f) && yearRange == Pair(1970, 2028) &&
-                trackerFilter == TrackerFilter.BOTH
+                trackerFilter == TrackerFilter.BOTH && !englishLicenced
     }
 
     /** True when any filter that cannot be applied to MU entries is active. */

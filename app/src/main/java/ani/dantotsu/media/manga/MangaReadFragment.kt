@@ -133,15 +133,14 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
 
         gridLayoutManager.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
             override fun getSpanSize(position: Int): Int {
-                val style = chapterAdapter.getItemViewType(position)
-
-                return when (position) {
-                    0 -> maxGridSize
-                    else -> when (style) {
-                        0 -> maxGridSize
-                        1 -> 1
-                        else -> maxGridSize
-                    }
+                if (position == 0) return maxGridSize  // header
+                // Map combined-adapter position to chapter-adapter local position
+                val localPos = position - headerAdapter.itemCount
+                if (localPos < 0 || localPos >= chapterAdapter.itemCount) return maxGridSize
+                return when (chapterAdapter.getItemViewType(localPos)) {
+                    MangaChapterAdapter.VIEW_TYPE_COMPACT -> 1
+                    MangaChapterAdapter.VIEW_TYPE_GAP_COMPACT -> 1
+                    else -> maxGridSize
                 }
             }
         }
@@ -396,12 +395,14 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
     fun openSettings(pkg: MangaExtension.Installed) {
         val changeUIVisibility: (Boolean) -> Unit = { show ->
             val activity = activity
-            if (activity is MediaDetailsActivity && isAdded) {
-                activity.findViewById<AppBarLayout>(R.id.mediaAppBar).isVisible = show
+            val isKnownActivity = activity is MediaDetailsActivity ||
+                activity is ani.dantotsu.connections.mangaupdates.MUMediaDetailsActivity
+            if (isKnownActivity && isAdded) {
+                activity!!.findViewById<AppBarLayout>(R.id.mediaAppBar).isVisible = show
                 activity.findViewById<ViewPager2>(R.id.mediaViewPager).isVisible = show
                 activity.findViewById<CardView>(R.id.mediaCover).isVisible = show
                 activity.findViewById<CardView>(R.id.mediaClose).isVisible = show
-                activity.navBar.isVisible = show
+                activity.findViewById<nl.joery.animatedbottombar.AnimatedBottomBar>(R.id.mediaBottomBar).isVisible = show
                 activity.findViewById<FrameLayout>(R.id.fragmentExtensionsContainer).isGone = show
             }
         }
@@ -661,19 +662,45 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
         model.saveSelected(media.id, selected)
         headerAdapter.handleChapters()
         chapterAdapter.notifyItemRangeRemoved(0, chapterAdapter.arr.size)
-        var arr: ArrayList<MangaChapter> = arrayListOf()
+        var chapList: ArrayList<MangaChapter> = arrayListOf()
         if (media.manga!!.chapters != null) {
             val end = if (end != null && end!! < media.manga!!.chapters!!.size) end else null
-            arr.addAll(
+            chapList.addAll(
                 media.manga!!.chapters!!.values.toList()
                     .slice(start..(end ?: (media.manga!!.chapters!!.size - 1)))
             )
             if (reverse)
-                arr = (arr.reversed() as? ArrayList<MangaChapter>) ?: arr
+                chapList = (chapList.reversed() as? ArrayList<MangaChapter>) ?: chapList
         }
-        chapterAdapter.arr = arr
+        // Build display list with gap placeholders between non-consecutive chapters
+        val isCompact = (style ?: PrefManager.getVal(PrefName.MangaDefaultView)) == 1
+        val displayList = ArrayList<MangaChapterListItem>()
+        for (i in chapList.indices) {
+            displayList.add(MangaChapterListItem.Chapter(chapList[i]))
+            if (i < chapList.size - 1) {
+                val currNum = MediaNameAdapter.findChapterNumber(chapList[i].number)
+                val nextNum = MediaNameAdapter.findChapterNumber(chapList[i + 1].number)
+                if (currNum != null && nextNum != null) {
+                    val lo = minOf(currNum, nextNum)
+                    val hi = maxOf(currNum, nextNum)
+                    val missing = hi.toInt() - lo.toInt() - 1
+                    if (missing > 0) {
+                        if (isCompact) {
+                            // One placeholder per missing chapter, each carries its chapter number
+                            for (n in 1..missing) {
+                                val chNum = lo.toInt() + n
+                                displayList.add(MangaChapterListItem.Gap(chNum.toFloat(), chNum.toFloat(), 1))
+                            }
+                        } else {
+                            displayList.add(MangaChapterListItem.Gap(lo, hi, missing))
+                        }
+                    }
+                }
+            }
+        }
+        chapterAdapter.arr = displayList
         chapterAdapter.updateType(style ?: PrefManager.getVal(PrefName.MangaDefaultView))
-        chapterAdapter.notifyItemRangeInserted(0, arr.size)
+        chapterAdapter.notifyItemRangeInserted(0, displayList.size)
     }
 
     override fun onDestroy() {

@@ -281,7 +281,6 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                 try {
                     val malMode = PrefManager.getVal<String>(PrefName.MalSyncCheckMode) ?: "both"
                     if (!PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled) || malMode == "manga") {
-                        ani.dantotsu.util.Logger.log("MediaDetails: MALSync disabled or set to manga-only; skipping language dropdown fetch for anime")
                         return@launch
                     }
 
@@ -578,7 +577,6 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
 
         @SuppressLint("ResourceType")
         fun total() {
-            ani.dantotsu.util.Logger.log("MediaDetails: total() function called")
             val text =
                     SpannableStringBuilder().apply {
                         val white =
@@ -633,9 +631,6 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                     PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled) &&
                     malModeForAnime != "manga"
                 ) {
-                ani.dantotsu.util.Logger.log(
-                        "MediaDetails: Starting MALSync API call for anime mediaId=${media.id}, malId=${media.idMAL}"
-                )
                 lifecycleScope.launch(Dispatchers.IO) {
                     try {
                         val preferredLanguage =
@@ -647,9 +642,6 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                                         media.idMAL,
                                         preferredLanguage
                                 )
-                        ani.dantotsu.util.Logger.log(
-                                "MediaDetails: MalSync anime result: $malSyncResult"
-                        )
 
                         if (malSyncResult != null && malSyncResult.lastEp != null) {
                             val lastEpisode = malSyncResult.lastEp.total
@@ -659,9 +651,6 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                                     ani.dantotsu.connections.malsync.LanguageMapper.mapLanguage(
                                             malSyncResult.id
                                     )
-                            ani.dantotsu.util.Logger.log(
-                                    "MediaDetails: lastEpisode=$lastEpisode, userProgress=$userProgress, anilistTotal=$anilistTotal, language=${languageOption.displayName}"
-                            )
 
                             // Determine if we should show lastEp number
                             val shouldShowLastEp =
@@ -672,9 +661,6 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                                         else -> anilistTotal == null // Show if no AniList total
                                     }
 
-                            ani.dantotsu.util.Logger.log(
-                                    "MediaDetails: shouldShowLastEp=$shouldShowLastEp"
-                            )
 
                             withContext(Dispatchers.Main) {
                                 // Update episode count display to show MALSync data
@@ -799,19 +785,9 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
 
             // Fetch MalSync data for manga to show latest available chapter (or update cached data)
             // Don't show for manga marked as COMPLETED
-            ani.dantotsu.util.Logger.log("MediaDetails: total() called for ${media.mainName()}")
-            ani.dantotsu.util.Logger.log(
-                    "MediaDetails: manga=${media.manga != null}, online=${isOnline(this)}, status=${media.userStatus}"
-            )
-            ani.dantotsu.util.Logger.log(
-                    "MediaDetails: passedSource=$passedSource, passedLastChapter=$passedLastChapter"
-            )
 
                 val malModeForManga = PrefManager.getVal<String>(PrefName.MalSyncCheckMode) ?: "both"
                 if (media.manga != null && isOnline(this) && media.userStatus != "COMPLETED" && PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled) && malModeForManga != "anime") {
-                ani.dantotsu.util.Logger.log(
-                        "MediaDetails: Starting MalSync API call for mediaId=${media.id}"
-                )
                 lifecycleScope.launch(Dispatchers.IO) {
                     try {
                         val malSyncResult =
@@ -819,20 +795,13 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                                         media.id,
                                         media.idMAL
                                 )
-                        ani.dantotsu.util.Logger.log("MediaDetails: MalSync result: $malSyncResult")
                         if (malSyncResult != null && malSyncResult.lastEp != null) {
                             val lastChapter = malSyncResult.lastEp.total
                             val userProgress = media.userProgress ?: 0
-                            ani.dantotsu.util.Logger.log(
-                                    "MediaDetails: lastChapter=$lastChapter, userProgress=$userProgress, source=${malSyncResult.source}"
-                            )
 
                             withContext(Dispatchers.Main) {
                                 // Check if there are unread chapters
                                 val hasUnreadChapters = lastChapter > userProgress
-                                ani.dantotsu.util.Logger.log(
-                                        "MediaDetails: hasUnreadChapters=$hasUnreadChapters"
-                                )
 
                                 if (hasUnreadChapters) {
                                     // Update chapter count display
@@ -897,21 +866,11 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                                             null
                                         }
 
-                                ani.dantotsu.util.Logger.log(
-                                        "MediaDetails: malSource='$malSource', sourceToShow='$sourceToShow'"
-                                )
-                                ani.dantotsu.util.Logger.log(
-                                        "MediaDetails: Condition check: sourceNotBlank=${!sourceToShow.isNullOrBlank()}, hasUnread=$hasUnreadChapters, hasPassedSource=${!passedSource.isNullOrBlank()}"
-                                )
-
                                 if (!sourceToShow.isNullOrBlank() &&
                                                 (hasUnreadChapters || !passedSource.isNullOrBlank())
                                 ) {
                                     // Show source if: 1) has unread chapters, OR 2) source was
                                     // explicitly passed
-                                    ani.dantotsu.util.Logger.log(
-                                            "MediaDetails: SHOWING source: $sourceToShow"
-                                    )
                                     binding.mediaUnreadSource?.text =
                                             getString(
                                                     R.string.notification_source_subtext,
@@ -919,9 +878,6 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                                             )
                                     binding.mediaUnreadSource?.visibility = View.VISIBLE
                                 } else {
-                                    ani.dantotsu.util.Logger.log(
-                                            "MediaDetails: HIDING source (passedSource=$passedSource)"
-                                    )
                                     // Hide source if user is caught up and no explicit passed
                                     // source
                                     if (passedSource.isNullOrBlank()) {
@@ -929,10 +885,6 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                                     }
                                 }
                             }
-                        } else {
-                            ani.dantotsu.util.Logger.log(
-                                    "MediaDetails: MalSync result was null or had no lastEp"
-                            )
                         }
                     } catch (e: Exception) {
                         ani.dantotsu.util.Logger.log(
@@ -950,9 +902,6 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
         }
 
         fun progress() {
-            ani.dantotsu.util.Logger.log(
-                    "MediaDetails: progress() called, userStatus=${media.userStatus}"
-            )
             val statuses: Array<String> = resources.getStringArray(R.array.status)
             val statusStrings =
                     if (media.manga == null) resources.getStringArray(R.array.status_anime)

@@ -1116,6 +1116,7 @@
     <string name="enable_banner_animations">Essayez d\'activer les "Animations de bannière" dans les paramètres</string>
     <string name="auto_update_reset">La progression de la mise à jour auto a été réinitialisée</string>
     <string name="cant_wait">Tu peux pas attendre, hein ? bien X(</string>
+    <string name="chapter_gap_warning_message">%1$d chapitres manquent avant celui-là. Continuer quand même ?</string>
     <string name="adult_stuff">Trucs d\'adultes ?( ͡° ͜ʖ ͡° )</string>
     <string name="what_did_you_open">Qu\'est-ce que tu as ouvert ?</string>
     <string name="error_getting_image_data">Erreur lors de la récupération des données de l\'image</string>
@@ -1408,4 +1409,9 @@
     <string name="discord_manga_presence">Présence Manga</string>
     <string name="search_equivalents">Rechercher des équivalents</string>
     <string name="search_equivalents_confirm_text">Cela va tenter de trouver des équivalents AniList pour chaque entrée MangaUpdates de cette liste. Cela peut prendre un certain temps. Continuer ?</string>
+    <string name="chapter_missing_single">1 chapitre manquant</string>
+    <string name="chapters_missing">%1$d chapitres manquants</string>
+    <string name="chapter_gap_warning_title">Chapitre manquant</string>
+    <string name="chapter_gap_warning_title_plural">Chapitres manquants</string>
+    <string name="chapter_gap_warning_message_single">Un chapitre est manquant avant celui-là. Continuer quand même ?</string>
 </resources>

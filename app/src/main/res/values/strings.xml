@@ -644,6 +644,12 @@
     <string name="downloading">Downloading…</string>
     <string name="next_chapter_not_found">Next Chapter Not Found</string>
     <string name="first_chapter">This is the 1st chapter!</string>
+    <string name="chapter_missing_single">1 missing chapter</string>
+    <string name="chapters_missing">%1$d missing chapters</string>
+    <string name="chapter_gap_warning_title">Missing Chapter</string>
+    <string name="chapter_gap_warning_title_plural">Missing Chapters</string>
+    <string name="chapter_gap_warning_message_single">A chapter is missing before this one. Continue anyway?</string>
+    <string name="chapter_gap_warning_message">%1$d chapters are missing before this one. Continue anyway?</string>
     <string name="adult_stuff">Adult Stuff?&#40; &#865;&#176; &#860;&#662; &#865;&#176; &#41;</string>
     <string name="what_did_you_open">What did you even open?</string>
     <string name="error_getting_data">Error getting data from Anilist.</string>
@@ -860,6 +866,7 @@
     <string name="filter_tracker_both">Both</string>
     <string name="filter_tracker_anilist">AniList</string>
     <string name="filter_tracker_mu">MangaUpdates</string>
+    <string name="filter_english_licenced">English Licenced</string>
     <string name="filter_sort">"Sort : %1$s"</string>
     <string name="filter_exclude">"Not %1$s"</string>
     <string name="search_by_image">Search by Image</string>

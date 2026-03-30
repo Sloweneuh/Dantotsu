@@ -226,6 +226,8 @@ class ExoplayerView :
     private lateinit var exoBrightnessCont: View
     private lateinit var exoVolumeCont: View
     private lateinit var exoSkip: View
+    private lateinit var exoSkipMini: View
+    private lateinit var exoSkipMiniText: TextView
     private lateinit var skipTimeButton: View
     private lateinit var skipTimeText: TextView
     private lateinit var timeStampText: TextView
@@ -275,7 +277,10 @@ class ExoplayerView :
     private var interacted = false
 
     private var pipEnabled = false
+    private var isEnteringPip = false
     private var aspectRatio = Rational(16, 9)
+    private var pipExitTimestamp: Long = 0
+    private var pendingPiPExit: Boolean = false
 
     private val handler = Handler(Looper.getMainLooper())
     val model: MediaDetailsViewModel by viewModels()
@@ -480,6 +485,8 @@ class ExoplayerView :
         exoPip = playerView.findViewById(R.id.exo_pip)
         exoSkipOpEd = playerView.findViewById(R.id.exo_skip_op_ed)
         exoSkip = playerView.findViewById(R.id.exo_skip)
+        exoSkipMini = playerView.findViewById(R.id.exo_skip_mini)
+        exoSkipMiniText = exoSkipMini.findViewById(R.id.exo_skip_mini_text)
         skipTimeButton = playerView.findViewById(R.id.exo_skip_timestamp)
         skipTimeText = skipTimeButton.findViewById(R.id.exo_skip_timestamp_text)
         timeStampText = playerView.findViewById(R.id.exo_time_stamp_text)
@@ -2094,7 +2101,7 @@ class ExoplayerView :
         super.onPause()
         orientationListener?.disable()
         if (isInitialized) {
-            if (castPlayer?.isPlaying == false) {
+            if (castPlayer?.isPlaying == false && !isEnteringPip) {
                 playerView.player?.pause()
             }
             if (exoPlayer.currentPosition > 5000) {
@@ -2103,6 +2110,15 @@ class ExoplayerView :
                     exoPlayer.currentPosition,
                 )
             }
+        }
+    }
+
+    override fun onUserLeaveHint() {
+        // If PiP is enabled in settings and supported, enter PiP when user leaves (home button)
+        if (pipEnabled) {
+            enterPipMode()
+        } else {
+            super.onUserLeaveHint()
         }
     }
 
@@ -2117,7 +2133,8 @@ class ExoplayerView :
     }
 
     override fun onStop() {
-        if (castPlayer?.isPlaying == false) {
+        // Always pause playback when the activity stops unless we're currently in PiP mode
+        if (!isInPictureInPictureMode() && isInitialized) {
             playerView.player?.pause()
         }
         super.onStop()
@@ -2126,6 +2143,20 @@ class ExoplayerView :
     private var wasPlaying = false
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
+        // If we're in the process of entering PiP, skip focus-based pause/resume handling
+        if (isEnteringPip) {
+            super.onWindowFocusChanged(hasFocus)
+            return
+        }
+
+        if (pendingPiPExit) {
+            // If activity regained focus shortly after exiting PiP, user returned to the app.
+            val elapsed = java.lang.System.currentTimeMillis() - pipExitTimestamp
+            pendingPiPExit = false
+            if (hasFocus && elapsed < 2000L && isInitialized && wasPlaying) {
+                exoPlayer.play()
+            }
+        }
         if (PrefManager.getVal(PrefName.FocusPause) && !epChanging) {
             if (isInitialized && !hasFocus) wasPlaying = exoPlayer.isPlaying
             if (hasFocus) {
@@ -2271,6 +2302,7 @@ class ExoplayerView :
                                         skipTimeButton.visibility = View.GONE
                                         exoSkip.isVisible =
                                             PrefManager.getVal<Int>(PrefName.SkipTime) > 0
+                                        exoSkipMini.visibility = View.GONE
                                         disappeared = false
                                         functionstarted = false
                                         cancelTimer()
@@ -2281,6 +2313,12 @@ class ExoplayerView :
                                     skipTimeButton.visibility = View.GONE
                                     exoSkip.isVisible =
                                         PrefManager.getVal<Int>(PrefName.SkipTime) > 0
+                                    // show small persistent skip icon next to skip time button
+                                    exoSkipMiniText.text = new.skipType.getType()
+                                    exoSkipMini.visibility = View.VISIBLE
+                                    exoSkipMini.setOnClickListener {
+                                        exoPlayer.seekTo((new.interval.endTime * 1000).toLong())
+                                    }
                                     disappeared = true
                                     functionstarted = false
                                     cancelTimer()
@@ -2294,6 +2332,7 @@ class ExoplayerView :
                         } else if (!PrefManager.getVal<Boolean>(PrefName.AutoHideTimeStamps)) {
                             skipTimeButton.visibility = View.VISIBLE
                             exoSkip.visibility = View.GONE
+                            exoSkipMini.visibility = View.GONE
                             skipTimeText.text = new.skipType.getType()
                             skipTimeButton.setOnClickListener {
                                 exoPlayer.seekTo((new.interval.endTime * 1000).toLong())
@@ -2322,6 +2361,7 @@ class ExoplayerView :
                     functionstarted = false
                     skipTimeButton.visibility = View.GONE
                     exoSkip.isVisible = PrefManager.getVal<Int>(PrefName.SkipTime) > 0
+                    exoSkipMini.visibility = View.GONE
                     ""
                 }
         }
@@ -2574,6 +2614,7 @@ class ExoplayerView :
     private fun enterPipMode() {
         wasPlaying = isPlayerPlaying
         if (!pipEnabled) return
+        isEnteringPip = true
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 enterPictureInPictureMode(
@@ -2591,6 +2632,7 @@ class ExoplayerView :
     }
 
     private fun onPiPChanged(isInPictureInPictureMode: Boolean) {
+        isEnteringPip = false
         playerView.useController = !isInPictureInPictureMode
         if (isInPictureInPictureMode) {
             requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
@@ -2603,7 +2645,12 @@ class ExoplayerView :
                 "${media.id}_${episode.number}",
                 exoPlayer.currentPosition,
             )
-            if (wasPlaying) exoPlayer.play()
+            // If we're exiting PiP, mark timestamp and wait to see if activity regains focus.
+            // Resume playback only when the user explicitly returns to the activity (regains focus).
+            if (!isInPictureInPictureMode()) {
+                pipExitTimestamp = java.lang.System.currentTimeMillis()
+                pendingPiPExit = true
+            }
         }
     }
 
@@ -2615,7 +2662,7 @@ class ExoplayerView :
 
     @RequiresApi(Build.VERSION_CODES.N)
     override fun onPictureInPictureUiStateChanged(pipState: PictureInPictureUiState) {
-        onPiPChanged(isInPictureInPictureMode)
+        onPiPChanged(isInPictureInPictureMode())
         super.onPictureInPictureUiStateChanged(pipState)
     }
 

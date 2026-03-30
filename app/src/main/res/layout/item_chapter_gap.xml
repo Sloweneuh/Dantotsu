@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center"
+    android:orientation="horizontal"
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp"
+    android:paddingTop="4dp"
+    android:paddingBottom="4dp">
+
+    <View
+        android:layout_width="0dp"
+        android:layout_height="1dp"
+        android:layout_weight="1"
+        android:background="?attr/colorOutline"
+        android:alpha="0.4" />
+
+    <TextView
+        android:id="@+id/itemChapterGapText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="12dp"
+        android:fontFamily="@font/poppins_bold"
+        android:textSize="11sp"
+        android:textColor="?attr/colorOutline"
+        android:alpha="0.6"
+        tools:text="3 chapters missing"
+        xmlns:tools="http://schemas.android.com/tools" />
+
+    <View
+        android:layout_width="0dp"
+        android:layout_height="1dp"
+        android:layout_weight="1"
+        android:background="?attr/colorOutline"
+        android:alpha="0.4" />
+
+</LinearLayout>

@@ -31,12 +31,8 @@ object ComickApi {
      */
     private fun validateComickLinks(comickLinks: ComickLinks?, externalLinks: List<String>?): Boolean {
         if (comickLinks == null || externalLinks.isNullOrEmpty()) {
-            Logger.log("Comick: Validation skipped - comickLinks: ${comickLinks != null}, externalLinks: ${externalLinks?.size ?: 0}")
             return false
         }
-
-        Logger.log("Comick: Validating links - raw: ${comickLinks.raw}, engtl: ${comickLinks.engtl}")
-        Logger.log("Comick: Against ${externalLinks.size} external link(s): $externalLinks")
 
         // Normalize URLs for comparison (remove trailing slashes, convert to lowercase)
         fun normalizeUrl(url: String?): String? {
@@ -47,15 +43,11 @@ object ComickApi {
         val rawNormalized = normalizeUrl(comickLinks.raw)
         val engtlNormalized = normalizeUrl(comickLinks.engtl)
 
-        Logger.log("Comick: Normalized - raw: $rawNormalized, engtl: $engtlNormalized")
-        Logger.log("Comick: Normalized external links: $normalizedExternalLinks")
 
         // Check if raw link matches any external link (exact match only)
         if (rawNormalized != null) {
             val matchFound = normalizedExternalLinks.any { it == rawNormalized }
-            Logger.log("Comick: Raw link check - found match: $matchFound")
             if (matchFound) {
-                Logger.log("Comick: ✓ Validated by matching raw link: ${comickLinks.raw}")
                 return true
             }
         }
@@ -63,9 +55,7 @@ object ComickApi {
         // Check if engtl link matches any external link (exact match only)
         if (engtlNormalized != null) {
             val matchFound = normalizedExternalLinks.any { it == engtlNormalized }
-            Logger.log("Comick: Engtl link check - found match: $matchFound")
             if (matchFound) {
-                Logger.log("Comick: ✓ Validated by matching engtl link: ${comickLinks.engtl}")
                 return true
             }
         }
@@ -82,14 +72,11 @@ object ComickApi {
                 add(normalizeUrl("https://www.mangaupdates.com/series/$mu"))
             }.filterNotNull()
             val muMatchFound = normalizedExternalLinks.any { extLink -> possibleMuUrls.any { it == extLink } }
-            Logger.log("Comick: MU link check - found match: $muMatchFound (mu: $mu)")
             if (muMatchFound) {
-                Logger.log("Comick: ✓ Validated by matching mu link: ${comickLinks.mu}")
                 return true
             }
         }
 
-        Logger.log("Comick: ✗ No matching links found")
         return false
     }
 
@@ -163,7 +150,6 @@ object ComickApi {
             if (useCache) {
                 val cachedMergedComic = mergedComicCache[slug]
                 if (cachedMergedComic != null) {
-                    Logger.log("Comick: Using cached merged data for slug: $slug")
                     // Still need to fetch for firstChap data
                     val response = fetchComicDetailsRaw(slug, lang)
                     return@withContext ComickResponse(cachedMergedComic, response?.firstChap)
@@ -203,11 +189,9 @@ object ComickApi {
             return try {
                 val comickResponse = gson.fromJson(body, ComickResponse::class.java)
                 // Log the links object to debug
-                Logger.log("Comick: Fetched details for slug '$slug' - links: ${comickResponse?.comic?.links}")
                 comickResponse
             } catch (e: Exception) {
                 Logger.log("Error parsing Comick JSON: ${e.message}")
-                Logger.log("Response body preview: ${body.take(500)}")
                 null
             }
         } catch (e: Exception) {
@@ -239,7 +223,6 @@ object ComickApi {
 
         // Step 1: Process MalSync slugs first
         if (!malSyncSlugs.isNullOrEmpty()) {
-            Logger.log("Comick: Processing ${malSyncSlugs.size} slug(s) from MalSync")
             for (slug in malSyncSlugs) {
                 val details = getComicDetails(slug, useCache = false)
                 val comic = details?.comic
@@ -250,16 +233,13 @@ object ComickApi {
                 // Verify this slug actually matches our IDs or external links
                 var isMatch = false
                 if (links?.al == anilistId.toString()) {
-                    Logger.log("Comick: MalSync slug '$slug' verified by AniList ID (followers: ${comic.user_follow_count})")
                     isMatch = true
                 }
                 if (malId != null && links?.mal == malId.toString()) {
-                    Logger.log("Comick: MalSync slug '$slug' verified by MAL ID (followers: ${comic.user_follow_count})")
                     isMatch = true
                 }
                 // Check if raw or engtl links match external links
                 if (!isMatch && validateComickLinks(links, externalLinks)) {
-                    Logger.log("Comick: MalSync slug '$slug' verified by matching external links (followers: ${comic.user_follow_count})")
                     isMatch = true
                 }
 
@@ -268,7 +248,6 @@ object ComickApi {
                     // Track the MU ID of this valid entry
                     links?.mu?.let { muId ->
                         validMuIds.add(muId)
-                        Logger.log("Comick: Tracked MU ID '$muId' from valid MalSync entry")
                     }
                 } else {
                     // Store for potential validation by MU ID
@@ -280,7 +259,6 @@ object ComickApi {
             if (validMuIds.isNotEmpty()) {
                 for ((comic, muId) in potentialMalSyncComics) {
                     if (muId != null && muId in validMuIds) {
-                        Logger.log("Comick: MalSync entry '${comic.slug}' validated by shared MU ID '$muId' (followers: ${comic.user_follow_count})")
                         allValidComics.add(comic)
                     }
                 }
@@ -288,7 +266,6 @@ object ComickApi {
         }
 
         // Step 2: Try search with each title to find additional entries
-        Logger.log("Comick: Searching with ${titles.size} title(s)")
         for (title in titles) {
             if (title.isBlank()) continue
 
@@ -307,11 +284,9 @@ object ComickApi {
 
         // Step 3: If we have any valid comics, select the best one
         if (allValidComics.isNotEmpty()) {
-            Logger.log("Comick: Found ${allValidComics.size} total valid entries")
             return@withContext selectBestComic(allValidComics)
         }
 
-        Logger.log("Comick: No valid entries found")
         return@withContext null
     }
 
@@ -324,7 +299,6 @@ object ComickApi {
         val primaryComic = validComics.maxByOrNull { it.user_follow_count ?: 0 } ?: return null
         val primarySlug = primaryComic.slug ?: return null
 
-        Logger.log("Comick: Selected entry with most followers: $primarySlug (followers: ${primaryComic.user_follow_count})")
 
         // Get other valid comics (excluding the primary)
         val otherComics = validComics.filter { it.slug != primarySlug }
@@ -336,14 +310,10 @@ object ComickApi {
             // Log the merging details
             val highestLastChapter = validComics.mapNotNull { it.last_chapter }.maxOrNull()
             if (highestLastChapter != null && highestLastChapter > (primaryComic.last_chapter ?: 0.0)) {
-                Logger.log("Comick: Merged higher last_chapter: $highestLastChapter (was ${primaryComic.last_chapter})")
             }
 
             // Cache the merged data
             mergedComicCache[primarySlug] = mergedComic
-            Logger.log("Comick: Cached merged data for slug: $primarySlug")
-        } else {
-            Logger.log("Comick: No other entries to merge, using primary entry as-is")
         }
 
         return primarySlug
@@ -395,7 +365,6 @@ object ComickApi {
 
             // First pass: Find entries that match by AniList or MAL ID
             for (result in searchResults) {
-                Logger.log("Comick: Checking search result: ${result.slug} - ${result.title}")
                 // Fetch full details WITHOUT cache to get raw follower counts
                 val details = getComicDetails(result.slug ?: continue, useCache = false)
                 val links = details?.comic?.links
@@ -406,25 +375,20 @@ object ComickApi {
                     continue
                 }
 
-                Logger.log("Comick: Entry '${result.slug}' has - al: ${links?.al}, mal: ${links?.mal}, raw: ${links?.raw}, engtl: ${links?.engtl}")
-
                 var isMatch = false
 
                 // Check if AniList ID matches
                 if (links?.al == anilistId.toString()) {
-                    Logger.log("Comick: Found match by AniList ID: ${result.slug} (followers: ${comic.user_follow_count})")
                     isMatch = true
                 }
 
                 // Check if MAL ID matches
                 if (malId != null && links?.mal == malId.toString()) {
-                    Logger.log("Comick: Found match by MAL ID: ${result.slug} (followers: ${comic.user_follow_count})")
                     isMatch = true
                 }
 
                 // Check if raw or engtl links match external links
                 if (!isMatch && validateComickLinks(links, externalLinks)) {
-                    Logger.log("Comick: Found match by external links: ${result.slug} (followers: ${comic.user_follow_count})")
                     isMatch = true
                 }
 
@@ -433,10 +397,8 @@ object ComickApi {
                     // Track the MU ID of this valid entry
                     links?.mu?.let { muId ->
                         validMuIds.add(muId)
-                        Logger.log("Comick: Tracked MU ID '$muId' from valid entry")
                     }
                 } else {
-                    Logger.log("Comick: Entry '${result.slug}' did not match any validation criteria")
                     // Store for potential validation by MU ID in second pass
                     potentialComics.add(Pair(comic, links?.mu))
                 }
@@ -446,7 +408,6 @@ object ComickApi {
             if (validMuIds.isNotEmpty()) {
                 for ((comic, muId) in potentialComics) {
                     if (muId != null && muId in validMuIds) {
-                        Logger.log("Comick: Entry '${comic.slug}' validated by shared MU ID '$muId' (followers: ${comic.user_follow_count})")
                         validComics.add(comic)
                     }
                 }
@@ -504,7 +465,6 @@ object ComickApi {
                 .distinctBy { it }
 
             if (coverDivs.isEmpty()) {
-                Logger.log("Comick covers: no cover divs found for slug=$slug")
                 return@withContext null
             }
 
@@ -524,7 +484,6 @@ object ComickApi {
                 ComickCover(vol = vol, w = null, h = null, b2key = b2key)
             }
 
-            Logger.log("Comick covers: scraped ${covers.size} covers for slug=$slug")
             covers.takeIf { it.isNotEmpty() }
         } catch (e: Exception) {
             Logger.log("Comick covers error for slug=$slug: ${e.message}")
@@ -594,7 +553,6 @@ object ComickApi {
             }
 
             if (body.isNullOrEmpty() || body == "[]") {
-                Logger.log("Comick search: no results for query '$query'")
                 return@withContext emptyList()
             }
 
@@ -610,7 +568,6 @@ object ComickApi {
                 allResults
             }
 
-            Logger.log("Comick search: Found ${results.size} results for query '$query' (filtered: ${!allowAdult})")
             return@withContext results
         } catch (e: Exception) {
             Logger.log("Error searching Comick: ${e.message}")

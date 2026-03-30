@@ -1,6 +1,8 @@
 package ani.dantotsu.media.manga
 
 import android.content.Intent
+import android.text.SpannableStringBuilder
+import android.text.style.RelativeSizeSpan
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -618,6 +620,30 @@ class MangaReadAdapter(
                 }
 
                 binding.sourceProgressBar.visibility = View.GONE
+
+                // Compute and display missing chapter count
+                val chapterNumbers = filteredChapters.values
+                    .mapNotNull { MediaNameAdapter.findChapterNumber(it.number) }
+                    .sorted()
+                var missingCount = 0
+                for (i in 1 until chapterNumbers.size) {
+                    val gap = chapterNumbers[i].toInt() - chapterNumbers[i - 1].toInt()
+                    if (gap > 1) missingCount += gap - 1
+                }
+                if (missingCount > 0) {
+                    val missingLabel = if (missingCount == 1)
+                        fragment.getString(R.string.chapter_missing_single)
+                    else
+                        fragment.getString(R.string.chapters_missing, missingCount)
+                    val ssb = SpannableStringBuilder(fragment.getString(R.string.chaps))
+                    ssb.append("\n")
+                    val start = ssb.length
+                    ssb.append(missingLabel)
+                    ssb.setSpan(RelativeSizeSpan(0.68f), start, ssb.length, 0)
+                    binding.sourceTitle.text = ssb
+                } else {
+                    binding.sourceTitle.setText(R.string.chaps)
+                }
 
                 val sourceFound = filteredChapters.isNotEmpty()
                 val isDownloadedSource =

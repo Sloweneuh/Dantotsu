@@ -53,7 +53,6 @@ class AnilistQueries {
     suspend fun getMediaBatch(ids: List<Int>, mal: Boolean = false, mediaType: String? = null): List<Media> {
         if (ids.isEmpty()) return emptyList()
         val idsString = ids.joinToString(",")
-        Logger.log("AnilistQueries.getMediaBatch: requested ids=$idsString mal=$mal")
         val idField = if (mal) "idMal" else "id"
         val fieldClause = "${idField}_in: [$idsString]"
         val typeClause = if (mediaType != null) "type: $mediaType, " else ""
@@ -72,18 +71,15 @@ class AnilistQueries {
         val response = executeQuery<Query.Page>(query, force = true)?.data?.page
         val fetched = response?.media?.map { Media(it) } ?: emptyList()
 
-        Logger.log("AnilistQueries.getMediaBatch: fetched count=${fetched.size} fetched_ids=${fetched.map { it.idMAL ?: it.id }}")
 
         // Preserve ordering according to requested ids: map by id or idMal and then iterate input ids
         return if (mal) {
             val byMal = fetched.filter { it.idMAL != null }.associateBy { it.idMAL!! }
             val ordered = ids.mapNotNull { byMal[it] }
-            Logger.log("AnilistQueries.getMediaBatch: ordered result ids=${ordered.map { it.idMAL ?: it.id }}")
             ordered
         } else {
             val byId = fetched.associateBy { it.id }
             val ordered = ids.mapNotNull { byId[it] }
-            Logger.log("AnilistQueries.getMediaBatch: ordered result ids=${ordered.map { it.idMAL ?: it.id }}")
             ordered
         }
     }

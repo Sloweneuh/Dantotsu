@@ -112,7 +112,6 @@ object MalSyncApi {
 
             // Try with MAL ID first (preferred)
             if (malId != null) {
-                Logger.log("MalSync: Trying MAL ID $malId first")
                 url = "https://api.malsync.moe/nc/mal/manga/$malId/pr"
                 request = Request.Builder()
                     .url(url)
@@ -128,16 +127,13 @@ object MalSyncApi {
 
                 // If MAL ID succeeds and has results, use it
                 if (response.isSuccessful && body != null && body != "[]" && body.isNotEmpty()) {
-                    Logger.log("MalSync: MAL ID $malId succeeded")
                     val type = object : TypeToken<List<MalSyncResponse>>() {}.type
                     val results: List<MalSyncResponse> = gson.fromJson(body, type)
                     return@withContext getProgressForManga(results)
                 }
-                Logger.log("MalSync: MAL ID $malId failed or returned no results, falling back to AniList ID")
             }
 
             // Fallback to Anilist ID
-            Logger.log("MalSync: Trying AniList ID $anilistId")
             url = "https://api.malsync.moe/nc/mal/manga/anilist:$anilistId/pr"
             request = Request.Builder()
                 .url(url)
@@ -157,7 +153,6 @@ object MalSyncApi {
             }
 
             if (body == null || body == "[]" || body.isEmpty()) {
-                Logger.log("MalSync: No results found for Anilist ID $anilistId" + (malId?.let { " or MAL ID $it" } ?: ""))
                 return@withContext null
             }
 
@@ -181,11 +176,9 @@ object MalSyncApi {
         try {
             // Use MAL ID only (as per user requirements)
             if (malId == null) {
-                Logger.log("MalSync: No MAL ID provided for anime $anilistId")
                 return@withContext null
             }
 
-            Logger.log("MalSync: Fetching anime data for MAL ID $malId with preferred language $preferredLanguage")
             val url = "https://api.malsync.moe/nc/mal/anime/$malId/pr"
             val request = Request.Builder()
                 .url(url)
@@ -205,7 +198,6 @@ object MalSyncApi {
             }
 
             if (body == null || body == "[]" || body.isEmpty()) {
-                Logger.log("MalSync: No results found for MAL ID $malId")
                 return@withContext null
             }
 
@@ -231,7 +223,6 @@ object MalSyncApi {
         }
 
         try {
-            Logger.log("MalSync: Fetching available languages for MAL ID $malId")
             val url = "https://api.malsync.moe/nc/mal/anime/$malId/pr"
             val request = Request.Builder()
                 .url(url)
@@ -240,7 +231,6 @@ object MalSyncApi {
             val body = response.body?.string()
 
             if (!response.isSuccessful || body == null || body == "[]" || body.isEmpty()) {
-                Logger.log("MalSync: No results found for MAL ID $malId")
                 return@withContext emptyList()
             }
 
@@ -248,7 +238,6 @@ object MalSyncApi {
             val results: List<MalSyncResponse> = gson.fromJson(body, type)
 
             val languages = results.map { it.id }.distinct()
-            Logger.log("MalSync: Available languages for MAL ID $malId: $languages")
             return@withContext languages
         } catch (e: Exception) {
             Logger.log("Error fetching available languages: ${e.message}")
@@ -267,7 +256,6 @@ object MalSyncApi {
         }
 
         try {
-            Logger.log("MalSync: Fetching available languages with episodes for MAL ID $malId")
             val url = "https://api.malsync.moe/nc/mal/anime/$malId/pr"
             val request = Request.Builder()
                 .url(url)
@@ -276,14 +264,12 @@ object MalSyncApi {
             val body = response.body?.string()
 
             if (!response.isSuccessful || body == null || body == "[]" || body.isEmpty()) {
-                Logger.log("MalSync: No results found for MAL ID $malId")
                 return@withContext emptyList()
             }
 
             val type = object : TypeToken<List<MalSyncResponse>>() {}.type
             val results: List<MalSyncResponse> = gson.fromJson(body, type)
 
-            Logger.log("MalSync: Found ${results.size} language options for MAL ID $malId")
             return@withContext results
         } catch (e: Exception) {
             Logger.log("Error fetching available languages with episodes: ${e.message}")
@@ -321,13 +307,9 @@ object MalSyncApi {
     private fun getProgressForAnime(results: List<MalSyncResponse>, preferredLanguage: String): MalSyncResponse? {
         if (results.isEmpty()) return null
 
-        Logger.log("MalSync: Selecting anime progress from ${results.size} entries with preferred language $preferredLanguage")
-        Logger.log("MalSync: Available IDs: ${results.map { it.id }}")
-
         // Primary: Look for exact match with preferred language
         var top = results.firstOrNull { it.id == preferredLanguage }
         if (top != null) {
-            Logger.log("MalSync: Found exact match for $preferredLanguage")
             return top
         }
 
@@ -335,7 +317,6 @@ object MalSyncApi {
         if (preferredLanguage == "en/dub") {
             top = results.firstOrNull { it.id == "en/sub" }
             if (top != null) {
-                Logger.log("MalSync: Fallback to en/sub from en/dub")
                 return top
             }
         }
@@ -343,12 +324,10 @@ object MalSyncApi {
         // Fallback 2: Try any entry with lang "en"
         top = results.firstOrNull { it.lang == "en" }
         if (top != null) {
-            Logger.log("MalSync: Fallback to any English language entry: ${top.id}")
             return top
         }
 
         // Fallback 3: Return first available entry
-        Logger.log("MalSync: Using first available entry: ${results.first().id}")
         return results.first()
     }
 
@@ -418,7 +397,6 @@ object MalSyncApi {
                     put("malids", jsonArray)
                 }.toString()
 
-                Logger.log("MalSync batch request: $jsonBody")
 
                 val requestBody = jsonBody.toRequestBody("application/json".toMediaType())
                 val request = Request.Builder()
@@ -449,7 +427,6 @@ object MalSyncApi {
                     return@forEachIndexed
                 }
 
-                Logger.log("MalSync batch response (first 500 chars): ${body.take(500)}")
 
                 try {
                     // The batch POST endpoint returns an array of result objects
@@ -457,7 +434,6 @@ object MalSyncApi {
                     val type = object : TypeToken<List<BatchProgressResult>>() {}.type
                     val batchResults: List<BatchProgressResult> = gson.fromJson(body, type)
 
-                    Logger.log("Parsed ${batchResults.size} results from batch")
 
                     // Process each manga's results
                     batchResults.forEach { result ->
@@ -470,7 +446,6 @@ object MalSyncApi {
                     }
                 } catch (parseError: Exception) {
                     Logger.log("Error parsing batch response: ${parseError.message}")
-                    Logger.log("Response body: $body")
                 }
 
                 // Notify progress after batch completes
@@ -553,7 +528,6 @@ object MalSyncApi {
                     put("malids", jsonArray)
                 }.toString()
 
-                Logger.log("MalSync batch anime request: $jsonBody")
 
                 val requestBody = jsonBody.toRequestBody("application/json".toMediaType())
                 val request = Request.Builder()
@@ -580,13 +554,11 @@ object MalSyncApi {
                     return@forEach
                 }
 
-                Logger.log("MalSync batch anime response (first 500 chars): ${body.take(500)}")
 
                 try {
                     val type = object : TypeToken<List<BatchProgressResult>>() {}.type
                     val batchResults: List<BatchProgressResult> = gson.fromJson(body, type)
 
-                    Logger.log("Parsed ${batchResults.size} anime results from batch")
 
                     // Process each anime's results with language preference
                     batchResults.forEach { result ->
@@ -639,7 +611,6 @@ object MalSyncApi {
 
             // If MAL request failed or returned empty and malId was provided, fallback to AniList endpoint
             if ((!response.isSuccessful || body == null || body.isEmpty()) && malId != null) {
-                Logger.log("MalSync quicklinks: MAL id $malId failed, trying AniList id $anilistId")
                 url = "https://api.malsync.moe/mal/$typeSegment/anilist:$anilistId"
                 request = Request.Builder().url(url).build()
                 response = executeRequest(request)
@@ -658,7 +629,6 @@ object MalSyncApi {
             }
 
             if (body == null || body.isEmpty() || body == "{}") {
-                Logger.log("MalSync quicklinks: empty response for Anilist $anilistId" + (malId?.let { " or MAL $it" } ?: ""))
                 return@withContext null
             }
 

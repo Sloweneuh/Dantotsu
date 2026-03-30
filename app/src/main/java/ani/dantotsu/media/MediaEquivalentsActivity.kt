@@ -129,7 +129,6 @@ class MediaEquivalentsActivity : AppCompatActivity() {
                         }
                         Logger.log("MediaEquivalents: tried pref key=$k -> ${if (savedSlug.isNullOrBlank()) "<null>" else savedSlug}")
                         if (!savedSlug.isNullOrBlank()) {
-                            Logger.log("MediaEquivalents: using saved slug from key=$k -> $savedSlug")
                             break
                         }
                     }

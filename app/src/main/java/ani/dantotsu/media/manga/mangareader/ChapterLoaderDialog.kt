@@ -89,7 +89,7 @@ class ChapterLoaderDialog : BottomSheetDialogFragment() {
                         val activity = currActivity()
                         activity?.runOnUiThread {
                             tryWith { dismiss() }
-                            if (launch) {
+                                if (launch) {
                                 MediaSingleton.media = m
                                 val intent = Intent(
                                     activity,
