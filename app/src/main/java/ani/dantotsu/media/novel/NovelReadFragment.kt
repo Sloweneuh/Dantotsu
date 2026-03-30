@@ -126,8 +126,8 @@ class NovelReadFragment : Fragment(),
                 val intent = Intent(context, NovelReaderActivity::class.java).apply {
                     action = Intent.ACTION_VIEW
                     setDataAndType(fileUri, "application/epub+zip")
-                    // grant read permission and open in a new task so it appears full-screen
-                    flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK
+                    // grant read permission; do not force a new task (avoid separate window)
+                    flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
                 }
                 startActivity(intent)
                 return true

@@ -261,9 +261,7 @@
             android:name=".media.manga.mangareader.MangaReaderActivity"
             android:excludeFromRecents="true"
             android:exported="true"
-            android:label="@string/manga"
-            android:launchMode="standard"
-            android:taskAffinity="ani.dantotsu.mangareader" />
+            android:label="@string/manga" />
         <activity android:name=".media.GenreActivity" />
         <activity
             android:name=".media.MediaListViewActivity"

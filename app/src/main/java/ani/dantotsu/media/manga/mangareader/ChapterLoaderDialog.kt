@@ -95,8 +95,6 @@ class ChapterLoaderDialog : BottomSheetDialogFragment() {
                                     activity,
                                     MangaReaderActivity::class.java
                                 )//.apply { putExtra("media", m) }
-                                // Ensure reader opens in a new task (full screen) when coming from PiP
-                                intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
                                 activity.startActivity(intent)
                             }
                         }

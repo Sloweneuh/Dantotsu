@@ -284,16 +284,14 @@ object AppUpdater {
 
     private fun openApk(context: Context, uri: Uri) {
         try {
-            uri.path?.let {
-                val installIntent = Intent(Intent.ACTION_VIEW).apply {
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                    putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true)
-                    data = uri
-                }
-                context.startActivity(installIntent)
-                // File removal is handled via DownloadManager removal in the download receiver.
+            val installIntent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, "application/vnd.android.package-archive")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true)
             }
+            context.startActivity(installIntent)
+            // File removal is handled via DownloadManager removal in the download receiver.
         } catch (e: Exception) {
             logError(e)
         }
