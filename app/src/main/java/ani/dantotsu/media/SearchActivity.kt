@@ -529,4 +529,10 @@ class SearchActivity : AppCompatActivity() {
         super.onResume()
         binding.searchRecyclerView.layoutManager?.onRestoreInstanceState(state)
     }
+    
+    // Return the current textual content of the header's search bar, or null if blank.
+    fun getHeaderSearchText(): String? {
+        return if (this::headerAdaptor.isInitialized) headerAdaptor.getSearchText() else null
+    }
+
 }

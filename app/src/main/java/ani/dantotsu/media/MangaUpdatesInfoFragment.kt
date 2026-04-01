@@ -1105,7 +1105,8 @@ class MangaUpdatesInfoFragment : Fragment() {
             bind.root.tag = "dynamic_mu_section"
             parent.addView(bind.root)
         }
-        // Recommendations — merge series recommendations and category recommendations, deduplicating by seriesId
+        // Recommendations — resolve all recs in one pass (original logic), then display as two rows
+        val directRecIds = series.recommendations?.mapNotNull { it.seriesId }?.toSet() ?: emptySet()
         val allRecs = buildList<ani.dantotsu.connections.mangaupdates.MURecommendation> {
             series.recommendations?.let { addAll(it) }
             series.category_recommendations?.forEach { cat ->
@@ -1126,7 +1127,8 @@ class MangaUpdatesInfoFragment : Fragment() {
                 val currentAnilistId = media.id
                 val anilistRecommendations = model.getMedia().value?.recommendations
                 val anilistById = anilistRecommendations?.associateBy { it.id } ?: emptyMap()
-                val recommendedMedia = mutableListOf<Media>()
+                val directMedia = mutableListOf<Media>()
+                val categoryMedia = mutableListOf<Media>()
 
                 val recAnilistPairs = mutableListOf<Pair<Int, Int>>()
                 val recMuMedia = mutableMapOf<Int, Media>()
@@ -1220,35 +1222,69 @@ class MangaUpdatesInfoFragment : Fragment() {
                 }
 
                 for (index in indexToMedia.keys.sorted()) {
-                    indexToMedia[index]?.let { recommendedMedia.add(it) }
+                    val m = indexToMedia[index] ?: continue
+                    val recSeriesId = allRecs.getOrNull(index)?.seriesId
+                    if (recSeriesId != null && recSeriesId in directRecIds) {
+                        directMedia.add(m)
+                    } else {
+                        categoryMedia.add(m)
+                    }
                 }
 
-                if (recommendedMedia.isNotEmpty()) {
+                if (directMedia.isNotEmpty() || categoryMedia.isNotEmpty()) {
                     withContext(Dispatchers.Main) {
                         if (_binding == null) return@withContext
-                        ani.dantotsu.databinding.ItemTitleRecyclerBinding.inflate(
-                                LayoutInflater.from(context),
-                                parent,
-                                false
-                        ).apply {
-                            itemTitle.setText(ani.dantotsu.R.string.recommended)
-                            itemRecycler.adapter = MediaAdaptor(0, recommendedMedia, requireActivity())
-                            itemRecycler.layoutManager =
-                                androidx.recyclerview.widget.LinearLayoutManager(
-                                    requireContext(),
-                                    androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL,
+                        if (directMedia.isNotEmpty()) {
+                            ani.dantotsu.databinding.ItemTitleRecyclerBinding.inflate(
+                                    LayoutInflater.from(context),
+                                    parent,
                                     false
-                                )
-                            itemMore.visibility = View.VISIBLE
-                            itemMore.setSafeOnClickListener {
-                                MediaListViewActivity.passedMedia = ArrayList(recommendedMedia)
-                                startActivity(
-                                    Intent(requireContext(), MediaListViewActivity::class.java)
-                                        .putExtra("title", getString(ani.dantotsu.R.string.recommended))
-                                )
+                            ).apply {
+                                itemTitle.setText(ani.dantotsu.R.string.recommended)
+                                itemRecycler.adapter = MediaAdaptor(0, directMedia, requireActivity())
+                                itemRecycler.layoutManager =
+                                    androidx.recyclerview.widget.LinearLayoutManager(
+                                        requireContext(),
+                                        androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL,
+                                        false
+                                    )
+                                itemMore.visibility = View.VISIBLE
+                                itemMore.setSafeOnClickListener {
+                                    MediaListViewActivity.passedMedia = ArrayList(directMedia)
+                                    startActivity(
+                                        Intent(requireContext(), MediaListViewActivity::class.java)
+                                            .putExtra("title", getString(ani.dantotsu.R.string.recommended))
+                                    )
+                                }
+                                root.tag = "dynamic_mu_section"
+                                parent.addView(root)
                             }
-                            root.tag = "dynamic_mu_section"
-                            parent.addView(root)
+                        }
+                        if (categoryMedia.isNotEmpty()) {
+                            ani.dantotsu.databinding.ItemTitleRecyclerBinding.inflate(
+                                    LayoutInflater.from(context),
+                                    parent,
+                                    false
+                            ).apply {
+                                itemTitle.setText(ani.dantotsu.R.string.category_recommendations)
+                                itemRecycler.adapter = MediaAdaptor(0, categoryMedia, requireActivity())
+                                itemRecycler.layoutManager =
+                                    androidx.recyclerview.widget.LinearLayoutManager(
+                                        requireContext(),
+                                        androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL,
+                                        false
+                                    )
+                                itemMore.visibility = View.VISIBLE
+                                itemMore.setSafeOnClickListener {
+                                    MediaListViewActivity.passedMedia = ArrayList(categoryMedia)
+                                    startActivity(
+                                        Intent(requireContext(), MediaListViewActivity::class.java)
+                                            .putExtra("title", getString(ani.dantotsu.R.string.category_recommendations))
+                                    )
+                                }
+                                root.tag = "dynamic_mu_section"
+                                parent.addView(root)
+                            }
                         }
                     }
                 }

@@ -98,22 +98,42 @@ class SupportingSearchAdapter(private val activity: SearchActivity, private val 
         when (type) {
             SearchType.CHARACTER -> {
                 binding.searchBarText.setText(activity.characterResult.search)
+                binding.searchBarText.setSelection(binding.searchBarText.text.length)
+                binding.searchBarText.clearFocus()
+                binding.root.requestFocus()
+                imm.hideSoftInputFromWindow(binding.searchBarText.windowToken, 0)
             }
 
             SearchType.STUDIO -> {
                 binding.searchBarText.setText(activity.studioResult.search)
+                binding.searchBarText.setSelection(binding.searchBarText.text.length)
+                binding.searchBarText.clearFocus()
+                binding.root.requestFocus()
+                imm.hideSoftInputFromWindow(binding.searchBarText.windowToken, 0)
             }
 
             SearchType.STAFF -> {
                 binding.searchBarText.setText(activity.staffResult.search)
+                binding.searchBarText.setSelection(binding.searchBarText.text.length)
+                binding.searchBarText.clearFocus()
+                binding.root.requestFocus()
+                imm.hideSoftInputFromWindow(binding.searchBarText.windowToken, 0)
             }
 
             SearchType.USER -> {
                 binding.searchBarText.setText(activity.userResult.search)
+                binding.searchBarText.setSelection(binding.searchBarText.text.length)
+                binding.searchBarText.clearFocus()
+                binding.root.requestFocus()
+                imm.hideSoftInputFromWindow(binding.searchBarText.windowToken, 0)
             }
 
             SearchType.MANGAUPDATES -> {
                 binding.searchBarText.setText(activity.muSearchResult.search)
+                binding.searchBarText.setSelection(binding.searchBarText.text.length)
+                binding.searchBarText.clearFocus()
+                binding.root.requestFocus()
+                imm.hideSoftInputFromWindow(binding.searchBarText.windowToken, 0)
             }
 
             else -> throw IllegalArgumentException("Invalid search type")

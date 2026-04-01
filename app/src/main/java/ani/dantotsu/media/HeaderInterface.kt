@@ -68,6 +68,11 @@ abstract class HeaderInterface : RecyclerView.Adapter<HeaderInterface.SearchHead
         ) searchHistoryAdapter.add(binding.searchBarText.text.toString())
     }
 
+    // Return the current textual content of the header's search bar, or null if blank.
+    fun getSearchText(): String? {
+        return binding.searchBarText.text.toString().takeIf { it.isNotBlank() }
+    }
+
     inner class SearchHeaderViewHolder(val binding: ItemSearchHeaderBinding) :
         RecyclerView.ViewHolder(binding.root)
 

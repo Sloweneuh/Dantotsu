@@ -79,100 +79,15 @@ class SearchBottomSheet : BottomSheetDialogFragment() {
     private fun startActivity(context: Context, type: SearchType, query: String?) {
         val intent = Intent(context, SearchActivity::class.java).putExtra("type", type.toAnilistString())
         if (!query.isNullOrBlank()) intent.putExtra("query", query)
-        // If opened from an existing SearchActivity, copy compatible filters
+        // If opened from an existing SearchActivity, only copy the current textual search
         val src = activity as? SearchActivity
         if (src != null) {
-            when (type) {
-                SearchType.ANIME, SearchType.MANGA -> {
-                    when (src.searchType) {
-                        SearchType.ANIME, SearchType.MANGA -> {
-                            src.aniMangaResult.search?.let { if (intent.getStringExtra("query") == null) intent.putExtra("query", it) }
-                            src.aniMangaResult.genres?.takeIf { it.isNotEmpty() }?.let {
-                                intent.putStringArrayListExtra("genres", ArrayList(it))
-                                intent.putExtra("genre", it.first())
-                            }
-                            src.aniMangaResult.tags?.takeIf { it.isNotEmpty() }?.let {
-                                intent.putStringArrayListExtra("tags", ArrayList(it))
-                                intent.putExtra("tag", it.first())
-                            }
-                            src.aniMangaResult.sort?.let { intent.putExtra("sortBy", it) }
-                            src.aniMangaResult.status?.let { intent.putExtra("status", it) }
-                            src.aniMangaResult.source?.let { intent.putExtra("source", it) }
-                            src.aniMangaResult.format?.let { intent.putExtra("format", it) }
-                            src.aniMangaResult.countryOfOrigin?.let { intent.putExtra("country", it) }
-                            src.aniMangaResult.season?.let { intent.putExtra("season", it) }
-                            src.aniMangaResult.seasonYear?.let { intent.putExtra("seasonYear", it.toString()) }
-                            src.aniMangaResult.startYear?.let { intent.putExtra("seasonYear", it.toString()) }
-                            if (src.aniMangaResult.onList == true) intent.putExtra("listOnly", true)
-                            if (src.aniMangaResult.isAdult) intent.putExtra("hentai", true)
-                        }
-                        SearchType.MANGAUPDATES -> {
-                            src.muSearchResult.search?.let { if (intent.getStringExtra("query") == null) intent.putExtra("query", it) }
-                            src.muSearchResult.genres?.takeIf { it.isNotEmpty() }?.let {
-                                intent.putStringArrayListExtra("genres", ArrayList(it))
-                                intent.putExtra("genre", it.first())
-                            }
-                        }
-                        else -> {
-                            // other source types: only forward the search text if present
-                            when (src.searchType) {
-                                SearchType.CHARACTER -> src.characterResult.search?.let { if (intent.getStringExtra("query") == null) intent.putExtra("query", it) }
-                                SearchType.STAFF -> src.staffResult.search?.let { if (intent.getStringExtra("query") == null) intent.putExtra("query", it) }
-                                SearchType.STUDIO -> src.studioResult.search?.let { if (intent.getStringExtra("query") == null) intent.putExtra("query", it) }
-                                SearchType.USER -> src.userResult.search?.let { if (intent.getStringExtra("query") == null) intent.putExtra("query", it) }
-                                else -> {}
-                            }
-                        }
-                    }
-                }
-
-                SearchType.MANGAUPDATES -> {
-                    when (src.searchType) {
-                        SearchType.MANGAUPDATES -> {
-                            src.muSearchResult.search?.let { if (intent.getStringExtra("query") == null) intent.putExtra("query", it) }
-                            src.muSearchResult.genres?.takeIf { it.isNotEmpty() }?.let { intent.putStringArrayListExtra("genres", ArrayList(it)) }
-                            src.muSearchResult.categories?.takeIf { it.isNotEmpty() }?.let { intent.putStringArrayListExtra("categories", ArrayList(it)) }
-                            src.muSearchResult.format?.let { intent.putExtra("format", it) }
-                            src.muSearchResult.year?.let { intent.putExtra("year", it) }
-                        }
-                        SearchType.ANIME, SearchType.MANGA -> {
-                            src.aniMangaResult.search?.let { if (intent.getStringExtra("query") == null) intent.putExtra("query", it) }
-                            src.aniMangaResult.genres?.takeIf { it.isNotEmpty() }?.let {
-                                intent.putStringArrayListExtra("genres", ArrayList(it))
-                                intent.putExtra("genre", it.first())
-                            }
-                            src.aniMangaResult.tags?.takeIf { it.isNotEmpty() }?.let {
-                                intent.putStringArrayListExtra("tags", ArrayList(it))
-                                intent.putExtra("tag", it.first())
-                            }
-                        }
-                        else -> {
-                            // from other types just forward query
-                            when (src.searchType) {
-                                SearchType.CHARACTER -> src.characterResult.search?.let { if (intent.getStringExtra("query") == null) intent.putExtra("query", it) }
-                                SearchType.STAFF -> src.staffResult.search?.let { if (intent.getStringExtra("query") == null) intent.putExtra("query", it) }
-                                SearchType.STUDIO -> src.studioResult.search?.let { if (intent.getStringExtra("query") == null) intent.putExtra("query", it) }
-                                SearchType.USER -> src.userResult.search?.let { if (intent.getStringExtra("query") == null) intent.putExtra("query", it) }
-                                else -> {}
-                            }
-                        }
-                    }
-                }
-
-                else -> {
-                    // target is other search types: forward only query
-                    when (src.searchType) {
-                        SearchType.ANIME, SearchType.MANGA -> src.aniMangaResult.search?.let { if (intent.getStringExtra("query") == null) intent.putExtra("query", it) }
-                        SearchType.MANGAUPDATES -> src.muSearchResult.search?.let { if (intent.getStringExtra("query") == null) intent.putExtra("query", it) }
-                        SearchType.CHARACTER -> src.characterResult.search?.let { if (intent.getStringExtra("query") == null) intent.putExtra("query", it) }
-                        SearchType.STAFF -> src.staffResult.search?.let { if (intent.getStringExtra("query") == null) intent.putExtra("query", it) }
-                        SearchType.STUDIO -> src.studioResult.search?.let { if (intent.getStringExtra("query") == null) intent.putExtra("query", it) }
-                        SearchType.USER -> src.userResult.search?.let { if (intent.getStringExtra("query") == null) intent.putExtra("query", it) }
-                        else -> {}
-                    }
-                }
-            }
+            val srcSearchText = src.getHeaderSearchText()
+            if (!srcSearchText.isNullOrBlank()) intent.putExtra("query", srcSearchText)
         }
+
+        // If a query is present, request the new activity to perform the search immediately
+        if (intent.getStringExtra("query") != null) intent.putExtra("search", true)
 
         ContextCompat.startActivity(context, intent, null)
         // If the bottom sheet was opened from an existing SearchActivity, finish it

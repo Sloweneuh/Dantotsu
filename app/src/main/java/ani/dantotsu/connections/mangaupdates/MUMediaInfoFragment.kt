@@ -26,6 +26,7 @@ import ani.dantotsu.databinding.ItemChipBinding
 import ani.dantotsu.databinding.ItemChipSynonymBinding
 import ani.dantotsu.databinding.ItemTitleChipgroupBinding
 import ani.dantotsu.databinding.ItemTitleChipgroupMultilineBinding
+import ani.dantotsu.databinding.ItemTitleRecyclerBinding
 import ani.dantotsu.databinding.ItemTitleTextBinding
 import ani.dantotsu.media.MediaDetailsViewModel
 import ani.dantotsu.media.SearchActivity
@@ -330,6 +331,68 @@ class MUMediaInfoFragment : Fragment() {
             }
             bind.root.tag = "dynamic_mu_section"
             parent.addView(bind.root)
+        }
+
+        // Direct recommendations
+        val directRecs = series.recommendations
+        if (!directRecs.isNullOrEmpty()) {
+            val items = directRecs.mapNotNull { rec ->
+                val id = rec.seriesId ?: return@mapNotNull null
+                MUMedia(
+                    id = id,
+                    title = rec.seriesName,
+                    url = rec.seriesUrl,
+                    coverUrl = rec.seriesImage?.url?.original ?: rec.seriesImage?.url?.thumb,
+                    listId = -1,
+                    userChapter = null,
+                    userVolume = null,
+                    latestChapter = null,
+                    bayesianRating = null,
+                    priority = null,
+                )
+            }
+            if (items.isNotEmpty()) {
+                val bind = ItemTitleRecyclerBinding.inflate(LayoutInflater.from(context), parent, false)
+                bind.itemTitle.setText(R.string.recommended)
+                bind.itemRecycler.adapter = MUMediaAdapter(items)
+                bind.itemRecycler.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(
+                    requireContext(), androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL, false
+                )
+                bind.itemMore.visibility = View.GONE
+                bind.root.tag = "dynamic_mu_section"
+                parent.addView(bind.root)
+            }
+        }
+
+        // Category recommendations
+        val categoryRecs = series.category_recommendations
+        if (!categoryRecs.isNullOrEmpty()) {
+            val items = categoryRecs.mapNotNull { rec ->
+                val id = rec.seriesId ?: return@mapNotNull null
+                MUMedia(
+                    id = id,
+                    title = rec.seriesName,
+                    url = rec.seriesUrl,
+                    coverUrl = rec.seriesImage?.url?.original ?: rec.seriesImage?.url?.thumb,
+                    listId = -1,
+                    userChapter = null,
+                    userVolume = null,
+                    latestChapter = null,
+                    bayesianRating = null,
+                    priority = null,
+                )
+            }
+            if (items.isNotEmpty()) {
+                val bind = ItemTitleRecyclerBinding.inflate(LayoutInflater.from(context), parent, false)
+                bind.itemTitle.setText(R.string.category_recommendations)
+                bind.itemRecycler.adapter = MUMediaAdapter(items)
+                bind.itemRecycler.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(
+                    requireContext(), androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL, false
+                )
+                bind.itemMore.visibility = View.GONE
+                bind.root.tag = "dynamic_mu_section"
+                parent.addView(bind.root)
+            }
         }
     }
 
