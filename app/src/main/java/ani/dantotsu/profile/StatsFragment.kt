@@ -52,6 +52,12 @@ class StatsFragment :
         activity = requireActivity() as ProfileActivity
 
         user = arguments?.getSerializableCompat<Query.UserProfile>("user") as Query.UserProfile
+        arguments?.getString("mediaType")?.let { name ->
+            MediaType.entries.find { it.name == name }?.let { type = it }
+        }
+        arguments?.getString("statType")?.let { name ->
+            StatType.entries.find { it.name == name }?.let { statType = it }
+        }
 
         binding.statisticList.setBaseline(activity.navBar)
 
@@ -66,20 +72,16 @@ class StatsFragment :
             topMargin = statusBarHeight
         }
 
+        val mediaTypeLabels = MediaType.entries.map { it.name.uppercase(Locale.ROOT).replace("_", " ") }
+        val statTypeLabels = StatType.entries.map { it.name.uppercase(Locale.ROOT).replace("_", " ") }
         binding.sourceType.setAdapter(
-            ArrayAdapter(
-                requireContext(),
-                R.layout.item_dropdown,
-                MediaType.entries.map { it.name.uppercase(Locale.ROOT).replace("_", " ") }
-            )
+            ArrayAdapter(requireContext(), R.layout.item_dropdown, mediaTypeLabels)
         )
         binding.sourceFilter.setAdapter(
-            ArrayAdapter(
-                requireContext(),
-                R.layout.item_dropdown,
-                StatType.entries.map { it.name.uppercase(Locale.ROOT).replace("_", " ") }
-            )
+            ArrayAdapter(requireContext(), R.layout.item_dropdown, statTypeLabels)
         )
+        binding.sourceType.setText(mediaTypeLabels[type.ordinal], false)
+        binding.sourceFilter.setText(statTypeLabels[statType.ordinal], false)
 
         binding.compare.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
@@ -763,9 +765,15 @@ class StatsFragment :
     }
 
     companion object {
-        fun newInstance(user: Query.UserProfile): StatsFragment {
+        fun newInstance(
+            user: Query.UserProfile,
+            mediaType: MediaType? = null,
+            statType: StatType? = null
+        ): StatsFragment {
             val args = Bundle().apply {
                 putSerializable("user", user)
+                mediaType?.let { putString("mediaType", it.name) }
+                statType?.let { putString("statType", it.name) }
             }
             return StatsFragment().apply {
                 arguments = args

@@ -89,6 +89,21 @@ class SearchAdapter(private val activity: SearchActivity, private val type: Sear
             binding.searchBar.startIconDrawable = startIconDrawable
         }
 
+        // Back button
+        binding.searchBack.setOnClickListener { activity.finish() }
+
+        // Quick type switch popup
+        // Type icon on the left of the search bar
+        binding.searchTypeIcon.setImageResource(getIconForType(activity.searchType))
+        binding.searchTypeIcon.setOnClickListener {
+            val query = binding.searchBarText.text.toString().takeIf { it.isNotBlank() }
+            ani.dantotsu.home.SearchBottomSheet.newInstance(query)
+                .show(activity.supportFragmentManager, "search_type")
+        }
+
+
+    
+
         binding.searchChipRecycler.adapter = SearchChipAdapter(activity, this).also {
             activity.updateChips = { it.update() }
         }
@@ -234,6 +249,19 @@ class SearchAdapter(private val activity: SearchActivity, private val type: Sear
 
         search = Runnable { searchTitle() }
         requestFocus = Runnable { binding.searchBarText.requestFocus() }
+    }
+
+    private fun getIconForType(type: SearchType): Int {
+        return when (type) {
+            SearchType.ANIME -> R.drawable.ic_round_movie_filter_24
+            SearchType.MANGA -> R.drawable.ic_round_menu_book_24
+            SearchType.USER -> R.drawable.ic_round_person_24
+            SearchType.CHARACTER -> R.drawable.ic_round_face_24
+            SearchType.STAFF -> R.drawable.ic_round_group_24
+            SearchType.STUDIO -> R.drawable.ic_round_movie_edit_24
+            SearchType.MANGAUPDATES -> R.drawable.ic_round_mangaupdates_24
+            else -> R.drawable.ic_round_search_24
+        }
     }
 
     class SearchChipAdapter(

@@ -31,6 +31,7 @@ import ani.dantotsu.media.user.ListActivity
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.openImage
 import ani.dantotsu.openLinkInBrowser
+import ani.dantotsu.profile.ChartBuilder
 import ani.dantotsu.profile.activity.ActivityFragment
 import ani.dantotsu.profile.activity.ActivityFragment.Companion.ActivityType
 import ani.dantotsu.settings.saving.PrefManager
@@ -51,6 +52,8 @@ class ProfileActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedListene
     lateinit var binding: ActivityProfileBinding
     private lateinit var bindingProfileAppBar: ItemProfileAppBarBinding
     private var selected: Int = 0
+    private var statsMediaType: ChartBuilder.Companion.MediaType? = null
+    private var statsStatType: ChartBuilder.Companion.StatType? = null
     lateinit var navBar: AnimatedBottomBar
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -72,6 +75,14 @@ class ProfileActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedListene
             rightMargin = navBarRightMargin
             bottomMargin = navBarBottomMargin
         }
+        selected = intent.getIntExtra("selectedTab", 0)
+        intent.getStringExtra("statsMediaType")?.let { name ->
+            statsMediaType = ChartBuilder.Companion.MediaType.entries.find { it.name == name }
+        }
+        intent.getStringExtra("statsStatType")?.let { name ->
+            statsStatType = ChartBuilder.Companion.StatType.entries.find { it.name == name }
+        }
+
         val feedTab = navBar.createTab(R.drawable.ic_round_filter_24, "Feed")
         val profileTab = navBar.createTab(R.drawable.ic_round_person_24, "Profile")
         val statsTab = navBar.createTab(R.drawable.ic_stats_24, "Stats")
@@ -329,7 +340,7 @@ class ProfileActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedListene
         super.onResume()
     }
 
-    private class ViewPagerAdapter(
+    private inner class ViewPagerAdapter(
         fragmentManager: FragmentManager,
         lifecycle: Lifecycle,
         private val user: Query.UserProfile
@@ -340,7 +351,7 @@ class ProfileActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedListene
         override fun createFragment(position: Int): Fragment = when (position) {
             0 -> ProfileFragment.newInstance(user)
             1 -> ActivityFragment.newInstance(ActivityType.OTHER_USER, user.id)
-            2 -> StatsFragment.newInstance(user)
+            2 -> StatsFragment.newInstance(user, statsMediaType, statsStatType)
             else -> ProfileFragment.newInstance(user)
         }
     }

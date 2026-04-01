@@ -42,7 +42,9 @@ import ani.dantotsu.media.MediaAdaptor
 import ani.dantotsu.media.MediaListViewActivity
 import ani.dantotsu.media.user.ListActivity
 import ani.dantotsu.navBarHeight
+import ani.dantotsu.profile.ChartBuilder
 import ani.dantotsu.profile.ProfileActivity
+import ani.dantotsu.util.customAlertDialog
 import ani.dantotsu.setSafeOnClickListener
 import ani.dantotsu.setSlideIn
 import ani.dantotsu.setSlideUp
@@ -160,6 +162,41 @@ class HomeFragment : Fragment() {
         _binding = null
     }
 
+    private fun showHomeStatsPopup() {
+        val statOptions = arrayOf(
+            getString(R.string.none),
+            getString(R.string.episodes_watched),
+            getString(R.string.chapters_read),
+            getString(R.string.anime_count),
+            getString(R.string.days_watched),
+            getString(R.string.manga_count),
+            getString(R.string.volumes_read),
+            getString(R.string.anime_mean_score),
+            getString(R.string.manga_mean_score),
+        )
+        val dialogView = layoutInflater.inflate(R.layout.dialog_home_stats, null)
+        val dropdown1 = dialogView.findViewById<android.widget.AutoCompleteTextView>(R.id.homeStat1Dropdown)
+        val dropdown2 = dialogView.findViewById<android.widget.AutoCompleteTextView>(R.id.homeStat2Dropdown)
+        val adapter = android.widget.ArrayAdapter(requireContext(), R.layout.item_dropdown, statOptions)
+        dropdown1.setAdapter(adapter)
+        dropdown2.setAdapter(adapter)
+        dropdown1.setText(statOptions[PrefManager.getVal<Int>(PrefName.HomeStat1)], false)
+        dropdown2.setText(statOptions[PrefManager.getVal<Int>(PrefName.HomeStat2)], false)
+        requireContext().customAlertDialog().apply {
+            setTitle(getString(R.string.home_stats_select))
+            setCustomView(dialogView)
+            setPosButton(R.string.ok) {
+                val sel1 = statOptions.indexOf(dropdown1.text.toString())
+                val sel2 = statOptions.indexOf(dropdown2.text.toString())
+                if (sel1 >= 0) PrefManager.setVal(PrefName.HomeStat1, sel1)
+                if (sel2 >= 0) PrefManager.setVal(PrefName.HomeStat2, sel2)
+                Refresh.activity[1]?.postValue(true)
+            }
+            setNegButton(R.string.cancel)
+            show()
+        }
+    }
+
     val model: AnilistHomeViewModel by activityViewModels()
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -189,10 +226,42 @@ class HomeFragment : Fragment() {
                 val stat2 = PrefManager.getVal<Int>(PrefName.HomeStat2)
                 val result1 = getStatLabelAndValue(stat1)
                 val result2 = getStatLabelAndValue(stat2)
+                fun statIndexToProfileArgs(statIndex: Int): Pair<ChartBuilder.Companion.MediaType, ChartBuilder.Companion.StatType>? {
+                    return when (statIndex) {
+                        1 -> ChartBuilder.Companion.MediaType.ANIME to ChartBuilder.Companion.StatType.TIME
+                        2 -> ChartBuilder.Companion.MediaType.MANGA to ChartBuilder.Companion.StatType.TIME
+                        3 -> ChartBuilder.Companion.MediaType.ANIME to ChartBuilder.Companion.StatType.COUNT
+                        4 -> ChartBuilder.Companion.MediaType.ANIME to ChartBuilder.Companion.StatType.TIME
+                        5 -> ChartBuilder.Companion.MediaType.MANGA to ChartBuilder.Companion.StatType.COUNT
+                        6 -> ChartBuilder.Companion.MediaType.MANGA to ChartBuilder.Companion.StatType.COUNT
+                        7 -> ChartBuilder.Companion.MediaType.ANIME to ChartBuilder.Companion.StatType.AVG_SCORE
+                        8 -> ChartBuilder.Companion.MediaType.MANGA to ChartBuilder.Companion.StatType.AVG_SCORE
+                        else -> null
+                    }
+                }
                 if (result1 != null) {
                     binding.homeUserStat1Row.visibility = View.VISIBLE
                     binding.homeUserStat1Label.text = result1.first
                     binding.homeUserStat1Value.text = result1.second
+                    val args1 = statIndexToProfileArgs(stat1)
+                    binding.homeUserStat1Value.setOnClickListener {
+                        if (args1 != null) {
+                            ContextCompat.startActivity(
+                                requireContext(),
+                                Intent(requireContext(), ProfileActivity::class.java)
+                                    .putExtra("userId", Anilist.userid)
+                                    .putExtra("selectedTab", 2)
+                                    .putExtra("statsMediaType", args1.first.name)
+                                    .putExtra("statsStatType", args1.second.name),
+                                null
+                            )
+                        }
+                    }
+                    binding.homeUserStat1Value.setOnLongClickListener {
+                        it.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                        showHomeStatsPopup()
+                        true
+                    }
                 } else {
                     binding.homeUserStat1Row.visibility = View.GONE
                 }
@@ -200,6 +269,25 @@ class HomeFragment : Fragment() {
                     binding.homeUserStat2Row.visibility = View.VISIBLE
                     binding.homeUserStat2Label.text = result2.first
                     binding.homeUserStat2Value.text = result2.second
+                    val args2 = statIndexToProfileArgs(stat2)
+                    binding.homeUserStat2Value.setOnClickListener {
+                        if (args2 != null) {
+                            ContextCompat.startActivity(
+                                requireContext(),
+                                Intent(requireContext(), ProfileActivity::class.java)
+                                    .putExtra("userId", Anilist.userid)
+                                    .putExtra("selectedTab", 2)
+                                    .putExtra("statsMediaType", args2.first.name)
+                                    .putExtra("statsStatType", args2.second.name),
+                                null
+                            )
+                        }
+                    }
+                    binding.homeUserStat2Value.setOnLongClickListener {
+                        it.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                        showHomeStatsPopup()
+                        true
+                    }
                 } else {
                     binding.homeUserStat2Row.visibility = View.GONE
                 }

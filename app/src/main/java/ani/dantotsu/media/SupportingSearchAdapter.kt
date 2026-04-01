@@ -1,6 +1,7 @@
 package ani.dantotsu.media
 
 import android.annotation.SuppressLint
+import android.widget.PopupMenu
 import android.graphics.drawable.Drawable
 import android.text.Editable
 import android.text.TextWatcher
@@ -77,6 +78,21 @@ class SupportingSearchAdapter(private val activity: SearchActivity, private val 
                 context?.let { AppCompatResources.getDrawable(it, startIconDrawableRes) }
             binding.searchBar.startIconDrawable = startIconDrawable
         }
+
+        // Back button
+        binding.searchBack.setOnClickListener { activity.finish() }
+
+        // Quick type switch popup (icon only)
+        // Type icon on the left of the search bar for supporting types
+        binding.searchTypeIcon.setImageResource(getIconForType(activity.searchType))
+        binding.searchTypeIcon.setOnClickListener {
+            val query = binding.searchBarText.text.toString().takeIf { it.isNotBlank() }
+            ani.dantotsu.home.SearchBottomSheet.newInstance(query)
+                .show(activity.supportFragmentManager, "search_type")
+        }
+
+
+    
 
         binding.searchBarText.removeTextChangedListener(textWatcher)
         when (type) {
@@ -163,6 +179,19 @@ class SupportingSearchAdapter(private val activity: SearchActivity, private val 
 
         search = Runnable { searchTitle() }
         requestFocus = Runnable { binding.searchBarText.requestFocus() }
+    }
+
+    private fun getIconForType(type: SearchType): Int {
+        return when (type) {
+            SearchType.ANIME -> R.drawable.ic_round_movie_filter_24
+            SearchType.MANGA -> R.drawable.ic_round_menu_book_24
+            SearchType.USER -> R.drawable.ic_round_person_24
+            SearchType.CHARACTER -> R.drawable.ic_round_face_24
+            SearchType.STAFF -> R.drawable.ic_round_group_24
+            SearchType.STUDIO -> R.drawable.ic_round_movie_edit_24
+            SearchType.MANGAUPDATES -> R.drawable.ic_round_mangaupdates_24
+            else -> R.drawable.ic_round_search_24
+        }
     }
 
     /**
