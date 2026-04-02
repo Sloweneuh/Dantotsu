@@ -60,6 +60,24 @@
                     android:textSize="26sp" />
             </LinearLayout>
 
+            <com.google.android.material.tabs.TabLayout
+                android:id="@+id/listFilterProviderTabs"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"
+                android:layout_marginBottom="8dp"
+                android:visibility="gone"
+                app:tabIndicatorFullWidth="false"
+                app:tabMode="fixed"
+                app:tabRippleColor="@android:color/transparent" />
+
+            <LinearLayout
+                android:id="@+id/listFilterAnilistSection"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
@@ -186,39 +204,6 @@
 
                     <AutoCompleteTextView
                         android:id="@+id/listFilterSeason"
-                        android:layout_width="match_parent"
-                        android:layout_height="48dp"
-                        android:layout_weight="1"
-                        android:fontFamily="@font/poppins_bold"
-                        android:freezesText="false"
-                        android:inputType="none"
-                        android:padding="8dp"
-                        android:singleLine="true"
-                        android:textAllCaps="true"
-                        android:textColor="?android:attr/textColorSecondary"
-                        android:textSize="14sp"
-                        tools:ignore="LabelFor,TextContrastCheck,DuplicateSpeakableTextCheck" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/listFilterTrackerCont"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:layout_marginStart="8dp"
-                    android:layout_marginEnd="8dp"
-                    android:layout_weight="1"
-                    android:hint="@string/tracker"
-                    android:visibility="gone"
-                    app:boxCornerRadiusBottomEnd="16dp"
-                    app:boxCornerRadiusBottomStart="16dp"
-                    app:boxCornerRadiusTopEnd="16dp"
-                    app:boxCornerRadiusTopStart="16dp"
-                    app:boxStrokeColor="@color/text_input_layout_stroke_color"
-                    app:hintAnimationEnabled="true">
-
-                    <AutoCompleteTextView
-                        android:id="@+id/listFilterTracker"
                         android:layout_width="match_parent"
                         android:layout_height="48dp"
                         android:layout_weight="1"
@@ -413,6 +398,290 @@
                 android:layout_height="1dp"
                 android:layout_marginTop="16dp"
                 android:background="?android:attr/listDivider" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/listFilterMuSection"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_margin="8dp"
+                    android:baselineAligned="false"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_marginStart="8dp"
+                        android:layout_marginEnd="8dp"
+                        android:layout_weight="1"
+                        android:hint="@string/format"
+                        app:boxCornerRadiusBottomEnd="16dp"
+                        app:boxCornerRadiusBottomStart="16dp"
+                        app:boxCornerRadiusTopEnd="16dp"
+                        app:boxCornerRadiusTopStart="16dp"
+                        app:boxStrokeColor="@color/text_input_layout_stroke_color"
+                        app:hintAnimationEnabled="true">
+
+                        <AutoCompleteTextView
+                            android:id="@+id/listMuFilterFormat"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:fontFamily="@font/poppins_bold"
+                            android:freezesText="false"
+                            android:inputType="none"
+                            android:padding="8dp"
+                            android:singleLine="true"
+                            android:textColor="?android:attr/textColorSecondary"
+                            android:textSize="14sp"
+                            tools:ignore="LabelFor,TextContrastCheck,DuplicateSpeakableTextCheck" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_marginStart="8dp"
+                        android:layout_marginEnd="8dp"
+                        android:layout_weight="1"
+                        android:hint="@string/year"
+                        app:boxCornerRadiusBottomEnd="16dp"
+                        app:boxCornerRadiusBottomStart="16dp"
+                        app:boxCornerRadiusTopEnd="16dp"
+                        app:boxCornerRadiusTopStart="16dp"
+                        app:boxStrokeColor="@color/text_input_layout_stroke_color"
+                        app:hintAnimationEnabled="true">
+
+                        <AutoCompleteTextView
+                            android:id="@+id/listMuFilterYear"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:fontFamily="@font/poppins_bold"
+                            android:freezesText="false"
+                            android:inputType="none"
+                            android:padding="8dp"
+                            android:singleLine="true"
+                            android:textColor="?android:attr/textColorSecondary"
+                            android:textSize="14sp"
+                            tools:ignore="LabelFor,TextContrastCheck,DuplicateSpeakableTextCheck" />
+                    </com.google.android.material.textfield.TextInputLayout>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_margin="8dp"
+                    android:baselineAligned="false"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_marginStart="8dp"
+                        android:layout_marginEnd="8dp"
+                        android:layout_weight="1"
+                        android:hint="@string/mu_filter_licensed"
+                        app:boxCornerRadiusBottomEnd="16dp"
+                        app:boxCornerRadiusBottomStart="16dp"
+                        app:boxCornerRadiusTopEnd="16dp"
+                        app:boxCornerRadiusTopStart="16dp"
+                        app:boxStrokeColor="@color/text_input_layout_stroke_color"
+                        app:hintAnimationEnabled="true">
+
+                        <AutoCompleteTextView
+                            android:id="@+id/listMuFilterLicensed"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:fontFamily="@font/poppins_bold"
+                            android:freezesText="false"
+                            android:inputType="none"
+                            android:padding="8dp"
+                            android:singleLine="true"
+                            android:textColor="?android:attr/textColorSecondary"
+                            android:textSize="14sp"
+                            tools:ignore="LabelFor,TextContrastCheck,DuplicateSpeakableTextCheck" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.textfield.TextInputLayout
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:layout_marginStart="8dp"
+                        android:layout_marginEnd="8dp"
+                        android:layout_weight="1"
+                        android:hint="@string/mu_filter_sort"
+                        app:boxCornerRadiusBottomEnd="16dp"
+                        app:boxCornerRadiusBottomStart="16dp"
+                        app:boxCornerRadiusTopEnd="16dp"
+                        app:boxCornerRadiusTopStart="16dp"
+                        app:boxStrokeColor="@color/text_input_layout_stroke_color"
+                        app:hintAnimationEnabled="true">
+
+                        <AutoCompleteTextView
+                            android:id="@+id/listMuFilterSort"
+                            android:layout_width="match_parent"
+                            android:layout_height="48dp"
+                            android:fontFamily="@font/poppins_bold"
+                            android:freezesText="false"
+                            android:inputType="none"
+                            android:padding="8dp"
+                            android:singleLine="true"
+                            android:textColor="?android:attr/textColorSecondary"
+                            android:textSize="14sp"
+                            tools:ignore="LabelFor,TextContrastCheck,DuplicateSpeakableTextCheck" />
+                    </com.google.android.material.textfield.TextInputLayout>
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="32dp"
+                    android:layout_marginTop="4dp"
+                    android:layout_marginEnd="32dp"
+                    android:fontFamily="@font/poppins_bold"
+                    android:text="@string/mu_filter_status_filters"
+                    android:textSize="16sp" />
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/listMuFilterStatusRecycler"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:clipToPadding="false"
+                    android:orientation="horizontal"
+                    android:paddingStart="16dp"
+                    android:paddingTop="4dp"
+                    android:paddingEnd="16dp"
+                    android:paddingBottom="4dp"
+                    app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="32dp"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginEnd="32dp"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:fontFamily="@font/poppins_bold"
+                        android:text="@string/genres"
+                        android:textSize="16sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="10dp"
+                        android:fontFamily="@font/poppins_semi_bold"
+                        android:text="@string/grid" />
+
+                    <com.google.android.material.materialswitch.MaterialSwitch
+                        android:id="@+id/listMuFilterGenresGrid"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content" />
+                </LinearLayout>
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/listMuFilterGenresRecycler"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:clipToPadding="false"
+                    android:fadingEdge="horizontal"
+                    android:orientation="horizontal"
+                    android:paddingStart="16dp"
+                    android:paddingTop="4dp"
+                    android:paddingEnd="16dp"
+                    app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                    tools:listitem="@layout/item_chip" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="32dp"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginEnd="32dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:fontFamily="@font/poppins_bold"
+                        android:text="@string/mu_filter_categories"
+                        android:textSize="16sp" />
+
+                    <TextView
+                        android:id="@+id/listMuFilterCategoryCount"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="8dp"
+                        android:fontFamily="@font/poppins_semi_bold"
+                        android:textSize="13sp"
+                        android:visibility="gone" />
+
+                    <ProgressBar
+                        android:id="@+id/listMuFilterCategoryProgress"
+                        style="?android:attr/progressBarStyle"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:visibility="gone" />
+                </LinearLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="16dp"
+                    android:layout_marginTop="4dp"
+                    android:layout_marginEnd="16dp"
+                    android:hint="@string/search"
+                    app:boxCornerRadiusBottomEnd="16dp"
+                    app:boxCornerRadiusBottomStart="16dp"
+                    app:boxCornerRadiusTopEnd="16dp"
+                    app:boxCornerRadiusTopStart="16dp"
+                    app:boxStrokeColor="@color/text_input_layout_stroke_color"
+                    app:startIconDrawable="@drawable/ic_round_search_24">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/listMuFilterCategorySearch"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/poppins_bold"
+                        android:inputType="text"
+                        android:singleLine="true"
+                        android:textColor="?android:attr/textColorSecondary"
+                        android:textSize="14sp" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/listMuFilterCategoryResultsRecycler"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:clipToPadding="false"
+                    android:orientation="horizontal"
+                    android:paddingStart="16dp"
+                    android:paddingTop="4dp"
+                    android:paddingEnd="16dp"
+                    android:paddingBottom="8dp"
+                    app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginTop="16dp"
+                    android:background="?android:attr/listDivider" />
+            </LinearLayout>
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 

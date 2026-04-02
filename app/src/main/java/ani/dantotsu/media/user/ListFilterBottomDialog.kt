@@ -2,6 +2,8 @@ package ani.dantotsu.media.user
 
 import android.animation.ObjectAnimator
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.View.GONE
@@ -24,7 +26,14 @@ import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.databinding.BottomSheetListFilterBinding
 import ani.dantotsu.databinding.ItemChipBinding
 import com.google.android.material.chip.Chip
+import com.google.android.material.tabs.TabLayout
 import eu.kanade.tachiyomi.util.system.getResourceColor
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.Calendar
 
 class ListFilterBottomDialog(
@@ -46,8 +55,42 @@ class ListFilterBottomDialog(
     private var selectedCountry: String? = currentFilters.countryOfOrigin
     private var scoreRange = currentFilters.scoreRange
     private var yearRange = currentFilters.yearRange
-    private var selectedTrackerFilter: TrackerFilter = currentFilters.trackerFilter
     private var englishLicenced: Boolean = currentFilters.englishLicenced
+    private var selectedMuFormat: String? = currentFilters.muFormat
+    private var selectedMuYear: Int? = currentFilters.muYear
+    private var selectedMuLicensed: String? = currentFilters.muLicensed
+    private var selectedMuOrderBy: String? = currentFilters.muOrderBy
+    private var selectedMuGenres = currentFilters.muGenres.toMutableList()
+    private var selectedMuExcludedGenres = currentFilters.muExcludedGenres.toMutableList()
+    private var selectedMuCategories = currentFilters.muCategories.toMutableList()
+    private var selectedMuStatusFilters = currentFilters.muStatusFilters.toMutableList()
+    private var muCategorySearchJob: Job? = null
+
+    private val muStatusFilterOptions = listOf(
+        "scanlated" to "Scanlated",
+        "completed" to "Completed",
+        "oneshots" to "Oneshots",
+        "no_oneshots" to "No Oneshots",
+        "some_releases" to "Has Releases",
+        "no_releases" to "No Releases",
+    )
+
+    private val muSortOptions = listOf(
+        "" to "",
+        "score" to "Score",
+        "title" to "Title",
+        "year" to "Year",
+        "rating" to "Rating",
+        "date_added" to "Date Added",
+        "week_pos" to "Weekly Rank",
+        "month1_pos" to "Monthly Rank",
+        "month3_pos" to "3-Month Rank",
+        "month6_pos" to "6-Month Rank",
+        "year_pos" to "Yearly Rank",
+        "list_reading" to "Reading Count",
+        "list_wish" to "Wish Count",
+        "list_complete" to "Complete Count",
+    )
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -66,8 +109,206 @@ class ListFilterBottomDialog(
         setupChipLists()
         setupButtons()
         setupCountryFilter()
-        setupTrackerFilter()
         setupEnglishLicencedFilter()
+        setupProviderTabs()
+        setupMuFilters()
+    }
+
+    private fun setupProviderTabs() {
+        val showMuTab = !isAnime && MangaUpdates.token != null
+        if (!showMuTab) {
+            binding.listFilterProviderTabs.visibility = GONE
+            binding.listFilterAnilistSection.visibility = View.VISIBLE
+            binding.listFilterMuSection.visibility = GONE
+            return
+        }
+
+        binding.listFilterProviderTabs.visibility = View.VISIBLE
+        binding.listFilterProviderTabs.removeAllTabs()
+        binding.listFilterProviderTabs.addTab(
+            binding.listFilterProviderTabs.newTab().setText(R.string.filter_provider_anilist),
+            true
+        )
+        binding.listFilterProviderTabs.addTab(
+            binding.listFilterProviderTabs.newTab().setText(R.string.filter_provider_mangaupdates)
+        )
+
+        fun setSection(tabPosition: Int) {
+            binding.listFilterAnilistSection.visibility = if (tabPosition == 0) View.VISIBLE else GONE
+            binding.listFilterMuSection.visibility = if (tabPosition == 1) View.VISIBLE else GONE
+            binding.countryFilter.visibility = if (tabPosition == 1) GONE else View.VISIBLE
+        }
+
+        setSection(0)
+        binding.listFilterProviderTabs.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: TabLayout.Tab) = setSection(tab.position)
+            override fun onTabUnselected(tab: TabLayout.Tab) = Unit
+            override fun onTabReselected(tab: TabLayout.Tab) = Unit
+        })
+    }
+
+    private fun setupMuFilters() {
+        val showMu = !isAnime && MangaUpdates.token != null
+        binding.listFilterMuSection.visibility = GONE
+        if (!showMu) return
+
+        val formats = listOf(
+            "", "Manga", "Manhwa", "Manhua", "OEL", "Artbook", "Doujinshi",
+            "Drama CD", "Filipino", "French", "German", "Indonesian", "Malaysian",
+            "Nordic", "Novel", "Spanish", "Thai", "Vietnamese"
+        )
+        binding.listMuFilterFormat.setText(selectedMuFormat ?: "", false)
+        binding.listMuFilterFormat.setAdapter(
+            ArrayAdapter(requireContext(), R.layout.item_dropdown, formats)
+        )
+        binding.listMuFilterFormat.setOnItemClickListener { _, _, _, _ ->
+            selectedMuFormat = binding.listMuFilterFormat.text.toString().ifBlank { null }
+        }
+
+        val currentYear = Calendar.getInstance().get(Calendar.YEAR) + 1
+        val years = listOf("") + (currentYear downTo 1950).map { it.toString() }
+        binding.listMuFilterYear.setText(selectedMuYear?.toString() ?: "", false)
+        binding.listMuFilterYear.setAdapter(
+            ArrayAdapter(requireContext(), R.layout.item_dropdown, years)
+        )
+        binding.listMuFilterYear.setOnItemClickListener { _, _, _, _ ->
+            selectedMuYear = binding.listMuFilterYear.text.toString().toIntOrNull()
+        }
+
+        val licensedLabels = listOf("", "Licensed", "Not Licensed")
+        val licensedLabel = when (selectedMuLicensed) {
+            "yes" -> "Licensed"
+            "no" -> "Not Licensed"
+            else -> ""
+        }
+        binding.listMuFilterLicensed.setText(licensedLabel, false)
+        binding.listMuFilterLicensed.setAdapter(
+            ArrayAdapter(requireContext(), R.layout.item_dropdown, licensedLabels)
+        )
+        binding.listMuFilterLicensed.setOnItemClickListener { _, _, _, _ ->
+            selectedMuLicensed = when (binding.listMuFilterLicensed.text.toString()) {
+                "Licensed" -> "yes"
+                "Not Licensed" -> "no"
+                else -> null
+            }
+        }
+
+        val sortLabels = muSortOptions.map { it.second }
+        val currentSortLabel = muSortOptions.firstOrNull { it.first == selectedMuOrderBy }?.second ?: ""
+        binding.listMuFilterSort.setText(currentSortLabel, false)
+        binding.listMuFilterSort.setAdapter(
+            ArrayAdapter(requireContext(), R.layout.item_dropdown, sortLabels)
+        )
+        binding.listMuFilterSort.setOnItemClickListener { _, _, _, _ ->
+            val selectedLabel = binding.listMuFilterSort.text.toString()
+            selectedMuOrderBy = muSortOptions.firstOrNull { it.second == selectedLabel }
+                ?.first
+                ?.ifBlank { null }
+        }
+
+        binding.listMuFilterStatusRecycler.adapter =
+            FilterChipAdapter(muStatusFilterOptions.map { it.second }) { chip ->
+                val label = chip.text.toString()
+                val apiValue = muStatusFilterOptions.firstOrNull { it.second == label }?.first ?: return@FilterChipAdapter
+                chip.isChecked = selectedMuStatusFilters.contains(apiValue)
+                chip.setOnCheckedChangeListener { _, isChecked ->
+                    if (isChecked) {
+                        if (!selectedMuStatusFilters.contains(apiValue)) selectedMuStatusFilters.add(apiValue)
+                    } else {
+                        selectedMuStatusFilters.remove(apiValue)
+                    }
+                }
+            }
+
+        CoroutineScope(Dispatchers.IO).launch {
+            val genres = MangaUpdates.getGenres()
+            withContext(Dispatchers.Main) {
+                if (_binding == null) return@withContext
+                binding.listMuFilterGenresRecycler.adapter =
+                    FilterChipAdapter(genres) { chip ->
+                        val genre = chip.text.toString()
+                        chip.isChecked = selectedMuGenres.contains(genre)
+                        chip.isCloseIconVisible = selectedMuExcludedGenres.contains(genre)
+                        chip.setOnCheckedChangeListener { _, isChecked ->
+                            if (isChecked) {
+                                chip.isCloseIconVisible = false
+                                selectedMuExcludedGenres.remove(genre)
+                                if (!selectedMuGenres.contains(genre)) selectedMuGenres.add(genre)
+                            } else {
+                                selectedMuGenres.remove(genre)
+                            }
+                        }
+                        chip.setOnLongClickListener {
+                            chip.isChecked = false
+                            selectedMuGenres.remove(genre)
+                            chip.isCloseIconVisible = true
+                            if (!selectedMuExcludedGenres.contains(genre)) selectedMuExcludedGenres.add(genre)
+                            true
+                        }
+                        chip.setOnCloseIconClickListener {
+                            chip.isCloseIconVisible = false
+                            selectedMuExcludedGenres.remove(genre)
+                        }
+                    }
+            }
+        }
+
+        binding.listMuFilterGenresGrid.setOnCheckedChangeListener { _, isChecked ->
+            binding.listMuFilterGenresRecycler.layoutManager =
+                if (!isChecked) LinearLayoutManager(requireContext(), HORIZONTAL, false)
+                else GridLayoutManager(requireContext(), 2, VERTICAL, false)
+        }
+        binding.listMuFilterGenresGrid.isChecked = false
+
+        fun updateCategoryResults(categories: List<String>) {
+            if (_binding == null) return
+            binding.listMuFilterCategoryResultsRecycler.adapter =
+                FilterChipAdapter(categories) { chip ->
+                    val category = chip.text.toString()
+                    chip.isChecked = selectedMuCategories.contains(category)
+                    chip.setOnCheckedChangeListener { _, isChecked ->
+                        if (isChecked) {
+                            if (!selectedMuCategories.contains(category)) selectedMuCategories.add(category)
+                        } else {
+                            selectedMuCategories.remove(category)
+                        }
+                    }
+                }
+        }
+
+        updateCategoryResults(selectedMuCategories.toList())
+        binding.listMuFilterCategorySearch.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+            override fun afterTextChanged(s: Editable?) {
+                val query = s?.toString()?.trim().orEmpty()
+                muCategorySearchJob?.cancel()
+                if (query.isBlank()) {
+                    binding.listMuFilterCategoryProgress.visibility = View.GONE
+                    binding.listMuFilterCategoryCount.visibility = View.GONE
+                    updateCategoryResults(selectedMuCategories.toList())
+                    return
+                }
+
+                muCategorySearchJob = CoroutineScope(Dispatchers.IO).launch {
+                    delay(400)
+                    withContext(Dispatchers.Main) {
+                        if (_binding == null) return@withContext
+                        binding.listMuFilterCategoryProgress.visibility = View.VISIBLE
+                        binding.listMuFilterCategoryCount.visibility = View.GONE
+                    }
+                    val results = MangaUpdates.getCategories(query)
+                    val sortedResults = sortCategoriesByRelevance(results, query)
+                    withContext(Dispatchers.Main) {
+                        if (_binding == null) return@withContext
+                        binding.listMuFilterCategoryProgress.visibility = View.GONE
+                        binding.listMuFilterCategoryCount.text = "(${sortedResults.size})"
+                        binding.listMuFilterCategoryCount.visibility = View.VISIBLE
+                        updateCategoryResults(sortedResults)
+                    }
+                }
+            }
+        })
     }
 
     private fun setupDropdowns() {
@@ -217,8 +458,22 @@ class ListFilterBottomDialog(
                     binding.listFilterYearRange.values[0].toInt(),
                     binding.listFilterYearRange.values[1].toInt()
                 ),
-                trackerFilter = selectedTrackerFilter,
-                englishLicenced = englishLicenced
+                englishLicenced = englishLicenced,
+                muFormat = binding.listMuFilterFormat.text.toString().ifBlank { selectedMuFormat },
+                muYear = binding.listMuFilterYear.text.toString().toIntOrNull() ?: selectedMuYear,
+                muLicensed = when (binding.listMuFilterLicensed.text.toString()) {
+                    "Licensed" -> "yes"
+                    "Not Licensed" -> "no"
+                    else -> selectedMuLicensed
+                },
+                muOrderBy = muSortOptions.firstOrNull { it.second == binding.listMuFilterSort.text.toString() }
+                    ?.first
+                    ?.ifBlank { null }
+                    ?: selectedMuOrderBy,
+                muGenres = selectedMuGenres.toList(),
+                muExcludedGenres = selectedMuExcludedGenres.toList(),
+                muCategories = selectedMuCategories.toList(),
+                muStatusFilters = selectedMuStatusFilters.toList(),
             )
             onApply(filters)
             dismiss()
@@ -231,33 +486,6 @@ class ListFilterBottomDialog(
         binding.listFilterEnglishLicenced.isChecked = englishLicenced
         binding.listFilterEnglishLicenced.setOnCheckedChangeListener { _, isChecked ->
             englishLicenced = isChecked
-        }
-    }
-
-    private fun setupTrackerFilter() {
-        if (isAnime || MangaUpdates.token == null) return
-        binding.listFilterTrackerCont.visibility = View.VISIBLE
-        val options = listOf(
-            getString(R.string.filter_tracker_both),
-            getString(R.string.filter_tracker_anilist),
-            getString(R.string.filter_tracker_mu)
-        )
-        binding.listFilterTracker.setAdapter(
-            ArrayAdapter(requireContext(), R.layout.item_dropdown, options)
-        )
-        binding.listFilterTracker.setText(
-            when (selectedTrackerFilter) {
-                TrackerFilter.ANILIST_ONLY -> options[1]
-                TrackerFilter.MU_ONLY     -> options[2]
-                else                      -> options[0]
-            }, false
-        )
-        binding.listFilterTracker.setOnItemClickListener { _, _, position, _ ->
-            selectedTrackerFilter = when (position) {
-                1    -> TrackerFilter.ANILIST_ONLY
-                2    -> TrackerFilter.MU_ONLY
-                else -> TrackerFilter.BOTH
-            }
         }
     }
 
@@ -337,10 +565,29 @@ class ListFilterBottomDialog(
         selectedCountry = null
         scoreRange = Pair(0.0f, 10.0f)
         yearRange = Pair(1970, 2028)
-        selectedTrackerFilter = TrackerFilter.BOTH
-        binding.listFilterTracker.setText(getString(R.string.filter_tracker_both), false)
         englishLicenced = false
         binding.listFilterEnglishLicenced.isChecked = false
+        selectedMuFormat = null
+        selectedMuYear = null
+        selectedMuLicensed = null
+        selectedMuOrderBy = null
+        selectedMuGenres.clear()
+        selectedMuExcludedGenres.clear()
+        selectedMuCategories.clear()
+        selectedMuStatusFilters.clear()
+        muCategorySearchJob?.cancel()
+        binding.listMuFilterFormat.setText("", false)
+        binding.listMuFilterYear.setText("", false)
+        binding.listMuFilterLicensed.setText("", false)
+        binding.listMuFilterSort.setText("", false)
+        binding.listMuFilterCategorySearch.setText("")
+        binding.listMuFilterCategoryCount.visibility = View.GONE
+        binding.listMuFilterCategoryProgress.visibility = View.GONE
+        binding.listMuFilterCategoryResultsRecycler.adapter = FilterChipAdapter(emptyList()) { }
+        @Suppress("NotifyDataSetChanged")
+        binding.listMuFilterGenresRecycler.adapter?.notifyDataSetChanged()
+        @Suppress("NotifyDataSetChanged")
+        binding.listMuFilterStatusRecycler.adapter?.notifyDataSetChanged()
 
         binding.listFilterSource.setText("")
         binding.listFilterFormat.setText("")
@@ -355,7 +602,27 @@ class ListFilterBottomDialog(
         updateCountryIcon()
     }
 
+    private fun sortCategoriesByRelevance(categories: List<String>, query: String): List<String> {
+        val normalizedQuery = query.lowercase().trim()
+        return categories.sortedWith(compareBy { category ->
+            val normalizedCategory = category.lowercase()
+            when {
+                // Exact match (highest priority)
+                normalizedCategory == normalizedQuery -> 0
+                // Starts with query (high priority)
+                normalizedCategory.startsWith(normalizedQuery) -> 1
+                // Contains query as a whole word at word boundary (medium priority)
+                " $normalizedQuery" in " $normalizedCategory" || normalizedCategory.contains(" $normalizedQuery") -> 2
+                // Just contains query (lower priority)
+                normalizedQuery in normalizedCategory -> 3
+                // No match (shouldn't happen as API filters already)
+                else -> 4
+            }
+        }).filter { it.isNotEmpty() }
+    }
+
     override fun onDestroyView() {
+        muCategorySearchJob?.cancel()
         super.onDestroyView()
         _binding = null
     }
@@ -387,8 +654,6 @@ class ListFilterBottomDialog(
     }
 }
 
-enum class TrackerFilter { BOTH, ANILIST_ONLY, MU_ONLY }
-
 data class ListFilters(
     val genres: List<String> = emptyList(),
     val tags: List<String> = emptyList(),
@@ -400,15 +665,25 @@ data class ListFilters(
     val countryOfOrigin: String? = null,
     val scoreRange: Pair<Float, Float> = Pair(0.0f, 10.0f),
     val yearRange: Pair<Int, Int> = Pair(1970, 2028),
-    val trackerFilter: TrackerFilter = TrackerFilter.BOTH,
-    val englishLicenced: Boolean = false
+    val englishLicenced: Boolean = false,
+    val muFormat: String? = null,
+    val muYear: Int? = null,
+    val muLicensed: String? = null,
+    val muOrderBy: String? = null,
+    val muGenres: List<String> = emptyList(),
+    val muExcludedGenres: List<String> = emptyList(),
+    val muCategories: List<String> = emptyList(),
+    val muStatusFilters: List<String> = emptyList(),
 ) {
     fun isEmpty(): Boolean {
         return genres.isEmpty() && tags.isEmpty() && formats.isEmpty() &&
                 statuses.isEmpty() && sources.isEmpty() && season == null &&
                 year == null && countryOfOrigin == null &&
                 scoreRange == Pair(0.0f, 10.0f) && yearRange == Pair(1970, 2028) &&
-                trackerFilter == TrackerFilter.BOTH && !englishLicenced
+            !englishLicenced &&
+                muFormat == null && muYear == null && muLicensed == null &&
+                muOrderBy == null && muGenres.isEmpty() && muExcludedGenres.isEmpty() &&
+                muCategories.isEmpty() && muStatusFilters.isEmpty()
     }
 
     /** True when any filter that cannot be applied to MU entries is active. */
@@ -417,6 +692,12 @@ data class ListFilters(
                 statuses.isNotEmpty() || sources.isNotEmpty() || season != null ||
                 year != null || countryOfOrigin != null ||
                 scoreRange != Pair(0.0f, 10.0f) || yearRange != Pair(1970, 2028)
+    }
+
+    fun hasMuFilters(): Boolean {
+        return englishLicenced || muFormat != null || muYear != null || muLicensed != null ||
+                muOrderBy != null || muGenres.isNotEmpty() || muExcludedGenres.isNotEmpty() ||
+                muCategories.isNotEmpty() || muStatusFilters.isNotEmpty()
     }
 
     // Convert display score (0.0-10.0) to internal score (0-100)

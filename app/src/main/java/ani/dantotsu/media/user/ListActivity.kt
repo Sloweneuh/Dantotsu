@@ -444,26 +444,77 @@ class ListActivity : AppCompatActivity() {
             }
         }
 
-        // Add tracker chip (manga + logged-in user + MU account only)
-        if (!anime && filters.trackerFilter != TrackerFilter.BOTH &&
-            MangaUpdates.token != null && intent.getIntExtra("userId", 0) == Anilist.userid
-        ) {
-            val label = when (filters.trackerFilter) {
-                TrackerFilter.ANILIST_ONLY -> getString(R.string.filter_tracker_anilist)
-                TrackerFilter.MU_ONLY     -> getString(R.string.filter_tracker_mu)
-                else                      -> ""
-            }
-            addFilterChip(getString(R.string.filter_tracker, label), "Tracker") {
-                val newFilters = filters.copy(trackerFilter = TrackerFilter.BOTH)
+        // Add English licenced chip
+        if (filters.englishLicenced) {
+            addFilterChip(getString(R.string.filter_english_licenced), "EnglishLicenced") {
+                val newFilters = filters.copy(englishLicenced = false)
                 model.applyFilters(newFilters)
                 updateFilterChips(newFilters)
             }
         }
 
-        // Add English licenced chip
-        if (filters.englishLicenced) {
-            addFilterChip(getString(R.string.filter_english_licenced), "EnglishLicenced") {
-                val newFilters = filters.copy(englishLicenced = false)
+        filters.muFormat?.let { muFormat ->
+            addFilterChip(getString(R.string.filter_format, muFormat), "MuFormat") {
+                val newFilters = filters.copy(muFormat = null)
+                model.applyFilters(newFilters)
+                updateFilterChips(newFilters)
+            }
+        }
+
+        filters.muYear?.let { muYear ->
+            addFilterChip(getString(R.string.filter_year, muYear), "MuYear") {
+                val newFilters = filters.copy(muYear = null)
+                model.applyFilters(newFilters)
+                updateFilterChips(newFilters)
+            }
+        }
+
+        filters.muLicensed?.let { muLicensed ->
+            val label = if (muLicensed == "yes") getString(R.string.mu_filter_licensed) else getString(R.string.not_licensed)
+            addFilterChip(label, "MuLicensed") {
+                val newFilters = filters.copy(muLicensed = null)
+                model.applyFilters(newFilters)
+                updateFilterChips(newFilters)
+            }
+        }
+
+        filters.muOrderBy?.let { orderBy ->
+            val label = ani.dantotsu.connections.anilist.MUSearchResults.STATUS_FILTER_LABELS[orderBy] ?: orderBy
+            addFilterChip(getString(R.string.mu_filter_sort) + ": " + label, "MuSort") {
+                val newFilters = filters.copy(muOrderBy = null)
+                model.applyFilters(newFilters)
+                updateFilterChips(newFilters)
+            }
+        }
+
+        filters.muGenres.forEach { genre ->
+            addFilterChip(genre, "MuGenre") {
+                val newFilters = filters.copy(muGenres = filters.muGenres - genre)
+                model.applyFilters(newFilters)
+                updateFilterChips(newFilters)
+            }
+        }
+
+        filters.muExcludedGenres.forEach { genre ->
+            addFilterChip(getString(R.string.filter_exclude, genre), "MuExcludedGenre") {
+                val newFilters = filters.copy(muExcludedGenres = filters.muExcludedGenres - genre)
+                model.applyFilters(newFilters)
+                updateFilterChips(newFilters)
+            }
+        }
+
+        filters.muCategories.forEach { category ->
+            addFilterChip(category, "MuCategory") {
+                val newFilters = filters.copy(muCategories = filters.muCategories - category)
+                model.applyFilters(newFilters)
+                updateFilterChips(newFilters)
+            }
+        }
+
+        filters.muStatusFilters.forEach { status ->
+            val label = ani.dantotsu.connections.anilist.MUSearchResults.STATUS_FILTER_LABELS[status] ?: status
+            addFilterChip(label, "MuStatus") {
+                val newFilters = filters.copy(muStatusFilters = filters.muStatusFilters - status)
                 model.applyFilters(newFilters)
                 updateFilterChips(newFilters)
             }
@@ -607,10 +658,22 @@ class ListActivity : AppCompatActivity() {
         binding.listSort.setImageResource(iconRes)
     }
 
-    private fun addFilterChip(text: String, @Suppress("UNUSED_PARAMETER") type: String, onRemove: () -> Unit) {
+    private fun addFilterChip(text: String, type: String, onRemove: () -> Unit) {
         val chip = com.google.android.material.chip.Chip(this)
         chip.text = text
         chip.isCloseIconVisible = true
+
+        // Add provider icon based on filter type
+        val isMuFilter = type.startsWith("Mu")
+        if (isMuFilter) {
+            chip.chipIcon = ContextCompat.getDrawable(this, R.drawable.ic_round_mangaupdates_24)
+            chip.chipIconTint = android.content.res.ColorStateList.valueOf(
+                getThemeColor(com.google.android.material.R.attr.colorOnSurface)
+            )
+        } else if (type in listOf("Genre", "Tag", "Format", "Status", "Source", "Season", "Country", "Score", "YearRange", "EnglishLicenced")) {
+            chip.chipIcon = ContextCompat.getDrawable(this, R.drawable.ic_anilist)
+            chip.chipIconTint = null
+        }
 
         // Make entire chip clickable, not just the X icon
         chip.setOnClickListener {

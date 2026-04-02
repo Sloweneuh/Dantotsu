@@ -9,10 +9,11 @@ import ani.dantotsu.connections.mangaupdates.MUDetailsCache
 import ani.dantotsu.connections.mangaupdates.MUMedia
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.media.Media
-import ani.dantotsu.media.user.TrackerFilter
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.tryWithSuspend
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.text.Normalizer
 
 class ListViewModel : ViewModel() {
@@ -52,8 +53,10 @@ class ListViewModel : ViewModel() {
                 val sortedMuResult = sortMuLists(muResult, sortOrder)
                 rawMuData = sortedMuResult    // synchronous — always up-to-date
                 muLists.postValue(sortedMuResult)  // async notification for observers
-                val allMuIds = sortedMuResult.values.flatten().filter { it.coverUrl == null }.map { it.id }
-                MUDetailsCache.prefetch(viewModelScope, allMuIds)
+                val allMuIds = sortedMuResult.values.flatten().map { it.id }.distinct()
+                MUDetailsCache.prefetch(viewModelScope, allMuIds) {
+                    recomputeCurrentViewState()
+                }
             }
 
             // Reapply search + filters so any active UI state is preserved after a refresh
@@ -129,9 +132,10 @@ class ListViewModel : ViewModel() {
         }
 
         val currentLists = unfilteredLists.value ?: return
+        val hideAniListForMu = filters.hasMuFilters() && !filters.hasAnilistOnlyFilters()
 
-        // Anilist items: hidden entirely when MU-only tracker filter is active
-        val filteredLists = if (filters.trackerFilter == TrackerFilter.MU_ONLY) {
+        // Anilist items: hidden entirely when only MU filters are active.
+        val filteredLists = if (hideAniListForMu) {
             currentLists.mapValues { ArrayList<Media>() }.toMutableMap()
         } else {
             currentLists.mapValues { entry ->
@@ -142,13 +146,7 @@ class ListViewModel : ViewModel() {
         }
         lists.postValue(filteredLists)
 
-        // MU items: hidden when AniList-only tracker filter is active, or when any AniList-only filter is active
-        val filteredMu = if (filters.trackerFilter == TrackerFilter.ANILIST_ONLY || filters.hasAnilistOnlyFilters()) {
-            emptyMap()
-        } else {
-            val base = rawMuData ?: emptyMap()
-            if (filters.englishLicenced) filterMuByEnglishLicenced(base) else base
-        }
+        val filteredMu = applyMuFilters(rawMuData ?: emptyMap(), filters, query = null)
         filteredMuLists.postValue(filteredMu)
     }
 
@@ -266,21 +264,21 @@ class ListViewModel : ViewModel() {
         if (query.isEmpty()) {
             // Restore MU list respecting tracker filter and AniList-only filters
             val filters = currentFilters.value
-            val hideMu = filters?.trackerFilter == TrackerFilter.ANILIST_ONLY ||
-                filters?.hasAnilistOnlyFilters() == true
-            val muBase = if (hideMu) emptyMap() else rawMuData ?: emptyMap()
-            filteredMuLists.postValue(
-                if (!hideMu && filters?.englishLicenced == true) filterMuByEnglishLicenced(muBase) else muBase
-            )
+            filteredMuLists.postValue(applyMuFilters(rawMuData ?: emptyMap(), filters, query = null))
             // When search is cleared, reapply current filters if they exist
             if (filters != null && !filters.isEmpty()) {
                 // Don't call applyFilters here to avoid resetting currentSearchQuery
                 val currentLists = unfilteredLists.value ?: return
-                val filteredLists = currentLists.mapValues { entry ->
-                    entry.value.filter { media ->
-                        matchesFilters(media, filters)
-                    }.let { ArrayList(it) }
-                }.toMutableMap()
+                val hideAniListForMu = filters.hasMuFilters() && !filters.hasAnilistOnlyFilters()
+                val filteredLists = if (hideAniListForMu) {
+                    currentLists.mapValues { ArrayList<Media>() }.toMutableMap()
+                } else {
+                    currentLists.mapValues { entry ->
+                        entry.value.filter { media ->
+                            matchesFilters(media, filters)
+                        }.let { ArrayList(it) }
+                    }.toMutableMap()
+                }
                 lists.postValue(filteredLists)
             } else {
                 lists.postValue(unfilteredLists.value)
@@ -295,30 +293,15 @@ class ListViewModel : ViewModel() {
     private fun performSearch(query: String, filters: ListFilters?) {
         val q = normalize(query)
 
-        // Filter MU items by title or synonyms (skip when AniList-only tracker or AniList-only filters are active)
+        // Filter MU items by title/synonyms and active MU filters.
         val rawMuLists = rawMuData
         if (rawMuLists != null) {
-            val hideMu = filters?.trackerFilter == TrackerFilter.ANILIST_ONLY ||
-                filters?.hasAnilistOnlyFilters() == true
-            val muResult = if (hideMu) {
-                emptyMap()
-            } else {
-                rawMuLists.mapValues { (_, list) ->
-                    list.filter { mu ->
-                        val matchesSearch = normalize(mu.title).contains(q) ||
-                            MangaUpdates.synonymsCache[mu.id]
-                                ?.any { normalize(it).contains(q) } == true
-                        val matchesEnglish = filters?.englishLicenced != true ||
-                            MUDetailsCache.get(mu.id)?.hasEnglishPublisher == true
-                        matchesSearch && matchesEnglish
-                    }
-                }
-            }
+            val muResult = applyMuFilters(rawMuLists, filters, q)
             filteredMuLists.postValue(muResult)
         }
 
-        // If MU-only, suppress all Anilist results
-        if (filters?.trackerFilter == TrackerFilter.MU_ONLY) {
+        // Suppress all AniList results when only MU filters are active.
+        if (filters?.hasMuFilters() == true && !filters.hasAnilistOnlyFilters()) {
             val currentLists = unfilteredLists.value ?: return
             lists.postValue(currentLists.mapValues { ArrayList<Media>() }.toMutableMap())
             return
@@ -351,10 +334,127 @@ class ListViewModel : ViewModel() {
         lists.postValue(filteredLists)
     }
 
-    private fun filterMuByEnglishLicenced(
-        data: Map<String, List<MUMedia>>
-    ): Map<String, List<MUMedia>> = data.mapValues { (_, list) ->
-        list.filter { mu -> MUDetailsCache.get(mu.id)?.hasEnglishPublisher == true }
+    private fun applyMuFilters(
+        data: Map<String, List<MUMedia>>,
+        filters: ListFilters?,
+        query: String?
+    ): Map<String, List<MUMedia>> {
+        if (filters?.hasAnilistOnlyFilters() == true && !filters.hasMuFilters()) return emptyMap()
+
+        if (filters?.hasMuFilters() == true) {
+            prefetchMissingMuDetails(data)
+        }
+
+        val normalizedQuery = query?.trim()?.takeIf { it.isNotEmpty() }
+        var output = data.mapValues { (_, list) ->
+            list.filter { mu ->
+                matchesMuFilters(mu, filters) && matchesMuSearch(mu, normalizedQuery)
+            }
+        }
+
+        val orderBy = filters?.muOrderBy
+        if (!orderBy.isNullOrBlank()) {
+            output = output.mapValues { (_, list) -> sortMuListByOrder(list, orderBy) }
+        }
+
+        return output
+    }
+
+    private fun matchesMuSearch(mu: MUMedia, normalizedQuery: String?): Boolean {
+        if (normalizedQuery.isNullOrBlank()) return true
+        return normalize(mu.title).contains(normalizedQuery) ||
+            MangaUpdates.synonymsCache[mu.id]?.any { normalize(it).contains(normalizedQuery) } == true
+    }
+
+    private fun matchesMuFilters(mu: MUMedia, filters: ListFilters?): Boolean {
+        if (filters == null) return true
+        val detail = MUDetailsCache.get(mu.id)
+
+        if (filters.englishLicenced && detail?.hasEnglishPublisher != true) return false
+
+        filters.muFormat?.let { required ->
+            val type = detail?.type?.trim()
+            if (type.isNullOrBlank() || !type.equals(required, ignoreCase = true)) return false
+        }
+
+        filters.muYear?.let { requiredYear ->
+            if (detail?.year != requiredYear) return false
+        }
+
+        filters.muLicensed?.let { licensed ->
+            val hasLicense = detail?.hasEnglishPublisher
+            if (licensed == "yes" && hasLicense != true) return false
+            if (licensed == "no" && hasLicense != false) return false
+        }
+
+        if (filters.muGenres.isNotEmpty()) {
+            val genres = detail?.genres ?: emptySet()
+            if (!filters.muGenres.all { g -> genres.any { it.equals(g, ignoreCase = true) } }) return false
+        }
+
+        if (filters.muExcludedGenres.isNotEmpty()) {
+            val genres = detail?.genres ?: emptySet()
+            if (filters.muExcludedGenres.any { g -> genres.any { it.equals(g, ignoreCase = true) } }) return false
+        }
+
+        if (filters.muCategories.isNotEmpty()) {
+            val categories = detail?.categories ?: emptySet()
+            if (!filters.muCategories.all { c -> categories.any { it.equals(c, ignoreCase = true) } }) return false
+        }
+
+        if (filters.muStatusFilters.isNotEmpty()) {
+            val completed = detail?.completed == true
+            val latestChapter = detail?.latestChapter
+            val hasReleases = latestChapter != null && latestChapter > 0
+            val isOneShot = latestChapter != null && latestChapter <= 1
+            val matchesStatus = filters.muStatusFilters.all { status ->
+                when (status) {
+                    "scanlated" -> hasReleases
+                    "completed" -> completed
+                    "oneshots" -> isOneShot
+                    "no_oneshots" -> latestChapter == null || latestChapter > 1
+                    "some_releases" -> hasReleases
+                    "no_releases" -> !hasReleases
+                    else -> true
+                }
+            }
+            if (!matchesStatus) return false
+        }
+
+        return true
+    }
+
+    private fun sortMuListByOrder(list: List<MUMedia>, orderBy: String): List<MUMedia> {
+        return when (orderBy) {
+            "title" -> list.sortedBy { normalize(it.title) }
+            "year" -> list.sortedByDescending { MUDetailsCache.get(it.id)?.year ?: Int.MIN_VALUE }
+            "score", "rating" -> list.sortedByDescending { it.bayesianRating ?: Double.MIN_VALUE }
+            "date_added" -> list.sortedByDescending { it.updatedAt ?: Long.MIN_VALUE }
+            "list_reading" -> list.sortedByDescending { if (it.listId == 0) 1 else 0 }
+            "list_wish" -> list.sortedByDescending { if (it.listId == 1) 1 else 0 }
+            "list_complete" -> list.sortedByDescending { if (it.listId == 2) 1 else 0 }
+            else -> list
+        }
+    }
+
+    private fun prefetchMissingMuDetails(data: Map<String, List<MUMedia>>) {
+        val missingIds = data.values.flatten().map { it.id }.distinct().filter { MUDetailsCache.get(it) == null }
+        if (missingIds.isEmpty()) return
+        MUDetailsCache.prefetch(viewModelScope, missingIds) {
+            recomputeCurrentViewState()
+        }
+    }
+
+    private fun recomputeCurrentViewState() {
+        viewModelScope.launch(Dispatchers.Default) {
+            val filters = currentFilters.value
+            val query = currentSearchQuery
+            if (query.isBlank()) {
+                filteredMuLists.postValue(applyMuFilters(rawMuData ?: emptyMap(), filters, query = null))
+            } else {
+                filteredMuLists.postValue(applyMuFilters(rawMuData ?: emptyMap(), filters, normalize(query)))
+            }
+        }
     }
 
     fun unfilterLists() {

@@ -17,7 +17,17 @@ import java.util.concurrent.ConcurrentHashMap
  * Bind views synchronously via [get] — returns null until the fetch completes.
  */
 object MUDetailsCache {
-    data class Detail(val coverUrl: String?, val description: String?, val hasEnglishPublisher: Boolean? = null)
+    data class Detail(
+        val coverUrl: String?,
+        val description: String?,
+        val hasEnglishPublisher: Boolean? = null,
+        val type: String? = null,
+        val year: Int? = null,
+        val genres: Set<String> = emptySet(),
+        val categories: Set<String> = emptySet(),
+        val completed: Boolean? = null,
+        val latestChapter: Long? = null,
+    )
 
     private val cache = ConcurrentHashMap<Long, Detail>()
     private val fetching: MutableSet<Long> = Collections.synchronizedSet(mutableSetOf())
@@ -42,7 +52,21 @@ object MUDetailsCache {
                     cache[id] = Detail(
                         coverUrl = record?.image?.url?.run { original ?: thumb },
                         description = record?.description,
-                        hasEnglishPublisher = record?.licensed
+                        hasEnglishPublisher = record?.licensed,
+                        type = record?.type,
+                        year = record?.year?.toIntOrNull(),
+                        genres = record?.genres
+                            ?.mapNotNull { it.genre?.trim() }
+                            ?.filter { it.isNotEmpty() }
+                            ?.toSet()
+                            ?: emptySet(),
+                        categories = record?.categories
+                            ?.mapNotNull { it.category?.trim() }
+                            ?.filter { it.isNotEmpty() }
+                            ?.toSet()
+                            ?: emptySet(),
+                        completed = record?.completed,
+                        latestChapter = record?.latest_chapter,
                     )
                 } finally {
                     fetching.remove(id)
