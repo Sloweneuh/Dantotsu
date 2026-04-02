@@ -162,11 +162,21 @@ data class MUSearchResults(
     var excludedGenres: MutableList<String>? = null,
     var categories: MutableList<String>? = null,
     var excludedCategories: MutableList<String>? = null,
+    var licensed: String? = null,
+    var statusFilters: MutableList<String>? = null,
+    var orderBy: String? = null,
 ) : SearchResults<MUMedia>, Serializable {
     fun toChipList(): List<AniMangaSearchResults.SearchChip> {
         val list = mutableListOf<AniMangaSearchResults.SearchChip>()
         format?.let { list.add(AniMangaSearchResults.SearchChip("MU_FORMAT", it)) }
         year?.let { list.add(AniMangaSearchResults.SearchChip("MU_YEAR", it.toString())) }
+        licensed?.let {
+            val label = if (it == "yes") "Licensed" else "Not Licensed"
+            list.add(AniMangaSearchResults.SearchChip("MU_LICENSED", label))
+        }
+        orderBy?.let {
+            list.add(AniMangaSearchResults.SearchChip("MU_ORDER", STATUS_FILTER_LABELS[it] ?: it))
+        }
         genres?.forEach { list.add(AniMangaSearchResults.SearchChip("MU_GENRE", it)) }
         excludedGenres?.forEach {
             list.add(
@@ -177,25 +187,46 @@ data class MUSearchResults(
             )
         }
         categories?.forEach { list.add(AniMangaSearchResults.SearchChip("MU_CAT", it)) }
-        excludedCategories?.forEach {
-            list.add(
-                AniMangaSearchResults.SearchChip(
-                    "MU_EXCL_CAT",
-                    currContext()!!.getString(R.string.filter_exclude, it)
-                )
-            )
+        statusFilters?.forEach {
+            list.add(AniMangaSearchResults.SearchChip("MU_FILTER_$it", STATUS_FILTER_LABELS[it] ?: it))
         }
         return list
     }
 
     fun removeChip(chip: AniMangaSearchResults.SearchChip) {
-        when (chip.type) {
-            "MU_FORMAT" -> format = null
-            "MU_YEAR" -> year = null
-            "MU_GENRE" -> genres?.remove(chip.text)
-            "MU_EXCL_GENRE" -> excludedGenres?.removeAll { chip.text.endsWith(it) }
-            "MU_CAT" -> categories?.remove(chip.text)
-            "MU_EXCL_CAT" -> excludedCategories?.removeAll { chip.text.endsWith(it) }
+        when {
+            chip.type == "MU_FORMAT" -> format = null
+            chip.type == "MU_YEAR" -> year = null
+            chip.type == "MU_LICENSED" -> licensed = null
+            chip.type == "MU_ORDER" -> orderBy = null
+            chip.type == "MU_GENRE" -> genres?.remove(chip.text)
+            chip.type == "MU_EXCL_GENRE" -> excludedGenres?.removeAll { chip.text.endsWith(it) }
+            chip.type == "MU_CAT" -> categories?.remove(chip.text)
+            chip.type.startsWith("MU_FILTER_") -> statusFilters?.remove(chip.type.removePrefix("MU_FILTER_"))
         }
+    }
+
+    companion object {
+        val STATUS_FILTER_LABELS = mapOf(
+            "scanlated" to "Scanlated",
+            "completed" to "Completed",
+            "oneshots" to "Oneshots",
+            "no_oneshots" to "No Oneshots",
+            "some_releases" to "Has Releases",
+            "no_releases" to "No Releases",
+            "score" to "Score",
+            "title" to "Title",
+            "year" to "Year",
+            "rating" to "Rating",
+            "date_added" to "Date Added",
+            "week_pos" to "Weekly Rank",
+            "month1_pos" to "Monthly Rank",
+            "month3_pos" to "3-Month Rank",
+            "month6_pos" to "6-Month Rank",
+            "year_pos" to "Yearly Rank",
+            "list_reading" to "Reading Count",
+            "list_wish" to "Wish Count",
+            "list_complete" to "Complete Count",
+        )
     }
 }

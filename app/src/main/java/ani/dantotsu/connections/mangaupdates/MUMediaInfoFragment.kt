@@ -303,12 +303,12 @@ class MUMediaInfoFragment : Fragment() {
                     chip.text = category
                     chip.isClickable = true
                     chip.setOnClickListener {
-                        val encoded = java.net.URLEncoder.encode(category, "UTF-8")
                         startActivity(
-                            Intent(
-                                Intent.ACTION_VIEW,
-                                Uri.parse("https://www.mangaupdates.com/series?category=$encoded")
-                            )
+                            Intent(requireContext(), SearchActivity::class.java).apply {
+                                putExtra("type", "MANGAUPDATES")
+                                putExtra("search", true)
+                                putExtra("category", category)
+                            }
                         )
                     }
                     chip.setOnLongClickListener { copyToClipboard(category); true }

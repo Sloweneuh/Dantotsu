@@ -31,6 +31,7 @@ object MangaUpdates {
     /** Cache of associated/synonym titles keyed by series id, populated on [getSeriesDetails] calls. */
     val synonymsCache = mutableMapOf<Long, List<String>>()
 
+
     /**
      * Login to MangaUpdates API and obtain a JWT token
      * @param username User's username
@@ -177,7 +178,7 @@ object MangaUpdates {
     ): MUSearchResults? {
         return tryWithSuspend {
             val searchRequest = MUSearchRequest(
-                search = r.search ?: "",
+                search = r.search?.takeIf { it.isNotBlank() } ?: " ",
                 stype = "title",
                 page = page,
                 perpage = perPage,
@@ -185,8 +186,10 @@ object MangaUpdates {
                 year = r.year,
                 genre = r.genres?.takeIf { it.isNotEmpty() },
                 exclude_genre = r.excludedGenres?.takeIf { it.isNotEmpty() },
-                include_categories = r.categories?.takeIf { it.isNotEmpty() },
-                exclude_categories = r.excludedCategories?.takeIf { it.isNotEmpty() },
+                category = r.categories?.takeIf { it.isNotEmpty() },
+                licensed = r.licensed,
+                filters = r.statusFilters?.takeIf { it.isNotEmpty() },
+                orderby = r.orderBy,
             )
             val jsonBody = Mapper.json.encodeToString(searchRequest)
             val requestBody = jsonBody.toRequestBody("application/json".toMediaTypeOrNull())
@@ -212,6 +215,9 @@ object MangaUpdates {
                 excludedGenres = r.excludedGenres,
                 categories = r.categories,
                 excludedCategories = r.excludedCategories,
+                licensed = r.licensed,
+                statusFilters = r.statusFilters,
+                orderBy = r.orderBy,
             )
         }
     }
@@ -234,11 +240,11 @@ object MangaUpdates {
     }
 
     /**
-     * Search/fetch available categories from MangaUpdates.
+     * Search categories by [query] and return up to [perPage] results from page 1.
      */
-    suspend fun getCategories(query: String = ""): List<String> {
+    suspend fun getCategories(query: String, perPage: Int = 100): List<String> {
         return tryWithSuspend {
-            val searchRequest = MUCategorySearchRequest(search = query, orderby = "alpha", page = 1, perpage = -1)
+            val searchRequest = MUCategorySearchRequest(search = query, orderby = "category", page = 1, perpage = perPage)
             val jsonBody = Mapper.json.encodeToString(searchRequest)
             val requestBody = jsonBody.toRequestBody("application/json".toMediaTypeOrNull())
             val request = Request.Builder()
@@ -250,7 +256,7 @@ object MangaUpdates {
             val responseBody = extractBody(response)
             if (!response.isSuccessful || responseBody.isNullOrBlank()) return@tryWithSuspend emptyList()
             Mapper.parse<MUCategorySearchResponse>(responseBody).results
-                ?.mapNotNull { it.category?.category }
+                ?.mapNotNull { it.record?.category }
                 ?: emptyList()
         } ?: emptyList()
     }

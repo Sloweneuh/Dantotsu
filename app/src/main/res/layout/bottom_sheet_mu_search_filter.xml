@@ -124,6 +124,102 @@
                 </com.google.android.material.textfield.TextInputLayout>
             </LinearLayout>
 
+            <!-- Licensed + Sort By dropdowns -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_margin="8dp"
+                android:baselineAligned="false"
+                android:orientation="horizontal">
+
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginEnd="8dp"
+                    android:layout_weight="1"
+                    android:hint="@string/mu_filter_licensed"
+                    app:boxCornerRadiusBottomEnd="16dp"
+                    app:boxCornerRadiusBottomStart="16dp"
+                    app:boxCornerRadiusTopEnd="16dp"
+                    app:boxCornerRadiusTopStart="16dp"
+                    app:boxStrokeColor="@color/text_input_layout_stroke_color"
+                    app:hintAnimationEnabled="true">
+
+                    <AutoCompleteTextView
+                        android:id="@+id/muFilterLicensed"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:fontFamily="@font/poppins_bold"
+                        android:freezesText="false"
+                        android:inputType="none"
+                        android:padding="8dp"
+                        android:singleLine="true"
+                        android:textColor="?android:attr/textColorSecondary"
+                        android:textSize="14sp"
+                        tools:ignore="LabelFor,TextContrastCheck,DuplicateSpeakableTextCheck" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginEnd="8dp"
+                    android:layout_weight="1"
+                    android:hint="@string/mu_filter_sort"
+                    app:boxCornerRadiusBottomEnd="16dp"
+                    app:boxCornerRadiusBottomStart="16dp"
+                    app:boxCornerRadiusTopEnd="16dp"
+                    app:boxCornerRadiusTopStart="16dp"
+                    app:boxStrokeColor="@color/text_input_layout_stroke_color"
+                    app:hintAnimationEnabled="true">
+
+                    <AutoCompleteTextView
+                        android:id="@+id/muFilterSort"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:fontFamily="@font/poppins_bold"
+                        android:freezesText="false"
+                        android:inputType="none"
+                        android:padding="8dp"
+                        android:singleLine="true"
+                        android:textColor="?android:attr/textColorSecondary"
+                        android:textSize="14sp"
+                        tools:ignore="LabelFor,TextContrastCheck,DuplicateSpeakableTextCheck" />
+                </com.google.android.material.textfield.TextInputLayout>
+            </LinearLayout>
+
+            <!-- Status filters header -->
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="32dp"
+                android:layout_marginTop="4dp"
+                android:layout_marginEnd="32dp"
+                android:fontFamily="@font/poppins_bold"
+                android:text="@string/mu_filter_status_filters"
+                android:textSize="16sp" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/muFilterStatusRecycler"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:clipToPadding="false"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingTop="4dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="4dp"
+                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="8dp"
+                android:background="?android:attr/listDivider" />
+
             <!-- Genres header -->
             <LinearLayout
                 android:layout_width="match_parent"
@@ -171,6 +267,87 @@
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
                 android:layout_marginTop="16dp"
+                android:background="?android:attr/listDivider" />
+
+            <!-- Categories header -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="32dp"
+                android:layout_marginTop="8dp"
+                android:layout_marginEnd="32dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:fontFamily="@font/poppins_bold"
+                    android:text="@string/mu_filter_categories"
+                    android:textSize="16sp" />
+
+                <TextView
+                    android:id="@+id/muFilterCategoryCount"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="8dp"
+                    android:fontFamily="@font/poppins_semi_bold"
+                    android:textSize="13sp"
+                    android:visibility="gone" />
+
+                <ProgressBar
+                    android:id="@+id/muFilterCategoryProgress"
+                    style="?android:attr/progressBarStyle"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:visibility="gone" />
+            </LinearLayout>
+
+            <!-- Category search bar -->
+            <com.google.android.material.textfield.TextInputLayout
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginTop="4dp"
+                android:layout_marginEnd="16dp"
+                android:hint="@string/search"
+                app:boxCornerRadiusBottomEnd="16dp"
+                app:boxCornerRadiusBottomStart="16dp"
+                app:boxCornerRadiusTopEnd="16dp"
+                app:boxCornerRadiusTopStart="16dp"
+                app:boxStrokeColor="@color/text_input_layout_stroke_color"
+                app:startIconDrawable="@drawable/ic_round_search_24">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/muFilterCategorySearch"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/poppins_bold"
+                    android:inputType="text"
+                    android:singleLine="true"
+                    android:textColor="?android:attr/textColorSecondary"
+                    android:textSize="14sp" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <!-- Category search results -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/muFilterCategoryResultsRecycler"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:clipToPadding="false"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingTop="4dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="8dp"
+                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="8dp"
                 android:background="?android:attr/listDivider" />
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>

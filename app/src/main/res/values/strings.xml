@@ -235,6 +235,9 @@
     <string name="mu_tab_enabled_desc">Show the MangaUpdates info tab in manga details</string>
     <string name="mu_filter_categories">Categories</string>
     <string name="mu_filter_year_hint">e.g. 2020</string>
+    <string name="mu_filter_licensed">Licensed</string>
+    <string name="mu_filter_sort">Sort By</string>
+    <string name="mu_filter_status_filters">Filters</string>
     <string name="disable_malsync">Enable MALSync Info</string>
     <string name="disable_malsync_desc">Toggle fetching MALSync info and related display</string>
     <string name="comick_connections_help">How does Comick work\?</string>

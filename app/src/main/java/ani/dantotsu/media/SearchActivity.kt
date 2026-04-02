@@ -191,11 +191,15 @@ class SearchActivity : AppCompatActivity() {
                     val muGenres = intent.getStringArrayListExtra("genres")
                         ?.toMutableList()
                         ?: intent.getStringExtra("genre")?.let { mutableListOf(it) }
+                    val muCategories = intent.getStringArrayListExtra("categories")
+                        ?.toMutableList()
+                        ?: intent.getStringExtra("category")?.let { mutableListOf(it) }
                     model.muSearchResults = MUSearchResults(
                         search = intent.getStringExtra("query"),
                         results = mutableListOf(),
                         hasNextPage = false,
-                        genres = muGenres
+                        genres = muGenres,
+                        categories = muCategories
                     )
                 }
                 muSearchResult = model.muSearchResults
@@ -389,11 +393,16 @@ class SearchActivity : AppCompatActivity() {
                             excludedGenres = it.excludedGenres
                             categories = it.categories
                             excludedCategories = it.excludedCategories
+                            licensed = it.licensed
+                            statusFilters = it.statusFilters
+                            orderBy = it.orderBy
                         }
                         val prev = model.muSearchResults.results.size
                         model.muSearchResults.results.addAll(it.results)
                         muSearchAdaptor.notifyItemRangeInserted(prev, it.results.size)
                         progressAdapter.bar?.isVisible = it.hasNextPage
+                    } else {
+                        progressAdapter.bar?.isVisible = false
                     }
                 }
             }

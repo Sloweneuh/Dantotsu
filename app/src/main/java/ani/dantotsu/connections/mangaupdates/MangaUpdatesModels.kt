@@ -34,8 +34,10 @@ data class MUSearchRequest(
     val year: Int? = null,
     val genre: List<String>? = null,
     val exclude_genre: List<String>? = null,
-    val include_categories: List<String>? = null,
-    val exclude_categories: List<String>? = null,
+    val category: List<String>? = null,
+    val licensed: String? = null,
+    val filters: List<String>? = null,
+    val orderby: String? = null,
 )
 
 @Serializable
@@ -56,7 +58,12 @@ data class MUCategorySearchResponse(
 
 @Serializable
 data class MUCategorySearchEntry(
-    val category: MUCategory? = null
+    @SerialName("record") val record: MUCategoryRecord? = null
+)
+
+@Serializable
+data class MUCategoryRecord(
+    val category: String? = null
 )
 
 @Serializable

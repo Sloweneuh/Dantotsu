@@ -1084,10 +1084,13 @@ class MangaUpdatesInfoFragment : Fragment() {
                     chip.text = category
                     chip.isClickable = true
                     chip.setOnClickListener {
-                        // Open MangaUpdates category search (URL encode the category name)
-                        val encoded = java.net.URLEncoder.encode(category, "UTF-8")
-                        val url = "https://www.mangaupdates.com/series?category=$encoded"
-                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                        startActivity(
+                            Intent(requireContext(), SearchActivity::class.java).apply {
+                                putExtra("type", "MANGAUPDATES")
+                                putExtra("search", true)
+                                putExtra("category", category)
+                            }
+                        )
                     }
                     chip.setOnLongClickListener {
                         copyToClipboard(category)

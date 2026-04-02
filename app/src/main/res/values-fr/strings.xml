@@ -43,6 +43,7 @@
     <string name="continue_reading">Continuer la lecture</string>
     <string name="continue_watching">Continuer à regarder</string>
     <string name="recommended">Recommandés</string>
+    <string name="category_recommendations">Recommandations par catégorie</string>
     <string name="unread_chapters">Chapitres non lus</string>
     <string name="no_unread_chapters">Aucun chapitre non lu</string>
     <string name="error_fetching_unread_chapters">Impossible de récupérer les chapitres non lus</string>
@@ -195,6 +196,10 @@
     <string name="disable_mangaupdates_desc">Activer ou désactiver la récupération des données MangaUpdates et l\'onglet MangaUpdates</string>
     <string name="mu_filter_year_hint">ex: 2020</string>
     <string name="mu_filter_categories">Catégories</string>
+    <string name="mu_filter_licensed">Sous licence</string>
+    <string name="mu_filter_sort">Trier par</string>
+    <string name="mu_filter_status_filters">Filtres</string>
+    <string name="filter_english_licenced">Sous licence anglaise</string>
     <string name="mu_custom_list_mapping">Mappage des listes personnalisées</string>
     <string name="mu_custom_list_mapping_desc">Configurer la récupération des listes MangaUpdates personnalisées</string>
     <string name="mu_custom_list_mapping_hint">Choisir comment chaque liste personnalisée correspond à une catégorie de lecture. \u201cSéparé\u201d l\'affiche comme une section distincte dans la liste de lecture.</string>
