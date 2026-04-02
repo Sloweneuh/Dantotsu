@@ -8,12 +8,14 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.View.GONE
 import android.view.ViewGroup
+import android.view.inputmethod.InputMethodManager
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.AnimationUtils
 import android.widget.ArrayAdapter
 import android.widget.PopupMenu
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.DrawableCompat
+import androidx.core.widget.addTextChangedListener
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -25,6 +27,10 @@ import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.databinding.BottomSheetListFilterBinding
 import ani.dantotsu.databinding.ItemChipBinding
+import com.google.android.flexbox.FlexDirection
+import com.google.android.flexbox.FlexWrap
+import com.google.android.flexbox.FlexboxLayoutManager
+import com.google.android.flexbox.JustifyContent
 import com.google.android.material.chip.Chip
 import com.google.android.material.tabs.TabLayout
 import eu.kanade.tachiyomi.util.system.getResourceColor
@@ -65,6 +71,15 @@ class ListFilterBottomDialog(
     private var selectedMuCategories = currentFilters.muCategories.toMutableList()
     private var selectedMuStatusFilters = currentFilters.muStatusFilters.toMutableList()
     private var muCategorySearchJob: Job? = null
+    private var tagSearchQuery: String = ""
+
+    private fun createWrapChipLayoutManager(): RecyclerView.LayoutManager {
+        return FlexboxLayoutManager(requireContext()).apply {
+            flexDirection = FlexDirection.ROW
+            flexWrap = FlexWrap.WRAP
+            justifyContent = JustifyContent.FLEX_START
+        }
+    }
 
     private val muStatusFilterOptions = listOf(
         "scanlated" to "Scanlated",
@@ -260,6 +275,8 @@ class ListFilterBottomDialog(
         }
         binding.listMuFilterGenresGrid.isChecked = false
 
+        binding.listMuFilterCategoryResultsRecycler.layoutManager = createWrapChipLayoutManager()
+
         fun updateCategoryResults(categories: List<String>) {
             if (_binding == null) return
             binding.listMuFilterCategoryResultsRecycler.adapter =
@@ -285,7 +302,6 @@ class ListFilterBottomDialog(
                 muCategorySearchJob?.cancel()
                 if (query.isBlank()) {
                     binding.listMuFilterCategoryProgress.visibility = View.GONE
-                    binding.listMuFilterCategoryCount.visibility = View.GONE
                     updateCategoryResults(selectedMuCategories.toList())
                     return
                 }
@@ -295,15 +311,12 @@ class ListFilterBottomDialog(
                     withContext(Dispatchers.Main) {
                         if (_binding == null) return@withContext
                         binding.listMuFilterCategoryProgress.visibility = View.VISIBLE
-                        binding.listMuFilterCategoryCount.visibility = View.GONE
                     }
                     val results = MangaUpdates.getCategories(query)
                     val sortedResults = sortCategoriesByRelevance(results, query)
                     withContext(Dispatchers.Main) {
                         if (_binding == null) return@withContext
                         binding.listMuFilterCategoryProgress.visibility = View.GONE
-                        binding.listMuFilterCategoryCount.text = "(${sortedResults.size})"
-                        binding.listMuFilterCategoryCount.visibility = View.VISIBLE
                         updateCategoryResults(sortedResults)
                     }
                 }
@@ -385,22 +398,55 @@ class ListFilterBottomDialog(
         // Tags - controlled by adult tags switch
         fun updateTagsList(includeAdult: Boolean) {
             val tagsList = if (includeAdult && Anilist.adult) {
-                // Combine both adult and non-adult tags if switch is on and user has adult content enabled
                 val adultTags = Anilist.tags?.get(true) ?: listOf()
                 val nonAdultTags = Anilist.tags?.get(false) ?: listOf()
                 (adultTags + nonAdultTags).distinct().sorted()
             } else {
-                // Only non-adult tags
                 Anilist.tags?.get(false) ?: listOf()
             }
+            val filteredTags = if (tagSearchQuery.isBlank()) {
+                tagsList
+            } else {
+                val query = tagSearchQuery.trim().lowercase()
+                tagsList.filter { it.lowercase().contains(query) }
+            }
 
-            binding.listFilterTags.adapter = FilterChipAdapter(tagsList) { chip ->
+            binding.listFilterTags.adapter = FilterChipAdapter(filteredTags) { chip ->
                 val tag = chip.text.toString()
                 chip.isChecked = selectedTags.contains(tag)
                 chip.setOnCheckedChangeListener { _, isChecked ->
                     if (isChecked) selectedTags.add(tag)
                     else selectedTags.remove(tag)
                 }
+            }
+            binding.listFilterSearchTagsAnilist.setImageResource(
+                if (binding.listFilterTagsQuickSearchLayout.visibility == View.VISIBLE) {
+                    R.drawable.ic_round_search_off_24
+                } else {
+                    R.drawable.ic_round_search_24
+                }
+            )
+        }
+
+        fun setTagSearchMode(enabled: Boolean) {
+            binding.listFilterTagsQuickSearchLayout.visibility = if (enabled) View.VISIBLE else GONE
+            if (Anilist.adult) {
+                binding.listFilterTagsAdultContainer.visibility = if (enabled) GONE else View.VISIBLE
+            }
+            binding.listFilterSearchTagsAnilist.setImageResource(
+                if (enabled) R.drawable.ic_round_search_off_24 else R.drawable.ic_round_search_24
+            )
+
+            if (enabled) {
+                binding.listFilterTagsQuickSearchText.requestFocus()
+                val imm = requireContext().getSystemService(InputMethodManager::class.java)
+                imm?.showSoftInput(binding.listFilterTagsQuickSearchText, InputMethodManager.SHOW_IMPLICIT)
+            } else {
+                tagSearchQuery = ""
+                binding.listFilterTagsQuickSearchText.setText("")
+                val imm = requireContext().getSystemService(InputMethodManager::class.java)
+                imm?.hideSoftInputFromWindow(binding.listFilterTagsQuickSearchText.windowToken, 0)
+                updateTagsList(binding.listFilterTagsAdult.isChecked)
             }
         }
 
@@ -412,6 +458,7 @@ class ListFilterBottomDialog(
         // Hide adult switch if user doesn't have adult content enabled in settings
         if (!Anilist.adult) {
             binding.listFilterTagsAdult.visibility = GONE
+            binding.listFilterTagsAdultContainer.visibility = GONE
         }
 
         binding.listFilterTagsAdult.setOnCheckedChangeListener { _, isChecked ->
@@ -421,9 +468,19 @@ class ListFilterBottomDialog(
         binding.listFilterTagsGrid.setOnCheckedChangeListener { _, isChecked ->
             binding.listFilterTags.layoutManager =
                 if (!isChecked) LinearLayoutManager(binding.root.context, HORIZONTAL, false)
-                else GridLayoutManager(binding.root.context, 2, VERTICAL, false)
+                else createWrapChipLayoutManager()
         }
         binding.listFilterTagsGrid.isChecked = false
+        binding.listFilterTagsQuickSearchText.addTextChangedListener {
+            tagSearchQuery = it?.toString().orEmpty()
+            updateTagsList(binding.listFilterTagsAdult.isChecked)
+        }
+        setTagSearchMode(false)
+
+        binding.listFilterSearchTagsAnilist.setOnClickListener {
+            val searchActive = binding.listFilterTagsQuickSearchLayout.visibility == View.VISIBLE
+            setTagSearchMode(!searchActive)
+        }
     }
 
     private fun setupButtons() {
@@ -575,13 +632,13 @@ class ListFilterBottomDialog(
         selectedMuExcludedGenres.clear()
         selectedMuCategories.clear()
         selectedMuStatusFilters.clear()
+        tagSearchQuery = ""
         muCategorySearchJob?.cancel()
         binding.listMuFilterFormat.setText("", false)
         binding.listMuFilterYear.setText("", false)
         binding.listMuFilterLicensed.setText("", false)
         binding.listMuFilterSort.setText("", false)
         binding.listMuFilterCategorySearch.setText("")
-        binding.listMuFilterCategoryCount.visibility = View.GONE
         binding.listMuFilterCategoryProgress.visibility = View.GONE
         binding.listMuFilterCategoryResultsRecycler.adapter = FilterChipAdapter(emptyList()) { }
         @Suppress("NotifyDataSetChanged")
@@ -598,6 +655,16 @@ class ListFilterBottomDialog(
 
         binding.listFilterGenres.adapter?.notifyDataSetChanged()
         binding.listFilterTags.adapter?.notifyDataSetChanged()
+
+        binding.listFilterTagsQuickSearchLayout.visibility = GONE
+        binding.listFilterTagsQuickSearchText.setText("")
+        if (Anilist.adult) {
+            binding.listFilterTagsAdultContainer.visibility = View.VISIBLE
+        }
+        binding.listFilterSearchTagsAnilist.setImageResource(R.drawable.ic_round_search_24)
+
+        // Rebuild tags list so any active quick text filter is cleared from the visible list.
+        binding.listFilterTagsAdult.isChecked = false
 
         updateCountryIcon()
     }

@@ -6,6 +6,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.View.GONE
 import android.view.ViewGroup
+import android.view.inputmethod.InputMethodManager
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.AnimationUtils
 import android.widget.ArrayAdapter
@@ -13,6 +14,7 @@ import android.widget.PopupMenu
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.DrawableCompat
+import androidx.core.widget.addTextChangedListener
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -23,6 +25,10 @@ import ani.dantotsu.R
 import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.databinding.BottomSheetSearchFilterBinding
 import ani.dantotsu.databinding.ItemChipBinding
+import com.google.android.flexbox.FlexDirection
+import com.google.android.flexbox.FlexWrap
+import com.google.android.flexbox.FlexboxLayoutManager
+import com.google.android.flexbox.JustifyContent
 import com.google.android.material.chip.Chip
 import eu.kanade.tachiyomi.util.system.getResourceColor
 import kotlinx.coroutines.CoroutineScope
@@ -51,6 +57,7 @@ class SearchFilterBottomDialog : BottomSheetDialogFragment() {
     private var exTags = mutableListOf<String>()
     private var isAdult = false
     private var listOnly: Boolean? = null
+    private var tagSearchQuery: String = ""
 
     private fun updateTagsList(includeAdult: Boolean) {
         val tagsList = if (includeAdult && Anilist.adult) {
@@ -60,7 +67,13 @@ class SearchFilterBottomDialog : BottomSheetDialogFragment() {
         } else {
             Anilist.tags?.get(false) ?: listOf()
         }
-        binding.searchFilterTags.adapter = FilterChipAdapter(tagsList) { chip ->
+        val filteredTags = if (tagSearchQuery.isBlank()) {
+            tagsList
+        } else {
+            val query = tagSearchQuery.trim().lowercase()
+            tagsList.filter { it.lowercase().contains(query) }
+        }
+        binding.searchFilterTags.adapter = FilterChipAdapter(filteredTags) { chip ->
             val tag = chip.text.toString()
             chip.isChecked = selectedTags.contains(tag)
             chip.isCloseIconVisible = exTags.contains(tag)
@@ -77,10 +90,46 @@ class SearchFilterBottomDialog : BottomSheetDialogFragment() {
                 exTags.add(tag)
             }
         }
+        updateTagSearchIcon(binding.searchTagsQuickSearchLayout.visibility == View.VISIBLE)
+    }
+
+    private fun updateTagSearchIcon(isSearchMode: Boolean) {
+        binding.searchTagsAnilist.setImageResource(
+            if (isSearchMode) R.drawable.ic_round_search_off_24
+            else R.drawable.ic_round_search_24
+        )
+    }
+
+    private fun setTagSearchMode(enabled: Boolean) {
+        binding.searchTagsQuickSearchLayout.visibility = if (enabled) View.VISIBLE else GONE
+        if (Anilist.adult) {
+            binding.searchTagsAdultContainer.visibility = if (enabled) GONE else View.VISIBLE
+        }
+        updateTagSearchIcon(enabled)
+
+        if (enabled) {
+            binding.searchTagsQuickSearchText.requestFocus()
+            val imm = requireContext().getSystemService(InputMethodManager::class.java)
+            imm?.showSoftInput(binding.searchTagsQuickSearchText, InputMethodManager.SHOW_IMPLICIT)
+        } else {
+            tagSearchQuery = ""
+            binding.searchTagsQuickSearchText.setText("")
+            val imm = requireContext().getSystemService(InputMethodManager::class.java)
+            imm?.hideSoftInputFromWindow(binding.searchTagsQuickSearchText.windowToken, 0)
+            updateTagsList(binding.searchTagsAdult.isChecked)
+        }
     }
     private fun updateChips() {
         binding.searchFilterGenres.adapter?.notifyDataSetChanged()
         binding.searchFilterTags.adapter?.notifyDataSetChanged()
+    }
+
+    private fun createWrapChipLayoutManager(): RecyclerView.LayoutManager {
+        return FlexboxLayoutManager(requireContext()).apply {
+            flexDirection = FlexDirection.ROW
+            flexWrap = FlexWrap.WRAP
+            justifyContent = JustifyContent.FLEX_START
+        }
     }
 
     private fun startBounceZoomAnimation(view: View? = null) {
@@ -143,6 +192,8 @@ class SearchFilterBottomDialog : BottomSheetDialogFragment() {
         selectedTags.clear()
         exTags.clear()
         isAdult = false
+        tagSearchQuery = ""
+        setTagSearchMode(false)
         listOnly = null
         binding.searchTagsAdult.isChecked = false
         updateTagsList(false)
@@ -447,6 +498,7 @@ class SearchFilterBottomDialog : BottomSheetDialogFragment() {
         binding.searchTagsAdult.isChecked = isAdult
         if (!Anilist.adult) {
             binding.searchTagsAdult.visibility = android.view.View.GONE
+            binding.searchTagsAdultContainer.visibility = android.view.View.GONE
         }
         binding.searchTagsAdult.setOnCheckedChangeListener { _, isChecked ->
             isAdult = isChecked
@@ -455,9 +507,19 @@ class SearchFilterBottomDialog : BottomSheetDialogFragment() {
         binding.searchTagsGrid.setOnCheckedChangeListener { _, isChecked ->
             binding.searchFilterTags.layoutManager =
                 if (!isChecked) LinearLayoutManager(binding.root.context, HORIZONTAL, false)
-                else GridLayoutManager(binding.root.context, 2, VERTICAL, false)
+                else createWrapChipLayoutManager()
         }
         binding.searchTagsGrid.isChecked = false
+        binding.searchTagsQuickSearchText.addTextChangedListener {
+            tagSearchQuery = it?.toString().orEmpty()
+            updateTagsList(binding.searchTagsAdult.isChecked)
+        }
+        setTagSearchMode(false)
+
+        binding.searchTagsAnilist.setOnClickListener {
+            val searchActive = binding.searchTagsQuickSearchLayout.visibility == View.VISIBLE
+            setTagSearchMode(!searchActive)
+        }
     }
 
 

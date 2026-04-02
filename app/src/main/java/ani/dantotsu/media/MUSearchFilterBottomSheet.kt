@@ -16,6 +16,10 @@ import ani.dantotsu.R
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.databinding.BottomSheetMuSearchFilterBinding
 import ani.dantotsu.databinding.ItemChipBinding
+import com.google.android.flexbox.FlexDirection
+import com.google.android.flexbox.FlexWrap
+import com.google.android.flexbox.FlexboxLayoutManager
+import com.google.android.flexbox.JustifyContent
 import com.google.android.material.chip.Chip
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -205,6 +209,13 @@ class MUSearchFilterBottomSheet : BottomSheetDialogFragment() {
     }
 
     private fun setupCategories() {
+        binding.muFilterCategoryResultsRecycler.layoutManager =
+            FlexboxLayoutManager(requireContext()).apply {
+                flexDirection = FlexDirection.ROW
+                flexWrap = FlexWrap.WRAP
+                justifyContent = JustifyContent.FLEX_START
+            }
+
         updateCategoryResults(selectedCategories.toList())
 
         binding.muFilterCategorySearch.addTextChangedListener(object : TextWatcher {
@@ -215,7 +226,6 @@ class MUSearchFilterBottomSheet : BottomSheetDialogFragment() {
                 categorySearchJob?.cancel()
                 if (query.isBlank()) {
                     binding.muFilterCategoryProgress.visibility = View.GONE
-                    binding.muFilterCategoryCount.visibility = View.GONE
                     updateCategoryResults(selectedCategories.toList())
                     return
                 }
@@ -224,14 +234,11 @@ class MUSearchFilterBottomSheet : BottomSheetDialogFragment() {
                     withContext(Dispatchers.Main) {
                         if (_binding == null) return@withContext
                         binding.muFilterCategoryProgress.visibility = View.VISIBLE
-                        binding.muFilterCategoryCount.visibility = View.GONE
                     }
                     val results = MangaUpdates.getCategories(query)
                     withContext(Dispatchers.Main) {
                         if (_binding == null) return@withContext
                         binding.muFilterCategoryProgress.visibility = View.GONE
-                        binding.muFilterCategoryCount.text = "(${results.size})"
-                        binding.muFilterCategoryCount.visibility = View.VISIBLE
                         updateCategoryResults(results)
                     }
                 }
@@ -288,7 +295,6 @@ class MUSearchFilterBottomSheet : BottomSheetDialogFragment() {
         binding.muFilterSort.setText("", false)
         categorySearchJob?.cancel()
         binding.muFilterCategorySearch.setText("")
-        binding.muFilterCategoryCount.visibility = View.GONE
         binding.muFilterCategoryProgress.visibility = View.GONE
         updateCategoryResults(emptyList())
         @Suppress("NotifyDataSetChanged")

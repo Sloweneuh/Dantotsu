@@ -271,32 +271,31 @@ class SearchAdapter(private val activity: SearchActivity, private val type: Sear
         }
     }
 
-    class SearchChipAdapter(
-            private fun updateClearHistoryVisibilityWithFilters() {
-                // Hide clear history button if there are active filters but no search text
-                val hasFilters = activity.aniMangaResult.run {
-                    !sort.isNullOrBlank() ||
-                    !genres.isNullOrEmpty() ||
-                    !excludedGenres.isNullOrEmpty() ||
-                    !tags.isNullOrEmpty() ||
-                    !excludedTags.isNullOrEmpty() ||
-                    !status.isNullOrBlank() ||
-                    !format.isNullOrBlank() ||
-                    seasonYear != null ||
-                    startYear != null ||
-                    !season.isNullOrBlank() ||
-                    !countryOfOrigin.isNullOrBlank() ||
-                    !scoreRange.toString().contains("0.0")
-                }
-        
-                val hasSearchText = binding.searchBarText.text.toString().isNotBlank()
-        
-                // Show clear history only if there's history AND (no filters OR there's search text)
-                binding.clearHistory.visibility = if (
-                    searchHistoryAdapter.itemCount > 0 && (!hasFilters || hasSearchText)
-                ) View.VISIBLE else View.GONE
-            }
+    private fun updateClearHistoryVisibilityWithFilters() {
+        // Hide clear history button if there are active filters but no search text
+        val hasFilters = activity.aniMangaResult.run {
+            !sort.isNullOrBlank() ||
+                !genres.isNullOrEmpty() ||
+                !excludedGenres.isNullOrEmpty() ||
+                !tags.isNullOrEmpty() ||
+                !excludedTags.isNullOrEmpty() ||
+                !status.isNullOrBlank() ||
+                !format.isNullOrBlank() ||
+                seasonYear != null ||
+                startYear != null ||
+                !season.isNullOrBlank() ||
+                !countryOfOrigin.isNullOrBlank()
+        }
 
+        val hasSearchText = binding.searchBarText.text.toString().isNotBlank()
+
+        // Show clear history only if there's history AND (no filters OR there's search text)
+        binding.clearHistory.visibility = if (
+            searchHistoryAdapter.itemCount > 0 && (!hasFilters || hasSearchText)
+        ) View.VISIBLE else View.GONE
+    }
+
+    class SearchChipAdapter(
         val activity: SearchActivity,
         private val searchAdapter: SearchAdapter
     ) :

@@ -214,12 +214,11 @@ class SupportingSearchAdapter(private val activity: SearchActivity, private val 
         }
     }
 
-    /**
-        private fun updateClearHistoryVisibilityWithFilters() {
-            // Hide clear history button if there are active filters but no search text
-            val hasFilters = if (type == SearchType.MANGAUPDATES) {
-                activity.muSearchResult.run {
-                    !format.isNullOrBlank() ||
+    private fun updateClearHistoryVisibilityWithFilters() {
+        // Hide clear history button if there are active filters but no search text
+        val hasFilters = if (type == SearchType.MANGAUPDATES) {
+            activity.muSearchResult.run {
+                !format.isNullOrBlank() ||
                     year != null ||
                     !genres.isNullOrEmpty() ||
                     !excludedGenres.isNullOrEmpty() ||
@@ -227,19 +226,20 @@ class SupportingSearchAdapter(private val activity: SearchActivity, private val 
                     !licensed.isNullOrBlank() ||
                     !orderBy.isNullOrBlank() ||
                     !statusFilters.isNullOrEmpty()
-                }
-            } else {
-                false
             }
-        
-            val hasSearchText = binding.searchBarText.text.toString().isNotBlank()
-        
-            // Show clear history only if there's history AND (no filters OR there's search text)
-            binding.clearHistory.visibility = if (
-                searchHistoryAdapter.itemCount > 0 && (!hasFilters || hasSearchText)
-            ) View.VISIBLE else View.GONE
+        } else {
+            false
         }
 
+        val hasSearchText = binding.searchBarText.text.toString().isNotBlank()
+
+        // Show clear history only if there's history AND (no filters OR there's search text)
+        binding.clearHistory.visibility = if (
+            searchHistoryAdapter.itemCount > 0 && (!hasFilters || hasSearchText)
+        ) View.VISIBLE else View.GONE
+    }
+
+    /**
      * Chip adapter for active MangaUpdates search filters.
      */
     class MUChipAdapter(
