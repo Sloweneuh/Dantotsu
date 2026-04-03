@@ -266,13 +266,6 @@ object AppUpdater {
                         downloadManager.getUriForDownloadedFile(downloadId)?.let {
                             openApk(this@downloadUpdate, it)
                         }
-
-                        // Remove the download record and file from DownloadManager to avoid leftover APKs
-                        try {
-                            downloadManager.remove(downloadId)
-                        } catch (e: Exception) {
-                            logError(e)
-                        }
                     } catch (e: Exception) {
                         logError(e)
                     }
@@ -291,9 +284,25 @@ object AppUpdater {
                 putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true)
             }
             context.startActivity(installIntent)
-            // File removal is handled via DownloadManager removal in the download receiver.
         } catch (e: Exception) {
             logError(e)
+        }
+    }
+
+    fun cleanupDownloadedApkFiles(context: Context) {
+        try {
+            val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            downloadsDir.listFiles { file ->
+                file.isFile && file.name.startsWith("Dantotsu ") && file.name.endsWith(".apk")
+            }?.forEach { apk ->
+                try {
+                    apk.delete()
+                } catch (e: Exception) {
+                    Logger.log("Failed to delete stale APK ${apk.name}: ${e.message}")
+                }
+            }
+        } catch (e: Exception) {
+            Logger.log("Failed to cleanup downloaded APK files: ${e.message}")
         }
     }
 

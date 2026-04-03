@@ -18,6 +18,7 @@ import ani.dantotsu.notifications.WorkManagerScheduler
 import ani.dantotsu.notifications.AlarmManagerScheduler
 import ani.dantotsu.notifications.firebase.FirebaseBackgroundScheduler
 import ani.dantotsu.others.DisabledReports
+import ani.dantotsu.others.AppUpdater
 import ani.dantotsu.parsers.AnimeSources
 import ani.dantotsu.parsers.MangaSources
 import ani.dantotsu.parsers.NovelSources
@@ -70,6 +71,7 @@ class App : MultiDexApplication() {
     override fun onCreate() {
         super.onCreate()
         PrefManager.init(this)
+        AppUpdater.cleanupDownloadedApkFiles(this)
 
         val crashlytics =
             ani.dantotsu.connections.crashlytics.CrashlyticsFactory.createCrashlytics()
