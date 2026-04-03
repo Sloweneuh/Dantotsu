@@ -674,12 +674,28 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
         }
         // Build display list with gap placeholders between non-consecutive chapters
         val isCompact = (style ?: PrefManager.getVal(PrefName.MangaDefaultView)) == 1
+        val nonSequentialKeywords = listOf(
+            "extra", "omake", "special", "side story", "prologue", "epilogue",
+            "afterword", "author", "bonus", "cover story", "gaiden", "interlude"
+        )
+        fun resolveChapterNumber(chapter: MangaChapter): Float? {
+            val parserNumber = chapter.sChapter.chapter_number
+            return if (parserNumber > 0f) parserNumber else MediaNameAdapter.findChapterNumber(chapter.number)
+        }
         val displayList = ArrayList<MangaChapterListItem>()
         for (i in chapList.indices) {
             displayList.add(MangaChapterListItem.Chapter(chapList[i]))
             if (i < chapList.size - 1) {
-                val currNum = MediaNameAdapter.findChapterNumber(chapList[i].number)
-                val nextNum = MediaNameAdapter.findChapterNumber(chapList[i + 1].number)
+                val currentChapterNumber = chapList[i].number
+                val nextChapterNumber = chapList[i + 1].number
+                val isCurrentNonSequential =
+                    nonSequentialKeywords.any { currentChapterNumber.lowercase().contains(it) }
+                val isNextNonSequential =
+                    nonSequentialKeywords.any { nextChapterNumber.lowercase().contains(it) }
+                if (isCurrentNonSequential || isNextNonSequential) continue
+
+                val currNum = resolveChapterNumber(chapList[i])
+                val nextNum = resolveChapterNumber(chapList[i + 1])
                 if (currNum != null && nextNum != null) {
                     val lo = minOf(currNum, nextNum)
                     val hi = maxOf(currNum, nextNum)

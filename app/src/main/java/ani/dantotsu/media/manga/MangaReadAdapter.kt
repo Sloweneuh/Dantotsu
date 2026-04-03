@@ -622,13 +622,42 @@ class MangaReadAdapter(
                 binding.sourceProgressBar.visibility = View.GONE
 
                 // Compute and display missing chapter count
-                val chapterNumbers = filteredChapters.values
-                    .mapNotNull { MediaNameAdapter.findChapterNumber(it.number) }
-                    .sorted()
+                val nonSequentialKeywords = listOf(
+                    "extra", "omake", "special", "side story", "prologue", "epilogue",
+                    "afterword", "author", "bonus", "cover story", "gaiden", "interlude"
+                )
+                fun resolveChapterNumber(chapter: MangaChapter): Float? {
+                    val parserNumber = chapter.sChapter.chapter_number
+                    return if (parserNumber > 0f) parserNumber else MediaNameAdapter.findChapterNumber(chapter.number)
+                }
+
+                // Count against the full filtered list (stable across chapter tabs/pages).
+                val orderedChapters = filteredChapters.values.toList()
+
+                // Calculate gaps over contiguous comparable chapters only.
+                // Non-sequential rows and rows without a parsable chapter number break continuity.
                 var missingCount = 0
-                for (i in 1 until chapterNumbers.size) {
-                    val gap = chapterNumbers[i].toInt() - chapterNumbers[i - 1].toInt()
-                    if (gap > 1) missingCount += gap - 1
+                var previousComparableNumber: Int? = null
+                orderedChapters.forEach { chapter ->
+                    val isNonSequential =
+                        nonSequentialKeywords.any { chapter.number.lowercase().contains(it) }
+                    if (isNonSequential) {
+                        previousComparableNumber = null
+                        return@forEach
+                    }
+
+                    val currentNumber = resolveChapterNumber(chapter)?.toInt()
+                    if (currentNumber == null) {
+                        previousComparableNumber = null
+                        return@forEach
+                    }
+
+                    val prev = previousComparableNumber
+                    if (prev != null) {
+                        val gap = kotlin.math.abs(currentNumber - prev)
+                        if (gap > 1) missingCount += gap - 1
+                    }
+                    previousComparableNumber = currentNumber
                 }
                 if (missingCount > 0) {
                     val missingLabel = if (missingCount == 1)

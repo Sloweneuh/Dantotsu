@@ -248,6 +248,12 @@ class SearchFilterBottomDialog : BottomSheetDialogFragment() {
                 CoroutineScope(Dispatchers.Main).launch {
                     val rangeStart = binding.searchYearRange.values[0].toInt()
                     val rangeEnd = binding.searchYearRange.values[1].toInt()
+                    val minRange = minOf(rangeStart, rangeEnd)
+                    val maxRange = maxOf(rangeStart, rangeEnd)
+                    val defaultRangeStart = 1970
+                    val defaultRangeEnd = Calendar.getInstance().get(Calendar.YEAR) + 1
+                    val shouldApplyYearRange =
+                        !(minRange == defaultRangeStart && maxRange == defaultRangeEnd)
                     activity.aniMangaResult.apply {
                         status =
                             binding.searchStatus.text.toString().replace(" ", "_").ifBlank { null }
@@ -257,8 +263,8 @@ class SearchFilterBottomDialog : BottomSheetDialogFragment() {
                         season = binding.searchSeason.text.toString().ifBlank { null }
                         seasonYear = null
                         startYear = null
-                        yearRangeStart = rangeStart
-                        yearRangeEnd = rangeEnd
+                        yearRangeStart = if (shouldApplyYearRange) minRange else null
+                        yearRangeEnd = if (shouldApplyYearRange) maxRange else null
                         sort = activity.aniMangaResult.sort
                         this.isAdult = this@SearchFilterBottomDialog.isAdult
                         onList = this@SearchFilterBottomDialog.listOnly
@@ -370,6 +376,12 @@ class SearchFilterBottomDialog : BottomSheetDialogFragment() {
         binding.searchFilterApply.setOnClickListener {
             val rangeStart = binding.searchYearRange.values[0].toInt()
             val rangeEnd = binding.searchYearRange.values[1].toInt()
+            val minRange = minOf(rangeStart, rangeEnd)
+            val maxRange = maxOf(rangeStart, rangeEnd)
+            val defaultRangeStart = 1970
+            val defaultRangeEnd = Calendar.getInstance().get(Calendar.YEAR) + 1
+            val shouldApplyYearRange =
+                !(minRange == defaultRangeStart && maxRange == defaultRangeEnd)
             activity.aniMangaResult.apply {
                 status = binding.searchStatus.text.toString().replace(" ", "_").ifBlank { null }
                 source = binding.searchSource.text.toString().replace(" ", "_").ifBlank { null }
@@ -377,8 +389,8 @@ class SearchFilterBottomDialog : BottomSheetDialogFragment() {
                 season = binding.searchSeason.text.toString().ifBlank { null }
                 seasonYear = null
                 startYear = null
-                yearRangeStart = rangeStart
-                yearRangeEnd = rangeEnd
+                yearRangeStart = if (shouldApplyYearRange) minRange else null
+                yearRangeEnd = if (shouldApplyYearRange) maxRange else null
                 sort = activity.aniMangaResult.sort
                 countryOfOrigin = activity.aniMangaResult.countryOfOrigin
                 this.isAdult = this@SearchFilterBottomDialog.isAdult

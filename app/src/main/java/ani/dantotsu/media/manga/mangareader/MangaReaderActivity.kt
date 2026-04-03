@@ -1106,8 +1106,30 @@ class MangaReaderActivity : AppCompatActivity() {
     }
 
     private fun countMissingChapters(fromIndex: Int, toIndex: Int): Int {
-        val fromNum = MediaNameAdapter.findChapterNumber(chapters[chaptersArr[fromIndex]]?.number ?: "") ?: return 0
-        val toNum = MediaNameAdapter.findChapterNumber(chapters[chaptersArr[toIndex]]?.number ?: "") ?: return 0
+        val fromChapter = chapters[chaptersArr[fromIndex]]
+        val toChapter = chapters[chaptersArr[toIndex]]
+        val fromChapterName = fromChapter?.number ?: ""
+        val toChapterName = toChapter?.number ?: ""
+        
+        val fromNum = fromChapter?.sChapter?.chapter_number
+            ?.takeIf { it > 0f }
+            ?: MediaNameAdapter.findChapterNumber(fromChapterName)
+            ?: return 0
+        val toNum = toChapter?.sChapter?.chapter_number
+            ?.takeIf { it > 0f }
+            ?: MediaNameAdapter.findChapterNumber(toChapterName)
+            ?: return 0
+        
+        // Skip gap warning for non-sequential chapter types (Extra Story, Omake, Special, etc.)
+        val nonSequentialKeywords = listOf(
+            "extra", "omake", "special", "side story", "prologue", "epilogue",
+            "afterword", "author", "bonus", "cover story", "gaiden", "interlude"
+        )
+        val isFromNonSequential = nonSequentialKeywords.any { fromChapterName.lowercase().contains(it) }
+        val isToNonSequential = nonSequentialKeywords.any { toChapterName.lowercase().contains(it) }
+        
+        if (isFromNonSequential || isToNonSequential) return 0
+        
         return (abs(toNum.toInt() - fromNum.toInt()) - 1).coerceAtLeast(0)
     }
 
