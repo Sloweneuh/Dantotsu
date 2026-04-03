@@ -720,7 +720,9 @@
 
     <string name="continue_episode">Continue : Episode %1$s%2$s\n%3$s</string>
     <string name="filler_tag"> - Filler</string>
-    <string name="continue_chapter">Continue : %1$s\n%2$s</string>
+    <string name="continue_watching_episode">Continue Watching :\n%1$s</string>
+    <string name="continue_reading_chapter">Continue Reading :\n%1$s</string>
+    <string name="continue_chapter_number_only">Continue : %1$s</string>
     <string name="episode">"Episode "</string>
     <string name="episode_num">"Episode %1$s"</string>
     <string name="chapter">"Chapter "</string>

@@ -533,7 +533,9 @@
     <string name="view_profile_in_dantotsu">Voir le profil dans Dantotsu</string>
     <string name="continue_episode">Continuer : Épisode %1$s%2$s\n%3$s</string>
     <string name="filler_tag"> - Filler</string>
-    <string name="continue_chapter">Continuer : %1$s\n%2$s</string>
+    <string name="continue_watching_episode">Continuer le visionnage :\n%1$s</string>
+    <string name="continue_reading_chapter">Continuer la lecture :\n%1$s</string>
+    <string name="continue_chapter_number_only">Continuer : %1$s</string>
     <string name="episode">"Épisode "</string>
     <string name="episode_num">"Épisode %1$s"</string>
     <string name="chapter">"Chapitre "</string>

@@ -520,12 +520,11 @@ class AnimeWatchAdapter(
                     )
                     if (ep.filler) binding.itemEpisodeFillerView.visibility = View.VISIBLE
 
+                    val episodeInfo = "Episode ${ep.number}${if (ep.filler) " - Filler" else ""}${if (!cleanedTitle.isNullOrEmpty() && cleanedTitle != "null") ": $cleanedTitle" else ""}"
                     binding.mediaSourceContinueText.text =
                         currActivity()!!.getString(
-                            R.string.continue_episode, ep.number, if (ep.filler)
-                                currActivity()!!.getString(R.string.filler_tag)
-                            else
-                                "", cleanedTitle
+                            R.string.continue_watching_episode,
+                            episodeInfo
                         )
                     binding.sourceContinue.setOnClickListener {
                         fragment.onEpisodeClick(continueEp)

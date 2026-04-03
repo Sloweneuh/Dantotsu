@@ -321,7 +321,9 @@
                 android:ellipsize="end"
                 android:fontFamily="@font/poppins_bold"
                 android:gravity="center"
+                android:includeFontPadding="false"
                 android:maxLines="2"
+                android:minLines="2"
                 android:text="@string/continue_watching"
                 android:textColor="@color/bg_white"
                 app:drawableEndCompat="@drawable/ic_round_play_arrow_24" />

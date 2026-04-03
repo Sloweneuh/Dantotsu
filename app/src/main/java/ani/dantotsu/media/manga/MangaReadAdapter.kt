@@ -601,11 +601,24 @@ class MangaReadAdapter(
                         }
                     }
                     binding.itemMediaImage.loadImage(media.banner ?: media.cover)
+                    val chapterNumber = continueEp!!.number
+                    val chapterTitle = continueEp!!.title
+                        ?.trim()
+                        ?.takeUnless {
+                            it.isBlank() ||
+                                    it.equals("null", ignoreCase = true) ||
+                                    it.equals(chapterNumber.trim(), ignoreCase = true)
+                        }
+                    binding.mediaSourceContinueText.setLines(2)
+                    val chapterInfo = if (chapterTitle != null) {
+                        "${chapterNumber}: ${chapterTitle}"
+                    } else {
+                        chapterNumber
+                    }
                     binding.mediaSourceContinueText.text =
                         currActivity()!!.getString(
-                            R.string.continue_chapter,
-                            continueEp!!.number,
-                            if (!continueEp.title.isNullOrEmpty()) continueEp.title else ""
+                            R.string.continue_reading_chapter,
+                            chapterInfo
                         )
                     binding.sourceContinue.setOnClickListener {
                         fragment.onMangaChapterClick(continueEp)
