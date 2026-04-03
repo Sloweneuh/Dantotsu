@@ -507,17 +507,19 @@ class MangaReadAdapter(
                     )
                 }
 
-                val startChapter = MediaNameAdapter.findChapterNumber(names[limit * (position)])
-                val endChapter = MediaNameAdapter.findChapterNumber(names[last - 1])
+                val startChapterKey = names[limit * (position)]
+                val endChapterKey = names[last - 1]
+                val startChapter = MediaNameAdapter.findChapterNumber(startChapterKey)
+                val endChapter = MediaNameAdapter.findChapterNumber(endChapterKey)
                 val startChapterString = if (startChapter != null) {
                     "Ch.%.1f".format(startChapter)
                 } else {
-                    names[limit * (position)]
+                    media.manga?.chapters?.get(startChapterKey)?.number ?: startChapterKey
                 }
                 val endChapterString = if (endChapter != null) {
                     "Ch.%.1f".format(endChapter)
                 } else {
-                    names[last - 1]
+                    media.manga?.chapters?.get(endChapterKey)?.number ?: endChapterKey
                 }
                 // chip.text = "${names[limit * (position)]} - ${names[last - 1]}"
                 val chipText = "$startChapterString - $endChapterString"
