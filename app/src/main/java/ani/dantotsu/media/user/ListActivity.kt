@@ -478,15 +478,6 @@ class ListActivity : AppCompatActivity() {
             }
         }
 
-        filters.muOrderBy?.let { orderBy ->
-            val label = ani.dantotsu.connections.anilist.MUSearchResults.STATUS_FILTER_LABELS[orderBy] ?: orderBy
-            addFilterChip(getString(R.string.mu_filter_sort) + ": " + label, "MuSort") {
-                val newFilters = filters.copy(muOrderBy = null)
-                model.applyFilters(newFilters)
-                updateFilterChips(newFilters)
-            }
-        }
-
         filters.muGenres.forEach { genre ->
             addFilterChip(genre, "MuGenre") {
                 val newFilters = filters.copy(muGenres = filters.muGenres - genre)
@@ -665,12 +656,19 @@ class ListActivity : AppCompatActivity() {
 
         // Add provider icon based on filter type
         val isMuFilter = type.startsWith("Mu")
+        
+        // Check if MU tab is visible
+        val showMuTab = !anime &&
+            MangaUpdates.token != null &&
+            PrefManager.getVal<Boolean>(PrefName.MangaUpdatesListEnabled)
+        
         if (isMuFilter) {
             chip.chipIcon = ContextCompat.getDrawable(this, R.drawable.ic_round_mangaupdates_24)
             chip.chipIconTint = android.content.res.ColorStateList.valueOf(
                 getThemeColor(com.google.android.material.R.attr.colorOnSurface)
             )
-        } else if (type in listOf("Genre", "Tag", "Format", "Status", "Source", "Season", "Country", "Score", "YearRange", "EnglishLicenced")) {
+        } else if (showMuTab && type in listOf("Genre", "Tag", "Format", "Status", "Source", "Season", "Country", "Score", "YearRange", "EnglishLicenced")) {
+            // Only show AniList icon if MU tab is visible (to differentiate sources)
             chip.chipIcon = ContextCompat.getDrawable(this, R.drawable.ic_anilist)
             chip.chipIconTint = null
         }

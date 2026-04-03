@@ -202,11 +202,12 @@ class SearchFilterBottomDialog : BottomSheetDialogFragment() {
         binding.searchSource.setText("")
         binding.searchFormat.setText("")
         binding.searchSeason.setText("")
-        binding.searchYear.setText("")
+        val maxYear = Calendar.getInstance().get(Calendar.YEAR) + 1
+        binding.searchYearRange.valueTo = maxYear.toFloat()
+        binding.searchYearRange.values = listOf(1970f, maxYear.toFloat())
         binding.searchStatus.clearFocus()
         binding.searchFormat.clearFocus()
         binding.searchSeason.clearFocus()
-        binding.searchYear.clearFocus()
         updateChips()
     }
 
@@ -245,6 +246,8 @@ class SearchFilterBottomDialog : BottomSheetDialogFragment() {
                 resetSearchFilter()
 
                 CoroutineScope(Dispatchers.Main).launch {
+                    val rangeStart = binding.searchYearRange.values[0].toInt()
+                    val rangeEnd = binding.searchYearRange.values[1].toInt()
                     activity.aniMangaResult.apply {
                         status =
                             binding.searchStatus.text.toString().replace(" ", "_").ifBlank { null }
@@ -252,8 +255,10 @@ class SearchFilterBottomDialog : BottomSheetDialogFragment() {
                             binding.searchSource.text.toString().replace(" ", "_").ifBlank { null }
                         format = binding.searchFormat.text.toString().ifBlank { null }
                         season = binding.searchSeason.text.toString().ifBlank { null }
-                        startYear = binding.searchYear.text.toString().toIntOrNull()
-                        seasonYear = binding.searchYear.text.toString().toIntOrNull()
+                        seasonYear = null
+                        startYear = null
+                        yearRangeStart = rangeStart
+                        yearRangeEnd = rangeEnd
                         sort = activity.aniMangaResult.sort
                         this.isAdult = this@SearchFilterBottomDialog.isAdult
                         onList = this@SearchFilterBottomDialog.listOnly
@@ -363,16 +368,17 @@ class SearchFilterBottomDialog : BottomSheetDialogFragment() {
         }
 
         binding.searchFilterApply.setOnClickListener {
+            val rangeStart = binding.searchYearRange.values[0].toInt()
+            val rangeEnd = binding.searchYearRange.values[1].toInt()
             activity.aniMangaResult.apply {
                 status = binding.searchStatus.text.toString().replace(" ", "_").ifBlank { null }
                 source = binding.searchSource.text.toString().replace(" ", "_").ifBlank { null }
                 format = binding.searchFormat.text.toString().ifBlank { null }
                 season = binding.searchSeason.text.toString().ifBlank { null }
-                if (activity.aniMangaResult.type == "ANIME") {
-                    seasonYear = binding.searchYear.text.toString().toIntOrNull()
-                } else {
-                    startYear = binding.searchYear.text.toString().toIntOrNull()
-                }
+                seasonYear = null
+                startYear = null
+                yearRangeStart = rangeStart
+                yearRangeEnd = rangeEnd
                 sort = activity.aniMangaResult.sort
                 countryOfOrigin = activity.aniMangaResult.countryOfOrigin
                 this.isAdult = this@SearchFilterBottomDialog.isAdult
@@ -418,19 +424,27 @@ class SearchFilterBottomDialog : BottomSheetDialogFragment() {
             )
         )
 
-        if (activity.aniMangaResult.type == "ANIME") {
-            binding.searchYear.setText(activity.aniMangaResult.seasonYear?.toString())
+        val maxYear = Calendar.getInstance().get(Calendar.YEAR) + 1
+        binding.searchYearRange.valueTo = maxYear.toFloat()
+        val initialRangeStart = activity.aniMangaResult.yearRangeStart
+        val initialRangeEnd = activity.aniMangaResult.yearRangeEnd
+        if (initialRangeStart != null && initialRangeEnd != null) {
+            binding.searchYearRange.values = listOf(initialRangeStart.toFloat(), initialRangeEnd.toFloat())
+        } else if (activity.aniMangaResult.type == "ANIME") {
+            val year = activity.aniMangaResult.seasonYear
+            binding.searchYearRange.values = if (year != null) {
+                listOf(year.toFloat(), year.toFloat())
+            } else {
+                listOf(1970f, maxYear.toFloat())
+            }
         } else {
-            binding.searchYear.setText(activity.aniMangaResult.startYear?.toString())
+            val year = activity.aniMangaResult.startYear
+            binding.searchYearRange.values = if (year != null) {
+                listOf(year.toFloat(), year.toFloat())
+            } else {
+                listOf(1970f, maxYear.toFloat())
+            }
         }
-        binding.searchYear.setAdapter(
-            ArrayAdapter(
-                binding.root.context,
-                R.layout.item_dropdown,
-                (1970 until Calendar.getInstance().get(Calendar.YEAR) + 2).map { it.toString() }
-                    .reversed().toTypedArray()
-            )
-        )
 
         if (activity.aniMangaResult.type == "MANGA") binding.searchSeasonCont.visibility = GONE
         else {
@@ -556,5 +570,4 @@ class SearchFilterBottomDialog : BottomSheetDialogFragment() {
     companion object {
         fun newInstance() = SearchFilterBottomDialog()
     }
-
 }

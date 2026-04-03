@@ -65,7 +65,6 @@ class ListFilterBottomDialog(
     private var selectedMuFormat: String? = currentFilters.muFormat
     private var selectedMuYear: Int? = currentFilters.muYear
     private var selectedMuLicensed: String? = currentFilters.muLicensed
-    private var selectedMuOrderBy: String? = currentFilters.muOrderBy
     private var selectedMuGenres = currentFilters.muGenres.toMutableList()
     private var selectedMuExcludedGenres = currentFilters.muExcludedGenres.toMutableList()
     private var selectedMuCategories = currentFilters.muCategories.toMutableList()
@@ -88,23 +87,6 @@ class ListFilterBottomDialog(
         "no_oneshots" to "No Oneshots",
         "some_releases" to "Has Releases",
         "no_releases" to "No Releases",
-    )
-
-    private val muSortOptions = listOf(
-        "" to "",
-        "score" to "Score",
-        "title" to "Title",
-        "year" to "Year",
-        "rating" to "Rating",
-        "date_added" to "Date Added",
-        "week_pos" to "Weekly Rank",
-        "month1_pos" to "Monthly Rank",
-        "month3_pos" to "3-Month Rank",
-        "month6_pos" to "6-Month Rank",
-        "year_pos" to "Yearly Rank",
-        "list_reading" to "Reading Count",
-        "list_wish" to "Wish Count",
-        "list_complete" to "Complete Count",
     )
 
     override fun onCreateView(
@@ -130,7 +112,11 @@ class ListFilterBottomDialog(
     }
 
     private fun setupProviderTabs() {
-        val showMuTab = !isAnime && MangaUpdates.token != null
+        val showMuTab = !isAnime &&
+            MangaUpdates.token != null &&
+            ani.dantotsu.settings.saving.PrefManager.getVal<Boolean>(
+                ani.dantotsu.settings.saving.PrefName.MangaUpdatesListEnabled
+            )
         if (!showMuTab) {
             binding.listFilterProviderTabs.visibility = GONE
             binding.listFilterAnilistSection.visibility = View.VISIBLE
@@ -163,7 +149,11 @@ class ListFilterBottomDialog(
     }
 
     private fun setupMuFilters() {
-        val showMu = !isAnime && MangaUpdates.token != null
+        val showMu = !isAnime &&
+            MangaUpdates.token != null &&
+            ani.dantotsu.settings.saving.PrefManager.getVal<Boolean>(
+                ani.dantotsu.settings.saving.PrefName.MangaUpdatesListEnabled
+            )
         binding.listFilterMuSection.visibility = GONE
         if (!showMu) return
 
@@ -206,19 +196,6 @@ class ListFilterBottomDialog(
                 "Not Licensed" -> "no"
                 else -> null
             }
-        }
-
-        val sortLabels = muSortOptions.map { it.second }
-        val currentSortLabel = muSortOptions.firstOrNull { it.first == selectedMuOrderBy }?.second ?: ""
-        binding.listMuFilterSort.setText(currentSortLabel, false)
-        binding.listMuFilterSort.setAdapter(
-            ArrayAdapter(requireContext(), R.layout.item_dropdown, sortLabels)
-        )
-        binding.listMuFilterSort.setOnItemClickListener { _, _, _, _ ->
-            val selectedLabel = binding.listMuFilterSort.text.toString()
-            selectedMuOrderBy = muSortOptions.firstOrNull { it.second == selectedLabel }
-                ?.first
-                ?.ifBlank { null }
         }
 
         binding.listMuFilterStatusRecycler.adapter =
@@ -523,10 +500,6 @@ class ListFilterBottomDialog(
                     "Not Licensed" -> "no"
                     else -> selectedMuLicensed
                 },
-                muOrderBy = muSortOptions.firstOrNull { it.second == binding.listMuFilterSort.text.toString() }
-                    ?.first
-                    ?.ifBlank { null }
-                    ?: selectedMuOrderBy,
                 muGenres = selectedMuGenres.toList(),
                 muExcludedGenres = selectedMuExcludedGenres.toList(),
                 muCategories = selectedMuCategories.toList(),
@@ -627,7 +600,6 @@ class ListFilterBottomDialog(
         selectedMuFormat = null
         selectedMuYear = null
         selectedMuLicensed = null
-        selectedMuOrderBy = null
         selectedMuGenres.clear()
         selectedMuExcludedGenres.clear()
         selectedMuCategories.clear()
@@ -637,7 +609,6 @@ class ListFilterBottomDialog(
         binding.listMuFilterFormat.setText("", false)
         binding.listMuFilterYear.setText("", false)
         binding.listMuFilterLicensed.setText("", false)
-        binding.listMuFilterSort.setText("", false)
         binding.listMuFilterCategorySearch.setText("")
         binding.listMuFilterCategoryProgress.visibility = View.GONE
         binding.listMuFilterCategoryResultsRecycler.adapter = FilterChipAdapter(emptyList()) { }
@@ -736,7 +707,6 @@ data class ListFilters(
     val muFormat: String? = null,
     val muYear: Int? = null,
     val muLicensed: String? = null,
-    val muOrderBy: String? = null,
     val muGenres: List<String> = emptyList(),
     val muExcludedGenres: List<String> = emptyList(),
     val muCategories: List<String> = emptyList(),
@@ -749,7 +719,7 @@ data class ListFilters(
                 scoreRange == Pair(0.0f, 10.0f) && yearRange == Pair(1970, 2028) &&
             !englishLicenced &&
                 muFormat == null && muYear == null && muLicensed == null &&
-                muOrderBy == null && muGenres.isEmpty() && muExcludedGenres.isEmpty() &&
+                muGenres.isEmpty() && muExcludedGenres.isEmpty() &&
                 muCategories.isEmpty() && muStatusFilters.isEmpty()
     }
 
@@ -757,13 +727,13 @@ data class ListFilters(
     fun hasAnilistOnlyFilters(): Boolean {
         return genres.isNotEmpty() || tags.isNotEmpty() || formats.isNotEmpty() ||
                 statuses.isNotEmpty() || sources.isNotEmpty() || season != null ||
-                year != null || countryOfOrigin != null ||
+                year != null || countryOfOrigin != null || englishLicenced ||
                 scoreRange != Pair(0.0f, 10.0f) || yearRange != Pair(1970, 2028)
     }
 
     fun hasMuFilters(): Boolean {
-        return englishLicenced || muFormat != null || muYear != null || muLicensed != null ||
-                muOrderBy != null || muGenres.isNotEmpty() || muExcludedGenres.isNotEmpty() ||
+        return muFormat != null || muYear != null || muLicensed != null ||
+            muGenres.isNotEmpty() || muExcludedGenres.isNotEmpty() ||
                 muCategories.isNotEmpty() || muStatusFilters.isNotEmpty()
     }
 

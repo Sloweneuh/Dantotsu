@@ -291,6 +291,8 @@ class SearchActivity : AppCompatActivity() {
                             season = it.season
                             startYear = it.startYear
                             seasonYear = it.seasonYear
+                            yearRangeStart = it.yearRangeStart
+                            yearRangeEnd = it.yearRangeEnd
                             status = it.status
                             source = it.source
                             format = it.format

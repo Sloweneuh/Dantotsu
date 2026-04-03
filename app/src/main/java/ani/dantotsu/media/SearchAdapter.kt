@@ -283,6 +283,7 @@ class SearchAdapter(private val activity: SearchActivity, private val type: Sear
                 !format.isNullOrBlank() ||
                 seasonYear != null ||
                 startYear != null ||
+                (yearRangeStart != null && yearRangeEnd != null) ||
                 !season.isNullOrBlank() ||
                 !countryOfOrigin.isNullOrBlank()
         }

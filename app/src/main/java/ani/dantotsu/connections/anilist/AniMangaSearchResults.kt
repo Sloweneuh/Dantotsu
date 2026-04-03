@@ -33,6 +33,8 @@ data class AniMangaSearchResults(
     var format: String? = null,
     var seasonYear: Int? = null,
     var startYear: Int? = null,
+    var yearRangeStart: Int? = null,
+    var yearRangeEnd: Int? = null,
     var season: String? = null,
     override var search: String? = null,
     override var page: Int = 1,
@@ -68,11 +70,16 @@ data class AniMangaSearchResults(
         season?.let {
             list.add(SearchChip("SEASON", it))
         }
-        startYear?.let {
-            list.add(SearchChip("START_YEAR", it.toString()))
-        }
-        seasonYear?.let {
-            list.add(SearchChip("SEASON_YEAR", it.toString()))
+        if (yearRangeStart != null && yearRangeEnd != null) {
+            val c = currContext()!!
+            list.add(SearchChip("YEAR_RANGE", c.getString(R.string.filter_year_range, "${yearRangeStart}-${yearRangeEnd}")))
+        } else {
+            // Backward compatibility for older saved search states that only have a single year.
+            val singleYear = startYear ?: seasonYear
+            if (singleYear != null) {
+                val c = currContext()!!
+                list.add(SearchChip("YEAR_RANGE", c.getString(R.string.filter_year_range, "$singleYear-$singleYear")))
+            }
         }
         genres?.forEach {
             list.add(SearchChip("GENRE", it))
@@ -107,8 +114,12 @@ data class AniMangaSearchResults(
             "FORMAT" -> format = null
             "COUNTRY" -> countryOfOrigin = null
             "SEASON" -> season = null
-            "START_YEAR" -> startYear = null
-            "SEASON_YEAR" -> seasonYear = null
+            "YEAR_RANGE" -> {
+                startYear = null
+                seasonYear = null
+                yearRangeStart = null
+                yearRangeEnd = null
+            }
             "GENRE" -> genres?.remove(chip.text)
             "EXCLUDED_GENRE" -> excludedGenres?.remove(chip.text)
             "TAG" -> tags?.remove(chip.text)

@@ -875,6 +875,7 @@
     <string name="filter_english_licenced">English Licenced</string>
     <string name="not_licensed">Not Licensed</string>
     <string name="filter_year">"Year : %1$d"</string>
+    <string name="filter_year_range">"Years : %1$s"</string>
     <string name="filter_sort">"Sort : %1$s"</string>
     <string name="filter_exclude">"Not %1$s"</string>
     <string name="search_by_image">Search by Image</string>

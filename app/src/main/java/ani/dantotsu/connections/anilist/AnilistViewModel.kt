@@ -649,6 +649,8 @@ class AnilistSearch : ViewModel() {
             r.startYear,
             r.seasonYear,
             r.season,
+            yearRangeStart = r.yearRangeStart,
+            yearRangeEnd = r.yearRangeEnd,
         )
     )
 
@@ -699,7 +701,9 @@ class AnilistSearch : ViewModel() {
             r.excludedTags,
             r.startYear,
             r.seasonYear,
-            r.season
+            r.season,
+            yearRangeStart = r.yearRangeStart,
+            yearRangeEnd = r.yearRangeEnd,
         )
     )
 

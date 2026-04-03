@@ -997,15 +997,28 @@ class AnilistQueries {
         season: String? = null,
         id: Int? = null,
         hd: Boolean = false,
-        adultOnly: Boolean = false
+        adultOnly: Boolean = false,
+        yearRangeStart: Int? = null,
+        yearRangeEnd: Int? = null,
     ): AniMangaSearchResults? {
+        val normalizedRangeStart =
+            if (yearRangeStart != null && yearRangeEnd != null) minOf(yearRangeStart, yearRangeEnd) else null
+        val normalizedRangeEnd =
+            if (yearRangeStart != null && yearRangeEnd != null) maxOf(yearRangeStart, yearRangeEnd) else null
+
         val variables = """{"type":"$type","isAdult":$isAdult
             ${if (adultOnly) ""","isAdult":true""" else ""}
             ${if (onList != null) ""","onList":$onList""" else ""}
             ${if (page != null) ""","page":"$page"""" else ""}
             ${if (id != null) ""","id":"$id"""" else ""}
             ${if (type == "ANIME" && seasonYear != null) ""","seasonYear":"$seasonYear"""" else ""}
-            ${if (type == "MANGA" && startYear != null) ""","yearGreater":${startYear}0000,"yearLesser":${startYear + 1}0000""" else ""}
+            ${
+            if (normalizedRangeStart != null && normalizedRangeEnd != null)
+                ""","yearGreater":${normalizedRangeStart}0000,"yearLesser":${normalizedRangeEnd + 1}0000"""
+            else if (type == "MANGA" && startYear != null)
+                ""","yearGreater":${startYear}0000,"yearLesser":${startYear + 1}0000"""
+            else ""
+        }
             ${if (season != null) ""","season":"$season"""" else ""}
             ${if (search != null) ""","search":"$search"""" else ""}
             ${if (source != null) ""","source":"$source"""" else ""}
@@ -1082,6 +1095,8 @@ class AnilistQueries {
                 countryOfOrigin = countryOfOrigin,
                 startYear = startYear,
                 seasonYear = seasonYear,
+                yearRangeStart = normalizedRangeStart,
+                yearRangeEnd = normalizedRangeEnd,
                 season = season,
                 results = responseArray,
                 page = pageInfo.currentPage.toString().toIntOrNull() ?: 0,

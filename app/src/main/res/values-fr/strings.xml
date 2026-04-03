@@ -1403,6 +1403,7 @@
     <string name="filter_provider_mangaupdates">MangaUpdates</string>
     <string name="not_licensed">Non licencié</string>
     <string name="filter_year">Année : %1$d</string>
+    <string name="filter_year_range">Années : %1$s</string>
     <string name="search_equivalents_confirm_title">Rechercher des équivalents sur Anilist</string>
     <string name="view_my_mal">Voir mon profil MAL</string>
     <string name="discord_preview">Aperçu</string>

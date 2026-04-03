@@ -262,7 +262,7 @@ class ListViewModel : ViewModel() {
         currentSearchQuery = query  // Save current search query
 
         if (query.isEmpty()) {
-            // Restore MU list respecting tracker filter and AniList-only filters
+            // Restore MU list respecting AniList-only suppression rules.
             val filters = currentFilters.value
             filteredMuLists.postValue(applyMuFilters(rawMuData ?: emptyMap(), filters, query = null))
             // When search is cleared, reapply current filters if they exist
@@ -352,11 +352,6 @@ class ListViewModel : ViewModel() {
             }
         }
 
-        val orderBy = filters?.muOrderBy
-        if (!orderBy.isNullOrBlank()) {
-            output = output.mapValues { (_, list) -> sortMuListByOrder(list, orderBy) }
-        }
-
         return output
     }
 
@@ -369,8 +364,6 @@ class ListViewModel : ViewModel() {
     private fun matchesMuFilters(mu: MUMedia, filters: ListFilters?): Boolean {
         if (filters == null) return true
         val detail = MUDetailsCache.get(mu.id)
-
-        if (filters.englishLicenced && detail?.hasEnglishPublisher != true) return false
 
         filters.muFormat?.let { required ->
             val type = detail?.type?.trim()
