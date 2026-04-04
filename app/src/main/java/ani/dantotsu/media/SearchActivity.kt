@@ -431,41 +431,43 @@ class SearchActivity : AppCompatActivity() {
     fun emptyMediaAdapter() {
         searchTimer.cancel()
         searchTimer.purge()
-        when (searchType) {
-            SearchType.ANIME, SearchType.MANGA -> {
-                mediaAdaptor.notifyItemRangeRemoved(0, model.aniMangaSearchResults.results.size)
-                model.aniMangaSearchResults.results.clear()
-            }
+        binding.searchRecyclerView.post {
+            when (searchType) {
+                SearchType.ANIME, SearchType.MANGA -> {
+                    mediaAdaptor.notifyItemRangeRemoved(0, model.aniMangaSearchResults.results.size)
+                    model.aniMangaSearchResults.results.clear()
+                }
 
-            SearchType.CHARACTER -> {
-                characterAdaptor.notifyItemRangeRemoved(
-                    0,
-                    model.characterSearchResults.results.size
-                )
-                model.characterSearchResults.results.clear()
-            }
+                SearchType.CHARACTER -> {
+                    characterAdaptor.notifyItemRangeRemoved(
+                        0,
+                        model.characterSearchResults.results.size
+                    )
+                    model.characterSearchResults.results.clear()
+                }
 
-            SearchType.STUDIO -> {
-                studioAdaptor.notifyItemRangeRemoved(0, model.studioSearchResults.results.size)
-                model.studioSearchResults.results.clear()
-            }
+                SearchType.STUDIO -> {
+                    studioAdaptor.notifyItemRangeRemoved(0, model.studioSearchResults.results.size)
+                    model.studioSearchResults.results.clear()
+                }
 
-            SearchType.STAFF -> {
-                staffAdaptor.notifyItemRangeRemoved(0, model.staffSearchResults.results.size)
-                model.staffSearchResults.results.clear()
-            }
+                SearchType.STAFF -> {
+                    staffAdaptor.notifyItemRangeRemoved(0, model.staffSearchResults.results.size)
+                    model.staffSearchResults.results.clear()
+                }
 
-            SearchType.USER -> {
-                usersAdapter.notifyItemRangeRemoved(0, model.userSearchResults.results.size)
-                model.userSearchResults.results.clear()
-            }
+                SearchType.USER -> {
+                    usersAdapter.notifyItemRangeRemoved(0, model.userSearchResults.results.size)
+                    model.userSearchResults.results.clear()
+                }
 
-            SearchType.MANGAUPDATES -> {
-                muSearchAdaptor.notifyItemRangeRemoved(0, model.muSearchResults.results.size)
-                model.muSearchResults.results.clear()
+                SearchType.MANGAUPDATES -> {
+                    muSearchAdaptor.notifyItemRangeRemoved(0, model.muSearchResults.results.size)
+                    model.muSearchResults.results.clear()
+                }
             }
+            progressAdapter.bar?.visibility = View.GONE
         }
-        progressAdapter.bar?.visibility = View.GONE
     }
 
     private var searchTimer = Timer()

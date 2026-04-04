@@ -89,6 +89,8 @@ class SearchAdapter(private val activity: SearchActivity, private val type: Sear
             binding.searchBar.startIconDrawable = startIconDrawable
         }
 
+        binding.searchBarText.removeTextChangedListener(textWatcher)
+
         // Initialize search bar text from existing model value and move caret to end
         binding.searchBarText.setText(activity.aniMangaResult.search)
         binding.searchBarText.setSelection(binding.searchBarText.text.length)

@@ -137,7 +137,7 @@ class ListFilterBottomDialog(
         fun setSection(tabPosition: Int) {
             binding.listFilterAnilistSection.visibility = if (tabPosition == 0) View.VISIBLE else GONE
             binding.listFilterMuSection.visibility = if (tabPosition == 1) View.VISIBLE else GONE
-            binding.countryFilter.visibility = if (tabPosition == 1) GONE else View.VISIBLE
+            binding.countryFilter.visibility = if (tabPosition == 1) View.INVISIBLE else View.VISIBLE
         }
 
         setSection(0)

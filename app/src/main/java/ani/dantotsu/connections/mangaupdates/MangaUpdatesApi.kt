@@ -2,6 +2,7 @@ package ani.dantotsu.connections.mangaupdates
 
 import ani.dantotsu.Mapper
 import ani.dantotsu.connections.anilist.MUSearchResults
+import ani.dantotsu.connections.anilist.AnilistQueries
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.tryWithSuspend
@@ -174,7 +175,7 @@ object MangaUpdates {
     suspend fun searchSeriesPaged(
         r: MUSearchResults,
         page: Int = 1,
-        perPage: Int = -1
+        perPage: Int = AnilistQueries.ITEMS_PER_PAGE
     ): MUSearchResults? {
         return tryWithSuspend {
             val searchRequest = MUSearchRequest(
@@ -204,11 +205,14 @@ object MangaUpdates {
             val searchResponse = Mapper.parse<MUSearchResponse>(responseBody)
             val results = searchResponse.results?.mapNotNull { it.toMUMedia() }?.toMutableList() ?: mutableListOf()
             val totalHits = searchResponse.totalHits ?: 0
+            val responsePage = searchResponse.page ?: page
+            val responsePerPage = searchResponse.perPage ?: perPage
+            val hasNextPage = responsePerPage > 0 && (responsePage * responsePerPage) < totalHits
             MUSearchResults(
                 search = r.search,
-                page = page,
+                page = responsePage,
                 results = results,
-                hasNextPage = perPage != -1 && page * perPage < totalHits,
+                hasNextPage = hasNextPage,
                 format = r.format,
                 year = r.year,
                 genres = r.genres,
