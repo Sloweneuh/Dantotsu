@@ -380,7 +380,7 @@ class MangaReaderActivity : AppCompatActivity() {
         chaptersTitleArr = arrayListOf()
         chapters.forEach {
             val chapter = it.value
-            chaptersTitleArr.add("${if (!chapter.title.isNullOrEmpty() && chapter.title != "null") "" else "Chapter "}${chapter.number}${if (!chapter.title.isNullOrEmpty() && chapter.title != "null") " : " + chapter.title else ""}")
+            chaptersTitleArr.add("${chapter.number}${if (!chapter.title.isNullOrEmpty() && chapter.title != "null") " : " + chapter.title else ""}")
         }
 
         showProgressDialog =
