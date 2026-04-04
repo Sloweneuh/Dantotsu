@@ -661,6 +661,9 @@ fun ImageView.loadImage(url: String?, size: Int = 0) {
         } else {
             loadImage(FileUrl(url), size)
         }
+    } else {
+        Glide.with(this).clear(this)
+        setImageDrawable(null)
     }
 }
 
@@ -677,6 +680,9 @@ fun ImageView.loadImage(file: FileUrl?, size: Int = 0) {
                     .into(this)
             }
         }
+    } else {
+        Glide.with(this).clear(this)
+        setImageDrawable(null)
     }
 }
 
@@ -694,6 +700,9 @@ fun ImageView.loadImage(file: FileUrl?, width: Int = 0, height: Int = 0) {
                     .into(this)
             }
         }
+    } else {
+        Glide.with(this).clear(this)
+        setImageDrawable(null)
     }
 }
 
