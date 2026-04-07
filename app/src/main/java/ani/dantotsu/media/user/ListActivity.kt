@@ -362,10 +362,26 @@ class ListActivity : AppCompatActivity() {
             }
         }
 
+        filters.excludedGenres.forEach { genre ->
+            addFilterChip(getString(R.string.filter_exclude, genre), "ExcludedGenre") {
+                val newFilters = filters.copy(excludedGenres = filters.excludedGenres - genre)
+                model.applyFilters(newFilters)
+                updateFilterChips(newFilters)
+            }
+        }
+
         // Add tag chips
         filters.tags.forEach { tag ->
             addFilterChip(tag, "Tag") {
                 val newFilters = filters.copy(tags = filters.tags - tag)
+                model.applyFilters(newFilters)
+                updateFilterChips(newFilters)
+            }
+        }
+
+        filters.excludedTags.forEach { tag ->
+            addFilterChip(getString(R.string.filter_exclude, tag), "ExcludedTag") {
+                val newFilters = filters.copy(excludedTags = filters.excludedTags - tag)
                 model.applyFilters(newFilters)
                 updateFilterChips(newFilters)
             }
@@ -497,6 +513,14 @@ class ListActivity : AppCompatActivity() {
         filters.muCategories.forEach { category ->
             addFilterChip(category, "MuCategory") {
                 val newFilters = filters.copy(muCategories = filters.muCategories - category)
+                model.applyFilters(newFilters)
+                updateFilterChips(newFilters)
+            }
+        }
+
+        filters.muExcludedCategories.forEach { category ->
+            addFilterChip(getString(R.string.filter_exclude, category), "MuExcludedCategory") {
+                val newFilters = filters.copy(muExcludedCategories = filters.muExcludedCategories - category)
                 model.applyFilters(newFilters)
                 updateFilterChips(newFilters)
             }

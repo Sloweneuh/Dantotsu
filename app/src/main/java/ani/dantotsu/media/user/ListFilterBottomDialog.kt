@@ -1,6 +1,7 @@
 package ani.dantotsu.media.user
 
 import android.animation.ObjectAnimator
+import android.content.res.ColorStateList
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
@@ -8,6 +9,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.View.GONE
 import android.view.ViewGroup
+import android.view.SoundEffectConstants
 import android.view.inputmethod.InputMethodManager
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.AnimationUtils
@@ -52,7 +54,9 @@ class ListFilterBottomDialog(
     private val binding get() = _binding!!
 
     private var selectedGenres = currentFilters.genres.toMutableList()
+    private var selectedExcludedGenres = currentFilters.excludedGenres.toMutableList()
     private var selectedTags = currentFilters.tags.toMutableList()
+    private var selectedExcludedTags = currentFilters.excludedTags.toMutableList()
     private var selectedFormats = currentFilters.formats.toMutableList()
     private var selectedStatuses = currentFilters.statuses.toMutableList()
     private var selectedSources = currentFilters.sources.toMutableList()
@@ -68,9 +72,49 @@ class ListFilterBottomDialog(
     private var selectedMuGenres = currentFilters.muGenres.toMutableList()
     private var selectedMuExcludedGenres = currentFilters.muExcludedGenres.toMutableList()
     private var selectedMuCategories = currentFilters.muCategories.toMutableList()
+    private var selectedMuExcludedCategories = currentFilters.muExcludedCategories.toMutableList()
     private var selectedMuStatusFilters = currentFilters.muStatusFilters.toMutableList()
     private var muCategorySearchJob: Job? = null
     private var tagSearchQuery: String = ""
+
+    private fun Chip.setFilterStyle(
+        baseText: String,
+        included: Boolean,
+        excluded: Boolean,
+        defaultBackground: ColorStateList?,
+        defaultTextColor: ColorStateList?
+    ) {
+        text = baseText
+        when {
+            excluded -> {
+                chipBackgroundColor = ColorStateList.valueOf(
+                    requireContext().getResourceColor(com.google.android.material.R.attr.colorErrorContainer)
+                )
+                setTextColor(requireContext().getResourceColor(com.google.android.material.R.attr.colorOnErrorContainer))
+            }
+
+            included -> {
+                chipBackgroundColor = ColorStateList.valueOf(
+                    ContextCompat.getColor(requireContext(), R.color.filter_chip_include_bg)
+                )
+                setTextColor(ContextCompat.getColor(requireContext(), R.color.filter_chip_include_text))
+            }
+
+            else -> {
+                chipBackgroundColor = defaultBackground
+                    ?: ColorStateList.valueOf(
+                        requireContext().getResourceColor(com.google.android.material.R.attr.colorSurfaceVariant)
+                    )
+                setTextColor(
+                    defaultTextColor
+                        ?: ColorStateList.valueOf(
+                            requireContext().getResourceColor(com.google.android.material.R.attr.colorOnSurface)
+                        )
+                )
+            }
+        }
+        isCloseIconVisible = false
+    }
 
     private fun createWrapChipLayoutManager(): RecyclerView.LayoutManager {
         return FlexboxLayoutManager(requireContext()).apply {
@@ -219,27 +263,45 @@ class ListFilterBottomDialog(
                 binding.listMuFilterGenresRecycler.adapter =
                     FilterChipAdapter(genres) { chip ->
                         val genre = chip.text.toString()
-                        chip.isChecked = selectedMuGenres.contains(genre)
-                        chip.isCloseIconVisible = selectedMuExcludedGenres.contains(genre)
+                        var internalChange = false
+                        val isExcluded = selectedMuExcludedGenres.contains(genre)
+                        val defaultBackground = chip.chipBackgroundColor
+                        val defaultTextColor = chip.textColors
+                        chip.isChecked = selectedMuGenres.contains(genre) || isExcluded
+                        chip.setFilterStyle(
+                            genre,
+                            selectedMuGenres.contains(genre),
+                            selectedMuExcludedGenres.contains(genre),
+                            defaultBackground,
+                            defaultTextColor
+                        )
                         chip.setOnCheckedChangeListener { _, isChecked ->
+                            if (internalChange) return@setOnCheckedChangeListener
                             if (isChecked) {
-                                chip.isCloseIconVisible = false
                                 selectedMuExcludedGenres.remove(genre)
+                                chip.setFilterStyle(genre, true, false, defaultBackground, defaultTextColor)
                                 if (!selectedMuGenres.contains(genre)) selectedMuGenres.add(genre)
                             } else {
                                 selectedMuGenres.remove(genre)
+                                selectedMuExcludedGenres.remove(genre)
+                                chip.setFilterStyle(genre, false, false, defaultBackground, defaultTextColor)
                             }
                         }
                         chip.setOnLongClickListener {
-                            chip.isChecked = false
-                            selectedMuGenres.remove(genre)
-                            chip.isCloseIconVisible = true
-                            if (!selectedMuExcludedGenres.contains(genre)) selectedMuExcludedGenres.add(genre)
+                            internalChange = true
+                            if (selectedMuExcludedGenres.contains(genre)) {
+                                selectedMuExcludedGenres.remove(genre)
+                                chip.isChecked = false
+                                chip.setFilterStyle(genre, false, false, defaultBackground, defaultTextColor)
+                            } else {
+                                selectedMuGenres.remove(genre)
+                                selectedMuExcludedGenres.add(genre)
+                                chip.isChecked = true
+                                chip.setFilterStyle(genre, false, true, defaultBackground, defaultTextColor)
+                            }
+                            internalChange = false
+                            chip.playSoundEffect(SoundEffectConstants.CLICK)
                             true
-                        }
-                        chip.setOnCloseIconClickListener {
-                            chip.isCloseIconVisible = false
-                            selectedMuExcludedGenres.remove(genre)
                         }
                     }
             }
@@ -259,18 +321,50 @@ class ListFilterBottomDialog(
             binding.listMuFilterCategoryResultsRecycler.adapter =
                 FilterChipAdapter(categories) { chip ->
                     val category = chip.text.toString()
-                    chip.isChecked = selectedMuCategories.contains(category)
+                    var internalChange = false
+                    val isExcluded = selectedMuExcludedCategories.contains(category)
+                    val defaultBackground = chip.chipBackgroundColor
+                    val defaultTextColor = chip.textColors
+                    chip.isChecked = selectedMuCategories.contains(category) || isExcluded
+                    chip.setFilterStyle(
+                        category,
+                        selectedMuCategories.contains(category),
+                        selectedMuExcludedCategories.contains(category),
+                        defaultBackground,
+                        defaultTextColor
+                    )
                     chip.setOnCheckedChangeListener { _, isChecked ->
+                        if (internalChange) return@setOnCheckedChangeListener
                         if (isChecked) {
+                            selectedMuExcludedCategories.remove(category)
+                            chip.setFilterStyle(category, true, false, defaultBackground, defaultTextColor)
                             if (!selectedMuCategories.contains(category)) selectedMuCategories.add(category)
                         } else {
                             selectedMuCategories.remove(category)
+                            selectedMuExcludedCategories.remove(category)
+                            chip.setFilterStyle(category, false, false, defaultBackground, defaultTextColor)
                         }
+                    }
+                    chip.setOnLongClickListener {
+                        internalChange = true
+                        if (selectedMuExcludedCategories.contains(category)) {
+                            selectedMuExcludedCategories.remove(category)
+                            chip.isChecked = false
+                            chip.setFilterStyle(category, false, false, defaultBackground, defaultTextColor)
+                        } else {
+                            selectedMuCategories.remove(category)
+                            selectedMuExcludedCategories.add(category)
+                            chip.isChecked = true
+                            chip.setFilterStyle(category, false, true, defaultBackground, defaultTextColor)
+                        }
+                        internalChange = false
+                        chip.playSoundEffect(SoundEffectConstants.CLICK)
+                        true
                     }
                 }
         }
 
-        updateCategoryResults(selectedMuCategories.toList())
+        updateCategoryResults((selectedMuCategories + selectedMuExcludedCategories).distinct())
         binding.listMuFilterCategorySearch.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
@@ -279,7 +373,7 @@ class ListFilterBottomDialog(
                 muCategorySearchJob?.cancel()
                 if (query.isBlank()) {
                     binding.listMuFilterCategoryProgress.visibility = View.GONE
-                    updateCategoryResults(selectedMuCategories.toList())
+                    updateCategoryResults((selectedMuCategories + selectedMuExcludedCategories).distinct())
                     return
                 }
 
@@ -359,10 +453,45 @@ class ListFilterBottomDialog(
         // Genres
         binding.listFilterGenres.adapter = FilterChipAdapter(Anilist.genres ?: listOf()) { chip ->
             val genre = chip.text.toString()
-            chip.isChecked = selectedGenres.contains(genre)
+            var internalChange = false
+            val isExcluded = selectedExcludedGenres.contains(genre)
+            val defaultBackground = chip.chipBackgroundColor
+            val defaultTextColor = chip.textColors
+            chip.isChecked = selectedGenres.contains(genre) || isExcluded
+            chip.setFilterStyle(
+                genre,
+                selectedGenres.contains(genre),
+                selectedExcludedGenres.contains(genre),
+                defaultBackground,
+                defaultTextColor
+            )
             chip.setOnCheckedChangeListener { _, isChecked ->
-                if (isChecked) selectedGenres.add(genre)
-                else selectedGenres.remove(genre)
+                if (internalChange) return@setOnCheckedChangeListener
+                if (isChecked) {
+                    selectedExcludedGenres.remove(genre)
+                    chip.setFilterStyle(genre, true, false, defaultBackground, defaultTextColor)
+                    if (!selectedGenres.contains(genre)) selectedGenres.add(genre)
+                } else {
+                    selectedGenres.remove(genre)
+                    selectedExcludedGenres.remove(genre)
+                    chip.setFilterStyle(genre, false, false, defaultBackground, defaultTextColor)
+                }
+            }
+            chip.setOnLongClickListener {
+                internalChange = true
+                if (selectedExcludedGenres.contains(genre)) {
+                    selectedExcludedGenres.remove(genre)
+                    chip.isChecked = false
+                    chip.setFilterStyle(genre, false, false, defaultBackground, defaultTextColor)
+                } else {
+                    selectedGenres.remove(genre)
+                    selectedExcludedGenres.add(genre)
+                    chip.isChecked = true
+                    chip.setFilterStyle(genre, false, true, defaultBackground, defaultTextColor)
+                }
+                internalChange = false
+                chip.playSoundEffect(SoundEffectConstants.CLICK)
+                true
             }
         }
         binding.listFilterGenresGrid.setOnCheckedChangeListener { _, isChecked ->
@@ -390,10 +519,45 @@ class ListFilterBottomDialog(
 
             binding.listFilterTags.adapter = FilterChipAdapter(filteredTags) { chip ->
                 val tag = chip.text.toString()
-                chip.isChecked = selectedTags.contains(tag)
+                var internalChange = false
+                val isExcluded = selectedExcludedTags.contains(tag)
+                val defaultBackground = chip.chipBackgroundColor
+                val defaultTextColor = chip.textColors
+                chip.isChecked = selectedTags.contains(tag) || isExcluded
+                chip.setFilterStyle(
+                    tag,
+                    selectedTags.contains(tag),
+                    selectedExcludedTags.contains(tag),
+                    defaultBackground,
+                    defaultTextColor
+                )
                 chip.setOnCheckedChangeListener { _, isChecked ->
-                    if (isChecked) selectedTags.add(tag)
-                    else selectedTags.remove(tag)
+                    if (internalChange) return@setOnCheckedChangeListener
+                    if (isChecked) {
+                        selectedExcludedTags.remove(tag)
+                        chip.setFilterStyle(tag, true, false, defaultBackground, defaultTextColor)
+                        if (!selectedTags.contains(tag)) selectedTags.add(tag)
+                    } else {
+                        selectedTags.remove(tag)
+                        selectedExcludedTags.remove(tag)
+                        chip.setFilterStyle(tag, false, false, defaultBackground, defaultTextColor)
+                    }
+                }
+                chip.setOnLongClickListener {
+                    internalChange = true
+                    if (selectedExcludedTags.contains(tag)) {
+                        selectedExcludedTags.remove(tag)
+                        chip.isChecked = false
+                        chip.setFilterStyle(tag, false, false, defaultBackground, defaultTextColor)
+                    } else {
+                        selectedTags.remove(tag)
+                        selectedExcludedTags.add(tag)
+                        chip.isChecked = true
+                        chip.setFilterStyle(tag, false, true, defaultBackground, defaultTextColor)
+                    }
+                    internalChange = false
+                    chip.playSoundEffect(SoundEffectConstants.CLICK)
+                    true
                 }
             }
             binding.listFilterSearchTagsAnilist.setImageResource(
@@ -477,7 +641,9 @@ class ListFilterBottomDialog(
         binding.listFilterApply.setOnClickListener {
             val filters = ListFilters(
                 genres = selectedGenres,
+                excludedGenres = selectedExcludedGenres,
                 tags = selectedTags,
+                excludedTags = selectedExcludedTags,
                 formats = listOfNotNull(binding.listFilterFormat.text.toString().takeIf { it.isNotBlank() }),
                 statuses = listOfNotNull(binding.listFilterStatus.text.toString().takeIf { it.isNotBlank() }),
                 sources = listOfNotNull(binding.listFilterSource.text.toString().takeIf { it.isNotBlank() }),
@@ -503,6 +669,7 @@ class ListFilterBottomDialog(
                 muGenres = selectedMuGenres.toList(),
                 muExcludedGenres = selectedMuExcludedGenres.toList(),
                 muCategories = selectedMuCategories.toList(),
+                muExcludedCategories = selectedMuExcludedCategories.toList(),
                 muStatusFilters = selectedMuStatusFilters.toList(),
             )
             onApply(filters)
@@ -586,7 +753,9 @@ class ListFilterBottomDialog(
 
     private fun resetFilters() {
         selectedGenres.clear()
+        selectedExcludedGenres.clear()
         selectedTags.clear()
+        selectedExcludedTags.clear()
         selectedFormats.clear()
         selectedStatuses.clear()
         selectedSources.clear()
@@ -603,6 +772,7 @@ class ListFilterBottomDialog(
         selectedMuGenres.clear()
         selectedMuExcludedGenres.clear()
         selectedMuCategories.clear()
+        selectedMuExcludedCategories.clear()
         selectedMuStatusFilters.clear()
         tagSearchQuery = ""
         muCategorySearchJob?.cancel()
@@ -694,7 +864,9 @@ class ListFilterBottomDialog(
 
 data class ListFilters(
     val genres: List<String> = emptyList(),
+    val excludedGenres: List<String> = emptyList(),
     val tags: List<String> = emptyList(),
+    val excludedTags: List<String> = emptyList(),
     val formats: List<String> = emptyList(),
     val statuses: List<String> = emptyList(),
     val sources: List<String> = emptyList(),
@@ -710,22 +882,26 @@ data class ListFilters(
     val muGenres: List<String> = emptyList(),
     val muExcludedGenres: List<String> = emptyList(),
     val muCategories: List<String> = emptyList(),
+    val muExcludedCategories: List<String> = emptyList(),
     val muStatusFilters: List<String> = emptyList(),
 ) {
     fun isEmpty(): Boolean {
-        return genres.isEmpty() && tags.isEmpty() && formats.isEmpty() &&
+        return genres.isEmpty() && excludedGenres.isEmpty() &&
+            tags.isEmpty() && excludedTags.isEmpty() && formats.isEmpty() &&
                 statuses.isEmpty() && sources.isEmpty() && season == null &&
                 year == null && countryOfOrigin == null &&
                 scoreRange == Pair(0.0f, 10.0f) && yearRange == Pair(1970, 2028) &&
             !englishLicenced &&
                 muFormat == null && muYear == null && muLicensed == null &&
                 muGenres.isEmpty() && muExcludedGenres.isEmpty() &&
-                muCategories.isEmpty() && muStatusFilters.isEmpty()
+                muCategories.isEmpty() && muExcludedCategories.isEmpty() &&
+                muStatusFilters.isEmpty()
     }
 
     /** True when any filter that cannot be applied to MU entries is active. */
     fun hasAnilistOnlyFilters(): Boolean {
-        return genres.isNotEmpty() || tags.isNotEmpty() || formats.isNotEmpty() ||
+        return genres.isNotEmpty() || excludedGenres.isNotEmpty() ||
+            tags.isNotEmpty() || excludedTags.isNotEmpty() || formats.isNotEmpty() ||
                 statuses.isNotEmpty() || sources.isNotEmpty() || season != null ||
                 year != null || countryOfOrigin != null || englishLicenced ||
                 scoreRange != Pair(0.0f, 10.0f) || yearRange != Pair(1970, 2028)
@@ -734,7 +910,8 @@ data class ListFilters(
     fun hasMuFilters(): Boolean {
         return muFormat != null || muYear != null || muLicensed != null ||
             muGenres.isNotEmpty() || muExcludedGenres.isNotEmpty() ||
-                muCategories.isNotEmpty() || muStatusFilters.isNotEmpty()
+                muCategories.isNotEmpty() || muExcludedCategories.isNotEmpty() ||
+                muStatusFilters.isNotEmpty()
     }
 
     // Convert display score (0.0-10.0) to internal score (0-100)

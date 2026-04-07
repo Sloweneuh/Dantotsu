@@ -1,8 +1,10 @@
 package ani.dantotsu.media
 
 import android.animation.ObjectAnimator
+import android.content.res.ColorStateList
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.SoundEffectConstants
 import android.view.View
 import android.view.View.GONE
 import android.view.ViewGroup
@@ -59,6 +61,45 @@ class SearchFilterBottomDialog : BottomSheetDialogFragment() {
     private var listOnly: Boolean? = null
     private var tagSearchQuery: String = ""
 
+    private fun Chip.setFilterStyle(
+        baseText: String,
+        included: Boolean,
+        excluded: Boolean,
+        defaultBackground: ColorStateList?,
+        defaultTextColor: ColorStateList?
+    ) {
+        text = baseText
+        when {
+            excluded -> {
+                chipBackgroundColor = ColorStateList.valueOf(
+                    requireContext().getResourceColor(com.google.android.material.R.attr.colorErrorContainer)
+                )
+                setTextColor(requireContext().getResourceColor(com.google.android.material.R.attr.colorOnErrorContainer))
+            }
+
+            included -> {
+                chipBackgroundColor = ColorStateList.valueOf(
+                    ContextCompat.getColor(requireContext(), R.color.filter_chip_include_bg)
+                )
+                setTextColor(ContextCompat.getColor(requireContext(), R.color.filter_chip_include_text))
+            }
+
+            else -> {
+                chipBackgroundColor = defaultBackground
+                    ?: ColorStateList.valueOf(
+                        requireContext().getResourceColor(com.google.android.material.R.attr.colorSurfaceVariant)
+                    )
+                setTextColor(
+                    defaultTextColor
+                        ?: ColorStateList.valueOf(
+                            requireContext().getResourceColor(com.google.android.material.R.attr.colorOnSurface)
+                        )
+                )
+            }
+        }
+        isCloseIconVisible = false
+    }
+
     private fun updateTagsList(includeAdult: Boolean) {
         val tagsList = if (includeAdult && Anilist.adult) {
             val adultTags = Anilist.tags?.get(true) ?: listOf()
@@ -75,19 +116,39 @@ class SearchFilterBottomDialog : BottomSheetDialogFragment() {
         }
         binding.searchFilterTags.adapter = FilterChipAdapter(filteredTags) { chip ->
             val tag = chip.text.toString()
-            chip.isChecked = selectedTags.contains(tag)
-            chip.isCloseIconVisible = exTags.contains(tag)
+            var internalChange = false
+            val isExcluded = exTags.contains(tag)
+            val defaultBackground = chip.chipBackgroundColor
+            val defaultTextColor = chip.textColors
+            chip.isChecked = selectedTags.contains(tag) || isExcluded
+            chip.setFilterStyle(tag, selectedTags.contains(tag), exTags.contains(tag), defaultBackground, defaultTextColor)
             chip.setOnCheckedChangeListener { _, isChecked ->
+                if (internalChange) return@setOnCheckedChangeListener
                 if (isChecked) {
-                    chip.isCloseIconVisible = false
                     exTags.remove(tag)
-                    selectedTags.add(tag)
-                } else selectedTags.remove(tag)
+                    if (!selectedTags.contains(tag)) selectedTags.add(tag)
+                    chip.setFilterStyle(tag, true, false, defaultBackground, defaultTextColor)
+                } else {
+                    selectedTags.remove(tag)
+                    exTags.remove(tag)
+                    chip.setFilterStyle(tag, false, false, defaultBackground, defaultTextColor)
+                }
             }
             chip.setOnLongClickListener {
-                chip.isChecked = false
-                chip.isCloseIconVisible = true
-                exTags.add(tag)
+                internalChange = true
+                if (exTags.contains(tag)) {
+                    exTags.remove(tag)
+                    chip.isChecked = false
+                    chip.setFilterStyle(tag, false, false, defaultBackground, defaultTextColor)
+                } else {
+                    selectedTags.remove(tag)
+                    exTags.add(tag)
+                    chip.isChecked = true
+                    chip.setFilterStyle(tag, false, true, defaultBackground, defaultTextColor)
+                }
+                internalChange = false
+                chip.playSoundEffect(SoundEffectConstants.CLICK)
+                true
             }
         }
         updateTagSearchIcon(binding.searchTagsQuickSearchLayout.visibility == View.VISIBLE)
@@ -472,20 +533,39 @@ class SearchFilterBottomDialog : BottomSheetDialogFragment() {
 
         binding.searchFilterGenres.adapter = FilterChipAdapter(Anilist.genres ?: listOf()) { chip ->
             val genre = chip.text.toString()
-            chip.isChecked = selectedGenres.contains(genre)
-            chip.isCloseIconVisible = exGenres.contains(genre)
+            var internalChange = false
+            val isExcluded = exGenres.contains(genre)
+            val defaultBackground = chip.chipBackgroundColor
+            val defaultTextColor = chip.textColors
+            chip.isChecked = selectedGenres.contains(genre) || isExcluded
+            chip.setFilterStyle(genre, selectedGenres.contains(genre), exGenres.contains(genre), defaultBackground, defaultTextColor)
             chip.setOnCheckedChangeListener { _, isChecked ->
+                if (internalChange) return@setOnCheckedChangeListener
                 if (isChecked) {
-                    chip.isCloseIconVisible = false
                     exGenres.remove(genre)
-                    selectedGenres.add(genre)
-                } else
+                    if (!selectedGenres.contains(genre)) selectedGenres.add(genre)
+                    chip.setFilterStyle(genre, true, false, defaultBackground, defaultTextColor)
+                } else {
                     selectedGenres.remove(genre)
+                    exGenres.remove(genre)
+                    chip.setFilterStyle(genre, false, false, defaultBackground, defaultTextColor)
+                }
             }
             chip.setOnLongClickListener {
-                chip.isChecked = false
-                chip.isCloseIconVisible = true
-                exGenres.add(genre)
+                internalChange = true
+                if (exGenres.contains(genre)) {
+                    exGenres.remove(genre)
+                    chip.isChecked = false
+                    chip.setFilterStyle(genre, false, false, defaultBackground, defaultTextColor)
+                } else {
+                    selectedGenres.remove(genre)
+                    exGenres.add(genre)
+                    chip.isChecked = true
+                    chip.setFilterStyle(genre, false, true, defaultBackground, defaultTextColor)
+                }
+                internalChange = false
+                chip.playSoundEffect(SoundEffectConstants.CLICK)
+                true
             }
         }
         binding.searchGenresGrid.setOnCheckedChangeListener { _, isChecked ->

@@ -121,9 +121,19 @@ data class AniMangaSearchResults(
                 yearRangeEnd = null
             }
             "GENRE" -> genres?.remove(chip.text)
-            "EXCLUDED_GENRE" -> excludedGenres?.remove(chip.text)
+            "EXCLUDED_GENRE" -> {
+                val value = excludedGenres?.firstOrNull {
+                    currContext()?.getString(R.string.filter_exclude, it) == chip.text
+                } ?: chip.text
+                excludedGenres?.remove(value)
+            }
             "TAG" -> tags?.remove(chip.text)
-            "EXCLUDED_TAG" -> excludedTags?.remove(chip.text)
+            "EXCLUDED_TAG" -> {
+                val value = excludedTags?.firstOrNull {
+                    currContext()?.getString(R.string.filter_exclude, it) == chip.text
+                } ?: chip.text
+                excludedTags?.remove(value)
+            }
         }
     }
 
@@ -211,7 +221,12 @@ data class MUSearchResults(
             chip.type == "MU_LICENSED" -> licensed = null
             chip.type == "MU_ORDER" -> orderBy = null
             chip.type == "MU_GENRE" -> genres?.remove(chip.text)
-            chip.type == "MU_EXCL_GENRE" -> excludedGenres?.removeAll { chip.text.endsWith(it) }
+            chip.type == "MU_EXCL_GENRE" -> {
+                val value = excludedGenres?.firstOrNull {
+                    currContext()?.getString(R.string.filter_exclude, it) == chip.text
+                } ?: chip.text
+                excludedGenres?.remove(value)
+            }
             chip.type == "MU_CAT" -> categories?.remove(chip.text)
             chip.type.startsWith("MU_FILTER_") -> statusFilters?.remove(chip.type.removePrefix("MU_FILTER_"))
         }

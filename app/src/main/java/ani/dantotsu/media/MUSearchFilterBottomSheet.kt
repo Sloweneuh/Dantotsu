@@ -1,16 +1,19 @@
 package ani.dantotsu.media
 
 import android.annotation.SuppressLint
+import android.content.res.ColorStateList
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.LayoutInflater
+import android.view.SoundEffectConstants
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import androidx.core.content.ContextCompat
 import ani.dantotsu.BottomSheetDialogFragment
 import ani.dantotsu.R
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
@@ -21,6 +24,7 @@ import com.google.android.flexbox.FlexWrap
 import com.google.android.flexbox.FlexboxLayoutManager
 import com.google.android.flexbox.JustifyContent
 import com.google.android.material.chip.Chip
+import eu.kanade.tachiyomi.util.system.getResourceColor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -41,6 +45,45 @@ class MUSearchFilterBottomSheet : BottomSheetDialogFragment() {
     private var selectedCategories = mutableListOf<String>()
     private var selectedStatusFilters = mutableListOf<String>()
     private var categorySearchJob: Job? = null
+
+    private fun Chip.setFilterStyle(
+        baseText: String,
+        included: Boolean,
+        excluded: Boolean,
+        defaultBackground: ColorStateList?,
+        defaultTextColor: ColorStateList?
+    ) {
+        text = baseText
+        when {
+            excluded -> {
+                chipBackgroundColor = ColorStateList.valueOf(
+                    requireContext().getResourceColor(com.google.android.material.R.attr.colorErrorContainer)
+                )
+                setTextColor(requireContext().getResourceColor(com.google.android.material.R.attr.colorOnErrorContainer))
+            }
+
+            included -> {
+                chipBackgroundColor = ColorStateList.valueOf(
+                    ContextCompat.getColor(requireContext(), R.color.filter_chip_include_bg)
+                )
+                setTextColor(ContextCompat.getColor(requireContext(), R.color.filter_chip_include_text))
+            }
+
+            else -> {
+                chipBackgroundColor = defaultBackground
+                    ?: ColorStateList.valueOf(
+                        requireContext().getResourceColor(com.google.android.material.R.attr.colorSurfaceVariant)
+                    )
+                setTextColor(
+                    defaultTextColor
+                        ?: ColorStateList.valueOf(
+                            requireContext().getResourceColor(com.google.android.material.R.attr.colorOnSurface)
+                        )
+                )
+            }
+        }
+        isCloseIconVisible = false
+    }
 
     // API value → display label for status filters
     private val statusFilterOptions = listOf(
@@ -175,27 +218,45 @@ class MUSearchFilterBottomSheet : BottomSheetDialogFragment() {
                 binding.muFilterGenresRecycler.adapter =
                     FilterChipAdapter(genres) { chip ->
                         val genre = chip.text.toString()
-                        chip.isChecked = selectedGenres.contains(genre)
-                        chip.isCloseIconVisible = excludedGenres.contains(genre)
+                        var internalChange = false
+                        val isExcluded = excludedGenres.contains(genre)
+                        val defaultBackground = chip.chipBackgroundColor
+                        val defaultTextColor = chip.textColors
+                        chip.isChecked = selectedGenres.contains(genre) || isExcluded
+                        chip.setFilterStyle(
+                            genre,
+                            selectedGenres.contains(genre),
+                            excludedGenres.contains(genre),
+                            defaultBackground,
+                            defaultTextColor
+                        )
                         chip.setOnCheckedChangeListener { _, isChecked ->
+                            if (internalChange) return@setOnCheckedChangeListener
                             if (isChecked) {
-                                chip.isCloseIconVisible = false
                                 excludedGenres.remove(genre)
+                                chip.setFilterStyle(genre, true, false, defaultBackground, defaultTextColor)
                                 if (!selectedGenres.contains(genre)) selectedGenres.add(genre)
                             } else {
                                 selectedGenres.remove(genre)
+                                excludedGenres.remove(genre)
+                                chip.setFilterStyle(genre, false, false, defaultBackground, defaultTextColor)
                             }
                         }
                         chip.setOnLongClickListener {
-                            chip.isChecked = false
-                            selectedGenres.remove(genre)
-                            chip.isCloseIconVisible = true
-                            if (!excludedGenres.contains(genre)) excludedGenres.add(genre)
+                            internalChange = true
+                            if (excludedGenres.contains(genre)) {
+                                excludedGenres.remove(genre)
+                                chip.isChecked = false
+                                chip.setFilterStyle(genre, false, false, defaultBackground, defaultTextColor)
+                            } else {
+                                selectedGenres.remove(genre)
+                                excludedGenres.add(genre)
+                                chip.isChecked = true
+                                chip.setFilterStyle(genre, false, true, defaultBackground, defaultTextColor)
+                            }
+                            internalChange = false
+                            chip.playSoundEffect(SoundEffectConstants.CLICK)
                             true
-                        }
-                        chip.setOnCloseIconClickListener {
-                            chip.isCloseIconVisible = false
-                            excludedGenres.remove(genre)
                         }
                     }
                 binding.muFilterGenresGrid.setOnCheckedChangeListener { _, isChecked ->

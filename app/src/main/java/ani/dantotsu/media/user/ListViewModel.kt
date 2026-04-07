@@ -156,8 +156,24 @@ class ListViewModel : ViewModel() {
             return false
         }
 
+        // Excluded genres - must contain NONE of the excluded genres
+        if (filters.excludedGenres.isNotEmpty() && filters.excludedGenres.any { excluded ->
+                media.genres.any { it.equals(excluded, ignoreCase = true) }
+            }
+        ) {
+            return false
+        }
+
         // Tags - must contain ALL selected tags
         if (filters.tags.isNotEmpty() && !filters.tags.all { it in media.tags }) {
+            return false
+        }
+
+        // Excluded tags - must contain NONE of the excluded tags
+        if (filters.excludedTags.isNotEmpty() && filters.excludedTags.any { excluded ->
+                media.tags.any { it.equals(excluded, ignoreCase = true) }
+            }
+        ) {
             return false
         }
 
@@ -393,6 +409,11 @@ class ListViewModel : ViewModel() {
         if (filters.muCategories.isNotEmpty()) {
             val categories = detail?.categories ?: emptySet()
             if (!filters.muCategories.all { c -> categories.any { it.equals(c, ignoreCase = true) } }) return false
+        }
+
+        if (filters.muExcludedCategories.isNotEmpty()) {
+            val categories = detail?.categories ?: emptySet()
+            if (filters.muExcludedCategories.any { c -> categories.any { it.equals(c, ignoreCase = true) } }) return false
         }
 
         if (filters.muStatusFilters.isNotEmpty()) {
