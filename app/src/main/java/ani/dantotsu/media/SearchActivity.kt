@@ -2,6 +2,7 @@ package ani.dantotsu.media
 
 import android.annotation.SuppressLint
 import android.os.Bundle
+import android.os.Looper
 import android.os.Parcelable
 import android.view.View
 import android.view.WindowManager
@@ -429,80 +430,66 @@ class SearchActivity : AppCompatActivity() {
     }
 
     fun emptyMediaAdapter() {
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            runOnUiThread { emptyMediaAdapter() }
+            return
+        }
+
         searchTimer.cancel()
         searchTimer.purge()
-        binding.searchRecyclerView.post {
-            when (searchType) {
-                SearchType.ANIME, SearchType.MANGA -> {
-                    mediaAdaptor.notifyItemRangeRemoved(0, model.aniMangaSearchResults.results.size)
-                    model.aniMangaSearchResults.results.clear()
-                }
+        clearResultsOnMainThread()
+        progressAdapter.bar?.visibility = View.GONE
+    }
 
-                SearchType.CHARACTER -> {
-                    characterAdaptor.notifyItemRangeRemoved(
-                        0,
-                        model.characterSearchResults.results.size
-                    )
-                    model.characterSearchResults.results.clear()
-                }
+    private fun clearResultsOnMainThread() {
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            runOnUiThread { clearResultsOnMainThread() }
+            return
+        }
 
-                SearchType.STUDIO -> {
-                    studioAdaptor.notifyItemRangeRemoved(0, model.studioSearchResults.results.size)
-                    model.studioSearchResults.results.clear()
-                }
-
-                SearchType.STAFF -> {
-                    staffAdaptor.notifyItemRangeRemoved(0, model.staffSearchResults.results.size)
-                    model.staffSearchResults.results.clear()
-                }
-
-                SearchType.USER -> {
-                    usersAdapter.notifyItemRangeRemoved(0, model.userSearchResults.results.size)
-                    model.userSearchResults.results.clear()
-                }
-
-                SearchType.MANGAUPDATES -> {
-                    muSearchAdaptor.notifyItemRangeRemoved(0, model.muSearchResults.results.size)
-                    model.muSearchResults.results.clear()
-                }
+        when (searchType) {
+            SearchType.ANIME, SearchType.MANGA -> {
+                model.aniMangaSearchResults.results.clear()
+                mediaAdaptor.notifyDataSetChanged()
             }
-            progressAdapter.bar?.visibility = View.GONE
+
+            SearchType.CHARACTER -> {
+                model.characterSearchResults.results.clear()
+                characterAdaptor.notifyDataSetChanged()
+            }
+
+            SearchType.STUDIO -> {
+                model.studioSearchResults.results.clear()
+                studioAdaptor.notifyDataSetChanged()
+            }
+
+            SearchType.STAFF -> {
+                model.staffSearchResults.results.clear()
+                staffAdaptor.notifyDataSetChanged()
+            }
+
+            SearchType.USER -> {
+                model.userSearchResults.results.clear()
+                usersAdapter.notifyDataSetChanged()
+            }
+
+            SearchType.MANGAUPDATES -> {
+                model.muSearchResults.results.clear()
+                muSearchAdaptor.notifyDataSetChanged()
+            }
         }
     }
 
     private var searchTimer = Timer()
     private var loading = false
     fun search() {
-        headerAdaptor.setHistoryVisibility(false)
-        val size = model.size(searchType)
-        binding.searchRecyclerView.post {
-            when (searchType) {
-                SearchType.ANIME, SearchType.MANGA -> {
-                    mediaAdaptor.notifyItemRangeRemoved(0, size)
-                }
-
-                SearchType.CHARACTER -> {
-                    characterAdaptor.notifyItemRangeRemoved(0, size)
-                }
-
-                SearchType.STUDIO -> {
-                    studioAdaptor.notifyItemRangeRemoved(0, size)
-                }
-
-                SearchType.STAFF -> {
-                    staffAdaptor.notifyItemRangeRemoved(0, size)
-                }
-
-                SearchType.USER -> {
-                    usersAdapter.notifyItemRangeRemoved(0, size)
-                }
-
-                SearchType.MANGAUPDATES -> {
-                    muSearchAdaptor.notifyItemRangeRemoved(0, size)
-                }
-            }
-            model.clearResults(searchType)
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            runOnUiThread { search() }
+            return
         }
+
+        headerAdaptor.setHistoryVisibility(false)
+        clearResultsOnMainThread()
 
         progressAdapter.bar?.visibility = View.VISIBLE
 
