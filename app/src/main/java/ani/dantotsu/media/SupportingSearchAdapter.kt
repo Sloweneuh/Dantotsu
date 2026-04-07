@@ -270,7 +270,6 @@ class SupportingSearchAdapter(private val activity: SearchActivity, private val 
         private fun removeAndSearch(chip: AniMangaSearchResults.SearchChip) {
             activity.muSearchResult.removeChip(chip)
             update()
-            activity.emptyMediaAdapter()
             activity.search()
         }
 

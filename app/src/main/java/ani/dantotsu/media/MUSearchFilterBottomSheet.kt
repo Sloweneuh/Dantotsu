@@ -280,7 +280,6 @@ class MUSearchFilterBottomSheet : BottomSheetDialogFragment() {
         r.statusFilters = selectedStatusFilters.toMutableList().ifEmpty { null }
 
         activity.updateMuChips?.invoke()
-        activity.emptyMediaAdapter()
         activity.search()
     }
 
