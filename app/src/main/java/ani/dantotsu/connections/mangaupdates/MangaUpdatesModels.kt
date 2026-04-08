@@ -126,7 +126,8 @@ fun MUSearchResult.toMUMedia(): MUMedia? {
         userVolume = metadata?.userList?.status?.volume,
         latestChapter = r.latest_chapter?.toInt(),
         bayesianRating = r.bayesian_rating?.toDoubleOrNull(),
-        priority = null
+        priority = null,
+        format = r.type
     )
 }
 

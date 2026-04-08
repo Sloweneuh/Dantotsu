@@ -35,6 +35,7 @@ import ani.dantotsu.media.Media
 import ani.dantotsu.media.MediaDetailsViewModel
 import ani.dantotsu.media.manga.Manga
 import ani.dantotsu.media.manga.MangaReadFragment
+import ani.dantotsu.media.novel.NovelReadFragment
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.others.AndroidBug5497Workaround
 import ani.dantotsu.others.getSerialized
@@ -70,6 +71,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
 
     private var currentChapter: Int? = null
     private var detectedAniListId: Int? = null
+    private var useNovelReader: Boolean = false
 
     // Track last AniList suggestion shown to avoid repeat dialogs
     private var lastSuggestedAniListId: Int? = null
@@ -83,6 +85,10 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         return try {
             Mapper.json.decodeFromString<Map<String, String>>(titlesJson)[listId.toString()]
         } catch (_: Exception) { null }
+    }
+
+    private fun isNovelType(type: String?): Boolean {
+        return type?.contains("novel", ignoreCase = true) == true
     }
 
     private fun progress() {
@@ -157,7 +163,8 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
                             url = "https://www.mangaupdates.com/series/$slugOrId",
                             coverUrl = details.image?.url?.original ?: details.image?.url?.thumb,
                             latestChapter = details.latest_chapter?.toInt(),
-                            bayesianRating = details.bayesian_rating?.toDoubleOrNull()
+                                bayesianRating = details.bayesian_rating?.toDoubleOrNull(),
+                                format = details.type
                         )
                     } else {
                         // Not in user list, use details only
@@ -171,7 +178,8 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
                             userVolume = null,
                             latestChapter = details.latest_chapter?.toInt(),
                             bayesianRating = details.bayesian_rating?.toDoubleOrNull(),
-                            priority = null
+                                priority = null,
+                                format = details.type
                         )
                     }
                 }
@@ -225,6 +233,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
 
         screenWidth = resources.displayMetrics.widthPixels.toFloat()
         navBar = binding.mediaBottomBar
+        useNovelReader = isNovelType(muMedia.format) || isNovelType(MUDetailsCache.get(muMedia.id)?.type)
 
         // Build a minimal Media object so MangaReadFragment can search for chapters.
         // We use the MU series ID (truncated to Int) as a synthetic Anilist-like ID.
@@ -237,7 +246,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
             banner = muMedia.coverUrl,
             isAdult = false,
             manga = Manga(),
-            format = "MANGA",
+            format = if (useNovelReader) "NOVEL" else "MANGA",
             userProgress = muMedia.userChapter,
             muSeriesId = muMedia.id,
             muListId = muMedia.listId,
@@ -255,6 +264,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
             val details = MangaUpdates.getSeriesDetails(muMedia.id)
             if (details != null) {
                 model.mangaUpdatesSeries.postValue(details)
+                val detailsIndicateNovel = isNovelType(details.type)
                 // Update the cover/banner if the list item didn't have a cover URL
                 val coverUrl = details.image?.url?.original ?: details.image?.url?.thumb
                 if (!coverUrl.isNullOrBlank() && muMedia.coverUrl == null) {
@@ -265,6 +275,17 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
                     withContext(Dispatchers.Main) {
                         binding.mediaCoverImage.loadImage(coverUrl)
                         blurImage(banner, coverUrl)
+                    }
+                }
+                if (detailsIndicateNovel && !useNovelReader) {
+                    useNovelReader = true
+                    media.format = "NOVEL"
+                    media.selected = model.loadSelected(media)
+                    model.setMedia(media)
+                    withContext(Dispatchers.Main) {
+                        val currentItem = binding.mediaViewPager.currentItem
+                        binding.mediaViewPager.adapter = ViewPagerAdapter(supportFragmentManager, lifecycle, useNovelReader)
+                        binding.mediaViewPager.setCurrentItem(currentItem, false)
                     }
                 }
             }
@@ -455,12 +476,12 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         val viewPager = binding.mediaViewPager
         viewPager.isUserInputEnabled = false
         viewPager.setPageTransformer(ZoomOutPageTransformer())
-        viewPager.adapter = ViewPagerAdapter(supportFragmentManager, lifecycle)
+        viewPager.adapter = ViewPagerAdapter(supportFragmentManager, lifecycle, useNovelReader)
 
         // Bottom tab bar: Info + Read
         val infoTab = navBar.createTab(R.drawable.ic_round_info_24, R.string.info, R.id.info)
         val readTab = navBar.createTab(
-            R.drawable.ic_round_import_contacts_24,
+            if (useNovelReader) R.drawable.ic_round_book_24 else R.drawable.ic_round_import_contacts_24,
             R.string.read,
             R.id.read
         )
@@ -551,12 +572,13 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
 
     private class ViewPagerAdapter(
         fragmentManager: FragmentManager,
-        lifecycle: Lifecycle
+        lifecycle: Lifecycle,
+        private val useNovelReader: Boolean
     ) : FragmentStateAdapter(fragmentManager, lifecycle) {
         override fun getItemCount() = 2
         override fun createFragment(position: Int): Fragment = when (position) {
             0 -> MUMediaInfoContainerFragment()
-            else -> MangaReadFragment()
+            else -> if (useNovelReader) NovelReadFragment() else MangaReadFragment()
         }
     }
 

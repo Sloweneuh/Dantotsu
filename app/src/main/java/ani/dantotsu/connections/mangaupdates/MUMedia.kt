@@ -21,6 +21,7 @@ data class MUMedia(
     val latestChapter: Int?,
     val bayesianRating: Double?,
     val priority: Int?,
+    val format: String? = null,
     /** Local timestamp (ms) of the last time the user updated progress for this series. */
     val updatedAt: Long? = null
 ) : Serializable
@@ -35,7 +36,7 @@ fun MUMedia.toMedia(): Media = Media(
     banner = coverUrl,
     isAdult = false,
     manga = Manga(totalChapters = latestChapter),
-    format = "MANGA",
+    format = if (format?.contains("novel", ignoreCase = true) == true) "NOVEL" else "MANGA",
     userProgress = userChapter,
     muSeriesId = id,
     muListId = listId,
