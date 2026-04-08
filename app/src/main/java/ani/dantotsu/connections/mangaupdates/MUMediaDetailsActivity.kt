@@ -53,6 +53,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import ani.dantotsu.connections.comick.ComickApi
+import ani.dantotsu.media.MediaDetailsActivity
 import androidx.appcompat.app.AlertDialog
 import kotlinx.coroutines.CoroutineScope
 import nl.joery.animatedbottombar.AnimatedBottomBar
@@ -68,6 +69,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
     internal lateinit var muMedia: MUMedia
 
     private var currentChapter: Int? = null
+    private var detectedAniListId: Int? = null
 
     // Track last AniList suggestion shown to avoid repeat dialogs
     private var lastSuggestedAniListId: Int? = null
@@ -359,6 +361,34 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         binding.commentInputLayout.visibility = View.GONE
         binding.mediaLanguageButton.visibility = View.GONE
         binding.mediaUnreadSource?.visibility = View.GONE
+
+        binding.mediaAniList?.visibility = View.GONE
+        binding.mediaAniList?.setOnClickListener {
+            val anilistId = detectedAniListId ?: return@setOnClickListener
+            startActivity(
+                Intent(this, MediaDetailsActivity::class.java).apply {
+                    putExtra("mediaId", anilistId)
+                }
+            )
+        }
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val titleCandidates = listOfNotNull(muMedia.title).filter { it.isNotBlank() }
+                val slug = ComickApi.searchAndMatchComicByMuId(titleCandidates, muMedia.id)
+                val anilistId = slug?.let {
+                    ComickApi.getComicDetails(it)?.comic?.links?.al?.toIntOrNull()
+                }
+                withContext(Dispatchers.Main) {
+                    detectedAniListId = anilistId
+                    binding.mediaAniList?.visibility = if (anilistId != null) View.VISIBLE else View.GONE
+                }
+            } catch (_: Exception) {
+                withContext(Dispatchers.Main) {
+                    binding.mediaAniList?.visibility = View.GONE
+                }
+            }
+        }
 
         // Share button — shows a dialog with available links (MangaUpdates, Comick)
         binding.mediaShare.setOnClickListener {
