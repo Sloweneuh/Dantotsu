@@ -18,28 +18,31 @@ import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
 import ani.dantotsu.connections.comick.ComickApi
 import ani.dantotsu.connections.anilist.Anilist
-import ani.dantotsu.connections.comick.ComickCover
+import ani.dantotsu.connections.mangaupdates.AniListQuickSearchDialogFragment
 import ani.dantotsu.connections.mangaupdates.MUMedia
+import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.connections.mangaupdates.MUDetailsCache
 import ani.dantotsu.databinding.ActivityMediaEquivalentsBinding
-import ani.dantotsu.databinding.ActivityMediaListViewBinding
 import ani.dantotsu.loadImage
 import ani.dantotsu.initActivity
-import ani.dantotsu.openLinkInBrowser
 import ani.dantotsu.getThemeColor
 import ani.dantotsu.hideSystemBarsExtendView
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
+import ani.dantotsu.others.CustomBottomDialog
+import ani.dantotsu.toast
 import ani.dantotsu.util.Logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.bumptech.glide.Glide
+import java.util.Locale
 
 class MediaEquivalentsActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMediaEquivalentsBinding
+    private lateinit var adapter: EquivalentAdapter
 
     companion object {
         var passedMuMedia: ArrayList<MUMedia>? = null
@@ -91,10 +94,12 @@ class MediaEquivalentsActivity : AppCompatActivity() {
         passedMuMedia = null
         for (m in muList) items.add(EquivalentItem(m))
 
-        val adapter = EquivalentAdapter(items)
+        adapter = EquivalentAdapter(items)
         recycler = binding.equivalentsRecyclerView
         recycler.layoutManager = LinearLayoutManager(this)
         recycler.adapter = adapter
+
+        binding.quickSearchNoResults.visibility = View.GONE
 
         // Prefetch MU details (covers) for items that lack a coverUrl
         val idsToFetch = items.mapNotNull { item -> item.mu.id.takeIf { item.mu.coverUrl.isNullOrBlank() } }
@@ -187,6 +192,62 @@ class MediaEquivalentsActivity : AppCompatActivity() {
         }
     }
 
+    private fun buildQuickCandidates(mu: MUMedia): List<String> {
+        val list = mutableListOf<String>()
+        fun add(value: String?) {
+            val v = value?.trim()?.takeIf { it.isNotEmpty() } ?: return
+            list.add(v)
+        }
+
+        add(mu.title)
+        MangaUpdates.synonymsCache[mu.id].orEmpty().forEach { add(it) }
+        return list.distinctBy { it.lowercase(Locale.ROOT) }
+    }
+
+    private fun openQuickSearchPickerForUnmatched() {
+        val noAnilistText = getString(R.string.no_anilist_id_found)
+        val noComickText = getString(R.string.no_comick_entry_found)
+
+        val unmatchedIndexes = items.mapIndexedNotNull { idx, item ->
+            val unresolved = item.matchedAniId == null &&
+                (item.matchedTitle == noAnilistText || item.matchedTitle == noComickText)
+            if (unresolved) idx else null
+        }
+
+        if (unmatchedIndexes.isEmpty()) {
+            toast(getString(R.string.no_results_found))
+            return
+        }
+
+        val picker = CustomBottomDialog.newInstance().apply {
+            setTitleText(getString(R.string.quick_search))
+        }
+
+        unmatchedIndexes.forEach { idx ->
+            val item = items[idx]
+            val row = android.widget.Button(this).apply {
+                text = item.mu.title ?: "MU #${item.mu.id}"
+                textSize = 16f
+                isAllCaps = false
+                setPadding(32, 20, 32, 20)
+                setTextColor(getThemeColor(com.google.android.material.R.attr.colorOnSurface))
+                setOnClickListener {
+                    picker.dismiss()
+                    val candidates = buildQuickCandidates(item.mu)
+                    AniListQuickSearchDialogFragment
+                        .newInstance(ArrayList(candidates))
+                        .show(supportFragmentManager, "equiv_quick_sheet_$idx")
+                }
+            }
+            picker.addView(row)
+        }
+
+        picker.setNegativeButton(getString(R.string.cancel)) {
+            picker.dismiss()
+        }
+        picker.show(supportFragmentManager, "equiv_quick_picker")
+    }
+
     private inner class EquivalentAdapter(private val list: List<EquivalentItem>) : RecyclerView.Adapter<EquivalentAdapter.VH>() {
         inner class VH(view: View) : RecyclerView.ViewHolder(view) {
             val muCover: ImageView = view.findViewById(R.id.muCover)
@@ -195,6 +256,7 @@ class MediaEquivalentsActivity : AppCompatActivity() {
             val matchCover: ImageView = view.findViewById(R.id.matchCover)
             val matchCoverCard: CardView = view.findViewById(R.id.matchCoverCard)
             val matchTitle: TextView = view.findViewById(R.id.matchTitle)
+            val matchQuickSearchButton: android.widget.Button = view.findViewById(R.id.matchQuickSearchButton)
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
@@ -204,6 +266,8 @@ class MediaEquivalentsActivity : AppCompatActivity() {
 
         override fun onBindViewHolder(holder: VH, position: Int) {
             val item = list[position]
+            val noAnilistText = getString(R.string.no_anilist_id_found)
+            val noComickText = getString(R.string.no_comick_entry_found)
             holder.muTitle.text = item.mu.title ?: ""
             // MU side: open MUMediaDetailsActivity when clicked
             val ctx = holder.itemView.context
@@ -309,6 +373,16 @@ class MediaEquivalentsActivity : AppCompatActivity() {
                         holder.matchCoverCard.setCardBackgroundColor(getThemeColor(com.google.android.material.R.attr.colorSurface))
                     }
                 }
+            }
+
+            val unresolved = item.matchedAniId == null &&
+                (item.matchedTitle == noAnilistText || item.matchedTitle == noComickText)
+            holder.matchQuickSearchButton.visibility = if (unresolved) View.VISIBLE else View.GONE
+            holder.matchQuickSearchButton.setOnClickListener {
+                val candidates = buildQuickCandidates(item.mu)
+                AniListQuickSearchDialogFragment
+                    .newInstance(ArrayList(candidates))
+                    .show(supportFragmentManager, "equiv_row_quick_sheet_${holder.bindingAdapterPosition}")
             }
         }
 

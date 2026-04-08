@@ -83,6 +83,16 @@
             android:gravity="center"
             android:maxLines="3"
             android:ellipsize="end" />
+
+        <Button
+            android:id="@+id/matchQuickSearchButton"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="@string/quick_search"
+            android:textAllCaps="false"
+            android:visibility="gone" />
     </LinearLayout>
 
 </LinearLayout>

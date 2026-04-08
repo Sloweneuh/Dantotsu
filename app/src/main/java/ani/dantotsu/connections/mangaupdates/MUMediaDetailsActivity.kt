@@ -54,11 +54,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import ani.dantotsu.connections.comick.ComickApi
+import ani.dantotsu.connections.comick.ComickComic
 import ani.dantotsu.media.MediaDetailsActivity
 import androidx.appcompat.app.AlertDialog
 import kotlinx.coroutines.CoroutineScope
 import nl.joery.animatedbottombar.AnimatedBottomBar
 import kotlin.math.abs
+import java.util.Locale
 
 
 class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedListener {
@@ -71,6 +73,8 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
 
     private var currentChapter: Int? = null
     private var detectedAniListId: Int? = null
+    private var quickSearchTitles: List<String> = emptyList()
+    private var detectedComickComic: ComickComic? = null
     private var useNovelReader: Boolean = false
 
     // Track last AniList suggestion shown to avoid repeat dialogs
@@ -116,6 +120,56 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
             bold { color(white) { append("??") } }
         }
         binding.mediaTotal.visibility = View.VISIBLE
+    }
+
+    private fun collectQuickSearchTitles(comickComic: ComickComic? = detectedComickComic): List<String> {
+        val series = model.mangaUpdatesSeries.value
+        val muSynonyms = MangaUpdates.synonymsCache[muMedia.id].orEmpty()
+        val titles = mutableListOf<String>()
+
+        fun addTitle(value: String?) {
+            val normalized = value?.trim()?.takeIf { it.isNotEmpty() } ?: return
+            titles.add(normalized)
+        }
+
+        addTitle(muMedia.title)
+        addTitle(series?.title)
+        series?.associated?.forEach { addTitle(it.title) }
+        muSynonyms.forEach { addTitle(it) }
+
+        addTitle(comickComic?.title)
+        comickComic?.md_titles?.forEach { addTitle(it.title) }
+
+        return titles.distinctBy { it.lowercase(Locale.ROOT) }
+    }
+
+    private fun launchAniListQuickSearch() {
+        val candidates = quickSearchTitles.ifEmpty { collectQuickSearchTitles() }
+        if (candidates.isEmpty()) return
+        AniListQuickSearchDialogFragment
+            .newInstance(ArrayList(candidates))
+            .show(supportFragmentManager, "mu_anilist_quick_results")
+    }
+
+    private fun updateAniListButtonState(anilistId: Int?) {
+        detectedAniListId = anilistId
+        quickSearchTitles = collectQuickSearchTitles()
+        binding.mediaAniList?.visibility = View.VISIBLE
+        binding.mediaAniList?.setImageResource(
+            if (anilistId != null) R.drawable.ic_anilist else R.drawable.ic_anilist_search_24
+        )
+        binding.mediaAniList?.setOnClickListener {
+            val id = detectedAniListId
+            if (id != null) {
+                startActivity(
+                    Intent(this, MediaDetailsActivity::class.java).apply {
+                        putExtra("mediaId", id)
+                    }
+                )
+            } else {
+                launchAniListQuickSearch()
+            }
+        }
     }
 
 
@@ -384,29 +438,23 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         binding.mediaUnreadSource?.visibility = View.GONE
 
         binding.mediaAniList?.visibility = View.GONE
-        binding.mediaAniList?.setOnClickListener {
-            val anilistId = detectedAniListId ?: return@setOnClickListener
-            startActivity(
-                Intent(this, MediaDetailsActivity::class.java).apply {
-                    putExtra("mediaId", anilistId)
-                }
-            )
-        }
 
+        val initialTitleCandidates = collectQuickSearchTitles().ifEmpty {
+            listOfNotNull(muMedia.title).filter { it.isNotBlank() }
+        }
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                val titleCandidates = listOfNotNull(muMedia.title).filter { it.isNotBlank() }
-                val slug = ComickApi.searchAndMatchComicByMuId(titleCandidates, muMedia.id)
-                val anilistId = slug?.let {
-                    ComickApi.getComicDetails(it)?.comic?.links?.al?.toIntOrNull()
-                }
+                val slug = ComickApi.searchAndMatchComicByMuId(initialTitleCandidates, muMedia.id)
+                val comickData = slug?.let { ComickApi.getComicDetails(it) }
+                val comickComic = comickData?.comic
+                val anilistId = comickComic?.links?.al?.toIntOrNull()
                 withContext(Dispatchers.Main) {
-                    detectedAniListId = anilistId
-                    binding.mediaAniList?.visibility = if (anilistId != null) View.VISIBLE else View.GONE
+                    detectedComickComic = comickComic
+                    updateAniListButtonState(anilistId)
                 }
             } catch (_: Exception) {
                 withContext(Dispatchers.Main) {
-                    binding.mediaAniList?.visibility = View.GONE
+                    updateAniListButtonState(null)
                 }
             }
         }
@@ -527,7 +575,11 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
             lifecycleScope.launch {
                 try {
                     val comickData = withContext(Dispatchers.IO) { ComickApi.getComicDetails(slug) }
+                    detectedComickComic = comickData?.comic
                     val anilistId = comickData?.comic?.links?.al?.toIntOrNull()
+                    if (detectedAniListId == null) {
+                        updateAniListButtonState(anilistId)
+                    }
                     val currentAnilistId = model.getMedia().value?.id
                     val isMuMedia = model.getMedia().value?.muSeriesId != null
                     if (anilistId != null && isMuMedia && anilistId != currentAnilistId && lastSuggestedAniListId != anilistId) {
