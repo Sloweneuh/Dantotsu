@@ -43,6 +43,7 @@ class ListViewModel : ViewModel() {
             activeSortOrder = sortOrder
             val res = Anilist.query.getMediaLists(anime, userId, sortOrder)
             unfilteredLists.postValue(res)
+            val filters = currentFilters.value
 
             // Load MangaUpdates lists alongside Anilist for manga — only for the logged-in user
             if (!anime && userId == ani.dantotsu.connections.anilist.Anilist.userid &&
@@ -61,9 +62,8 @@ class ListViewModel : ViewModel() {
 
             // Reapply search + filters so any active UI state is preserved after a refresh
             if (currentSearchQuery.isNotEmpty()) {
-                performSearch(currentSearchQuery, currentFilters.value)
+                performSearch(currentSearchQuery, currentFilters.value, res)
             } else {
-                val filters = currentFilters.value
                 if (filters != null && !filters.isEmpty()) {
                     val filteredLists = res.mapValues { entry ->
                         entry.value.filter { media ->
@@ -74,8 +74,14 @@ class ListViewModel : ViewModel() {
                 } else {
                     lists.postValue(res)
                 }
-                // No active search: show all MU items unfiltered
-                filteredMuLists.postValue(rawMuData ?: emptyMap())
+                // Keep MU rows aligned with the current filter state after a refresh.
+                filteredMuLists.postValue(
+                    if (filters != null && !filters.isEmpty()) {
+                        applyMuFilters(rawMuData ?: emptyMap(), filters, query = null)
+                    } else {
+                        rawMuData ?: emptyMap()
+                    }
+                )
             }
         }
     }
@@ -306,7 +312,11 @@ class ListViewModel : ViewModel() {
         performSearch(query, currentFilters.value)
     }
 
-    private fun performSearch(query: String, filters: ListFilters?) {
+    private fun performSearch(
+        query: String,
+        filters: ListFilters?,
+        baseLists: MutableMap<String, ArrayList<Media>>? = null
+    ) {
         val q = normalize(query)
 
         // Filter MU items by title/synonyms and active MU filters.
@@ -324,15 +334,16 @@ class ListViewModel : ViewModel() {
         }
 
         // Determine which list to search: if filters are active, search filtered list; otherwise search all
+        val sourceLists = baseLists ?: unfilteredLists.value
         val baseList = if (filters != null && !filters.isEmpty()) {
             // Apply filters first to get the filtered list, then search within that
-            unfilteredLists.value?.mapValues { entry ->
+            sourceLists?.mapValues { entry ->
                 entry.value.filter { media ->
                     matchesFilters(media, filters)
                 }.let { ArrayList(it) }
             }?.toMutableMap()
         } else {
-            unfilteredLists.value
+            sourceLists
         }
 
         val currentLists = baseList ?: return

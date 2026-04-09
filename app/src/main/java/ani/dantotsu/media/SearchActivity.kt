@@ -489,6 +489,7 @@ class SearchActivity : AppCompatActivity() {
         }
 
         headerAdaptor.setHistoryVisibility(false)
+        resetSearchState()
         clearResultsOnMainThread()
 
         progressAdapter.bar?.visibility = View.VISIBLE
@@ -506,6 +507,40 @@ class SearchActivity : AppCompatActivity() {
         }
         searchTimer = Timer()
         searchTimer.schedule(timerTask, 500)
+    }
+
+    private fun resetSearchState() {
+        when (searchType) {
+            SearchType.ANIME, SearchType.MANGA -> {
+                aniMangaResult.page = 1
+                aniMangaResult.hasNextPage = false
+            }
+
+            SearchType.CHARACTER -> {
+                characterResult.page = 1
+                characterResult.hasNextPage = false
+            }
+
+            SearchType.STUDIO -> {
+                studioResult.page = 1
+                studioResult.hasNextPage = false
+            }
+
+            SearchType.STAFF -> {
+                staffResult.page = 1
+                staffResult.hasNextPage = false
+            }
+
+            SearchType.USER -> {
+                userResult.page = 1
+                userResult.hasNextPage = false
+            }
+
+            SearchType.MANGAUPDATES -> {
+                muSearchResult.page = 1
+                muSearchResult.hasNextPage = false
+            }
+        }
     }
 
     @SuppressLint("NotifyDataSetChanged")
