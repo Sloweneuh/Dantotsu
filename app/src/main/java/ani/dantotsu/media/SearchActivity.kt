@@ -19,7 +19,10 @@ import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.anilist.AnilistSearch
 import ani.dantotsu.connections.anilist.AnilistSearch.SearchType
 import ani.dantotsu.connections.anilist.CharacterSearchResults
+import ani.dantotsu.connections.anilist.ComickSearchResults
 import ani.dantotsu.connections.anilist.MUSearchResults
+import ani.dantotsu.connections.comick.ComickApi
+import ani.dantotsu.connections.comick.ComickComic
 import ani.dantotsu.connections.anilist.StaffSearchResults
 import ani.dantotsu.connections.anilist.StudioSearchResults
 import ani.dantotsu.connections.anilist.UserSearchResults
@@ -27,6 +30,8 @@ import ani.dantotsu.connections.mangaupdates.MUMediaAdapter
 import ani.dantotsu.databinding.ActivitySearchBinding
 import ani.dantotsu.initActivity
 import ani.dantotsu.navBarHeight
+import ani.dantotsu.openLinkInBrowser
+import ani.dantotsu.openOrCopyAnilistLink
 import ani.dantotsu.profile.UsersAdapter
 import ani.dantotsu.px
 import ani.dantotsu.settings.saving.PrefManager
@@ -53,6 +58,7 @@ class SearchActivity : AppCompatActivity() {
     private lateinit var staffAdaptor: AuthorAdapter
     private lateinit var usersAdapter: UsersAdapter
     private lateinit var muSearchAdaptor: MUMediaAdapter
+    private lateinit var comickSearchAdaptor: ComickSearchAdapter
 
     private lateinit var progressAdapter: ProgressAdapter
     private lateinit var concatAdapter: ConcatAdapter
@@ -64,9 +70,11 @@ class SearchActivity : AppCompatActivity() {
     lateinit var staffResult: StaffSearchResults
     lateinit var userResult: UserSearchResults
     lateinit var muSearchResult: MUSearchResults
+    lateinit var comickSearchResult: ComickSearchResults
 
     lateinit var updateChips: (() -> Unit)
     var updateMuChips: (() -> Unit)? = null
+    var updateComickChips: (() -> Unit)? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -206,6 +214,45 @@ class SearchActivity : AppCompatActivity() {
                 muSearchResult = model.muSearchResults
                 muSearchAdaptor = MUMediaAdapter(model.muSearchResults.results)
             }
+
+            SearchType.COMICK -> {
+                if (model.notSet) {
+                    model.notSet = false
+                    val genres = intent.getStringArrayListExtra("genres")
+                        ?.toMutableList()
+                        ?: intent.getStringExtra("genre")?.let { mutableListOf(it) }
+                    val categories = intent.getStringArrayListExtra("categories")
+                        ?.toMutableList()
+                        ?: intent.getStringExtra("category")?.let { mutableListOf(it) }
+                    model.comickSearchResults = ComickSearchResults(
+                        search = intent.getStringExtra("query"),
+                        results = mutableListOf(),
+                        hasNextPage = false,
+                        genres = genres,
+                        excludedGenres = intent.getStringArrayListExtra("excludedGenres")?.toMutableList(),
+                        tags = intent.getStringArrayListExtra("tags")?.toMutableList(),
+                        excludedTags = intent.getStringArrayListExtra("excludedTags")?.toMutableList(),
+                        demographic = intent.getIntegerArrayListExtra("demographic")?.toMutableList(),
+                        country = intent.getStringArrayListExtra("country")?.toMutableList(),
+                        contentRating = intent.getStringArrayListExtra("contentRating")?.toMutableList(),
+                        status = intent.getIntExtra("status", Int.MIN_VALUE).takeIf { it != Int.MIN_VALUE },
+                        sort = intent.getStringExtra("sort"),
+                        time = intent.getIntExtra("time", Int.MIN_VALUE).takeIf { it != Int.MIN_VALUE },
+                        minimum = intent.getIntExtra("minimum", Int.MIN_VALUE).takeIf { it != Int.MIN_VALUE },
+                        minimumRating = intent.getDoubleExtra("minimumRating", Double.NaN).takeIf { !it.isNaN() },
+                        fromYear = intent.getIntExtra("fromYear", Int.MIN_VALUE).takeIf { it != Int.MIN_VALUE },
+                        toYear = intent.getIntExtra("toYear", Int.MIN_VALUE).takeIf { it != Int.MIN_VALUE },
+                        completed = if (intent.hasExtra("completed")) intent.getBooleanExtra("completed", false) else null,
+                        excludeMyList = null,
+                        showAll = if (intent.hasExtra("showAll")) intent.getBooleanExtra("showAll", false) else null,
+                        categories = categories,
+                    )
+                }
+                comickSearchResult = model.comickSearchResults
+                comickSearchAdaptor = ComickSearchAdapter(model.comickSearchResults.results) { comic ->
+                    onComickResultClicked(comic)
+                }
+            }
         }
 
         progressAdapter = ProgressAdapter(searched = model.searched)
@@ -253,6 +300,10 @@ class SearchActivity : AppCompatActivity() {
 
             SearchType.MANGAUPDATES -> {
                 ConcatAdapter(headerAdaptor, muSearchAdaptor, progressAdapter)
+            }
+
+            SearchType.COMICK -> {
+                ConcatAdapter(headerAdaptor, comickSearchAdaptor, progressAdapter)
             }
         }
 
@@ -409,6 +460,27 @@ class SearchActivity : AppCompatActivity() {
                     }
                 }
             }
+
+            SearchType.COMICK -> {
+                model.getSearch<ComickSearchResults>(searchType).observe(this) {
+                    if (it != null) {
+                        model.comickSearchResults.apply {
+                            search = it.search
+                            page = it.page
+                            hasNextPage = it.hasNextPage
+                            genres = it.genres
+                            categories = it.categories
+                        }
+
+                        val prev = model.comickSearchResults.results.size
+                        model.comickSearchResults.results.addAll(it.results)
+                        comickSearchAdaptor.notifyItemRangeInserted(prev, it.results.size)
+                        progressAdapter.bar?.isVisible = it.hasNextPage
+                    } else {
+                        progressAdapter.bar?.isVisible = false
+                    }
+                }
+            }
         }
 
         progressAdapter.ready.observe(this) {
@@ -477,6 +549,11 @@ class SearchActivity : AppCompatActivity() {
                 model.muSearchResults.results.clear()
                 muSearchAdaptor.notifyDataSetChanged()
             }
+
+            SearchType.COMICK -> {
+                model.comickSearchResults.results.clear()
+                comickSearchAdaptor.notifyDataSetChanged()
+            }
         }
     }
 
@@ -540,6 +617,11 @@ class SearchActivity : AppCompatActivity() {
                 muSearchResult.page = 1
                 muSearchResult.hasNextPage = false
             }
+
+            SearchType.COMICK -> {
+                comickSearchResult.page = 1
+                comickSearchResult.hasNextPage = false
+            }
         }
     }
 
@@ -568,6 +650,32 @@ class SearchActivity : AppCompatActivity() {
     // Return the current textual content of the header's search bar, or null if blank.
     fun getHeaderSearchText(): String? {
         return if (this::headerAdaptor.isInitialized) headerAdaptor.getSearchText() else null
+    }
+
+    private fun onComickResultClicked(comic: ComickComic) {
+        val slug = comic.slug ?: return
+        scope.launch(Dispatchers.IO) {
+            val details = ComickApi.getComicDetails(slug, useCache = false)
+            val links = details?.comic?.links
+            val anilistId = links?.al?.trim()?.toIntOrNull()
+            val anilistUrl = anilistId?.let { "https://anilist.co/manga/$it" }
+
+            val muLinkValue = links?.mu?.trim()
+            val muUrl = when {
+                muLinkValue.isNullOrBlank() -> null
+                muLinkValue.all { it.isDigit() } -> "https://www.mangaupdates.com/series.html?id=$muLinkValue"
+                else -> "https://www.mangaupdates.com/series/$muLinkValue"
+            }
+
+            val fallback = "https://comick.io/comic/$slug"
+            runOnUiThread {
+                when {
+                    !anilistUrl.isNullOrBlank() -> openOrCopyAnilistLink(anilistUrl)
+                    !muUrl.isNullOrBlank() -> openLinkInBrowser(muUrl)
+                    else -> openLinkInBrowser(fallback)
+                }
+            }
+        }
     }
 
 }

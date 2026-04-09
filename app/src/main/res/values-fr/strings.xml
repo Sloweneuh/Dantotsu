@@ -1369,6 +1369,40 @@
 
     <string name="unknown_value">\??</string>
 
+    <string name="comick_advanced">Avancé</string>
+    <string name="comick_minimums">Minimums</string>
+    <string name="comick_content_rating">Classification du contenu</string>
+    <string name="comick_type_label">Type</string>
+    <string name="comick_time_days_label">Date de creation</string>
+    <string name="comick_time_days">%1$d jours</string>
+    <string name="comick_minimum_chapters">Nombre minimum de chapitres</string>
+    <string name="comick_minimum_rating">Note minimale</string>
+    <string name="comick_from_year">À partir de l\'année</string>
+    <string name="comick_to_year">Jusqu\'à l\'année</string>
+    <string name="comick_year_range">%1$s-%2$s</string>
+    <string name="comick_show_all">Inclure les comics sans chapitre</string>
+    <string name="comick_hide_no_chapters">Exclure les comics sans chapitre</string>
+    <string name="comick_time_3">Il y a 3 jours</string>
+    <string name="comick_time_7">Il y a 7 jours</string>
+    <string name="comick_time_30">Il y a 30 jours</string>
+    <string name="comick_time_90">Il y a 3 mois</string>
+    <string name="comick_time_180">Il y a 6 mois</string>
+    <string name="comick_time_365">Il y a 1 an</string>
+    <string name="comick_time_730">Il y a 2 ans</string>
+    <string name="comick_time_1095">Il y a 3 ans</string>
+    <string name="comick_time_1460">Il y a 4 ans</string>
+    <string name="comick_time_1825">Il y a 5 ans</string>
+    <string name="comick_time_2190">Il y a 6 ans</string>
+    <string name="comick_type_jp">Manga</string>
+    <string name="comick_type_kr">Manhwa</string>
+    <string name="comick_type_cn">Manhua</string>
+    <string name="comick_type_others">Autres</string>
+    <string name="comick_all">Tous</string>
+    <string name="comick_completed_only">Terminé uniquement</string>
+    <string name="comick_not_completed_only">Pas terminé uniquement</string>
+    <string name="comick_exclude_my_list">Exclure ma liste</string>
+    <string name="comick_include_my_list">Inclure ma liste</string>
+
     <string name="comick_status_ongoing">En cours</string>
     <string name="comick_status_completed">Complété</string>
     <string name="comick_status_cancelled">Annulé</string>

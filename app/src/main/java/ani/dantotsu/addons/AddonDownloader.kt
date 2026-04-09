@@ -104,24 +104,22 @@ class AddonDownloader {
         }
 
         private fun compareVersion(newVersion: String, oldVersion: String): Boolean {
-            fun toDouble(list: List<String>): Double {
-                return try {
-                    list.mapIndexed { i: Int, s: String ->
-                        when (i) {
-                            0 -> s.toDouble() * 100
-                            1 -> s.toDouble() * 10
-                            2 -> s.toDouble()
-                            else -> s.toDoubleOrNull() ?: 0.0
-                        }
-                    }.sum()
-                } catch (e: NumberFormatException) {
-                    0.0
-                }
+            fun parseVersionSegments(ver: String): List<Int> {
+                return ver.split(".").mapNotNull { it.toIntOrNull() }
             }
-
-            val new = toDouble(newVersion.split("."))
-            val curr = toDouble(oldVersion.split("."))
-            return new > curr
+            
+            val newSegments = parseVersionSegments(newVersion)
+            val oldSegments = parseVersionSegments(oldVersion)
+            
+            // Compare segment by segment (proper semantic versioning)
+            for (i in 0 until maxOf(newSegments.size, oldSegments.size)) {
+                val newSeg = newSegments.getOrNull(i) ?: 0
+                val oldSeg = oldSegments.getOrNull(i) ?: 0
+                if (newSeg != oldSeg) return newSeg > oldSeg
+            }
+            
+            // Versions are equal
+            return false
         }
 
     }

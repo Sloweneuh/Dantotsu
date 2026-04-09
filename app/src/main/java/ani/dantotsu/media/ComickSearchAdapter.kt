@@ -52,12 +52,24 @@ class ComickSearchAdapter(
             itemCompactTitle.isSingleLine = true
             itemCompactTitle.isSelected = true // Enable marquee
 
-            // Title tap: select result
-            itemCompactTitle.setSafeOnClickListener {
+            val openComicWeb: () -> Unit = {
                 comic.slug?.let { slug ->
-                    onItemClick(comic)
+                    val url = "https://comick.io/comic/$slug"
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                    root.context.startActivity(intent)
                 }
             }
+
+            // Entire item tap: select result
+            root.setSafeOnClickListener {
+                comic.slug?.let {
+                    onItemClick(comic)
+                } ?: Toast.makeText(root.context, R.string.error_loading_data, Toast.LENGTH_SHORT)
+                    .show()
+            }
+
+            // Title tap: select result
+            itemCompactTitle.setSafeOnClickListener { root.performClick() }
 
             // Title long tap: toggle between marquee scrolling and full title display
             itemCompactTitle.setOnLongClickListener {
@@ -76,19 +88,16 @@ class ComickSearchAdapter(
             }
 
             // Cover tap: select result
-            itemCompactImage.setSafeOnClickListener {
-                comic.slug?.let { slug ->
-                    onItemClick(comic)
-                }
-            }
+            itemCompactImage.setSafeOnClickListener { root.performClick() }
 
             // Cover long tap: open in browser
             itemCompactImage.setOnLongClickListener {
-                comic.slug?.let { slug ->
-                    val url = "https://comick.io/comic/$slug"
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                    root.context.startActivity(intent)
-                }
+                openComicWeb()
+                true
+            }
+
+            root.setOnLongClickListener {
+                openComicWeb()
                 true
             }
 

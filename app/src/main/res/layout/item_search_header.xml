@@ -54,7 +54,6 @@
                 android:imeOptions="actionSearch"
                 android:inputType="textPersonName"
                 android:padding="8dp"
-                android:selectAllOnFocus="true"
                 android:textSize="14sp"
                 app:boxStrokeColor="@color/text_input_layout_stroke_color"
                 tools:ignore="LabelFor,TextContrastCheck" />

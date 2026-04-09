@@ -196,8 +196,7 @@ class SearchAdapter(private val activity: SearchActivity, private val type: Sear
         updateClearHistoryVisibilityWithFilters()
         fun searchTitle() {
             activity.aniMangaResult.apply {
-                search =
-                    if (binding.searchBarText.text.toString() != "") binding.searchBarText.text.toString() else null
+                search = binding.searchBarText.text.toString().takeIf { it.isNotBlank() }
             }
             if (binding.searchBarText.text.toString().equals("hentai", true)) {
                 openLinkInBrowser("https://www.youtube.com/watch?v=GgJrEOo0QoA")
@@ -212,6 +211,7 @@ class SearchAdapter(private val activity: SearchActivity, private val type: Sear
 
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
                 if (s.toString().isBlank()) {
+                    activity.aniMangaResult.search = null
                     activity.emptyMediaAdapter()
                     CoroutineScope(Dispatchers.IO).launch {
                         delay(200)
@@ -269,6 +269,7 @@ class SearchAdapter(private val activity: SearchActivity, private val type: Sear
             SearchType.STAFF -> R.drawable.ic_round_group_24
             SearchType.STUDIO -> R.drawable.ic_round_movie_edit_24
             SearchType.MANGAUPDATES -> R.drawable.ic_round_mangaupdates_24
+            SearchType.COMICK -> R.drawable.ic_round_comick_24
             else -> R.drawable.ic_round_search_24
         }
     }

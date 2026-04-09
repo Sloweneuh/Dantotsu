@@ -203,26 +203,26 @@ object AppUpdater {
     }
 
     private fun compareVersion(version: String): Boolean {
-
-
         return when (BuildConfig.BUILD_TYPE) {
             "debug" -> BuildConfig.VERSION_NAME != version
             "alpha" -> false
             else -> {
-                fun toDoubleSafe(list: List<String>): Double {
-                    return list.mapIndexed { i, s ->
-                        val num = s.toDoubleOrNull() ?: 0.0
-                        when (i) {
-                            0 -> num * 100
-                            1 -> num * 10
-                            2 -> num
-                            else -> num
-                        }
-                    }.sum()
+                fun parseVersionSegments(ver: String): List<Int> {
+                    return ver.split(".").mapNotNull { it.toIntOrNull() }
                 }
-                val new = toDoubleSafe(version.split("."))
-                val curr = toDoubleSafe(BuildConfig.VERSION_NAME.split("."))
-                new > curr
+                
+                val newSegments = parseVersionSegments(version)
+                val currSegments = parseVersionSegments(BuildConfig.VERSION_NAME)
+                
+                // Compare segment by segment (proper semantic versioning)
+                for (i in 0 until maxOf(newSegments.size, currSegments.size)) {
+                    val newSeg = newSegments.getOrNull(i) ?: 0
+                    val currSeg = currSegments.getOrNull(i) ?: 0
+                    if (newSeg != currSeg) return newSeg > currSeg
+                }
+                
+                // Versions are equal
+                false
             }
         }
     }

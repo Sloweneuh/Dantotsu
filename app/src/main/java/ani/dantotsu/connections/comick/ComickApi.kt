@@ -2,9 +2,13 @@ package ani.dantotsu.connections.comick
 
 import ani.dantotsu.util.Logger
 import com.google.gson.Gson
+import com.google.gson.JsonArray
+import com.google.gson.JsonElement
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.jsoup.Jsoup
@@ -21,6 +25,102 @@ object ComickApi {
 
     // Cache for merged comic data by slug
     private val mergedComicCache = mutableMapOf<String, ComickComic>()
+
+    data class FilterOption(
+        val slug: String,
+        val name: String,
+    )
+
+    @Volatile
+    private var genreCache: List<FilterOption>? = null
+
+    @Volatile
+    private var categoryCache: List<FilterOption>? = null
+
+    suspend fun getGenres(): List<FilterOption> = withContext(Dispatchers.IO) {
+        val cached = genreCache
+        if (!cached.isNullOrEmpty()) {
+            return@withContext cached
+        }
+        val fetched = fetchFilterOptions("https://api.comick.dev/genre/")
+        if (fetched.isNotEmpty()) {
+            genreCache = fetched
+        }
+        fetched
+    }
+
+    suspend fun getCategories(useCache: Boolean = true): List<FilterOption> = withContext(Dispatchers.IO) {
+        val cached = categoryCache
+        if (useCache && !cached.isNullOrEmpty()) {
+            return@withContext cached
+        }
+        val fetched = fetchFilterOptions("https://api.comick.dev/category/")
+        if (fetched.isNotEmpty()) {
+            categoryCache = fetched
+        }
+        fetched
+    }
+
+    fun resolveGenreName(slug: String): String? = genreCache?.firstOrNull { it.slug.equals(slug, ignoreCase = true) }?.name
+
+    fun resolveCategoryName(slug: String): String? = categoryCache?.firstOrNull { it.slug.equals(slug, ignoreCase = true) }?.name
+
+    fun resolveCountryName(code: String): String? {
+        return when (code.lowercase()) {
+            "jp" -> ani.dantotsu.currContext()?.getString(ani.dantotsu.R.string.comick_type_jp)
+            "kr" -> ani.dantotsu.currContext()?.getString(ani.dantotsu.R.string.comick_type_kr)
+            "cn" -> ani.dantotsu.currContext()?.getString(ani.dantotsu.R.string.comick_type_cn)
+            "others" -> ani.dantotsu.currContext()?.getString(ani.dantotsu.R.string.comick_type_others)
+            else -> null
+        }
+    }
+
+    private fun fetchFilterOptions(url: String): List<FilterOption> {
+        return try {
+            val request = Request.Builder().url(url).build()
+            val response = client.newCall(request).execute()
+            if (!response.isSuccessful) {
+                Logger.log("Comick filter API error: ${response.code}")
+                return emptyList()
+            }
+            val body = response.body.string()
+            if (body.isBlank()) return emptyList()
+            parseFilterOptions(gson.fromJson(body, JsonElement::class.java))
+        } catch (e: Exception) {
+            Logger.log("Comick filter parsing error: ${e.message}")
+            emptyList()
+        }
+    }
+
+    private fun parseFilterOptions(root: JsonElement?): List<FilterOption> {
+        if (root == null || root.isJsonNull) return emptyList()
+
+        val arr: JsonArray = when {
+            root.isJsonArray -> root.asJsonArray
+            root.isJsonObject -> {
+                val obj = root.asJsonObject
+                val listField = listOf("results", "data", "items")
+                    .firstNotNullOfOrNull { key -> obj.get(key)?.takeIf { it.isJsonArray } }
+                listField?.asJsonArray ?: JsonArray()
+            }
+            else -> JsonArray()
+        }
+
+        return arr.mapNotNull { item ->
+            val obj = item.takeIf { it.isJsonObject }?.asJsonObject ?: return@mapNotNull null
+            val slug = obj.get("slug")?.asString?.trim().orEmpty().ifBlank {
+                obj.get("name")?.asString?.trim().orEmpty().ifBlank {
+                    obj.get("title")?.asString?.trim().orEmpty().ifBlank { null }
+                }
+            } ?: return@mapNotNull null
+
+            val name = obj.get("name")?.asString?.trim().orEmpty().ifBlank {
+                obj.get("title")?.asString?.trim().orEmpty().ifBlank { slug }
+            }
+
+            FilterOption(slug = slug, name = name)
+        }.distinctBy { it.slug.lowercase() }
+    }
 
     /**
      * Check if a Comick entry's raw or engtl links match any of the external links from AniList
@@ -536,10 +636,81 @@ object ComickApi {
      * @param allowAdult If false, filters out pornographic content (only allows "safe" and "suggestive")
      * @return List of matching comics
      */
-    suspend fun searchComics(query: String, allowAdult: Boolean = true): List<ComickComic>? = withContext(Dispatchers.IO) {
+    suspend fun searchComics(
+        query: String?,
+        allowAdult: Boolean = true,
+        page: Int = 1,
+        limit: Int = 25,
+        genreSlugs: List<String>? = null,
+        excludedGenreSlugs: List<String>? = null,
+        tagSlugs: List<String>? = null,
+        excludedTagSlugs: List<String>? = null,
+        demographic: List<Int>? = null,
+        country: List<String>? = null,
+        contentRating: List<String>? = null,
+        status: Int? = null,
+        sort: String? = null,
+        time: Int? = null,
+        minimum: Int? = null,
+        minimumRating: Double? = null,
+        fromYear: Int? = null,
+        toYear: Int? = null,
+        completed: Boolean? = null,
+        excludeMyList: Boolean? = null,
+        showAll: Boolean? = null,
+        categorySlugs: List<String>? = null,
+    ): List<ComickComic>? = withContext(Dispatchers.IO) {
         try {
-            val encodedQuery = URLEncoder.encode(query, "UTF-8")
-            val url = "https://api.comick.dev/v1.0/search/?type=comic&page=1&limit=25&showall=false&q=$encodedQuery&t=false"
+            val urlBuilder: HttpUrl.Builder = "https://api.comick.dev/v1.0/search/"
+                .toHttpUrlOrNull()
+                ?.newBuilder()
+                ?: return@withContext null
+
+            urlBuilder.addQueryParameter("type", "comic")
+            urlBuilder.addQueryParameter("page", page.toString())
+            urlBuilder.addQueryParameter("limit", limit.toString())
+            urlBuilder.addQueryParameter("showall", "false")
+            urlBuilder.addQueryParameter("t", "false")
+
+            query?.trim()?.takeIf { it.isNotBlank() }?.let {
+                urlBuilder.addQueryParameter("q", it)
+            }
+            genreSlugs?.filter { it.isNotBlank() }?.forEach {
+                urlBuilder.addQueryParameter("genres", it)
+            }
+            excludedGenreSlugs?.filter { it.isNotBlank() }?.forEach {
+                urlBuilder.addQueryParameter("excludes", it)
+            }
+            tagSlugs?.filter { it.isNotBlank() }?.forEach {
+                urlBuilder.addQueryParameter("tags", it)
+            }
+            excludedTagSlugs?.filter { it.isNotBlank() }?.forEach {
+                urlBuilder.addQueryParameter("excluded-tags", it)
+            }
+            demographic?.forEach { urlBuilder.addQueryParameter("demographic", it.toString()) }
+            country?.filter { it.isNotBlank() }?.forEach { urlBuilder.addQueryParameter("country", it) }
+            contentRating?.filter { it.isNotBlank() }?.forEach { urlBuilder.addQueryParameter("content_rating", it) }
+            status?.let { urlBuilder.addQueryParameter("status", it.toString()) }
+            val sortValue = sort?.takeIf { it.isNotBlank() } ?: "created_at"
+            urlBuilder.addQueryParameter("sort", sortValue)
+            time?.let { urlBuilder.addQueryParameter("time", it.toString()) }
+            minimum?.let { urlBuilder.addQueryParameter("minimum", it.toString()) }
+            minimumRating?.let { urlBuilder.addQueryParameter("minimum_rating", it.toString()) }
+            fromYear?.let { urlBuilder.addQueryParameter("from", it.toString()) }
+            toYear?.let { urlBuilder.addQueryParameter("to", it.toString()) }
+            completed?.let { urlBuilder.addQueryParameter("completed", it.toString()) }
+            excludeMyList?.let { urlBuilder.addQueryParameter("exclude-mylist", it.toString()) }
+            showAll?.let { urlBuilder.addQueryParameter("showall", it.toString()) }
+            if (tagSlugs.isNullOrEmpty()) categorySlugs?.filter { it.isNotBlank() }?.forEach {
+                urlBuilder.addQueryParameter("tags", it)
+            }
+
+            if (!allowAdult) {
+                urlBuilder.addQueryParameter("content_rating", "safe")
+                urlBuilder.addQueryParameter("content_rating", "suggestive")
+            }
+
+            val url = urlBuilder.build().toString()
             val request = Request.Builder()
                 .url(url)
                 .build()

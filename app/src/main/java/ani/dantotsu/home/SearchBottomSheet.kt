@@ -13,6 +13,8 @@ import ani.dantotsu.connections.anilist.AnilistSearch.SearchType.Companion.toAni
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.databinding.BottomSheetSearchBinding
 import ani.dantotsu.media.SearchActivity
+import ani.dantotsu.settings.saving.PrefManager
+import ani.dantotsu.settings.saving.PrefName
 
 class SearchBottomSheet : BottomSheetDialogFragment() {
     private var _binding: BottomSheetSearchBinding? = null
@@ -72,6 +74,11 @@ class SearchBottomSheet : BottomSheetDialogFragment() {
         binding.muSearch.visibility = if (MangaUpdates.token != null) View.VISIBLE else View.GONE
         binding.muSearch.setOnClickListener {
             startActivity(requireContext(), SearchType.MANGAUPDATES, currentQuery)
+            dismiss()
+        }
+        binding.comickSearch.visibility = if (PrefManager.getVal<Boolean>(PrefName.ComickEnabled)) View.VISIBLE else View.GONE
+        binding.comickSearch.setOnClickListener {
+            startActivity(requireContext(), SearchType.COMICK, currentQuery)
             dismiss()
         }
     }

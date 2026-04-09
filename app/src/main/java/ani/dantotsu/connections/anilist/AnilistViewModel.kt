@@ -8,6 +8,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.lifecycleScope
 import ani.dantotsu.BuildConfig
 import ani.dantotsu.R
+import ani.dantotsu.connections.comick.ComickApi
 import ani.dantotsu.connections.discord.Discord
 import ani.dantotsu.connections.mal.MAL
 import ani.dantotsu.connections.mangaupdates.MUMedia
@@ -495,7 +496,7 @@ class AnilistMangaViewModel : ViewModel() {
 class AnilistSearch : ViewModel() {
 
     enum class SearchType {
-        ANIME, MANGA, CHARACTER, STAFF, STUDIO, USER, MANGAUPDATES;
+        ANIME, MANGA, CHARACTER, STAFF, STUDIO, USER, MANGAUPDATES, COMICK;
 
         companion object {
 
@@ -508,6 +509,7 @@ class AnilistSearch : ViewModel() {
                     STUDIO -> "STUDIO"
                     USER -> "USER"
                     MANGAUPDATES -> "MANGAUPDATES"
+                    COMICK -> "COMICK"
                 }
             }
 
@@ -520,6 +522,7 @@ class AnilistSearch : ViewModel() {
                     "STUDIO" -> STUDIO
                     "USER" -> USER
                     "MANGAUPDATES" -> MANGAUPDATES
+                    "COMICK" -> COMICK
                     else -> throw IllegalArgumentException("Invalid search type")
                 }
             }
@@ -552,6 +555,10 @@ class AnilistSearch : ViewModel() {
     private val muResult: MutableLiveData<MUSearchResults?> =
         MutableLiveData<MUSearchResults?>(null)
 
+    lateinit var comickSearchResults: ComickSearchResults
+    private val comickResult: MutableLiveData<ComickSearchResults?> =
+        MutableLiveData<ComickSearchResults?>(null)
+
     fun <T> getSearch(type: SearchType): MutableLiveData<T?> {
         return when (type) {
             SearchType.ANIME, SearchType.MANGA -> aniMangaResult as MutableLiveData<T?>
@@ -560,6 +567,7 @@ class AnilistSearch : ViewModel() {
             SearchType.STAFF -> staffResult as MutableLiveData<T?>
             SearchType.USER -> userResult as MutableLiveData<T?>
             SearchType.MANGAUPDATES -> muResult as MutableLiveData<T?>
+            SearchType.COMICK -> comickResult as MutableLiveData<T?>
         }
     }
 
@@ -571,6 +579,7 @@ class AnilistSearch : ViewModel() {
             SearchType.STAFF -> loadStaffSearch(staffSearchResults)
             SearchType.USER -> loadUserSearch(userSearchResults)
             SearchType.MANGAUPDATES -> loadMuSearch(muSearchResults)
+            SearchType.COMICK -> loadComickSearch(comickSearchResults)
         }
     }
 
@@ -582,6 +591,7 @@ class AnilistSearch : ViewModel() {
             SearchType.STAFF -> loadNextStaffPage(staffSearchResults)
             SearchType.USER -> loadNextUserPage(userSearchResults)
             SearchType.MANGAUPDATES -> loadNextMuPage(muSearchResults)
+            SearchType.COMICK -> loadNextComickPage(comickSearchResults)
         }
     }
 
@@ -593,6 +603,7 @@ class AnilistSearch : ViewModel() {
             SearchType.STAFF -> staffSearchResults.hasNextPage
             SearchType.USER -> userSearchResults.hasNextPage
             SearchType.MANGAUPDATES -> muSearchResults.hasNextPage
+            SearchType.COMICK -> comickSearchResults.hasNextPage
         }
     }
 
@@ -604,6 +615,7 @@ class AnilistSearch : ViewModel() {
             SearchType.STAFF -> staffSearchResults.results.isNotEmpty()
             SearchType.USER -> userSearchResults.results.isNotEmpty()
             SearchType.MANGAUPDATES -> muSearchResults.results.isNotEmpty()
+            SearchType.COMICK -> comickSearchResults.results.isNotEmpty()
         }
     }
 
@@ -615,6 +627,7 @@ class AnilistSearch : ViewModel() {
             SearchType.STAFF -> staffSearchResults.results.size
             SearchType.USER -> userSearchResults.results.size
             SearchType.MANGAUPDATES -> muSearchResults.results.size
+            SearchType.COMICK -> comickSearchResults.results.size
         }
     }
 
@@ -626,6 +639,7 @@ class AnilistSearch : ViewModel() {
             SearchType.STAFF -> staffSearchResults.results.clear()
             SearchType.USER -> userSearchResults.results.clear()
             SearchType.MANGAUPDATES -> muSearchResults.results.clear()
+            SearchType.COMICK -> comickSearchResults.results.clear()
         }
     }
 
@@ -741,6 +755,125 @@ class AnilistSearch : ViewModel() {
 
     private suspend fun loadNextMuPage(r: MUSearchResults) =
         muResult.postValue(MangaUpdates.searchSeriesPaged(r, r.page + 1))
+
+    private suspend fun loadComickSearch(r: ComickSearchResults) {
+        val perPage = 25
+        val allExcludedTags = mutableListOf<String>()
+        r.excludedTags?.let { allExcludedTags.addAll(it) }
+        r.excludedCategories?.let { allExcludedTags.addAll(it) }
+        
+        val result = ComickApi.searchComics(
+            query = r.search,
+            page = 1,
+            limit = perPage,
+            genreSlugs = r.genres,
+            excludedGenreSlugs = r.excludedGenres,
+            tagSlugs = r.tags,
+            excludedTagSlugs = allExcludedTags.ifEmpty { null },
+            demographic = r.demographic,
+            country = r.country,
+            contentRating = r.contentRating,
+            status = r.status,
+            sort = r.sort,
+            time = r.time,
+            minimum = r.minimum,
+            minimumRating = r.minimumRating,
+            fromYear = r.fromYear,
+            toYear = r.toYear,
+            completed = r.completed,
+            excludeMyList = null,
+            showAll = r.showAll,
+            categorySlugs = r.categories,
+            allowAdult = PrefManager.getVal(PrefName.AdultOnly),
+        )
+        comickResult.postValue(
+            ComickSearchResults(
+                search = r.search,
+                page = 1,
+                results = (result ?: emptyList()).toMutableList(),
+                hasNextPage = (result?.size ?: 0) >= perPage,
+                genres = r.genres,
+                excludedGenres = r.excludedGenres,
+                tags = r.tags,
+                excludedTags = r.excludedTags,
+                demographic = r.demographic,
+                country = r.country,
+                contentRating = r.contentRating,
+                status = r.status,
+                sort = r.sort,
+                time = r.time,
+                minimum = r.minimum,
+                minimumRating = r.minimumRating,
+                fromYear = r.fromYear,
+                toYear = r.toYear,
+                completed = r.completed,
+                excludeMyList = null,
+                showAll = r.showAll,
+                categories = r.categories,
+                excludedCategories = r.excludedCategories,
+            )
+        )
+    }
+
+    private suspend fun loadNextComickPage(r: ComickSearchResults) {
+        val perPage = 25
+        val nextPage = r.page + 1
+        val allExcludedTags = mutableListOf<String>()
+        r.excludedTags?.let { allExcludedTags.addAll(it) }
+        r.excludedCategories?.let { allExcludedTags.addAll(it) }
+        
+        val result = ComickApi.searchComics(
+            query = r.search,
+            page = nextPage,
+            limit = perPage,
+            genreSlugs = r.genres,
+            excludedGenreSlugs = r.excludedGenres,
+            tagSlugs = r.tags,
+            excludedTagSlugs = allExcludedTags.ifEmpty { null },
+            demographic = r.demographic,
+            country = r.country,
+            contentRating = r.contentRating,
+            status = r.status,
+            sort = r.sort,
+            time = r.time,
+            minimum = r.minimum,
+            minimumRating = r.minimumRating,
+            fromYear = r.fromYear,
+            toYear = r.toYear,
+            completed = r.completed,
+            excludeMyList = null,
+            showAll = r.showAll,
+            categorySlugs = r.categories,
+            allowAdult = PrefManager.getVal(PrefName.AdultOnly),
+        )
+        comickResult.postValue(
+            ComickSearchResults(
+                search = r.search,
+                page = nextPage,
+                results = (result ?: emptyList()).toMutableList(),
+                hasNextPage = (result?.size ?: 0) >= perPage,
+                genres = r.genres,
+                excludedGenres = r.excludedGenres,
+                tags = r.tags,
+                excludedTags = r.excludedTags,
+                demographic = r.demographic,
+                country = r.country,
+                contentRating = r.contentRating,
+                status = r.status,
+                sort = r.sort,
+                time = r.time,
+                minimum = r.minimum,
+                minimumRating = r.minimumRating,
+                fromYear = r.fromYear,
+                toYear = r.toYear,
+                completed = r.completed,
+                excludeMyList = null,
+                showAll = r.showAll,
+                categories = r.categories,
+                excludedCategories = r.excludedCategories,
+            )
+        )
+    }
 }
 
 class GenresViewModel : ViewModel() {

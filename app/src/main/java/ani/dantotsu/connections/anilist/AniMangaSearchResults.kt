@@ -1,6 +1,8 @@
 package ani.dantotsu.connections.anilist
 
 import ani.dantotsu.R
+import ani.dantotsu.connections.comick.ComickApi
+import ani.dantotsu.connections.comick.ComickComic
 import ani.dantotsu.connections.mangaupdates.MUMedia
 import ani.dantotsu.currContext
 import ani.dantotsu.media.Author
@@ -9,6 +11,7 @@ import ani.dantotsu.media.Media
 import ani.dantotsu.media.Studio
 import ani.dantotsu.profile.User
 import java.io.Serializable
+import java.util.Calendar
 
 interface SearchResults<T> {
     var search: String?
@@ -254,5 +257,172 @@ data class MUSearchResults(
             "list_wish" to "Wish Count",
             "list_complete" to "Complete Count",
         )
+    }
+}
+
+data class ComickSearchResults(
+    override var search: String?,
+    override var page: Int = 1,
+    override var results: MutableList<ComickComic>,
+    override var hasNextPage: Boolean,
+    var genres: MutableList<String>? = null,
+    var excludedGenres: MutableList<String>? = null,
+    var tags: MutableList<String>? = null,
+    var excludedTags: MutableList<String>? = null,
+    var demographic: MutableList<Int>? = null,
+    var country: MutableList<String>? = null,
+    var contentRating: MutableList<String>? = null,
+    var status: Int? = null,
+    var sort: String? = null,
+    var time: Int? = null,
+    var minimum: Int? = null,
+    var minimumRating: Double? = null,
+    var fromYear: Int? = null,
+    var toYear: Int? = null,
+    var completed: Boolean? = null,
+    var excludeMyList: Boolean? = null,
+    var showAll: Boolean? = null,
+    var categories: MutableList<String>? = null,
+    var excludedCategories: MutableList<String>? = null,
+) : SearchResults<ComickComic>, Serializable {
+    fun toChipList(): List<AniMangaSearchResults.SearchChip> {
+        val list = mutableListOf<AniMangaSearchResults.SearchChip>()
+        val context = currContext()!!
+        genres?.forEach { list.add(AniMangaSearchResults.SearchChip("COMICK_GENRE", ComickApi.resolveGenreName(it) ?: it)) }
+        excludedGenres?.forEach {
+            val displayName = ComickApi.resolveGenreName(it) ?: it
+            list.add(AniMangaSearchResults.SearchChip("COMICK_EXCL_GENRE", context.getString(R.string.filter_exclude, displayName)))
+        }
+        tags?.forEach { list.add(AniMangaSearchResults.SearchChip("COMICK_TAG", it)) }
+        excludedTags?.forEach { list.add(AniMangaSearchResults.SearchChip("COMICK_EXCL_TAG", context.getString(R.string.filter_exclude, it))) }
+        categories?.forEach { list.add(AniMangaSearchResults.SearchChip("COMICK_CATEGORY", ComickApi.resolveCategoryName(it) ?: it)) }
+        excludedCategories?.forEach {
+            val displayName = ComickApi.resolveCategoryName(it) ?: it
+            list.add(AniMangaSearchResults.SearchChip("COMICK_EXCL_CATEGORY", context.getString(R.string.filter_exclude, displayName)))
+        }
+        demographic?.forEach {
+            list.add(
+                AniMangaSearchResults.SearchChip(
+                    "COMICK_DEMO",
+                    context.getString(R.string.demographic) + ": " + when (it) {
+                        1 -> currContext()!!.getString(R.string.shounen)
+                        2 -> currContext()!!.getString(R.string.shoujo)
+                        3 -> currContext()!!.getString(R.string.seinen)
+                        4 -> currContext()!!.getString(R.string.josei)
+                        else -> currContext()!!.getString(R.string.unknown)
+                    }
+                )
+            )
+        }
+        country?.forEach { list.add(AniMangaSearchResults.SearchChip("COMICK_COUNTRY", context.getString(R.string.comick_type_label) + ": " + (ComickApi.resolveCountryName(it) ?: it))) }
+        contentRating?.forEach { list.add(AniMangaSearchResults.SearchChip("COMICK_CONTENT", context.getString(R.string.comick_content_rating) + ": $it")) }
+        status?.let {
+            list.add(
+                AniMangaSearchResults.SearchChip(
+                    "COMICK_STATUS",
+                    context.getString(R.string.status_title) + ": " + when (it) {
+                        1 -> currContext()!!.getString(R.string.ongoing)
+                        2 -> currContext()!!.getString(R.string.completed)
+                        3 -> currContext()!!.getString(R.string.cancelled)
+                        4 -> currContext()!!.getString(R.string.hiatus)
+                        else -> it.toString()
+                    }
+                )
+            )
+        }
+        time?.let { list.add(AniMangaSearchResults.SearchChip("COMICK_TIME", context.getString(R.string.comick_time_days_label) + ": " + context.getString(R.string.comick_time_days, it))) }
+        minimum?.let { list.add(AniMangaSearchResults.SearchChip("COMICK_MINIMUM", context.getString(R.string.comick_minimum_chapters) + ": $it")) }
+        minimumRating?.let { list.add(AniMangaSearchResults.SearchChip("COMICK_MIN_RATING", context.getString(R.string.comick_minimum_rating) + ": $it")) }
+        val defaultYearRangeEnd = Calendar.getInstance().get(Calendar.YEAR) + 1
+        val isDefaultYearRange = fromYear == null && toYear == null || (fromYear == 1900 && toYear == defaultYearRangeEnd)
+        if (!isDefaultYearRange && (fromYear != null || toYear != null)) {
+            list.add(AniMangaSearchResults.SearchChip("COMICK_YEAR_RANGE", context.getString(R.string.filter_year_range, context.getString(R.string.comick_year_range, fromYear ?: "?", toYear ?: "?"))))
+        }
+        completed?.let { list.add(AniMangaSearchResults.SearchChip("COMICK_COMPLETED", context.getString(R.string.translation) + ": " + if (it) context.getString(R.string.comick_completed_only) else context.getString(R.string.comick_not_completed_only))) }
+        if (showAll == true) {
+            list.add(AniMangaSearchResults.SearchChip("COMICK_SHOWALL", context.getString(R.string.comick_show_all)))
+        }
+        return list
+    }
+
+    fun removeChip(chip: AniMangaSearchResults.SearchChip) {
+        when (chip.type) {
+            "COMICK_GENRE" -> genres?.remove(findSlugByDisplayText(chip.text, genres, ComickApi::resolveGenreName))
+            "COMICK_EXCL_GENRE" -> {
+                val displayValue = chip.text.rawNotPrefixedValue()
+                excludedGenres?.remove(findSlugByDisplayText(displayValue, excludedGenres, ComickApi::resolveGenreName))
+            }
+            "COMICK_TAG" -> tags?.remove(chip.text.rawPrefixedValue(currContext()!!.getString(R.string.tags)))
+            "COMICK_EXCL_TAG" -> excludedTags?.remove(chip.text.rawNotPrefixedValue())
+            "COMICK_DEMO" -> {
+                val selectedLabel = chip.text.rawPrefixedValue(currContext()!!.getString(R.string.demographic))
+                val selectedValue = when (selectedLabel) {
+                    currContext()!!.getString(R.string.shounen) -> 1
+                    currContext()!!.getString(R.string.shoujo) -> 2
+                    currContext()!!.getString(R.string.seinen) -> 3
+                    currContext()!!.getString(R.string.josei) -> 4
+                    else -> null
+                }
+                selectedValue?.let { demographic?.remove(it) }
+            }
+            "COMICK_COUNTRY" -> {
+                val selectedLabel = chip.text.rawPrefixedValue(currContext()!!.getString(R.string.comick_type_label))
+                country?.remove(findSlugByDisplayText(selectedLabel, country, ComickApi::resolveCountryName))
+            }
+            "COMICK_CONTENT" -> {
+                val selectedValue = chip.text.rawPrefixedValue(currContext()!!.getString(R.string.comick_content_rating))
+                contentRating?.remove(selectedValue)
+            }
+            "COMICK_STATUS" -> status = null
+            "COMICK_SORT" -> sort = null
+            "COMICK_TIME" -> time = null
+            "COMICK_MINIMUM" -> minimum = null
+            "COMICK_MIN_RATING" -> minimumRating = null
+            "COMICK_YEAR_RANGE" -> {
+                fromYear = null
+                toYear = null
+            }
+            "COMICK_COMPLETED" -> completed = null
+            "COMICK_SHOWALL" -> showAll = null
+            "COMICK_CATEGORY" -> categories?.remove(findSlugByDisplayText(chip.text, categories, ComickApi::resolveCategoryName))
+            "COMICK_EXCL_CATEGORY" -> {
+                val displayValue = chip.text.rawNotPrefixedValue()
+                excludedCategories?.remove(findSlugByDisplayText(displayValue, excludedCategories, ComickApi::resolveCategoryName))
+            }
+        }
+    }
+
+    private fun String.rawPrefixedValue(label: String): String {
+        return removePrefix("$label: ")
+    }
+
+    private fun String.rawNotPrefixedValue(): String {
+        return removePrefix(currContext()!!.getString(R.string.filter_exclude, ""))
+    }
+
+    private fun findSlugByDisplayText(
+        displayText: String,
+        values: MutableList<String>?,
+        resolver: (String) -> String?,
+    ): String {
+        if (displayText.isBlank()) {
+            return displayText
+        }
+
+        return values?.firstOrNull { slug ->
+            resolver(slug)?.equals(displayText, ignoreCase = true) == true
+        } ?: displayText
+    }
+
+    private fun labelForSort(sortValue: String): String {
+        return when (sortValue) {
+            "created_at" -> "Latest"
+            "uploaded" -> "Last Updated"
+            "rating" -> "Rating"
+            "average_rating" -> "Average Rating"
+            "user_follow_count" -> "Popular"
+            "created" -> "Created"
+            else -> sortValue.replace('_', ' ').replaceFirstChar { it.uppercase() }
+        }
     }
 }
