@@ -76,11 +76,23 @@ class SearchBottomSheet : BottomSheetDialogFragment() {
             startActivity(requireContext(), SearchType.MANGAUPDATES, currentQuery)
             dismiss()
         }
-        binding.comickSearch.visibility = if (PrefManager.getVal<Boolean>(PrefName.ComickEnabled)) View.VISIBLE else View.GONE
         binding.comickSearch.setOnClickListener {
             startActivity(requireContext(), SearchType.COMICK, currentQuery)
             dismiss()
         }
+
+        applyConnectionVisibility()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        applyConnectionVisibility()
+    }
+
+    private fun applyConnectionVisibility() {
+        val comickEnabled = PrefManager.getVal<Boolean>(PrefName.ComickEnabled) == true
+        binding.comickSearch.visibility = if (comickEnabled) View.VISIBLE else View.GONE
+        binding.comickSearch.isEnabled = comickEnabled
     }
 
     private fun startActivity(context: Context, type: SearchType, query: String?) {

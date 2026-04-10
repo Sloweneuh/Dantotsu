@@ -16,6 +16,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
+import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -616,8 +617,10 @@ class GenreCategoryChipAdapter(
             chip.setOnCheckedChangeListener(null)
             chip.isChecked = isChecked
 
-            val defaultBackground = chip.chipBackgroundColor
-            val defaultTextColor = chip.textColors
+            val defaultBackground = AppCompatResources.getColorStateList(chip.context, R.color.chip_background_color)
+            val defaultTextColor = ColorStateList.valueOf(
+                chip.context.getResourceColor(com.google.android.material.R.attr.colorOnSurface)
+            )
 
             chip.setFilterStyle(
                 option.name,
@@ -641,7 +644,7 @@ class GenreCategoryChipAdapter(
 
             chip.setOnLongClickListener {
                 internalChange = true
-                if (isExcluded) {
+                if (excludedItems.contains(slug)) {
                     chip.isChecked = false
                     chip.setFilterStyle(option.name, false, false, defaultBackground, defaultTextColor)
                     onStateChanged(slug, ComickSearchFilterBottomSheet.FilterState.NONE)

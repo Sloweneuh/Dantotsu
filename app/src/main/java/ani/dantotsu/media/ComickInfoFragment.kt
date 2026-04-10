@@ -2,6 +2,8 @@ package ani.dantotsu.media
 
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.content.res.ColorStateList
+import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -13,6 +15,8 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import ani.dantotsu.R
+import ani.dantotsu.connections.anilist.AnilistSearch.SearchType
+import ani.dantotsu.connections.anilist.AnilistSearch.SearchType.Companion.toAnilistString
 import ani.dantotsu.connections.comick.ComickApi
 import ani.dantotsu.connections.comick.ComickResponse
 import ani.dantotsu.connections.comick.toComickReview
@@ -676,6 +680,26 @@ class ComickInfoFragment : Fragment() {
         }
     }
 
+    private fun startComickSearchInApp(
+        query: String? = null,
+        genreSlug: String? = null,
+        categorySlug: String? = null,
+    ) {
+        if (!isAdded) return
+        val intent = Intent(requireContext(), SearchActivity::class.java)
+            .putExtra("type", SearchType.COMICK.toAnilistString())
+
+        if (!query.isNullOrBlank()) intent.putExtra("query", query)
+        if (!genreSlug.isNullOrBlank()) intent.putExtra("genre", genreSlug)
+        if (!categorySlug.isNullOrBlank()) intent.putExtra("category", categorySlug)
+
+        if (!query.isNullOrBlank() || !genreSlug.isNullOrBlank() || !categorySlug.isNullOrBlank()) {
+            intent.putExtra("search", true)
+        }
+
+        startActivity(intent)
+    }
+
     @SuppressLint("SetTextI18n")
     private fun displayComickInfo(comickData: ComickResponse) {
         if (_binding == null) {
@@ -1198,13 +1222,7 @@ class ComickInfoFragment : Fragment() {
 
                     // Normal tap: search by genre/tag
                     chip.setOnClickListener {
-                        val url = "https://comick.dev/search?genres=$genreSlug"
-                        startActivity(
-                                android.content.Intent(
-                                        android.content.Intent.ACTION_VIEW,
-                                        android.net.Uri.parse(url)
-                                )
-                        )
+                        startComickSearchInApp(genreSlug = genreSlug)
                     }
 
                     // Long tap: copy genre/tag name
@@ -1259,13 +1277,7 @@ class ComickInfoFragment : Fragment() {
 
                     // Normal tap: search by tag
                     chip.setOnClickListener {
-                        val url = "https://comick.dev/search?tags=$tagSlug"
-                        startActivity(
-                                android.content.Intent(
-                                        android.content.Intent.ACTION_VIEW,
-                                        android.net.Uri.parse(url)
-                                )
-                        )
+                        startComickSearchInApp(categorySlug = tagSlug)
                     }
 
                     // Long tap: copy tag name
