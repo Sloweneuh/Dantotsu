@@ -91,12 +91,14 @@ class SearchAdapter(private val activity: SearchActivity, private val type: Sear
 
         binding.searchBarText.removeTextChangedListener(textWatcher)
 
-        // Initialize search bar text from existing model value and move caret to end
-        binding.searchBarText.setText(activity.aniMangaResult.search)
-        binding.searchBarText.setSelection(binding.searchBarText.text.length)
-        binding.searchBarText.clearFocus()
-        binding.root.requestFocus()
-        imm.hideSoftInputFromWindow(binding.searchBarText.windowToken, 0)
+        // Initialize search bar text from existing model value only if different
+        // and do not touch the field while the user is editing (has focus).
+        val current = binding.searchBarText.text?.toString() ?: ""
+        val modelText = activity.aniMangaResult.search ?: ""
+        if (!binding.searchBarText.hasFocus() && current != modelText) {
+            binding.searchBarText.setText(modelText)
+            binding.searchBarText.setSelection(binding.searchBarText.text.length)
+        }
 
         // Back button
         binding.searchBack.setOnClickListener { activity.finish() }

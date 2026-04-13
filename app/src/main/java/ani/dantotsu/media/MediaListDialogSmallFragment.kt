@@ -21,6 +21,7 @@ import ani.dantotsu.others.getSerialized
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.snackString
+import ani.dantotsu.util.Logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -279,37 +280,39 @@ class MediaListDialogSmallFragment : BottomSheetDialogFragment() {
 
         binding.mediaListSave.setOnClickListener {
             scope.launch {
-                withContext(Dispatchers.IO) {
-                    withContext(Dispatchers.IO) {
-                        val progress = _binding?.mediaListProgress?.text.toString().toIntOrNull()
-                        val score = (_binding?.mediaListScore?.text.toString().toDoubleOrNull()
-                            ?.times(10))?.toInt()
-                        val status =
-                            statuses[statusStrings.indexOf(_binding?.mediaListStatus?.text.toString())]
-                        val anilistChanged = progress != initialProgress
-                            || score != initialScore
-                            || status != initialStatus
-                            || media.isListPrivate != initialIsListPrivate
-                        if (anilistChanged) {
-                            Anilist.mutation.editList(
-                                media.id,
-                                progress,
-                                score,
-                                null,
-                                null,
-                                status,
-                                media.isListPrivate
-                            )
-                            MAL.query.editList(
-                                media.idMAL,
-                                media.anime != null,
-                                progress,
-                                score,
-                                status
-                            )
+                        var anilistOk = true
+                        var anilistChangedLocal = false
+                        withContext(Dispatchers.IO) {
+                            val progress = _binding?.mediaListProgress?.text.toString().toIntOrNull()
+                            val score = (_binding?.mediaListScore?.text.toString().toDoubleOrNull()
+                                ?.times(10))?.toInt()
+                            val status =
+                                statuses[statusStrings.indexOf(_binding?.mediaListStatus?.text.toString())]
+                            val anilistChanged = progress != initialProgress
+                                || score != initialScore
+                                || status != initialStatus
+                                || media.isListPrivate != initialIsListPrivate
+                                || media.userStatus == null
+                            if (anilistChanged) {
+                                anilistChangedLocal = true
+                                anilistOk = Anilist.mutation.editList(
+                                    media.id,
+                                    progress,
+                                    score,
+                                    null,
+                                    null,
+                                    status,
+                                    media.isListPrivate
+                                )
+                                MAL.query.editList(
+                                    media.idMAL,
+                                    media.anime != null,
+                                    progress,
+                                    score,
+                                    status
+                                )
+                            }
                         }
-                    }
-                }
                 if (remove == true) {
                     PrefManager.setCustomVal("removeList", removeList.plus(media.id))
                 } else if (remove == false) {
@@ -321,8 +324,12 @@ class MediaListDialogSmallFragment : BottomSheetDialogFragment() {
                     PrefManager.setCustomVal("malSyncBatchExcludeList", malSyncExcludeList.minus(media.id))
                 }
                 Refresh.all()
-                snackString(getString(R.string.list_updated))
-                dismissAllowingStateLoss()
+                if (anilistChangedLocal && !anilistOk) {
+                    snackString(getString(R.string.list_update_failed))
+                } else {
+                    snackString(getString(R.string.list_updated))
+                    dismissAllowingStateLoss()
+                }
             }
         }
     }

@@ -484,6 +484,7 @@
     <string name="error_loading_anilist_user_data">Erreur de chargement des données utilisateur Anilist</string>
     <string name="episode_not_found">Impossible de trouver l\'épisode : %1$s</string>
     <string name="list_updated">Liste mise à jour</string>
+    <string name="list_update_failed">Échec de la mise à jour de la liste</string>
     <string name="deleted_from_list">Supprimé de la liste</string>
     <string name="no_list_id">Aucun ID de liste trouvé…</string>
     <string name="checking_for_update">Vérification des mises à jour</string>

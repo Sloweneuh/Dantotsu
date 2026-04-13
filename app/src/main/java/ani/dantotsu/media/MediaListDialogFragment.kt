@@ -24,6 +24,7 @@ import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.snackString
 import ani.dantotsu.tryWith
+import ani.dantotsu.util.Logger
 import com.google.android.material.materialswitch.MaterialSwitch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -335,56 +336,60 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
 
                 binding.mediaListSave.setOnClickListener {
                     scope.launch {
+                        var anilistOk = true
+                        var anilistChangedLocal = false
                         withContext(Dispatchers.IO) {
-                            if (media != null) {
-                                val progress =
-                                    _binding?.mediaListProgress?.text.toString().toIntOrNull()
-                                val score =
-                                    (_binding?.mediaListScore?.text.toString().toDoubleOrNull()
-                                        ?.times(10))?.toInt()
-                                val status =
-                                    statuses[statusStrings.indexOf(_binding?.mediaListStatus?.text.toString())]
-                                val rewatch =
-                                    _binding?.mediaListRewatch?.text?.toString()?.toIntOrNull()
-                                val notes = _binding?.mediaListNotes?.text?.toString()
-                                val startD = start.date
-                                val endD = end.date
-                                val anilistChanged = progress != initialProgress
-                                    || score != initialScore
-                                    || status != initialStatus
-                                    || rewatch != initialRewatch
-                                    || (notes ?: "") != initialNotes
-                                    || startD != initialStartD
-                                    || endD != initialEndD
-                                    || (media?.isListPrivate ?: false) != initialIsListPrivate
-                                    || (media?.inCustomListsOf ?: emptyMap<String, Boolean>()) != initialCustomLists
-                                if (anilistChanged) {
-                                    Anilist.mutation.editList(
-                                        media!!.id,
-                                        progress,
-                                        score,
-                                        rewatch,
-                                        notes,
-                                        status,
-                                        media?.isListPrivate ?: false,
-                                        startD,
-                                        endD,
-                                        media?.inCustomListsOf?.mapNotNull { if (it.value) it.key else null }
-                                    )
-                                    MAL.query.editList(
-                                        media!!.idMAL,
-                                        media!!.anime != null,
-                                        progress,
-                                        score,
-                                        status,
-                                        rewatch,
-                                        startD,
-                                        endD
-                                    )
+                                    if (media != null) {
+                                        val progress =
+                                            _binding?.mediaListProgress?.text.toString().toIntOrNull()
+                                        val score =
+                                            (_binding?.mediaListScore?.text.toString().toDoubleOrNull()
+                                                ?.times(10))?.toInt()
+                                        val status =
+                                            statuses[statusStrings.indexOf(_binding?.mediaListStatus?.text.toString())]
+                                        val rewatch =
+                                            _binding?.mediaListRewatch?.text?.toString()?.toIntOrNull()
+                                        val notes = _binding?.mediaListNotes?.text?.toString()
+                                        val startD = start.date
+                                        val endD = end.date
+                                        val anilistChanged = progress != initialProgress
+                                            || score != initialScore
+                                            || status != initialStatus
+                                            || rewatch != initialRewatch
+                                            || (notes ?: "") != initialNotes
+                                            || startD != initialStartD
+                                            || endD != initialEndD
+                                            || (media?.isListPrivate ?: false) != initialIsListPrivate
+                                            || (media?.inCustomListsOf ?: emptyMap<String, Boolean>()) != initialCustomLists
+                                            || media?.userStatus == null
+                                        if (anilistChanged) {
+                                            anilistChangedLocal = true
+                                            anilistOk = Anilist.mutation.editList(
+                                                media!!.id,
+                                                progress,
+                                                score,
+                                                rewatch,
+                                                notes,
+                                                status,
+                                                media?.isListPrivate ?: false,
+                                                startD,
+                                                endD,
+                                                media?.inCustomListsOf?.mapNotNull { if (it.value) it.key else null }
+                                            )
+                                            MAL.query.editList(
+                                                media!!.idMAL,
+                                                media!!.anime != null,
+                                                progress,
+                                                score,
+                                                status,
+                                                rewatch,
+                                                startD,
+                                                endD
+                                            )
+                                        }
+                                    }
                                 }
-                            }
-                        }
-                        if (remove == true) {
+                                if (remove == true) {
                             PrefManager.setCustomVal("removeList", removeList.plus(media!!.id))
                         } else if (remove == false) {
                             PrefManager.setCustomVal("removeList", removeList.minus(media!!.id))
@@ -395,8 +400,12 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                             PrefManager.setCustomVal("malSyncBatchExcludeList", malSyncExcludeList.minus(media!!.id))
                         }
                         Refresh.all()
-                        snackString(getString(R.string.list_updated))
-                        dismissAllowingStateLoss()
+                        if (anilistChangedLocal && !anilistOk) {
+                            snackString(getString(R.string.list_update_failed))
+                        } else {
+                            snackString(getString(R.string.list_updated))
+                            dismissAllowingStateLoss()
+                        }
                     }
                 }
 

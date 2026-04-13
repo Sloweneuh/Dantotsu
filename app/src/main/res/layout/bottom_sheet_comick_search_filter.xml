@@ -39,7 +39,6 @@
                     android:id="@+id/comickFilterTitle"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="45dp"
                     android:layout_marginTop="-2dp"
                     android:layout_weight="1"
                     android:fontFamily="@font/poppins_semi_bold"

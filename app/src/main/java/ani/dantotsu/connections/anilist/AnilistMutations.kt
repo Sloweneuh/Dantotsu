@@ -5,6 +5,7 @@ import ani.dantotsu.connections.anilist.api.FuzzyDate
 import ani.dantotsu.connections.anilist.api.Query
 import ani.dantotsu.connections.anilist.api.ToggleLike
 import ani.dantotsu.currContext
+import ani.dantotsu.util.Logger
 import com.google.gson.Gson
 import kotlinx.serialization.json.JsonObject
 
@@ -186,7 +187,7 @@ class AnilistMutations {
         startedAt: FuzzyDate? = null,
         completedAt: FuzzyDate? = null,
         customList: List<String>? = null
-    ) {
+    ): Boolean {
         val query = """
             mutation (
                 ${"$"}mediaID: Int,
@@ -236,8 +237,9 @@ class AnilistMutations {
             ${if (status != null) ""","status":"$status"""" else ""}
             ${if (customList != null) ""","customLists":[${customList.joinToString { "\"$it\"" }}]""" else ""}
             }""".replace("\n", "").replace("""    """, "")
-        println(variables)
-        executeQuery<JsonObject>(query, variables, show = true)
+        val result = executeQuery<JsonObject>(query, variables, show = true)
+        val errors = result?.get("errors")
+        return errors == null
     }
 
     suspend fun deleteList(listId: Int) {
