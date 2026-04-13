@@ -45,6 +45,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import nl.joery.animatedbottombar.AnimatedBottomBar
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import android.widget.TextView
 import kotlin.math.abs
 
 
@@ -65,16 +68,66 @@ class ProfileActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedListene
         val context = this
         screenWidth = resources.displayMetrics.widthPixels.toFloat()
         navBar = binding.profileNavBar
-        val navBarRightMargin = if (resources.configuration.orientation ==
-            Configuration.ORIENTATION_LANDSCAPE
-        ) navBarHeight else 0
-        val navBarBottomMargin = if (resources.configuration.orientation ==
-            Configuration.ORIENTATION_LANDSCAPE
-        ) 0 else navBarHeight
-        navBar.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-            rightMargin = navBarRightMargin
-            bottomMargin = navBarBottomMargin
+        // Ensure the side rail is offset from system navigation insets and brought to front
+        val rootView = window.decorView.findViewById(android.R.id.content) as View
+        ViewCompat.setOnApplyWindowInsetsListener(rootView) { _, insets ->
+            val navInsets = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
+            val isLandscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+            val rightInset = if (isLandscape) navInsets.right else 0
+            navBar.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+                rightMargin = rightInset
+                if (!isLandscape) bottomMargin = 0
+            }
+            val navZ = 8f * resources.displayMetrics.density
+            navBar.translationZ = navZ
+
+            if (!isLandscape) {
+                val baseDp = 72f
+                val basePx = (baseDp * resources.displayMetrics.density).toInt()
+                val extra = navInsets.bottom
+                navBar.updateLayoutParams {
+                    height = basePx + extra
+                }
+                navBar.setPadding(0, 0, 0, extra)
+                binding.profileBottomInset.visibility = View.GONE
+            } else {
+                val wideDp = 56
+                val widePx = (wideDp * resources.displayMetrics.density).toInt()
+                navBar.updateLayoutParams {
+                    width = widePx
+                    height = ViewGroup.LayoutParams.MATCH_PARENT
+                }
+                navBar.setPadding(0, 0, 0, 0)
+                binding.profileBottomInset.visibility = View.GONE
+
+                fun rotateTextIn(view: View) {
+                    if (view is TextView) {
+                        view.rotation = -90f
+                        view.pivotX = (view.width / 2).toFloat()
+                        view.pivotY = (view.height / 2).toFloat()
+                    } else if (view is ViewGroup) {
+                        for (i in 0 until view.childCount) rotateTextIn(view.getChildAt(i))
+                    }
+                }
+                for (i in 0 until navBar.childCount) {
+                    rotateTextIn(navBar.getChildAt(i))
+                }
+            }
+            insets
         }
+        val showBottomInset = resources.configuration.orientation != Configuration.ORIENTATION_LANDSCAPE
+        val navRightInset = ViewCompat.getRootWindowInsets(rootView)
+            ?.getInsets(WindowInsetsCompat.Type.navigationBars())
+            ?.right
+            ?: navBarHeight
+        navBar.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+            rightMargin = if (showBottomInset) 0 else navRightInset
+            bottomMargin = 0
+        }
+        binding.profileBottomInset.updateLayoutParams<ViewGroup.LayoutParams> {
+            height = if (showBottomInset) navBarHeight else 0
+        }
+        binding.profileBottomInset.visibility = if (showBottomInset) View.VISIBLE else View.GONE
         selected = intent.getIntExtra("selectedTab", 0)
         intent.getStringExtra("statsMediaType")?.let { name ->
             statsMediaType = ChartBuilder.Companion.MediaType.entries.find { it.name == name }

@@ -54,4 +54,9 @@
         app:itemTextAppearanceActive="@style/NavBarText"
         app:itemTextAppearanceInactive="@style/NavBarText"
         app:itemTextColor="@color/tab_layout_icon" />
+    <View
+        android:id="@+id/profileBottomInset"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:background="?attr/colorSurface" />
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
