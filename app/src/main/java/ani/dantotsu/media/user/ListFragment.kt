@@ -122,7 +122,7 @@ class ListFragment : Fragment() {
                     if (ascending) sorted else sorted.reversed()
                 }
 
-                val mergedAdapter = MergedReadingAdapter(mergedItems, if (g) 0 else 1)
+                val mergedAdapter = MergedReadingAdapter(mergedItems, if (g) 0 else 1, true)
                 mediaAdaptor = null
                 binding.listRecyclerView.adapter = mergedAdapter
             } else {

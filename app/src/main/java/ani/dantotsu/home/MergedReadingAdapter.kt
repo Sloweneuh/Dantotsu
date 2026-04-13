@@ -41,7 +41,8 @@ import java.io.Serializable
  */
 class MergedReadingAdapter(
     private val items: List<Any>,
-    private val type: Int = 0
+    private val type: Int = 0,
+    private val matchParent: Boolean = false
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
@@ -65,11 +66,21 @@ class MergedReadingAdapter(
 
     override fun getItemViewType(position: Int) = type
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder =
-        if (viewType == 1)
-            VHLarge(ItemMediaLargeBinding.inflate(LayoutInflater.from(parent.context), parent, false))
-        else
-            VH(ItemMediaCompactBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+        if (viewType == 1) {
+            return VHLarge(ItemMediaLargeBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+        } else {
+            val vh = VH(ItemMediaCompactBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+            if (matchParent) {
+                try {
+                    val lp = vh.itemView.layoutParams ?: ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                    lp.width = ViewGroup.LayoutParams.MATCH_PARENT
+                    vh.itemView.layoutParams = lp
+                } catch (e: Exception) { }
+            }
+            return vh
+        }
+    }
 
     override fun getItemCount() = items.size
 
