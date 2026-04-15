@@ -7,6 +7,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.Window
 import android.view.inputmethod.InputMethodManager
+import android.widget.TextView
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.PopupMenu
@@ -101,6 +102,60 @@ class ListActivity : AppCompatActivity() {
         binding.listBack.setOnClickListener {
             finish()
         }
+        binding.listFindMissingSequels.setOnClickListener {
+            if (binding.listTabLayout.getTabAt(selectedTabIdx)?.tag as? String != "ANI:Completed") return@setOnClickListener
+
+            val dialog = ani.dantotsu.others.CustomBottomDialog.newInstance()
+            dialog.setTitleText(getString(R.string.check_missing_sequels_confirm_title))
+            val tv = TextView(this@ListActivity).apply {
+                setPadding(32, 16, 32, 16)
+                text = getString(R.string.check_missing_sequels_confirm_text)
+                textSize = 14f
+            }
+            dialog.addView(tv)
+            dialog.setNegativeButton(getString(R.string.cancel)) {
+                dialog.dismiss()
+            }
+            dialog.setPositiveButton(getString(R.string.proceed)) {
+                dialog.dismiss()
+                val sourceList = model.getUnfilteredLists().value?.get("Completed")
+                    ?: model.getLists().value?.get("Completed")
+                    ?: return@setPositiveButton
+                val completedIds = sourceList.map { it.id }.distinct()
+                if (completedIds.isEmpty()) {
+                    toast(getString(R.string.no_missing_sequels_found))
+                    return@setPositiveButton
+                }
+                val existingIds = (
+                    model.getUnfilteredLists().value?.values?.flatten()
+                        ?: model.getLists().value?.values?.flatten()
+                        ?: emptyList()
+                ).map { it.id }.toSet()
+
+                binding.listProgressBar.visibility = View.VISIBLE
+                scope.launch {
+                    val sequels = withContext(Dispatchers.IO) {
+                        Anilist.query.getMissingSequels(completedIds, existingIds)
+                    }
+                    binding.listProgressBar.visibility = View.GONE
+                    if (sequels.isEmpty()) {
+                        toast(getString(R.string.no_missing_sequels_found))
+                        return@launch
+                    }
+
+                    ani.dantotsu.media.MediaListViewActivity.passedMedia = ArrayList(sequels)
+                    val intent = android.content.Intent(
+                        this@ListActivity,
+                        ani.dantotsu.media.MediaListViewActivity::class.java
+                    ).putExtra(
+                        "title",
+                        getString(R.string.missing_sequels_title, if (anime) getString(R.string.anime) else getString(R.string.manga))
+                    ).putExtra("isAnime", anime)
+                    startActivity(intent)
+                }
+            }
+            dialog.show(supportFragmentManager, "missing_sequels_confirm")
+        }
         binding.listTabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab?) {
                 this@ListActivity.selectedTabIdx = tab?.position ?: 0
@@ -108,9 +163,7 @@ class ListActivity : AppCompatActivity() {
                 // same logical tab after tabs are rebuilt/filtered.
                 val text = tab?.text?.toString()
                 selectedTabBase = text?.let { it.replace(Regex(" \\(.+\\)$"), "") }
-                // Update find-equivalents visibility when the selected tab changes
-                val hasMu = model.getFilteredMuLists().value != null && model.getFilteredMuLists().value!!.values.flatten().isNotEmpty()
-                binding.listFindEquivalents.isVisible = hasMu && muTabPosition >= 0 && this@ListActivity.selectedTabIdx == muTabPosition
+                updateContextualButtons()
             }
 
             override fun onTabUnselected(tab: TabLayout.Tab?) {}
@@ -121,6 +174,7 @@ class ListActivity : AppCompatActivity() {
             if (it != null) {
                 binding.listProgressBar.visibility = View.GONE
                 buildTabs(it, model.getFilteredMuLists().value)
+                updateContextualButtons()
             }
         }
 
@@ -136,13 +190,13 @@ class ListActivity : AppCompatActivity() {
             if (muMap == null) return@observe
             val aniMap = model.getLists().value ?: return@observe
             buildTabs(aniMap, muMap)
+            updateContextualButtons()
         }
 
         // Show find-equivalents button when MU lists are present (only on MU tab)
         model.getFilteredMuLists().observe(this) { muMap ->
             val hasMu = muMap != null && muMap.values.flatten().isNotEmpty()
-            // Only show the button if MU lists exist AND the user is on the MangaUpdates tab
-            binding.listFindEquivalents.isVisible = hasMu && muTabPosition >= 0 && selectedTabIdx == muTabPosition
+            updateContextualButtons()
             if (hasMu) {
                 binding.listFindEquivalents.setOnClickListener {
                     val dialog = ani.dantotsu.others.CustomBottomDialog.newInstance()
@@ -671,6 +725,13 @@ class ListActivity : AppCompatActivity() {
             R.drawable.ic_round_sort_24
         }
         binding.listSort.setImageResource(iconRes)
+    }
+
+    private fun updateContextualButtons() {
+        val hasMu = model.getFilteredMuLists().value?.values?.flatten()?.isNotEmpty() == true
+        val selectedTag = binding.listTabLayout.getTabAt(selectedTabIdx)?.tag as? String
+        binding.listFindEquivalents.isVisible = hasMu && muTabPosition >= 0 && selectedTag == "MU:AGGREGATE"
+        binding.listFindMissingSequels.isVisible = selectedTag == "ANI:Completed"
     }
 
     private fun addFilterChip(text: String, type: String, onRemove: () -> Unit) {

@@ -38,6 +38,8 @@ class ListViewModel : ViewModel() {
 
     fun getLists(): LiveData<MutableMap<String, ArrayList<Media>>> = lists
 
+    fun getUnfilteredLists(): LiveData<MutableMap<String, ArrayList<Media>>> = unfilteredLists
+
     suspend fun loadLists(anime: Boolean, userId: Int, sortOrder: String? = null) {
         tryWithSuspend {
             activeSortOrder = sortOrder

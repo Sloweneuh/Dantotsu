@@ -11,6 +11,7 @@ import ani.dantotsu.connections.anilist.api.FeedResponse
 import ani.dantotsu.connections.anilist.api.FuzzyDate
 import ani.dantotsu.connections.anilist.api.MediaEdge
 import ani.dantotsu.connections.anilist.api.MediaExternalLink
+import ani.dantotsu.connections.anilist.api.MediaRelation
 import ani.dantotsu.connections.anilist.api.MediaList
 import ani.dantotsu.connections.anilist.api.NotificationResponse
 import ani.dantotsu.connections.anilist.api.Page
@@ -82,6 +83,56 @@ class AnilistQueries {
             val ordered = ids.mapNotNull { byId[it] }
             ordered
         }
+    }
+
+    suspend fun getMissingSequels(mediaIds: List<Int>, existingIds: Set<Int>): List<Media> {
+        val uniqueIds = mediaIds.distinct()
+        if (uniqueIds.isEmpty()) return emptyList()
+
+        val chunks = uniqueIds.chunked(50)
+        val queryBody = chunks.mapIndexed { index, chunk ->
+            val idsString = chunk.joinToString(",")
+            """
+                page${index}: Page(perPage: ${chunk.size}) {
+                    media(id_in: [$idsString]) {
+                        ${standardMediaInformation()}
+                        relations {
+                            edges {
+                                relationType(version: 2)
+                                node {
+                                    ${standardMediaInformation()}
+                                }
+                            }
+                        }
+                    }
+                }
+            """.trimIndent()
+        }.joinToString("\n")
+
+        val query = """{
+            $queryBody
+        }""".trimIndent()
+
+        val response = executeQuery<Query.BatchedPageResponse>(query, force = true)?.data ?: return emptyList()
+        val mediaById = response.values
+            .asSequence()
+            .flatMap { it.media.orEmpty().asSequence() }
+            .associateBy { it.id }
+
+        val addedIds = mutableSetOf<Int>()
+        val sequels = mutableListOf<Media>()
+
+        for (sourceId in uniqueIds) {
+            val source = mediaById[sourceId] ?: continue
+            source.relations?.edges?.forEach { edge ->
+                if (edge.relationType != MediaRelation.SEQUEL) return@forEach
+                val sequel = edge.node ?: return@forEach
+                if (sequel.id in existingIds || !addedIds.add(sequel.id)) return@forEach
+                sequels.add(Media(sequel))
+            }
+        }
+
+        return sequels
     }
 
     suspend fun getUserData(): Boolean {

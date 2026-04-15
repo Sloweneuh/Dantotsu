@@ -113,6 +113,17 @@
                     app:srcCompat="@drawable/ic_anilist_search_24"
                     app:tint="?attr/colorOnBackground" />
 
+                <ImageButton
+                    android:id="@+id/listFindMissingSequels"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_marginEnd="4dp"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:contentDescription="@string/check_missing_sequels"
+                    android:visibility="gone"
+                    app:srcCompat="@drawable/ic_link_2_24"
+                    app:tint="?attr/colorOnBackground" />
+
             </LinearLayout>
 
             <com.google.android.material.textfield.TextInputLayout
