@@ -14,7 +14,6 @@ import androidx.core.text.HtmlCompat
 import androidx.fragment.app.DialogFragment
 import ani.dantotsu.R
 import ani.dantotsu.loadImage
-import ani.dantotsu.blurImage
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
@@ -48,6 +47,18 @@ class MediaRandomDialogFragment : DialogFragment() {
     private var currentCoverTarget: CustomTarget<Drawable>? = null
     private var currentBackgroundTarget: CustomTarget<Drawable>? = null
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+
+    private fun loadStrongBlurBackground(imageView: ImageView, banner: String?) {
+        if (banner.isNullOrBlank()) {
+            imageView.setImageResource(R.drawable.linear_gradient_bg)
+            return
+        }
+
+        Glide.with(imageView.context)
+            .load(banner)
+            .apply(RequestOptions.bitmapTransform(BlurTransformation(20, 3)))
+            .into(imageView)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -101,7 +112,7 @@ class MediaRandomDialogFragment : DialogFragment() {
             if (backgroundDrawable != null) {
                 cardBackground.setImageDrawable(backgroundDrawable)
             } else {
-                blurImage(cardBackground, media.banner ?: media.cover)
+                loadStrongBlurBackground(cardBackground, media.banner ?: media.cover)
             }
             titleText.text = media.userPreferredName
             val rawDesc = media.description ?: ""
@@ -124,7 +135,7 @@ class MediaRandomDialogFragment : DialogFragment() {
                         media.cover = cached.coverUrl
                         media.banner = cached.coverUrl
                         coverImage.loadImage(cached.coverUrl)
-                        blurImage(cardBackground, cached.coverUrl)
+                        loadStrongBlurBackground(cardBackground, cached.coverUrl)
                     }
                     if (media.description.isNullOrBlank() && !cached.description.isNullOrBlank()) {
                         media.description = cached.description
@@ -143,7 +154,7 @@ class MediaRandomDialogFragment : DialogFragment() {
                                 media.cover = coverUrl
                                 media.banner = coverUrl
                                 coverImage.loadImage(coverUrl)
-                                blurImage(cardBackground, coverUrl)
+                                loadStrongBlurBackground(cardBackground, coverUrl)
                             }
                             val desc = details.description
                             if (!desc.isNullOrBlank() && current?.id == media.id) {
