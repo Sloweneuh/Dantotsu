@@ -17,6 +17,7 @@ enum class PrefName(val data: Pref) {
     DisableCrashReports(Pref(Location.General, Boolean::class, false)),
     OfflineView(Pref(Location.General, Int::class, 0)),
     DownloadManager(Pref(Location.General, Int::class, 0)),
+    AllowMeteredDownloads(Pref(Location.General, Boolean::class, true)),
     NSFWExtension(Pref(Location.General, Boolean::class, true)),
     ContinueMedia(Pref(Location.General, Boolean::class, true)),
     SearchSources(Pref(Location.General, Boolean::class, false)),

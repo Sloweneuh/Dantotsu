@@ -1456,6 +1456,10 @@
     <string name="discord_manga_presence">Présence Manga</string>
     <string name="search_equivalents">Rechercher des équivalents</string>
     <string name="search_equivalents_confirm_text">Cela va tenter de trouver des équivalents AniList pour chaque entrée MangaUpdates de cette liste. Cela peut prendre un certain temps. Continuer ?</string>
+    <string name="allow_metered_downloads">Autoriser les téléchargements sur réseaux limités</string>
+    <string name="allow_metered_downloads_desc">Si désactivé, les téléchargements ne démarrent que sur des connexions non limitées comme le Wi-Fi.</string>
+    <string name="download_blocked_metered_title">Téléchargements bloqués sur réseau limité</string>
+    <string name="download_blocked_metered_desc">Activez "Autoriser les téléchargements sur réseaux limités" dans les paramètres communs ou passez sur un réseau non limité.</string>
     <string name="check_missing_sequels">Vérifier les suites manquantes</string>
     <string name="check_missing_sequels_confirm_title">Vérifier les suites manquantes</string>
     <string name="check_missing_sequels_confirm_text">Cela va analyser chaque entrée terminée de cette liste et afficher les suites AniList qui ne sont pas déjà dans vos listes. Continuer ?</string>

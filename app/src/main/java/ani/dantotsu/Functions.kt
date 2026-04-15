@@ -437,6 +437,14 @@ fun isOnline(context: Context): Boolean {
     } ?: false
 }
 
+fun isOnMeteredNetwork(context: Context): Boolean {
+    val connectivityManager =
+        context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    return tryWith {
+        connectivityManager.isActiveNetworkMetered
+    } ?: false
+}
+
 fun startMainActivity(activity: Activity, bundle: Bundle? = null) {
     activity.finishAffinity()
     activity.startActivity(

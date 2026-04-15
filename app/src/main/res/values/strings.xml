@@ -1542,6 +1542,10 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="covers">Covers</string>
     <string name="cover_volume_label">Volume %1$s</string>
     <string name="search_equivalents">Search equivalents</string>
+    <string name="allow_metered_downloads">Allow downloads on metered networks</string>
+    <string name="allow_metered_downloads_desc">If disabled, downloads will only start on unmetered connections like Wi-Fi.</string>
+    <string name="download_blocked_metered_title">Downloads blocked on metered network</string>
+    <string name="download_blocked_metered_desc">Enable "Allow downloads on metered networks" in Common settings or switch to an unmetered network.</string>
     <string name="check_missing_sequels">Check missing sequels</string>
     <string name="check_missing_sequels_confirm_title">Check for missing sequels</string>
     <string name="check_missing_sequels_confirm_text">This will scan every completed item in the current list and show AniList sequels that are not already in the list. Continue?</string>

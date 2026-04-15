@@ -25,6 +25,7 @@ import ani.dantotsu.download.DownloadedType
 import ani.dantotsu.download.DownloadsManager
 import ani.dantotsu.download.novel.NovelDownloaderService
 import ani.dantotsu.download.novel.NovelServiceDataSingleton
+import ani.dantotsu.isOnMeteredNetwork
 import ani.dantotsu.media.Media
 import ani.dantotsu.media.MediaDetailsActivity
 import ani.dantotsu.media.MediaDetailsViewModel
@@ -32,6 +33,8 @@ import ani.dantotsu.media.MediaType
 import ani.dantotsu.media.novel.novelreader.NovelReaderActivity
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.parsers.ShowResponse
+import ani.dantotsu.settings.saving.PrefManager
+import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.snackString
 import ani.dantotsu.util.Logger
 import ani.dantotsu.util.StoragePermissions
@@ -65,6 +68,10 @@ class NovelReadFragment : Fragment(),
     override fun downloadTrigger(novelDownloadPackage: NovelDownloadPackage) {
         Logger.log("novel link: ${novelDownloadPackage.link}")
         activity?.let {
+            if (!PrefManager.getVal<Boolean>(PrefName.AllowMeteredDownloads) && isOnMeteredNetwork(requireContext())) {
+                snackString(getString(R.string.download_blocked_metered_desc))
+                return@let
+            }
             fun continueDownload() {
                 val downloadTask = NovelDownloaderService.DownloadTask(
                     title = media.mainName(),

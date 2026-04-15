@@ -37,6 +37,7 @@ import ani.dantotsu.download.DownloadsManager.Companion.compareName
 import ani.dantotsu.download.manga.MangaDownloaderService
 import ani.dantotsu.download.manga.MangaServiceDataSingleton
 import ani.dantotsu.dp
+import ani.dantotsu.isOnMeteredNetwork
 import ani.dantotsu.isOnline
 import ani.dantotsu.media.Media
 import ani.dantotsu.media.MediaDetailsActivity
@@ -510,6 +511,10 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
 
     fun onMangaChapterDownloadClick(i: MangaChapter) {
         activity?.let {
+            if (!PrefManager.getVal<Boolean>(PrefName.AllowMeteredDownloads) && isOnMeteredNetwork(requireContext())) {
+                snackString(getString(R.string.download_blocked_metered_desc))
+                return@let
+            }
             if (!isNotificationPermissionGranted()) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     ActivityCompat.requestPermissions(

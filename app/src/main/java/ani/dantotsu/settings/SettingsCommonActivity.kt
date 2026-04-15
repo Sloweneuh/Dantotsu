@@ -228,6 +228,16 @@ class SettingsCommonActivity : AppCompatActivity() {
                             },
                         ),
                         Settings(
+                            type = 2,
+                            name = getString(R.string.allow_metered_downloads),
+                            desc = getString(R.string.allow_metered_downloads_desc),
+                            icon = R.drawable.ic_download_24,
+                            isChecked = PrefManager.getVal(PrefName.AllowMeteredDownloads),
+                            switch = { isChecked, _ ->
+                                PrefManager.setVal(PrefName.AllowMeteredDownloads, isChecked)
+                            },
+                        ),
+                        Settings(
                             type = 1,
                             name = getString(R.string.app_lock),
                             desc = getString(R.string.app_lock_desc),
