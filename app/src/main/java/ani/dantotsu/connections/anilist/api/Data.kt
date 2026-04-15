@@ -41,6 +41,12 @@ class Query {
             val page: ani.dantotsu.connections.anilist.api.Page?
         )
     }
+
+    @Serializable
+    data class BatchedPageResponse(
+        @SerialName("data")
+        val data: Map<String, ani.dantotsu.connections.anilist.api.Page>?
+    )
 //    data class AiringSchedule(
 //        val data : Data?
 //    ){

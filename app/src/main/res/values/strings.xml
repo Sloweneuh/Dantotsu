@@ -1542,6 +1542,11 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="covers">Covers</string>
     <string name="cover_volume_label">Volume %1$s</string>
     <string name="search_equivalents">Search equivalents</string>
+    <string name="check_missing_sequels">Check missing sequels</string>
+    <string name="check_missing_sequels_confirm_title">Check for missing sequels</string>
+    <string name="check_missing_sequels_confirm_text">This will scan every completed item in the current list and show AniList sequels that are not already in the list. Continue?</string>
+    <string name="missing_sequels_title">%1$s missing sequels</string>
+    <string name="no_missing_sequels_found">No missing sequels found</string>
 
 </resources>
 
