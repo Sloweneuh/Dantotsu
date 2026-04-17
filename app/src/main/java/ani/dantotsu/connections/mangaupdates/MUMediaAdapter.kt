@@ -15,7 +15,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import java.io.Serializable
 
-class MUMediaAdapter(private val items: List<MUMedia>) :
+class MUMediaAdapter(private val items: List<MUMedia>, private val matchParent: Boolean = false) :
     RecyclerView.Adapter<MUMediaAdapter.ViewHolder>() {
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
@@ -23,10 +23,23 @@ class MUMediaAdapter(private val items: List<MUMedia>) :
     inner class ViewHolder(val binding: ItemMediaCompactBinding) :
         RecyclerView.ViewHolder(binding.root)
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder =
-        ViewHolder(
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+        val vh = ViewHolder(
             ItemMediaCompactBinding.inflate(LayoutInflater.from(parent.context), parent, false)
         )
+        if (matchParent) {
+            try {
+                val lp = vh.itemView.layoutParams
+                    ?: ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                lp.width = ViewGroup.LayoutParams.MATCH_PARENT
+                vh.itemView.layoutParams = lp
+                // compensate negative root margin in item_media_compact.xml by adding
+                // a 16dp left padding so visual left gutter matches other lists
+                // padding handled by parent RecyclerView to avoid double-padding
+            } catch (e: Exception) { }
+        }
+        return vh
+    }
 
     override fun getItemCount(): Int = items.size
 

@@ -8,6 +8,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.recyclerview.widget.GridLayoutManager
 import ani.dantotsu.connections.mangaupdates.MUMediaAdapter
+import ani.dantotsu.home.MergedReadingAdapter
 import ani.dantotsu.connections.mangaupdates.toMedia
 import ani.dantotsu.databinding.FragmentListBinding
 import ani.dantotsu.media.MediaRandomDialogFragment
@@ -54,7 +55,21 @@ class MUOnlyListFragment : Fragment() {
         fun update() {
             val spanCount = if (currentGrid) (screenWidth / 120f).toInt() else 1
             binding.listRecyclerView.layoutManager = GridLayoutManager(requireContext(), spanCount)
-            binding.listRecyclerView.adapter = MUMediaAdapter(currentItems)
+            // Compensate for negative root margin in item layout so MU grid aligns
+            // with other tabs: add an extra 16dp left padding on MU-only recycler.
+            val density = requireContext().resources.displayMetrics.density
+            val extraPad = (16 * density).toInt()
+            if (currentGrid) {
+                binding.listRecyclerView.setPadding(
+                    binding.listRecyclerView.paddingLeft + extraPad,
+                    binding.listRecyclerView.paddingTop,
+                    binding.listRecyclerView.paddingRight,
+                    binding.listRecyclerView.paddingBottom
+                )
+                binding.listRecyclerView.adapter = MUMediaAdapter(currentItems, matchParent = false)
+            } else {
+                binding.listRecyclerView.adapter = MergedReadingAdapter(currentItems.map { it as Any }, 1, true)
+            }
         }
 
         model.getFilteredMuLists().observe(viewLifecycleOwner) { muMap ->
