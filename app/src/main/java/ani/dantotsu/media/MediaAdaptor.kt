@@ -149,7 +149,7 @@ class MediaAdaptor(
                             )
                         )
                         b.itemCompactTotal.text =
-                            " | ${if (media.anime.nextAiringEpisode != null) (media.anime.nextAiringEpisode.toString() + " | " + (media.anime.totalEpisodes ?: "~").toString()) else (media.anime.totalEpisodes ?: "~").toString()}"
+                            " | ${if (media.anime.displayReleaseProgress != null) (media.anime.displayReleaseProgress.toString() + " | " + (media.anime.totalEpisodes ?: "~").toString()) else (media.anime.totalEpisodes ?: "~").toString()}"
                     } else if (media.manga != null) {
                         if (media.relation != null) b.itemCompactTypeImage.setImageDrawable(
                             AppCompatResources.getDrawable(
@@ -409,7 +409,7 @@ class MediaAdaptor(
                         ) currActivity()!!.getString(R.string.episode_plural)
                         else currActivity()!!.getString(R.string.episode_singular)
                         b.itemCompactTotal.text =
-                            if (media.anime.nextAiringEpisode != null) (media.anime.nextAiringEpisode.toString() + " / " + (media.anime.totalEpisodes
+                            if (media.anime.displayReleaseProgress != null) (media.anime.displayReleaseProgress.toString() + " / " + (media.anime.totalEpisodes
                                 ?: "??").toString()) else (media.anime.totalEpisodes
                                 ?: "??").toString()
                     } else if (media.manga != null) {
@@ -485,7 +485,7 @@ class MediaAdaptor(
                         ) currActivity()!!.getString(R.string.episode_plural)
                         else currActivity()!!.getString(R.string.episode_singular)
                         b.itemCompactTotal.text =
-                            if (media.anime.nextAiringEpisode != null) (media.anime.nextAiringEpisode.toString() + " / " + (media.anime.totalEpisodes
+                            if (media.anime.displayReleaseProgress != null) (media.anime.displayReleaseProgress.toString() + " / " + (media.anime.totalEpisodes
                                 ?: "??").toString()) else (media.anime.totalEpisodes
                                 ?: "??").toString()
                     } else if (media.manga != null) {

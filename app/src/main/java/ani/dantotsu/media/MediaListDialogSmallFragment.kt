@@ -107,12 +107,10 @@ class MediaListDialogSmallFragment : BottomSheetDialogFragment() {
         )
 
         var total: Int? = null
-        var effectiveTotal: Int? = null // The actual total to use (from AniList or MALSync)
         binding.mediaListProgress.setText(if (media.userProgress != null) media.userProgress.toString() else "")
         if (media.anime != null) {
             if (media.anime!!.totalEpisodes != null) {
                 total = media.anime!!.totalEpisodes!!
-                effectiveTotal = total
                 binding.mediaListProgress.filters =
                     arrayOf(
                         InputFilterMinMax(0.0, total.toDouble(), binding.mediaListStatus),
@@ -149,21 +147,11 @@ class MediaListDialogSmallFragment : BottomSheetDialogFragment() {
                                     }
                                     // If lastEp < total: show userProgress / lastEp / total
                                     total != null && malSyncEpisode < total -> {
-                                        effectiveTotal = malSyncEpisode
                                         " / $malSyncEpisode / $total"
                                     }
-                                    // Default: show userProgress / lastEp (when no total or lastEp > total)
+                                    // Default: show userProgress / lastEp / total
                                     else -> {
-                                        effectiveTotal = malSyncEpisode
-                                        // Update filters if MALSync has more episodes than AniList total
-                                        if (total == null || malSyncEpisode > total) {
-                                            _binding?.mediaListProgress?.filters =
-                                                arrayOf(
-                                                    InputFilterMinMax(0.0, malSyncEpisode.toDouble(), binding.mediaListStatus),
-                                                    LengthFilter(malSyncEpisode.toString().length)
-                                                )
-                                        }
-                                        " / $malSyncEpisode"
+                                        " / $malSyncEpisode / ${total ?: '?'}"
                                     }
                                 }
                                 _binding?.mediaListProgressLayout?.suffixText = suffixText
@@ -177,7 +165,6 @@ class MediaListDialogSmallFragment : BottomSheetDialogFragment() {
         } else if (media.manga != null) {
             // Check if AniList has totalChapters
             total = media.manga!!.totalChapters
-            effectiveTotal = total
 
             if (total != null) {
                 binding.mediaListProgress.filters =
@@ -243,12 +230,11 @@ class MediaListDialogSmallFragment : BottomSheetDialogFragment() {
             val init =
                 if (binding.mediaListProgress.text.toString() != "") binding.mediaListProgress.text.toString()
                     .toInt() else 0
-            val currentTotal = effectiveTotal ?: total
-            if (init < (currentTotal ?: 5000)) {
+            if (init < (total ?: 5000)) {
                 val progressText = "${init + 1}"
                 binding.mediaListProgress.setText(progressText)
             }
-            if (init + 1 == (currentTotal ?: 5000)) {
+            if (init + 1 == (total ?: 5000)) {
                 binding.mediaListStatus.setText(statusStrings[2], false)
             }
         }

@@ -117,17 +117,9 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                                             total != null && malSyncEpisode < total -> {
                                                 " / $malSyncEpisode / $total"
                                             }
-                                            // Default: show userProgress / lastEp (when no total or lastEp > total)
+                                            // Default: show userProgress / lastEp / total
                                             else -> {
-                                                // Update filters if MALSync has more episodes than AniList total
-                                                if (total == null || malSyncEpisode > total) {
-                                                    _binding?.mediaListProgress?.filters =
-                                                        arrayOf(
-                                                            InputFilterMinMax(0.0, malSyncEpisode.toDouble(), binding.mediaListStatus),
-                                                            LengthFilter(malSyncEpisode.toString().length)
-                                                        )
-                                                }
-                                                " / $malSyncEpisode"
+                                                " / $malSyncEpisode / ${total ?: '?'}"
                                             }
                                         }
                                         _binding?.mediaListProgressLayout?.suffixText = suffixText

@@ -654,9 +654,9 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                             )
                         }
                         if (media.anime != null) {
-                            if (media.anime!!.nextAiringEpisode != null) {
+                            if (media.anime!!.displayReleaseProgress != null) {
                                 bold {
-                                    color(white) { append("${media.anime!!.nextAiringEpisode}") }
+                                    color(white) { append("${media.anime!!.displayReleaseProgress}") }
                                 }
                                 append(" / ")
                             }

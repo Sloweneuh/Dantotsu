@@ -27,4 +27,11 @@ data class Anime(
     var kitsuEpisodes: Map<String, Episode>? = null,
     var fillerEpisodes: Map<String, Episode>? = null,
     var anifyEpisodes: Map<String, Episode>? = null,
-) : Serializable
+) : Serializable {
+    val displayReleaseProgress: Int?
+        get() {
+            val malSyncEnabled = ani.dantotsu.settings.saving.PrefManager.getVal<Boolean>(ani.dantotsu.settings.saving.PrefName.MalSyncInfoEnabled)
+            val malSyncMode = ani.dantotsu.settings.saving.PrefManager.getVal<String>(ani.dantotsu.settings.saving.PrefName.MalSyncCheckMode) ?: "both"
+            return if (malSyncEnabled && malSyncMode != "manga") null else nextAiringEpisode
+        }
+}

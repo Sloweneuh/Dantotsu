@@ -101,11 +101,11 @@ class DownloadCompat {
                 val isUserScored = mediaModel.userScore != 0
                 val watchedEpisodes = (mediaModel.userProgress ?: "~").toString()
                 val totalEpisode =
-                    if (mediaModel.anime?.nextAiringEpisode != null) (mediaModel.anime.nextAiringEpisode.toString() + " | " + (mediaModel.anime.totalEpisodes
+                    if (mediaModel.anime?.displayReleaseProgress != null) (mediaModel.anime.displayReleaseProgress.toString() + " | " + (mediaModel.anime.totalEpisodes
                         ?: "~").toString()) else (mediaModel.anime?.totalEpisodes ?: "~").toString()
                 val chapters = " Chapters"
                 val totalEpisodesList =
-                    if (mediaModel.anime?.nextAiringEpisode != null) (mediaModel.anime.nextAiringEpisode.toString()) else (mediaModel.anime?.totalEpisodes
+                    if (mediaModel.anime?.displayReleaseProgress != null) (mediaModel.anime.displayReleaseProgress.toString()) else (mediaModel.anime?.totalEpisodes
                         ?: "~").toString()
                 return OfflineAnimeModel(
                     title,

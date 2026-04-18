@@ -263,8 +263,8 @@ class AniListInfoFragment : Fragment() {
                         }
                     }
                     binding.mediaInfoTotalTitle.setText(R.string.total_eps)
-                    val infoTotal = if (media.anime.nextAiringEpisode != null)
-                        "${media.anime.nextAiringEpisode} | ${media.anime.totalEpisodes ?: "~"}"
+                    val infoTotal = if (media.anime.displayReleaseProgress != null)
+                        "${media.anime.displayReleaseProgress} | ${media.anime.totalEpisodes ?: "~"}"
                     else
                         (media.anime.totalEpisodes ?: "~").toString()
                     binding.mediaInfoTotal.text = infoTotal
@@ -461,7 +461,7 @@ class AniListInfoFragment : Fragment() {
                                 progress = media.userProgress,
                                 totalEpisodes = media.anime?.totalEpisodes
                                     ?: media.manga?.totalChapters,
-                                nextAiringEpisode = media.anime?.nextAiringEpisode
+                                nextAiringEpisode = media.anime?.displayReleaseProgress
                             )
                         )
                     }
