@@ -25,6 +25,7 @@
             android:textSize="16sp" />
 
         <LinearLayout
+            android:id="@+id/readerLayoutContainer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
@@ -162,6 +163,7 @@
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/readerDualPageContainer"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:layout_marginTop="16dp"
@@ -250,6 +252,7 @@
         </LinearLayout>
 
         <TextView
+            android:id="@+id/readerDualPageInfo"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="-8dp"

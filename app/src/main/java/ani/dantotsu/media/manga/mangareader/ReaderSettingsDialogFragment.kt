@@ -31,6 +31,14 @@ class ReaderSettingsDialogFragment : BottomSheetDialogFragment() {
         super.onViewCreated(view, savedInstanceState)
         val activity = requireActivity() as MangaReaderActivity
         val settings = activity.defaultSettings
+        val isMultiChapter = PrefManager.getVal<Boolean>(PrefName.ContinuousMultiChapter)
+
+        // Hide irrelevant settings in multi-chapter mode
+        if (isMultiChapter) {
+            binding.readerDualPageContainer.visibility = View.GONE
+            binding.readerDualPageInfo.visibility = View.GONE
+            binding.readerOverscroll.visibility = View.GONE
+        }
 
         binding.readerDirectionText.text =
             resources.getStringArray(R.array.manga_directions)[settings.direction.ordinal]

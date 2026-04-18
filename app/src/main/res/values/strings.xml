@@ -1161,6 +1161,12 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="autoscroll">Autoscroll</string>
     <string name="autoscroll_speed">Autoscroll speed</string>
     <string name="autoscroll_only_continuous">Autoscroll is only available in Continuous layout</string>
+    <string name="continuous_multi_chapter">Multi-Chapter Reader</string>
+    <string name="continuous_multi_chapter_desc">Read through all chapters seamlessly without stopping</string>
+    <string name="chapter_transition_end">End of %1$s</string>
+    <string name="chapter_transition_next">Next: %1$s</string>
+    <string name="no_previous_chapter">No previous chapter</string>
+    <string name="no_next_chapter">No more chapters</string>
     <string name="purge_manga_downloads_desc">Delete all downloaded Manga</string>
     <string name="purge_novel_downloads_desc">Delete all downloaded Novels</string>
     <string name="include_list_desc">Include list items in Manga explore page</string>

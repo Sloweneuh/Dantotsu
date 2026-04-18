@@ -1260,6 +1260,12 @@
     <string name="NSFWExtention_desc">Activer les extensions 18+ depuis la recherche (Peut supprimer certaines extensions utiles)</string>
     <string name="autoscroll_speed">Vitesse de défilement</string>
     <string name="autoscroll_only_continuous">Le défilement automatique n\'est disponible que dans le mode de lecture continu</string>
+    <string name="continuous_multi_chapter">Lecteur multi-chapitres</string>
+    <string name="continuous_multi_chapter_desc">Lire tous les chapitres sans interruption</string>
+    <string name="chapter_transition_end">Fin de %1$s</string>
+    <string name="chapter_transition_next">Suivant : %1$s</string>
+    <string name="no_previous_chapter">Pas de chapitre précédent</string>
+    <string name="no_next_chapter">Plus de chapitres</string>
     <string name="purge_manga_downloads_desc">Supprimer tous les Manga téléchargés</string>
     <string name="purge_novel_downloads_desc">Supprimer tous les Romans téléchargés</string>
     <string name="include_list_desc">Inclure les éléments de la liste dans la page d\'exploration Manga</string>

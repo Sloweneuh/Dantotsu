@@ -29,6 +29,12 @@ open class ImageAdapter(
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ImageViewHolder {
         val binding = ItemImageBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+        if (settings.layout == PAGED) {
+            binding.root.layoutParams = RecyclerView.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+        }
         return ImageViewHolder(binding)
     }
 

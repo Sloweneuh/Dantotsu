@@ -24,6 +24,10 @@ import ani.dantotsu.util.customAlertDialog
 import eu.kanade.tachiyomi.source.online.HttpSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import ani.dantotsu.settings.saving.PrefManager
+import ani.dantotsu.settings.saving.PrefName
+import ani.dantotsu.connections.anilist.Anilist
+import android.widget.CheckBox
 import java.io.Serializable
 
 class ChapterLoaderDialog : BottomSheetDialogFragment() {
@@ -89,12 +93,9 @@ class ChapterLoaderDialog : BottomSheetDialogFragment() {
                         val activity = currActivity()
                         activity?.runOnUiThread {
                             tryWith { dismiss() }
-                                if (launch) {
+                            if (launch) {
                                 MediaSingleton.media = m
-                                val intent = Intent(
-                                    activity,
-                                    MangaReaderActivity::class.java
-                                )//.apply { putExtra("media", m) }
+                                val intent = Intent(activity, MangaReaderActivity::class.java)
                                 activity.startActivity(intent)
                             }
                         }
@@ -125,6 +126,49 @@ class ChapterLoaderDialog : BottomSheetDialogFragment() {
     companion object {
         fun newInstance(next: MangaChapter, launch: Boolean = false) = ChapterLoaderDialog().apply {
             arguments = bundleOf("next" to next as Serializable, "launch" to launch)
+        }
+
+        fun showProgressPopupIfNecessary(
+            activity: android.app.Activity,
+            media: ani.dantotsu.media.Media,
+            onResult: () -> Unit
+        ) {
+            val isContinuousMultiChapter = PrefManager.getVal<Boolean>(PrefName.ContinuousMultiChapter)
+            val incognito = PrefManager.getVal<Boolean>(PrefName.Incognito)
+            val isAdultAllowed = !media.isAdult || PrefManager.getVal<Boolean>(PrefName.UpdateForHReader)
+            val shouldAsk = if (PrefManager.getVal<Boolean>(PrefName.AskIndividualReader))
+                PrefManager.getCustomVal("${media.id}_progressDialog", true)
+            else false
+
+            if (isContinuousMultiChapter && shouldAsk && !incognito && isAdultAllowed && Anilist.userid != null) {
+                val dialogView = activity.layoutInflater.inflate(R.layout.item_custom_dialog, null)
+                val checkbox = dialogView.findViewById<CheckBox>(R.id.dialog_checkbox)
+                checkbox.text = activity.getString(R.string.dont_ask_again, media.userPreferredName)
+                
+                var isCheckedNow = false
+                checkbox.setOnCheckedChangeListener { _, isChecked ->
+                    isCheckedNow = isChecked
+                }
+                
+                activity.customAlertDialog().apply {
+                    setTitle(R.string.title_update_progress)
+                    setCustomView(dialogView)
+                    setCancelable(false)
+                    setPosButton(R.string.yes) {
+                        PrefManager.setCustomVal("${media.id}_progressDialog", !isCheckedNow)
+                        PrefManager.setCustomVal("${media.id}_save_progress", true)
+                        onResult()
+                    }
+                    setNegButton(R.string.no) {
+                        PrefManager.setCustomVal("${media.id}_progressDialog", !isCheckedNow)
+                        PrefManager.setCustomVal("${media.id}_save_progress", false)
+                        onResult()
+                    }
+                    show()
+                }
+            } else {
+                onResult()
+            }
         }
     }
 }

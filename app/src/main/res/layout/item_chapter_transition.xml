@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#CC000000"
+    android:gravity="center"
+    android:minHeight="200dp"
+    android:orientation="vertical"
+    android:padding="32dp">
+
+    <TextView
+        android:id="@+id/transitionCurrentChapter"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:alpha="0.7"
+        android:fontFamily="@font/poppins_semi_bold"
+        android:gravity="center"
+        android:textColor="@android:color/white"
+        android:textSize="14sp"
+        tools:text="End of Chapter 1" />
+
+    <View
+        android:layout_width="64dp"
+        android:layout_height="2dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginBottom="12dp"
+        android:background="@android:color/darker_gray" />
+
+    <TextView
+        android:id="@+id/transitionNextChapter"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/poppins_bold"
+        android:gravity="center"
+        android:textColor="@android:color/white"
+        android:textSize="16sp"
+        tools:text="Next: Chapter 2 - Title" />
+
+    <TextView
+        android:id="@+id/transitionGapWarning"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:drawablePadding="8dp"
+        android:fontFamily="@font/poppins_semi_bold"
+        android:gravity="center"
+        android:textColor="#FFFFAA00"
+        android:textSize="13sp"
+        android:visibility="gone"
+        tools:text="⚠ 2 chapters are missing"
+        tools:visibility="visible" />
+
+</LinearLayout>

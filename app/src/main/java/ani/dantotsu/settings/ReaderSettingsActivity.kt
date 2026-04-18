@@ -204,6 +204,11 @@ class ReaderSettingsActivity : AppCompatActivity() {
             PrefManager.setVal(PrefName.AutoScrollSpeed, value)
         }
 
+        binding.readerSettingsContinuousMultiChapter.isChecked = PrefManager.getVal(PrefName.ContinuousMultiChapter)
+        binding.readerSettingsContinuousMultiChapter.setOnCheckedChangeListener { _, isChecked ->
+            PrefManager.setVal(PrefName.ContinuousMultiChapter, isChecked)
+        }
+
         //LN settings
         val layoutListLN = listOf(
             binding.LNpaged,

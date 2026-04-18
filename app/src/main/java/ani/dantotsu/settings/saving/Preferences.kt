@@ -192,6 +192,7 @@ enum class PrefName(val data: Pref) {
     CropBorderThreshold(Pref(Location.Reader, Int::class, 10)),
     AutoScrollEnabled(Pref(Location.Reader, Boolean::class, false)),
     AutoScrollSpeed(Pref(Location.Reader, Float::class, 1f)),
+    ContinuousMultiChapter(Pref(Location.Reader, Boolean::class, false)),
 
     //Novel Reader
     CurrentThemeName(Pref(Location.NovelReader, String::class, "Default")),

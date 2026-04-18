@@ -36,7 +36,7 @@ abstract class BaseImageAdapter(
     val activity: MangaReaderActivity,
     chapter: MangaChapter
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
-    val settings = activity.defaultSettings
+    val settings get() = activity.defaultSettings
     private val chapterImages = chapter.images()
     var images = chapterImages
 
@@ -101,7 +101,12 @@ abstract class BaseImageAdapter(
                     height = ViewGroup.LayoutParams.MATCH_PARENT
                 }
             }
-        } else {
+        }
+        if (settings.layout == CurrentReaderSettings.Layouts.PAGED) {
+            view.layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
             val detector = GestureDetectorCompat(view.context, object : GesturesListener() {
                 override fun onSingleClick(event: MotionEvent) =
                     activity.handleController(event = event)

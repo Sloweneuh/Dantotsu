@@ -484,8 +484,10 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
         media.manga?.chapters?.get(i.uniqueNumber())?.let {
             media.manga?.selectedChapter = i
             model.saveSelected(media.id, media.selected!!)
-            ChapterLoaderDialog.newInstance(it, true)
-                .show(requireActivity().supportFragmentManager, "dialog")
+            ChapterLoaderDialog.showProgressPopupIfNecessary(requireActivity(), media) {
+                ChapterLoaderDialog.newInstance(it, true)
+                    .show(requireActivity().supportFragmentManager, "dialog")
+            }
         }
     }
 
