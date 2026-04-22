@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="8dp"
+    android:background="?attr/selectableItemBackground"
+    android:clickable="true"
+    android:focusable="true"
+    android:gravity="center_vertical"
+    android:minHeight="44dp"
+    android:orientation="horizontal"
+    android:paddingStart="0dp"
+    android:paddingEnd="8dp">
+
+    <TextView
+        android:id="@+id/filterSectionTitle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:fontFamily="@font/poppins_bold"
+        android:textAllCaps="true"
+        android:textColor="?attr/colorPrimary"
+        android:textSize="13sp"
+        tools:text="Genres" />
+
+    <ImageView
+        android:id="@+id/filterSectionArrow"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:contentDescription="@null"
+        app:srcCompat="@drawable/ic_round_arrow_drop_down_24"
+        app:tint="?attr/colorOnBackground" />
+</LinearLayout>

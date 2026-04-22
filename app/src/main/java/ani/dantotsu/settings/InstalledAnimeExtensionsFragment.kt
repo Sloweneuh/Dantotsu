@@ -2,6 +2,7 @@ package ani.dantotsu.settings
 
 import android.app.NotificationManager
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -53,7 +54,13 @@ class InstalledAnimeExtensionsFragment : Fragment(), SearchQueryHandler {
     private val skipIcons: Boolean = PrefManager.getVal(PrefName.SkipExtensionIcons)
     private val animeExtensionManager: AnimeExtensionManager = Injekt.get()
     private val extensionsAdapter = AnimeExtensionsAdapter(
-        { pkg ->
+        onItemClicked = { pkg ->
+            val intent = Intent(requireContext(), ExtensionBrowseActivity::class.java)
+                .putExtra(ExtensionBrowseActivity.EXTRA_PKG, pkg.pkgName)
+                .putExtra(ExtensionBrowseActivity.EXTRA_TYPE, ExtensionBrowseActivity.TYPE_ANIME)
+            startActivity(intent)
+        },
+        onSettingsClicked = { pkg ->
             val name = pkg.name
             val changeUIVisibility: (Boolean) -> Unit = { show ->
                 val activity = requireActivity() as ExtensionsActivity
@@ -262,6 +269,7 @@ class InstalledAnimeExtensionsFragment : Fragment(), SearchQueryHandler {
     }
 
     private class AnimeExtensionsAdapter(
+        private val onItemClicked: (AnimeExtension.Installed) -> Unit,
         private val onSettingsClicked: (AnimeExtension.Installed) -> Unit,
         private val onUninstallClicked: (AnimeExtension.Installed) -> Unit,
         private val onUpdateClicked: (AnimeExtension.Installed) -> Unit,
@@ -310,6 +318,9 @@ class InstalledAnimeExtensionsFragment : Fragment(), SearchQueryHandler {
             }
             holder.settingsImageView.setOnClickListener {
                 onSettingsClicked(extension)
+            }
+            holder.itemView.setOnClickListener {
+                onItemClicked(extension)
             }
         }
 

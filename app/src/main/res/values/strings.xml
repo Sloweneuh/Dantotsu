@@ -488,6 +488,10 @@
     <string name="total_repeats">TOTAL REPEATS</string>
     <string name="custom_lists">Custom Lists</string>
     <string name="filter">Filter</string>
+    <string name="popular">Popular</string>
+    <string name="latest">Latest</string>
+    <string name="search_anilist">Search on AniList</string>
+    <string name="search_mangaupdates">Search on MangaUpdates</string>
     <string name="filter_by_genre">Filter by Genre</string>
     <string name="reset_filters">Reset Filters</string>
     <string name="country_filter">Country Filter</string>

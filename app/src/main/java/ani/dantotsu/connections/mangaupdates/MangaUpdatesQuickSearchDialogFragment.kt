@@ -1,6 +1,7 @@
 package ani.dantotsu.connections.mangaupdates
 
 import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -16,12 +17,8 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import ani.dantotsu.BottomSheetDialogFragment
 import ani.dantotsu.R
-import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.databinding.BottomSheetSourceSearchBinding
-import ani.dantotsu.databinding.ItemMediaCompactBinding
-import ani.dantotsu.loadImage
-import ani.dantotsu.media.Media
-import ani.dantotsu.media.MediaDetailsActivity
+import ani.dantotsu.media.MangaUpdatesSearchAdapter
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.px
 import ani.dantotsu.stripSpansOnPaste
@@ -29,11 +26,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.Serializable
 import java.util.Locale
-import androidx.recyclerview.widget.RecyclerView
-import android.content.Intent
 
-class AniListQuickSearchDialogFragment : BottomSheetDialogFragment() {
+class MangaUpdatesQuickSearchDialogFragment : BottomSheetDialogFragment() {
 
     private var _binding: BottomSheetSourceSearchBinding? = null
     private val binding get() = _binding!!
@@ -45,21 +41,11 @@ class AniListQuickSearchDialogFragment : BottomSheetDialogFragment() {
 
     companion object {
         private const val ARG_TITLES = "titles"
-        private const val ARG_REQUEST_KEY = "request_key"
-        private const val ARG_TYPE = "type"
-        const val TYPE_MANGA = "MANGA"
-        const val TYPE_ANIME = "ANIME"
 
-        fun newInstance(
-            titles: ArrayList<String>,
-            requestKey: String? = null,
-            type: String = TYPE_MANGA
-        ): AniListQuickSearchDialogFragment {
-            return AniListQuickSearchDialogFragment().apply {
+        fun newInstance(titles: ArrayList<String>): MangaUpdatesQuickSearchDialogFragment {
+            return MangaUpdatesQuickSearchDialogFragment().apply {
                 arguments = Bundle().apply {
                     putStringArrayList(ARG_TITLES, titles)
-                    if (!requestKey.isNullOrBlank()) putString(ARG_REQUEST_KEY, requestKey)
-                    putString(ARG_TYPE, type)
                 }
             }
         }
@@ -85,7 +71,7 @@ class AniListQuickSearchDialogFragment : BottomSheetDialogFragment() {
         binding.mediaListLayout.visibility = View.VISIBLE
         binding.searchRecyclerView.visibility = View.GONE
         binding.searchProgress.visibility = View.GONE
-        binding.searchSourceTitle.text = getString(R.string.anilist)
+        binding.searchSourceTitle.text = getString(R.string.mu_series_search)
 
         titleOptions = (arguments?.getStringArrayList(ARG_TITLES) ?: arrayListOf())
             .mapNotNull { it.trim().takeIf(String::isNotBlank) }
@@ -93,10 +79,6 @@ class AniListQuickSearchDialogFragment : BottomSheetDialogFragment() {
 
         val firstTitle = titleOptions.firstOrNull().orEmpty()
         binding.searchBarText.setText(firstTitle)
-
-        val requestKey = arguments?.getString(ARG_REQUEST_KEY)
-        val searchType = arguments?.getString(ARG_TYPE) ?: TYPE_MANGA
-        val isAnime = searchType == TYPE_ANIME
 
         fun search(queryOverride: String? = null) {
             if (searchJob?.isActive == true) return
@@ -121,62 +103,32 @@ class AniListQuickSearchDialogFragment : BottomSheetDialogFragment() {
                 }
                 binding.searchProgress.postDelayed(searchWatchdog, 12_000L)
 
-                var results: List<Media>? = null
+                var response: MUSearchResponse? = null
                 var timedOut = false
                 try {
-                    results = withContext(Dispatchers.IO) {
-                        val response = kotlinx.coroutines.withTimeoutOrNull(10_000L) {
-                            Anilist.query.searchAniManga(
-                                type = searchType,
-                                page = 1,
-                                perPage = 25,
-                                search = query
-                            )
-                        }
-                        if (response == null) {
-                            timedOut = true
-                            emptyList()
-                        } else if (isAnime) {
-                            response.results.filter { media ->
-                                val format = media.format?.uppercase(Locale.ROOT)
-                                val isAnimeLike = media.anime != null || format == "TV" || format == "MOVIE" ||
-                                        format == "OVA" || format == "ONA" || format == "SPECIAL" || format == "MUSIC"
-                                isAnimeLike && media.manga == null
-                            }
-                        } else {
-                            response.results.filter { media ->
-                                val format = media.format?.uppercase(Locale.ROOT)
-                                val isMangaLike = media.manga != null || format == "MANGA" || format == "NOVEL" || format == "ONE_SHOT"
-                                isMangaLike && media.anime == null
-                            }
+                    response = withContext(Dispatchers.IO) {
+                        kotlinx.coroutines.withTimeoutOrNull(10_000L) {
+                            MangaUpdates.searchSeries(query)
                         }
                     }
+                    if (response == null) timedOut = true
                 } catch (_: Throwable) {
-                    results = null
+                    response = null
                 } finally {
                     searchWatchdog?.let { binding.searchProgress.removeCallbacks(it) }
                     searchWatchdog = null
                     searchJob = null
                     binding.searchProgressContainer.visibility = View.GONE
 
-                    if (!results.isNullOrEmpty()) {
-                        val mutableResults = ArrayList(results)
+                    val results = response?.results.orEmpty()
+                    if (results.isNotEmpty()) {
                         binding.searchRecyclerView.visibility = View.VISIBLE
-                        binding.searchRecyclerView.adapter = QuickResultsAdapter(mutableResults) { media ->
-                            if (!requestKey.isNullOrBlank()) {
-                                parentFragmentManager.setFragmentResult(
-                                    requestKey,
-                                    Bundle().apply {
-                                        putInt("mediaId", media.id)
-                                        putString("title", media.userPreferredName.ifBlank { media.mainName() })
-                                        putString("cover", media.cover)
-                                    }
-                                )
-                                dismiss()
-                            } else {
+                        binding.searchRecyclerView.adapter = MangaUpdatesSearchAdapter(results) { selected ->
+                            val muMedia = selected.toMUMedia()
+                            if (muMedia != null) {
                                 startActivity(
-                                    Intent(requireContext(), MediaDetailsActivity::class.java)
-                                        .putExtra("mediaId", media.id)
+                                    Intent(requireContext(), MUMediaDetailsActivity::class.java)
+                                        .putExtra("muMedia", muMedia as Serializable)
                                 )
                             }
                         }
@@ -191,7 +143,7 @@ class AniListQuickSearchDialogFragment : BottomSheetDialogFragment() {
                         binding.searchEmptyContainer.visibility = View.VISIBLE
                         binding.searchEmptyText.text = when {
                             timedOut -> getString(R.string.search_timeout)
-                            results == null -> getString(R.string.search_fetch_error)
+                            response == null -> getString(R.string.search_fetch_error)
                             else -> getString(R.string.search_no_results)
                         }
                     }
@@ -262,37 +214,5 @@ class AniListQuickSearchDialogFragment : BottomSheetDialogFragment() {
         searchWatchdog = null
         _binding = null
         super.onDestroyView()
-    }
-
-    private inner class QuickResultsAdapter(
-        private val list: List<Media>,
-        private val onClick: (Media) -> Unit
-    ) : RecyclerView.Adapter<QuickResultsAdapter.VH>() {
-
-        inner class VH(val b: ItemMediaCompactBinding) : RecyclerView.ViewHolder(b.root)
-
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
-            return VH(ItemMediaCompactBinding.inflate(LayoutInflater.from(parent.context), parent, false))
-        }
-
-        override fun onBindViewHolder(holder: VH, position: Int) {
-            val media = list[position]
-            val b = holder.b
-            b.itemCompactImage.loadImage(media.cover)
-            b.itemCompactTitle.text = media.userPreferredName.ifBlank { media.mainName() }
-            b.itemCompactScore.text = ((media.meanScore ?: 0) / 10.0).toString()
-            if (media.format.equals("NOVEL", ignoreCase = true)) {
-                b.itemCompactType.visibility = View.VISIBLE
-                b.itemCompactRelation.text = "Novel"
-                b.itemCompactTypeImage.setImageResource(R.drawable.ic_round_import_contacts_24)
-            } else {
-                b.itemCompactType.visibility = View.GONE
-            }
-            b.itemCompactProgressContainer.visibility = View.GONE
-            b.itemCompactSourceBadge.visibility = View.GONE
-            b.root.setOnClickListener { onClick(media) }
-        }
-
-        override fun getItemCount(): Int = list.size
     }
 }

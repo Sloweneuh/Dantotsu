@@ -197,6 +197,12 @@
             android:parentActivityName=".MainActivity"
             android:windowSoftInputMode="adjustResize|stateHidden" />
         <activity
+            android:name=".settings.ExtensionBrowseActivity"
+            android:parentActivityName=".settings.ExtensionsActivity" />
+        <activity
+            android:name=".settings.ExtensionMediaInfoActivity"
+            android:parentActivityName=".settings.ExtensionBrowseActivity" />
+        <activity
             android:name=".widgets.statistics.ProfileStatsConfigure"
             android:exported="true">
             <intent-filter>
