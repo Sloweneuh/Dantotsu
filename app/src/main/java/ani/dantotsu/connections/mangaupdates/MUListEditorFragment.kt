@@ -110,6 +110,7 @@ class MUListEditorFragment : BottomSheetDialogFragment() {
         // Chapter progress
         val latestChapter = muMedia.latestChapter
         binding.mediaListProgress.setText(muMedia.userChapter?.toString() ?: "1")
+        binding.mediaListVolume.setText(muMedia.userVolume?.toString() ?: "")
         binding.mediaListProgressLayout.suffixText = if (latestChapter != null && latestChapter > 0) " / $latestChapter / ??" else " / ??"
         binding.mediaListProgressLayout.suffixTextView.updateLayoutParams {
             height = ViewGroup.LayoutParams.MATCH_PARENT
@@ -125,6 +126,7 @@ class MUListEditorFragment : BottomSheetDialogFragment() {
         // Save
         val initialListId = muMedia.listId
         val initialChapter = muMedia.userChapter
+        val initialVolume = muMedia.userVolume
         binding.mediaListSave.setOnClickListener {
             val selectedName = binding.mediaListStatus.text.toString()
             val selectedIndex = allStatusNames.indexOf(selectedName).takeIf { it >= 0 } ?: initialStatusIndex
@@ -134,7 +136,8 @@ class MUListEditorFragment : BottomSheetDialogFragment() {
                 customListExtras[selectedIndex - statusNames.size].first
             }
             val newChapter = binding.mediaListProgress.text.toString().toIntOrNull()
-            if (newListId == initialListId && newChapter == initialChapter) {
+            val newVolume = binding.mediaListVolume.text.toString().toIntOrNull()
+            if (newListId == initialListId && newChapter == initialChapter && newVolume == initialVolume) {
                 dismissAllowingStateLoss()
                 return@setOnClickListener
             }
@@ -146,7 +149,7 @@ class MUListEditorFragment : BottomSheetDialogFragment() {
                             seriesTitle = muMedia.title,
                             listId = newListId,
                             chapter = newChapter,
-                            volume = null
+                            volume = newVolume
                         )
                     } else {
                         MangaUpdates.updateProgress(
@@ -154,7 +157,7 @@ class MUListEditorFragment : BottomSheetDialogFragment() {
                             seriesTitle = muMedia.title,
                             listId = newListId,
                             chapter = newChapter,
-                            volume = null
+                            volume = newVolume
                         )
                     }
                     PrefManager.setCustomVal(
@@ -165,6 +168,7 @@ class MUListEditorFragment : BottomSheetDialogFragment() {
                 // Update the shared Media so MangaReadFragment re-renders with the new progress
                 model.getMedia().value?.let { media ->
                     media.userProgress = newChapter
+                    media.userVolume = newVolume
                     media.muListId = newListId
                     model.setMedia(media)
                 }
@@ -183,6 +187,7 @@ class MUListEditorFragment : BottomSheetDialogFragment() {
                 // Clear progress in the shared Media so MangaReadFragment reflects removal
                 model.getMedia().value?.let { media ->
                     media.userProgress = null
+                    media.userVolume = null
                     media.muListId = null
                     model.setMedia(media)
                     // Force reload of external data (including MangaUpdates)
@@ -190,7 +195,7 @@ class MUListEditorFragment : BottomSheetDialogFragment() {
                 }
                 // Also update the parent activity's muMedia so the next editor open uses defaults
                 (activity as? MUMediaDetailsActivity)?.let { act ->
-                    act.muMedia = act.muMedia.copy(listId = -1, userChapter = null)
+                    act.muMedia = act.muMedia.copy(listId = -1, userChapter = null, userVolume = null)
                 }
                 Refresh.all()
                 snackString(getString(R.string.deleted_from_list))

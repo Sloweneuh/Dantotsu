@@ -60,6 +60,7 @@ class MALQueries {
         score: Int?,
         status: String,
         rewatch: Int? = null,
+        volume: Int? = null,
         start: FuzzyDate? = null,
         end: FuzzyDate? = null
     ) {
@@ -67,6 +68,8 @@ class MALQueries {
         val data = mutableMapOf("status" to convertStatus(isAnime, status))
         if (progress != null)
             data[if (isAnime) "num_watched_episodes" else "num_chapters_read"] = progress.toString()
+        if (volume != null)
+            data["num_volumes_read"] = volume.toString()
         data[if (isAnime) "is_rewatching" else "is_rereading"] = (status == "REPEATING").toString()
         if (score != null)
             data["score"] = score.div(10).toString()

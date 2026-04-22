@@ -28,26 +28,26 @@ fun updateProgress(media: Media, number: String) {
             val a = number.toFloatOrNull()?.toInt()
             if ((a ?: 0) > (media.userProgress ?: -1)) {
                 val listId = media.muListId ?: -1
-                val ok = if (listId == -1) {
+                    val ok = if (listId == -1) {
                     // Not in user list, add to list (default to Reading)
-                    val added = MangaUpdates.addToList(
+                        val added = MangaUpdates.addToList(
                         seriesId = muSeriesId,
                         seriesTitle = media.name,
                         listId = 0, // 0 = Reading
                         chapter = a,
-                        volume = null
+                        volume = media.userVolume
                     )
                     if (added) media.muListId = 0
                     added
-                } else {
-                    MangaUpdates.updateProgress(
-                        seriesId    = muSeriesId,
-                        seriesTitle = media.name,
-                        listId      = listId,
-                        chapter     = a,
-                        volume      = null
-                    )
-                }
+                    } else {
+                        MangaUpdates.updateProgress(
+                            seriesId    = muSeriesId,
+                            seriesTitle = media.name,
+                            listId      = listId,
+                            chapter     = a,
+                            volume      = media.userVolume
+                        )
+                    }
                 if (ok) {
                     PrefManager.setCustomVal(
                         "${ani.dantotsu.connections.mangaupdates.PREF_MU_LAST_READ_PREFIX}$muSeriesId",
@@ -69,13 +69,17 @@ fun updateProgress(media: Media, number: String) {
                 Anilist.mutation.editList(
                     media.id,
                     a,
+                    progressVolumes = media.userVolume,
                     status = if (media.userStatus == "REPEATING") media.userStatus else "CURRENT"
                 )
                 MAL.query.editList(
                     media.idMAL,
                     media.anime != null,
-                    a, null,
-                    if (media.userStatus == "REPEATING") media.userStatus!! else "CURRENT"
+                    a,
+                    null,
+                    if (media.userStatus == "REPEATING") media.userStatus!! else "CURRENT",
+                    null,
+                    media.userVolume
                 )
                 toast(currContext()?.getString(R.string.setting_progress, a))
             }

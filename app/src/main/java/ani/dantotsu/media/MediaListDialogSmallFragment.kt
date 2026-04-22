@@ -108,6 +108,7 @@ class MediaListDialogSmallFragment : BottomSheetDialogFragment() {
 
         var total: Int? = null
         binding.mediaListProgress.setText(if (media.userProgress != null) media.userProgress.toString() else "")
+        binding.mediaListVolume.setText(if (media.userVolume != null) media.userVolume.toString() else "")
         if (media.anime != null) {
             if (media.anime!!.totalEpisodes != null) {
                 total = media.anime!!.totalEpisodes!!
@@ -260,6 +261,7 @@ class MediaListDialogSmallFragment : BottomSheetDialogFragment() {
             malSyncExclude = checked
         }
         val initialProgress = media.userProgress
+        val initialVolume = media.userVolume
         val initialScore = if (media.userScore != 0) media.userScore else null
         val initialStatus = statuses[statusStrings.indexOf(userStatus)]
         val initialIsListPrivate = media.isListPrivate
@@ -270,11 +272,13 @@ class MediaListDialogSmallFragment : BottomSheetDialogFragment() {
                         var anilistChangedLocal = false
                         withContext(Dispatchers.IO) {
                             val progress = _binding?.mediaListProgress?.text.toString().toIntOrNull()
+                            val volume = _binding?.mediaListVolume?.text.toString().toIntOrNull()
                             val score = (_binding?.mediaListScore?.text.toString().toDoubleOrNull()
                                 ?.times(10))?.toInt()
                             val status =
                                 statuses[statusStrings.indexOf(_binding?.mediaListStatus?.text.toString())]
                             val anilistChanged = progress != initialProgress
+                                || volume != initialVolume
                                 || score != initialScore
                                 || status != initialStatus
                                 || media.isListPrivate != initialIsListPrivate
@@ -284,6 +288,7 @@ class MediaListDialogSmallFragment : BottomSheetDialogFragment() {
                                 anilistOk = Anilist.mutation.editList(
                                     media.id,
                                     progress,
+                                    volume,
                                     score,
                                     null,
                                     null,
@@ -295,8 +300,11 @@ class MediaListDialogSmallFragment : BottomSheetDialogFragment() {
                                     media.anime != null,
                                     progress,
                                     score,
-                                    status
+                                    status,
+                                    null,
+                                    volume
                                 )
+                                media.userVolume = volume
                             }
                         }
                 if (remove == true) {

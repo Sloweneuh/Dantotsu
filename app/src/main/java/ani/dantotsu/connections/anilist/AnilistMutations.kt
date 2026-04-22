@@ -68,10 +68,10 @@ class AnilistMutations {
                 ${timezone?.let { """"timezone":"$it"""" } ?: ""}
                 ${titleLanguage?.let { """"titleLanguage":"$it"""" } ?: ""}
                 ${staffNameLanguage?.let { """"staffNameLanguage":"$it"""" } ?: ""}
-                ${activityMergeTime?.let { """"activityMergeTime":$it""" } ?: ""}
-                ${airingNotifications?.let { """"airingNotifications":$it""" } ?: ""}
-                ${displayAdultContent?.let { """"displayAdultContent":$it""" } ?: ""}
-                ${restrictMessagesToFollowing?.let { """"restrictMessagesToFollowing":$it""" } ?: ""}
+                ${activityMergeTime?.let { """"activityMergeTime":$it"""" } ?: ""}
+                ${airingNotifications?.let { """"airingNotifications":$it"""" } ?: ""}
+                ${displayAdultContent?.let { """"displayAdultContent":$it"""" } ?: ""}
+                ${restrictMessagesToFollowing?.let { """"restrictMessagesToFollowing":$it"""" } ?: ""}
                 ${scoreFormat?.let { """"scoreFormat":"$it"""" } ?: ""}
                 ${rowOrder?.let { """"rowOrder":"$it"""" } ?: ""}
             }
@@ -166,9 +166,9 @@ class AnilistMutations {
         """.trimIndent()
         val variables = """
             {
-                ${animeCustomLists?.let { """"animeListOptions": {"customLists": ${Gson().toJson(it)}}""" } ?: ""}
+                ${animeCustomLists?.let { """"animeListOptions": {"customLists": ${Gson().toJson(it)}}"""" } ?: ""}
                 ${if (animeCustomLists != null && mangaCustomLists != null) "," else ""}
-                ${mangaCustomLists?.let { """"mangaListOptions": {"customLists": ${Gson().toJson(it)}}""" } ?: ""}
+                ${mangaCustomLists?.let { """"mangaListOptions": {"customLists": ${Gson().toJson(it)}}"""" } ?: ""}
             }
         """.trimIndent().replace("\n", "").replace("""    """, "").replace(",}", "}")
 
@@ -179,6 +179,7 @@ class AnilistMutations {
     suspend fun editList(
         mediaID: Int,
         progress: Int? = null,
+        progressVolumes: Int? = null,
         score: Int? = null,
         repeat: Int? = null,
         notes: String? = null,
@@ -192,6 +193,7 @@ class AnilistMutations {
             mutation (
                 ${"$"}mediaID: Int,
                 ${"$"}progress: Int,
+                ${"$"}progressVolumes: Int,
                 ${"$"}private: Boolean,
                 ${"$"}repeat: Int,
                 ${"$"}notes: String,
@@ -204,6 +206,7 @@ class AnilistMutations {
                 SaveMediaListEntry(
                     mediaId: ${"$"}mediaID,
                     progress: ${"$"}progress,
+                    progressVolumes: ${"$"}progressVolumes,
                     repeat: ${"$"}repeat,
                     notes: ${"$"}notes,
                     private: ${"$"}private,
@@ -228,15 +231,18 @@ class AnilistMutations {
             }
         """.trimIndent()
 
-        val variables = """{"mediaID":$mediaID
-            ${if (private != null) ""","private":$private""" else ""}
-            ${if (progress != null) ""","progress":$progress""" else ""}
-            ${if (score != null) ""","scoreRaw":$score""" else ""}
-            ${if (repeat != null) ""","repeat":$repeat""" else ""}
-            ${if (notes != null) ""","notes":"${notes.replace("\n", "\\n")}"""" else ""}
-            ${if (status != null) ""","status":"$status"""" else ""}
-            ${if (customList != null) ""","customLists":[${customList.joinToString { "\"$it\"" }}]""" else ""}
-            }""".replace("\n", "").replace("""    """, "")
+        val variablesMap = mutableMapOf<String, Any?>()
+        variablesMap["mediaID"] = mediaID
+        if (private != null) variablesMap["private"] = private
+        if (progress != null) variablesMap["progress"] = progress
+        if (progressVolumes != null) variablesMap["progressVolumes"] = progressVolumes
+        if (score != null) variablesMap["scoreRaw"] = score
+        if (repeat != null) variablesMap["repeat"] = repeat
+        if (notes != null) variablesMap["notes"] = notes.replace("\n", "\\n")
+        if (status != null) variablesMap["status"] = status
+        if (customList != null) variablesMap["customLists"] = customList
+
+        val variables = Gson().toJson(variablesMap)
         val result = executeQuery<JsonObject>(query, variables, show = true)
         val errors = result?.get("errors")
         return errors == null

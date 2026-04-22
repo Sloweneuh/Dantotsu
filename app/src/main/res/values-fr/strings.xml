@@ -367,6 +367,7 @@
     <string name="total_repeats">TOTAL RÉPÉTITIONS</string>
     <string name="custom_lists">Listes personnalisées</string>
     <string name="filter">Filtrer</string>
+    <string name="search_mangaupdates">Rechercher sur MangaUpdates</string>
     <string name="filter_by_genre">Filtrer par genre</string>
     <string name="reset_filters">Réinitialiser les filtres</string>
     <string name="country_filter">Filtre par pays</string>
@@ -1476,4 +1477,7 @@
     <string name="chapter_gap_warning_title">Chapitre manquant</string>
     <string name="chapter_gap_warning_title_plural">Chapitres manquants</string>
     <string name="chapter_gap_warning_message_single">Un chapitre est manquant avant celui-là. Continuer quand même ?</string>
+    <string name="popular">Populaire</string>
+    <string name="latest">Nouveau</string>
+    <string name="search_anilist">Rechercher sur Anilist</string>
 </resources>

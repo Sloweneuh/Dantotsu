@@ -134,6 +134,8 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                     // Check if AniList has totalChapters
                     total = media!!.manga!!.totalChapters
 
+                    binding.mediaListVolume.setText(if (media!!.userVolume != null) media!!.userVolume.toString() else "")
+
                     if (total != null) {
                         binding.mediaListProgress.filters =
                             arrayOf(
@@ -318,6 +320,7 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
 
 
                 val initialProgress = media?.userProgress
+                val initialVolume = media?.userVolume
                 val initialScore = if ((media?.userScore ?: 0) != 0) media!!.userScore else null
                 val initialStatus = statuses[statusStrings.indexOf(userStatus)]
                 val initialRewatch = media?.userRepeat
@@ -341,6 +344,7 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                                             statuses[statusStrings.indexOf(_binding?.mediaListStatus?.text.toString())]
                                         val rewatch =
                                             _binding?.mediaListRewatch?.text?.toString()?.toIntOrNull()
+                                        val volume = _binding?.mediaListVolume?.text?.toString()?.toIntOrNull()
                                         val notes = _binding?.mediaListNotes?.text?.toString()
                                         val startD = start.date
                                         val endD = end.date
@@ -348,6 +352,7 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                                             || score != initialScore
                                             || status != initialStatus
                                             || rewatch != initialRewatch
+                                            || volume != initialVolume
                                             || (notes ?: "") != initialNotes
                                             || startD != initialStartD
                                             || endD != initialEndD
@@ -359,6 +364,7 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                                             anilistOk = Anilist.mutation.editList(
                                                 media!!.id,
                                                 progress,
+                                                volume,
                                                 score,
                                                 rewatch,
                                                 notes,
@@ -375,9 +381,11 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                                                 score,
                                                 status,
                                                 rewatch,
+                                                volume,
                                                 startD,
                                                 endD
                                             )
+                                                media?.userVolume = volume
                                         }
                                     }
                                 }
