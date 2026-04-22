@@ -32,6 +32,8 @@ import ani.dantotsu.blurImage
 import ani.dantotsu.getThemeColor
 import ani.dantotsu.databinding.ActivityMediaBinding
 import ani.dantotsu.initActivity
+import ani.dantotsu.hideSystemBars
+import ani.dantotsu.showSystemBars
 import ani.dantotsu.loadImage
 import ani.dantotsu.media.Media
 import ani.dantotsu.media.MediaDetailsViewModel
@@ -668,6 +670,42 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
     override fun onResume() {
         super.onResume()
         if (::navBar.isInitialized) navBar.selectTabAt(selected)
+
+        // Re-apply activity-level UI settings and insets
+        initActivity(this)
+        val rootView = window.decorView.findViewById(android.R.id.content) as View
+        ViewCompat.requestApplyInsets(rootView)
+
+        val windowInsets = ViewCompat.getRootWindowInsets(rootView)
+        val navInsets = windowInsets?.getInsets(WindowInsetsCompat.Type.navigationBars())
+        val isLandscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+        val rightInset = if (isLandscape) navInsets?.right ?: 0 else 0
+        if (::navBar.isInitialized) {
+            navBar.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+                rightMargin = rightInset
+                if (!isLandscape) bottomMargin = 0
+            }
+        }
+
+        val showBottomInset = resources.configuration.orientation != Configuration.ORIENTATION_LANDSCAPE
+        binding.mediaBottomInset.updateLayoutParams<ViewGroup.LayoutParams> {
+            height = if (showBottomInset) navBarHeight else 0
+        }
+        binding.mediaBottomInset.visibility = if (showBottomInset) View.VISIBLE else View.GONE
+        binding.mediaViewPager.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+            bottomMargin = navBarHeight
+        }
+
+        if (!PrefManager.getVal<Boolean>(PrefName.ShowSystemBars)) this.hideSystemBars() else this.showSystemBars()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            val rootView = window.decorView.findViewById(android.R.id.content) as View
+            ViewCompat.requestApplyInsets(rootView)
+            if (!PrefManager.getVal<Boolean>(PrefName.ShowSystemBars)) this.hideSystemBars() else this.showSystemBars()
+        }
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {

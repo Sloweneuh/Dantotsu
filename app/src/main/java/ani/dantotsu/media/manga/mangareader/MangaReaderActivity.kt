@@ -50,6 +50,8 @@ import ani.dantotsu.currContext
 import ani.dantotsu.databinding.ActivityMangaReaderBinding
 import ani.dantotsu.dp
 import ani.dantotsu.hideSystemBarsExtendView
+import ani.dantotsu.hideSystemBars
+import ani.dantotsu.showSystemBars
 import ani.dantotsu.isOnline
 import ani.dantotsu.logError
 import ani.dantotsu.media.Media
@@ -155,6 +157,26 @@ class MangaReaderActivity : AppCompatActivity() {
             }
         }
         super.onAttachedToWindow()
+    }
+    
+    override fun onResume() {
+        super.onResume()
+        // Re-apply immersive mode and notch padding when returning to foreground
+        if (!PrefManager.getVal<Boolean>(PrefName.ShowSystemBars)) this.hideSystemBars() else this.showSystemBars()
+        checkNotch()
+        // Force a layout pass on pager/recycler to recover from blank/damaged rendering
+        tryWith {
+            binding.mangaReaderPager.post { binding.mangaReaderPager.requestLayout(); binding.mangaReaderPager.invalidate() }
+            binding.mangaReaderRecycler.post { binding.mangaReaderRecycler.requestLayout(); binding.mangaReaderRecycler.invalidate() }
+        }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            if (!PrefManager.getVal<Boolean>(PrefName.ShowSystemBars)) this.hideSystemBars() else this.showSystemBars()
+            checkNotch()
+        }
     }
 
     private fun checkNotch() {
@@ -398,6 +420,8 @@ class MangaReaderActivity : AppCompatActivity() {
             ) else false
 
         //Chapter Change
+
+    
         fun change(index: Int) {
             ani.dantotsu.util.Logger.log("Chapter change to index $index (cache size: ${mangaCache.size()})")
             // Don't clear cache - let LRU manage memory and allow extension client to work on reloads

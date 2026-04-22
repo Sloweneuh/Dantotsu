@@ -34,6 +34,7 @@ import ani.dantotsu.connections.crashlytics.CrashlyticsInterface
 import ani.dantotsu.currContext
 import ani.dantotsu.databinding.ActivityNovelReaderBinding
 import ani.dantotsu.hideSystemBars
+import ani.dantotsu.showSystemBars
 import ani.dantotsu.others.ImageViewDialog
 import ani.dantotsu.setSafeOnClickListener
 import ani.dantotsu.settings.CurrentNovelReaderSettings
@@ -546,6 +547,27 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
     private fun hideBars() {
         if (!PrefManager.getVal<Boolean>(PrefName.ShowSystemBars)) {
             hideSystemBars()
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Re-apply immersive mode and notch padding when returning to foreground
+        if (!PrefManager.getVal<Boolean>(PrefName.ShowSystemBars)) {
+            this.hideSystemBars()
+        } else {
+            this.showSystemBars()
+        }
+        applyNotchMargin()
+        // Force a layout pass on the reader view to recover from blank/damaged rendering
+        tryWith { binding.bookReader.post { binding.bookReader.requestLayout(); binding.bookReader.invalidate() } }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            if (!PrefManager.getVal<Boolean>(PrefName.ShowSystemBars)) this.hideSystemBars() else this.showSystemBars()
+            applyNotchMargin()
         }
     }
 }
