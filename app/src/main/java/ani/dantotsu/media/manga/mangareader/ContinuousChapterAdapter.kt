@@ -292,11 +292,33 @@ class ContinuousChapterAdapter(
         }
         when (val item = items[position]) {
             is ReaderItem.Transition -> {
+                // Add spacing for continuous layout when "padding" (spaced pages) is enabled
+                if (settings.layout == CurrentReaderSettings.Layouts.CONTINUOUS && settings.padding) {
+                    when (settings.direction) {
+                        CurrentReaderSettings.Directions.TOP_TO_BOTTOM -> holder.itemView.setPadding(0, 0, 0, 16f.px)
+                        CurrentReaderSettings.Directions.LEFT_TO_RIGHT -> holder.itemView.setPadding(0, 0, 16f.px, 0)
+                        CurrentReaderSettings.Directions.BOTTOM_TO_TOP -> holder.itemView.setPadding(0, 16f.px, 0, 0)
+                        CurrentReaderSettings.Directions.RIGHT_TO_LEFT -> holder.itemView.setPadding(16f.px, 0, 0, 0)
+                    }
+                } else {
+                    holder.itemView.setPadding(0, 0, 0, 0)
+                }
                 bindTransition(holder as TransitionViewHolder, item)
                 setupPagedClickListener(holder.itemView)
             }
             is ReaderItem.Image -> bindImage(holder as ImageViewHolder, item, position)
             is ReaderItem.Boundary -> {
+                // Match transition spacing/height in continuous mode when padding enabled
+                if (settings.layout == CurrentReaderSettings.Layouts.CONTINUOUS && settings.padding) {
+                    when (settings.direction) {
+                        CurrentReaderSettings.Directions.TOP_TO_BOTTOM -> holder.itemView.setPadding(0, 0, 0, 16f.px)
+                        CurrentReaderSettings.Directions.LEFT_TO_RIGHT -> holder.itemView.setPadding(0, 0, 16f.px, 0)
+                        CurrentReaderSettings.Directions.BOTTOM_TO_TOP -> holder.itemView.setPadding(0, 16f.px, 0, 0)
+                        CurrentReaderSettings.Directions.RIGHT_TO_LEFT -> holder.itemView.setPadding(16f.px, 0, 0, 0)
+                    }
+                } else {
+                    holder.itemView.setPadding(0, 0, 0, 0)
+                }
                 (holder as BoundaryViewHolder).message.text = item.message
                 setupPagedClickListener(holder.itemView)
             }
@@ -341,11 +363,15 @@ class ContinuousChapterAdapter(
 
         // Continuous layout sizing
         if (settings.padding) {
+            // If this image is the first page of a chapter and the previous adapter item
+            // is a Transition or Boundary, add leading padding so there's space after the
+            // transition/boundary. Otherwise, keep the usual trailing padding.
+            val prevIsDivider = position > 0 && (items.getOrNull(position - 1) is ReaderItem.Transition || items.getOrNull(position - 1) is ReaderItem.Boundary)
             when (settings.direction) {
-                CurrentReaderSettings.Directions.TOP_TO_BOTTOM -> view.setPadding(0, 0, 0, 16f.px)
-                CurrentReaderSettings.Directions.LEFT_TO_RIGHT -> view.setPadding(0, 0, 16f.px, 0)
-                CurrentReaderSettings.Directions.BOTTOM_TO_TOP -> view.setPadding(0, 16f.px, 0, 0)
-                CurrentReaderSettings.Directions.RIGHT_TO_LEFT -> view.setPadding(16f.px, 0, 0, 0)
+                CurrentReaderSettings.Directions.TOP_TO_BOTTOM -> view.setPadding(0, if (prevIsDivider && (items.getOrNull(position) as? ReaderItem.Image)?.pageIndex == 0) 16f.px else 0, 0, 16f.px)
+                CurrentReaderSettings.Directions.LEFT_TO_RIGHT -> view.setPadding(0, 0, if (prevIsDivider && (items.getOrNull(position) as? ReaderItem.Image)?.pageIndex == 0) 16f.px else 0, 0)
+                CurrentReaderSettings.Directions.BOTTOM_TO_TOP -> view.setPadding(0, 16f.px, 0, if (prevIsDivider && (items.getOrNull(position) as? ReaderItem.Image)?.pageIndex == 0) 16f.px else 0)
+                CurrentReaderSettings.Directions.RIGHT_TO_LEFT -> view.setPadding(if (prevIsDivider && (items.getOrNull(position) as? ReaderItem.Image)?.pageIndex == 0) 16f.px else 0, 0, 0, 0)
             }
         }
         if (settings.layout != CurrentReaderSettings.Layouts.PAGED) {
@@ -444,9 +470,18 @@ class ContinuousChapterAdapter(
         imageView.visibility = View.VISIBLE
         imageView.setImage(ImageSource.cachedBitmap(bitmap))
 
-        val parentArea = sWidth * sHeight * 1f
-        val bitmapArea = bitmapW * bitmapH * 1f
-        val scale = if (parentArea < bitmapArea) (bitmapArea / parentArea) else (parentArea / bitmapArea)
+        // Prefer filling the primary axis for the current reader direction to avoid
+        // visible side bars on vertical (top-to-bottom) layout.
+        val scaleX = sWidth * 1f / bitmapW
+        val scaleY = sHeight * 1f / bitmapH
+        val scale = if (settings.direction != CurrentReaderSettings.Directions.LEFT_TO_RIGHT &&
+            settings.direction != CurrentReaderSettings.Directions.RIGHT_TO_LEFT) {
+            // Vertical layouts: make image fit width
+            scaleX
+        } else {
+            // Horizontal layouts: make image fit height
+            scaleY
+        }
 
         imageView.maxScale = scale * 1.1f
         imageView.minScale = scale
