@@ -89,17 +89,54 @@ abstract class BaseParser {
             setUserText("Searching : ${mediaObj.mainName()}")
             Logger.log("Searching : ${mediaObj.mainName()}")
             val results = search(mediaObj.mainName())
-            val sortedResults = if (results.isNotEmpty()) {
-                results.sortedByDescending {
-                    FuzzySearch.ratio(
-                        it.name.lowercase(),
-                        mediaObj.mainName().lowercase()
-                    )
+            // score candidates by comparing multiple name sources (title, other names, media synonyms)
+            fun scoreCandidate(candidate: ShowResponse, targetNames: List<String>): Int {
+                var best = 0
+                // compare the main candidate name
+                for (t in targetNames) {
+                    try {
+                        val s = FuzzySearch.tokenSetRatio(candidate.name.lowercase(), t.lowercase())
+                        if (s > best) best = s
+                    } catch (e: Exception) { }
                 }
-            } else {
-                emptyList()
+                // compare any other names the candidate advertises
+                for (other in candidate.otherNames) {
+                    for (t in targetNames) {
+                        try {
+                            val s = FuzzySearch.tokenSetRatio(other.lowercase(), t.lowercase())
+                            if (s > best) best = s
+                        } catch (e: Exception) { }
+                    }
+                }
+                return best
             }
-            response = sortedResults.firstOrNull()
+
+            val targetNamesMain = mutableListOf<String>().apply {
+                add(mediaObj.mainName())
+                mediaObj.nameRomaji.let { if (it.isNotEmpty()) add(it) }
+                mediaObj.name?.let { if (!it.isNullOrEmpty()) add(it) }
+                // include synonyms from Media (if any)
+                try {
+                    (mediaObj.synonyms ?: arrayListOf<String>()).forEach { if (it.isNotEmpty()) add(it) }
+                } catch (e: Exception) { }
+            }
+
+            // prefer exact matches (case-insensitive) on candidate name or otherNames
+            val exactMatch = results.firstOrNull { candidate ->
+                targetNamesMain.any { t ->
+                    candidate.name.equals(t, ignoreCase = true) || candidate.otherNames.any { it.equals(t, ignoreCase = true) }
+                }
+            }
+
+            if (exactMatch != null) {
+                response = exactMatch
+            } else {
+                val scored = results.map { it to scoreCandidate(it, targetNamesMain) }
+                    .sortedByDescending { it.second }
+                // require a reasonable confidence to accept fuzzy match
+                val bestPair = scored.firstOrNull()
+                response = if (bestPair != null && bestPair.second >= 55) bestPair.first else null
+            }
 
             if (response == null || FuzzySearch.ratio(
                     response.name.lowercase(),
@@ -109,35 +146,40 @@ abstract class BaseParser {
                 setUserText("Searching : ${mediaObj.nameRomaji}")
                 Logger.log("Searching : ${mediaObj.nameRomaji}")
                 val romajiResults = search(mediaObj.nameRomaji)
-                val sortedRomajiResults = if (romajiResults.isNotEmpty()) {
-                    romajiResults.sortedByDescending {
-                        FuzzySearch.ratio(
-                            it.name.lowercase(),
-                            mediaObj.nameRomaji.lowercase()
-                        )
-                    }
-                } else {
-                    emptyList()
+                val targetNamesRomaji = mutableListOf<String>().apply {
+                    add(mediaObj.nameRomaji)
+                    add(mediaObj.mainName())
+                    mediaObj.name?.let { if (!it.isNullOrEmpty()) add(it) }
+                    try {
+                        (mediaObj.synonyms ?: arrayListOf<String>()).forEach { if (it.isNotEmpty()) add(it) }
+                    } catch (e: Exception) { }
                 }
-                val closestRomaji = sortedRomajiResults.firstOrNull()
+
+                val exactRomaji = romajiResults.firstOrNull { candidate ->
+                    targetNamesRomaji.any { t ->
+                        candidate.name.equals(t, ignoreCase = true) || candidate.otherNames.any { it.equals(t, ignoreCase = true) }
+                    }
+                }
+
+                val closestRomaji = when {
+                    exactRomaji != null -> exactRomaji
+                    else -> romajiResults.map { it to scoreCandidate(it, targetNamesRomaji) }
+                        .sortedByDescending { it.second }
+                        .firstOrNull()?.first
+                }
                 Logger.log("Closest match from RomajiResults: ${closestRomaji?.name ?: "None"}")
 
                 response = if (response == null) {
                     Logger.log("No exact match found in results. Using closest match from RomajiResults.")
                     closestRomaji
                 } else {
-                    val romajiRatio = FuzzySearch.ratio(
-                        closestRomaji?.name?.lowercase() ?: "",
-                        mediaObj.nameRomaji.lowercase()
-                    )
-                    val mainNameRatio = FuzzySearch.ratio(
-                        response.name.lowercase(),
-                        mediaObj.mainName().lowercase()
-                    )
-                    Logger.log("Fuzzy ratio for closest match in results: $mainNameRatio for ${response.name.lowercase()}")
-                    Logger.log("Fuzzy ratio for closest match in RomajiResults: $romajiRatio for ${closestRomaji?.name?.lowercase() ?: "None"}")
+                    // compare best scores using the same scoring function
+                    val currentScore = scoreCandidate(response, targetNamesRomaji)
+                    val romajiScore = closestRomaji?.let { scoreCandidate(it, targetNamesRomaji) } ?: 0
+                    Logger.log("Score for current response: $currentScore for ${response.name.lowercase()}")
+                    Logger.log("Score for romaji candidate: $romajiScore for ${closestRomaji?.name?.lowercase() ?: "None"}")
 
-                    if (romajiRatio > mainNameRatio) {
+                    if (romajiScore > currentScore) {
                         Logger.log("RomajiResults has a closer match. Replacing response.")
                         closestRomaji
                     } else {
