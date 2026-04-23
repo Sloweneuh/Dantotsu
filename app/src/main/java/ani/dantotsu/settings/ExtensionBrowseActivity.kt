@@ -137,13 +137,66 @@ class ExtensionBrowseActivity : AppCompatActivity() {
 
     private fun hasFilters(): Boolean {
         return when {
-            animeExtension != null ->
-                (animeExtension!!.sources.getOrNull(sourceIndex) as? AnimeCatalogueSource)
-                    ?.getFilterList()?.isNotEmpty() == true
-            mangaExtension != null ->
-                (mangaExtension!!.sources.getOrNull(sourceIndex) as? CatalogueSource)
-                    ?.getFilterList()?.isNotEmpty() == true
+            animeExtension != null -> {
+                val fl = (animeExtension!!.sources.getOrNull(sourceIndex) as? AnimeCatalogueSource)
+                    ?.getFilterList()
+                hasRenderableFilters(fl)
+            }
+            mangaExtension != null -> {
+                val fl = (mangaExtension!!.sources.getOrNull(sourceIndex) as? CatalogueSource)
+                    ?.getFilterList()
+                hasRenderableFilters(fl)
+            }
             else -> false
+        }
+    }
+
+    // Return true only if the provided filter list actually contains at least one
+    // renderable filter (select/text/checkbox/tristate/sort or group with children).
+    private fun hasRenderableFilters(filters: Any?): Boolean {
+        if (filters == null) return false
+        when (filters) {
+            is FilterList -> {
+                fun check(list: List<eu.kanade.tachiyomi.source.model.Filter<*>>): Boolean {
+                    list.forEach { f ->
+                        when (f) {
+                            is eu.kanade.tachiyomi.source.model.Filter.Select<*>,
+                            is eu.kanade.tachiyomi.source.model.Filter.Text,
+                            is eu.kanade.tachiyomi.source.model.Filter.CheckBox,
+                            is eu.kanade.tachiyomi.source.model.Filter.TriState,
+                            is eu.kanade.tachiyomi.source.model.Filter.Sort -> return true
+                            is eu.kanade.tachiyomi.source.model.Filter.Group<*> -> {
+                                val children = (f.state as? List<*>)?.filterIsInstance<eu.kanade.tachiyomi.source.model.Filter<*>>()
+                                if (!children.isNullOrEmpty() && check(children)) return true
+                            }
+                            else -> Unit
+                        }
+                    }
+                    return false
+                }
+                return check(filters.list)
+            }
+            is AnimeFilterList -> {
+                fun check(list: List<eu.kanade.tachiyomi.animesource.model.AnimeFilter<*>>): Boolean {
+                    list.forEach { f ->
+                        when (f) {
+                            is eu.kanade.tachiyomi.animesource.model.AnimeFilter.Select<*>,
+                            is eu.kanade.tachiyomi.animesource.model.AnimeFilter.Text,
+                            is eu.kanade.tachiyomi.animesource.model.AnimeFilter.CheckBox,
+                            is eu.kanade.tachiyomi.animesource.model.AnimeFilter.TriState,
+                            is eu.kanade.tachiyomi.animesource.model.AnimeFilter.Sort -> return true
+                            is eu.kanade.tachiyomi.animesource.model.AnimeFilter.Group<*> -> {
+                                val children = (f.state as? List<*>)?.filterIsInstance<eu.kanade.tachiyomi.animesource.model.AnimeFilter<*>>()
+                                if (!children.isNullOrEmpty() && check(children)) return true
+                            }
+                            else -> Unit
+                        }
+                    }
+                    return false
+                }
+                return check(filters.list)
+            }
+            else -> return false
         }
     }
 
