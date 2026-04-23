@@ -39,6 +39,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
+import ani.dantotsu.settings.SettingsExtensionsActivity
 
 class ExtensionBrowseActivity : AppCompatActivity() {
 
@@ -61,8 +62,9 @@ class ExtensionBrowseActivity : AppCompatActivity() {
     private var endReached = false
     private var loadJob: Job? = null
     private var currentFilters: Any? = null // FilterList or AnimeFilterList
+    private var currentQuery: String = ""
 
-    private enum class Mode { POPULAR, LATEST, FILTER }
+    private enum class Mode { POPULAR, LATEST, FILTER, SEARCH }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -99,8 +101,33 @@ class ExtensionBrowseActivity : AppCompatActivity() {
             finish()
             return
         }
-        binding.extensionBrowseTitle.text = name
         if (icon != null) binding.extensionBrowseIcon.setImageDrawable(icon)
+        // show extension name in header; keep generic search hint
+        binding.extensionBrowseTitle.text = name
+        binding.extensionBrowseSearch.queryHint = getString(R.string.search)
+        // initial header state: show title + icon, show search icon, hide search bar
+        binding.extensionBrowseSearch.isVisible = false
+        binding.extensionBrowseSearchIcon.isVisible = true
+        binding.extensionBrowseTitle.isVisible = true
+        binding.extensionBrowseIcon.isVisible = true
+
+        binding.extensionBrowseSettings.setOnClickListener {
+            val configurableSources = when {
+                animeExtension != null -> animeExtension!!.sources.filterIsInstance<eu.kanade.tachiyomi.animesource.ConfigurableAnimeSource>()
+                mangaExtension != null -> mangaExtension!!.sources.filterIsInstance<eu.kanade.tachiyomi.source.ConfigurableSource>()
+                else -> emptyList()
+            }
+            ExtensionSettingsOpener.openConfigurableSourcePreferences(this, configurableSources, null)
+        }
+
+        binding.extensionBrowseSearchIcon.setOnClickListener {
+            binding.extensionBrowseSearch.isVisible = true
+            binding.extensionBrowseSearchIcon.isVisible = false
+            binding.extensionBrowseTitle.isVisible = false
+            binding.extensionBrowseIcon.isVisible = false
+            binding.extensionBrowseSearch.isIconified = false
+            binding.extensionBrowseSearch.requestFocus()
+        }
 
         binding.extensionBrowseBack.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
 
@@ -121,6 +148,7 @@ class ExtensionBrowseActivity : AppCompatActivity() {
 
         configureLanguageSwitch()
         configureChips()
+        configureSearch()
 
         load(Mode.POPULAR, null)
     }
@@ -218,8 +246,54 @@ class ExtensionBrowseActivity : AppCompatActivity() {
                 Mode.POPULAR -> binding.chipPopular.isChecked = true
                 Mode.LATEST -> binding.chipLatest.isChecked = true
                 Mode.FILTER -> binding.chipFilter.isChecked = true
+                Mode.SEARCH -> {
+                    // When in search mode, leave chips as-is (no chip corresponds to search).
+                }
             }
             openFilterSheet()
+        }
+    }
+
+    private fun configureSearch() {
+        binding.extensionBrowseSearch.setOnQueryTextListener(object : androidx.appcompat.widget.SearchView.OnQueryTextListener {
+            override fun onQueryTextSubmit(query: String?): Boolean {
+                val q = query?.trim() ?: ""
+                if (q.isEmpty()) {
+                    // empty -> go back to popular
+                    binding.chipPopular.isChecked = true
+                    binding.chipLatest.isChecked = false
+                    binding.chipFilter.isChecked = false
+                    load(Mode.POPULAR, null)
+                } else {
+                    currentQuery = q
+                    binding.chipPopular.isChecked = false
+                    binding.chipLatest.isChecked = false
+                    binding.chipFilter.isChecked = false
+                    load(Mode.SEARCH, currentFilters)
+                }
+                return true
+            }
+
+            override fun onQueryTextChange(newText: String?): Boolean {
+                // Do nothing for incremental changes to avoid excess requests.
+                return false
+            }
+        })
+
+        // When search is cleared via the close button, restore popular and header UI.
+        binding.extensionBrowseSearch.setOnCloseListener {
+            // restore header
+            binding.extensionBrowseSearch.isVisible = false
+            binding.extensionBrowseSearchIcon.isVisible = true
+            binding.extensionBrowseTitle.isVisible = true
+            binding.extensionBrowseIcon.isVisible = true
+
+            binding.chipPopular.isChecked = true
+            binding.chipLatest.isChecked = false
+            binding.chipFilter.isChecked = false
+            currentQuery = ""
+            load(Mode.POPULAR, null)
+            false
         }
     }
 
@@ -329,6 +403,10 @@ class ExtensionBrowseActivity : AppCompatActivity() {
                     val fl = currentFilters as? AnimeFilterList ?: source.getFilterList()
                     source.getSearchAnime(page, "", fl)
                 }
+                Mode.SEARCH -> {
+                    val fl = currentFilters as? AnimeFilterList ?: source.getFilterList()
+                    source.getSearchAnime(page, currentQuery, fl)
+                }
             }
             res.animes.map { BrowseItem.fromAnime(it) } to res.hasNextPage
         } else if (mangaExtension != null) {
@@ -340,6 +418,10 @@ class ExtensionBrowseActivity : AppCompatActivity() {
                 Mode.FILTER -> {
                     val fl = currentFilters as? FilterList ?: source.getFilterList()
                     source.fetchSearchManga(page, "", fl).awaitSingle()
+                }
+                Mode.SEARCH -> {
+                    val fl = currentFilters as? FilterList ?: source.getFilterList()
+                    source.fetchSearchManga(page, currentQuery, fl).awaitSingle()
                 }
             }
             res.mangas.map { BrowseItem.fromManga(it) } to res.hasNextPage

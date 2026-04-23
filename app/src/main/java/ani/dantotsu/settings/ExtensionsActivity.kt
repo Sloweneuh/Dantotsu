@@ -28,6 +28,12 @@ import ani.dantotsu.stripSpansOnPaste
 import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.util.customAlertDialog
 import com.google.android.material.tabs.TabLayout
+import com.google.android.material.textfield.TextInputLayout
+import android.widget.ImageView
+import android.widget.FrameLayout
+import android.widget.TextView
+import androidx.core.view.isGone
+import androidx.core.view.isVisible
 import com.google.android.material.tabs.TabLayoutMediator
 import eu.kanade.domain.source.service.SourcePreferences
 import uy.kohesive.injekt.Injekt
@@ -37,6 +43,10 @@ import java.util.Locale
 class ExtensionsActivity : AppCompatActivity() {
     lateinit var binding: ActivityExtensionsBinding
     private var hasUpdates = false
+    companion object {
+        const val EXTRA_OPEN_SOURCE_ID = "open_source_id"
+        const val EXTRA_OPEN_SOURCE_TYPE = "open_source_type"
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -195,6 +205,46 @@ class ExtensionsActivity : AppCompatActivity() {
         } else if (initialTab == 0 && !hasUpdates) {
             // If Updates tab was requested but no updates exist, go to first tab
             viewPager.setCurrentItem(0, false)
+        }
+
+        // If requested, open a source preferences fragment directly
+        val openId = intent.getLongExtra(EXTRA_OPEN_SOURCE_ID, -1L)
+        val openType = intent.getStringExtra(EXTRA_OPEN_SOURCE_TYPE)
+        if (openId != -1L && !openType.isNullOrEmpty()) {
+            val changeUIVisibility: (Boolean) -> Unit = { show ->
+                findViewById<ViewPager2>(R.id.viewPager).isVisible = show
+                findViewById<TabLayout>(R.id.tabLayout).isVisible = show
+                findViewById<TextInputLayout>(R.id.searchView).isVisible = show
+                findViewById<ImageView>(R.id.languageselect).isVisible = show
+                findViewById<TextView>(R.id.extensions).text = if (show) getString(R.string.extensions) else ""
+                findViewById<FrameLayout>(R.id.fragmentExtensionsContainer).isGone = show
+            }
+
+            if (openType == "manga") {
+                val tabIndex = if (hasUpdates) 3 else 2
+                viewPager.setCurrentItem(tabIndex, false)
+                val fragment = ani.dantotsu.settings.extensionprefs.MangaSourcePreferencesFragment().getInstance(openId) {
+                    changeUIVisibility(true)
+                }
+                changeUIVisibility(false)
+                supportFragmentManager.beginTransaction()
+                    .setCustomAnimations(R.anim.slide_up, R.anim.slide_down)
+                    .replace(R.id.fragmentExtensionsContainer, fragment)
+                    .addToBackStack(null)
+                    .commit()
+            } else if (openType == "anime") {
+                val tabIndex = if (hasUpdates) 1 else 0
+                viewPager.setCurrentItem(tabIndex, false)
+                val fragment = ani.dantotsu.settings.extensionprefs.AnimeSourcePreferencesFragment().getInstance(openId) {
+                    changeUIVisibility(true)
+                }
+                changeUIVisibility(false)
+                supportFragmentManager.beginTransaction()
+                    .setCustomAnimations(R.anim.slide_up, R.anim.slide_down)
+                    .replace(R.id.fragmentExtensionsContainer, fragment)
+                    .addToBackStack(null)
+                    .commit()
+            }
         }
 
 

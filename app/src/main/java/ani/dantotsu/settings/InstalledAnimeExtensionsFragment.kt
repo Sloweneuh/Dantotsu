@@ -61,69 +61,17 @@ class InstalledAnimeExtensionsFragment : Fragment(), SearchQueryHandler {
             startActivity(intent)
         },
         onSettingsClicked = { pkg ->
-            val name = pkg.name
-            val changeUIVisibility: (Boolean) -> Unit = { show ->
-                val activity = requireActivity() as ExtensionsActivity
-                activity.findViewById<ViewPager2>(R.id.viewPager).isVisible = show
-                activity.findViewById<TabLayout>(R.id.tabLayout).isVisible = show
-                activity.findViewById<TextInputLayout>(R.id.searchView).isVisible = show
-                activity.findViewById<ImageView>(R.id.languageselect).isVisible = show
-                activity.findViewById<TextView>(R.id.extensions).text =
-                    if (show) getString(R.string.extensions) else name
-                activity.findViewById<FrameLayout>(R.id.fragmentExtensionsContainer).isGone = show
-            }
-            var itemSelected = false
             val allSettings = pkg.sources.filterIsInstance<ConfigurableAnimeSource>()
-            if (allSettings.isNotEmpty()) {
-                var selectedSetting = allSettings[0]
-                if (allSettings.size > 1) {
-                    val names = allSettings.map { getLanguageName(it.lang) }
-                        .toTypedArray()
-                    var selectedIndex = 0
-                    requireContext().customAlertDialog().apply {
-                        setTitle(getString(R.string.select_source))
-                        singleChoiceItems(names, selectedIndex) { which ->
-                            itemSelected = true
-                            selectedIndex = which
-                            selectedSetting = allSettings[selectedIndex]
-
-                            val fragment =
-                                AnimeSourcePreferencesFragment().getInstance(selectedSetting.id) {
-                                    changeUIVisibility(true)
-                                }
-                            parentFragmentManager.beginTransaction()
-                                .setCustomAnimations(R.anim.slide_up, R.anim.slide_down)
-                                .replace(R.id.fragmentExtensionsContainer, fragment)
-                                .addToBackStack(null)
-                                .commit()
-                        }
-                        onDismiss {
-                            if (!itemSelected) {
-                                changeUIVisibility(true)
-                            }
-                        }
-                        show()
-                    }
-                } else {
-                    // If there's only one setting, proceed with the fragment transaction
-                    val fragment =
-                        AnimeSourcePreferencesFragment().getInstance(selectedSetting.id) {
-                            changeUIVisibility(true)
-                        }
-                    parentFragmentManager.beginTransaction()
-                        .setCustomAnimations(R.anim.slide_up, R.anim.slide_down)
-                        .replace(R.id.fragmentExtensionsContainer, fragment)
-                        .addToBackStack(null)
-                        .commit()
-
-                }
-
-                // Hide ViewPager2 and TabLayout
-                changeUIVisibility(false)
-            } else {
-                Toast.makeText(requireContext(), getString(R.string.source_not_configurable), Toast.LENGTH_SHORT)
-                    .show()
+            val changeAction: (() -> Unit)? = {
+                val activity = requireActivity() as ExtensionsActivity
+                activity.findViewById<androidx.viewpager2.widget.ViewPager2>(R.id.viewPager).isVisible = true
+                activity.findViewById<com.google.android.material.tabs.TabLayout>(R.id.tabLayout).isVisible = true
+                activity.findViewById<com.google.android.material.textfield.TextInputLayout>(R.id.searchView).isVisible = true
+                activity.findViewById<android.widget.ImageView>(R.id.languageselect).isVisible = true
+                activity.findViewById<android.widget.TextView>(R.id.extensions).text = getString(R.string.extensions)
+                activity.findViewById<android.widget.FrameLayout>(R.id.fragmentExtensionsContainer).isGone = true
             }
+            ExtensionSettingsOpener.openConfigurableSourcePreferences(requireActivity(), allSettings, changeAction)
         },
         { pkg ->
             if (isAdded) {

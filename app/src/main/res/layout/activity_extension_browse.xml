@@ -45,29 +45,60 @@
         <TextView
             android:id="@+id/extensionBrowseTitle"
             android:layout_width="0dp"
-            android:layout_height="48dp"
-            android:layout_marginStart="12dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
             android:layout_weight="1"
-            android:ellipsize="end"
-            android:fontFamily="@font/poppins_bold"
-            android:gravity="center_vertical"
-            android:maxLines="1"
-            android:textColor="?attr/colorPrimary"
+            android:fontFamily="@font/poppins_semi_bold"
+            android:textColor="?attr/colorOnBackground"
             android:textSize="16sp"
-            tools:text="Extension Name" />
+            android:gravity="center_vertical"
+            android:text="" />
+
+        <androidx.appcompat.widget.SearchView
+            android:id="@+id/extensionBrowseSearch"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="12dp"
+            android:layout_weight="1"
+            android:queryHint="@string/search"
+            app:iconifiedByDefault="false"
+            android:visibility="gone"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <ImageButton
+            android:id="@+id/extensionBrowseSearchIcon"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/search"
+            android:padding="12dp"
+            app:srcCompat="@drawable/ic_round_search_24"
+            app:tint="?attr/colorOnBackground" />
 
         <ImageButton
             android:id="@+id/extensionBrowseLanguage"
             android:layout_width="48dp"
             android:layout_height="48dp"
+            android:layout_marginStart="4dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/language"
             android:padding="12dp"
             android:visibility="gone"
             app:srcCompat="@drawable/ic_round_translate_24"
-            app:tint="?attr/colorOnBackground"
-            tools:visibility="visible" />
-    </LinearLayout>
+            app:tint="?attr/colorOnBackground" />
+
+        <ImageButton
+            android:id="@+id/extensionBrowseSettings"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="4dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/extension_settings"
+            android:padding="12dp"
+            app:srcCompat="@drawable/ic_round_settings_24"
+            app:tint="?attr/colorOnBackground" />
+        </LinearLayout>
 
     <com.google.android.material.chip.ChipGroup
         android:id="@+id/extensionBrowseChipGroup"
@@ -175,5 +206,10 @@
                 android:textColor="?attr/colorOnBackground"
                 android:textSize="14sp" />
         </LinearLayout>
+        <FrameLayout
+            android:id="@+id/fragmentExtensionsContainer"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone" />
     </FrameLayout>
 </LinearLayout>
