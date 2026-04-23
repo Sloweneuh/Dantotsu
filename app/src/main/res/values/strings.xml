@@ -389,6 +389,7 @@
     <string name="immersive_mode_info">Requires App restart to fully apply.</string>
     <string name="home_layout_show">Edit Home Sections</string>
     <string name="home_layout_show_and_order">Show, hide and reorder Home sections</string>
+        <string name="ui_show_system_bars">Show system bars (UI)</string>
     <string name="search_equivalents_confirm_title">Search for AniList equivalents</string>
     <string name="search_equivalents_confirm_text">This will try to find AniList equivalents for every MangaUpdates entry in this list. This may take a while. Continue?</string>
     <string name="proceed">Proceed</string>

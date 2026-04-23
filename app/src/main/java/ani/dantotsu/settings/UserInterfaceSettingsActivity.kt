@@ -169,6 +169,10 @@ class UserInterfaceSettingsActivity : AppCompatActivity() {
             PrefManager.setVal(PrefName.ImmersiveMode, isChecked)
             restartApp()
         }
+        binding.uiSettingsShowSystemBarsUI.isChecked = PrefManager.getVal(PrefName.ShowSystemBarsUI)
+        binding.uiSettingsShowSystemBarsUI.setOnCheckedChangeListener { _, isChecked ->
+            PrefManager.setVal(PrefName.ShowSystemBarsUI, isChecked)
+        }
         binding.uiSettingsHideRedDot.isChecked =
             !PrefManager.getVal<Boolean>(PrefName.ShowNotificationRedDot)
         binding.uiSettingsHideRedDot.setOnCheckedChangeListener { _, isChecked ->
