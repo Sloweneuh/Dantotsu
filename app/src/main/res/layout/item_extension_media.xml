@@ -34,7 +34,7 @@
         android:layout_marginTop="6dp"
         android:ellipsize="end"
         android:fontFamily="@font/poppins_semi_bold"
-        android:maxLines="2"
+        android:maxLines="3"
         android:textSize="13sp"
         tools:text="Title" />
 </LinearLayout>

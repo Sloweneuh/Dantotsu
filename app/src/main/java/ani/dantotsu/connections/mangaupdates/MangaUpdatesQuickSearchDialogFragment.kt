@@ -21,7 +21,9 @@ import ani.dantotsu.databinding.BottomSheetSourceSearchBinding
 import ani.dantotsu.media.MangaUpdatesSearchAdapter
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.px
+import ani.dantotsu.settings.ExtensionMediaLinker
 import ani.dantotsu.stripSpansOnPaste
+import eu.kanade.tachiyomi.source.model.SManga
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -41,11 +43,24 @@ class MangaUpdatesQuickSearchDialogFragment : BottomSheetDialogFragment() {
 
     companion object {
         private const val ARG_TITLES = "titles"
+        private const val ARG_EXT_PKG = "ext_pkg"
+        private const val ARG_EXT_LANG = "ext_lang"
+        private const val ARG_EXT_MANGA = "ext_manga"
 
-        fun newInstance(titles: ArrayList<String>): MangaUpdatesQuickSearchDialogFragment {
+        fun newInstance(
+            titles: ArrayList<String>,
+            extensionPkg: String? = null,
+            extensionLangIndex: Int = 0,
+            sManga: SManga? = null,
+        ): MangaUpdatesQuickSearchDialogFragment {
             return MangaUpdatesQuickSearchDialogFragment().apply {
                 arguments = Bundle().apply {
                     putStringArrayList(ARG_TITLES, titles)
+                    if (extensionPkg != null) {
+                        putString(ARG_EXT_PKG, extensionPkg)
+                        putInt(ARG_EXT_LANG, extensionLangIndex)
+                        if (sManga != null) putSerializable(ARG_EXT_MANGA, sManga)
+                    }
                 }
             }
         }
@@ -126,6 +141,8 @@ class MangaUpdatesQuickSearchDialogFragment : BottomSheetDialogFragment() {
                         binding.searchRecyclerView.adapter = MangaUpdatesSearchAdapter(results) { selected ->
                             val muMedia = selected.toMUMedia()
                             if (muMedia != null) {
+                                val mediaId = (muMedia.id and 0x7FFFFFFF).toInt()
+                                applyExtensionLink(mediaId)
                                 startActivity(
                                     Intent(requireContext(), MUMediaDetailsActivity::class.java)
                                         .putExtra("muMedia", muMedia as Serializable)
@@ -203,6 +220,15 @@ class MangaUpdatesQuickSearchDialogFragment : BottomSheetDialogFragment() {
             val first = titleOptions.firstOrNull()
             if (!first.isNullOrBlank()) search(first)
         }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun applyExtensionLink(mediaId: Int) {
+        val args = arguments ?: return
+        val pkg = args.getString(ARG_EXT_PKG) ?: return
+        val lang = args.getInt(ARG_EXT_LANG, 0)
+        val sManga = args.getSerializable(ARG_EXT_MANGA) as? SManga ?: return
+        ExtensionMediaLinker.linkMangaMedia(mediaId, pkg, lang, sManga)
     }
 
     override fun onDestroyView() {

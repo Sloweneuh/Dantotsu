@@ -24,7 +24,10 @@ import ani.dantotsu.media.Media
 import ani.dantotsu.media.MediaDetailsActivity
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.px
+import ani.dantotsu.settings.ExtensionMediaLinker
 import ani.dantotsu.stripSpansOnPaste
+import eu.kanade.tachiyomi.animesource.model.SAnime
+import eu.kanade.tachiyomi.source.model.SManga
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -47,19 +50,33 @@ class AniListQuickSearchDialogFragment : BottomSheetDialogFragment() {
         private const val ARG_TITLES = "titles"
         private const val ARG_REQUEST_KEY = "request_key"
         private const val ARG_TYPE = "type"
+        private const val ARG_EXT_PKG = "ext_pkg"
+        private const val ARG_EXT_LANG = "ext_lang"
+        private const val ARG_EXT_MANGA = "ext_manga"
+        private const val ARG_EXT_ANIME = "ext_anime"
         const val TYPE_MANGA = "MANGA"
         const val TYPE_ANIME = "ANIME"
 
         fun newInstance(
             titles: ArrayList<String>,
             requestKey: String? = null,
-            type: String = TYPE_MANGA
+            type: String = TYPE_MANGA,
+            extensionPkg: String? = null,
+            extensionLangIndex: Int = 0,
+            sManga: SManga? = null,
+            sAnime: SAnime? = null,
         ): AniListQuickSearchDialogFragment {
             return AniListQuickSearchDialogFragment().apply {
                 arguments = Bundle().apply {
                     putStringArrayList(ARG_TITLES, titles)
                     if (!requestKey.isNullOrBlank()) putString(ARG_REQUEST_KEY, requestKey)
                     putString(ARG_TYPE, type)
+                    if (extensionPkg != null) {
+                        putString(ARG_EXT_PKG, extensionPkg)
+                        putInt(ARG_EXT_LANG, extensionLangIndex)
+                        if (sManga != null) putSerializable(ARG_EXT_MANGA, sManga)
+                        if (sAnime != null) putSerializable(ARG_EXT_ANIME, sAnime)
+                    }
                 }
             }
         }
@@ -174,6 +191,7 @@ class AniListQuickSearchDialogFragment : BottomSheetDialogFragment() {
                                 )
                                 dismiss()
                             } else {
+                                applyExtensionLink(media.id)
                                 startActivity(
                                     Intent(requireContext(), MediaDetailsActivity::class.java)
                                         .putExtra("mediaId", media.id)
@@ -250,6 +268,19 @@ class AniListQuickSearchDialogFragment : BottomSheetDialogFragment() {
             searched = true
             val first = titleOptions.firstOrNull()
             if (!first.isNullOrBlank()) search(first)
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun applyExtensionLink(mediaId: Int) {
+        val args = arguments ?: return
+        val pkg = args.getString(ARG_EXT_PKG) ?: return
+        val lang = args.getInt(ARG_EXT_LANG, 0)
+        val sManga = args.getSerializable(ARG_EXT_MANGA) as? SManga
+        val sAnime = args.getSerializable(ARG_EXT_ANIME) as? SAnime
+        when {
+            sManga != null -> ExtensionMediaLinker.linkMangaMedia(mediaId, pkg, lang, sManga)
+            sAnime != null -> ExtensionMediaLinker.linkAnimeMedia(mediaId, pkg, lang, sAnime)
         }
     }
 

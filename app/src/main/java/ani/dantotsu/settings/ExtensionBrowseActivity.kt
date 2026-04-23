@@ -56,7 +56,7 @@ class ExtensionBrowseActivity : AppCompatActivity() {
     private var mangaExtension: MangaExtension.Installed? = null
     private var sourceIndex = 0
 
-    private val adapter = BrowseMediaAdapter(::openInfo)
+    private val adapter = BrowseMediaAdapter(::openInfo, ::openInBrowser)
     private var currentMode: Mode = Mode.POPULAR
     private var currentPage = 1
     private var endReached = false
@@ -440,6 +440,27 @@ class ExtensionBrowseActivity : AppCompatActivity() {
             if (item.manga != null) putExtra(ExtensionMediaInfoActivity.EXTRA_MANGA, item.manga)
         }
         startActivity(intent)
+    }
+
+    private fun openInBrowser(item: BrowseItem) {
+        try {
+            val url = when {
+                item.anime != null -> (animeExtension?.sources?.getOrNull(sourceIndex)
+                    as? eu.kanade.tachiyomi.animesource.online.AnimeHttpSource)
+                    ?.getAnimeUrl(item.anime)
+                item.manga != null -> (mangaExtension?.sources?.getOrNull(sourceIndex)
+                    as? eu.kanade.tachiyomi.source.online.HttpSource)
+                    ?.getMangaUrl(item.manga)
+                else -> null
+            }
+            if (url.isNullOrBlank()) {
+                snackString(getString(R.string.no_results_found))
+                return
+            }
+            startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+        } catch (e: Exception) {
+            snackString("Failed to open link: ${e.message}")
+        }
     }
 }
 
