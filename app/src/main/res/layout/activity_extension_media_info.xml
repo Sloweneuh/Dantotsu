@@ -210,26 +210,6 @@
                     tools:visibility="visible" />
 
                 <TextView
-                    android:id="@+id/extensionInfoGenresTitle"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="20dp"
-                    android:fontFamily="@font/poppins_bold"
-                    android:text="@string/genres"
-                    android:textColor="?attr/colorOnBackground"
-                    android:textSize="14sp"
-                    android:visibility="gone"
-                    tools:visibility="visible" />
-
-                <com.google.android.material.chip.ChipGroup
-                    android:id="@+id/extensionInfoGenresChips"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:visibility="gone"
-                    tools:visibility="visible" />
-
-                <TextView
                     android:id="@+id/extensionInfoSynopsisTitle"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -251,6 +231,26 @@
                     android:textSize="13sp"
                     android:visibility="gone"
                     tools:text="Synopsis text here."
+                    tools:visibility="visible" />
+
+                <TextView
+                    android:id="@+id/extensionInfoGenresTitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    android:fontFamily="@font/poppins_bold"
+                    android:text="@string/genres"
+                    android:textColor="?attr/colorOnBackground"
+                    android:textSize="14sp"
+                    android:visibility="gone"
+                    tools:visibility="visible" />
+
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/extensionInfoGenresChips"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:visibility="gone"
                     tools:visibility="visible" />
             </LinearLayout>
         </LinearLayout>
