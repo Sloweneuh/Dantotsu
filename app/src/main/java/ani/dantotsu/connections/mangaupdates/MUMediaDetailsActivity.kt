@@ -60,6 +60,8 @@ import kotlinx.coroutines.withContext
 import ani.dantotsu.connections.comick.ComickApi
 import ani.dantotsu.connections.comick.ComickComic
 import ani.dantotsu.media.MediaDetailsActivity
+import ani.dantotsu.settings.ExtensionMediaLinker
+import eu.kanade.tachiyomi.source.model.SManga
 import androidx.appcompat.app.AlertDialog
 import kotlinx.coroutines.CoroutineScope
 import nl.joery.animatedbottombar.AnimatedBottomBar
@@ -69,11 +71,21 @@ import java.util.Locale
 
 class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedListener {
 
+    companion object {
+        const val EXTRA_EXT_PKG = "ext_pkg"
+        const val EXTRA_EXT_LANG = "ext_lang"
+        const val EXTRA_EXT_MANGA = "ext_manga"
+    }
+
     private lateinit var binding: ActivityMediaBinding
     private val model: MediaDetailsViewModel by viewModels()
     private var selected = 0
     private lateinit var navBar: AnimatedBottomBar
     internal lateinit var muMedia: MUMedia
+
+    private var extensionPkg: String? = null
+    private var extensionLangIndex: Int = 0
+    private var extensionSManga: SManga? = null
 
     private var currentChapter: Int? = null
     private var detectedAniListId: Int? = null
@@ -151,7 +163,12 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         val candidates = quickSearchTitles.ifEmpty { collectQuickSearchTitles() }
         if (candidates.isEmpty()) return
         AniListQuickSearchDialogFragment
-            .newInstance(ArrayList(candidates))
+            .newInstance(
+                titles = ArrayList(candidates),
+                extensionPkg = extensionPkg,
+                extensionLangIndex = extensionLangIndex,
+                sManga = extensionSManga,
+            )
             .show(supportFragmentManager, "mu_anilist_quick_results")
     }
 
@@ -165,6 +182,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         binding.mediaAniList?.setOnClickListener {
             val id = detectedAniListId
             if (id != null) {
+                applyExtensionLink(id)
                 startActivity(
                     Intent(this, MediaDetailsActivity::class.java).apply {
                         putExtra("mediaId", id)
@@ -281,8 +299,18 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         }
     }
 
+    private fun applyExtensionLink(aniListId: Int) {
+        val pkg = extensionPkg ?: return
+        val manga = extensionSManga ?: return
+        ExtensionMediaLinker.linkMangaMedia(aniListId, pkg, extensionLangIndex, manga)
+    }
+
     private fun launchMediaDetails(muMedia: MUMedia) {
         this.muMedia = muMedia
+        extensionPkg = intent.getStringExtra(EXTRA_EXT_PKG)
+        extensionLangIndex = intent.getIntExtra(EXTRA_EXT_LANG, 0)
+        @Suppress("DEPRECATION")
+        extensionSManga = intent.getSerializableExtra(EXTRA_EXT_MANGA) as? SManga
         ThemeManager(this).applyTheme()
         initActivity(this)
 
@@ -375,6 +403,8 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         // Add MU URL to external links so ComickInfoFragment can validate Comick entries by MU link
         val muUrl = muMedia.url ?: "https://www.mangaupdates.com/series/${muMedia.id.toString(36)}"
         media.externalLinks.add(arrayListOf(null, muUrl))
+        // Link the extension to the MU synthetic ID so the reader can find the source immediately.
+        applyExtensionLink(media.id)
         media.selected = model.loadSelected(media)
         model.setMedia(media)
 
@@ -662,6 +692,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
                             .setTitle(getString(R.string.switch_to_anilist_title).takeIf { resources.getIdentifier("switch_to_anilist_title", "string", this@MUMediaDetailsActivity.packageName) != 0 } ?: "Switch to AniList media?")
                             .setMessage(getString(R.string.switch_to_anilist_message).takeIf { resources.getIdentifier("switch_to_anilist_message", "string", this@MUMediaDetailsActivity.packageName) != 0 } ?: "This Comick entry is linked to an AniList media. Would you like to open the AniList media instead?")
                             .setPositiveButton(android.R.string.ok) { _, _ ->
+                                applyExtensionLink(anilistId)
                                 val intent = android.content.Intent(this@MUMediaDetailsActivity, ani.dantotsu.media.MediaDetailsActivity::class.java)
                                 intent.putExtra("mediaId", anilistId)
                                 startActivity(intent)
