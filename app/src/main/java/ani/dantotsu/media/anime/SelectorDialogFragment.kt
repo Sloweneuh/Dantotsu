@@ -613,8 +613,10 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
         }
 
         fun addAll(extractors: List<VideoExtractor>?) {
-            links.addAll(extractors ?: return)
-            notifyItemRangeInserted(0, extractors.size)
+            val nonNull = extractors?.filterNotNull() ?: return
+            val start = links.size
+            links.addAll(nonNull)
+            notifyItemRangeInserted(start, nonNull.size)
         }
 
         fun performClick(position: Int) {

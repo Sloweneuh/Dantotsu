@@ -130,15 +130,17 @@ class MangaUpdatesQuickSearchDialogFragment : BottomSheetDialogFragment() {
                 } catch (_: Throwable) {
                     response = null
                 } finally {
-                    searchWatchdog?.let { binding.searchProgress.removeCallbacks(it) }
+                    val b = _binding
+                    searchWatchdog?.let { b?.searchProgress?.removeCallbacks(it) }
                     searchWatchdog = null
                     searchJob = null
-                    binding.searchProgressContainer.visibility = View.GONE
+                    if (b == null) return@launch
+                    b.searchProgressContainer.visibility = View.GONE
 
                     val results = response?.results.orEmpty()
                     if (results.isNotEmpty()) {
-                        binding.searchRecyclerView.visibility = View.VISIBLE
-                        binding.searchRecyclerView.adapter = MangaUpdatesSearchAdapter(results) { selected ->
+                        b.searchRecyclerView.visibility = View.VISIBLE
+                        b.searchRecyclerView.adapter = MangaUpdatesSearchAdapter(results) { selected ->
                             val muMedia = selected.toMUMedia()
                             if (muMedia != null) {
                                 val mediaId = (muMedia.id and 0x7FFFFFFF).toInt()
@@ -149,16 +151,16 @@ class MangaUpdatesQuickSearchDialogFragment : BottomSheetDialogFragment() {
                                 )
                             }
                         }
-                        binding.searchRecyclerView.layoutManager = GridLayoutManager(
+                        b.searchRecyclerView.layoutManager = GridLayoutManager(
                             requireActivity(),
                             clamp(requireActivity().resources.displayMetrics.widthPixels / 124f.px, 1, 4)
                         )
-                        binding.searchEmptyContainer.visibility = View.GONE
+                        b.searchEmptyContainer.visibility = View.GONE
                     } else {
-                        binding.searchRecyclerView.visibility = View.GONE
-                        binding.searchRecyclerView.adapter = null
-                        binding.searchEmptyContainer.visibility = View.VISIBLE
-                        binding.searchEmptyText.text = when {
+                        b.searchRecyclerView.visibility = View.GONE
+                        b.searchRecyclerView.adapter = null
+                        b.searchEmptyContainer.visibility = View.VISIBLE
+                        b.searchEmptyText.text = when {
                             timedOut -> getString(R.string.search_timeout)
                             response == null -> getString(R.string.search_fetch_error)
                             else -> getString(R.string.search_no_results)
