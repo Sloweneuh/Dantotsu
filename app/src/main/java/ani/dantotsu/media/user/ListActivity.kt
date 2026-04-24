@@ -58,6 +58,8 @@ class ListActivity : AppCompatActivity() {
     private var muSeparateTabs: List<String> = emptyList()
     private val muStandardKeys = setOf("Reading", "Planning", "Completed", "Dropped", "Paused")
     private var anime: Boolean = true
+    private var lastTabSignature: String = ""
+    private var isRebuildingTabs = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -158,11 +160,19 @@ class ListActivity : AppCompatActivity() {
         }
         binding.listTabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab?) {
+                // Ignore spurious tab-0 selections that fire when TabLayoutMediator attaches
+                // to a freshly replaced adapter — only process genuine user navigation or the
+                // final setCurrentItem after a rebuild settles.
+                if (isRebuildingTabs) return
                 this@ListActivity.selectedTabIdx = tab?.position ?: 0
-                // Save the base label (drop any trailing " (count)") so we can restore the
-                // same logical tab after tabs are rebuilt/filtered.
                 val text = tab?.text?.toString()
                 selectedTabBase = text?.let { it.replace(Regex(" \\(.+\\)$"), "") }
+                // Keep preservedTabKeyDuringSearch in sync when the user explicitly navigates
+                // to a different tab while the search view is open.
+                if (binding.searchViewText.text.isNotEmpty()) {
+                    preservedTabKeyDuringSearch = tab?.tag as? String
+                        ?: selectedTabBase?.let { "TEXT:$it" }
+                }
                 updateContextualButtons()
             }
 
@@ -191,13 +201,7 @@ class ListActivity : AppCompatActivity() {
             val aniMap = model.getLists().value ?: return@observe
             buildTabs(aniMap, muMap)
             updateContextualButtons()
-        }
-
-        // Show find-equivalents button when MU lists are present (only on MU tab)
-        model.getFilteredMuLists().observe(this) { muMap ->
-            val hasMu = muMap != null && muMap.values.flatten().isNotEmpty()
-            updateContextualButtons()
-            if (hasMu) {
+            if (muMap.values.flatten().isNotEmpty()) {
                 binding.listFindEquivalents.setOnClickListener {
                     val dialog = ani.dantotsu.others.CustomBottomDialog.newInstance()
                     dialog.setTitleText(getString(R.string.search_equivalents_confirm_title))
@@ -212,7 +216,6 @@ class ListActivity : AppCompatActivity() {
                     }
                     dialog.setPositiveButton(getString(R.string.proceed)) {
                         try {
-                            // Collect all MU items across lists
                             val allMu = muMap.values.flatten().toMutableList()
                             ani.dantotsu.media.MediaEquivalentsActivity.passedMuMedia = ArrayList(allMu)
                             val intent = android.content.Intent(this@ListActivity, ani.dantotsu.media.MediaEquivalentsActivity::class.java)
@@ -374,10 +377,17 @@ class ListActivity : AppCompatActivity() {
         binding.searchViewText.addTextChangedListener {
             val q = binding.searchViewText.text.toString()
             if (q.isNotEmpty()) {
-                val curTab = binding.listTabLayout.getTabAt(binding.listTabLayout.selectedTabPosition)
-                // Prefer stable tag, fallback to text-based key prefixed with TEXT:
-                preservedTabKeyDuringSearch = curTab?.tag as? String ?: curTab?.text?.toString()
-                    ?.replace(Regex(" \\(.+\\)$"), "")?.let { "TEXT:$it" }
+                // Only capture on the first character of a new search. selectedTabIdx is used
+                // instead of listTabLayout.selectedTabPosition because the raw TabLayout position
+                // can be temporarily 0 during an in-progress adapter rebuild; selectedTabIdx is
+                // guarded by isRebuildingTabs and always reflects the user-intended tab.
+                // Subsequent characters are handled by onTabSelected (for user navigation) and
+                // the existing preserved value (no change needed if the user hasn't navigated).
+                if (preservedTabKeyDuringSearch == null) {
+                    val curTab = binding.listTabLayout.getTabAt(selectedTabIdx)
+                    preservedTabKeyDuringSearch = curTab?.tag as? String ?: curTab?.text?.toString()
+                        ?.replace(Regex(" \\(.+\\)$"), "")?.let { "TEXT:$it" }
+                }
             } else {
                 preservedTabKeyDuringSearch = null
             }
@@ -637,6 +647,39 @@ class ListActivity : AppCompatActivity() {
         val totalSize = aniIndices.size + muSeparateTabs.size + (if (muTabPosition >= 0) 1 else 0)
         val savedTab = selectedTabIdx.coerceIn(0, (totalSize - 1).coerceAtLeast(0))
 
+        // When only tab counts change (not the tab structure itself), update text in-place
+        // instead of replacing the adapter — adapter replacement destroys and recreates all
+        // fragment instances, which is the main cause of visible list flickering.
+        val tabSignature = "$totalSize:$muTabPosition:$muSeparateTabs:$aniIndices"
+        if (tabSignature == lastTabSignature && binding.listViewPager.adapter != null) {
+            for (i in 0 until binding.listTabLayout.tabCount) {
+                val tab = binding.listTabLayout.getTabAt(i) ?: continue
+                val tag = tab.tag as? String ?: continue
+                val newText: String = when {
+                    tag == "MU:AGGREGATE" -> "MangaUpdates ($totalMu)"
+                    tag.startsWith("MU:SEPARATE:") -> {
+                        val key = tag.removePrefix("MU:SEPARATE:")
+                        "$key (${muMap?.get(key)?.size ?: 0})"
+                    }
+                    tag.startsWith("ANI:") -> {
+                        val aniKey = tag.removePrefix("ANI:")
+                        val aniIdx = aniKeysList.indexOf(aniKey)
+                        val aniCount = if (aniIdx >= 0) aniValuesList[aniIdx].size else 0
+                        val muCount = when {
+                            aniKey == "All" -> muMap?.values?.sumOf { it.size } ?: 0
+                            else -> muMap?.get(aniKey)?.size ?: 0
+                        }
+                        val displayKey = userKeys.getOrNull(defaultKeys.indexOf(aniKey)) ?: aniKey
+                        "$displayKey (${aniCount + muCount})"
+                    }
+                    else -> continue
+                }
+                if (tab.text?.toString() != newText) tab.text = newText
+            }
+            return
+        }
+        lastTabSignature = tabSignature
+
         // Capture the currently visible tab base BEFORE we reset the adapter. When the
         // adapter is replaced and TabLayoutMediator attaches it may immediately select
         // the first tab and trigger our OnTabSelected listener, overwriting
@@ -645,6 +688,7 @@ class ListActivity : AppCompatActivity() {
             ?.text?.toString()
         val prevTabBase = prevTabText?.replace(Regex(" \\(.+\\)$"), "")
 
+        isRebuildingTabs = true
         binding.listViewPager.adapter = ListViewPagerAdapter(
             aniIndices, false, this, muTabPosition, muSeparateTabs
         )
@@ -690,6 +734,7 @@ class ListActivity : AppCompatActivity() {
         // Try to find a tab whose stable tag matches the preserved key (if any),
         // otherwise fall back to matching text.
         var finalTab = savedTab
+        var matchFound = false
         val matchKey = preservedTabKeyDuringSearch ?: prevTabText?.let { it.replace(Regex(" \\(.+\\)$"), "") }
         if (matchKey != null) {
             for (i in 0 until totalSize) {
@@ -699,6 +744,7 @@ class ListActivity : AppCompatActivity() {
                     // If we have a preserved tag (not a TEXT: fallback), match tags directly
                     if (tag.equals(matchKey, ignoreCase = true)) {
                         finalTab = i
+                        matchFound = true
                         break
                     }
                 } else {
@@ -708,11 +754,19 @@ class ListActivity : AppCompatActivity() {
                     val targetBase = if (matchKey.startsWith("TEXT:")) matchKey.removePrefix("TEXT:") else matchKey
                     if (tabBase.equals(targetBase, ignoreCase = true)) {
                         finalTab = i
+                        matchFound = true
                         break
                     }
                 }
             }
         }
+        // If a search is active but the preserved tab has no results (not in the new tab list),
+        // go to the first tab rather than savedTab which clips selectedTabIdx to the last
+        // available position (e.g. Dropped instead of Reading).
+        if (!matchFound && preservedTabKeyDuringSearch != null) {
+            finalTab = 0
+        }
+        isRebuildingTabs = false
         binding.listViewPager.setCurrentItem(finalTab, false)
     }
 

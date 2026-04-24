@@ -55,19 +55,16 @@ class MUOnlyListFragment : Fragment() {
         fun update() {
             val spanCount = if (currentGrid) (screenWidth / 120f).toInt() else 1
             binding.listRecyclerView.layoutManager = GridLayoutManager(requireContext(), spanCount)
-            // Compensate for negative root margin in item layout so MU grid aligns
-            // with other tabs: add an extra 16dp left padding on MU-only recycler.
             val density = requireContext().resources.displayMetrics.density
-            val extraPad = (16 * density).toInt()
+            val basePad = (8 * density).toInt()
             if (currentGrid) {
-                binding.listRecyclerView.setPadding(
-                    binding.listRecyclerView.paddingLeft + extraPad,
-                    binding.listRecyclerView.paddingTop,
-                    binding.listRecyclerView.paddingRight,
-                    binding.listRecyclerView.paddingBottom
-                )
+                // item_media_compact.xml has layout_marginStart="-16dp"; compensate with
+                // extra left padding so the first column aligns with other tabs.
+                val extraPad = (16 * density).toInt()
+                binding.listRecyclerView.setPadding(basePad + extraPad, basePad, basePad, basePad)
                 binding.listRecyclerView.adapter = MUMediaAdapter(currentItems, matchParent = false)
             } else {
+                binding.listRecyclerView.setPadding(basePad, basePad, basePad, basePad)
                 binding.listRecyclerView.adapter = MergedReadingAdapter(currentItems.map { it as Any }, 1, true)
             }
         }

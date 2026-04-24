@@ -13,6 +13,8 @@ import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.tryWithSuspend
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.Normalizer
 
@@ -35,6 +37,8 @@ class ListViewModel : ViewModel() {
 
     /** The sort order that was last passed to [loadLists], used to re-apply MU sorting. */
     private var activeSortOrder: String? = null
+
+    private var recomputeJob: Job? = null
 
     fun getLists(): LiveData<MutableMap<String, ArrayList<Media>>> = lists
 
@@ -473,7 +477,9 @@ class ListViewModel : ViewModel() {
     }
 
     private fun recomputeCurrentViewState() {
-        viewModelScope.launch(Dispatchers.Default) {
+        recomputeJob?.cancel()
+        recomputeJob = viewModelScope.launch(Dispatchers.Default) {
+            delay(200)
             val filters = currentFilters.value
             val query = currentSearchQuery
             if (query.isBlank()) {
