@@ -60,6 +60,7 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
     private var latestEpisode: SEpisode? = null
     private var latestHasSub: Boolean = false
     private var latestHasDub: Boolean = false
+    private var synopsisExpanded = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -124,6 +125,7 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
     }
 
     private fun loadDetails(pkg: String, langIndex: Int) {
+        synopsisExpanded = false
         binding.extensionInfoProgress.isVisible = true
         lifecycleScope.launch {
             val updated = runCatching {
@@ -209,6 +211,17 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
         binding.extensionInfoSynopsisTitle.isVisible = showSynopsis
         binding.extensionInfoSynopsis.isVisible = showSynopsis
         binding.extensionInfoSynopsis.text = description ?: ""
+        if (showSynopsis) {
+            binding.extensionInfoSynopsis.maxLines = if (synopsisExpanded) Int.MAX_VALUE else 4
+            binding.extensionInfoSynopsis.ellipsize =
+                if (synopsisExpanded) null else android.text.TextUtils.TruncateAt.END
+            binding.extensionInfoSynopsis.setOnClickListener {
+                synopsisExpanded = !synopsisExpanded
+                binding.extensionInfoSynopsis.maxLines = if (synopsisExpanded) Int.MAX_VALUE else 4
+                binding.extensionInfoSynopsis.ellipsize =
+                    if (synopsisExpanded) null else android.text.TextUtils.TruncateAt.END
+            }
+        }
 
         binding.extensionInfoGenresChips.removeAllViews()
         val showGenres = !genres.isNullOrEmpty()
