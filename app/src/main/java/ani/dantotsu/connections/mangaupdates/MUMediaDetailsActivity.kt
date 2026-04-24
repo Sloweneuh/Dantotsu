@@ -512,6 +512,32 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         // Progress state tracked locally so we can optimistically update UI
         currentChapter = muMedia.userChapter
         progress()
+
+        // When muMedia came from a search result, user list data (listId/userChapter) is absent.
+        // Fetch it in the background and refresh the progress display when found.
+        if (muMedia.listId < 0) {
+            lifecycleScope.launch(Dispatchers.IO) {
+                val userEntry = MangaUpdates.getAllUserLists().values.flatten()
+                    .find { it.id == muMedia.id }
+                if (userEntry != null) {
+                    val updated = muMedia.copy(
+                        listId = userEntry.listId,
+                        userChapter = userEntry.userChapter,
+                        userVolume = userEntry.userVolume,
+                    )
+                    withContext(Dispatchers.Main) {
+                        this@MUMediaDetailsActivity.muMedia = updated
+                        currentChapter = updated.userChapter
+                        model.getMedia().value?.let { m ->
+                            m.userProgress = updated.userChapter
+                            m.muListId = updated.listId
+                            model.setMedia(m)
+                        }
+                        progress()
+                    }
+                }
+            }
+        }
         binding.mediaAddToList.visibility = View.VISIBLE
 
         binding.mediaAddToList.setOnClickListener {
