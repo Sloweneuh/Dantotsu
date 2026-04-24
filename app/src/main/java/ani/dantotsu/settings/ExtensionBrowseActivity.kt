@@ -326,10 +326,12 @@ class ExtensionBrowseActivity : AppCompatActivity() {
 
     private fun openFilterSheet() {
         val filters: Any = when {
-            animeExtension != null -> (animeExtension!!.sources.getOrNull(sourceIndex) as? AnimeCatalogueSource)
-                ?.getFilterList() ?: return
-            mangaExtension != null -> (mangaExtension!!.sources.getOrNull(sourceIndex) as? CatalogueSource)
-                ?.getFilterList() ?: return
+            animeExtension != null -> (currentFilters as? AnimeFilterList)
+                ?: (animeExtension!!.sources.getOrNull(sourceIndex) as? AnimeCatalogueSource)
+                    ?.getFilterList() ?: return
+            mangaExtension != null -> (currentFilters as? FilterList)
+                ?: (mangaExtension!!.sources.getOrNull(sourceIndex) as? CatalogueSource)
+                    ?.getFilterList() ?: return
             else -> return
         }
         val sheet = ExtensionFilterBottomSheet.newInstance(filters) { applied ->
