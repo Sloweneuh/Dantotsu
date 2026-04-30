@@ -1386,7 +1386,7 @@ suspend fun View.pop() {
     delay(100)
 }
 
-fun blurImage(imageView: ImageView, banner: String?) {
+fun blurImage(imageView: ImageView, banner: String?, headers: Map<String, String> = emptyMap()) {
     if (banner != null) {
         val radius = PrefManager.getVal<Float>(PrefName.BlurRadius).toInt()
         val sampling = PrefManager.getVal<Float>(PrefName.BlurSampling).toInt()
@@ -1409,24 +1409,21 @@ fun blurImage(imageView: ImageView, banner: String?) {
         // Proceed if activity is not destroyed or if we couldn't resolve an Activity (use context directly)
         if (activity == null || !activity.isDestroyed) {
             val url = PrefManager.getVal<String>(PrefName.ImageUrl).ifEmpty { banner }
+            val model: Any = when {
+                banner.startsWith("http") -> if (headers.isNotEmpty()) GlideUrl(url) { headers } else GlideUrl(url)
+                banner.startsWith("content://") -> Uri.parse(url)
+                else -> File(url)
+            }
             if (PrefManager.getVal(PrefName.BlurBanners)) {
                 Glide.with(context as Context)
-                    .load(
-                        if (banner.startsWith("http")) GlideUrl(url) else if (banner.startsWith("content://")) Uri.parse(
-                            url
-                        ) else File(url)
-                    )
+                    .load(model)
                     .diskCacheStrategy(DiskCacheStrategy.RESOURCE).override(400)
                     .apply(RequestOptions.bitmapTransform(BlurTransformation(radius, sampling)))
                     .into(imageView)
 
             } else {
                 Glide.with(context as Context)
-                    .load(
-                        if (banner.startsWith("http")) GlideUrl(url) else if (banner.startsWith("content://")) Uri.parse(
-                            url
-                        ) else File(url)
-                    )
+                    .load(model)
                     .diskCacheStrategy(DiskCacheStrategy.RESOURCE).override(400)
                     .into(imageView)
             }

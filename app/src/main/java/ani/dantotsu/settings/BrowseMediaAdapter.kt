@@ -3,6 +3,7 @@ package ani.dantotsu.settings
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
+import ani.dantotsu.FileUrl
 import ani.dantotsu.databinding.ItemExtensionMediaBinding
 import ani.dantotsu.loadImage
 
@@ -13,6 +14,11 @@ class BrowseMediaAdapter(
 
     private val items = mutableListOf<BrowseItem>()
     private val expandedPositions = mutableSetOf<Int>()
+    private var imageHeaders: Map<String, String> = emptyMap()
+
+    fun setImageHeaders(headers: Map<String, String>) {
+        imageHeaders = headers
+    }
 
     companion object {
         private const val COLLAPSED_MAX_LINES = 3
@@ -43,7 +49,12 @@ class BrowseMediaAdapter(
         holder.binding.extensionMediaTitle.text = item.title
         holder.binding.extensionMediaTitle.maxLines =
             if (position in expandedPositions) Int.MAX_VALUE else COLLAPSED_MAX_LINES
-        holder.binding.extensionMediaCover.loadImage(item.thumbnail)
+        val thumb = item.thumbnail
+        if (!thumb.isNullOrBlank() && imageHeaders.isNotEmpty() && (thumb.startsWith("http://") || thumb.startsWith("https://"))) {
+            holder.binding.extensionMediaCover.loadImage(FileUrl(thumb, imageHeaders))
+        } else {
+            holder.binding.extensionMediaCover.loadImage(thumb)
+        }
 
         val clickRow = { onClick(item) }
         holder.binding.extensionMediaRoot.setOnClickListener { clickRow() }

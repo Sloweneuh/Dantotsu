@@ -135,6 +135,7 @@ class ExtensionBrowseActivity : AppCompatActivity() {
         binding.extensionBrowseRecycler.layoutManager =
             GridLayoutManager(this, spanCount.coerceAtLeast(2))
         binding.extensionBrowseRecycler.adapter = adapter
+        adapter.setImageHeaders(currentSourceHeaders())
         binding.extensionBrowseRecycler.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
                 if (dy <= 0) return
@@ -314,6 +315,7 @@ class ExtensionBrowseActivity : AppCompatActivity() {
                 singleChoiceItems(names, sourceIndex) { which ->
                     if (which != sourceIndex) {
                         sourceIndex = which
+                        adapter.setImageHeaders(currentSourceHeaders())
                         configureChips()
                         binding.chipPopular.isChecked = true
                         load(Mode.POPULAR, null)
@@ -322,6 +324,19 @@ class ExtensionBrowseActivity : AppCompatActivity() {
                 show()
             }
         }
+    }
+
+    private fun currentSourceHeaders(): Map<String, String> {
+        val headers = when {
+            animeExtension != null -> (animeExtension!!.sources.getOrNull(sourceIndex)
+                as? eu.kanade.tachiyomi.animesource.online.AnimeHttpSource)?.headers
+            mangaExtension != null -> (mangaExtension!!.sources.getOrNull(sourceIndex)
+                as? eu.kanade.tachiyomi.source.online.HttpSource)?.headers
+            else -> null
+        } ?: return emptyMap()
+        val map = LinkedHashMap<String, String>(headers.size)
+        headers.names().forEach { name -> headers[name]?.let { map[name] = it } }
+        return map
     }
 
     private fun openFilterSheet() {
@@ -366,6 +381,7 @@ class ExtensionBrowseActivity : AppCompatActivity() {
             val result = runCatching {
                 withContext(Dispatchers.IO) { fetch(page) }
             }
+            result.exceptionOrNull()?.let { if (it is kotlinx.coroutines.CancellationException) throw it }
             binding.extensionBrowseProgress.isVisible = false
             val list = result.getOrNull()
             if (result.isFailure) {

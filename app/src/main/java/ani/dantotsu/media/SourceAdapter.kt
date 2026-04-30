@@ -8,6 +8,7 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.core.net.toUri
 import androidx.recyclerview.widget.RecyclerView
+import ani.dantotsu.FileUrl
 import ani.dantotsu.databinding.ItemCharacterBinding
 import ani.dantotsu.loadImage
 import ani.dantotsu.parsers.BaseParser
@@ -31,6 +32,22 @@ abstract class SourceAdapter(
      * Extracts translator/group name from title and returns a pair of (cleanedTitle, groupName)
      * Recognizes patterns like brackets, parentheses, and various bracket types
      */
+    private val sourceHeaders: Map<String, String> by lazy { computeSourceHeaders() }
+
+    private fun computeSourceHeaders(): Map<String, String> {
+        val headers = when (parser) {
+            is DynamicMangaParser ->
+                (parser.extension.sources.getOrNull(parser.sourceLanguage) as? HttpSource)?.headers
+            is DynamicAnimeParser ->
+                (parser.extension.sources.getOrNull(parser.sourceLanguage)
+                    as? eu.kanade.tachiyomi.animesource.online.AnimeHttpSource)?.headers
+            else -> null
+        } ?: return emptyMap()
+        val map = LinkedHashMap<String, String>(headers.size)
+        headers.names().forEach { name -> headers[name]?.let { map[name] = it } }
+        return map
+    }
+
     private fun extractGroupName(title: String): Pair<String, String?> {
         // Regex to match common patterns at the end of titles
         // Matches: [Group], (Group), 【Group】, 〈Group〉, {Group}
@@ -155,7 +172,11 @@ abstract class SourceAdapter(
     override fun onBindViewHolder(holder: SourceViewHolder, position: Int) {
         val binding = holder.binding
         val character = sources[position]
-        binding.itemCompactImage.loadImage(character.coverUrl, 200)
+        val cover = character.coverUrl
+        val needsHeaders = sourceHeaders.isNotEmpty() && cover.headers.isEmpty()
+            && (cover.url.startsWith("http://") || cover.url.startsWith("https://"))
+        val coverWithHeaders = if (needsHeaders) FileUrl(cover.url, sourceHeaders) else cover
+        binding.itemCompactImage.loadImage(coverWithHeaders, 200)
         binding.itemCompactTitle.isSelected = true
 
         // Extract group name from title

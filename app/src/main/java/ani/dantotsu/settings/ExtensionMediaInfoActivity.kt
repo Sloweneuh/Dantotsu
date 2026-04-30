@@ -10,6 +10,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
+import ani.dantotsu.FileUrl
 import ani.dantotsu.R
 import ani.dantotsu.blurImage
 import ani.dantotsu.connections.mangaupdates.AniListQuickSearchDialogFragment
@@ -61,6 +62,7 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
     private var latestHasSub: Boolean = false
     private var latestHasDub: Boolean = false
     private var synopsisExpanded = false
+    private var sourceHeaders: Map<String, String> = emptyMap()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -84,6 +86,7 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
         }
         val pkg = intent.getStringExtra(EXTRA_PKG)
         val langIndex = intent.getIntExtra(EXTRA_LANG_INDEX, 0)
+        sourceHeaders = if (pkg != null) computeSourceHeaders(pkg, langIndex) else emptyMap()
 
         bindInitial()
         configureSearchButtons()
@@ -91,12 +94,31 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
         if (pkg != null) loadDetails(pkg, langIndex)
     }
 
+    private fun computeSourceHeaders(pkg: String, langIndex: Int): Map<String, String> {
+        val headers = if (isManga) {
+            val mgr: MangaExtensionManager = Injekt.get()
+            val ext = mgr.installedExtensionsFlow.value.find { it.pkgName == pkg }
+            (ext?.sources?.getOrNull(langIndex) as? eu.kanade.tachiyomi.source.online.HttpSource)?.headers
+        } else {
+            val mgr: AnimeExtensionManager = Injekt.get()
+            val ext = mgr.installedExtensionsFlow.value.find { it.pkgName == pkg }
+            (ext?.sources?.getOrNull(langIndex) as? eu.kanade.tachiyomi.animesource.online.AnimeHttpSource)?.headers
+        } ?: return emptyMap()
+        val map = LinkedHashMap<String, String>(headers.size)
+        headers.names().forEach { name -> headers[name]?.let { map[name] = it } }
+        return map
+    }
+
     private fun bindInitial() {
         val title = manga?.title ?: anime?.title ?: ""
         binding.extensionInfoTitle.text = title
         val cover = manga?.thumbnail_url ?: anime?.thumbnail_url
-        binding.extensionInfoCover.loadImage(cover)
-        blurImage(binding.extensionInfoBanner, cover)
+        if (!cover.isNullOrBlank() && sourceHeaders.isNotEmpty() && (cover.startsWith("http://") || cover.startsWith("https://"))) {
+            binding.extensionInfoCover.loadImage(FileUrl(cover, sourceHeaders))
+        } else {
+            binding.extensionInfoCover.loadImage(cover)
+        }
+        blurImage(binding.extensionInfoBanner, cover, sourceHeaders)
         renderDetails()
     }
 
@@ -456,6 +478,51 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
     private fun collectTitles(): List<String> {
         val list = mutableListOf<String>()
         (manga?.title ?: anime?.title)?.takeIf { it.isNotBlank() }?.let { list.add(it.trim()) }
-        return list.distinctBy { it.lowercase() }
+        val description = manga?.description ?: anime?.description
+        if (!description.isNullOrBlank()) list.addAll(extractAlternateTitles(description))
+        return list
+            .map { it.trim().trim('"', '\'', '“', '”', '‘', '’') }
+            .filter { it.isNotBlank() }
+            .distinctBy { it.lowercase(Locale.ROOT) }
+    }
+
+    private fun extractAlternateTitles(description: String): List<String> {
+        val labelPattern = Regex(
+            "(?i)^\\s*(?:alt(?:ernative|\\.)?|other|also\\s+known\\s+as|aka|synonyms?|associated\\s+names?)" +
+                "\\s*(?:title|titles|name|names|title\\(s\\)|name\\(s\\))?\\s*[:：\\-–—]\\s*(.*)$"
+        )
+        val bulletPattern = Regex("^\\s*(?:[-*•·・‣▪►–—]|\\d+[.)])\\s*(.+?)\\s*$")
+        val results = mutableListOf<String>()
+        val lines = description.split('\n')
+        var i = 0
+        while (i < lines.size) {
+            val match = labelPattern.matchEntire(lines[i])
+            if (match == null) { i++; continue }
+            val inline = match.groupValues[1].trim()
+            if (inline.isNotEmpty()) {
+                splitInlineNames(inline).forEach { results.add(it) }
+            }
+            var j = i + 1
+            while (j < lines.size) {
+                val line = lines[j]
+                if (line.isBlank()) { j++; continue }
+                val bullet = bulletPattern.matchEntire(line)
+                if (bullet != null) {
+                    val name = bullet.groupValues[1].trim()
+                    if (name.isNotBlank()) results.add(name)
+                    j++
+                } else break
+            }
+            i = j
+        }
+        return results.filter { it.length in 2..120 }
+    }
+
+    private fun splitInlineNames(payload: String): List<String> {
+        val strong = charArrayOf(';', '|', '/', '・', '·')
+        val separators = if (strong.any { payload.contains(it) }) strong else charArrayOf(',')
+        return payload.split(*separators)
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
     }
 }

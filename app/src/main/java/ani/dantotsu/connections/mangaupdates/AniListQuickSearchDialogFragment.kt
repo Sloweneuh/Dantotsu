@@ -171,46 +171,49 @@ class AniListQuickSearchDialogFragment : BottomSheetDialogFragment() {
                 } catch (_: Throwable) {
                     results = null
                 } finally {
-                    searchWatchdog?.let { binding.searchProgress.removeCallbacks(it) }
+                    val b = _binding
+                    searchWatchdog?.let { b?.searchProgress?.removeCallbacks(it) }
                     searchWatchdog = null
                     searchJob = null
-                    binding.searchProgressContainer.visibility = View.GONE
+                    if (b != null) {
+                        b.searchProgressContainer.visibility = View.GONE
 
-                    if (!results.isNullOrEmpty()) {
-                        val mutableResults = ArrayList(results)
-                        binding.searchRecyclerView.visibility = View.VISIBLE
-                        binding.searchRecyclerView.adapter = QuickResultsAdapter(mutableResults) { media ->
-                            if (!requestKey.isNullOrBlank()) {
-                                parentFragmentManager.setFragmentResult(
-                                    requestKey,
-                                    Bundle().apply {
-                                        putInt("mediaId", media.id)
-                                        putString("title", media.userPreferredName.ifBlank { media.mainName() })
-                                        putString("cover", media.cover)
-                                    }
-                                )
-                                dismiss()
-                            } else {
-                                applyExtensionLink(media.id)
-                                startActivity(
-                                    Intent(requireContext(), MediaDetailsActivity::class.java)
-                                        .putExtra("mediaId", media.id)
-                                )
+                        if (!results.isNullOrEmpty()) {
+                            val mutableResults = ArrayList(results)
+                            b.searchRecyclerView.visibility = View.VISIBLE
+                            b.searchRecyclerView.adapter = QuickResultsAdapter(mutableResults) { media ->
+                                if (!requestKey.isNullOrBlank()) {
+                                    parentFragmentManager.setFragmentResult(
+                                        requestKey,
+                                        Bundle().apply {
+                                            putInt("mediaId", media.id)
+                                            putString("title", media.userPreferredName.ifBlank { media.mainName() })
+                                            putString("cover", media.cover)
+                                        }
+                                    )
+                                    dismiss()
+                                } else {
+                                    applyExtensionLink(media.id)
+                                    startActivity(
+                                        Intent(requireContext(), MediaDetailsActivity::class.java)
+                                            .putExtra("mediaId", media.id)
+                                    )
+                                }
                             }
-                        }
-                        binding.searchRecyclerView.layoutManager = GridLayoutManager(
-                            requireActivity(),
-                            clamp(requireActivity().resources.displayMetrics.widthPixels / 124f.px, 1, 4)
-                        )
-                        binding.searchEmptyContainer.visibility = View.GONE
-                    } else {
-                        binding.searchRecyclerView.visibility = View.GONE
-                        binding.searchRecyclerView.adapter = null
-                        binding.searchEmptyContainer.visibility = View.VISIBLE
-                        binding.searchEmptyText.text = when {
-                            timedOut -> getString(R.string.search_timeout)
-                            results == null -> getString(R.string.search_fetch_error)
-                            else -> getString(R.string.search_no_results)
+                            b.searchRecyclerView.layoutManager = GridLayoutManager(
+                                requireActivity(),
+                                clamp(requireActivity().resources.displayMetrics.widthPixels / 124f.px, 1, 4)
+                            )
+                            b.searchEmptyContainer.visibility = View.GONE
+                        } else {
+                            b.searchRecyclerView.visibility = View.GONE
+                            b.searchRecyclerView.adapter = null
+                            b.searchEmptyContainer.visibility = View.VISIBLE
+                            b.searchEmptyText.text = when {
+                                timedOut -> getString(R.string.search_timeout)
+                                results == null -> getString(R.string.search_fetch_error)
+                                else -> getString(R.string.search_no_results)
+                            }
                         }
                     }
                 }
