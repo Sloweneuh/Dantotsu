@@ -1518,8 +1518,7 @@ class MangaReaderActivity : AppCompatActivity() {
                 )
                 else false
             val incognito: Boolean = PrefManager.getVal(PrefName.Incognito)
-            val isContinuousMultiChapter = PrefManager.getVal<Boolean>(PrefName.ContinuousMultiChapter)
-            if (showProgressDialog && !incognito && !isContinuousMultiChapter) {
+            if (showProgressDialog && !incognito) {
 
                 val dialogView = layoutInflater.inflate(R.layout.item_custom_dialog, null)
                 val checkbox = dialogView.findViewById<CheckBox>(R.id.dialog_checkbox)
@@ -1569,8 +1568,9 @@ class MangaReaderActivity : AppCompatActivity() {
 
 
     /**
-     * Silently updates progress when crossing a chapter boundary
-     * in continuous multi-chapter mode, based on the user's preference established on open.
+     * Updates progress when crossing a chapter boundary in continuous multi-chapter mode.
+     * Honors the same AskIndividualReader / per-media "don't ask again" flow as the
+     * regular reader so the two readers agree on when to ask vs. save silently.
      */
     private fun updateMultiChapterProgressSilently(completedChapter: MangaChapter) {
         if (Anilist.userid == null) return
@@ -1580,7 +1580,32 @@ class MangaReaderActivity : AppCompatActivity() {
 
         val chapterNum = MediaNameAdapter.findChapterNumber(completedChapter.number)?.toString() ?: return
 
-        if (PrefManager.getCustomVal("${media.id}_save_progress", true)) {
+        val shouldAsk = PrefManager.getVal<Boolean>(PrefName.AskIndividualReader)
+                && PrefManager.getCustomVal("${media.id}_progressDialog", true)
+
+        if (shouldAsk) {
+            val dialogView = layoutInflater.inflate(R.layout.item_custom_dialog, null)
+            val checkbox = dialogView.findViewById<CheckBox>(R.id.dialog_checkbox)
+            checkbox.text = getString(R.string.dont_ask_again, media.userPreferredName)
+            checkbox.setOnCheckedChangeListener { _, isChecked ->
+                PrefManager.setCustomVal("${media.id}_progressDialog", !isChecked)
+                showProgressDialog = !isChecked
+            }
+            customAlertDialog().apply {
+                setTitle(R.string.title_update_progress)
+                setCustomView(dialogView)
+                setCancelable(false)
+                setPosButton(R.string.yes) {
+                    PrefManager.setCustomVal("${media.id}_save_progress", true)
+                    updateProgress(media, chapterNum)
+                }
+                setNegButton(R.string.no) {
+                    PrefManager.setCustomVal("${media.id}_save_progress", false)
+                }
+                setOnCancelListener { hideSystemBars() }
+                show()
+            }
+        } else if (PrefManager.getCustomVal("${media.id}_save_progress", true)) {
             updateProgress(media, chapterNum)
         }
     }
