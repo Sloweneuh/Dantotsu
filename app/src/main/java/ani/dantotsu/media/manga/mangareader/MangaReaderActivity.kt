@@ -903,7 +903,9 @@ class MangaReaderActivity : AppCompatActivity() {
                 if (!isContinuousMultiChapter) {
                     scrollToPosition(currentPage / (dualPage { 2 } ?: 1) - 1)
                 } else {
-                    scrollToPosition(0)
+                    val startOfChapter = continuousAdapter?.getChapterStartPosition(currentChapterIndex) ?: 0
+                    val target = (startOfChapter + (currentChapterPage.toInt() - 1)).coerceAtLeast(0)
+                    scrollToPosition(target)
                 }
             }
         } else {
@@ -937,7 +939,10 @@ class MangaReaderActivity : AppCompatActivity() {
                 if (!isContinuousMultiChapter) {
                     setCurrentItem(currentPage / (dualPage { 2 } ?: 1) - 1, false)
                 } else {
-                    setCurrentItem(continuousAdapter?.firstImagePosition() ?: 0, false)
+                    val startOfChapter = continuousAdapter?.getChapterStartPosition(currentChapterIndex)
+                        ?: continuousAdapter?.firstImagePosition() ?: 0
+                    val target = (startOfChapter + (currentChapterPage.toInt() - 1)).coerceAtLeast(0)
+                    setCurrentItem(target, false)
                 }
             }
             onVolumeUp = {
@@ -1240,8 +1245,10 @@ class MangaReaderActivity : AppCompatActivity() {
             } else handleController(false)
         }
 
-        // Track current chapter based on what's visible
-        val visibleChapterIdx = adapter.getChapterIndexAt(lastVisible)
+        // Track current chapter based on the last visible Image (skip Transition/Boundary
+        // so progress keeps tracking the chapter when those non-image items are on screen).
+        val refPos = adapter.lastImagePositionAtOrBefore(lastVisible)
+        val visibleChapterIdx = if (refPos >= 0) adapter.getChapterIndexAt(refPos) else null
         if (visibleChapterIdx != null && visibleChapterIdx != lastTrackedChapterIndex) {
             // Chapter changed — update progress for the previous chapter
             if (lastTrackedChapterIndex >= 0 && lastTrackedChapterIndex != visibleChapterIdx) {
@@ -1266,12 +1273,16 @@ class MangaReaderActivity : AppCompatActivity() {
             }
         }
 
-        // Update page number within current chapter
-        val pageInChapter = adapter.getPageInChapter(lastVisible)
+        // Update page number within current chapter (use the last image, not boundary/transition)
+        val pageInChapter = if (refPos >= 0) adapter.getPageInChapter(refPos) else 0
         val totalPages = adapter.getPageCountForChapter(visibleChapterIdx ?: currentChapterIndex)
         if (totalPages > 0) {
             maxChapterPage = totalPages.toLong()
-            currentChapterPage = pageInChapter.toLong()
+            val newPage = pageInChapter.toLong()
+            if (currentChapterPage != newPage && newPage > 0) {
+                currentChapterPage = newPage
+                PrefManager.setCustomVal("${media.id}_${chapter.number}", currentChapterPage)
+            }
             binding.mangaReaderPageNumber.text =
                 if (defaultSettings.hidePageNumbers) "" else "$pageInChapter/$totalPages"
             if (!sliding && totalPages > 1) {
@@ -1314,8 +1325,10 @@ class MangaReaderActivity : AppCompatActivity() {
     private fun handlePagedMultiChapterPage(position: Int) {
         val adapter = continuousAdapter ?: return
 
-        // Track current chapter based on current page
-        val visibleChapterIdx = adapter.getChapterIndexAt(position)
+        // Track current chapter based on the last image at-or-before the visible page so
+        // boundary/transition pages still resolve to the active chapter.
+        val refPos = adapter.lastImagePositionAtOrBefore(position)
+        val visibleChapterIdx = if (refPos >= 0) adapter.getChapterIndexAt(refPos) else null
         if (visibleChapterIdx != null && visibleChapterIdx != lastTrackedChapterIndex) {
             if (lastTrackedChapterIndex >= 0 && lastTrackedChapterIndex != visibleChapterIdx) {
                 val prevKey = chaptersArr.getOrNull(lastTrackedChapterIndex)
@@ -1338,12 +1351,16 @@ class MangaReaderActivity : AppCompatActivity() {
             }
         }
 
-        // Update page number within current chapter
-        val pageInChapter = adapter.getPageInChapter(position)
+        // Update page number within current chapter (use the last image, not boundary/transition)
+        val pageInChapter = if (refPos >= 0) adapter.getPageInChapter(refPos) else 0
         val totalPages = adapter.getPageCountForChapter(visibleChapterIdx ?: currentChapterIndex)
         if (totalPages > 0) {
             maxChapterPage = totalPages.toLong()
-            currentChapterPage = pageInChapter.toLong()
+            val newPage = pageInChapter.toLong()
+            if (currentChapterPage != newPage && newPage > 0) {
+                currentChapterPage = newPage
+                PrefManager.setCustomVal("${media.id}_${chapter.number}", currentChapterPage)
+            }
             binding.mangaReaderPageNumber.text =
                 if (defaultSettings.hidePageNumbers) "" else "$pageInChapter/$totalPages"
             if (!sliding && totalPages > 1) {

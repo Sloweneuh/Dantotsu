@@ -595,7 +595,14 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
             )
 
         override fun onBindViewHolder(holder: StreamViewHolder, position: Int) {
-            val extractor = links[position]
+            val extractor = links.getOrNull(position) as? VideoExtractor
+            if (extractor == null) {
+                holder.binding.streamName.visibility = View.GONE
+                holder.binding.streamRecyclerView.adapter = null
+                holder.itemView.visibility = View.GONE
+                return
+            }
+            holder.itemView.visibility = View.VISIBLE
             holder.binding.streamName.text = ""//extractor.server.name
             holder.binding.streamName.visibility = View.GONE
 
@@ -621,7 +628,7 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
 
         fun performClick(position: Int) {
             try {
-                val extractor = links[position]
+                val extractor = links.getOrNull(position) as? VideoExtractor ?: return
                 media!!.anime!!.episodes!![media!!.anime!!.selectedEpisode!!]?.selectedExtractor =
                     extractor.server.name
                 media!!.anime!!.episodes!![media!!.anime!!.selectedEpisode!!]?.selectedVideo = 0

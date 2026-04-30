@@ -895,10 +895,11 @@ class HomeFragment : Fragment() {
                                         )
                                         binding.homeUnreadChaptersRecyclerView.visibility = View.VISIBLE
                                         binding.homeUnreadChaptersEmpty.visibility = View.GONE
-                                        binding.homeUnreadChaptersRecyclerView.layoutAnimation =
+                                        val unreadRv = binding.homeUnreadChaptersRecyclerView
+                                        unreadRv.layoutAnimation =
                                             LayoutAnimationController(setSlideIn(), 0.25f)
-                                        binding.homeUnreadChaptersRecyclerView.post {
-                                            binding.homeUnreadChaptersRecyclerView.scheduleLayoutAnimation()
+                                        unreadRv.post {
+                                            if (_binding != null) unreadRv.scheduleLayoutAnimation()
                                         }
                                 } else if (muUnread.isNotEmpty()) {
                                     // No MALSync data but MU has unread — show MU-only list
@@ -1410,9 +1411,10 @@ class HomeFragment : Fragment() {
                     }
                     binding.homeUnreadChaptersRecyclerView.visibility = View.VISIBLE
                     binding.homeUnreadChaptersEmpty.visibility = View.GONE
-                    binding.homeUnreadChaptersRecyclerView.layoutAnimation = LayoutAnimationController(setSlideIn(), 0.25f)
-                    binding.homeUnreadChaptersRecyclerView.post {
-                        binding.homeUnreadChaptersRecyclerView.scheduleLayoutAnimation()
+                    val unreadRv = binding.homeUnreadChaptersRecyclerView
+                    unreadRv.layoutAnimation = LayoutAnimationController(setSlideIn(), 0.25f)
+                    unreadRv.post {
+                        if (_binding != null) unreadRv.scheduleLayoutAnimation()
                     }
                 } else {
                     binding.homeUnreadChaptersRecyclerView.visibility = View.GONE

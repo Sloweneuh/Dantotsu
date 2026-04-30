@@ -234,6 +234,17 @@ class ContinuousChapterAdapter(
         return items.indexOfFirst { it is ReaderItem.Image }.coerceAtLeast(0)
     }
 
+    /**
+     * Returns the position of the most recent Image item at or before [position],
+     * or -1 if none exists. Used to keep page/chapter tracking stable when the
+     * visible item is a Transition or Boundary.
+     */
+    fun lastImagePositionAtOrBefore(position: Int): Int {
+        var p = position.coerceAtMost(items.size - 1)
+        while (p >= 0 && items[p] !is ReaderItem.Image) p--
+        return p
+    }
+
     override fun getItemViewType(position: Int): Int {
         return when (items[position]) {
             is ReaderItem.Image -> TYPE_IMAGE

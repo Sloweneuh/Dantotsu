@@ -76,6 +76,8 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
 
                 var total: Int? = null
                 binding.mediaListProgress.setText(if (media!!.userProgress != null) media!!.userProgress.toString() else "")
+                binding.mediaListVolumeLayout.visibility =
+                    if (media!!.manga != null) View.VISIBLE else View.GONE
                 if (media!!.anime != null) {
                     if (media!!.anime!!.totalEpisodes != null) {
                         total = media!!.anime!!.totalEpisodes!!
