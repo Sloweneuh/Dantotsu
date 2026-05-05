@@ -49,6 +49,7 @@ class SearchActivity : AppCompatActivity() {
     val model: AnilistSearch by viewModels()
 
     var style: Int = 0
+    var supportStyle: Int = 0
     lateinit var searchType: SearchType
     private var screenWidth: Float = 0f
 
@@ -92,6 +93,8 @@ class SearchActivity : AppCompatActivity() {
 
         val notSet = model.notSet
         searchType = SearchType.fromString(intent.getStringExtra("type") ?: "ANIME")
+        supportStyle = PrefManager.getVal(PrefName.SearchStyleSupporting)
+
         when (searchType) {
             SearchType.ANIME, SearchType.MANGA -> {
                 style = PrefManager.getVal(PrefName.SearchStyle)
@@ -212,7 +215,7 @@ class SearchActivity : AppCompatActivity() {
                     )
                 }
                 muSearchResult = model.muSearchResults
-                muSearchAdaptor = MUMediaAdapter(model.muSearchResults.results)
+                muSearchAdaptor = MUMediaAdapter(model.muSearchResults.results, type = supportStyle)
             }
 
             SearchType.COMICK -> {
@@ -249,7 +252,7 @@ class SearchActivity : AppCompatActivity() {
                     )
                 }
                 comickSearchResult = model.comickSearchResults
-                comickSearchAdaptor = ComickSearchAdapter(model.comickSearchResults.results) { comic ->
+                comickSearchAdaptor = ComickSearchAdapter(model.comickSearchResults.results, supportStyle) { comic ->
                     onComickResultClicked(comic)
                 }
             }
@@ -269,9 +272,16 @@ class SearchActivity : AppCompatActivity() {
                 return when (position) {
                     0 -> gridSize
                     concatAdapter.itemCount - 1 -> gridSize
-                    else -> when (style) {
-                        0 -> 1
-                        else -> gridSize
+                    else -> {
+                        val currentStyle = when (searchType) {
+                            SearchType.MANGAUPDATES, SearchType.COMICK -> supportStyle
+                            SearchType.ANIME, SearchType.MANGA -> style
+                            else -> 0
+                        }
+                        when (currentStyle) {
+                            0 -> 1
+                            else -> gridSize
+                        }
                     }
                 }
             }
@@ -630,6 +640,21 @@ class SearchActivity : AppCompatActivity() {
         if (searchType == SearchType.ANIME || searchType == SearchType.MANGA) {
             mediaAdaptor.type = style
             mediaAdaptor.notifyDataSetChanged()
+        }
+    }
+
+    @SuppressLint("NotifyDataSetChanged")
+    fun recyclerSupporting() {
+        when (searchType) {
+            SearchType.MANGAUPDATES -> {
+                muSearchAdaptor.type = supportStyle
+                muSearchAdaptor.notifyDataSetChanged()
+            }
+            SearchType.COMICK -> {
+                comickSearchAdaptor.type = supportStyle
+                comickSearchAdaptor.notifyDataSetChanged()
+            }
+            else -> Unit
         }
     }
 

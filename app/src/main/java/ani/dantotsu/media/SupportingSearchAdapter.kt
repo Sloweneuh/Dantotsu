@@ -52,8 +52,36 @@ class SupportingSearchAdapter(private val activity: SearchActivity, private val 
         }
 
         binding.searchByImage.visibility = View.GONE
-        binding.searchResultGrid.visibility = View.GONE
-        binding.searchResultList.visibility = View.GONE
+
+        if (type == SearchType.MANGAUPDATES || type == SearchType.COMICK) {
+            when (activity.supportStyle) {
+                0 -> {
+                    binding.searchResultGrid.alpha = 1f
+                    binding.searchResultList.alpha = 0.33f
+                }
+                else -> {
+                    binding.searchResultList.alpha = 1f
+                    binding.searchResultGrid.alpha = 0.33f
+                }
+            }
+            binding.searchResultGrid.setOnClickListener {
+                it.alpha = 1f
+                binding.searchResultList.alpha = 0.33f
+                activity.supportStyle = 0
+                PrefManager.setVal(PrefName.SearchStyleSupporting, 0)
+                activity.recyclerSupporting()
+            }
+            binding.searchResultList.setOnClickListener {
+                it.alpha = 1f
+                binding.searchResultGrid.alpha = 0.33f
+                activity.supportStyle = 1
+                PrefManager.setVal(PrefName.SearchStyleSupporting, 1)
+                activity.recyclerSupporting()
+            }
+        } else {
+            binding.searchResultGrid.visibility = View.GONE
+            binding.searchResultList.visibility = View.GONE
+        }
 
         if (type == SearchType.MANGAUPDATES || type == SearchType.COMICK) {
             binding.searchFilter.visibility = View.VISIBLE

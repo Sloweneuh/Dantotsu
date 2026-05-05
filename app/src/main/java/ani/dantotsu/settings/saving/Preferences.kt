@@ -227,6 +227,7 @@ enum class PrefName(val data: Pref) {
     ImageUrl(Pref(Location.Irrelevant, String::class, "")),
     AllowOpeningLinks(Pref(Location.Irrelevant, Boolean::class, false)),
     SearchStyle(Pref(Location.Irrelevant, Int::class, 0)),
+    SearchStyleSupporting(Pref(Location.Irrelevant, Int::class, 0)),
     HasUpdatedPrefs(Pref(Location.Irrelevant, Boolean::class, false)),
     LangSort(Pref(Location.Irrelevant, String::class, "all")),
     GenresList(Pref(Location.Irrelevant, Set::class, setOf<String>())),
