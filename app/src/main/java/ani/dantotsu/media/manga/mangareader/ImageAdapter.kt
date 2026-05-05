@@ -3,6 +3,7 @@ package ani.dantotsu.media.manga.mangareader
 import android.animation.ObjectAnimator
 import android.content.res.Resources.getSystem
 import android.graphics.Bitmap
+import android.graphics.PointF
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -19,6 +20,7 @@ import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import com.bumptech.glide.load.resource.bitmap.BitmapTransformation
 import com.davemorrissey.labs.subscaleview.ImageSource
+import com.davemorrissey.labs.subscaleview.ImageViewState
 import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
 import kotlinx.coroutines.launch
 
@@ -89,26 +91,36 @@ open class ImageAdapter(
         if (settings.layout != PAGED)
             parent.updateLayoutParams {
                 if (settings.direction != LEFT_TO_RIGHT && settings.direction != RIGHT_TO_LEFT) {
+                    sWidth -= parent.paddingLeft + parent.paddingRight
                     sHeight =
                         if (settings.wrapImages) bitmap.height else (sWidth * bitmap.height * 1f / bitmap.width).toInt()
-                    height = sHeight
+                    height = sHeight + parent.paddingTop + parent.paddingBottom
                 } else {
+                    sHeight -= parent.paddingTop + parent.paddingBottom
                     sWidth =
                         if (settings.wrapImages) bitmap.width else (sHeight * bitmap.width * 1f / bitmap.height).toInt()
-                    width = sWidth
+                    width = sWidth + parent.paddingLeft + parent.paddingRight
                 }
             }
 
-        imageView.visibility = View.VISIBLE
-        imageView.setImage(ImageSource.cachedBitmap(bitmap))
-
-        val parentArea = sWidth * sHeight * 1f
-        val bitmapArea = bitmap.width * bitmap.height * 1f
-        val scale =
-            if (parentArea < bitmapArea) (bitmapArea / parentArea) else (parentArea / bitmapArea)
+        val scaleX = sWidth * 1f / bitmap.width
+        val scaleY = sHeight * 1f / bitmap.height
+        val scale = when {
+            settings.layout == PAGED -> minOf(scaleX, scaleY)
+            settings.direction != LEFT_TO_RIGHT && settings.direction != RIGHT_TO_LEFT -> scaleX
+            else -> scaleY
+        }
 
         imageView.maxScale = scale * 1.1f
         imageView.minScale = scale
+
+        // Pass an explicit initial state so the SSIV doesn't auto-fit against
+        // stale (placeholder) view dimensions while a layout pass is still pending.
+        imageView.visibility = View.VISIBLE
+        imageView.setImage(
+            ImageSource.cachedBitmap(bitmap),
+            ImageViewState(scale, PointF(bitmap.width / 2f, bitmap.height / 2f), 0)
+        )
 
         ObjectAnimator.ofFloat(parent, "alpha", 0f, 1f)
             .setDuration((400 * PrefManager.getVal<Float>(PrefName.AnimationSpeed)).toLong())

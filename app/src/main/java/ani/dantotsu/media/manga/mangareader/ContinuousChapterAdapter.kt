@@ -3,6 +3,7 @@ package ani.dantotsu.media.manga.mangareader
 import android.animation.ObjectAnimator
 import android.content.res.Resources.getSystem
 import android.graphics.Bitmap
+import android.graphics.PointF
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -19,6 +20,7 @@ import ani.dantotsu.settings.saving.PrefName
 import com.alexvasilkov.gestures.views.GestureFrameLayout
 import com.bumptech.glide.load.resource.bitmap.BitmapTransformation
 import com.davemorrissey.labs.subscaleview.ImageSource
+import com.davemorrissey.labs.subscaleview.ImageViewState
 import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
 import ani.dantotsu.media.manga.mangareader.BaseImageAdapter.Companion.loadBitmap
 import kotlinx.coroutines.launch
@@ -374,16 +376,20 @@ class ContinuousChapterAdapter(
 
         // Continuous layout sizing
         if (settings.padding) {
+            // Always keep the trailing-edge spacing between consecutive pages.
             // If this image is the first page of a chapter and the previous adapter item
-            // is a Transition or Boundary, add leading padding so there's space after the
-            // transition/boundary. Otherwise, keep the usual trailing padding.
+            // is a Transition or Boundary, also add leading-edge padding so there's space
+            // after the transition/boundary.
             val prevIsDivider = position > 0 && (items.getOrNull(position - 1) is ReaderItem.Transition || items.getOrNull(position - 1) is ReaderItem.Boundary)
+            val leading = if (prevIsDivider && (items.getOrNull(position) as? ReaderItem.Image)?.pageIndex == 0) 16f.px else 0
             when (settings.direction) {
-                CurrentReaderSettings.Directions.TOP_TO_BOTTOM -> view.setPadding(0, if (prevIsDivider && (items.getOrNull(position) as? ReaderItem.Image)?.pageIndex == 0) 16f.px else 0, 0, 16f.px)
-                CurrentReaderSettings.Directions.LEFT_TO_RIGHT -> view.setPadding(0, 0, if (prevIsDivider && (items.getOrNull(position) as? ReaderItem.Image)?.pageIndex == 0) 16f.px else 0, 0)
-                CurrentReaderSettings.Directions.BOTTOM_TO_TOP -> view.setPadding(0, 16f.px, 0, if (prevIsDivider && (items.getOrNull(position) as? ReaderItem.Image)?.pageIndex == 0) 16f.px else 0)
-                CurrentReaderSettings.Directions.RIGHT_TO_LEFT -> view.setPadding(if (prevIsDivider && (items.getOrNull(position) as? ReaderItem.Image)?.pageIndex == 0) 16f.px else 0, 0, 0, 0)
+                CurrentReaderSettings.Directions.TOP_TO_BOTTOM -> view.setPadding(0, leading, 0, 16f.px)
+                CurrentReaderSettings.Directions.LEFT_TO_RIGHT -> view.setPadding(leading, 0, 16f.px, 0)
+                CurrentReaderSettings.Directions.BOTTOM_TO_TOP -> view.setPadding(0, 16f.px, 0, leading)
+                CurrentReaderSettings.Directions.RIGHT_TO_LEFT -> view.setPadding(16f.px, 0, leading, 0)
             }
+        } else {
+            view.setPadding(0, 0, 0, 0)
         }
         if (settings.layout != CurrentReaderSettings.Layouts.PAGED) {
             view.updateLayoutParams {
@@ -467,19 +473,18 @@ class ContinuousChapterAdapter(
             parent.updateLayoutParams {
                 if (settings.direction != CurrentReaderSettings.Directions.LEFT_TO_RIGHT &&
                     settings.direction != CurrentReaderSettings.Directions.RIGHT_TO_LEFT) {
+                    sWidth -= parent.paddingLeft + parent.paddingRight
                     sHeight = if (settings.wrapImages) bitmapH
                               else (sWidth * bitmapH * 1f / bitmapW).toInt()
-                    height = sHeight
+                    height = sHeight + parent.paddingTop + parent.paddingBottom
                 } else {
+                    sHeight -= parent.paddingTop + parent.paddingBottom
                     sWidth = if (settings.wrapImages) bitmapW
                              else (sHeight * bitmapW * 1f / bitmapH).toInt()
-                    width = sWidth
+                    width = sWidth + parent.paddingLeft + parent.paddingRight
                 }
             }
         }
-
-        imageView.visibility = View.VISIBLE
-        imageView.setImage(ImageSource.cachedBitmap(bitmap))
 
         // Prefer filling the primary axis for the current reader direction to avoid
         // visible side bars on vertical (top-to-bottom) layout.
@@ -496,6 +501,15 @@ class ContinuousChapterAdapter(
 
         imageView.maxScale = scale * 1.1f
         imageView.minScale = scale
+
+        // Pass an explicit initial state so the SSIV doesn't auto-fit against
+        // stale (placeholder) view dimensions while a layout pass is still pending,
+        // which would otherwise leave the image displaced until the next re-layout.
+        imageView.visibility = View.VISIBLE
+        imageView.setImage(
+            ImageSource.cachedBitmap(bitmap),
+            ImageViewState(scale, PointF(bitmapW / 2f, bitmapH / 2f), 0)
+        )
 
         ObjectAnimator.ofFloat(parent, "alpha", 0f, 1f)
             .setDuration((400 * PrefManager.getVal<Float>(PrefName.AnimationSpeed)).toLong())
