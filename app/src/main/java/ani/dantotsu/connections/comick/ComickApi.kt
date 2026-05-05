@@ -705,7 +705,8 @@ object ComickApi {
                 urlBuilder.addQueryParameter("tags", it)
             }
 
-            if (!allowAdult) {
+            val userPickedRating = !contentRating.isNullOrEmpty()
+            if (!allowAdult && !userPickedRating) {
                 urlBuilder.addQueryParameter("content_rating", "safe")
                 urlBuilder.addQueryParameter("content_rating", "suggestive")
             }
@@ -729,8 +730,7 @@ object ComickApi {
 
             val allResults = gson.fromJson(body, Array<ComickComic>::class.java).toList()
 
-            // Filter by content rating if adult content is not allowed
-            val results = if (!allowAdult) {
+            val results = if (!allowAdult && !userPickedRating) {
                 allResults.filter { comic ->
                     val rating = comic.content_rating?.lowercase()
                     rating == "safe" || rating == "suggestive"
