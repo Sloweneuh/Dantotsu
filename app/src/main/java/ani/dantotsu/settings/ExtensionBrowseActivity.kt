@@ -2,6 +2,7 @@ package ani.dantotsu.settings
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
@@ -9,9 +10,11 @@ import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
 import ani.dantotsu.databinding.ActivityExtensionBrowseBinding
+import ani.dantotsu.databinding.ItemChipBinding
 import ani.dantotsu.initActivity
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.others.LanguageMapper.Companion.getLanguageName
@@ -21,6 +24,7 @@ import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.util.Logger
 import ani.dantotsu.util.customAlertDialog
 import eu.kanade.tachiyomi.animesource.AnimeCatalogueSource
+import eu.kanade.tachiyomi.animesource.model.AnimeFilter
 import eu.kanade.tachiyomi.animesource.model.AnimeFilterList
 import eu.kanade.tachiyomi.animesource.model.AnimesPage
 import eu.kanade.tachiyomi.animesource.model.SAnime
@@ -29,6 +33,7 @@ import eu.kanade.tachiyomi.extension.anime.model.AnimeExtension
 import eu.kanade.tachiyomi.extension.manga.MangaExtensionManager
 import eu.kanade.tachiyomi.extension.manga.model.MangaExtension
 import eu.kanade.tachiyomi.source.CatalogueSource
+import eu.kanade.tachiyomi.source.model.Filter
 import eu.kanade.tachiyomi.source.model.FilterList
 import eu.kanade.tachiyomi.source.model.MangasPage
 import eu.kanade.tachiyomi.source.model.SManga
@@ -57,14 +62,18 @@ class ExtensionBrowseActivity : AppCompatActivity() {
     private var sourceIndex = 0
 
     private val adapter = BrowseMediaAdapter(::openInfo, ::openInBrowser)
+    private val activeFilterAdapter = ActiveFilterChipAdapter()
     private var currentMode: Mode = Mode.POPULAR
     private var currentPage = 1
     private var endReached = false
     private var loadJob: Job? = null
     private var currentFilters: Any? = null // FilterList or AnimeFilterList
+    private var defaultFilters: Any? = null // Snapshot of source defaults; FilterList or AnimeFilterList
     private var currentQuery: String = ""
 
     private enum class Mode { POPULAR, LATEST, FILTER, SEARCH }
+
+    private data class ActiveFilterChip(val label: String, val onRemove: () -> Unit)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -141,6 +150,10 @@ class ExtensionBrowseActivity : AppCompatActivity() {
         binding.extensionBrowseRecycler.layoutManager =
             GridLayoutManager(this, spanCount.coerceAtLeast(2))
         binding.extensionBrowseRecycler.adapter = adapter
+
+        binding.extensionBrowseActiveFilterChips.layoutManager =
+            LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+        binding.extensionBrowseActiveFilterChips.adapter = activeFilterAdapter
         adapter.setImageHeaders(currentSourceHeaders())
         binding.extensionBrowseRecycler.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
@@ -321,6 +334,7 @@ class ExtensionBrowseActivity : AppCompatActivity() {
                 singleChoiceItems(names, sourceIndex) { which ->
                     if (which != sourceIndex) {
                         sourceIndex = which
+                        defaultFilters = null
                         adapter.setImageHeaders(currentSourceHeaders())
                         configureChips()
                         binding.chipPopular.isChecked = true
@@ -361,6 +375,7 @@ class ExtensionBrowseActivity : AppCompatActivity() {
             binding.chipPopular.isChecked = false
             binding.chipLatest.isChecked = false
             load(Mode.FILTER, applied)
+            refreshActiveFilterChips()
         }
         sheet.show(supportFragmentManager, "extension_filter")
     }
@@ -375,7 +390,250 @@ class ExtensionBrowseActivity : AppCompatActivity() {
         binding.chipPopular.isChecked = mode == Mode.POPULAR
         binding.chipLatest.isChecked = mode == Mode.LATEST
         binding.chipFilter.isChecked = mode == Mode.FILTER
+        refreshActiveFilterChips()
         loadPage(1)
+    }
+
+    private fun refreshActiveFilterChips() {
+        val chips = buildActiveFilterChips()
+        activeFilterAdapter.submit(chips)
+        binding.extensionBrowseActiveFilterChips.isVisible = chips.isNotEmpty()
+    }
+
+    private fun ensureDefaultFilters() {
+        if (defaultFilters != null) return
+        defaultFilters = when {
+            animeExtension != null ->
+                (animeExtension!!.sources.getOrNull(sourceIndex) as? AnimeCatalogueSource)
+                    ?.getFilterList()
+            mangaExtension != null ->
+                (mangaExtension!!.sources.getOrNull(sourceIndex) as? CatalogueSource)
+                    ?.getFilterList()
+            else -> null
+        }
+    }
+
+    private fun buildActiveFilterChips(): List<ActiveFilterChip> {
+        val out = mutableListOf<ActiveFilterChip>()
+        when (val current = currentFilters) {
+            is FilterList -> {
+                ensureDefaultFilters()
+                val defaults = (defaultFilters as? FilterList)?.list
+                current.list.forEachIndexed { i, f ->
+                    collectMangaChips(f, defaults?.getOrNull(i), out)
+                }
+            }
+            is AnimeFilterList -> {
+                ensureDefaultFilters()
+                val defaults = (defaultFilters as? AnimeFilterList)?.list
+                current.list.forEachIndexed { i, f ->
+                    collectAnimeChips(f, defaults?.getOrNull(i), out)
+                }
+            }
+        }
+        return out
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun collectMangaChips(
+        f: Filter<*>,
+        default: Filter<*>?,
+        out: MutableList<ActiveFilterChip>,
+    ) {
+        when (f) {
+            is Filter.Select<*> -> {
+                val state = (f as Filter<Int>).state
+                val defaultState = (default as? Filter<Int>)?.state ?: 0
+                if (state != defaultState) {
+                    val value = f.values.getOrNull(state)?.toString() ?: return
+                    out.add(ActiveFilterChip("${f.name}: $value") {
+                        (f as Filter<Int>).state = defaultState
+                    })
+                }
+            }
+            is Filter.Text -> {
+                val state = (f as Filter<String>).state
+                val defaultState = (default as? Filter<String>)?.state ?: ""
+                if (state != defaultState) {
+                    out.add(ActiveFilterChip("${f.name}: $state") {
+                        (f as Filter<String>).state = defaultState
+                    })
+                }
+            }
+            is Filter.CheckBox -> {
+                val state = (f as Filter<Boolean>).state
+                val defaultState = (default as? Filter<Boolean>)?.state ?: false
+                if (state != defaultState) {
+                    out.add(ActiveFilterChip(f.name) {
+                        (f as Filter<Boolean>).state = defaultState
+                    })
+                }
+            }
+            is Filter.TriState -> {
+                val state = (f as Filter<Int>).state
+                val defaultState = (default as? Filter<Int>)?.state ?: Filter.TriState.STATE_IGNORE
+                if (state == defaultState) return
+                val label = when (state) {
+                    Filter.TriState.STATE_INCLUDE -> f.name
+                    Filter.TriState.STATE_EXCLUDE -> getString(R.string.filter_exclude, f.name)
+                    else -> return
+                }
+                out.add(ActiveFilterChip(label) {
+                    (f as Filter<Int>).state = defaultState
+                })
+            }
+            is Filter.Sort -> {
+                val state = (f as Filter<Filter.Sort.Selection?>).state
+                val defaultState = (default as? Filter<Filter.Sort.Selection?>)?.state
+                if (sortSelectionEquals(state, defaultState)) return
+                if (state == null) return
+                val name = f.values.getOrNull(state.index) ?: return
+                val arrow = if (state.ascending) "↑" else "↓"
+                out.add(ActiveFilterChip("${f.name}: $name $arrow") {
+                    (f as Filter<Filter.Sort.Selection?>).state = defaultState
+                })
+            }
+            is Filter.Group<*> -> {
+                val children = (f.state as? List<*>) ?: return
+                val defaultChildren = (default as? Filter.Group<*>)?.state as? List<*>
+                children.forEachIndexed { i, child ->
+                    if (child is Filter<*>) {
+                        collectMangaChips(child, defaultChildren?.getOrNull(i) as? Filter<*>, out)
+                    }
+                }
+            }
+            else -> Unit
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun collectAnimeChips(
+        f: AnimeFilter<*>,
+        default: AnimeFilter<*>?,
+        out: MutableList<ActiveFilterChip>,
+    ) {
+        when (f) {
+            is AnimeFilter.Select<*> -> {
+                val state = (f as AnimeFilter<Int>).state
+                val defaultState = (default as? AnimeFilter<Int>)?.state ?: 0
+                if (state != defaultState) {
+                    val value = f.values.getOrNull(state)?.toString() ?: return
+                    out.add(ActiveFilterChip("${f.name}: $value") {
+                        (f as AnimeFilter<Int>).state = defaultState
+                    })
+                }
+            }
+            is AnimeFilter.Text -> {
+                val state = (f as AnimeFilter<String>).state
+                val defaultState = (default as? AnimeFilter<String>)?.state ?: ""
+                if (state != defaultState) {
+                    out.add(ActiveFilterChip("${f.name}: $state") {
+                        (f as AnimeFilter<String>).state = defaultState
+                    })
+                }
+            }
+            is AnimeFilter.CheckBox -> {
+                val state = (f as AnimeFilter<Boolean>).state
+                val defaultState = (default as? AnimeFilter<Boolean>)?.state ?: false
+                if (state != defaultState) {
+                    out.add(ActiveFilterChip(f.name) {
+                        (f as AnimeFilter<Boolean>).state = defaultState
+                    })
+                }
+            }
+            is AnimeFilter.TriState -> {
+                val state = (f as AnimeFilter<Int>).state
+                val defaultState = (default as? AnimeFilter<Int>)?.state
+                    ?: AnimeFilter.TriState.STATE_IGNORE
+                if (state == defaultState) return
+                val label = when (state) {
+                    AnimeFilter.TriState.STATE_INCLUDE -> f.name
+                    AnimeFilter.TriState.STATE_EXCLUDE -> getString(R.string.filter_exclude, f.name)
+                    else -> return
+                }
+                out.add(ActiveFilterChip(label) {
+                    (f as AnimeFilter<Int>).state = defaultState
+                })
+            }
+            is AnimeFilter.Sort -> {
+                val state = (f as AnimeFilter<AnimeFilter.Sort.Selection?>).state
+                val defaultState = (default as? AnimeFilter<AnimeFilter.Sort.Selection?>)?.state
+                if (animeSortSelectionEquals(state, defaultState)) return
+                if (state == null) return
+                val name = f.values.getOrNull(state.index) ?: return
+                val arrow = if (state.ascending) "↑" else "↓"
+                out.add(ActiveFilterChip("${f.name}: $name $arrow") {
+                    (f as AnimeFilter<AnimeFilter.Sort.Selection?>).state = defaultState
+                })
+            }
+            is AnimeFilter.Group<*> -> {
+                val children = (f.state as? List<*>) ?: return
+                val defaultChildren = (default as? AnimeFilter.Group<*>)?.state as? List<*>
+                children.forEachIndexed { i, child ->
+                    if (child is AnimeFilter<*>) {
+                        collectAnimeChips(
+                            child,
+                            defaultChildren?.getOrNull(i) as? AnimeFilter<*>,
+                            out,
+                        )
+                    }
+                }
+            }
+            else -> Unit
+        }
+    }
+
+    private fun sortSelectionEquals(
+        a: Filter.Sort.Selection?,
+        b: Filter.Sort.Selection?,
+    ): Boolean {
+        if (a === b) return true
+        if (a == null || b == null) return false
+        return a.index == b.index && a.ascending == b.ascending
+    }
+
+    private fun animeSortSelectionEquals(
+        a: AnimeFilter.Sort.Selection?,
+        b: AnimeFilter.Sort.Selection?,
+    ): Boolean {
+        if (a === b) return true
+        if (a == null || b == null) return false
+        return a.index == b.index && a.ascending == b.ascending
+    }
+
+    private inner class ActiveFilterChipAdapter :
+        RecyclerView.Adapter<ActiveFilterChipAdapter.VH>() {
+
+        private var items: List<ActiveFilterChip> = emptyList()
+
+        fun submit(list: List<ActiveFilterChip>) {
+            items = list
+            notifyDataSetChanged()
+        }
+
+        inner class VH(val binding: ItemChipBinding) : RecyclerView.ViewHolder(binding.root)
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
+            val b = ItemChipBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+            return VH(b)
+        }
+
+        override fun onBindViewHolder(holder: VH, position: Int) {
+            val chip = items[position]
+            holder.binding.root.apply {
+                text = chip.label
+                isCloseIconVisible = true
+                val remove = {
+                    chip.onRemove()
+                    val mode = if (currentQuery.isNotEmpty()) Mode.SEARCH else Mode.FILTER
+                    load(mode, currentFilters)
+                }
+                setOnClickListener { remove() }
+                setOnCloseIconClickListener { remove() }
+            }
+        }
+
+        override fun getItemCount(): Int = items.size
     }
 
     private fun loadPage(page: Int) {

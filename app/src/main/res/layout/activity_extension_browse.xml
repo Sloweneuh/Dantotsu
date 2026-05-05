@@ -150,6 +150,21 @@
             app:chipIconVisible="true" />
     </com.google.android.material.chip.ChipGroup>
 
+    <ani.dantotsu.FadingEdgeRecyclerView
+        android:id="@+id/extensionBrowseActiveFilterChips"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:clipToPadding="false"
+        android:fadeScrollbars="true"
+        android:fadingEdge="horizontal"
+        android:orientation="horizontal"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:requiresFadingEdge="horizontal"
+        android:visibility="gone"
+        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+        tools:listitem="@layout/item_chip" />
+
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
