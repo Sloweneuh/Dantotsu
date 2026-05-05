@@ -79,6 +79,12 @@ class ExtensionBrowseActivity : AppCompatActivity() {
         binding.extensionBrowseRecycler.updateLayoutParams<ViewGroup.MarginLayoutParams> {
             bottomMargin = navBarHeight
         }
+        binding.fragmentExtensionsContainer.setPadding(
+            binding.fragmentExtensionsContainer.paddingLeft,
+            statusBarHeight,
+            binding.fragmentExtensionsContainer.paddingRight,
+            binding.fragmentExtensionsContainer.paddingBottom,
+        )
 
         type = intent.getStringExtra(EXTRA_TYPE) ?: TYPE_MANGA
         val pkg = intent.getStringExtra(EXTRA_PKG)

@@ -114,6 +114,13 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
         screenWidth = resources.displayMetrics.widthPixels.toFloat()
         navBar = binding.mediaBottomBar
 
+        binding.fragmentExtensionsContainer.setPadding(
+            binding.fragmentExtensionsContainer.paddingLeft,
+            statusBarHeight,
+            binding.fragmentExtensionsContainer.paddingRight,
+            binding.fragmentExtensionsContainer.paddingBottom,
+        )
+
         // Ensure the side rail is offset from system navigation insets and brought to front
         val rootView = window.decorView.findViewById(android.R.id.content) as View
         ViewCompat.setOnApplyWindowInsetsListener(rootView) { _, insets ->
