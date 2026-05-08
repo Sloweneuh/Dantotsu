@@ -250,6 +250,18 @@ class SearchActivity : AppCompatActivity() {
                         showAll = if (intent.hasExtra("showAll")) intent.getBooleanExtra("showAll", false) else null,
                         categories = categories,
                     )
+                    // Seed the genre/category display-name cache so chip labels are correct
+                    // even when the filter bottom sheet has never been opened.
+                    intent.getStringExtra("genre")?.let { slug ->
+                        intent.getStringExtra("genreName")?.let { name ->
+                            ComickApi.seedGenreCache(slug, name)
+                        }
+                    }
+                    intent.getStringExtra("category")?.let { slug ->
+                        intent.getStringExtra("categoryName")?.let { name ->
+                            ComickApi.seedCategoryCache(slug, name)
+                        }
+                    }
                 }
                 comickSearchResult = model.comickSearchResults
                 comickSearchAdaptor = ComickSearchAdapter(model.comickSearchResults.results, supportStyle) { comic ->

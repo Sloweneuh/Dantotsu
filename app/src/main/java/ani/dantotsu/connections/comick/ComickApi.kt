@@ -65,6 +65,20 @@ object ComickApi {
 
     fun resolveCategoryName(slug: String): String? = categoryCache?.firstOrNull { it.slug.equals(slug, ignoreCase = true) }?.name
 
+    /** Pre-populate a single known slug→name entry so the chip label is correct before the full genre list is fetched. */
+    fun seedGenreCache(slug: String, name: String) {
+        val existing = genreCache
+        if (existing != null && existing.any { it.slug.equals(slug, ignoreCase = true) }) return
+        genreCache = (existing ?: emptyList()) + FilterOption(slug = slug, name = name)
+    }
+
+    /** Pre-populate a single known slug→name entry so the chip label is correct before the full category list is fetched. */
+    fun seedCategoryCache(slug: String, name: String) {
+        val existing = categoryCache
+        if (existing != null && existing.any { it.slug.equals(slug, ignoreCase = true) }) return
+        categoryCache = (existing ?: emptyList()) + FilterOption(slug = slug, name = name)
+    }
+
     fun resolveCountryName(code: String): String? {
         return when (code.lowercase()) {
             "jp" -> ani.dantotsu.currContext()?.getString(ani.dantotsu.R.string.comick_type_jp)

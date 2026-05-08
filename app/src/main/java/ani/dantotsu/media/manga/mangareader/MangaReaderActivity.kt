@@ -558,9 +558,8 @@ class MangaReaderActivity : AppCompatActivity() {
                             applicationId = Discord.application_Id,
                             type = RPC.Type.WATCHING,
                             activityName = media.userPreferredName,
-                            details = chap.title?.takeIf { it.isNotEmpty() }
-                                ?: getString(R.string.chapter_num, chap.number),
-                            state = "Chapter : ${chap.number}/${media.manga?.totalChapters ?: "??"}",
+                            details = chap.title?.takeIf { it.isNotEmpty() } ?: chap.number,
+                            state = "Chapter ${chap.number}/${media.manga?.totalChapters ?: "??"}",
                             largeImage = media.cover?.let { cover ->
                                 RPC.Link(
                                     media.userPreferredName,
@@ -1250,8 +1249,8 @@ class MangaReaderActivity : AppCompatActivity() {
         val refPos = adapter.lastImagePositionAtOrBefore(lastVisible)
         val visibleChapterIdx = if (refPos >= 0) adapter.getChapterIndexAt(refPos) else null
         if (visibleChapterIdx != null && visibleChapterIdx != lastTrackedChapterIndex) {
-            // Chapter changed — update progress for the previous chapter
-            if (lastTrackedChapterIndex >= 0 && lastTrackedChapterIndex != visibleChapterIdx) {
+            // Chapter changed — update progress for the previous chapter only when moving forward
+            if (lastTrackedChapterIndex >= 0 && visibleChapterIdx > lastTrackedChapterIndex) {
                 val prevKey = chaptersArr.getOrNull(lastTrackedChapterIndex)
                 val prevChap = if (prevKey != null) chapters[prevKey] else null
                 if (prevChap != null) {
@@ -1270,6 +1269,7 @@ class MangaReaderActivity : AppCompatActivity() {
                 PrefManager.setCustomVal("${media.id}_current_chp", chapter.number)
                 binding.mangaReaderChapterSelect.setSelection(currentChapterIndex)
                 updateChapterNavigationText()
+                updateDiscordRPC(currentChap)
             }
         }
 
@@ -1330,7 +1330,7 @@ class MangaReaderActivity : AppCompatActivity() {
         val refPos = adapter.lastImagePositionAtOrBefore(position)
         val visibleChapterIdx = if (refPos >= 0) adapter.getChapterIndexAt(refPos) else null
         if (visibleChapterIdx != null && visibleChapterIdx != lastTrackedChapterIndex) {
-            if (lastTrackedChapterIndex >= 0 && lastTrackedChapterIndex != visibleChapterIdx) {
+            if (lastTrackedChapterIndex >= 0 && visibleChapterIdx > lastTrackedChapterIndex) {
                 val prevKey = chaptersArr.getOrNull(lastTrackedChapterIndex)
                 val prevChap = if (prevKey != null) chapters[prevKey] else null
                 if (prevChap != null) {
@@ -1348,6 +1348,7 @@ class MangaReaderActivity : AppCompatActivity() {
                 PrefManager.setCustomVal("${media.id}_current_chp", chapter.number)
                 binding.mangaReaderChapterSelect.setSelection(currentChapterIndex)
                 updateChapterNavigationText()
+                updateDiscordRPC(currentChap)
             }
         }
 
@@ -1409,6 +1410,38 @@ class MangaReaderActivity : AppCompatActivity() {
             if (prevIdx >= 0 && prevKey != null && !adapter.isChapterLoaded(prevIdx) && !adapter.isChapterLoaded(prevKey)) {
                 loadPreviousChapterInContinuous(prevIdx)
             }
+        }
+    }
+
+    private fun updateDiscordRPC(chap: ani.dantotsu.media.manga.MangaChapter) {
+        val context = this
+        val offline: Boolean = PrefManager.getVal(PrefName.OfflineMode)
+        val incognito: Boolean = PrefManager.getVal(PrefName.Incognito)
+        val rpcEnabled: Boolean = PrefManager.getVal(PrefName.rpcEnabled)
+        if (!isOnline(context) || offline || Discord.token == null || incognito || !rpcEnabled) return
+        lifecycleScope.launch {
+            val buttons = mutableListOf<RPC.Link>()
+            val muUrl = if (media.muSeriesId != null) {
+                media.shareLink?.takeIf { it.contains("mangaupdates") }
+                    ?: "https://www.mangaupdates.com/series/${media.muSeriesId!!.toString(36)}"
+            } else null
+            muUrl?.let { buttons.add(RPC.Link("View on MangaUpdates", it)) }
+            buttons.add(RPC.Link("View Manga", "https://anilist.co/manga/${media.id}/"))
+            media.idMAL?.let {
+                buttons.add(RPC.Link("View on MyAnimeList", "https://myanimelist.net/manga/$it"))
+            }
+            val rpcData = RPC.Companion.RPCData(
+                applicationId = Discord.application_Id,
+                type = RPC.Type.WATCHING,
+                activityName = media.userPreferredName,
+                details = chap.title?.takeIf { it.isNotEmpty() } ?: chap.number,
+                state = "Chapter ${chap.number}/${media.manga?.totalChapters ?: "??"}",
+                largeImage = media.cover?.let { cover ->
+                    RPC.Link(media.userPreferredName, cover)
+                },
+                buttons = buttons
+            )
+            RPCManager.setPresence(context, rpcData)
         }
     }
 

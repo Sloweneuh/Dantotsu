@@ -683,15 +683,23 @@ class ComickInfoFragment : Fragment() {
     private fun startComickSearchInApp(
         query: String? = null,
         genreSlug: String? = null,
+        genreName: String? = null,
         categorySlug: String? = null,
+        categoryName: String? = null,
     ) {
         if (!isAdded) return
         val intent = Intent(requireContext(), SearchActivity::class.java)
             .putExtra("type", SearchType.COMICK.toAnilistString())
 
         if (!query.isNullOrBlank()) intent.putExtra("query", query)
-        if (!genreSlug.isNullOrBlank()) intent.putExtra("genre", genreSlug)
-        if (!categorySlug.isNullOrBlank()) intent.putExtra("category", categorySlug)
+        if (!genreSlug.isNullOrBlank()) {
+            intent.putExtra("genre", genreSlug)
+            if (!genreName.isNullOrBlank()) intent.putExtra("genreName", genreName)
+        }
+        if (!categorySlug.isNullOrBlank()) {
+            intent.putExtra("category", categorySlug)
+            if (!categoryName.isNullOrBlank()) intent.putExtra("categoryName", categoryName)
+        }
 
         if (!query.isNullOrBlank() || !genreSlug.isNullOrBlank() || !categorySlug.isNullOrBlank()) {
             intent.putExtra("search", true)
@@ -1222,7 +1230,7 @@ class ComickInfoFragment : Fragment() {
 
                     // Normal tap: search by genre/tag
                     chip.setOnClickListener {
-                        startComickSearchInApp(genreSlug = genreSlug)
+                        startComickSearchInApp(genreSlug = genreSlug, genreName = genreName)
                     }
 
                     // Long tap: copy genre/tag name
@@ -1277,7 +1285,7 @@ class ComickInfoFragment : Fragment() {
 
                     // Normal tap: search by tag
                     chip.setOnClickListener {
-                        startComickSearchInApp(categorySlug = tagSlug)
+                        startComickSearchInApp(categorySlug = tagSlug, categoryName = title)
                     }
 
                     // Long tap: copy tag name
