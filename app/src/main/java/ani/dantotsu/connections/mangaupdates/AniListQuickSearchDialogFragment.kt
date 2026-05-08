@@ -129,14 +129,15 @@ class AniListQuickSearchDialogFragment : BottomSheetDialogFragment() {
                 binding.searchRecyclerView.visibility = View.GONE
                 binding.searchEmptyContainer.visibility = View.GONE
 
-                searchWatchdog?.let { binding.searchProgress.removeCallbacks(it) }
+                searchWatchdog?.let { _binding?.searchProgress?.removeCallbacks(it) }
                 searchWatchdog = Runnable {
-                    binding.searchProgressContainer.visibility = View.GONE
-                    binding.searchRecyclerView.visibility = View.VISIBLE
-                    binding.searchRecyclerView.adapter = null
+                    val b = _binding ?: return@Runnable
+                    b.searchProgressContainer.visibility = View.GONE
+                    b.searchRecyclerView.visibility = View.VISIBLE
+                    b.searchRecyclerView.adapter = null
                     searchJob?.cancel()
                 }
-                binding.searchProgress.postDelayed(searchWatchdog, 12_000L)
+                _binding?.searchProgress?.postDelayed(searchWatchdog, 12_000L)
 
                 var results: List<Media>? = null
                 var timedOut = false
@@ -290,7 +291,7 @@ class AniListQuickSearchDialogFragment : BottomSheetDialogFragment() {
     override fun onDestroyView() {
         try {
             searchJob?.cancel()
-            searchWatchdog?.let { binding.searchProgress.removeCallbacks(it) }
+            searchWatchdog?.let { _binding?.searchProgress?.removeCallbacks(it) }
         } catch (_: Throwable) {
         }
         searchWatchdog = null
