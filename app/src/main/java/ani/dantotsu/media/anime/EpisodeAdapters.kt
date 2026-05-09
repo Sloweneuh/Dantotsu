@@ -47,6 +47,9 @@ fun handleProgress(cont: LinearLayout, bar: View, empty: View, mediaId: Int, ep:
         empty.layoutParams = params
     } else {
         cont.visibility = View.GONE
+        val barParams = bar.layoutParams as LinearLayout.LayoutParams
+        barParams.weight = 0f
+        bar.layoutParams = barParams
     }
 }
 

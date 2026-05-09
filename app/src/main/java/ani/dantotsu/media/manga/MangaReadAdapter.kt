@@ -674,6 +674,15 @@ class MangaReadAdapter(
                     }
                     previousComparableNumber = currentNumber
                 }
+                // Also count chapters missing before the first available chapter (e.g. Ch1 when source starts at Ch2)
+                val minChapterNumber = orderedChapters
+                    .filter { chapter -> !nonSequentialKeywords.any { chapter.number.lowercase().contains(it) } }
+                    .mapNotNull { resolveChapterNumber(it)?.toInt() }
+                    .minOrNull()
+                if (minChapterNumber != null && minChapterNumber > 1) {
+                    missingCount += minChapterNumber - 1
+                }
+
                 if (missingCount > 0) {
                     val missingLabel = if (missingCount == 1)
                         fragment.getString(R.string.chapter_missing_single)

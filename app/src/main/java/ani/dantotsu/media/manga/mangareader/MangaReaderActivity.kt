@@ -1267,6 +1267,10 @@ class MangaReaderActivity : AppCompatActivity() {
                 chapter = currentChap
                 media.manga!!.selectedChapter = chapter
                 PrefManager.setCustomVal("${media.id}_current_chp", chapter.number)
+                val newTotalPages = adapter.getPageCountForChapter(visibleChapterIdx)
+                if (newTotalPages > 0) {
+                    PrefManager.setCustomVal("${media.id}_${chapter.number}_max", newTotalPages.toLong())
+                }
                 binding.mangaReaderChapterSelect.setSelection(currentChapterIndex)
                 updateChapterNavigationText()
                 updateDiscordRPC(currentChap)
@@ -1346,6 +1350,10 @@ class MangaReaderActivity : AppCompatActivity() {
                 chapter = currentChap
                 media.manga!!.selectedChapter = chapter
                 PrefManager.setCustomVal("${media.id}_current_chp", chapter.number)
+                val newTotalPages = adapter.getPageCountForChapter(visibleChapterIdx)
+                if (newTotalPages > 0) {
+                    PrefManager.setCustomVal("${media.id}_${chapter.number}_max", newTotalPages.toLong())
+                }
                 binding.mangaReaderChapterSelect.setSelection(currentChapterIndex)
                 updateChapterNavigationText()
                 updateDiscordRPC(currentChap)
