@@ -29,6 +29,10 @@ import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.databinding.BottomSheetListFilterBinding
 import ani.dantotsu.databinding.ItemChipBinding
+import ani.dantotsu.media.savedfilters.SavedFilterEntry
+import ani.dantotsu.media.savedfilters.SavedFiltersDialog
+import ani.dantotsu.media.savedfilters.SavedFiltersStore
+import ani.dantotsu.media.savedfilters.SavedListFilter
 import com.google.android.flexbox.FlexDirection
 import com.google.android.flexbox.FlexWrap
 import com.google.android.flexbox.FlexboxLayoutManager
@@ -153,7 +157,67 @@ class ListFilterBottomDialog(
         setupEnglishLicencedFilter()
         setupProviderTabs()
         setupMuFilters()
+
+        binding.savedFiltersButton.setOnClickListener { showSavedFiltersDialog() }
     }
+
+    private fun showSavedFiltersDialog() {
+        SavedFiltersDialog.show(
+            context = requireContext(),
+            loadPresets = {
+                SavedFiltersStore.loadList(isAnime)
+                    .map { SavedFilterEntry(it.name, it.chips()) }
+            },
+            onSaveCurrent = { name ->
+                SavedFiltersStore.saveList(SavedListFilter.from(name, isAnime, buildCurrentFilters()))
+            },
+            onApply = { name ->
+                val preset = SavedFiltersStore.loadList(isAnime)
+                    .firstOrNull { it.name == name } ?: return@show
+                onApply(preset.toFilters())
+                dismiss()
+            },
+            onDelete = { name -> SavedFiltersStore.deleteList(isAnime, name) },
+            onRename = { oldName, newName ->
+                SavedFiltersStore.renameList(isAnime, oldName, newName)
+            },
+        )
+    }
+
+    /** Mirrors the construction in the Apply button click handler. */
+    private fun buildCurrentFilters(): ListFilters = ListFilters(
+        genres = selectedGenres,
+        excludedGenres = selectedExcludedGenres,
+        tags = selectedTags,
+        excludedTags = selectedExcludedTags,
+        formats = listOfNotNull(binding.listFilterFormat.text.toString().takeIf { it.isNotBlank() }),
+        statuses = listOfNotNull(binding.listFilterStatus.text.toString().takeIf { it.isNotBlank() }),
+        sources = listOfNotNull(binding.listFilterSource.text.toString().takeIf { it.isNotBlank() }),
+        season = binding.listFilterSeason.text.toString().takeIf { it.isNotBlank() },
+        year = null,
+        countryOfOrigin = selectedCountry,
+        scoreRange = Pair(
+            binding.listFilterScoreRange.values[0],
+            binding.listFilterScoreRange.values[1]
+        ),
+        yearRange = Pair(
+            binding.listFilterYearRange.values[0].toInt(),
+            binding.listFilterYearRange.values[1].toInt()
+        ),
+        englishLicenced = englishLicenced,
+        muFormat = binding.listMuFilterFormat.text.toString().ifBlank { selectedMuFormat },
+        muYear = binding.listMuFilterYear.text.toString().toIntOrNull() ?: selectedMuYear,
+        muLicensed = when (binding.listMuFilterLicensed.text.toString()) {
+            "Licensed" -> "yes"
+            "Not Licensed" -> "no"
+            else -> selectedMuLicensed
+        },
+        muGenres = selectedMuGenres.toList(),
+        muExcludedGenres = selectedMuExcludedGenres.toList(),
+        muCategories = selectedMuCategories.toList(),
+        muExcludedCategories = selectedMuExcludedCategories.toList(),
+        muStatusFilters = selectedMuStatusFilters.toList(),
+    )
 
     private fun setupProviderTabs() {
         val showMuTab = !isAnime &&

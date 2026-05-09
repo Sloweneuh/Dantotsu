@@ -26,6 +26,10 @@ import ani.dantotsu.R
 import ani.dantotsu.connections.comick.ComickApi
 import ani.dantotsu.databinding.BottomSheetComickSearchFilterBinding
 import ani.dantotsu.databinding.ItemChipBinding
+import ani.dantotsu.media.savedfilters.SavedComickFilter
+import ani.dantotsu.media.savedfilters.SavedFilterEntry
+import ani.dantotsu.media.savedfilters.SavedFiltersDialog
+import ani.dantotsu.media.savedfilters.SavedFiltersStore
 import com.google.android.flexbox.FlexDirection
 import com.google.android.flexbox.FlexWrap
 import com.google.android.flexbox.FlexboxLayoutManager
@@ -115,6 +119,7 @@ class ComickSearchFilterBottomSheet : BottomSheetDialogFragment() {
             applyFilters()
             dismiss()
         }
+        binding.savedFiltersButton.setOnClickListener { showSavedFiltersDialog() }
 
         binding.comickFilterGenresGrid.setOnCheckedChangeListener { _, isChecked ->
             binding.comickFilterGenresRecycler.layoutManager =
@@ -481,6 +486,11 @@ class ComickSearchFilterBottomSheet : BottomSheetDialogFragment() {
     }
 
     private fun applyFilters() {
+        writeUiStateToResult()
+        activity.search()
+    }
+
+    private fun writeUiStateToResult() {
         val r = activity.comickSearchResult
         r.genres = selectedGenres.toMutableList().ifEmpty { null }
         r.excludedGenres = excludedGenres.toMutableList().ifEmpty { null }
@@ -512,8 +522,30 @@ class ComickSearchFilterBottomSheet : BottomSheetDialogFragment() {
             r.fromYear = values[0].toInt()
             r.toYear = values[1].toInt()
         }
+    }
 
-        activity.search()
+    private fun showSavedFiltersDialog() {
+        SavedFiltersDialog.show(
+            context = requireContext(),
+            loadPresets = {
+                SavedFiltersStore.loadComick().map { SavedFilterEntry(it.name, it.chips()) }
+            },
+            onSaveCurrent = { name ->
+                writeUiStateToResult()
+                SavedFiltersStore.saveComick(SavedComickFilter.from(name, activity.comickSearchResult))
+            },
+            onApply = { name ->
+                val preset = SavedFiltersStore.loadComick()
+                    .firstOrNull { it.name == name } ?: return@show
+                preset.applyTo(activity.comickSearchResult)
+                activity.search()
+                dismiss()
+            },
+            onDelete = { name -> SavedFiltersStore.deleteComick(name) },
+            onRename = { oldName, newName ->
+                SavedFiltersStore.renameComick(oldName, newName)
+            },
+        )
     }
 
     private fun resetAll() {

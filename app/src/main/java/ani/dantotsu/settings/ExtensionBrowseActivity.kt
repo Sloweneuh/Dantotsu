@@ -375,7 +375,14 @@ class ExtensionBrowseActivity : AppCompatActivity() {
                     ?.getFilterList() ?: return
             else -> return
         }
-        val sheet = ExtensionFilterBottomSheet.newInstance(filters) { applied ->
+        val sourceId: Long = when {
+            animeExtension != null ->
+                animeExtension!!.sources.getOrNull(sourceIndex)?.id ?: 0L
+            mangaExtension != null ->
+                mangaExtension!!.sources.getOrNull(sourceIndex)?.id ?: 0L
+            else -> 0L
+        }
+        val sheet = ExtensionFilterBottomSheet.newInstance(filters, sourceId) { applied ->
             currentFilters = applied
             binding.chipFilter.isChecked = true
             binding.chipPopular.isChecked = false

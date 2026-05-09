@@ -19,6 +19,10 @@ import ani.dantotsu.R
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.databinding.BottomSheetMuSearchFilterBinding
 import ani.dantotsu.databinding.ItemChipBinding
+import ani.dantotsu.media.savedfilters.SavedFilterEntry
+import ani.dantotsu.media.savedfilters.SavedFiltersDialog
+import ani.dantotsu.media.savedfilters.SavedFiltersStore
+import ani.dantotsu.media.savedfilters.SavedMUFilter
 import com.google.android.flexbox.FlexDirection
 import com.google.android.flexbox.FlexWrap
 import com.google.android.flexbox.FlexboxLayoutManager
@@ -146,6 +150,51 @@ class MUSearchFilterBottomSheet : BottomSheetDialogFragment() {
             applyFilters()
             dismiss()
         }
+        binding.savedFiltersButton.setOnClickListener { showSavedFiltersDialog() }
+    }
+
+    private fun showSavedFiltersDialog() {
+        SavedFiltersDialog.show(
+            context = requireContext(),
+            loadPresets = {
+                SavedFiltersStore.loadMU().map { SavedFilterEntry(it.name, it.chips()) }
+            },
+            onSaveCurrent = { name ->
+                writeUiStateToResult()
+                SavedFiltersStore.saveMU(SavedMUFilter.from(name, activity.muSearchResult))
+            },
+            onApply = { name ->
+                val preset = SavedFiltersStore.loadMU()
+                    .firstOrNull { it.name == name } ?: return@show
+                preset.applyTo(activity.muSearchResult)
+                activity.updateMuChips?.invoke()
+                activity.search()
+                dismiss()
+            },
+            onDelete = { name -> SavedFiltersStore.deleteMU(name) },
+            onRename = { oldName, newName ->
+                SavedFiltersStore.renameMU(oldName, newName)
+            },
+        )
+    }
+
+    /** Same as applyFilters() minus the activity.search()/chip refresh side-effects. */
+    private fun writeUiStateToResult() {
+        val r = activity.muSearchResult
+        r.format = binding.muFilterFormat.text.toString().ifEmpty { null }
+        r.year = binding.muFilterYear.text.toString().toIntOrNull()
+        r.licensed = when (binding.muFilterLicensed.text.toString()) {
+            "Licensed" -> "yes"
+            "Not Licensed" -> "no"
+            else -> null
+        }
+        r.orderBy = sortOptions.firstOrNull { it.second == binding.muFilterSort.text.toString() }
+            ?.first?.ifEmpty { null }
+        r.genres = selectedGenres.toMutableList().ifEmpty { null }
+        r.excludedGenres = excludedGenres.toMutableList().ifEmpty { null }
+        r.categories = selectedCategories.toMutableList().ifEmpty { null }
+        r.excludedCategories = null
+        r.statusFilters = selectedStatusFilters.toMutableList().ifEmpty { null }
     }
 
     private fun setupFormat() {

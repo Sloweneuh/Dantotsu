@@ -16,6 +16,11 @@ import ani.dantotsu.databinding.ItemExtensionFilterSeparatorBinding
 import ani.dantotsu.databinding.ItemExtensionFilterSortBinding
 import ani.dantotsu.databinding.ItemExtensionFilterTextBinding
 import ani.dantotsu.databinding.ItemExtensionFilterTristateBinding
+import ani.dantotsu.media.savedfilters.SavedExtensionFilter
+import ani.dantotsu.media.savedfilters.SavedFilterEntry
+import ani.dantotsu.media.savedfilters.SavedFiltersDialog
+import ani.dantotsu.media.savedfilters.SavedFiltersStore
+import ani.dantotsu.snackString
 import eu.kanade.tachiyomi.animesource.model.AnimeFilter
 import eu.kanade.tachiyomi.animesource.model.AnimeFilterList
 import eu.kanade.tachiyomi.source.model.Filter
@@ -29,23 +34,32 @@ class ExtensionFilterBottomSheet : BottomSheetDialogFragment() {
     companion object {
         private var pendingFilters: Any? = null
         private var pendingCallback: ((Any) -> Unit)? = null
+        private var pendingSourceId: Long = 0L
 
-        fun newInstance(filters: Any, onApply: (Any) -> Unit): ExtensionFilterBottomSheet {
+        fun newInstance(
+            filters: Any,
+            sourceId: Long,
+            onApply: (Any) -> Unit,
+        ): ExtensionFilterBottomSheet {
             pendingFilters = filters
             pendingCallback = onApply
+            pendingSourceId = sourceId
             return ExtensionFilterBottomSheet()
         }
     }
 
     private var filters: Any? = null
     private var onApply: ((Any) -> Unit)? = null
+    private var sourceId: Long = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         filters = pendingFilters
         onApply = pendingCallback
+        sourceId = pendingSourceId
         pendingFilters = null
         pendingCallback = null
+        pendingSourceId = 0L
     }
 
     override fun onCreateView(
@@ -85,6 +99,46 @@ class ExtensionFilterBottomSheet : BottomSheetDialogFragment() {
         binding.extensionFilterReset.setOnClickListener {
             resetAndRender(fl)
         }
+        binding.savedFiltersButton.setOnClickListener { showSavedFiltersDialog(fl) }
+    }
+
+    private fun showSavedFiltersDialog(fl: Any) {
+        SavedFiltersDialog.show(
+            context = requireContext(),
+            loadPresets = {
+                SavedFiltersStore.loadExtension(sourceId).map {
+                    SavedFilterEntry(it.name, SavedFiltersStore.chipsForExtension(it.states, fl))
+                }
+            },
+            onSaveCurrent = { name ->
+                val states = when (fl) {
+                    is FilterList -> SavedFiltersStore.snapshotMangaFilters(fl)
+                    is AnimeFilterList -> SavedFiltersStore.snapshotAnimeFilters(fl)
+                    else -> emptyList()
+                }
+                SavedFiltersStore.saveExtension(sourceId, SavedExtensionFilter(name, states))
+            },
+            onApply = { name ->
+                val preset = SavedFiltersStore.loadExtension(sourceId)
+                    .firstOrNull { it.name == name } ?: return@show
+                val ok = when (fl) {
+                    is FilterList -> SavedFiltersStore.applyMangaFilters(fl, preset.states)
+                    is AnimeFilterList -> SavedFiltersStore.applyAnimeFilters(fl, preset.states)
+                    else -> false
+                }
+                if (!ok) {
+                    snackString(getString(ani.dantotsu.R.string.saved_filters_apply_failed))
+                    return@show
+                }
+                render(fl)
+                onApply?.invoke(fl)
+                dismiss()
+            },
+            onDelete = { name -> SavedFiltersStore.deleteExtension(sourceId, name) },
+            onRename = { oldName, newName ->
+                SavedFiltersStore.renameExtension(sourceId, oldName, newName)
+            },
+        )
     }
 
     private fun resetAndRender(fl: Any) {

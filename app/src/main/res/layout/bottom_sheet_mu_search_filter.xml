@@ -49,10 +49,17 @@
                     android:textAlignment="center"
                     android:textSize="23sp" />
 
-                <View
-                    android:layout_width="47dp"
+                <ImageButton
+                    android:id="@+id/savedFiltersButton"
+                    android:layout_width="30dp"
                     android:layout_height="30dp"
-                    android:layout_marginEnd="17dp" />
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginEnd="17dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/saved_filters"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_round_bookmarks_24"
+                    app:tint="?attr/colorPrimary" />
             </LinearLayout>
 
             <!-- Format + Year dropdowns -->

@@ -27,6 +27,10 @@ import ani.dantotsu.R
 import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.databinding.BottomSheetSearchFilterBinding
 import ani.dantotsu.databinding.ItemChipBinding
+import ani.dantotsu.media.savedfilters.SavedAniMangaFilter
+import ani.dantotsu.media.savedfilters.SavedFilterEntry
+import ani.dantotsu.media.savedfilters.SavedFiltersDialog
+import ani.dantotsu.media.savedfilters.SavedFiltersStore
 import com.google.android.flexbox.FlexDirection
 import com.google.android.flexbox.FlexWrap
 import com.google.android.flexbox.FlexboxLayoutManager
@@ -626,6 +630,97 @@ class SearchFilterBottomDialog : BottomSheetDialogFragment() {
             val searchActive = binding.searchTagsQuickSearchLayout.visibility == View.VISIBLE
             setTagSearchMode(!searchActive)
         }
+
+        binding.savedFiltersButton.setOnClickListener {
+            showSavedFiltersDialog()
+        }
+    }
+
+    private fun showSavedFiltersDialog() {
+        val type = activity.aniMangaResult.type
+        SavedFiltersDialog.show(
+            context = requireContext(),
+            loadPresets = {
+                SavedFiltersStore.loadAniManga(type)
+                    .map { SavedFilterEntry(it.name, it.chips()) }
+            },
+            onSaveCurrent = { name ->
+                writeUiStateToResult()
+                SavedFiltersStore.saveAniManga(
+                    SavedAniMangaFilter.from(name, activity.aniMangaResult)
+                )
+            },
+            onApply = { name ->
+                val preset = SavedFiltersStore.loadAniManga(type)
+                    .firstOrNull { it.name == name } ?: return@show
+                preset.applyTo(activity.aniMangaResult)
+                // Sync our local mutable lists/flags to the freshly applied preset
+                selectedGenres = activity.aniMangaResult.genres ?: mutableListOf()
+                exGenres = activity.aniMangaResult.excludedGenres ?: mutableListOf()
+                selectedTags = activity.aniMangaResult.tags ?: mutableListOf()
+                exTags = activity.aniMangaResult.excludedTags ?: mutableListOf()
+                isAdult = activity.aniMangaResult.isAdult
+                listOnly = activity.aniMangaResult.onList
+                applyResultStateToUi()
+                activity.updateChips.invoke()
+                activity.search()
+                dismiss()
+            },
+            onDelete = { name -> SavedFiltersStore.deleteAniManga(type, name) },
+            onRename = { oldName, newName ->
+                SavedFiltersStore.renameAniManga(type, oldName, newName)
+            },
+        )
+    }
+
+    /** Mirrors what [binding.searchFilterApply] does, without dismissing or searching. */
+    private fun writeUiStateToResult() {
+        val rangeStart = binding.searchYearRange.values[0].toInt()
+        val rangeEnd = binding.searchYearRange.values[1].toInt()
+        val minRange = minOf(rangeStart, rangeEnd)
+        val maxRange = maxOf(rangeStart, rangeEnd)
+        val defaultRangeStart = 1970
+        val defaultRangeEnd = Calendar.getInstance().get(Calendar.YEAR) + 1
+        val shouldApplyYearRange = !(minRange == defaultRangeStart && maxRange == defaultRangeEnd)
+        activity.aniMangaResult.apply {
+            status = binding.searchStatus.text.toString().replace(" ", "_").ifBlank { null }
+            source = binding.searchSource.text.toString().replace(" ", "_").ifBlank { null }
+            format = binding.searchFormat.text.toString().ifBlank { null }
+            season = binding.searchSeason.text.toString().ifBlank { null }
+            seasonYear = null
+            startYear = null
+            yearRangeStart = if (shouldApplyYearRange) minRange else null
+            yearRangeEnd = if (shouldApplyYearRange) maxRange else null
+            this.isAdult = this@SearchFilterBottomDialog.isAdult
+            onList = this@SearchFilterBottomDialog.listOnly
+            genres = selectedGenres
+            tags = selectedTags
+            excludedGenres = exGenres
+            excludedTags = exTags
+        }
+    }
+
+    /** Pushes [activity.aniMangaResult] state back into the visible widgets. */
+    private fun applyResultStateToUi() {
+        val r = activity.aniMangaResult
+        setSortByFilterImage()
+        setCountryButton(r.countryOfOrigin)
+        binding.searchStatus.setText(r.status?.replace("_", " ") ?: "", false)
+        binding.searchSource.setText(r.source?.replace("_", " ") ?: "", false)
+        binding.searchFormat.setText(r.format ?: "", false)
+        binding.searchSeason.setText(r.season ?: "", false)
+        binding.searchTagsAdult.isChecked = r.isAdult
+        val maxYear = Calendar.getInstance().get(Calendar.YEAR) + 1
+        val rs = r.yearRangeStart ?: 1970
+        val re = r.yearRangeEnd ?: maxYear
+        binding.searchYearRange.values = listOf(rs.toFloat(), re.toFloat())
+        binding.searchListOnly.checkedState = when (r.onList) {
+            null -> com.google.android.material.checkbox.MaterialCheckBox.STATE_UNCHECKED
+            true -> com.google.android.material.checkbox.MaterialCheckBox.STATE_CHECKED
+            false -> com.google.android.material.checkbox.MaterialCheckBox.STATE_INDETERMINATE
+        }
+        updateTagsList(r.isAdult)
+        updateChips()
     }
 
 

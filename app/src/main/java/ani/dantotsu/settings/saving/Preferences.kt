@@ -4,6 +4,11 @@ import android.graphics.Color
 import ani.dantotsu.connections.comments.AuthResponse
 import ani.dantotsu.connections.mal.MAL
 import ani.dantotsu.media.SearchHistory
+import ani.dantotsu.media.savedfilters.SavedAniMangaFilter
+import ani.dantotsu.media.savedfilters.SavedComickFilter
+import ani.dantotsu.media.savedfilters.SavedExtensionFilterBundle
+import ani.dantotsu.media.savedfilters.SavedListFilter
+import ani.dantotsu.media.savedfilters.SavedMUFilter
 import ani.dantotsu.notifications.comment.CommentStore
 import ani.dantotsu.notifications.subscription.SubscriptionStore
 import ani.dantotsu.notifications.unread.UnreadChapterStore
@@ -47,6 +52,11 @@ enum class PrefName(val data: Pref) {
     SortedStaffSH(Pref(Location.General, List::class, listOf<SearchHistory>())),
     SortedStudioSH(Pref(Location.General, List::class, listOf<SearchHistory>())),
     SortedUserSH(Pref(Location.General, List::class, listOf<SearchHistory>())),
+    SavedAniMangaFilters(Pref(Location.General, List::class, listOf<SavedAniMangaFilter>())),
+    SavedMUFilters(Pref(Location.General, List::class, listOf<SavedMUFilter>())),
+    SavedComickFilters(Pref(Location.General, List::class, listOf<SavedComickFilter>())),
+    SavedListFilters(Pref(Location.General, List::class, listOf<SavedListFilter>())),
+    SavedExtensionFilters(Pref(Location.General, List::class, listOf<SavedExtensionFilterBundle>())),
     NovelSourcesOrder(Pref(Location.General, List::class, listOf<String>())),
     CommentNotificationInterval(Pref(Location.General, Int::class, 0)),
     AnilistNotificationInterval(Pref(Location.General, Int::class, 3)),
