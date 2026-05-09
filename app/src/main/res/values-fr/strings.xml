@@ -123,6 +123,7 @@
     <string name="chapters"> Chapitre(s)</string>
     <string name="total_chaps">Total chapitres</string>
     <string name="latest_chapter">Dernier chapitre</string>
+    <string name="latest_episode">Dernier épisode</string>
     <string name="final_chapter">Chapitre final</string>
     <string name="ep_duration">Durée moyenne</string>
     <string name="season">Saison</string>
@@ -1468,6 +1469,7 @@
     <string name="not_licensed">Non licencié</string>
     <string name="filter_year">Année : %1$d</string>
     <string name="filter_year_range">Années : %1$s</string>
+    <string name="ui_show_system_bars">Montrer les barres du système (menus)</string>
     <string name="search_equivalents_confirm_title">Rechercher des équivalents sur Anilist</string>
     <string name="view_my_mal">Voir mon profil MAL</string>
     <string name="discord_preview">Aperçu</string>
