@@ -327,6 +327,12 @@ class ExtensionBrowseActivity : AppCompatActivity() {
             binding.extensionBrowseLanguage.isVisible = false
             return
         }
+        val englishIndex = when {
+            animeExtension != null -> animeExtension!!.sources.indexOfFirst { it.lang == "en" }
+            mangaExtension != null -> mangaExtension!!.sources.indexOfFirst { it.lang == "en" }
+            else -> -1
+        }
+        if (englishIndex != -1) sourceIndex = englishIndex
         binding.extensionBrowseLanguage.isVisible = true
         binding.extensionBrowseLanguage.setOnClickListener {
             customAlertDialog().apply {
