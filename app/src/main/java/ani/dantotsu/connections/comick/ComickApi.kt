@@ -570,12 +570,13 @@ object ComickApi {
             val html = response.body.string()
             val doc = Jsoup.parse(html)
 
-            // Each cover is inside a `div` whose first immediate child is a `div` containing an img
-            // and the second immediate child is a `div` with the volume badge text.
-            // The wrapper divs have class "h-30 relative".
-            val coverDivs = doc.select("div.relative > div > img[src]")
-                .map { it.parent()?.parent() }
-                .filterNotNull()
+            // Each cover is inside a wrapper `div` with class containing "relative" (e.g. "h-30 relative").
+            // The image may be nested (inside a button) and may use `src`, `data-src` or `srcset`.
+            val coverDivs = doc.select("div.h-30.relative, div.relative")
+                .mapNotNull { wrapper ->
+                    // Only keep wrappers that contain an image element
+                    wrapper.selectFirst("img[src], img[data-src], img[srcset]")?.let { wrapper }
+                }
                 .distinctBy { it }
 
             if (coverDivs.isEmpty()) {
@@ -584,13 +585,28 @@ object ComickApi {
 
             val baseUrl = "https://meo.comick.pictures/"
             val covers = coverDivs.mapNotNull { wrapper ->
-                val img = wrapper.selectFirst("img[src]") ?: return@mapNotNull null
-                val src = img.attr("src").trim().ifBlank { return@mapNotNull null }
+                val img = wrapper.selectFirst("img[src], img[data-src], img[srcset]") ?: return@mapNotNull null
 
-                // Extract b2key from full URL, e.g. "https://meo.comick.pictures/GXZal7.jpg" -> "GXZal7.jpg"
-                val b2key = if (src.startsWith(baseUrl)) src.removePrefix(baseUrl) else src
+                // Prefer `src`, then `data-src`, then parse the highest-quality URL from `srcset`.
+                var src = img.attr("src").trim()
+                if (src.isBlank()) src = img.attr("data-src").trim()
+                if (src.isBlank()) {
+                    val srcset = img.attr("srcset").trim().ifBlank { img.attr("data-srcset").trim() }
+                    if (srcset.isNotBlank()) {
+                        // srcset format: "url1 144w, url2 240w, ..." — pick the last (highest res) URL
+                        src = srcset.split(",").map { it.trim().split(" ")[0] }.lastOrNull() ?: ""
+                    }
+                }
 
-                // Volume badge: the div sibling that contains only a short number string
+                if (src.isBlank()) return@mapNotNull null
+
+                // Normalize protocol-relative URLs
+                if (src.startsWith("//")) src = "https:$src"
+
+                // Extract a concise key (filename) when possible, otherwise keep the full URL
+                val b2key = if (src.startsWith(baseUrl)) src.removePrefix(baseUrl) else src.substringAfterLast('/')
+
+                // Volume badge: the child `div` that doesn't contain an img (usually the small number badge)
                 val vol = wrapper.children()
                     .firstOrNull { child -> child.tagName() == "div" && child.selectFirst("img") == null }
                     ?.text()?.trim()?.takeIf { it.isNotBlank() }
