@@ -33,9 +33,9 @@ import ani.dantotsu.others.calc.BiometricPromptUtils
 import ani.dantotsu.restartApp
 import ani.dantotsu.savePrefsToDownloads
 import ani.dantotsu.startMainActivity
+import ani.dantotsu.settings.saving.BackupTree
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
-import ani.dantotsu.settings.saving.internal.Location
 import ani.dantotsu.settings.saving.internal.PreferenceKeystore
 import ani.dantotsu.settings.saving.internal.PreferencePackager
 import ani.dantotsu.statusBarHeight
@@ -313,54 +313,7 @@ class SettingsCommonActivity : AppCompatActivity() {
                             desc = getString(R.string.backup_restore_desc),
                             icon = R.drawable.backup_restore,
                             onClick = {
-                                StoragePermissions.downloadsPermission(context)
-                                val filteredLocations = Location.entries.filter { it.exportable }
-                                val selectedArray = BooleanArray(filteredLocations.size) { false }
-                                context.customAlertDialog().apply {
-                                    setTitle(R.string.backup_restore)
-                                    multiChoiceItems(
-                                        filteredLocations.map { it.name }.toTypedArray(),
-                                        selectedArray,
-                                    ) { updatedSelection ->
-                                        for (i in updatedSelection.indices) {
-                                            selectedArray[i] = updatedSelection[i]
-                                        }
-                                    }
-                                    setPosButton(R.string.button_restore) {
-                                        openDocumentLauncher.launch(arrayOf("*/*"))
-                                    }
-                                    setNegButton(R.string.button_backup) {
-                                        if (!selectedArray.contains(true)) {
-                                            toast(R.string.no_location_selected)
-                                            return@setNegButton
-                                        }
-                                        val selected =
-                                            filteredLocations.filterIndexed { index, _ -> selectedArray[index] }
-                                        if (selected.contains(Location.Protected)) {
-                                            passwordAlertDialog(true) { password ->
-                                                if (password != null) {
-                                                    savePrefsToDownloads(
-                                                        "DantotsuSettings",
-                                                        PrefManager.exportAllPrefs(selected),
-                                                        context,
-                                                        password,
-                                                    )
-                                                } else {
-                                                    toast(R.string.password_cannot_be_empty)
-                                                }
-                                            }
-                                        } else {
-                                            savePrefsToDownloads(
-                                                "DantotsuSettings",
-                                                PrefManager.exportAllPrefs(selected),
-                                                context,
-                                                null,
-                                            )
-                                        }
-                                    }
-                                    setNeutralButton(R.string.cancel) {}
-                                    show()
-                                }
+                                showBackupRestoreChooser(openDocumentLauncher)
                             },
                         ),
                         Settings(
@@ -569,6 +522,91 @@ class SettingsCommonActivity : AppCompatActivity() {
         // Override the positive button here
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
             handleOkAction()
+        }
+    }
+
+    private fun showBackupRestoreChooser(
+        openDocumentLauncher: androidx.activity.result.ActivityResultLauncher<Array<String>>,
+    ) {
+        StoragePermissions.downloadsPermission(this)
+        customAlertDialog().apply {
+            setTitle(R.string.backup_restore)
+            setMessage(R.string.backup_restore_chooser_msg)
+            setPosButton(R.string.button_backup) {
+                showBackupOptionsDialog()
+            }
+            setNegButton(R.string.button_restore) {
+                openDocumentLauncher.launch(arrayOf("*/*"))
+            }
+            setNeutralButton(R.string.cancel) {}
+            show()
+        }
+    }
+
+    private fun showBackupOptionsDialog() {
+        val context = this
+        val dialogBinding =
+            ani.dantotsu.databinding.DialogBackupOptionsBinding.inflate(layoutInflater)
+
+        val dialog = AlertDialog.Builder(this, R.style.MyPopup)
+            .setTitle(R.string.backup_select_what_msg)
+            .setView(dialogBinding.root)
+            .setPositiveButton(R.string.button_backup, null)
+            .setNegativeButton(R.string.cancel, null)
+            .create()
+
+        var adapter: BackupOptionsAdapter? = null
+        adapter = BackupOptionsAdapter {
+            val count = adapter?.selectedPrefs()?.size ?: 0
+            dialogBinding.backupSelectionSummary.text =
+                resources.getQuantityString(R.plurals.backup_items_selected, count, count)
+        }
+        dialogBinding.backupRecycler.layoutManager = LinearLayoutManager(this)
+        dialogBinding.backupRecycler.adapter = adapter
+        dialogBinding.backupSelectionSummary.text =
+            resources.getQuantityString(R.plurals.backup_items_selected, 0, 0)
+
+        dialogBinding.backupSelectAll.setOnClickListener { adapter.selectAll() }
+        dialogBinding.backupSelectNone.setOnClickListener { adapter.selectNone() }
+
+        dialog.window?.apply {
+            setDimAmount(0.5f)
+            attributes.windowAnimations = android.R.style.Animation_Dialog
+        }
+        dialog.show()
+
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val selected = adapter.selectedPrefs()
+            if (selected.isEmpty()) {
+                toast(R.string.no_settings_selected)
+                return@setOnClickListener
+            }
+            val keys = selected.map { it.name }.toSet()
+            val involvedLocations = BackupTree.involvedLocations
+            val needsPassword = adapter.hasProtectedSelected()
+            if (needsPassword) {
+                passwordAlertDialog(true) { password ->
+                    if (password != null) {
+                        savePrefsToDownloads(
+                            "DantotsuSettings",
+                            PrefManager.exportSelectedPrefs(involvedLocations, keys),
+                            context,
+                            password,
+                        )
+                        dialog.dismiss()
+                    } else {
+                        toast(R.string.password_cannot_be_empty)
+                    }
+                }
+            } else {
+                savePrefsToDownloads(
+                    "DantotsuSettings",
+                    PrefManager.exportSelectedPrefs(involvedLocations, keys),
+                    context,
+                    null,
+                )
+                dialog.dismiss()
+            }
         }
     }
 

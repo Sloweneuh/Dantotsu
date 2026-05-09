@@ -342,6 +342,13 @@ object PrefManager {
         )
     }
 
+    fun exportSelectedPrefs(prefLocation: List<Location>, includeKeys: Set<String>): String {
+        return PreferencePackager.pack(
+            prefLocation.associateWith { getPrefLocation(it) },
+            includeKeys
+        )
+    }
+
 
     /**
      * @param prefs Map of preferences to import
@@ -351,9 +358,9 @@ object PrefManager {
 
     @Suppress("UNCHECKED_CAST")
     fun importAllPrefs(prefs: Map<String, *>, prefLocation: Location): Boolean {
+        if (prefs.isEmpty()) return true
         val pref = getPrefLocation(prefLocation)
         var hadError = false
-        pref.edit().clear().apply()
         with(pref.edit()) {
             prefs.forEach { (key, value) ->
                 when (value) {

@@ -1584,6 +1584,105 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="missing_sequels_title">%1$s missing sequels</string>
     <string name="no_missing_sequels_found">No missing sequels found</string>
 
+    <!-- Backup &amp; restore -->
+    <string name="backup_restore_chooser_msg">Do you want to back up your settings to a file, or restore them from an existing backup?</string>
+    <string name="backup_select_what_msg">Select what to back up</string>
+    <string name="backup_select_all">Select all</string>
+    <string name="backup_select_none">Clear</string>
+    <string name="backup_expand_collapse">Expand or collapse</string>
+    <string name="no_settings_selected">No settings selected</string>
+    <plurals name="backup_items_selected">
+        <item quantity="one">%d setting selected</item>
+        <item quantity="other">%d settings selected</item>
+    </plurals>
+
+    <string name="backup_cat_general">General</string>
+    <string name="backup_cat_general_desc">App-wide preferences and behavior</string>
+    <string name="backup_cat_ui">Appearance &amp; UI</string>
+    <string name="backup_cat_ui_desc">Theme, layout and visual options</string>
+    <string name="backup_cat_player">Anime player</string>
+    <string name="backup_cat_player_desc">Video playback and subtitle preferences</string>
+    <string name="backup_cat_reader">Manga reader</string>
+    <string name="backup_cat_reader_desc">Reading experience for manga</string>
+    <string name="backup_cat_novel">Novel reader</string>
+    <string name="backup_cat_novel_desc">Reading experience for light novels</string>
+    <string name="backup_cat_accounts">Accounts &amp; logins</string>
+    <string name="backup_cat_accounts_desc">Tokens and credentials (file will be encrypted)</string>
+
+    <string name="backup_sub_app_behavior">App behavior</string>
+    <string name="backup_sub_app_behavior_desc">Language, continue, NSFW, lists</string>
+    <string name="backup_sub_downloads">Downloads</string>
+    <string name="backup_sub_downloads_desc">Download manager and metered networks</string>
+    <string name="backup_sub_notifications">Notifications</string>
+    <string name="backup_sub_notifications_desc">Check intervals and notification toggles</string>
+    <string name="backup_sub_network">Network</string>
+    <string name="backup_sub_network_desc">DNS, user agent, proxy toggle</string>
+    <string name="backup_sub_updates">Updates &amp; diagnostics</string>
+    <string name="backup_sub_updates_desc">Update checks, logging, crash reports</string>
+    <string name="backup_sub_connections">Connections</string>
+    <string name="backup_sub_connections_desc">Comick, MAL, MangaUpdates, comments</string>
+    <string name="backup_sub_sources">Extension repos &amp; sources</string>
+    <string name="backup_sub_sources_desc">Repository URLs and source ordering</string>
+    <string name="backup_sub_search_history">Search history</string>
+    <string name="backup_sub_search_history_desc">Saved searches per category</string>
+    <string name="backup_sub_saved_filters">Saved filters</string>
+    <string name="backup_sub_saved_filters_desc">User-saved filters for search and lists</string>
+
+    <string name="backup_sub_theme">Theme</string>
+    <string name="backup_sub_theme_desc">Color scheme, dark mode, OLED</string>
+    <string name="backup_sub_layout">Layout &amp; home</string>
+    <string name="backup_sub_layout_desc">Tabs, home sections, statistics</string>
+    <string name="backup_sub_animations">Animations</string>
+    <string name="backup_sub_animations_desc">Animation toggles and speed</string>
+    <string name="backup_sub_blur">Banner &amp; blur</string>
+    <string name="backup_sub_blur_desc">Banner blur strength and sampling</string>
+    <string name="backup_sub_list_display">List display</string>
+    <string name="backup_sub_list_display_desc">Grid/list view, default sort orders</string>
+    <string name="backup_sub_ui_misc">Other UI options</string>
+    <string name="backup_sub_ui_misc_desc">Immersive mode, system bars, badges</string>
+
+    <string name="backup_sub_playback">Playback</string>
+    <string name="backup_sub_playback_desc">Speed, resume, autoplay, watch percentage</string>
+    <string name="backup_sub_subtitles">Subtitles</string>
+    <string name="backup_sub_subtitles_desc">Language, font, color, outline, position</string>
+    <string name="backup_sub_skip">Skip &amp; timestamps</string>
+    <string name="backup_sub_skip_desc">Auto-skip, timestamp button, seek/skip times</string>
+    <string name="backup_sub_gestures">Gestures</string>
+    <string name="backup_sub_gestures_desc">Swipe, double tap, fast forward</string>
+    <string name="backup_sub_cast">Cast &amp; advanced</string>
+    <string name="backup_sub_cast_desc">Cast, PiP, rotation, torrent, codec</string>
+
+    <string name="backup_sub_reader_display">Display</string>
+    <string name="backup_sub_reader_display_desc">Direction, layout, dual page, padding</string>
+    <string name="backup_sub_reader_ui">Interface</string>
+    <string name="backup_sub_reader_ui_desc">Page numbers, scroll bar, system bars</string>
+    <string name="backup_sub_reader_behavior">Behavior</string>
+    <string name="backup_sub_reader_behavior_desc">Webtoon detection, volume keys, multi-chapter</string>
+    <string name="backup_sub_autoscroll">Auto-scroll</string>
+    <string name="backup_sub_autoscroll_desc">Auto-scroll toggle and speed</string>
+    <string name="backup_sub_crop">Crop borders</string>
+    <string name="backup_sub_crop_desc">Border cropping and threshold</string>
+
+    <string name="backup_sub_novel_display">Display</string>
+    <string name="backup_sub_novel_display_desc">Theme, layout, dual page, dark mode</string>
+    <string name="backup_sub_novel_text">Text</string>
+    <string name="backup_sub_novel_text_desc">Line height, margin, justify, hyphenation</string>
+    <string name="backup_sub_novel_ui">Interface</string>
+    <string name="backup_sub_novel_ui_desc">Scroll bar, screen on, volume keys</string>
+
+    <string name="backup_sub_anilist">AniList</string>
+    <string name="backup_sub_anilist_desc">AniList account token and user info</string>
+    <string name="backup_sub_mal">MyAnimeList</string>
+    <string name="backup_sub_mal_desc">MyAnimeList token and user info</string>
+    <string name="backup_sub_mu">MangaUpdates</string>
+    <string name="backup_sub_mu_desc">MangaUpdates credentials and token</string>
+    <string name="backup_sub_discord">Discord</string>
+    <string name="backup_sub_discord_desc">Discord RPC token and profile</string>
+    <string name="backup_sub_app_lock">App lock</string>
+    <string name="backup_sub_app_lock_desc">Password and biometric token</string>
+    <string name="backup_sub_proxy">SOCKS5 proxy</string>
+    <string name="backup_sub_proxy_desc">Proxy host, port and credentials</string>
+
 </resources>
 
 

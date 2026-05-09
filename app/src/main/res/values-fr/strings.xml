@@ -1500,4 +1500,103 @@
     <string name="popular">Populaire</string>
     <string name="latest">Nouveau</string>
     <string name="search_anilist">Rechercher sur Anilist</string>
+
+    <!-- Sauvegarde et restauration -->
+    <string name="backup_restore_chooser_msg">Voulez-vous sauvegarder vos paramètres dans un fichier, ou restaurer depuis une sauvegarde existante ?</string>
+    <string name="backup_select_what_msg">Sélectionnez ce qu\'il faut sauvegarder</string>
+    <string name="backup_select_all">Tout sélectionner</string>
+    <string name="backup_select_none">Effacer</string>
+    <string name="backup_expand_collapse">Développer ou réduire</string>
+    <string name="no_settings_selected">Aucun paramètre sélectionné</string>
+    <plurals name="backup_items_selected">
+        <item quantity="one">%d paramètre sélectionné</item>
+        <item quantity="other">%d paramètres sélectionnés</item>
+    </plurals>
+
+    <string name="backup_cat_general">Général</string>
+    <string name="backup_cat_general_desc">Préférences et comportement de l\'application</string>
+    <string name="backup_cat_ui">Apparence et interface</string>
+    <string name="backup_cat_ui_desc">Thème, mise en page et options visuelles</string>
+    <string name="backup_cat_player">Lecteur d\'anime</string>
+    <string name="backup_cat_player_desc">Préférences de lecture vidéo et de sous-titres</string>
+    <string name="backup_cat_reader">Lecteur de manga</string>
+    <string name="backup_cat_reader_desc">Expérience de lecture pour les mangas</string>
+    <string name="backup_cat_novel">Lecteur de roman</string>
+    <string name="backup_cat_novel_desc">Expérience de lecture pour les light novels</string>
+    <string name="backup_cat_accounts">Comptes et connexions</string>
+    <string name="backup_cat_accounts_desc">Jetons et identifiants (le fichier sera chiffré)</string>
+
+    <string name="backup_sub_app_behavior">Comportement de l\'application</string>
+    <string name="backup_sub_app_behavior_desc">Langue, reprise, NSFW, listes</string>
+    <string name="backup_sub_downloads">Téléchargements</string>
+    <string name="backup_sub_downloads_desc">Gestionnaire et réseaux limités</string>
+    <string name="backup_sub_notifications">Notifications</string>
+    <string name="backup_sub_notifications_desc">Intervalles de vérification et activations</string>
+    <string name="backup_sub_network">Réseau</string>
+    <string name="backup_sub_network_desc">DNS, user agent, activation du proxy</string>
+    <string name="backup_sub_updates">Mises à jour et diagnostics</string>
+    <string name="backup_sub_updates_desc">Mises à jour, journalisation, rapports de plantage</string>
+    <string name="backup_sub_connections">Connexions</string>
+    <string name="backup_sub_connections_desc">Comick, MAL, MangaUpdates, commentaires</string>
+    <string name="backup_sub_sources">Dépôts d\'extensions et sources</string>
+    <string name="backup_sub_sources_desc">URLs des dépôts et ordre des sources</string>
+    <string name="backup_sub_search_history">Historique de recherche</string>
+    <string name="backup_sub_search_history_desc">Recherches enregistrées par catégorie</string>
+    <string name="backup_sub_saved_filters">Filtres enregistrés</string>
+    <string name="backup_sub_saved_filters_desc">Filtres sauvegardés pour la recherche et les listes</string>
+
+    <string name="backup_sub_theme">Thème</string>
+    <string name="backup_sub_theme_desc">Palette, mode sombre, OLED</string>
+    <string name="backup_sub_layout">Mise en page et accueil</string>
+    <string name="backup_sub_layout_desc">Onglets, sections d\'accueil, statistiques</string>
+    <string name="backup_sub_animations">Animations</string>
+    <string name="backup_sub_animations_desc">Activation et vitesse des animations</string>
+    <string name="backup_sub_blur">Bannière et flou</string>
+    <string name="backup_sub_blur_desc">Intensité et échantillonnage du flou</string>
+    <string name="backup_sub_list_display">Affichage des listes</string>
+    <string name="backup_sub_list_display_desc">Vue grille/liste, tri par défaut</string>
+    <string name="backup_sub_ui_misc">Autres options d\'interface</string>
+    <string name="backup_sub_ui_misc_desc">Mode immersif, barres système, badges</string>
+
+    <string name="backup_sub_playback">Lecture</string>
+    <string name="backup_sub_playback_desc">Vitesse, reprise, lecture auto, pourcentage vu</string>
+    <string name="backup_sub_subtitles">Sous-titres</string>
+    <string name="backup_sub_subtitles_desc">Langue, police, couleur, contour, position</string>
+    <string name="backup_sub_skip">Saut et marqueurs temporels</string>
+    <string name="backup_sub_skip_desc">Saut auto, bouton de marqueur, durées de saut</string>
+    <string name="backup_sub_gestures">Gestes</string>
+    <string name="backup_sub_gestures_desc">Glissement, double tap, avance rapide</string>
+    <string name="backup_sub_cast">Cast et avancé</string>
+    <string name="backup_sub_cast_desc">Cast, PiP, rotation, torrent, codec</string>
+
+    <string name="backup_sub_reader_display">Affichage</string>
+    <string name="backup_sub_reader_display_desc">Sens, mise en page, double page, marges</string>
+    <string name="backup_sub_reader_ui">Interface</string>
+    <string name="backup_sub_reader_ui_desc">Numéros de page, barre de défilement, barres système</string>
+    <string name="backup_sub_reader_behavior">Comportement</string>
+    <string name="backup_sub_reader_behavior_desc">Détection webtoon, touches volume, multi-chapitre</string>
+    <string name="backup_sub_autoscroll">Défilement automatique</string>
+    <string name="backup_sub_autoscroll_desc">Activation et vitesse du défilement automatique</string>
+    <string name="backup_sub_crop">Recadrage des bords</string>
+    <string name="backup_sub_crop_desc">Recadrage des bordures et seuil</string>
+
+    <string name="backup_sub_novel_display">Affichage</string>
+    <string name="backup_sub_novel_display_desc">Thème, mise en page, double page, mode sombre</string>
+    <string name="backup_sub_novel_text">Texte</string>
+    <string name="backup_sub_novel_text_desc">Hauteur de ligne, marge, justification, césure</string>
+    <string name="backup_sub_novel_ui">Interface</string>
+    <string name="backup_sub_novel_ui_desc">Barre de défilement, écran allumé, touches volume</string>
+
+    <string name="backup_sub_anilist">AniList</string>
+    <string name="backup_sub_anilist_desc">Jeton et infos du compte AniList</string>
+    <string name="backup_sub_mal">MyAnimeList</string>
+    <string name="backup_sub_mal_desc">Jeton et infos du compte MyAnimeList</string>
+    <string name="backup_sub_mu">MangaUpdates</string>
+    <string name="backup_sub_mu_desc">Identifiants et jeton MangaUpdates</string>
+    <string name="backup_sub_discord">Discord</string>
+    <string name="backup_sub_discord_desc">Jeton Discord RPC et profil</string>
+    <string name="backup_sub_app_lock">Verrouillage de l\'application</string>
+    <string name="backup_sub_app_lock_desc">Mot de passe et jeton biométrique</string>
+    <string name="backup_sub_proxy">Proxy SOCKS5</string>
+    <string name="backup_sub_proxy_desc">Hôte, port et identifiants du proxy</string>
 </resources>
