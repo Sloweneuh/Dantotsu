@@ -722,20 +722,21 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
             }
         }
         // Add gap placeholders for chapters missing before the first available chapter
-        // (e.g. source starts at Ch2 but Ch1 is missing)
+        // (e.g. source starts at Ch2 but Ch1 is missing). Only on the first tab — later
+        // tabs naturally start mid-list and aren't missing the earlier chapters.
         val sequentialNumbers = chapList
             .filter { chapter -> !nonSequentialKeywords.any { chapter.number.lowercase().contains(it) } }
             .mapNotNull { resolveChapterNumber(it) }
         val minSequentialNumber = sequentialNumbers.minOrNull()
-        if (minSequentialNumber != null && minSequentialNumber > 1) {
-            val missing = minSequentialNumber.toInt() - 1
+        val missing = (minSequentialNumber?.toInt() ?: 1) - 1
+        if (start == 0 && missing > 0) {
             val gaps = ArrayList<MangaChapterListItem>()
             if (isCompact) {
                 for (n in 1..missing) {
                     gaps.add(MangaChapterListItem.Gap(n.toFloat(), n.toFloat(), 1))
                 }
             } else {
-                gaps.add(MangaChapterListItem.Gap(0f, minSequentialNumber, missing))
+                gaps.add(MangaChapterListItem.Gap(0f, minSequentialNumber ?: 0f, missing))
             }
             // Detect list order: if the first sequential chapter is the minimum, list is ascending
             val firstSeqNum = chapList.firstOrNull { chapter ->
