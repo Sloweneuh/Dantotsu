@@ -11,6 +11,7 @@ import ani.dantotsu.util.Logger
 import eu.kanade.tachiyomi.animesource.AnimeCatalogueSource
 import eu.kanade.tachiyomi.animesource.ConfigurableAnimeSource
 import eu.kanade.tachiyomi.animesource.model.AnimesPage
+import eu.kanade.tachiyomi.animesource.model.Hoster
 import eu.kanade.tachiyomi.animesource.model.SAnime
 import eu.kanade.tachiyomi.animesource.model.SEpisode
 import eu.kanade.tachiyomi.animesource.model.Track
@@ -238,18 +239,33 @@ class DynamicAnimeParser(extension: AnimeExtension.Installed) : AnimeParser() {
             ?: return emptyList())
 
         return try {
-            // TODO(1.6): Remove else block when dropping support for ext lib <1.6
-            if ((source as AnimeHttpSource).javaClass.declaredMethods.any { it.name == "getHosterList" }){
-                val hosters = source.getHosterList(sEpisode)
-                val allVideos = hosters.flatMap { hoster ->
-                    val videos = source.getVideoList(hoster)
+            val httpSource = source as AnimeHttpSource
+            // Try the new hoster API (extensions-lib v16+) first. The base API throws
+            // IllegalStateException("Not used") when an extension hasn't implemented it,
+            // which we treat as a signal to fall back to the legacy getVideoList path.
+            // Reflection on declaredMethods alone misses overrides provided by intermediate
+            // base classes (e.g. AnimeStream / DooPlay templates).
+            val hosters: List<Hoster>? = try {
+                httpSource.getHosterList(sEpisode)
+            } catch (e: IllegalStateException) {
+                null
+            }
+            val allVideos = if (!hosters.isNullOrEmpty()) {
+                hosters.flatMap { hoster ->
+                    // Prefer videos that the hoster already carries (extensions like
+                    // AnimePahe populate Hoster.videoList directly in hosterListParse).
+                    // Only call getVideoList(hoster) when the hoster left it null.
+                    val videos = hoster.videoList ?: try {
+                        httpSource.getVideoList(hoster)
+                    } catch (e: IllegalStateException) {
+                        emptyList()
+                    }
                     videos.map { it.copy(videoTitle = "${hoster.hosterName} - ${it.videoTitle}") }
                 }
-                allVideos.map { videoToVideoServer(it) }
             } else {
-                val videos = source.getVideoList(sEpisode)
-                videos.map { videoToVideoServer(it) }
+                httpSource.getVideoList(sEpisode)
             }
+            allVideos.map { videoToVideoServer(it) }
         } catch (e: Exception) {
             Logger.log("Exception occurred: ${e.message}")
             emptyList()
@@ -258,7 +274,8 @@ class DynamicAnimeParser(extension: AnimeExtension.Installed) : AnimeParser() {
 
 
     override suspend fun getVideoExtractor(server: VideoServer): VideoExtractor {
-        return VideoServerPassthrough(server)
+        val httpSource = extension.sources.getOrNull(sourceLanguage) as? AnimeHttpSource
+        return VideoServerPassthrough(server, httpSource)
     }
 
     override suspend fun search(query: String): List<ShowResponse> {
@@ -533,14 +550,29 @@ class DynamicMangaParser(extension: MangaExtension.Installed) : MangaParser() {
     }
 }
 
-class VideoServerPassthrough(private val videoServer: VideoServer) : VideoExtractor() {
+class VideoServerPassthrough(
+    private val videoServer: VideoServer,
+    @Transient private val source: AnimeHttpSource? = null,
+) : VideoExtractor() {
     override val server: VideoServer
         get() = videoServer
 
     override suspend fun extract(): VideoContainer {
-        val vidList = listOfNotNull(videoServer.video?.let { aniVideoToSaiVideo(it) })
-        val subList = videoServer.video?.subtitleTracks?.map { trackToSubtitle(it) } ?: emptyList()
-        val audioList = videoServer.video?.audioTracks ?: emptyList()
+        // For v16+ extensions (e.g. AnimePahe) the Video carries an embed/page
+        // URL that needs resolveVideo() to swap in the real stream URL. The
+        // default base implementation returns the input unchanged, so this is a
+        // no-op for older extensions that already hand back a playable URL.
+        val resolved = videoServer.video?.let { original ->
+            try {
+                source?.resolveVideo(original) ?: original
+            } catch (e: Exception) {
+                Logger.log("resolveVideo failed: ${e.message}")
+                original
+            }
+        }
+        val vidList = listOfNotNull(resolved?.let { aniVideoToSaiVideo(it) })
+        val subList = resolved?.subtitleTracks?.map { trackToSubtitle(it) } ?: emptyList()
+        val audioList = resolved?.audioTracks ?: emptyList()
 
         return if (vidList.isNotEmpty()) {
             VideoContainer(vidList, subList, audioList)

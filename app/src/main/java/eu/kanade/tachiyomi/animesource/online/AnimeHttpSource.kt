@@ -3,6 +3,7 @@ package eu.kanade.tachiyomi.animesource.online
 import eu.kanade.tachiyomi.animesource.AnimeCatalogueSource
 import eu.kanade.tachiyomi.animesource.model.AnimeFilterList
 import eu.kanade.tachiyomi.animesource.model.AnimesPage
+import eu.kanade.tachiyomi.animesource.model.Hoster
 import eu.kanade.tachiyomi.animesource.model.SAnime
 import eu.kanade.tachiyomi.animesource.model.SEpisode
 import eu.kanade.tachiyomi.animesource.model.Video
@@ -311,15 +312,42 @@ abstract class AnimeHttpSource : AnimeCatalogueSource {
     protected abstract fun episodeVideoParse(response: Response): SEpisode
 
     /**
+     * Get the list of hosters for an episode (extensions-lib v16+ API).
+     * Backed by [hosterListRequest] + [hosterListParse]; extensions on the new API
+     * implement [hosterListParse] instead of [videoListParse].
+     */
+    override suspend fun getHosterList(episode: SEpisode): List<Hoster> {
+        val response = client.newCall(hosterListRequest(episode)).awaitSuccess()
+        return hosterListParse(response)
+    }
+
+    /**
+     * Returns the request used to fetch the hoster list. Defaults to the same URL
+     * as [videoListRequest] so extensions only need to override the parser.
+     */
+    protected open fun hosterListRequest(episode: SEpisode): Request {
+        return GET(baseUrl + episode.url, headers)
+    }
+
+    /**
+     * Parses the response into a list of hosters. Not abstract: extensions on the
+     * older API don't implement this, in which case [getHosterList] is treated as
+     * unsupported and the caller falls back to [getVideoList].
+     */
+    protected open fun hosterListParse(response: Response): List<Hoster> {
+        throw IllegalStateException("Not used")
+    }
+
+    /**
      * Get the list of videos a episode has. Videos should be returned
      * in the expected order; the index is ignored.
      *
      * @param episode the episode.
      * @return the videos for the episode.
      */
-    @Suppress("DEPRECATION")
     override suspend fun getVideoList(episode: SEpisode): List<Video> {
-        return fetchVideoList(episode).awaitSingle()
+        val response = client.newCall(videoListRequest(episode)).awaitSuccess()
+        return videoListParse(response).sort()
     }
 
     @Deprecated("Use the non-RxJava API instead", replaceWith = ReplaceWith("getVideoList"))
@@ -344,15 +372,30 @@ abstract class AnimeHttpSource : AnimeCatalogueSource {
     /**
      * Parses the response from the site and returns a list of pages.
      *
+     * Not abstract: newer extensions override [getVideoList] directly and skip this.
+     * Calling it without an override is a programming error in the extension.
+     *
      * @param response the response from the site.
      */
-    protected abstract fun videoListParse(response: Response): List<Video>
+    protected open fun videoListParse(response: Response): List<Video> {
+        throw IllegalStateException("Not used")
+    }
 
     /**
      * Sorts the video list. Override this according to the user's preference.
      */
     protected open fun List<Video>.sort(): List<Video> {
         return this
+    }
+
+    /**
+     * Resolves a video into a playable form (extensions-lib v16+ API). Extensions
+     * like AnimePahe override this to swap an embed/page URL for an actual stream
+     * URL. Returns the input unchanged when not overridden, or null to drop the
+     * video.
+     */
+    open suspend fun resolveVideo(video: Video): Video? {
+        return video
     }
 
     /**

@@ -6,11 +6,16 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
+// Primary constructor matches aniyomi-extensions-lib v16+ exactly. Reordering or
+// adding parameters here changes the JVM signature of the synthetic default-args
+// constructor that extensions are compiled against — keep it in lockstep with
+// upstream to avoid NoSuchMethodError at runtime.
 open class Hoster(
     val hosterUrl: String = "",
     val hosterName: String = "",
     val videoList: List<Video>? = null,
     val internalData: String = "",
+    val lazy: Boolean = false,
 ) {
     @Transient
     @Volatile
@@ -28,8 +33,9 @@ open class Hoster(
         hosterName: String = this.hosterName,
         videoList: List<Video>? = this.videoList,
         internalData: String = this.internalData,
+        lazy: Boolean = this.lazy,
     ): Hoster {
-        return Hoster(hosterUrl, hosterName, videoList, internalData)
+        return Hoster(hosterUrl, hosterName, videoList, internalData, lazy)
     }
 
     companion object {
@@ -53,16 +59,18 @@ data class SerializableHoster(
     val hosterName: String = "",
     val videoList: String? = null,
     val internalData: String = "",
+    val lazy: Boolean = false,
 ) {
     companion object {
         fun List<Hoster>.serialize(): String =
             Json.encodeToString(
                 this.map { host ->
                     SerializableHoster(
-                        host.hosterUrl,
-                        host.hosterName,
-                        host.videoList?.serialize(),
-                        host.internalData,
+                        hosterUrl = host.hosterUrl,
+                        hosterName = host.hosterName,
+                        videoList = host.videoList?.serialize(),
+                        internalData = host.internalData,
+                        lazy = host.lazy,
                     )
                 },
             )
@@ -71,10 +79,11 @@ data class SerializableHoster(
             Json.decodeFromString<List<SerializableHoster>>(this)
                 .map { sHost ->
                     Hoster(
-                        sHost.hosterUrl,
-                        sHost.hosterName,
-                        sHost.videoList?.toVideoList(),
-                        sHost.internalData,
+                        hosterUrl = sHost.hosterUrl,
+                        hosterName = sHost.hosterName,
+                        videoList = sHost.videoList?.toVideoList(),
+                        internalData = sHost.internalData,
+                        lazy = sHost.lazy,
                     )
                 }
     }
