@@ -29,22 +29,13 @@ data class ImageData(
     ): Bitmap? {
         return withContext(Dispatchers.IO) {
             try {
-                // Fetch the image
                 val response = httpSource.getImage(page)
                 Logger.log("Response: ${response.code} - ${response.message}")
-
-                // Convert the Response to an InputStream
                 val inputStream = response.body.byteStream()
-
-                // Convert InputStream to Bitmap
                 val bitmap = BitmapFactory.decodeStream(inputStream)
-
                 inputStream.close()
-                //saveImage(bitmap, context.contentResolver, page.imageUrl!!, Bitmap.CompressFormat.JPEG, 100)
-
                 return@withContext bitmap
             } catch (e: Exception) {
-                // Handle any exceptions
                 Logger.log("An error occurred: ${e.message}")
                 snackString("An error occurred: ${e.message}")
                 return@withContext null
@@ -88,7 +79,6 @@ fun saveImage(
 
             val file = File(directory, filename)
 
-            // Check if the file already exists
             if (file.exists()) {
                 println("File already exists: ${file.absolutePath}")
                 return
@@ -106,28 +96,42 @@ fun saveImage(
 }
 
 class MangaCache {
-    private val maxMemory = (Runtime.getRuntime().maxMemory() / 1024 / 2).toInt()
-    private val cache = LruCache<String, ImageData>(maxMemory)
+    // ImageData is tiny (two object refs), 1000 entries is more than enough for any chapter
+    private val imageDataCache = LruCache<String, ImageData>(1000)
 
-    @Synchronized
-    fun put(key: String, imageDate: ImageData) {
-        cache.put(key, imageDate)
+    // Bitmap cache sized by actual byte count (1/4 of max heap in KB)
+    private val maxBitmapCacheKb = (Runtime.getRuntime().maxMemory() / 1024 / 4).toInt()
+    private val bitmapCache = object : LruCache<String, Bitmap>(maxBitmapCacheKb) {
+        override fun sizeOf(key: String, value: Bitmap): Int = value.byteCount / 1024
     }
 
     @Synchronized
-    fun get(key: String): ImageData? = cache.get(key)
+    fun put(key: String, imageData: ImageData) {
+        imageDataCache.put(key, imageData)
+    }
+
+    @Synchronized
+    fun get(key: String): ImageData? = imageDataCache.get(key)
 
     @Synchronized
     fun remove(key: String) {
-        cache.remove(key)
+        imageDataCache.remove(key)
+        bitmapCache.remove(key)
     }
 
     @Synchronized
     fun clear() {
-        cache.evictAll()
+        imageDataCache.evictAll()
+        bitmapCache.evictAll()
     }
 
-    fun size(): Int = cache.size()
+    fun size(): Int = imageDataCache.size()
 
+    @Synchronized
+    fun getBitmap(key: String): Bitmap? = bitmapCache.get(key)
 
+    @Synchronized
+    fun putBitmap(key: String, bitmap: Bitmap) {
+        bitmapCache.put(key, bitmap)
+    }
 }

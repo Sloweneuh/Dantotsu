@@ -15,70 +15,47 @@ class RemoveBordersTransformation(private val white: Boolean, private val thresh
         outWidth: Int,
         outHeight: Int
     ): Bitmap {
-        // Get the dimensions of the input bitmap
         val width = toTransform.width
         val height = toTransform.height
 
-        // Find the non-white area by scanning from the edges
         var left = 0
         var top = 0
         var right = width - 1
         var bottom = height - 1
 
-        // Scan from the left edge
-        for (x in 0 until width) {
-            var stop = false
-            for (y in 0 until height) {
-                if (isPixelNotWhite(toTransform.getPixel(x, y))) {
-                    left = x
-                    stop = true
-                    break
-                }
+        // Read one column/row at a time — vastly faster than individual getPixel() calls
+        // since each getPixels() is a single JNI call instead of one per pixel.
+        val col = IntArray(height)
+        val row = IntArray(width)
+
+        leftScan@ for (x in 0 until width) {
+            toTransform.getPixels(col, 0, 1, x, 0, 1, height)
+            for (pixel in col) {
+                if (isPixelNotWhite(pixel)) { left = x; break@leftScan }
             }
-            if (stop) break
         }
 
-        // Scan from the right edge
-        for (x in width - 1 downTo left) {
-            var stop = false
-            for (y in 0 until height) {
-                if (isPixelNotWhite(toTransform.getPixel(x, y))) {
-                    right = x
-                    stop = true
-                    break
-                }
+        rightScan@ for (x in width - 1 downTo left) {
+            toTransform.getPixels(col, 0, 1, x, 0, 1, height)
+            for (pixel in col) {
+                if (isPixelNotWhite(pixel)) { right = x; break@rightScan }
             }
-            if (stop) break
         }
 
-        // Scan from the top edge
-        for (y in 0 until height) {
-            var stop = false
-            for (x in 0 until width) {
-                if (isPixelNotWhite(toTransform.getPixel(x, y))) {
-                    top = y
-                    stop = true
-                    break
-                }
+        topScan@ for (y in 0 until height) {
+            toTransform.getPixels(row, 0, width, 0, y, width, 1)
+            for (pixel in row) {
+                if (isPixelNotWhite(pixel)) { top = y; break@topScan }
             }
-            if (stop) break
         }
 
-        // Scan from the bottom edge
-        for (y in height - 1 downTo top) {
-            var stop = false
-            for (x in 0 until width) {
-                if (isPixelNotWhite(toTransform.getPixel(x, y))) {
-                    bottom = y
-                    stop = true
-                    break
-                }
+        bottomScan@ for (y in height - 1 downTo top) {
+            toTransform.getPixels(row, 0, width, 0, y, width, 1)
+            for (pixel in row) {
+                if (isPixelNotWhite(pixel)) { bottom = y; break@bottomScan }
             }
-            if (stop) break
         }
 
-        // Crop the bitmap to the non-white area
-        // Return the cropped bitmap
         return Bitmap.createBitmap(
             toTransform,
             left,

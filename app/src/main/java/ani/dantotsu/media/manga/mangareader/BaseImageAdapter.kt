@@ -31,6 +31,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uy.kohesive.injekt.api.get
 import java.io.File
+import java.security.MessageDigest
 
 abstract class BaseImageAdapter(
     val activity: MangaReaderActivity,
@@ -183,16 +184,13 @@ abstract class BaseImageAdapter(
                             .skipMemoryCache(true)
                             .diskCacheStrategy(DiskCacheStrategy.NONE)
                             .let {
-                                if (transforms.isNotEmpty()) {
-                                    it.transform(*transforms.toTypedArray())
-                                } else {
-                                    it
-                                }
+                                if (transforms.isNotEmpty()) it.transform(*transforms.toTypedArray())
+                                else it
                             }
                             .submit()
                             .get()
                     }
-                    
+
                     if (link.url.startsWith("content://")) {
                         return@withContext Glide.with(this@loadBitmap)
                             .asBitmap()
@@ -200,53 +198,61 @@ abstract class BaseImageAdapter(
                             .skipMemoryCache(true)
                             .diskCacheStrategy(DiskCacheStrategy.NONE)
                             .let {
-                                if (transforms.isNotEmpty()) {
-                                    it.transform(*transforms.toTypedArray())
-                                } else {
-                                    it
-                                }
+                                if (transforms.isNotEmpty()) it.transform(*transforms.toTypedArray())
+                                else it
                             }
                             .submit()
                             .get()
                     }
-                    
-                    // For remote URLs, check if we have extension source data
+
+                    // For extension sources: check bitmap cache before any network work
                     val imageData = mangaCache.get(link.url)
                     ani.dantotsu.util.Logger.log("MangaCache GET: key='${link.url}', found=${imageData != null}")
                     if (imageData != null) {
-                        // Use extension's client (includes interceptors like ImageInterceptor)
+                        val cacheKey = buildBitmapCacheKey(link.url, transforms)
+                        mangaCache.getBitmap(cacheKey)?.takeIf { !it.isRecycled }
+                            ?.let { return@withContext it }
+
                         ani.dantotsu.util.Logger.log("Using extension client for: ${link.url}")
-                        val bitmap = imageData.fetchAndProcessImage(
-                            imageData.page,
-                            imageData.source
-                        )
-                        // Apply transforms if needed
-                        if (bitmap != null && transforms.isNotEmpty()) {
-                            return@withContext Glide.with(this@loadBitmap)
+                        val rawBitmap = imageData.fetchAndProcessImage(imageData.page, imageData.source)
+                            ?: return@withContext null
+
+                        // Apply transforms via a Glide in-memory request (no network I/O —
+                        // rawBitmap is already decoded). Result is cached below so this only
+                        // runs on the first load of each page.
+                        val processed = if (transforms.isNotEmpty()) {
+                            Glide.with(this@loadBitmap)
                                 .asBitmap()
-                                .load(bitmap)
+                                .load(rawBitmap)
                                 .transform(*transforms.toTypedArray())
                                 .submit()
                                 .get()
-                        }
-                        return@withContext bitmap
+                        } else rawBitmap
+
+                        mangaCache.putBitmap(cacheKey, processed)
+                        return@withContext processed
                     }
-                    
-                    // Fallback to standard Glide for URLs without extension source
+
+                    // Fallback to standard Glide for plain remote URLs
                     return@withContext Glide.with(this@loadBitmap)
                         .asBitmap()
                         .load(GlideUrl(link.url) { link.headers })
                         .let {
-                            if (transforms.isNotEmpty()) {
-                                it.transform(*transforms.toTypedArray())
-                            } else {
-                                it
-                            }
+                            if (transforms.isNotEmpty()) it.transform(*transforms.toTypedArray())
+                            else it
                         }
                         .submit()
                         .get()
                 }
             }
+        }
+
+        private fun buildBitmapCacheKey(url: String, transforms: List<BitmapTransformation>): String {
+            if (transforms.isEmpty()) return url
+            val md = MessageDigest.getInstance("MD5")
+            md.update(url.toByteArray())
+            transforms.forEach { it.updateDiskCacheKey(md) }
+            return url + "|" + md.digest().joinToString("") { "%02x".format(it) }
         }
 
         fun mergeBitmap(bitmap1: Bitmap, bitmap2: Bitmap, scale: Boolean = false): Bitmap {
