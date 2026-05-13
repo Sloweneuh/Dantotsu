@@ -8,9 +8,9 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
-import androidx.core.text.HtmlCompat
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
+import ani.dantotsu.buildMarkwon
 import ani.dantotsu.databinding.ItemMediaCompactBinding
 import ani.dantotsu.databinding.ItemMediaLargeBinding
 import ani.dantotsu.loadImage
@@ -156,10 +156,11 @@ class MUMediaAdapter(
         b.itemCompactSourceBadge.visibility = View.GONE
 
         val rawDesc = detail?.description ?: ""
-        b.itemCompactSynopsis.text = if (rawDesc.isBlank()) {
-            b.root.context.getString(R.string.no_description_available)
+        val markwon = buildMarkwon(b.root.context, userInputContent = false)
+        if (rawDesc.isBlank()) {
+            b.itemCompactSynopsis.text = b.root.context.getString(R.string.no_description_available)
         } else {
-            HtmlCompat.fromHtml(rawDesc, HtmlCompat.FROM_HTML_MODE_LEGACY)
+            markwon.setMarkdown(b.itemCompactSynopsis, rawDesc)
         }
         b.itemCompactSynopsis.movementMethod = LinkMovementMethod.getInstance()
         b.itemCompactSynopsis.scrollTo(0, 0)
