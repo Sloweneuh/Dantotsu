@@ -110,9 +110,10 @@ class MangaUpdatesQuickSearchDialogFragment : BottomSheetDialogFragment() {
 
                 searchWatchdog?.let { binding.searchProgress.removeCallbacks(it) }
                 searchWatchdog = Runnable {
-                    binding.searchProgressContainer.visibility = View.GONE
-                    binding.searchRecyclerView.visibility = View.VISIBLE
-                    binding.searchRecyclerView.adapter = null
+                    val b = _binding ?: return@Runnable
+                    b.searchProgressContainer.visibility = View.GONE
+                    b.searchRecyclerView.visibility = View.VISIBLE
+                    b.searchRecyclerView.adapter = null
                     searchJob?.cancel()
                 }
                 binding.searchProgress.postDelayed(searchWatchdog, 12_000L)
@@ -230,11 +231,8 @@ class MangaUpdatesQuickSearchDialogFragment : BottomSheetDialogFragment() {
     }
 
     override fun onDestroyView() {
-        try {
-            searchJob?.cancel()
-            searchWatchdog?.let { binding.searchProgress.removeCallbacks(it) }
-        } catch (_: Throwable) {
-        }
+        searchJob?.cancel()
+        searchWatchdog?.let { _binding?.searchProgress?.removeCallbacks(it) }
         searchWatchdog = null
         _binding = null
         super.onDestroyView()
