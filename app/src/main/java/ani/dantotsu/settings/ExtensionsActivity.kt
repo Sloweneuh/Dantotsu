@@ -10,6 +10,7 @@ import android.widget.AutoCompleteTextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.updateLayoutParams
+import androidx.core.view.updatePadding
 import androidx.fragment.app.Fragment
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
@@ -211,6 +212,7 @@ class ExtensionsActivity : AppCompatActivity() {
         val openId = intent.getLongExtra(EXTRA_OPEN_SOURCE_ID, -1L)
         val openType = intent.getStringExtra(EXTRA_OPEN_SOURCE_TYPE)
         if (openId != -1L && !openType.isNullOrEmpty()) {
+            binding.fragmentExtensionsContainer.updatePadding(top = statusBarHeight)
             val changeUIVisibility: (Boolean) -> Unit = { show ->
                 findViewById<ViewPager2>(R.id.viewPager).isVisible = show
                 findViewById<TabLayout>(R.id.tabLayout).isVisible = show
