@@ -51,24 +51,9 @@ class ListViewModel : ViewModel() {
             unfilteredLists.postValue(res)
             val filters = currentFilters.value
 
-            // Load MangaUpdates lists alongside Anilist for manga — only for the logged-in user
-            if (!anime && userId == ani.dantotsu.connections.anilist.Anilist.userid &&
-                MangaUpdates.token != null &&
-                ani.dantotsu.settings.saving.PrefManager.getVal<Boolean>(ani.dantotsu.settings.saving.PrefName.MangaUpdatesListEnabled)
-            ) {
-                val muResult = MangaUpdates.getAllUserLists()
-                val sortedMuResult = sortMuLists(muResult, sortOrder)
-                rawMuData = sortedMuResult    // synchronous — always up-to-date
-                muLists.postValue(sortedMuResult)  // async notification for observers
-                val allMuIds = sortedMuResult.values.flatten().map { it.id }.distinct()
-                MUDetailsCache.prefetch(viewModelScope, allMuIds) {
-                    recomputeCurrentViewState()
-                }
-            }
-
-            // Reapply search + filters so any active UI state is preserved after a refresh
+            // Post immediately — favourites and MU data arrive asynchronously below
             if (currentSearchQuery.isNotEmpty()) {
-                performSearch(currentSearchQuery, currentFilters.value, res)
+                performSearch(currentSearchQuery, filters, res)
             } else {
                 if (filters != null && !filters.isEmpty()) {
                     val filteredLists = res.mapValues { entry ->
@@ -80,7 +65,6 @@ class ListViewModel : ViewModel() {
                 } else {
                     lists.postValue(res)
                 }
-                // Keep MU rows aligned with the current filter state after a refresh.
                 filteredMuLists.postValue(
                     if (filters != null && !filters.isEmpty()) {
                         applyMuFilters(rawMuData ?: emptyMap(), filters, query = null)
@@ -88,6 +72,52 @@ class ListViewModel : ViewModel() {
                         rawMuData ?: emptyMap()
                     }
                 )
+            }
+
+            // Load favourites in background so the list is visible before they arrive
+            viewModelScope.launch(Dispatchers.IO) {
+                tryWithSuspend {
+                    val all = res["All"] ?: arrayListOf()
+                    val favs = Anilist.query.favMedia(anime, userId)
+                    favs.sortWith(compareBy { it.userFavOrder })
+                    favs.forEach { fav ->
+                        all.find { it.id == fav.id }?.let { fav.userProgress = it.userProgress }
+                    }
+                    val updated = res.toMutableMap()
+                    updated["Favourites"] = favs
+                    unfilteredLists.postValue(updated)
+                    val search = currentSearchQuery
+                    val activeFilters = currentFilters.value
+                    if (search.isNotEmpty()) {
+                        performSearch(search, activeFilters, updated)
+                    } else if (activeFilters != null && !activeFilters.isEmpty()) {
+                        lists.postValue(updated.mapValues { entry ->
+                            ArrayList(entry.value.filter { matchesFilters(it, activeFilters) })
+                        }.toMutableMap())
+                    } else {
+                        lists.postValue(updated)
+                    }
+                }
+            }
+
+            // Load MangaUpdates in background — only for manga and the logged-in user
+            if (!anime && userId == Anilist.userid &&
+                MangaUpdates.token != null &&
+                PrefManager.getVal<Boolean>(PrefName.MangaUpdatesListEnabled)
+            ) {
+                viewModelScope.launch(Dispatchers.IO) {
+                    tryWithSuspend {
+                        val muResult = MangaUpdates.getAllUserLists()
+                        val sortedMuResult = sortMuLists(muResult, sortOrder)
+                        rawMuData = sortedMuResult
+                        muLists.postValue(sortedMuResult)
+                        val allMuIds = sortedMuResult.values.flatten().map { it.id }.distinct()
+                        MUDetailsCache.prefetch(viewModelScope, allMuIds) {
+                            recomputeCurrentViewState()
+                        }
+                        recomputeCurrentViewState()
+                    }
+                }
             }
         }
     }

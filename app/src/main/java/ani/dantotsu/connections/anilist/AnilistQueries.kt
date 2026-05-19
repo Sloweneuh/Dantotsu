@@ -541,28 +541,30 @@ class AnilistQueries {
         return media
     }
 
-    private suspend fun favMedia(anime: Boolean, id: Int? = Anilist.userid): ArrayList<Media> {
-        var hasNextPage = true
-        var page = 0
+    internal suspend fun favMedia(anime: Boolean, id: Int? = Anilist.userid): ArrayList<Media> {
+        val firstResponse = executeQuery<Query.User>("""{${favMediaQuery(anime, 1, id)}}""")
+        val firstFavs = firstResponse?.data?.user?.favourites
+        val firstList = if (anime) firstFavs?.anime else firstFavs?.manga
 
-        suspend fun getNextPage(page: Int): List<Media> {
-            val response = executeQuery<Query.User>("""{${favMediaQuery(anime, page, id)}}""")
-            val favourites = response?.data?.user?.favourites
-            val apiMediaList = if (anime) favourites?.anime else favourites?.manga
-            hasNextPage = apiMediaList?.pageInfo?.hasNextPage ?: false
-            return apiMediaList?.edges?.mapNotNull {
-                it.node?.let { i ->
-                    Media(i).apply { isFav = true }
-                }
-            } ?: return listOf()
-        }
+        val results = arrayListOf<Media>()
+        firstList?.edges?.mapNotNull { it.node?.let { node -> Media(node).apply { isFav = true } } }
+            ?.let { results.addAll(it) }
 
-        val responseArray = arrayListOf<Media>()
-        while (hasNextPage) {
-            page++
-            responseArray.addAll(getNextPage(page))
+        val lastPage = firstList?.pageInfo?.lastPage ?: 1
+        if (lastPage > 1) {
+            coroutineScope {
+                (2..lastPage).map { page ->
+                    async {
+                        val r = executeQuery<Query.User>("""{${favMediaQuery(anime, page, id)}}""")
+                        val favs = r?.data?.user?.favourites
+                        (if (anime) favs?.anime else favs?.manga)
+                            ?.edges?.mapNotNull { it.node?.let { node -> Media(node).apply { isFav = true } } }
+                            ?: emptyList()
+                    }
+                }.awaitAll().forEach { results.addAll(it) }
+            }
         }
-        return responseArray
+        return results
     }
 
     suspend fun getUserStatus(): ArrayList<User>? {
@@ -838,7 +840,7 @@ class AnilistQueries {
         sortOrder: String? = null
     ): MutableMap<String, ArrayList<Media>> {
         val response =
-            executeQuery<Query.MediaListCollection>("""{ MediaListCollection(userId: $userId, type: ${if (anime) "ANIME" else "MANGA"}) { lists { name isCustomList entries { status progress private score(format:POINT_100) updatedAt media { id idMal isAdult type status chapters episodes nextAiringEpisode {episode} bannerImage genres meanScore isFavourite format coverImage{large} description startDate{year month day} season title {english romaji userPreferred } synonyms tags { name isAdult } countryOfOrigin source } } } user { id mediaListOptions { rowOrder animeList { sectionOrder } mangaList { sectionOrder } } } } }""")
+            executeQuery<Query.MediaListCollection>("""{ MediaListCollection(userId: $userId, type: ${if (anime) "ANIME" else "MANGA"}) { lists { name isCustomList entries { status progress private score(format:POINT_100) updatedAt media { id idMal isAdult type status chapters episodes nextAiringEpisode {episode} bannerImage genres meanScore isFavourite format coverImage{large} description startDate{year month day} title {english romaji userPreferred } synonyms tags { name } countryOfOrigin source } } } user { id mediaListOptions { rowOrder animeList { sectionOrder } mangaList { sectionOrder } } } } }""")
         val sorted = mutableMapOf<String, ArrayList<Media>>()
         val unsorted = mutableMapOf<String, ArrayList<Media>>()
         val all = arrayListOf<Media>()
@@ -864,15 +866,6 @@ class AnilistQueries {
         }
         unsorted.forEach {
             if (!sorted.containsKey(it.key)) sorted[it.key] = it.value
-        }
-
-        sorted["Favourites"] = favMedia(anime, userId)
-        sorted["Favourites"]?.sortWith(compareBy { it.userFavOrder })
-        //favMedia doesn't fill userProgress, so we need to fill it manually by searching :(
-        sorted["Favourites"]?.forEach { fav ->
-            all.find { it.id == fav.id }?.let {
-                fav.userProgress = it.userProgress
-            }
         }
 
         sorted["All"] = all
