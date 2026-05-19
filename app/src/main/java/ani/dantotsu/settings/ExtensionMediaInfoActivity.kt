@@ -22,8 +22,10 @@ import ani.dantotsu.databinding.ActivityExtensionMediaInfoBinding
 import ani.dantotsu.databinding.ItemChapterListBinding
 import ani.dantotsu.databinding.ItemChipBinding
 import ani.dantotsu.databinding.ItemEpisodeListBinding
+import ani.dantotsu.buildMarkwon
 import ani.dantotsu.initActivity
 import ani.dantotsu.loadImage
+import ani.dantotsu.openLinkInBrowser
 import ani.dantotsu.media.MediaNameAdapter
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.statusBarHeight
@@ -40,6 +42,7 @@ import eu.kanade.tachiyomi.source.model.SManga
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import io.noties.markwon.Markwon
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.text.SimpleDateFormat
@@ -66,6 +69,7 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
     private var latestHasDub: Boolean = false
     private var synopsisExpanded = false
     private var sourceHeaders: Map<String, String> = emptyMap()
+    private lateinit var markwon: Markwon
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -73,6 +77,7 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
         binding = ActivityExtensionMediaInfoBinding.inflate(layoutInflater)
         setContentView(binding.root)
         initActivity(this)
+        markwon = buildMarkwon(this, userInputContent = false, linkResolver = { openLinkInBrowser(it) })
 
         binding.extensionInfoRoot.setPadding(0, 0, 0, navBarHeight)
 
@@ -238,8 +243,10 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
         val showSynopsis = !description.isNullOrBlank()
         binding.extensionInfoSynopsisTitle.isVisible = showSynopsis
         binding.extensionInfoSynopsis.isVisible = showSynopsis
-        binding.extensionInfoSynopsis.text = description ?: ""
         if (showSynopsis) {
+            markwon.setMarkdown(binding.extensionInfoSynopsis, description!!)
+            binding.extensionInfoSynopsis.movementMethod =
+                android.text.method.LinkMovementMethod.getInstance()
             binding.extensionInfoSynopsis.maxLines = if (synopsisExpanded) Int.MAX_VALUE else 4
             binding.extensionInfoSynopsis.ellipsize =
                 if (synopsisExpanded) null else android.text.TextUtils.TruncateAt.END
