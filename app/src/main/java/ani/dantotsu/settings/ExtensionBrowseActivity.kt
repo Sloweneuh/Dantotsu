@@ -509,9 +509,29 @@ class ExtensionBrowseActivity : AppCompatActivity() {
             is Filter.Group<*> -> {
                 val children = (f.state as? List<*>) ?: return
                 val defaultChildren = (default as? Filter.Group<*>)?.state as? List<*>
-                children.forEachIndexed { i, child ->
-                    if (child is Filter<*>) {
-                        collectMangaChips(child, defaultChildren?.getOrNull(i) as? Filter<*>, out)
+                val allCheckBoxes = children.isNotEmpty() && children.all { it is Filter.CheckBox }
+                if (allCheckBoxes) {
+                    val hasChanges = children.indices.any { i ->
+                        val child = children[i] as? Filter<Boolean> ?: return@any false
+                        val defState = (defaultChildren?.getOrNull(i) as? Filter<Boolean>)?.state ?: false
+                        child.state != defState
+                    }
+                    if (hasChanges) {
+                        children.forEach { child ->
+                            @Suppress("UNCHECKED_CAST")
+                            val cb = child as Filter<Boolean>
+                            if (cb.state) {
+                                out.add(ActiveFilterChip((child as Filter.CheckBox).name) {
+                                    cb.state = false
+                                })
+                            }
+                        }
+                    }
+                } else {
+                    children.forEachIndexed { i, child ->
+                        if (child is Filter<*>) {
+                            collectMangaChips(child, defaultChildren?.getOrNull(i) as? Filter<*>, out)
+                        }
                     }
                 }
             }
@@ -582,13 +602,33 @@ class ExtensionBrowseActivity : AppCompatActivity() {
             is AnimeFilter.Group<*> -> {
                 val children = (f.state as? List<*>) ?: return
                 val defaultChildren = (default as? AnimeFilter.Group<*>)?.state as? List<*>
-                children.forEachIndexed { i, child ->
-                    if (child is AnimeFilter<*>) {
-                        collectAnimeChips(
-                            child,
-                            defaultChildren?.getOrNull(i) as? AnimeFilter<*>,
-                            out,
-                        )
+                val allCheckBoxes = children.isNotEmpty() && children.all { it is AnimeFilter.CheckBox }
+                if (allCheckBoxes) {
+                    val hasChanges = children.indices.any { i ->
+                        val child = children[i] as? AnimeFilter<Boolean> ?: return@any false
+                        val defState = (defaultChildren?.getOrNull(i) as? AnimeFilter<Boolean>)?.state ?: false
+                        child.state != defState
+                    }
+                    if (hasChanges) {
+                        children.forEach { child ->
+                            @Suppress("UNCHECKED_CAST")
+                            val cb = child as AnimeFilter<Boolean>
+                            if (cb.state) {
+                                out.add(ActiveFilterChip((child as AnimeFilter.CheckBox).name) {
+                                    cb.state = false
+                                })
+                            }
+                        }
+                    }
+                } else {
+                    children.forEachIndexed { i, child ->
+                        if (child is AnimeFilter<*>) {
+                            collectAnimeChips(
+                                child,
+                                defaultChildren?.getOrNull(i) as? AnimeFilter<*>,
+                                out,
+                            )
+                        }
                     }
                 }
             }
