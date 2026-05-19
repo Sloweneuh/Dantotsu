@@ -4,11 +4,13 @@ import android.graphics.Typeface
 import android.os.Bundle
 import android.util.TypedValue
 import android.view.View
+import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.view.isVisible
+import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.lifecycleScope
 import ani.dantotsu.FileUrl
 import ani.dantotsu.R
@@ -24,6 +26,7 @@ import ani.dantotsu.initActivity
 import ani.dantotsu.loadImage
 import ani.dantotsu.media.MediaNameAdapter
 import ani.dantotsu.navBarHeight
+import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.util.Logger
 import eu.kanade.tachiyomi.animesource.AnimeSource
@@ -73,6 +76,9 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
 
         binding.extensionInfoRoot.setPadding(0, 0, 0, navBarHeight)
 
+        binding.extensionInfoBack.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+            topMargin += statusBarHeight
+        }
         binding.extensionInfoBack.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
 
         @Suppress("DEPRECATION")
