@@ -391,16 +391,20 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
                                     media!!.anime!!.episodes?.get(media!!.anime!!.selectedEpisode!!)?.selectedVideo =
                                         media!!.selected!!.video
                                     startExoplayer(media!!)
-                                } else fail(R.string.auto_select_server_error)
+                                } else {
+                                    prevEpisode = null
+                                    fail(R.string.auto_select_server_error)
+                                }
                             }
 
-                            if (ep.extractors?.filter { it.server.name == selected } == null) {
+                            if (ep.extractors?.find { it.server.name == selected } == null) {
                                 scope.launch{
                                     if(!withContext(Dispatchers.IO){
                                         loadEpisodeSingleServer(ep.number, selected!!)
                                     }){
                                         media!!.selected!!.server = null
                                         model.saveSelected(media!!.id, media!!.selected!!)
+                                        prevEpisode = null
                                         fail(R.string.auto_select_server_error)
                                     }
                                     else load()
