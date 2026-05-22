@@ -23,7 +23,8 @@ data class CurrentReaderSettings(
     var wrapImages: Boolean = PrefManager.getVal(PrefName.WrapImages),
     var longClickImage: Boolean = PrefManager.getVal(PrefName.LongClickImage),
     var cropBorders: Boolean = PrefManager.getVal(PrefName.CropBorders),
-    var cropBorderThreshold: Int = PrefManager.getVal(PrefName.CropBorderThreshold)
+    var cropBorderThreshold: Int = PrefManager.getVal(PrefName.CropBorderThreshold),
+    var lockRotation: Boolean = PrefManager.getVal(PrefName.LockRotation)
 ) : Serializable {
 
     enum class Directions {

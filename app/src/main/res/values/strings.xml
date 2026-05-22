@@ -458,6 +458,7 @@
     <string name="delete_custom_list">Delete Custom List</string>
     <string name="delete_custom_list_confirm">Are you sure you want to delete %1$s ?</string>
     <string name="keep_screen_on">Keep Screen On</string>
+    <string name="lock_screen_rotation">Lock Screen Rotation</string>
     <string name="layout">Layout</string>
     <string name="spaced_pages">Spaced Pages</string>
     <string name="direction">Direction</string>

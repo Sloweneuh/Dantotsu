@@ -148,6 +148,12 @@ class ReaderSettingsActivity : AppCompatActivity() {
             PrefManager.setVal(PrefName.KeepScreenOn, isChecked)
         }
 
+        binding.readerSettingsLockRotation.isChecked = defaultSettings.lockRotation
+        binding.readerSettingsLockRotation.setOnCheckedChangeListener { _, isChecked ->
+            defaultSettings.lockRotation = isChecked
+            PrefManager.setVal(PrefName.LockRotation, isChecked)
+        }
+
         binding.readerSettingsHideScrollBar.isChecked = defaultSettings.hideScrollBar
         binding.readerSettingsHideScrollBar.setOnCheckedChangeListener { _, isChecked ->
             defaultSettings.hideScrollBar = isChecked

@@ -148,6 +148,12 @@ class ReaderSettingsDialogFragment : BottomSheetDialogFragment() {
             activity.applySettings()
         }
 
+        binding.readerLockRotation.isChecked = settings.lockRotation
+        binding.readerLockRotation.setOnCheckedChangeListener { _, isChecked ->
+            settings.lockRotation = isChecked
+            activity.applySettings()
+        }
+
         binding.readerHideScrollBar.isChecked = settings.hideScrollBar
         binding.readerHideScrollBar.setOnCheckedChangeListener { _, isChecked ->
             settings.hideScrollBar = isChecked

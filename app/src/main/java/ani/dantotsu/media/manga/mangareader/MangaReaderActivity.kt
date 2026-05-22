@@ -4,6 +4,7 @@ import android.animation.ObjectAnimator
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.content.res.Resources
 import android.graphics.Bitmap
@@ -626,6 +627,12 @@ class MangaReaderActivity : AppCompatActivity() {
         //keep screen On
         if (defaultSettings.keepScreenOn) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+
+        //lock screen rotation
+        requestedOrientation = if (defaultSettings.lockRotation)
+            ActivityInfo.SCREEN_ORIENTATION_LOCKED
+        else
+            ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
 
         binding.mangaReaderPager.unregisterOnPageChangeCallback(pageChangeCallback)
 
