@@ -58,7 +58,7 @@ class SettingsAnilistNotificationActivity : AppCompatActivity() {
                         icon = R.drawable.ic_round_notifications_none_24,
                         onClick = {
                             context.customAlertDialog().apply {
-                                setTitle(R.string.subscriptions_checking_time)
+                                setTitle(R.string.anilist_notification_frequency)
                                 singleChoiceItems(
                                     aItems.toTypedArray(),
                                     PrefManager.getVal<Int>(PrefName.AnilistNotificationInterval)

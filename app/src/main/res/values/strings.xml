@@ -234,6 +234,15 @@
     <string name="mu_custom_list_mapping_empty">No custom lists found on your MangaUpdates account</string>
     <string name="mu_tab_enabled">MangaUpdates tab</string>
     <string name="mu_tab_enabled_desc">Show the MangaUpdates info tab in manga details</string>
+    <string name="mu_notifications">MangaUpdates Notifications</string>
+    <string name="mu_notifications_desc">Configure notifications for new chapters in your MangaUpdates reading list</string>
+    <string name="mu_notifications_enabled">Enable notifications</string>
+    <string name="mu_notifications_enabled_desc">Send notifications for new chapters found in your MangaUpdates reading list</string>
+    <string name="mu_notification_interval_title">MangaUpdates Notification Frequency</string>
+    <string name="mu_notification_interval">Notification interval: %1$s</string>
+    <string name="mu_notification_interval_desc">How often to check for new chapters (only applies when unread chapter checks are disabled)</string>
+    <string name="mu_notification_interval_linked">Notification interval: same as unread chapter checks (%1$s)</string>
+    <string name="mu_notification_interval_linked_desc">Change the interval in Unread Chapter Notification settings, or disable unread chapter checks to set a separate interval here</string>
     <string name="mu_filter_categories">Categories</string>
     <string name="mu_filter_year_hint">e.g. 2020</string>
     <string name="mu_filter_licensed">Licensed</string>
@@ -597,6 +606,9 @@
     <string name="checking_subscriptions">Notification for Checking Subscriptions</string>
     <string name="subscriptions_checking_time_s">Subscriptions Update Frequency : %1$s</string>
     <string name="subscriptions_checking_time">Subscriptions Update Frequency</string>
+    <string name="comment_notification_frequency">Comment Notification Frequency</string>
+    <string name="anilist_notification_frequency">AniList Notification Frequency</string>
+    <string name="unread_chapter_notification_frequency">Unread Chapter Check Frequency</string>
     <string name="subscriptions_info">Amount of time for Dantotsu to periodically check for new Episodes/Chapters for your subscriptions</string>
     <string name="do_not_update">Don\'t Update</string>
     <string name="loading_chap_number">Loading Chapter %1$s</string>

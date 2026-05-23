@@ -85,6 +85,17 @@ class SettingsNotificationActivity : AppCompatActivity() {
                         }
                     ),
 
+                    // === MANGAUPDATES NOTIFICATIONS SECTION ===
+                    Settings(
+                        type = 1,
+                        name = getString(R.string.mu_notifications),
+                        desc = getString(R.string.mu_notifications_desc),
+                        icon = R.drawable.ic_round_mangaupdates_24,
+                        onClick = {
+                            startActivity(Intent(context, SettingsMuNotificationActivity::class.java))
+                        }
+                    ),
+
                     // === GENERAL SETTINGS ===
                     Settings(
                         type = 2,

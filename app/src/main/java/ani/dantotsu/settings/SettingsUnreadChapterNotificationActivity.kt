@@ -106,7 +106,7 @@ class SettingsUnreadChapterNotificationActivity : AppCompatActivity() {
                         icon = R.drawable.ic_round_notifications_none_24,
                         onClick = {
                             context.customAlertDialog().apply {
-                                setTitle(R.string.subscriptions_checking_time)
+                                setTitle(R.string.unread_chapter_notification_frequency)
                                 singleChoiceItems(
                                     uItems.toTypedArray(),
                                     currentUIndex

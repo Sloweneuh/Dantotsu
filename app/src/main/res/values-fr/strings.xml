@@ -340,6 +340,7 @@
     <string name="list_settings">Paramètres de liste</string>
     <string name="dns_info">Changer si votre FAI bloque une source</string>
     <string name="keep_screen_on">Garder l\'écran allumé</string>
+    <string name="lock_screen_rotation">Verrouiller la rotation de l\'écran</string>
     <string name="layout">Disposition</string>
     <string name="spaced_pages">Pages espacées</string>
     <string name="direction">Direction</string>
@@ -449,6 +450,9 @@
     <string name="checking_subscriptions">Notification de vérification des abonnements</string>
     <string name="subscriptions_checking_time_s">Fréquence de mise à jour des abonnements : %1$s</string>
     <string name="subscriptions_checking_time">Fréquence de mise à jour des abonnements</string>
+    <string name="comment_notification_frequency">Fréquence des notifications de commentaires</string>
+    <string name="anilist_notification_frequency">Fréquence des notifications AniList</string>
+    <string name="unread_chapter_notification_frequency">Fréquence de vérification des chapitres non lus</string>
     <string name="do_not_update">Ne pas mettre à jour</string>
     <string name="loading_chap_number">Chargement du chapitre %1$s</string>
     <string name="sort_by_release_date">Trier par date de sortie</string>
@@ -1457,6 +1461,15 @@
     <string name="mangaupdates_settings">Paramètres MangaUpdates</string>
     <string name="mu_list_fetch_enabled">Listes MangaUpdates</string>
     <string name="mu_list_fetch_enabled_desc">Récupérer et afficher les listes MangaUpdates sur l\'accueil et les vues listes</string>
+    <string name="mu_notifications">Notifications MangaUpdates</string>
+    <string name="mu_notifications_desc">Configurer les notifications pour les nouveaux chapitres de votre liste de lecture MangaUpdates</string>
+    <string name="mu_notifications_enabled">Activer les notifications</string>
+    <string name="mu_notifications_enabled_desc">Envoyer des notifications pour les nouveaux chapitres trouvés dans votre liste de lecture MangaUpdates</string>
+    <string name="mu_notification_interval_title">Fréquence des notifications MangaUpdates</string>
+    <string name="mu_notification_interval">Intervalle de notification : %1$s</string>
+    <string name="mu_notification_interval_desc">Fréquence de vérification des nouveaux chapitres (s\'applique uniquement si les vérifications de chapitres non lus sont désactivées)</string>
+    <string name="mu_notification_interval_linked">Intervalle de notification : identique aux chapitres non lus (%1$s)</string>
+    <string name="mu_notification_interval_linked_desc">Modifiez l\'intervalle dans les paramètres des notifications de chapitres non lus, ou désactivez ces vérifications pour définir un intervalle séparé ici</string>
     <string name="volume">Volume</string>
     <string name="mangaupdates_account_help">Comment fonctionne MangaUpdates \?</string>
     <string name="switch_to_anilist_title">Média Anilist trouvé</string>

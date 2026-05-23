@@ -45,6 +45,7 @@ class SettingsAdapter(private val settings: ArrayList<Settings>) :
         holder.itemView.layoutParams = holder.itemView.layoutParams?.apply {
             height = if (settings.isVisible) ViewGroup.LayoutParams.WRAP_CONTENT else 0
         }
+        holder.itemView.alpha = if (settings.isEnabled) 1f else 0.5f
         when (settings.type) {
             1 -> {
                 val b = (holder as SettingsViewHolder).binding
@@ -58,7 +59,7 @@ class SettingsAdapter(private val settings: ArrayList<Settings>) :
                     )
                 )
                 b.settingsLayout.setOnClickListener {
-                    settings.onClick?.invoke(b)
+                    if (settings.isEnabled) settings.onClick?.invoke(b)
                 }
                 b.settingsLayout.setOnLongClickListener {
                     settings.onLongClick?.invoke()
@@ -82,8 +83,9 @@ class SettingsAdapter(private val settings: ArrayList<Settings>) :
                     )
                 )
                 b.settingsButton.isChecked = settings.isChecked
+                b.settingsButton.isEnabled = settings.isEnabled
                 b.settingsButton.setOnCheckedChangeListener { _, isChecked ->
-                    settings.switch?.invoke(isChecked, b)
+                    if (settings.isEnabled) settings.switch?.invoke(isChecked, b)
                 }
                 b.settingsLayout.setOnLongClickListener {
                     settings.onLongClick?.invoke()

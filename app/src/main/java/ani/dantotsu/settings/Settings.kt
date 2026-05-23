@@ -16,4 +16,5 @@ data class Settings(
     val isVisible: Boolean = true,
     val isActivity: Boolean = false,
     var isChecked: Boolean = false,
+    val isEnabled: Boolean = true,
 )

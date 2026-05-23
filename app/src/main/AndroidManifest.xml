@@ -190,6 +190,9 @@
             android:name=".settings.SettingsCommentNotificationActivity"
             android:parentActivityName=".settings.SettingsNotificationActivity" />
         <activity
+            android:name=".settings.SettingsMuNotificationActivity"
+            android:parentActivityName=".settings.SettingsNotificationActivity" />
+        <activity
             android:name=".settings.SettingsThemeActivity"
             android:parentActivityName=".MainActivity" />
         <activity
@@ -465,6 +468,7 @@
         <receiver android:name=".notifications.comment.CommentNotificationReceiver" />
         <receiver android:name=".notifications.subscription.SubscriptionNotificationReceiver" />
         <receiver android:name=".notifications.unread.UnreadChapterNotificationReceiver" />
+        <receiver android:name=".notifications.unread.MuUnreadNotificationReceiver" />
 
         <meta-data
             android:name="preloaded_fonts"

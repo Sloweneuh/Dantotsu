@@ -36,6 +36,16 @@ interface TaskScheduler {
                 TaskType.UNREAD_CHAPTER_NOTIFICATION -> PrefManager.getVal(
                     PrefName.UnreadChapterNotificationInterval
                 )
+
+                TaskType.MU_NOTIFICATION -> {
+                    val unreadInterval = PrefManager.getVal<Long>(PrefName.UnreadChapterNotificationInterval)
+                    if (unreadInterval > 0L) {
+                        // MU is already checked inside UnreadChapterNotificationTask; cancel standalone
+                        0L
+                    } else {
+                        PrefManager.getVal(PrefName.MangaUpdatesNotificationInterval)
+                    }
+                }
             }
             scheduleRepeatingTask(taskType, interval)
         }
@@ -83,7 +93,8 @@ interface TaskScheduler {
         COMMENT_NOTIFICATION,
         ANILIST_NOTIFICATION,
         SUBSCRIPTION_NOTIFICATION,
-        UNREAD_CHAPTER_NOTIFICATION
+        UNREAD_CHAPTER_NOTIFICATION,
+        MU_NOTIFICATION
     }
 }
 
