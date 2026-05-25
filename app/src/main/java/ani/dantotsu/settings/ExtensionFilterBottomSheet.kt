@@ -32,6 +32,7 @@ class ExtensionFilterBottomSheet : BottomSheetDialogFragment() {
     private val binding get() = _binding!!
 
     companion object {
+        private const val SEARCH_THRESHOLD = 8
         private var pendingFilters: Any? = null
         private var pendingCallback: ((Any) -> Unit)? = null
         private var pendingSourceId: Long = 0L
@@ -199,8 +200,9 @@ class ExtensionFilterBottomSheet : BottomSheetDialogFragment() {
                     usedCurrent = false
                 }
                 is Filter.Group<*> -> {
-                    val inner = createSection(root, f.name)
-                    (f.state as? List<*>)?.forEach { child ->
+                    val children = f.state as? List<*> ?: emptyList<Any>()
+                    val inner = createSection(root, f.name, searchable = children.size > SEARCH_THRESHOLD)
+                    children.forEach { child ->
                         if (child is Filter<*>) renderFilter(child, inner)
                     }
                 }
@@ -228,8 +230,9 @@ class ExtensionFilterBottomSheet : BottomSheetDialogFragment() {
                     usedCurrent = false
                 }
                 is AnimeFilter.Group<*> -> {
-                    val inner = createSection(root, f.name)
-                    (f.state as? List<*>)?.forEach { child ->
+                    val children = f.state as? List<*> ?: emptyList<Any>()
+                    val inner = createSection(root, f.name, searchable = children.size > SEARCH_THRESHOLD)
+                    children.forEach { child ->
                         if (child is AnimeFilter<*>) renderAnimeFilter(child, inner)
                     }
                 }
@@ -244,7 +247,7 @@ class ExtensionFilterBottomSheet : BottomSheetDialogFragment() {
         }
     }
 
-    private fun createSection(root: LinearLayout, title: String): LinearLayout {
+    private fun createSection(root: LinearLayout, title: String, searchable: Boolean = false): LinearLayout {
         val ctx = root.context
         val wrapper = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
@@ -277,8 +280,52 @@ class ExtensionFilterBottomSheet : BottomSheetDialogFragment() {
                 .rotation(if (expanded) 0f else 180f)
                 .setDuration(180)
                 .start()
+            if (searchable) {
+                header.filterSectionSearch.visibility = if (expanded) View.GONE else View.VISIBLE
+                if (expanded) {
+                    header.filterSectionSearchLayout.visibility = View.GONE
+                    header.filterSectionSearch.setImageResource(ani.dantotsu.R.drawable.ic_round_search_24)
+                    header.filterSectionSearchText.setText("")
+                }
+            }
         }
+
+        if (searchable) {
+            header.filterSectionSearch.setOnClickListener {
+                val isVisible = header.filterSectionSearchLayout.visibility == View.VISIBLE
+                header.filterSectionSearchLayout.visibility = if (isVisible) View.GONE else View.VISIBLE
+                header.filterSectionSearch.setImageResource(
+                    if (isVisible) ani.dantotsu.R.drawable.ic_round_search_24
+                    else ani.dantotsu.R.drawable.ic_round_search_off_24
+                )
+                if (isVisible) header.filterSectionSearchText.setText("")
+            }
+            header.filterSectionSearchText.addTextChangedListener(object : android.text.TextWatcher {
+                override fun afterTextChanged(s: android.text.Editable?) {
+                    val query = s?.toString()?.trim()?.lowercase() ?: ""
+                    for (i in 0 until content.childCount) {
+                        val child = content.getChildAt(i)
+                        child.visibility = if (query.isEmpty() || findLabel(child).lowercase().contains(query))
+                            View.VISIBLE else View.GONE
+                    }
+                }
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+            })
+        }
+
         return content
+    }
+
+    private fun findLabel(view: View): String {
+        if (view is android.widget.TextView) return view.text?.toString() ?: ""
+        if (view is ViewGroup) {
+            for (i in 0 until view.childCount) {
+                val label = findLabel(view.getChildAt(i))
+                if (label.isNotEmpty()) return label
+            }
+        }
+        return ""
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -323,8 +370,9 @@ class ExtensionFilterBottomSheet : BottomSheetDialogFragment() {
                 )
             }
             is Filter.Group<*> -> {
-                val inner = createSection(parent, f.name)
-                (f.state as? List<*>)?.forEach { child ->
+                val children = f.state as? List<*> ?: emptyList<Any>()
+                val inner = createSection(parent, f.name, searchable = children.size > SEARCH_THRESHOLD)
+                children.forEach { child ->
                     if (child is Filter<*>) renderFilter(child, inner)
                 }
             }
@@ -374,8 +422,9 @@ class ExtensionFilterBottomSheet : BottomSheetDialogFragment() {
                 )
             }
             is AnimeFilter.Group<*> -> {
-                val inner = createSection(parent, f.name)
-                (f.state as? List<*>)?.forEach { child ->
+                val children = f.state as? List<*> ?: emptyList<Any>()
+                val inner = createSection(parent, f.name, searchable = children.size > SEARCH_THRESHOLD)
+                children.forEach { child ->
                     if (child is AnimeFilter<*>) renderAnimeFilter(child, inner)
                 }
             }

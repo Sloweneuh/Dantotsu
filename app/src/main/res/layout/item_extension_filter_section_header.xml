@@ -14,16 +14,70 @@
     android:paddingStart="0dp"
     android:paddingEnd="8dp">
 
-    <TextView
-        android:id="@+id/filterSectionTitle"
+    <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:fontFamily="@font/poppins_bold"
-        android:textAllCaps="true"
-        android:textColor="?attr/colorPrimary"
-        android:textSize="13sp"
-        tools:text="Genres" />
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/filterSectionTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="4dp"
+            android:fontFamily="@font/poppins_bold"
+            android:textAllCaps="true"
+            android:textColor="?attr/colorPrimary"
+            android:textSize="13sp"
+            tools:text="Genres" />
+
+        <ImageButton
+            android:id="@+id/filterSectionSearch"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_gravity="center_vertical"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/search"
+            android:visibility="gone"
+            app:srcCompat="@drawable/ic_round_search_24"
+            app:tint="?attr/colorOnBackground" />
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/filterSectionSearchLayout"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.Dense"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_gravity="center_vertical"
+            android:layout_marginStart="4dp"
+            android:layout_weight="1"
+            android:maxWidth="140dp"
+            android:minHeight="0dp"
+            android:visibility="gone"
+            app:boxCornerRadiusBottomEnd="12dp"
+            app:boxCornerRadiusBottomStart="12dp"
+            app:boxCornerRadiusTopEnd="12dp"
+            app:boxCornerRadiusTopStart="12dp"
+            app:boxStrokeColor="@color/text_input_layout_stroke_color"
+            app:hintEnabled="false">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/filterSectionSearchText"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:fontFamily="@font/poppins_bold"
+                android:gravity="center_vertical"
+                android:hint="@string/search"
+                android:imeOptions="actionDone"
+                android:inputType="text"
+                android:maxLines="1"
+                android:minHeight="0dp"
+                android:paddingTop="0dp"
+                android:paddingBottom="0dp"
+                android:textSize="14sp" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+    </LinearLayout>
 
     <ImageView
         android:id="@+id/filterSectionArrow"
