@@ -247,6 +247,9 @@
             android:name=".media.ComickReviewViewActivity"
             android:parentActivityName=".media.ReviewActivity" />
         <activity
+            android:name=".media.MALReviewViewActivity"
+            android:parentActivityName=".media.ReviewActivity" />
+        <activity
             android:name=".media.SearchActivity"
             android:parentActivityName=".MainActivity" />
         <activity android:name=".media.StudioActivity" />

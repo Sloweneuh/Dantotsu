@@ -36,6 +36,11 @@ import kotlinx.coroutines.withContext
 import java.net.URLEncoder
 import ani.dantotsu.connections.mal.MALStack
 import ani.dantotsu.media.StackAdapter
+import ani.dantotsu.others.Jikan
+import ani.dantotsu.others.MALReview
+import ani.dantotsu.others.toMALReview
+import ani.dantotsu.util.Logger
+import com.xwray.groupie.GroupieAdapter
 
 class MALInfoFragment : Fragment() {
     private var _binding: FragmentMediaInfoBinding? = null
@@ -604,6 +609,39 @@ class MALInfoFragment : Fragment() {
             }
         }
 
+        // Reviews from Jikan API
+        if (!offline) {
+            lifecycleScope.launch {
+                val reviews = withContext(Dispatchers.IO) {
+                    try {
+                        val response = Jikan.getAnimeReviews(malId)
+                        Logger.log("MAL Reviews (anime): malId=$malId response=${response != null} dataSize=${response?.data?.size}")
+                        response?.data?.map { it.toMALReview() } ?: emptyList()
+                    } catch (e: Exception) {
+                        Logger.log("MAL Reviews (anime) error: ${e.message}")
+                        emptyList<MALReview>()
+                    }
+                }
+                val ctx = context ?: return@launch
+                if (_binding == null) return@launch
+                Logger.log("MAL Reviews (anime): showing ${reviews.size} reviews")
+                if (reviews.isNotEmpty()) {
+                    val bind = ItemTitleRecyclerBinding.inflate(
+                        LayoutInflater.from(ctx),
+                        parent,
+                        false
+                    )
+                    bind.itemTitle.setText(R.string.reviews)
+                    val groupAdapter = GroupieAdapter()
+                    reviews.forEach { groupAdapter.add(MALReviewAdapter(it)) }
+                    bind.itemRecycler.adapter = groupAdapter
+                    bind.itemRecycler.layoutManager = LinearLayoutManager(ctx)
+                    bind.itemMore.visibility = View.GONE
+                    parent.addView(bind.root)
+                }
+            }
+        }
+
     }
 
     @Suppress("SetTextI18n")
@@ -828,6 +866,39 @@ class MALInfoFragment : Fragment() {
                                 .putExtra("isAnime", false)
                         )
                     }
+                    parent.addView(bind.root)
+                }
+            }
+        }
+
+        // Reviews from Jikan API
+        if (!offline) {
+            lifecycleScope.launch {
+                val reviews = withContext(Dispatchers.IO) {
+                    try {
+                        val response = Jikan.getMangaReviews(malId)
+                        Logger.log("MAL Reviews (manga): malId=$malId response=${response != null} dataSize=${response?.data?.size}")
+                        response?.data?.map { it.toMALReview() } ?: emptyList()
+                    } catch (e: Exception) {
+                        Logger.log("MAL Reviews (manga) error: ${e.message}")
+                        emptyList<MALReview>()
+                    }
+                }
+                val ctx = context ?: return@launch
+                if (_binding == null) return@launch
+                Logger.log("MAL Reviews (manga): showing ${reviews.size} reviews")
+                if (reviews.isNotEmpty()) {
+                    val bind = ItemTitleRecyclerBinding.inflate(
+                        LayoutInflater.from(ctx),
+                        parent,
+                        false
+                    )
+                    bind.itemTitle.setText(R.string.reviews)
+                    val groupAdapter = GroupieAdapter()
+                    reviews.forEach { groupAdapter.add(MALReviewAdapter(it)) }
+                    bind.itemRecycler.adapter = groupAdapter
+                    bind.itemRecycler.layoutManager = LinearLayoutManager(ctx)
+                    bind.itemMore.visibility = View.GONE
                     parent.addView(bind.root)
                 }
             }
