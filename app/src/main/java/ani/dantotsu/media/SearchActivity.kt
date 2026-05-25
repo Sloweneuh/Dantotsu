@@ -26,7 +26,10 @@ import ani.dantotsu.connections.comick.ComickComic
 import ani.dantotsu.connections.anilist.StaffSearchResults
 import ani.dantotsu.connections.anilist.StudioSearchResults
 import ani.dantotsu.connections.anilist.UserSearchResults
+import android.content.Intent
+import android.net.Uri
 import ani.dantotsu.connections.mangaupdates.MUMediaAdapter
+import ani.dantotsu.connections.mangaupdates.MUMediaDetailsActivity
 import ani.dantotsu.databinding.ActivitySearchBinding
 import ani.dantotsu.initActivity
 import ani.dantotsu.navBarHeight
@@ -708,7 +711,16 @@ class SearchActivity : AppCompatActivity() {
             runOnUiThread {
                 when {
                     !anilistUrl.isNullOrBlank() -> openOrCopyAnilistLink(anilistUrl)
-                    !muUrl.isNullOrBlank() -> openLinkInBrowser(muUrl)
+                    !muUrl.isNullOrBlank() -> {
+                        val uri = Uri.parse(muUrl)
+                        if (uri.pathSegments?.firstOrNull() == "series") {
+                            startActivity(Intent(Intent.ACTION_VIEW, uri).apply {
+                                setClass(this@SearchActivity, MUMediaDetailsActivity::class.java)
+                            })
+                        } else {
+                            openLinkInBrowser(muUrl)
+                        }
+                    }
                     else -> openLinkInBrowser(fallback)
                 }
             }

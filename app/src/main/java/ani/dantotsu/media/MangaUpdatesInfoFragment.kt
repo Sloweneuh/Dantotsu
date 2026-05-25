@@ -365,7 +365,7 @@ class MangaUpdatesInfoFragment : Fragment() {
                     ?.apply {
                         visibility = View.VISIBLE
                         setOnClickListener {
-                            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(muLink)))
+                            ani.dantotsu.openLinkInBrowser(muLink)
                         }
                     }
 

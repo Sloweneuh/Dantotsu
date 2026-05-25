@@ -7,6 +7,7 @@ import android.view.View
 import android.widget.TextView
 import androidx.core.net.toUri
 import ani.dantotsu.R
+import ani.dantotsu.connections.mangaupdates.MUMediaDetailsActivity
 import ani.dantotsu.copyToClipboard
 import ani.dantotsu.loadImage
 import ani.dantotsu.setSafeOnClickListener
@@ -44,7 +45,18 @@ class QuicklinksBottomSheetFragment : CustomBottomDialog() {
                 val url = entry.url ?: entry.page
                 if (!url.isNullOrBlank()) {
                     itemView.setSafeOnClickListener {
-                        try { startActivity(Intent(Intent.ACTION_VIEW, url.toUri())) } catch (_: Throwable) {}
+                        try {
+                            val uri = url.toUri()
+                            val isMuSeries = uri.host == "www.mangaupdates.com" &&
+                                uri.pathSegments?.firstOrNull() == "series"
+                            if (isMuSeries) {
+                                startActivity(Intent(Intent.ACTION_VIEW, uri).apply {
+                                    setClass(requireContext(), MUMediaDetailsActivity::class.java)
+                                })
+                            } else {
+                                startActivity(Intent(Intent.ACTION_VIEW, uri))
+                            }
+                        } catch (_: Throwable) {}
                     }
                     itemView.setOnLongClickListener { copyToClipboard(url); true }
                 }

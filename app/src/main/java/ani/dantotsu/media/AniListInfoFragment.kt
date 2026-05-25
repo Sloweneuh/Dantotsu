@@ -62,6 +62,7 @@ import kotlinx.coroutines.withContext
 import java.io.Serializable
 import java.net.URLEncoder
 import ani.dantotsu.connections.malsync.MalSyncApi
+import ani.dantotsu.connections.mangaupdates.MUMediaDetailsActivity
 
 class AniListInfoFragment : Fragment() {
     private var _binding: FragmentMediaInfoBinding? = null
@@ -358,12 +359,17 @@ class AniListInfoFragment : Fragment() {
                         
                         chip.text = "$siteName$languageFlag"
                         chip.setSafeOnClickListener {
-                            startActivity(
-                                Intent(
-                                    Intent.ACTION_VIEW,
-                                    media.externalLinks[position][1]?.toUri()
-                                )
-                            )
+                            val url = media.externalLinks[position][1]
+                            val uri = url?.toUri()
+                            val isMuSeries = uri?.host == "www.mangaupdates.com" &&
+                                uri.pathSegments?.firstOrNull() == "series"
+                            if (isMuSeries) {
+                                startActivity(Intent(Intent.ACTION_VIEW, uri).apply {
+                                    setClass(requireContext(), MUMediaDetailsActivity::class.java)
+                                })
+                            } else {
+                                startActivity(Intent(Intent.ACTION_VIEW, uri))
+                            }
                         }
                         chip.setOnLongClickListener { copyToClipboard(media.externalLinks[position][1]!!);true }
                         bind.itemChipGroup.addView(chip)
