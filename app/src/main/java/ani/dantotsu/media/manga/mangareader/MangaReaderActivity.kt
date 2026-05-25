@@ -1498,16 +1498,25 @@ class MangaReaderActivity : AppCompatActivity() {
                     val insertedCount = prevChapter.images().size + 1 // images + transition
 
                     if (defaultSettings.layout != CurrentReaderSettings.Layouts.PAGED) {
-                        // RecyclerView: remember and restore scroll position
                         val layoutManager = binding.mangaReaderRecycler.layoutManager as? PreloadLinearLayoutManager
                         val firstVisiblePos = layoutManager?.findFirstVisibleItemPosition() ?: 0
                         val firstVisibleView = layoutManager?.findViewByPosition(firstVisiblePos)
-                        val offset = firstVisibleView?.top ?: 0
+                        // view.top/left are RecyclerView-relative coordinates that include padding.
+                        // scrollToPositionWithOffset adds paddingStart internally, so subtract it
+                        // here to avoid double-counting (which would push the image below the
+                        // transition and make it appear off-centre).
+                        val isVertical = defaultSettings.direction == TOP_TO_BOTTOM ||
+                                         defaultSettings.direction == BOTTOM_TO_TOP
+                        val rawEdge = if (isVertical) firstVisibleView?.top ?: 0
+                                      else firstVisibleView?.left ?: 0
+                        val paddingStart = if (isVertical) binding.mangaReaderRecycler.paddingTop
+                                           else binding.mangaReaderRecycler.paddingLeft
+                        val offset = rawEdge - paddingStart
 
                         adapter.prependChapter(prevChapter, prevIdx, missing)
                         layoutManager?.scrollToPositionWithOffset(firstVisiblePos + insertedCount, offset)
                     } else {
-                        // ViewPager2: remember current item and offset by inserted count
+                        // ViewPager2: integer item index, no pixel offset needed
                         val currentItem = binding.mangaReaderPager.currentItem
                         adapter.prependChapter(prevChapter, prevIdx, missing)
                         binding.mangaReaderPager.setCurrentItem(currentItem + insertedCount, false)
