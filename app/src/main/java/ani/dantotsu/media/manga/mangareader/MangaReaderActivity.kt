@@ -1150,6 +1150,7 @@ class MangaReaderActivity : AppCompatActivity() {
                     View.LAYOUT_DIRECTION_RTL
                 else
                     View.LAYOUT_DIRECTION_LTR
+            if (shouldShow != null && shouldShow == isContVisible) return
             shouldShow?.apply { isContVisible = !this }
             if (isContVisible) {
                 isContVisible = false
