@@ -349,8 +349,8 @@ object RPCManager {
                     largeImage = data.largeImage?.url,
                     largeText = data.largeImage?.label,
                     largeUrl = null,
-                    smallImage = smallIconUrl,
-                    smallText = smallIconText,
+                    smallImage = data.smallImage?.url ?: smallIconUrl,
+                    smallText = data.smallImage?.label ?: smallIconText,
                     smallUrl = null,
                 ),
             timestamps = if (data.startTimestamp != null)

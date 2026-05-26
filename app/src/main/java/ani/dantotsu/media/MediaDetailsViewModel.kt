@@ -22,6 +22,7 @@ import ani.dantotsu.others.Kitsu
 import ani.dantotsu.parsers.AnimeSources
 import ani.dantotsu.parsers.Book
 import ani.dantotsu.parsers.MangaImage
+import ani.dantotsu.parsers.DynamicMangaParser
 import ani.dantotsu.parsers.MangaReadSources
 import ani.dantotsu.parsers.MangaSources
 import ani.dantotsu.parsers.NovelSources
@@ -591,10 +592,10 @@ class MediaDetailsViewModel : ViewModel() {
     ): Boolean {
 
         return tryWithSuspend(true) {
+            val parser = mangaReadSources?.get(selected.sourceIndex)
+            (parser as? DynamicMangaParser)?.sourceLanguage = selected.langIndex
             chapter.addImages(
-                    mangaReadSources
-                            ?.get(selected.sourceIndex)
-                            ?.loadImages(chapter.link, chapter.sChapter)
+                    parser?.loadImages(chapter.link, chapter.sChapter)
                             ?: return@tryWithSuspend false
             )
             if (post) mangaChapter.postValue(chapter)

@@ -1,6 +1,8 @@
 package ani.dantotsu.settings
 
+import android.content.Intent
 import android.graphics.Typeface
+import android.widget.CheckBox
 import android.os.Bundle
 import android.util.TypedValue
 import android.view.View
@@ -19,18 +21,29 @@ import ani.dantotsu.connections.mangaupdates.AniListQuickSearchDialogFragment
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.connections.mangaupdates.MangaUpdatesQuickSearchDialogFragment
 import ani.dantotsu.databinding.ActivityExtensionMediaInfoBinding
+import ani.dantotsu.databinding.ItemChapterGapBinding
 import ani.dantotsu.databinding.ItemChapterListBinding
 import ani.dantotsu.databinding.ItemChipBinding
 import ani.dantotsu.databinding.ItemEpisodeListBinding
 import ani.dantotsu.buildMarkwon
 import ani.dantotsu.initActivity
 import ani.dantotsu.loadImage
-import ani.dantotsu.openLinkInBrowser
+import ani.dantotsu.media.Media
+import ani.dantotsu.media.MediaSingleton
 import ani.dantotsu.media.MediaNameAdapter
+import ani.dantotsu.media.Selected
+import ani.dantotsu.media.manga.Manga
+import ani.dantotsu.media.manga.MangaChapter as MediaMangaChapter
+import ani.dantotsu.media.manga.mangareader.MangaReaderActivity
 import ani.dantotsu.navBarHeight
+import ani.dantotsu.openLinkInBrowser
+import ani.dantotsu.parsers.DynamicMangaParser
+import ani.dantotsu.settings.saving.PrefManager
+import ani.dantotsu.snackString
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.util.Logger
+import ani.dantotsu.util.customAlertDialog
 import eu.kanade.tachiyomi.animesource.AnimeSource
 import eu.kanade.tachiyomi.animesource.model.SAnime
 import eu.kanade.tachiyomi.animesource.model.SEpisode
@@ -39,10 +52,10 @@ import eu.kanade.tachiyomi.extension.manga.MangaExtensionManager
 import eu.kanade.tachiyomi.source.MangaSource
 import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
+import io.noties.markwon.Markwon
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import io.noties.markwon.Markwon
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.text.SimpleDateFormat
@@ -68,8 +81,13 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
     private var latestHasSub: Boolean = false
     private var latestHasDub: Boolean = false
     private var synopsisExpanded = false
+    private var chapterListExpanded = false
     private var sourceHeaders: Map<String, String> = emptyMap()
     private lateinit var markwon: Markwon
+
+    private var allChapters: List<SChapter> = emptyList()
+    private var pkg: String? = null
+    private var langIndex: Int = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -95,14 +113,14 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
             manga != null -> true
             else -> intent.getStringExtra(EXTRA_TYPE) != ExtensionBrowseActivity.TYPE_ANIME
         }
-        val pkg = intent.getStringExtra(EXTRA_PKG)
-        val langIndex = intent.getIntExtra(EXTRA_LANG_INDEX, 0)
-        sourceHeaders = if (pkg != null) computeSourceHeaders(pkg, langIndex) else emptyMap()
+        pkg = intent.getStringExtra(EXTRA_PKG)
+        langIndex = intent.getIntExtra(EXTRA_LANG_INDEX, 0)
+        sourceHeaders = if (pkg != null) computeSourceHeaders(pkg!!, langIndex) else emptyMap()
 
         bindInitial()
         configureSearchButtons()
 
-        if (pkg != null) loadDetails(pkg, langIndex)
+        if (pkg != null) loadDetails(pkg!!, langIndex)
     }
 
     private fun computeSourceHeaders(pkg: String, langIndex: Int): Map<String, String> {
@@ -138,6 +156,7 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
         val latest: Any?,
         val hasSub: Boolean = false,
         val hasDub: Boolean = false,
+        val chapters: List<SChapter> = emptyList(),
     )
 
     private val subRegex = Regex("""\b(sub|subbed)\b""", RegexOption.IGNORE_CASE)
@@ -170,15 +189,13 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
                         val source = ext.sources.getOrNull(langIndex) as? MangaSource
                             ?: return@withContext LoadedDetails(null, null)
                         val details = manga?.let { source.getMangaDetails(it) }
-                        val latest = manga?.let { m ->
-                            runCatching {
-                                val list = source.getChapterList(m)
-                                list.maxByOrNull { it.chapter_number }
-                                    ?.takeIf { it.chapter_number >= 0f }
-                                    ?: list.firstOrNull()
-                            }.getOrNull()
-                        }
-                        LoadedDetails(details, latest)
+                        val list = manga?.let { m ->
+                            runCatching { source.getChapterList(m) }.getOrElse { emptyList() }
+                        }.orEmpty()
+                        val latest = list.maxByOrNull { it.chapter_number }
+                            ?.takeIf { it.chapter_number >= 0f }
+                            ?: list.firstOrNull()
+                        LoadedDetails(details, latest, chapters = list)
                     } else {
                         val mgr: AnimeExtensionManager = Injekt.get()
                         val ext = mgr.installedExtensionsFlow.value.find { it.pkgName == pkg }
@@ -218,8 +235,10 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
             latestEpisode = result.latest as? SEpisode
             latestHasSub = result.hasSub
             latestHasDub = result.hasDub
+            allChapters = result.chapters
             renderDetails()
             renderLatest()
+            renderChapterList()
         }
     }
 
@@ -360,6 +379,223 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
         }
     }
 
+    private fun renderChapterList() {
+        if (!isManga || allChapters.isEmpty()) {
+            binding.extensionInfoChaptersHeader.isVisible = false
+            binding.extensionInfoChaptersList.isVisible = false
+            return
+        }
+
+        val missing = countMissingChapters()
+        binding.extensionInfoChaptersTitle.text = buildString {
+            append("Chapters (${allChapters.size})")
+            if (missing > 0) append(" · $missing missing")
+        }
+        binding.extensionInfoChaptersHeader.isVisible = true
+
+        binding.extensionInfoChaptersHeader.setOnClickListener {
+            chapterListExpanded = !chapterListExpanded
+            binding.extensionInfoChaptersList.isVisible = chapterListExpanded
+            binding.extensionInfoChaptersToggle.rotation =
+                if (chapterListExpanded) 180f else 0f
+            if (chapterListExpanded && binding.extensionInfoChaptersList.childCount == 0) {
+                populateChapterList()
+            }
+        }
+    }
+
+    private val nonSequentialKeywords = setOf(
+        "extra", "omake", "special", "side story", "prologue", "epilogue",
+        "afterword", "author", "bonus", "cover story", "gaiden", "interlude"
+    )
+
+    private fun resolveChapterNum(sChap: SChapter): Float? {
+        val n = sChap.chapter_number
+        return if (n > 0f) n else MediaNameAdapter.findChapterNumber(sChap.name)
+    }
+
+    private fun countMissingChapters(): Int {
+        var total = 0
+        for (i in 0 until allChapters.size - 1) {
+            val currIsNonSeq = nonSequentialKeywords.any { allChapters[i].name.lowercase().contains(it) }
+            val nextIsNonSeq = nonSequentialKeywords.any { allChapters[i + 1].name.lowercase().contains(it) }
+            if (!currIsNonSeq && !nextIsNonSeq) {
+                val c = resolveChapterNum(allChapters[i])
+                val n = resolveChapterNum(allChapters[i + 1])
+                if (c != null && n != null) {
+                    val missing = maxOf(c, n).toInt() - minOf(c, n).toInt() - 1
+                    if (missing > 0) total += missing
+                }
+            }
+        }
+        val sequentialNums = allChapters
+            .filter { ch -> !nonSequentialKeywords.any { ch.name.lowercase().contains(it) } }
+            .mapNotNull { resolveChapterNum(it) }
+        val minSeqNum = sequentialNums.minOrNull()
+        total += (minSeqNum?.toInt() ?: 1) - 1
+        return total
+    }
+
+    private fun populateChapterList() {
+        binding.extensionInfoChaptersList.removeAllViews()
+
+        fun addChapterView(sChap: SChapter) {
+            val b = ItemChapterListBinding.inflate(
+                layoutInflater, binding.extensionInfoChaptersList, false
+            )
+            b.itemDownload.isVisible = false
+            b.itemEpisodeViewed.isVisible = false
+            b.itemChapterBrowser.isVisible = false
+            b.itemChapterNumber.text = sChap.name
+            val dateText = formatDate(sChap.date_upload)
+            val scan = sChap.scanlator?.takeIf { it.isNotBlank() }?.replaceFirstChar {
+                if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString()
+            }
+            val hasDate = dateText.isNotBlank()
+            val hasScan = !scan.isNullOrBlank()
+            b.itemChapterDateLayout.isVisible = hasDate || hasScan
+            b.itemChapterDate.isVisible = hasDate
+            b.itemChapterDate.text = dateText
+            b.itemChapterScan.isVisible = hasScan
+            b.itemChapterScan.text = scan ?: ""
+            b.itemChapterDateDivider.isVisible = hasDate && hasScan
+            b.root.setOnClickListener { openChapter(sChap) }
+            binding.extensionInfoChaptersList.addView(b.root)
+        }
+
+        fun inflateGapView(count: Int) = ItemChapterGapBinding.inflate(
+            layoutInflater, binding.extensionInfoChaptersList, false
+        ).also { b ->
+            b.itemChapterGapText.text = if (count == 1)
+                getString(R.string.chapter_missing_single)
+            else
+                getString(R.string.chapters_missing, count)
+        }.root
+
+        // Newest chapter first
+        val chapters = allChapters.reversed()
+
+        // Render chapters with inter-chapter gap indicators
+        for (i in chapters.indices) {
+            addChapterView(chapters[i])
+            if (i < chapters.size - 1) {
+                val currIsNonSeq = nonSequentialKeywords.any { chapters[i].name.lowercase().contains(it) }
+                val nextIsNonSeq = nonSequentialKeywords.any { chapters[i + 1].name.lowercase().contains(it) }
+                if (!currIsNonSeq && !nextIsNonSeq) {
+                    val c = resolveChapterNum(chapters[i])
+                    val n = resolveChapterNum(chapters[i + 1])
+                    if (c != null && n != null) {
+                        val missing = maxOf(c, n).toInt() - minOf(c, n).toInt() - 1
+                        if (missing > 0) binding.extensionInfoChaptersList.addView(inflateGapView(missing))
+                    }
+                }
+            }
+        }
+
+        // Gap for chapters missing before the first available chapter (e.g. source starts at Ch.3)
+        val sequentialNums = chapters
+            .filter { ch -> !nonSequentialKeywords.any { ch.name.lowercase().contains(it) } }
+            .mapNotNull { resolveChapterNum(it) }
+        val minSeqNum = sequentialNums.minOrNull()
+        val missingBefore = (minSeqNum?.toInt() ?: 1) - 1
+        if (missingBefore > 0) {
+            val gapView = inflateGapView(missingBefore)
+            val firstSeqNum = chapters.firstOrNull { ch ->
+                !nonSequentialKeywords.any { ch.name.lowercase().contains(it) } && resolveChapterNum(ch) != null
+            }?.let { resolveChapterNum(it) }
+            // Ascending list (oldest-first) → gap at the start; newest-first → gap at the end
+            if (firstSeqNum == minSeqNum) {
+                binding.extensionInfoChaptersList.addView(gapView, 0)
+            } else {
+                binding.extensionInfoChaptersList.addView(gapView)
+            }
+        }
+    }
+
+    private fun openChapter(sChapter: SChapter) {
+        val warningDismissed = PrefManager.getCustomVal("ext_reader_no_tracking_warning_dismissed", false)
+        if (!warningDismissed) {
+            val dialogView = layoutInflater.inflate(R.layout.item_custom_dialog, null)
+            val checkbox = dialogView.findViewById<CheckBox>(R.id.dialog_checkbox)
+            checkbox.text = getString(R.string.ext_reader_no_tracking_dismiss)
+            customAlertDialog().apply {
+                setTitle(R.string.ext_reader_no_tracking_title)
+                setMessage(getString(R.string.ext_reader_no_tracking_message))
+                setCustomView(dialogView)
+                setPosButton(R.string.proceed) {
+                    if (checkbox.isChecked) {
+                        PrefManager.setCustomVal("ext_reader_no_tracking_warning_dismissed", true)
+                    }
+                    doOpenChapter(sChapter)
+                }
+                setNegButton(R.string.cancel)
+                show()
+            }
+            return
+        }
+        doOpenChapter(sChapter)
+    }
+
+    private fun doOpenChapter(sChapter: SChapter) {
+        val currentPkg = pkg ?: return
+        val currentLangIndex = langIndex
+        binding.extensionInfoProgress.isVisible = true
+        lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                runCatching {
+                    val mgr: MangaExtensionManager = Injekt.get()
+                    val ext = mgr.installedExtensionsFlow.value.find { it.pkgName == currentPkg }
+                        ?: return@runCatching null
+                    val parser = DynamicMangaParser(ext)
+                    parser.sourceLanguage = currentLangIndex
+                    MediaSingleton.extensionParser = parser
+
+                    val selectedChapter = sChapterToMediaMangaChapter(sChapter)
+                    val images = parser.loadImages(sChapter.url, sChapter)
+                    if (images.isEmpty()) return@runCatching null
+                    selectedChapter.addImages(images)
+
+                    val chaptersMap = LinkedHashMap<String, MediaMangaChapter>()
+                    for (sch in allChapters.reversed()) {
+                        val mc = sChapterToMediaMangaChapter(sch)
+                        chaptersMap[mc.uniqueNumber()] = if (sch.url == sChapter.url) selectedChapter else mc
+                    }
+
+                    val title = manga?.title ?: ""
+                    val coverUrl = manga?.thumbnail_url
+                    Media(
+                        id = -1,
+                        name = title,
+                        nameRomaji = title,
+                        userPreferredName = title,
+                        cover = coverUrl,
+                        isAdult = ext.isNsfw,
+                        manga = Manga(
+                            chapters = chaptersMap,
+                            selectedChapter = selectedChapter,
+                        ),
+                        selected = Selected(sourceIndex = 0, langIndex = currentLangIndex),
+                    )
+                }.getOrNull()
+            }
+            binding.extensionInfoProgress.isVisible = false
+            if (result != null) {
+                MediaSingleton.media = result
+                startActivity(Intent(this@ExtensionMediaInfoActivity, MangaReaderActivity::class.java))
+            } else {
+                snackString(getString(R.string.failed_to_load))
+            }
+        }
+    }
+
+    private fun sChapterToMediaMangaChapter(sChapter: SChapter) = MediaMangaChapter(
+        number = sChapter.name,
+        link = sChapter.url,
+        sChapter = sChapter,
+        scanlator = sChapter.scanlator,
+        date = sChapter.date_upload,
+    )
+
     private fun addEpisodeMeta(container: LinearLayout?, episode: SEpisode) {
         container ?: return
         val parts = buildList {
@@ -452,9 +688,6 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
     }
 
     private fun configureSearchButtons() {
-        val extensionPkg = intent.getStringExtra(EXTRA_PKG)
-        val langIndex = intent.getIntExtra(EXTRA_LANG_INDEX, 0)
-
         binding.extensionInfoSearchAnilist.setOnClickListener {
             val titles = collectTitles()
             if (titles.isEmpty()) return@setOnClickListener
@@ -464,7 +697,7 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
                 .newInstance(
                     titles = ArrayList(titles),
                     type = type,
-                    extensionPkg = extensionPkg,
+                    extensionPkg = pkg,
                     extensionLangIndex = langIndex,
                     sManga = manga,
                     sAnime = anime,
@@ -480,7 +713,7 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
             MangaUpdatesQuickSearchDialogFragment
                 .newInstance(
                     titles = ArrayList(titles),
-                    extensionPkg = extensionPkg,
+                    extensionPkg = pkg,
                     extensionLangIndex = langIndex,
                     sManga = manga,
                 )

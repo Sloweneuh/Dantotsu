@@ -201,4 +201,5 @@ fun emptyMedia() = Media(
 object MediaSingleton {
     var media: Media? = null
     var bitmap: Bitmap? = null
+    var extensionParser: ani.dantotsu.parsers.DynamicMangaParser? = null
 }

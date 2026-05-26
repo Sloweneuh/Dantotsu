@@ -378,28 +378,37 @@ class MangaReaderActivity : AppCompatActivity() {
         chapters = media.manga?.chapters ?: return
         chapter = chapters[media.manga!!.selectedChapter!!.uniqueNumber()] ?: return
 
-        model.mangaReadSources = if (media.isAdult) HMangaSources else MangaSources
-        binding.mangaReaderSource.isVisible = PrefManager.getVal(PrefName.ShowSource)
-        if (model.mangaReadSources!!.names.isEmpty()) {
-            //try to reload sources
-            try {
-                val mangaSources = MangaSources
-                val scope = lifecycleScope
-                scope.launch(Dispatchers.IO) {
-                    mangaSources.init(
-                        Injekt.get<MangaExtensionManager>().installedExtensionsFlow
-                    )
+        val extParser = if (media.id < 0) MediaSingleton.extensionParser else null
+        if (extParser != null) {
+            model.mangaReadSources = object : ani.dantotsu.parsers.MangaReadSources() {
+                override val list: List<ani.dantotsu.Lazier<ani.dantotsu.parsers.BaseParser>> =
+                    listOf(ani.dantotsu.Lazier({ extParser }, extParser.name))
+            }
+            media.selected!!.sourceIndex = 0
+        } else {
+            model.mangaReadSources = if (media.isAdult) HMangaSources else MangaSources
+            if (model.mangaReadSources!!.names.isEmpty()) {
+                //try to reload sources
+                try {
+                    val mangaSources = MangaSources
+                    val scope = lifecycleScope
+                    scope.launch(Dispatchers.IO) {
+                        mangaSources.init(
+                            Injekt.get<MangaExtensionManager>().installedExtensionsFlow
+                        )
+                    }
+                    model.mangaReadSources = mangaSources
+                } catch (e: Exception) {
+                    Injekt.get<CrashlyticsInterface>().logException(e)
+                    logError(e)
                 }
-                model.mangaReadSources = mangaSources
-            } catch (e: Exception) {
-                Injekt.get<CrashlyticsInterface>().logException(e)
-                logError(e)
+            }
+            //check that index is not out of bounds (crash fix)
+            if (media.selected!!.sourceIndex >= model.mangaReadSources!!.names.size) {
+                media.selected!!.sourceIndex = 0
             }
         }
-        //check that index is not out of bounds (crash fix)
-        if (media.selected!!.sourceIndex >= model.mangaReadSources!!.names.size) {
-            media.selected!!.sourceIndex = 0
-        }
+        binding.mangaReaderSource.isVisible = PrefManager.getVal(PrefName.ShowSource)
         binding.mangaReaderSource.text =
             model.mangaReadSources!!.names[media.selected!!.sourceIndex]
 
@@ -542,18 +551,18 @@ class MangaReaderActivity : AppCompatActivity() {
                 val rpcenabled: Boolean = PrefManager.getVal(PrefName.rpcEnabled)
                 if ((isOnline(context) && !offline) && Discord.token != null && !incognito && rpcenabled) {
                     lifecycleScope.launch {
+                        val isExtension = media.id < 0
                         val buttons = mutableListOf<RPC.Link>()
-                        // Prefer the MangaUpdates sharing link for MU-sourced media; fallback to computed URL only if shareLink is missing
-                        val muUrl = if (media.muSeriesId != null) {
-                            media.shareLink?.takeIf { it.contains("mangaupdates") }
-                                ?: "https://www.mangaupdates.com/series/${media.muSeriesId!!.toString(36)}"
-                        } else null
-                        muUrl?.let { buttons.add(RPC.Link("View on MangaUpdates", it)) }
-
-                        // Fallback / additional trackers
-                        buttons.add(RPC.Link("View Manga", "https://anilist.co/manga/${media.id}/"))
-                        media.idMAL?.let {
-                            buttons.add(RPC.Link("View on MyAnimeList", "https://myanimelist.net/manga/$it"))
+                        if (!isExtension) {
+                            val muUrl = if (media.muSeriesId != null) {
+                                media.shareLink?.takeIf { it.contains("mangaupdates") }
+                                    ?: "https://www.mangaupdates.com/series/${media.muSeriesId!!.toString(36)}"
+                            } else null
+                            muUrl?.let { buttons.add(RPC.Link("View on MangaUpdates", it)) }
+                            buttons.add(RPC.Link("View Manga", "https://anilist.co/manga/${media.id}/"))
+                            media.idMAL?.let {
+                                buttons.add(RPC.Link("View on MyAnimeList", "https://myanimelist.net/manga/$it"))
+                            }
                         }
                         val rpcData = RPC.Companion.RPCData(
                             applicationId = Discord.application_Id,
@@ -562,11 +571,9 @@ class MangaReaderActivity : AppCompatActivity() {
                             details = chap.title?.takeIf { it.isNotEmpty() } ?: chap.number,
                             state = "Chapter ${chap.number}/${media.manga?.totalChapters ?: "??"}",
                             largeImage = media.cover?.let { cover ->
-                                RPC.Link(
-                                    media.userPreferredName,
-                                    cover
-                                )
+                                RPC.Link(media.userPreferredName, cover)
                             },
+                            smallImage = if (isExtension) RPC.Link("Dantotsu", Discord.small_Image) else null,
                             buttons = buttons
                         )
                         RPCManager.setPresence(context, rpcData)
@@ -1435,15 +1442,18 @@ class MangaReaderActivity : AppCompatActivity() {
         val rpcEnabled: Boolean = PrefManager.getVal(PrefName.rpcEnabled)
         if (!isOnline(context) || offline || Discord.token == null || incognito || !rpcEnabled) return
         lifecycleScope.launch {
+            val isExtension = media.id < 0
             val buttons = mutableListOf<RPC.Link>()
-            val muUrl = if (media.muSeriesId != null) {
-                media.shareLink?.takeIf { it.contains("mangaupdates") }
-                    ?: "https://www.mangaupdates.com/series/${media.muSeriesId!!.toString(36)}"
-            } else null
-            muUrl?.let { buttons.add(RPC.Link("View on MangaUpdates", it)) }
-            buttons.add(RPC.Link("View Manga", "https://anilist.co/manga/${media.id}/"))
-            media.idMAL?.let {
-                buttons.add(RPC.Link("View on MyAnimeList", "https://myanimelist.net/manga/$it"))
+            if (!isExtension) {
+                val muUrl = if (media.muSeriesId != null) {
+                    media.shareLink?.takeIf { it.contains("mangaupdates") }
+                        ?: "https://www.mangaupdates.com/series/${media.muSeriesId!!.toString(36)}"
+                } else null
+                muUrl?.let { buttons.add(RPC.Link("View on MangaUpdates", it)) }
+                buttons.add(RPC.Link("View Manga", "https://anilist.co/manga/${media.id}/"))
+                media.idMAL?.let {
+                    buttons.add(RPC.Link("View on MyAnimeList", "https://myanimelist.net/manga/$it"))
+                }
             }
             val rpcData = RPC.Companion.RPCData(
                 applicationId = Discord.application_Id,
@@ -1454,6 +1464,7 @@ class MangaReaderActivity : AppCompatActivity() {
                 largeImage = media.cover?.let { cover ->
                     RPC.Link(media.userPreferredName, cover)
                 },
+                smallImage = if (isExtension) RPC.Link("Dantotsu", Discord.small_Image) else null,
                 buttons = buttons
             )
             RPCManager.setPresence(context, rpcData)
@@ -1567,6 +1578,7 @@ class MangaReaderActivity : AppCompatActivity() {
     }
 
     private fun progress(runnable: Runnable) {
+        if (media.id < 0) { runnable.run(); return }
         if (maxChapterPage - currentChapterPage <= 1 && Anilist.userid != null) {
             showProgressDialog =
                 if (PrefManager.getVal(PrefName.AskIndividualReader)) PrefManager.getCustomVal(
@@ -1632,6 +1644,7 @@ class MangaReaderActivity : AppCompatActivity() {
      * so each transition only consults the stored `_save_progress` decision.
      */
     private fun updateMultiChapterProgressSilently(completedChapter: MangaChapter) {
+        if (media.id < 0) return
         if (Anilist.userid == null) return
         val incognito: Boolean = PrefManager.getVal(PrefName.Incognito)
         if (incognito) return

@@ -124,6 +124,9 @@
     <string name="total_chaps">Total chapitres</string>
     <string name="latest_chapter">Dernier chapitre</string>
     <string name="latest_episode">Dernier épisode</string>
+    <string name="ext_reader_no_tracking_title">Pas de suivi de progression</string>
+    <string name="ext_reader_no_tracking_message">Les chapitres lus ici ne mettront pas à jour votre progression sur AniList ou MangaUpdates.</string>
+    <string name="ext_reader_no_tracking_dismiss">Ne plus afficher ce message</string>
     <string name="final_chapter">Chapitre final</string>
     <string name="ep_duration">Durée moyenne</string>
     <string name="season">Saison</string>
