@@ -110,6 +110,33 @@
         android:orientation="vertical"
         android:gravity="center_horizontal">
 
+        <LinearLayout
+            android:id="@+id/listEmptyContainer"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:alpha="0.6"
+            android:visibility="gone">
+
+            <ImageView
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:src="@drawable/ic_round_edit_note_24"
+                tools:ignore="ContentDescription" />
+
+            <TextView
+                android:id="@+id/listEmptyText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:fontFamily="@font/poppins_semi_bold"
+                android:textSize="16sp"
+                android:textAlignment="center"
+                tools:text="No reviews yet" />
+        </LinearLayout>
+
         <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
             android:id="@+id/followSwipeRefresh"
             android:layout_width="match_parent"

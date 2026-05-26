@@ -241,6 +241,10 @@
             android:name=".media.ReviewActivity"
             android:parentActivityName=".media.MediaDetailsActivity" />
         <activity
+            android:name=".media.ReviewWriteActivity"
+            android:parentActivityName=".media.MediaDetailsActivity"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
             android:name=".media.ReviewViewActivity"
             android:parentActivityName=".media.ReviewActivity" />
         <activity

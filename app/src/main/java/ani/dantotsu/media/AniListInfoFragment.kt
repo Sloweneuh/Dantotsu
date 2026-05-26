@@ -850,28 +850,6 @@ class AniListInfoFragment : Fragment() {
                         }
                     }
 
-                    if (!media.review.isNullOrEmpty()) {
-                        ItemTitleRecyclerBinding.inflate(
-                            LayoutInflater.from(context),
-                            parent,
-                            false
-                        ).apply {
-                            val adapter = GroupieAdapter()
-                            media.review!!.forEach { adapter.add(ReviewAdapter(it)) }
-                            itemTitle.setText(R.string.reviews)
-                            itemRecycler.adapter = adapter
-                            itemRecycler.layoutManager = LinearLayoutManager(requireContext())
-                            itemMore.visibility = View.VISIBLE
-                            itemMore.setSafeOnClickListener {
-                                startActivity(
-                                    Intent(requireContext(), ReviewActivity::class.java)
-                                        .putExtra("mediaId", media.id)
-                                )
-                            }
-                            parent.addView(root)
-                        }
-                    }
-
                     ItemTitleRecyclerBinding.inflate(
                         LayoutInflater.from(context),
                         parent,
@@ -887,6 +865,38 @@ class AniListInfoFragment : Fragment() {
                         )
                         parent.addView(root)
                     }
+                }
+                ItemTitleRecyclerBinding.inflate(
+                    LayoutInflater.from(context),
+                    parent,
+                    false
+                ).apply {
+                    val reviewAdapter = GroupieAdapter()
+                    media.review?.forEach { reviewAdapter.add(ReviewAdapter(it)) }
+                    itemTitle.setText(R.string.reviews)
+                    if (media.review.isNullOrEmpty()) {
+                        itemEmpty.setText(R.string.no_reviews)
+                        itemEmptyContainer.visibility = View.VISIBLE
+                    }
+                    itemRecycler.adapter = reviewAdapter
+                    itemRecycler.layoutManager = LinearLayoutManager(requireContext())
+                    itemMore.visibility = View.VISIBLE
+                    itemMore.setSafeOnClickListener {
+                        startActivity(
+                            Intent(requireContext(), ReviewActivity::class.java)
+                                .putExtra("mediaId", media.id)
+                        )
+                    }
+                    if (Anilist.token != null) {
+                        itemAdd.visibility = View.VISIBLE
+                        itemAdd.setSafeOnClickListener {
+                            startActivity(
+                                Intent(requireContext(), ReviewWriteActivity::class.java)
+                                    .putExtra("mediaId", media.id)
+                            )
+                        }
+                    }
+                    parent.addView(root)
                 }
                 if (!media.characters.isNullOrEmpty() && !offline) {
                     ItemTitleRecyclerBinding.inflate(

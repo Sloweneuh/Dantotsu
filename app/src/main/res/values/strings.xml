@@ -1281,6 +1281,12 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="vote_out_of_total">(%1$s out of %2$s liked this review)</string>
     <string name="create_new_activity">Create New Activity</string>
     <string name="create_new_review">Create New Review</string>
+    <string name="review_summary_hint">Summary (20–2200 characters)</string>
+    <string name="review_body_hint">Body (minimum 2200 characters, markdown supported)</string>
+    <string name="review_score_label_value">Score: %1$d / 100</string>
+    <string name="review_summary_too_short">Summary must be at least 20 characters</string>
+    <string name="review_body_too_short">Body must be at least 2200 characters</string>
+    <string name="no_reviews">No reviews yet</string>
     <string name="create_new_reply">Create New Reply</string>
     <string name="create_new_message">Create New Message</string>
     <string name="create">Create</string>

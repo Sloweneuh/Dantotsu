@@ -377,7 +377,7 @@ class AnilistMutations {
             ?: "Success")
     }
 
-    suspend fun postReview(summary: String, body: String, mediaId: Int, score: Int): String {
+    suspend fun postReview(summary: String, body: String, mediaId: Int, score: Int, isPrivate: Boolean = false): String {
         val encodedSummary = summary.stringSanitizer()
         val encodedBody = body.stringSanitizer()
         val query = """
@@ -386,7 +386,8 @@ class AnilistMutations {
                     mediaId: $mediaId,
                     summary: $encodedSummary,
                     body: $encodedBody,
-                    score: $score
+                    score: $score,
+                    private: $isPrivate
                 ) {
                     siteUrl
                 }

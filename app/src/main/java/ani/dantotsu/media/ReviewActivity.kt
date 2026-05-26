@@ -98,6 +98,11 @@ class ReviewActivity : AppCompatActivity() {
                     reviews.addAll(it)
                     fillList()
                 }
+                if (reviews.isEmpty()) {
+                    binding.listEmptyText.setText(R.string.no_reviews)
+                    binding.listEmptyContainer.visibility = View.VISIBLE
+                    binding.followSwipeRefresh.visibility = View.GONE
+                }
             }
         }
     }

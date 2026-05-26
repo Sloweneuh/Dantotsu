@@ -866,6 +866,12 @@
     <string name="no_subtitles_available">Aucun sous-titre disponible</string>
     <string name="create_new_activity">Créer une nouvelle activité</string>
     <string name="create_new_review">Créer une nouvelle critique</string>
+    <string name="review_summary_hint">Résumé (20–2200 caractères)</string>
+    <string name="review_body_hint">Corps (minimum 2200 caractères, markdown supporté)</string>
+    <string name="review_score_label_value">Note : %1$d / 100</string>
+    <string name="review_summary_too_short">Le résumé doit contenir au moins 20 caractères</string>
+    <string name="review_body_too_short">Le corps doit contenir au moins 2200 caractères</string>
+    <string name="no_reviews">Aucune critique pour l\'instant</string>
     <string name="create_new_reply">Créer une nouvelle réponse</string>
     <string name="create_new_message">Créer un nouveau message</string>
     <string name="create">Créer</string>
