@@ -250,6 +250,9 @@
             android:name=".media.MALReviewViewActivity"
             android:parentActivityName=".media.ReviewActivity" />
         <activity
+            android:name=".media.MALReviewActivity"
+            android:parentActivityName=".media.MediaDetailsActivity" />
+        <activity
             android:name=".media.SearchActivity"
             android:parentActivityName=".MainActivity" />
         <activity android:name=".media.StudioActivity" />

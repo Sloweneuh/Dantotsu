@@ -633,10 +633,17 @@ class MALInfoFragment : Fragment() {
                     )
                     bind.itemTitle.setText(R.string.reviews)
                     val groupAdapter = GroupieAdapter()
-                    reviews.forEach { groupAdapter.add(MALReviewAdapter(it)) }
+                    reviews.take(3).forEach { groupAdapter.add(MALReviewAdapter(it)) }
                     bind.itemRecycler.adapter = groupAdapter
                     bind.itemRecycler.layoutManager = LinearLayoutManager(ctx)
-                    bind.itemMore.visibility = View.GONE
+                    bind.itemMore.visibility = View.VISIBLE
+                    bind.itemMore.setSafeOnClickListener {
+                        ctx.startActivity(
+                            android.content.Intent(ctx, MALReviewActivity::class.java)
+                                .putExtra("malId", malId)
+                                .putExtra("isAnime", true)
+                        )
+                    }
                     parent.addView(bind.root)
                 }
             }
@@ -895,10 +902,17 @@ class MALInfoFragment : Fragment() {
                     )
                     bind.itemTitle.setText(R.string.reviews)
                     val groupAdapter = GroupieAdapter()
-                    reviews.forEach { groupAdapter.add(MALReviewAdapter(it)) }
+                    reviews.take(3).forEach { groupAdapter.add(MALReviewAdapter(it)) }
                     bind.itemRecycler.adapter = groupAdapter
                     bind.itemRecycler.layoutManager = LinearLayoutManager(ctx)
-                    bind.itemMore.visibility = View.GONE
+                    bind.itemMore.visibility = View.VISIBLE
+                    bind.itemMore.setSafeOnClickListener {
+                        ctx.startActivity(
+                            android.content.Intent(ctx, MALReviewActivity::class.java)
+                                .putExtra("malId", malId)
+                                .putExtra("isAnime", false)
+                        )
+                    }
                     parent.addView(bind.root)
                 }
             }
