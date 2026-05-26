@@ -30,6 +30,9 @@ import ani.dantotsu.download.DownloadsManager
 import ani.dantotsu.initActivity
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.others.calc.BiometricPromptUtils
+import ani.dantotsu.parsers.AnimeSources
+import ani.dantotsu.parsers.MangaSources
+import ani.dantotsu.parsers.NovelSources
 import ani.dantotsu.restartApp
 import ani.dantotsu.savePrefsToDownloads
 import ani.dantotsu.startMainActivity
@@ -610,7 +613,23 @@ class SettingsCommonActivity : AppCompatActivity() {
         }
     }
 
+    private fun reloadSourcesFromPrefs() {
+        AnimeSources.pinnedAnimeSources =
+            PrefManager.getNullableVal<List<String>>(PrefName.AnimeSourcesOrder, null)
+                ?: emptyList()
+        AnimeSources.performReorderAnimeSources()
+        MangaSources.pinnedMangaSources =
+            PrefManager.getNullableVal<List<String>>(PrefName.MangaSourcesOrder, null)
+                ?: emptyList()
+        MangaSources.performReorderMangaSources()
+        NovelSources.pinnedNovelSources =
+            PrefManager.getNullableVal<List<String>>(PrefName.NovelSourcesOrder, null)
+                ?: emptyList()
+        NovelSources.performReorderNovelSources()
+    }
+
     private fun checkPermissionsAfterRestore() {
+        reloadSourcesFromPrefs()
         val missingPermissions = mutableListOf<String>()
         var hasDisabledSettings = false
 
