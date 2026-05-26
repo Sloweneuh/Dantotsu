@@ -682,8 +682,13 @@ class SettingsCommonActivity : AppCompatActivity() {
         if (missingPermissions.isNotEmpty()) {
             showPermissionWarningDialog(missingPermissions, hasDisabledSettings)
         } else {
-            restartApp()
+            applyRestore()
         }
+    }
+
+    private fun applyRestore() {
+        PrefManager.setCustomVal("reload", true)
+        recreate()
     }
 
     private fun showPermissionWarningDialog(missingPermissions: List<String>, hasDisabledSettings: Boolean) {
@@ -699,7 +704,7 @@ class SettingsCommonActivity : AppCompatActivity() {
             setTitle(R.string.permissions_required)
             setMessage(message)
             setPosButton(R.string.ok) {
-                restartApp()
+                applyRestore()
             }
             setCancelable(false)
             show()
