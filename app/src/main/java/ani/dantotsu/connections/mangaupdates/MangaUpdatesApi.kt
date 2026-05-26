@@ -347,6 +347,42 @@ object MangaUpdates {
     }
 
     /**
+     * Get group and release list for a series (GET /v1/series/{id}/groups).
+     * The release_list is ordered newest-first and contains chapter, date, and group info.
+     */
+    suspend fun getSeriesGroups(seriesId: Long): MUSeriesGroupsResponse? {
+        return tryWithSuspend {
+            var request = Request.Builder()
+                .url("$BASE_URL/series/$seriesId/groups")
+                .get()
+                .build()
+
+            var response = withContext(Dispatchers.IO) {
+                httpClient.newCall(request).execute()
+            }
+
+            if (response.code == 401 && !token.isNullOrBlank()) {
+                request = Request.Builder()
+                    .url("$BASE_URL/series/$seriesId/groups")
+                    .get()
+                    .addHeader("Authorization", "Bearer $token")
+                    .build()
+                response = withContext(Dispatchers.IO) {
+                    httpClient.newCall(request).execute()
+                }
+            }
+
+            val body = extractBody(response)
+            if (!response.isSuccessful || body.isNullOrBlank()) {
+                Logger.log("MangaUpdates GetSeriesGroups: Failed with code ${response.code}")
+                return@tryWithSuspend null
+            }
+
+            Mapper.parse<MUSeriesGroupsResponse>(body)
+        }
+    }
+
+    /**
      * Look up series ID from a URL slug
      * @param urlSlug The alphanumeric URL slug (e.g., "7j43f8y")
      * @return The numeric series ID or null if not found

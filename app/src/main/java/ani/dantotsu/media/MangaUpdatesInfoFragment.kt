@@ -29,9 +29,14 @@ import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.stripSpansOnPaste
 import ani.dantotsu.util.Logger
+import androidx.core.view.isVisible
+import ani.dantotsu.databinding.ItemChapterListBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class MangaUpdatesInfoFragment : Fragment() {
     private var _binding: FragmentMediaInfoBinding? = null
@@ -999,6 +1004,12 @@ class MangaUpdatesInfoFragment : Fragment() {
             parent.addView(bind.root)
         }
 
+        // Invisible anchor — latest release card is inserted here once the async fetch completes
+        View(context).also {
+            it.tag = "latest_release_anchor_mu"
+            parent.addView(it)
+        }
+
         // Genres (clickable for search, with "Search All" next to title)
         if (!series.genres.isNullOrEmpty()) {
             val bind =
@@ -1294,6 +1305,60 @@ class MangaUpdatesInfoFragment : Fragment() {
             }
         }
 
+        // Latest release card — fetched async from /v1/series/{id}/groups
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            val latest = MangaUpdates.getSeriesGroups(series.seriesId)?.releaseList?.firstOrNull()
+                ?: return@launch
+            withContext(Dispatchers.Main) {
+                if (_binding == null) return@withContext
+
+                val anchor = parent.findViewWithTag<View>("latest_release_anchor_mu")
+                    ?: return@withContext
+                val insertIndex = parent.indexOfChild(anchor)
+
+                val titleBind = ani.dantotsu.databinding.ItemTitleTextBinding.inflate(
+                    LayoutInflater.from(context), parent, false
+                )
+                titleBind.itemTitle.setText(R.string.latest_chapter)
+                titleBind.itemText.isVisible = false
+                titleBind.root.tag = "dynamic_mu_section"
+
+                val b = ItemChapterListBinding.inflate(
+                    LayoutInflater.from(context), parent, false
+                )
+                b.itemDownload.isVisible = false
+                b.itemChapterBrowser.isVisible = false
+                b.itemEpisodeViewed.isVisible = false
+                (b.root.layoutParams as? android.widget.LinearLayout.LayoutParams)?.apply {
+                    marginStart = 32f.px
+                    marginEnd = 16f.px
+                }
+
+                val chapterText = buildString {
+                    latest.volume?.let { append("Vol.$it ") }
+                    append("Chapter ${latest.chapter ?: "?"}")
+                }
+                b.itemChapterNumber.text = chapterText
+
+                val dateText = latest.releaseDate?.let { formatReleaseDate(it) } ?: ""
+                val groupText = latest.groups?.mapNotNull { it.name }?.joinToString(", ") ?: ""
+                val hasDate = dateText.isNotBlank()
+                val hasGroup = groupText.isNotBlank()
+                b.itemChapterDateLayout.isVisible = hasDate || hasGroup
+                b.itemChapterDate.isVisible = hasDate
+                b.itemChapterDate.text = dateText
+                b.itemChapterDateDivider.isVisible = hasDate && hasGroup
+                b.itemChapterScan.isVisible = hasGroup
+                b.itemChapterScan.text = groupText
+                b.root.tag = "dynamic_mu_section"
+
+                // Replace the anchor with the title + card
+                parent.removeView(anchor)
+                parent.addView(titleBind.root, insertIndex)
+                parent.addView(b.root, insertIndex + 1)
+            }
+        }
+
         val isManualSelection =
             PrefManager.getNullableCustomVal<String>(
                 "mangaupdates_link_${media.id}",
@@ -1337,6 +1402,24 @@ class MangaUpdatesInfoFragment : Fragment() {
                 tag = "unlink_mangaupdates_button"
                 }
             parent.addView(unlinkBtn)
+        }
+    }
+
+    private fun formatReleaseDate(dateStr: String): String {
+        return try {
+            val date = SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(dateStr) ?: return dateStr
+            val diff = Date().time - date.time
+            val days = diff / 86_400_000L
+            when {
+                days == 0L -> "Today"
+                days == 1L -> "Yesterday"
+                days < 7L -> "$days days ago"
+                days < 30L -> "${days / 7} week${if (days / 7 > 1) "s" else ""} ago"
+                days < 365L -> "${days / 30} month${if (days / 30 > 1) "s" else ""} ago"
+                else -> SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(date)
+            }
+        } catch (e: Exception) {
+            dateStr
         }
     }
 }

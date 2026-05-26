@@ -366,6 +366,32 @@ data class MUListSeriesMetadata(
     @SerialName("last_updated") val lastUpdated: MUTimestamp? = null
 )
 
+// ── Series groups / releases ──────────────────────────────────────────────────
+
+@Serializable
+data class MUSeriesGroupsResponse(
+    @SerialName("group_list") val groupList: List<MUReleaseGroupInfo>? = null,
+    @SerialName("release_list") val releaseList: List<MUReleaseRecord>? = null
+)
+
+@Serializable
+data class MUReleaseRecord(
+    val id: Long? = null,
+    val title: String? = null,
+    val volume: String? = null,
+    val chapter: String? = null,
+    val groups: List<MUReleaseGroupInfo>? = null,
+    @SerialName("release_date") val releaseDate: String? = null,
+    @SerialName("time_added") val timeAdded: MUTimestamp? = null
+)
+
+@Serializable
+data class MUReleaseGroupInfo(
+    val name: String? = null,
+    @SerialName("group_id") val groupId: Long? = null,
+    val url: String? = null
+)
+
 /** Represents a list entry returned by /v1/lists (includes custom lists). */
 @Serializable
 data class MUUserList(

@@ -26,6 +26,7 @@ import ani.dantotsu.databinding.ItemChipBinding
 import ani.dantotsu.databinding.ItemChipSynonymBinding
 import ani.dantotsu.databinding.ItemTitleChipgroupBinding
 import ani.dantotsu.databinding.ItemTitleChipgroupMultilineBinding
+import ani.dantotsu.databinding.ItemChapterListBinding
 import ani.dantotsu.databinding.ItemTitleRecyclerBinding
 import ani.dantotsu.databinding.ItemTitleTextBinding
 import ani.dantotsu.media.MediaDetailsViewModel
@@ -33,6 +34,14 @@ import ani.dantotsu.media.SearchActivity
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.openLinkInBrowser
 import ani.dantotsu.px
+import androidx.core.view.isVisible
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
  * Info fragment for [MUMediaDetailsActivity].
@@ -192,7 +201,9 @@ class MUMediaInfoFragment : Fragment() {
         // Remove any previously added dynamic views to avoid duplicates on re-observe
         val toRemove = mutableListOf<View>()
         for (i in 0 until parent.childCount) {
-            if (parent.getChildAt(i).tag == "dynamic_mu_section") toRemove.add(parent.getChildAt(i))
+            val t = parent.getChildAt(i).tag
+            if (t == "dynamic_mu_section" || t == "latest_release_anchor_mu")
+                toRemove.add(parent.getChildAt(i))
         }
         toRemove.forEach { parent.removeView(it) }
 
@@ -247,6 +258,12 @@ class MUMediaInfoFragment : Fragment() {
             }
             bind.root.tag = "dynamic_mu_section"
             parent.addView(bind.root)
+        }
+
+        // Invisible anchor — latest release card inserted here once the async fetch completes
+        View(context).also {
+            it.tag = "latest_release_anchor_mu"
+            parent.addView(it)
         }
 
         // Genres
@@ -393,6 +410,77 @@ class MUMediaInfoFragment : Fragment() {
                 bind.root.tag = "dynamic_mu_section"
                 parent.addView(bind.root)
             }
+        }
+
+        // Latest release card — async fetch from /v1/series/{id}/groups
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            val latest = MangaUpdates.getSeriesGroups(series.seriesId)?.releaseList?.firstOrNull()
+                ?: return@launch
+            withContext(Dispatchers.Main) {
+                if (_binding == null) return@withContext
+
+                val anchor = parent.findViewWithTag<View>("latest_release_anchor_mu")
+                    ?: return@withContext
+                val insertIndex = parent.indexOfChild(anchor)
+
+                val titleBind = ItemTitleTextBinding.inflate(
+                    LayoutInflater.from(context), parent, false
+                )
+                titleBind.itemTitle.setText(R.string.latest_chapter)
+                titleBind.itemText.isVisible = false
+                titleBind.root.tag = "dynamic_mu_section"
+
+                val b = ItemChapterListBinding.inflate(
+                    LayoutInflater.from(context), parent, false
+                )
+                b.itemDownload.isVisible = false
+                b.itemChapterBrowser.isVisible = false
+                b.itemEpisodeViewed.isVisible = false
+                (b.root.layoutParams as? android.widget.LinearLayout.LayoutParams)?.apply {
+                    marginStart = 32f.px
+                    marginEnd = 16f.px
+                }
+
+                val chapterText = buildString {
+                    latest.volume?.let { append("Vol.$it ") }
+                    append("Chapter ${latest.chapter ?: "?"}")
+                }
+                b.itemChapterNumber.text = chapterText
+
+                val dateText = latest.releaseDate?.let { formatReleaseDate(it) } ?: ""
+                val groupText = latest.groups?.mapNotNull { it.name }?.joinToString(", ") ?: ""
+                val hasDate = dateText.isNotBlank()
+                val hasGroup = groupText.isNotBlank()
+                b.itemChapterDateLayout.isVisible = hasDate || hasGroup
+                b.itemChapterDate.isVisible = hasDate
+                b.itemChapterDate.text = dateText
+                b.itemChapterDateDivider.isVisible = hasDate && hasGroup
+                b.itemChapterScan.isVisible = hasGroup
+                b.itemChapterScan.text = groupText
+                b.root.tag = "dynamic_mu_section"
+
+                parent.removeView(anchor)
+                parent.addView(titleBind.root, insertIndex)
+                parent.addView(b.root, insertIndex + 1)
+            }
+        }
+    }
+
+    private fun formatReleaseDate(dateStr: String): String {
+        return try {
+            val date = SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(dateStr) ?: return dateStr
+            val diff = Date().time - date.time
+            val days = diff / 86_400_000L
+            when {
+                days == 0L -> "Today"
+                days == 1L -> "Yesterday"
+                days < 7L -> "$days days ago"
+                days < 30L -> "${days / 7} week${if (days / 7 > 1) "s" else ""} ago"
+                days < 365L -> "${days / 30} month${if (days / 30 > 1) "s" else ""} ago"
+                else -> SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(date)
+            }
+        } catch (e: Exception) {
+            dateStr
         }
     }
 
