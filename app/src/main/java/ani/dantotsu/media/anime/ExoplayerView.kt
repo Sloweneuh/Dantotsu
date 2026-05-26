@@ -2500,6 +2500,7 @@ class ExoplayerView :
     private fun updateAniProgress() {
         val incognito: Boolean = PrefManager.getVal(PrefName.Incognito)
         val episodeEnd =
+            episodeLength > 0f &&
             exoPlayer.currentPosition / episodeLength >
                     PrefManager.getVal<Float>(
                         PrefName.WatchPercentage,
