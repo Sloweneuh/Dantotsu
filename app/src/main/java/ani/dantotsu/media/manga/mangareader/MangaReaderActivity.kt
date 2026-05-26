@@ -436,7 +436,7 @@ class MangaReaderActivity : AppCompatActivity() {
             ani.dantotsu.util.Logger.log("Chapter change to index $index (cache size: ${mangaCache.size()})")
             // Don't clear cache - let LRU manage memory and allow extension client to work on reloads
             // mangaCache.clear()
-            PrefManager.setCustomVal(
+            if (media.id >= 0) PrefManager.setCustomVal(
                 "${media.id}_${chaptersArr[currentChapterIndex]}",
                 currentChapterPage
             )
@@ -643,7 +643,7 @@ class MangaReaderActivity : AppCompatActivity() {
 
         binding.mangaReaderPager.unregisterOnPageChangeCallback(pageChangeCallback)
 
-        currentChapterPage = PrefManager.getCustomVal("${media.id}_${chapter.number}", 1L)
+        currentChapterPage = if (media.id >= 0) PrefManager.getCustomVal("${media.id}_${chapter.number}", 1L) else 1L
 
         val chapImages = if (directionPagedBT) {
             chapter.images().reversed()
@@ -654,7 +654,7 @@ class MangaReaderActivity : AppCompatActivity() {
         maxChapterPage = 0
         if (chapImages.isNotEmpty()) {
             maxChapterPage = chapImages.size.toLong()
-            PrefManager.setCustomVal("${media.id}_${chapter.number}_max", maxChapterPage)
+            if (media.id >= 0) PrefManager.setCustomVal("${media.id}_${chapter.number}_max", maxChapterPage)
 
             imageAdapter =
                 dualPage { DualPageAdapter(this, chapter) } ?: ImageAdapter(this, chapter)
@@ -1189,7 +1189,7 @@ class MangaReaderActivity : AppCompatActivity() {
         }
         if (currentChapterPage != page) {
             currentChapterPage = page
-            PrefManager.setCustomVal("${media.id}_${chapter.number}", page)
+            if (media.id >= 0) PrefManager.setCustomVal("${media.id}_${chapter.number}", page)
             binding.mangaReaderPageNumber.text =
                 if (defaultSettings.hidePageNumbers) "" else "${currentChapterPage}/$maxChapterPage"
             if (!sliding) binding.mangaReaderSlider.apply {
@@ -1280,9 +1280,9 @@ class MangaReaderActivity : AppCompatActivity() {
             if (currentChap != null) {
                 chapter = currentChap
                 media.manga!!.selectedChapter = chapter
-                PrefManager.setCustomVal("${media.id}_current_chp", chapter.number)
+                if (media.id >= 0) PrefManager.setCustomVal("${media.id}_current_chp", chapter.number)
                 val newTotalPages = adapter.getPageCountForChapter(visibleChapterIdx)
-                if (newTotalPages > 0) {
+                if (newTotalPages > 0 && media.id >= 0) {
                     PrefManager.setCustomVal("${media.id}_${chapter.number}_max", newTotalPages.toLong())
                 }
                 binding.mangaReaderChapterSelect.setSelection(currentChapterIndex)
@@ -1299,7 +1299,7 @@ class MangaReaderActivity : AppCompatActivity() {
             val newPage = pageInChapter.toLong()
             if (currentChapterPage != newPage && newPage > 0) {
                 currentChapterPage = newPage
-                PrefManager.setCustomVal("${media.id}_${chapter.number}", currentChapterPage)
+                if (media.id >= 0) PrefManager.setCustomVal("${media.id}_${chapter.number}", currentChapterPage)
             }
             binding.mangaReaderPageNumber.text =
                 if (defaultSettings.hidePageNumbers) "" else "$pageInChapter/$totalPages"
@@ -1363,9 +1363,9 @@ class MangaReaderActivity : AppCompatActivity() {
             if (currentChap != null) {
                 chapter = currentChap
                 media.manga!!.selectedChapter = chapter
-                PrefManager.setCustomVal("${media.id}_current_chp", chapter.number)
+                if (media.id >= 0) PrefManager.setCustomVal("${media.id}_current_chp", chapter.number)
                 val newTotalPages = adapter.getPageCountForChapter(visibleChapterIdx)
-                if (newTotalPages > 0) {
+                if (newTotalPages > 0 && media.id >= 0) {
                     PrefManager.setCustomVal("${media.id}_${chapter.number}_max", newTotalPages.toLong())
                 }
                 binding.mangaReaderChapterSelect.setSelection(currentChapterIndex)
@@ -1382,7 +1382,7 @@ class MangaReaderActivity : AppCompatActivity() {
             val newPage = pageInChapter.toLong()
             if (currentChapterPage != newPage && newPage > 0) {
                 currentChapterPage = newPage
-                PrefManager.setCustomVal("${media.id}_${chapter.number}", currentChapterPage)
+                if (media.id >= 0) PrefManager.setCustomVal("${media.id}_${chapter.number}", currentChapterPage)
             }
             binding.mangaReaderPageNumber.text =
                 if (defaultSettings.hidePageNumbers) "" else "$pageInChapter/$totalPages"
