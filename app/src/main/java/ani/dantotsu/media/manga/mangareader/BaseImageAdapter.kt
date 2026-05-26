@@ -26,6 +26,7 @@ import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.bumptech.glide.load.model.GlideUrl
 import com.bumptech.glide.load.resource.bitmap.BitmapTransformation
+import com.bumptech.glide.load.resource.bitmap.DownsampleStrategy
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -144,6 +145,9 @@ abstract class BaseImageAdapter(
             transforms: List<BitmapTransformation>
         ): Bitmap? { //still used in some places
             return tryWithSuspend {
+                val dm = resources.displayMetrics
+                val maxW = dm.widthPixels * 2
+                val maxH = dm.heightPixels * 2
                 withContext(Dispatchers.IO) {
                     Glide.with(this@loadBitmapOld)
                         .asBitmap()
@@ -156,6 +160,8 @@ abstract class BaseImageAdapter(
                                 it.load(GlideUrl(link.url) { link.headers })
                             }
                         }
+                        .override(maxW, maxH)
+                        .downsample(DownsampleStrategy.AT_MOST)
                         .let {
                             if (transforms.isNotEmpty()) {
                                 it.transform(*transforms.toTypedArray())
@@ -175,6 +181,9 @@ abstract class BaseImageAdapter(
         ): Bitmap? {
             return tryWithSuspend {
                 val mangaCache = uy.kohesive.injekt.Injekt.get<MangaCache>()
+                val dm = resources.displayMetrics
+                val maxW = dm.widthPixels * 2
+                val maxH = dm.heightPixels * 2
                 withContext(Dispatchers.IO) {
                     val localFile = File(link.url)
                     if (localFile.exists()) {
@@ -183,6 +192,8 @@ abstract class BaseImageAdapter(
                             .load(localFile.absoluteFile)
                             .skipMemoryCache(true)
                             .diskCacheStrategy(DiskCacheStrategy.NONE)
+                            .override(maxW, maxH)
+                            .downsample(DownsampleStrategy.AT_MOST)
                             .let {
                                 if (transforms.isNotEmpty()) it.transform(*transforms.toTypedArray())
                                 else it
@@ -197,6 +208,8 @@ abstract class BaseImageAdapter(
                             .load(Uri.parse(link.url))
                             .skipMemoryCache(true)
                             .diskCacheStrategy(DiskCacheStrategy.NONE)
+                            .override(maxW, maxH)
+                            .downsample(DownsampleStrategy.AT_MOST)
                             .let {
                                 if (transforms.isNotEmpty()) it.transform(*transforms.toTypedArray())
                                 else it
@@ -217,17 +230,20 @@ abstract class BaseImageAdapter(
                         val rawBitmap = imageData.fetchAndProcessImage(imageData.page, imageData.source)
                             ?: return@withContext null
 
+                        // Downsample before transforms so we never hold a full-res bitmap in memory.
+                        val downsampledBitmap = downsampleBitmap(rawBitmap, maxW, maxH)
+
                         // Apply transforms via a Glide in-memory request (no network I/O —
-                        // rawBitmap is already decoded). Result is cached below so this only
+                        // bitmap is already decoded). Result is cached below so this only
                         // runs on the first load of each page.
                         val processed = if (transforms.isNotEmpty()) {
                             Glide.with(this@loadBitmap)
                                 .asBitmap()
-                                .load(rawBitmap)
+                                .load(downsampledBitmap)
                                 .transform(*transforms.toTypedArray())
                                 .submit()
                                 .get()
-                        } else rawBitmap
+                        } else downsampledBitmap
 
                         mangaCache.putBitmap(cacheKey, processed)
                         return@withContext processed
@@ -237,6 +253,8 @@ abstract class BaseImageAdapter(
                     return@withContext Glide.with(this@loadBitmap)
                         .asBitmap()
                         .load(GlideUrl(link.url) { link.headers })
+                        .override(maxW, maxH)
+                        .downsample(DownsampleStrategy.AT_MOST)
                         .let {
                             if (transforms.isNotEmpty()) it.transform(*transforms.toTypedArray())
                             else it
@@ -245,6 +263,17 @@ abstract class BaseImageAdapter(
                         .get()
                 }
             }
+        }
+
+        private fun downsampleBitmap(bitmap: Bitmap, maxWidth: Int, maxHeight: Int): Bitmap {
+            if (bitmap.width <= maxWidth && bitmap.height <= maxHeight) return bitmap
+            val scale = minOf(maxWidth.toFloat() / bitmap.width, maxHeight.toFloat() / bitmap.height)
+            return Bitmap.createScaledBitmap(
+                bitmap,
+                (bitmap.width * scale).toInt(),
+                (bitmap.height * scale).toInt(),
+                true
+            )
         }
 
         private fun buildBitmapCacheKey(url: String, transforms: List<BitmapTransformation>): String {
