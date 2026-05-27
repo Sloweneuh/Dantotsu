@@ -451,7 +451,7 @@ class ContinuousChapterAdapter(
             transforms.add(RemoveBordersTransformation(false, settings.cropBorderThreshold))
         }
 
-        val bitmap: Bitmap? = with(activity) { loadBitmap(link, transforms) }
+        val bitmap: Bitmap? = with(activity) { loadBitmap(link, transforms, Int.MAX_VALUE / 4) }
 
         if (bitmap == null) {
             progress.visibility = View.GONE

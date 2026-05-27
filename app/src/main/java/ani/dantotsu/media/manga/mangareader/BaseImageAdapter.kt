@@ -177,13 +177,14 @@ abstract class BaseImageAdapter(
 
         suspend fun Context.loadBitmap(
             link: FileUrl,
-            transforms: List<BitmapTransformation>
+            transforms: List<BitmapTransformation>,
+            maxHeightOverride: Int? = null
         ): Bitmap? {
             return tryWithSuspend {
                 val mangaCache = uy.kohesive.injekt.Injekt.get<MangaCache>()
                 val dm = resources.displayMetrics
                 val maxW = dm.widthPixels * 2
-                val maxH = dm.heightPixels * 2
+                val maxH = maxHeightOverride ?: (dm.heightPixels * 2)
                 withContext(Dispatchers.IO) {
                     val localFile = File(link.url)
                     if (localFile.exists()) {
