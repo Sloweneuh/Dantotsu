@@ -13,6 +13,7 @@ data class ComickResponse(
 
 data class ComickComic(
     val id: Int?,
+    val hid: String?,
     val title: String?,
     val desc: String?,
     val parsed: String?,
@@ -98,6 +99,7 @@ data class ComickLinks(
 
 data class ComickSearchResult(
     val id: Int?,
+    val hid: String?,
     val slug: String?,
     val title: String?,
     val country: String?,
@@ -107,6 +109,28 @@ data class ComickSearchResult(
     val last_chapter: Double?,
     val demographic: Int?,
     val year: Int?
+) : Serializable
+
+data class ComickCustomList(
+    val title: String?,
+    val slug: String?,
+    val user_id: String?,
+    val is_public: Boolean?,
+    val follows_count: Int?,
+    val cover: String?
+) : Serializable
+
+data class ComickListComic(
+    val title: String?,
+    val slug: String?,
+    val hid: String?,
+    val last_chapter: Double?,
+    val md_titles: List<ComickAlternativeTitle>?,
+    val md_covers: List<ComickCover>?
+) : Serializable
+
+data class ComickFollowEntry(
+    val md_comics: ComickListComic?
 ) : Serializable
 
 data class ComickRecommendation(

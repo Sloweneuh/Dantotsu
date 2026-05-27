@@ -1502,6 +1502,37 @@ class ComickInfoFragment : Fragment() {
             }
         }
 
+        // Custom Lists — show the public lists this comic appears in
+        val comickHid = comic.hid
+        if (!comickHid.isNullOrBlank() && parent.findViewWithTag<View>("custom_lists_comick") == null) {
+            viewLifecycleOwner.lifecycleScope.launch {
+                val lists = withContext(Dispatchers.IO) { ComickApi.getComicLists(comickHid) }
+                if (lists.isNullOrEmpty()) return@launch
+                if (_binding == null) return@launch
+                withContext(Dispatchers.Main) {
+                    ani.dantotsu.databinding.ItemTitleRecyclerBinding.inflate(
+                        LayoutInflater.from(context), parent, false
+                    ).apply {
+                        itemTitle.setText(R.string.comick_custom_lists)
+                        itemRecycler.adapter = ComickCustomListAdapter(lists) { list ->
+                            startActivity(
+                                Intent(requireContext(), ComickListActivity::class.java)
+                                    .putExtra(ComickListActivity.EXTRA_USER_ID, list.user_id)
+                                    .putExtra(ComickListActivity.EXTRA_LIST_SLUG, list.slug)
+                                    .putExtra(ComickListActivity.EXTRA_LIST_TITLE, list.title ?: list.slug)
+                            )
+                        }
+                        itemRecycler.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(
+                            requireContext(), androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL, false
+                        )
+                        itemMore.visibility = View.GONE
+                        root.tag = "custom_lists_comick"
+                        parent.addView(root)
+                    }
+                }
+            }
+        }
+
         // Defer unlink button placement to the end to guarantee it's the last child.
         // If an unlink button already exists, move it to the end; otherwise add it now.
         val existingUnlink = parent.findViewWithTag<View>("unlink_comick_button")

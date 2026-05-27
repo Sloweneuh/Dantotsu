@@ -208,6 +208,7 @@ object ComickApi {
         // Merge data: use primary's data, but fill in nulls from others
         return ComickComic(
             id = primary.id,
+            hid = primary.hid ?: allComics.firstNotNullOfOrNull { it.hid },
             title = primary.title ?: allComics.firstNotNullOfOrNull { it.title },
             desc = primary.desc ?: allComics.firstNotNullOfOrNull { it.desc },
             parsed = primary.parsed ?: allComics.firstNotNullOfOrNull { it.parsed },
@@ -291,7 +292,7 @@ object ComickApi {
             val body = response.body.string()
 
             if (!response.isSuccessful) {
-                Logger.log("Comick API error: ${response.code}")
+                Logger.log("Comick API error: ${response.code} for $url")
                 return null
             }
 
@@ -617,6 +618,54 @@ object ComickApi {
             covers.takeIf { it.isNotEmpty() }
         } catch (e: Exception) {
             Logger.log("Comick covers error for slug=$slug: ${e.message}")
+            null
+        }
+    }
+
+    /**
+     * Fetch all public custom lists that contain a specific comic (identified by HID).
+     * @param hid The comic's HID (e.g. "NYH8PELZ")
+     * @return List of custom lists, or null on failure
+     */
+    suspend fun getComicLists(hid: String): List<ComickCustomList>? = withContext(Dispatchers.IO) {
+        try {
+            val url = "https://api.comick.dev/list/comic/$hid"
+            val request = Request.Builder().url(url).build()
+            val response = client.newCall(request).execute()
+            if (!response.isSuccessful) {
+                Logger.log("Comick lists API error: ${response.code} for $url")
+                return@withContext null
+            }
+            val body = response.body.string()
+            if (body.isBlank() || body == "[]") return@withContext emptyList()
+            gson.fromJson(body, Array<ComickCustomList>::class.java).toList()
+        } catch (e: Exception) {
+            Logger.log("Error fetching comic lists for hid $hid: ${e.message}")
+            null
+        }
+    }
+
+    /**
+     * Fetch all comics in a specific custom list.
+     * @param userId The list owner's user ID (UUID)
+     * @param listSlug The list slug
+     * @return List of comics in the list, or null on failure
+     */
+    suspend fun getListComics(userId: String, listSlug: String): List<ComickListComic>? = withContext(Dispatchers.IO) {
+        try {
+            val url = "https://api.comick.dev/user/$userId/follows?custom_list=$listSlug"
+            val request = Request.Builder().url(url).build()
+            val response = client.newCall(request).execute()
+            if (!response.isSuccessful) {
+                Logger.log("Comick list comics API error: ${response.code} for $url")
+                return@withContext null
+            }
+            val body = response.body.string()
+            if (body.isBlank() || body == "[]") return@withContext emptyList()
+            gson.fromJson(body, Array<ComickFollowEntry>::class.java).toList()
+                .mapNotNull { it.md_comics }
+        } catch (e: Exception) {
+            Logger.log("Error fetching list comics for user $userId, list $listSlug: ${e.message}")
             null
         }
     }

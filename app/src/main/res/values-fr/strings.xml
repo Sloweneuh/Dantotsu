@@ -1411,6 +1411,13 @@
 
     <string name="unknown_value">\??</string>
 
+    <string name="comick_custom_lists">Listes</string>
+    <string name="comick_list_comics_count">%d comics</string>
+    <string name="comick_chapters_count">chapitres</string>
+    <string name="comick_open_anilist">Voir sur AniList</string>
+    <string name="comick_search_anilist">Rechercher sur AniList</string>
+    <string name="comick_open_mangaupdates">Voir sur MangaUpdates</string>
+
     <string name="comick_advanced">Avancé</string>
     <string name="comick_minimums">Minimums</string>
     <string name="comick_content_rating">Classification du contenu</string>

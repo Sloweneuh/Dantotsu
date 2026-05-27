@@ -27,14 +27,11 @@ import ani.dantotsu.connections.anilist.StaffSearchResults
 import ani.dantotsu.connections.anilist.StudioSearchResults
 import ani.dantotsu.connections.anilist.UserSearchResults
 import android.content.Intent
-import android.net.Uri
 import ani.dantotsu.connections.mangaupdates.MUMediaAdapter
-import ani.dantotsu.connections.mangaupdates.MUMediaDetailsActivity
 import ani.dantotsu.databinding.ActivitySearchBinding
 import ani.dantotsu.initActivity
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.openLinkInBrowser
-import ani.dantotsu.openOrCopyAnilistLink
 import ani.dantotsu.profile.UsersAdapter
 import ani.dantotsu.px
 import ani.dantotsu.settings.saving.PrefManager
@@ -694,37 +691,10 @@ class SearchActivity : AppCompatActivity() {
 
     private fun onComickResultClicked(comic: ComickComic) {
         val slug = comic.slug ?: return
-        scope.launch(Dispatchers.IO) {
-            val details = ComickApi.getComicDetails(slug, useCache = false)
-            val links = details?.comic?.links
-            val anilistId = links?.al?.trim()?.toIntOrNull()
-            val anilistUrl = anilistId?.let { "https://anilist.co/manga/$it" }
-
-            val muLinkValue = links?.mu?.trim()
-            val muUrl = when {
-                muLinkValue.isNullOrBlank() -> null
-                muLinkValue.all { it.isDigit() } -> "https://www.mangaupdates.com/series.html?id=$muLinkValue"
-                else -> "https://www.mangaupdates.com/series/$muLinkValue"
-            }
-
-            val fallback = "https://comick.io/comic/$slug"
-            runOnUiThread {
-                when {
-                    !anilistUrl.isNullOrBlank() -> openOrCopyAnilistLink(anilistUrl)
-                    !muUrl.isNullOrBlank() -> {
-                        val uri = Uri.parse(muUrl)
-                        if (uri.pathSegments?.firstOrNull() == "series") {
-                            startActivity(Intent(Intent.ACTION_VIEW, uri).apply {
-                                setClass(this@SearchActivity, MUMediaDetailsActivity::class.java)
-                            })
-                        } else {
-                            openLinkInBrowser(muUrl)
-                        }
-                    }
-                    else -> openLinkInBrowser(fallback)
-                }
-            }
-        }
+        startActivity(
+            Intent(this, ComickMediaActivity::class.java)
+                .putExtra(ComickMediaActivity.EXTRA_SLUG, slug)
+        )
     }
 
 }
