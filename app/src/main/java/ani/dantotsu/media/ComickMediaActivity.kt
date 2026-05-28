@@ -11,9 +11,8 @@ import android.widget.TableLayout
 import android.widget.TableRow
 import android.widget.TextView
 import android.widget.Toast
-import androidx.annotation.StringRes
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
+
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.text.HtmlCompat
 import androidx.core.view.updateLayoutParams
@@ -24,8 +23,9 @@ import ani.dantotsu.connections.comick.ComickApi
 import ani.dantotsu.connections.comick.ComickComic
 import ani.dantotsu.connections.comick.ComickListComic
 import ani.dantotsu.connections.comick.toComickReview
-import ani.dantotsu.others.CustomBottomDialog
+import ani.dantotsu.connections.mangaupdates.AniListQuickSearchDialogFragment
 import ani.dantotsu.connections.mangaupdates.MUMediaDetailsActivity
+import ani.dantotsu.connections.mangaupdates.MangaUpdatesQuickSearchDialogFragment
 import ani.dantotsu.copyToClipboard
 import ani.dantotsu.databinding.ActivityComickMediaBinding
 import ani.dantotsu.databinding.ItemChipBinding
@@ -123,14 +123,9 @@ class ComickMediaActivity : AppCompatActivity() {
         } else {
             binding.comickMediaAnilistBtn.setText(R.string.comick_search_anilist)
             binding.comickMediaAnilistBtn.setOnClickListener {
-                showQuickSearchDialog(R.string.comick_search_anilist, titles) { title ->
-                    startActivity(
-                        Intent(this, SearchActivity::class.java)
-                            .putExtra("type", "MANGA")
-                            .putExtra("query", title)
-                            .putExtra("search", true)
-                    )
-                }
+                AniListQuickSearchDialogFragment
+                    .newInstance(titles = ArrayList(titles), type = AniListQuickSearchDialogFragment.TYPE_MANGA)
+                    .show(supportFragmentManager, "comick_anilist_quick_search")
             }
         }
 
@@ -159,14 +154,9 @@ class ComickMediaActivity : AppCompatActivity() {
         } else {
             binding.comickMediaMuBtn.setText(R.string.mu_search_title)
             binding.comickMediaMuBtn.setOnClickListener {
-                showQuickSearchDialog(R.string.mu_search_title, titles) { title ->
-                    startActivity(
-                        Intent(this, SearchActivity::class.java)
-                            .putExtra("type", "MANGAUPDATES")
-                            .putExtra("query", title)
-                            .putExtra("search", true)
-                    )
-                }
+                MangaUpdatesQuickSearchDialogFragment
+                    .newInstance(titles = ArrayList(titles))
+                    .show(supportFragmentManager, "comick_mu_quick_search")
             }
         }
 
@@ -189,30 +179,7 @@ class ComickMediaActivity : AppCompatActivity() {
         c.code in 0x4E00..0x9FFF || c.code in 0xAC00..0xD7AF || c.code in 0x1100..0x11FF
     }
 
-    private fun showQuickSearchDialog(@StringRes titleRes: Int, titles: List<String>, onSelect: (String) -> Unit) {
-        if (titles.isEmpty()) return
-        CustomBottomDialog.newInstance().apply {
-            setTitleText(getString(titleRes))
-            titles.forEach { title ->
-                addView(android.widget.TextView(this@ComickMediaActivity).apply {
-                    text = title
-                    textSize = 16f
-                    val p = 16f.px
-                    setPadding(p, p, p, p)
-                    setTextColor(ContextCompat.getColor(this@ComickMediaActivity, R.color.bg_opp))
-                    val outValue = android.util.TypedValue()
-                    this@ComickMediaActivity.theme.resolveAttribute(android.R.attr.selectableItemBackground, outValue, true)
-                    setBackgroundResource(outValue.resourceId)
-                    isClickable = true
-                    isFocusable = true
-                    setOnClickListener {
-                        onSelect(title)
-                        dismiss()
-                    }
-                })
-            }
-        }.show(supportFragmentManager, "comick_media_quicksearch")
-    }
+
 
     @SuppressLint("SetTextI18n")
     private fun displayInfo(comic: ComickComic) {
