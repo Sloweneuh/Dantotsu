@@ -303,18 +303,20 @@ object RPCManager {
                 }
             }
 
-            // Decide small icon based on selected mode and available tracker (MangaUpdates override)
+            // Decide small icon: match the actual tracker link, fall back to Dantotsu when none exists
             if (useIconPref && mode != "nothing") {
-                when (mode) {
-                    "anilist" -> { smallIconUrl = Discord.small_Image_AniList; smallIconText = "AniList" }
-                    "mal" -> { smallIconUrl = Discord.small_Image_MAL; smallIconText = "MyAnimeList" }
-                    else -> { smallIconUrl = Discord.small_Image; smallIconText = "Dantotsu" }
-                }
-
-                primaryTracker?.let {
-                    if (it.url.contains("mangaupdates.com")) {
-                        smallIconUrl = Discord.small_Image_MangaUpdates
-                        smallIconText = "MangaUpdates"
+                if (primaryTracker == null) {
+                    // No tracker link (e.g. extension source) — always use Dantotsu icon
+                    smallIconUrl = Discord.small_Image
+                    smallIconText = "Dantotsu"
+                } else if (primaryTracker.url.contains("mangaupdates.com")) {
+                    smallIconUrl = Discord.small_Image_MangaUpdates
+                    smallIconText = "MangaUpdates"
+                } else {
+                    when (mode) {
+                        "anilist" -> { smallIconUrl = Discord.small_Image_AniList; smallIconText = "AniList" }
+                        "mal" -> { smallIconUrl = Discord.small_Image_MAL; smallIconText = "MyAnimeList" }
+                        else -> { smallIconUrl = Discord.small_Image; smallIconText = "Dantotsu" }
                     }
                 }
             }
@@ -346,8 +348,8 @@ object RPCManager {
             details = data.details,
             state = data.state,
                 assets = DiscordActivity.Assets(
-                    largeImage = data.largeImage?.url,
-                    largeText = data.largeImage?.label,
+                    largeImage = data.largeImage?.url?.takeIf { it.isValidUrl() },
+                    largeText = data.largeImage?.label?.takeIf { data.largeImage.url.isValidUrl() },
                     largeUrl = null,
                     smallImage = data.smallImage?.url ?: smallIconUrl,
                     smallText = data.smallImage?.label ?: smallIconText,

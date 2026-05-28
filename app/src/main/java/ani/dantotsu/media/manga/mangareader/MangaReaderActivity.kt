@@ -573,7 +573,7 @@ class MangaReaderActivity : AppCompatActivity() {
                             largeImage = media.cover?.let { cover ->
                                 RPC.Link(media.userPreferredName, cover)
                             },
-                            smallImage = if (isExtension) RPC.Link("Dantotsu", Discord.small_Image) else null,
+                            smallImage = null,
                             buttons = buttons
                         )
                         RPCManager.setPresence(context, rpcData)
@@ -1465,7 +1465,7 @@ class MangaReaderActivity : AppCompatActivity() {
                 largeImage = media.cover?.let { cover ->
                     RPC.Link(media.userPreferredName, cover)
                 },
-                smallImage = if (isExtension) RPC.Link("Dantotsu", Discord.small_Image) else null,
+                smallImage = null,
                 buttons = buttons
             )
             RPCManager.setPresence(context, rpcData)

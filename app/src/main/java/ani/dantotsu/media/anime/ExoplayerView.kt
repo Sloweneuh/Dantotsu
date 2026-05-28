@@ -1466,7 +1466,7 @@ class ExoplayerView :
                     stopTimestamp = endTimestamp,
                     state = finalState,
                     largeImage = media.cover?.let { RPC.Link(media.userPreferredName, it) },
-                    smallImage = RPC.Link("Dantotsu", Discord.small_Image),
+                    smallImage = null,
                     buttons = buttons,
                 )
                 RPCManager.setPresence(context, rpcData)
