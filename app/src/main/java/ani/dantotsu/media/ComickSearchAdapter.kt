@@ -15,8 +15,9 @@ import ani.dantotsu.R
 import ani.dantotsu.connections.comick.ComickComic
 import ani.dantotsu.databinding.ItemMediaCompactBinding
 import ani.dantotsu.databinding.ItemMediaLargeBinding
-import ani.dantotsu.loadImage
 import ani.dantotsu.setSafeOnClickListener
+import com.bumptech.glide.Glide
+import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions.withCrossFade
 
 class ComickSearchAdapter(
     private val results: List<ComickComic>,
@@ -51,8 +52,18 @@ class ComickSearchAdapter(
         }
     }
 
-    private fun coverUrl(comic: ComickComic): String? =
-        comic.md_covers?.firstOrNull()?.b2key?.let { "https://meo.comick.pictures/$it" }
+    private fun loadCover(imageView: android.widget.ImageView, comic: ComickComic) {
+        val b2key = comic.md_covers?.firstOrNull()?.b2key
+        if (b2key != null) {
+            val lastDot = b2key.lastIndexOf('.')
+            val thumbKey = if (lastDot > 0) b2key.substring(0, lastDot) + "-s" + b2key.substring(lastDot) else "$b2key-s"
+            Glide.with(imageView.context)
+                .load("https://meo.comick.pictures/$thumbKey")
+                .thumbnail(Glide.with(imageView.context).load("https://meo.comick.pictures/$b2key"))
+                .transition(withCrossFade())
+                .into(imageView)
+        }
+    }
 
     private fun openInBrowser(comic: ComickComic, view: View) {
         comic.slug?.let { slug ->
@@ -62,9 +73,7 @@ class ComickSearchAdapter(
     }
 
     private fun bindCompact(b: ItemMediaCompactBinding, comic: ComickComic) {
-        val url = coverUrl(comic)
-        if (url != null) b.itemCompactImage.loadImage(url)
-        else b.itemCompactImage.setImageResource(R.drawable.ic_round_menu_book_24)
+        loadCover(b.itemCompactImage, comic)
 
         b.itemCompactTitle.text = comic.title
         b.itemCompactTitle.ellipsize = TextUtils.TruncateAt.MARQUEE
@@ -99,13 +108,8 @@ class ComickSearchAdapter(
     }
 
     private fun bindLarge(b: ItemMediaLargeBinding, comic: ComickComic) {
-        val url = coverUrl(comic)
-        if (url != null) {
-            b.itemCompactImage.loadImage(url)
-            b.itemCompactBanner.loadImage(url)
-        } else {
-            b.itemCompactImage.setImageResource(R.drawable.ic_round_menu_book_24)
-        }
+        loadCover(b.itemCompactImage, comic)
+        loadCover(b.itemCompactBanner, comic)
 
         b.itemCompactTitle.text = comic.title
         b.itemCompactTitle.maxLines = 3

@@ -9,8 +9,9 @@ import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
 import ani.dantotsu.connections.comick.ComickListComic
 import ani.dantotsu.databinding.ItemMediaCompactBinding
-import ani.dantotsu.loadImage
 import ani.dantotsu.setSafeOnClickListener
+import com.bumptech.glide.Glide
+import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions.withCrossFade
 
 class ComickListComicAdapter(
     private val onItemClick: (ComickListComic) -> Unit
@@ -36,13 +37,17 @@ class ComickListComicAdapter(
         val b = holder.binding
 
         val b2key = comic.md_covers?.firstOrNull()?.b2key
-        val thumbUrl = b2key?.let { key ->
-            val lastDot = key.lastIndexOf('.')
-            val thumbKey = if (lastDot > 0) key.substring(0, lastDot) + "-s" + key.substring(lastDot) else "$key-s"
-            "https://meo.comick.pictures/$thumbKey"
+        if (b2key != null) {
+            val lastDot = b2key.lastIndexOf('.')
+            val thumbKey = if (lastDot > 0) b2key.substring(0, lastDot) + "-s" + b2key.substring(lastDot) else "$b2key-s"
+            val thumbUrl = "https://meo.comick.pictures/$thumbKey"
+            val fullUrl = "https://meo.comick.pictures/$b2key"
+            Glide.with(b.itemCompactImage.context)
+                .load(thumbUrl)
+                .thumbnail(Glide.with(b.itemCompactImage.context).load(fullUrl))
+                .transition(withCrossFade())
+                .into(b.itemCompactImage)
         }
-        if (thumbUrl != null) b.itemCompactImage.loadImage(thumbUrl)
-        else b.itemCompactImage.setImageResource(R.drawable.ic_round_menu_book_24)
 
         // Regular tap on image opens comic; long-tap opens in browser
         b.itemCompactImage.setSafeOnClickListener { onItemClick(comic) }
