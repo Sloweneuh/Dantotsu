@@ -376,33 +376,6 @@ class ComickMediaActivity : AppCompatActivity() {
             parent.addView(bind.root)
         }
 
-        // Custom lists containing this comic
-        val hid = comic.hid
-        if (!hid.isNullOrBlank()) {
-            lifecycleScope.launch {
-                val lists = withContext(Dispatchers.IO) { ComickApi.getComicLists(hid) }
-                if (!lists.isNullOrEmpty()) {
-                    ItemTitleRecyclerBinding.inflate(LayoutInflater.from(this@ComickMediaActivity), parent, false).apply {
-                        itemTitle.setText(R.string.comick_custom_lists)
-                        val listAdapter = ComickCustomListAdapter(lists) { list ->
-                            startActivity(
-                                Intent(this@ComickMediaActivity, ComickListActivity::class.java)
-                                    .putExtra(ComickListActivity.EXTRA_USER_ID, list.user_id)
-                                    .putExtra(ComickListActivity.EXTRA_LIST_SLUG, list.slug)
-                                    .putExtra(ComickListActivity.EXTRA_LIST_TITLE, list.title ?: list.slug)
-                            )
-                        }
-                        itemRecycler.adapter = listAdapter
-                        itemRecycler.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(
-                            this@ComickMediaActivity, androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL, false
-                        )
-                        itemMore.visibility = View.GONE
-                        parent.addView(root)
-                    }
-                }
-            }
-        }
-
         // Recommendations as Comick compact grid
         val recommendations = comic.recommendations
         if (!recommendations.isNullOrEmpty()) {
@@ -425,6 +398,40 @@ class ComickMediaActivity : AppCompatActivity() {
                     )
                     itemMore.visibility = View.GONE
                     parent.addView(root)
+                }
+            }
+        }
+
+        // Custom lists — placeholder added synchronously so it sits between recommendations and reviews
+        val hid = comic.hid
+        if (!hid.isNullOrBlank()) {
+            val customListsPlaceholder = android.widget.FrameLayout(this).apply {
+                layoutParams = android.widget.LinearLayout.LayoutParams(
+                    android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+            }
+            parent.addView(customListsPlaceholder)
+            lifecycleScope.launch {
+                val lists = withContext(Dispatchers.IO) { ComickApi.getComicLists(hid) }
+                if (!lists.isNullOrEmpty()) {
+                    ItemTitleRecyclerBinding.inflate(LayoutInflater.from(this@ComickMediaActivity), customListsPlaceholder, false).apply {
+                        itemTitle.setText(R.string.comick_custom_lists)
+                        val listAdapter = ComickCustomListAdapter(lists) { list ->
+                            startActivity(
+                                Intent(this@ComickMediaActivity, ComickListActivity::class.java)
+                                    .putExtra(ComickListActivity.EXTRA_USER_ID, list.user_id)
+                                    .putExtra(ComickListActivity.EXTRA_LIST_SLUG, list.slug)
+                                    .putExtra(ComickListActivity.EXTRA_LIST_TITLE, list.title ?: list.slug)
+                            )
+                        }
+                        itemRecycler.adapter = listAdapter
+                        itemRecycler.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(
+                            this@ComickMediaActivity, androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL, false
+                        )
+                        itemMore.visibility = View.GONE
+                        customListsPlaceholder.addView(root)
+                    }
                 }
             }
         }

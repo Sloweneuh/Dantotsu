@@ -1415,6 +1415,8 @@ class ComickInfoFragment : Fragment() {
                 // Display recommendations if we have any
                 if (recommendedMedia.isNotEmpty()) {
                     withContext(Dispatchers.Main) {
+                        if (_binding == null) return@withContext
+                        if (parent.findViewWithTag<View>("recommendations_comick") != null) return@withContext
                         ani.dantotsu.databinding.ItemTitleRecyclerBinding.inflate(
                                         LayoutInflater.from(context),
                                         parent,
@@ -1444,10 +1446,11 @@ class ComickInfoFragment : Fragment() {
                                         )
                                         }
                                         root.tag = "recommendations_comick"
-                                        // If a reviews placeholder exists, insert recommendations before it
-                                        val reviewsPlaceholder = parent.findViewWithTag<View>("reviews_comick_placeholder")
-                                        if (reviewsPlaceholder != null) {
-                                            val idx = parent.indexOfChild(reviewsPlaceholder)
+                                        // Insert before custom lists placeholder (which sits before reviews)
+                                        val anchor = parent.findViewWithTag<View>("custom_lists_comick_placeholder")
+                                            ?: parent.findViewWithTag<View>("reviews_comick_placeholder")
+                                        if (anchor != null) {
+                                            val idx = parent.indexOfChild(anchor)
                                             parent.addView(root, idx)
                                         } else {
                                             parent.addView(root)
@@ -1458,7 +1461,20 @@ class ComickInfoFragment : Fragment() {
             }
         }
 
-        // Add Comick reviews (attempt to fetch and display immediately after recommendations)
+        // Custom Lists — placeholder added synchronously so it sits between recommendations and reviews
+        val comickHid = comic.hid
+        val customListsPlaceholder = if (!comickHid.isNullOrBlank() &&
+                parent.findViewWithTag<View>("custom_lists_comick_placeholder") == null) {
+            android.widget.FrameLayout(requireContext()).apply {
+                tag = "custom_lists_comick_placeholder"
+                layoutParams = android.widget.LinearLayout.LayoutParams(
+                    android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+            }.also { parent.addView(it) }
+        } else null
+
+        // Add Comick reviews
         if (!comickSlug.isNullOrBlank() && parent.findViewWithTag<View>("reviews_comick") == null) {
             val reviewsPlaceholder = android.widget.FrameLayout(requireContext()).apply {
                 tag = "reviews_comick_placeholder"
@@ -1470,7 +1486,6 @@ class ComickInfoFragment : Fragment() {
             parent.addView(reviewsPlaceholder)
 
             viewLifecycleOwner.lifecycleScope.launch {
-                // Prefer embedded reviews from the comic payload when available
                 val embedded = comic.reviews
                 val reviews = if (!embedded.isNullOrEmpty()) {
                     embedded.mapNotNull { try { it.toComickReview() } catch (e: Exception) { null } }
@@ -1481,6 +1496,7 @@ class ComickInfoFragment : Fragment() {
                 if (!reviews.isNullOrEmpty()) {
                     withContext(Dispatchers.Main) {
                         if (_binding == null) return@withContext
+                        if (reviewsPlaceholder.childCount > 0) return@withContext
                         ani.dantotsu.databinding.ItemTitleRecyclerBinding.inflate(
                                 LayoutInflater.from(context),
                                 reviewsPlaceholder,
@@ -1502,16 +1518,17 @@ class ComickInfoFragment : Fragment() {
             }
         }
 
-        // Custom Lists — show the public lists this comic appears in
-        val comickHid = comic.hid
-        if (!comickHid.isNullOrBlank() && parent.findViewWithTag<View>("custom_lists_comick") == null) {
+        // Fetch and fill the custom lists placeholder
+        if (customListsPlaceholder != null) {
             viewLifecycleOwner.lifecycleScope.launch {
-                val lists = withContext(Dispatchers.IO) { ComickApi.getComicLists(comickHid) }
+                val lists = withContext(Dispatchers.IO) { ComickApi.getComicLists(comickHid!!) }
                 if (lists.isNullOrEmpty()) return@launch
                 if (_binding == null) return@launch
                 withContext(Dispatchers.Main) {
+                    if (_binding == null) return@withContext
+                    if (customListsPlaceholder.childCount > 0) return@withContext
                     ani.dantotsu.databinding.ItemTitleRecyclerBinding.inflate(
-                        LayoutInflater.from(context), parent, false
+                        LayoutInflater.from(context), customListsPlaceholder, false
                     ).apply {
                         itemTitle.setText(R.string.comick_custom_lists)
                         itemRecycler.adapter = ComickCustomListAdapter(lists) { list ->
@@ -1527,7 +1544,7 @@ class ComickInfoFragment : Fragment() {
                         )
                         itemMore.visibility = View.GONE
                         root.tag = "custom_lists_comick"
-                        parent.addView(root)
+                        customListsPlaceholder.addView(root)
                     }
                 }
             }
