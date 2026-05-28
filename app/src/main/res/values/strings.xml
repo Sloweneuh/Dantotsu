@@ -1705,11 +1705,87 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="backup_sub_mu">MangaUpdates</string>
     <string name="backup_sub_mu_desc">MangaUpdates credentials and token</string>
     <string name="backup_sub_discord">Discord</string>
-    <string name="backup_sub_discord_desc">Discord RPC token and profile</string>
+    <string name="backup_sub_discord_desc">Discord RPC token, profile and presence settings</string>
+    <string name="discord_rpc_show_icon_anime">Show Icon (Anime)</string>
+    <string name="discord_rpc_show_icon_manga">Show Icon (Manga)</string>
     <string name="backup_sub_app_lock">App lock</string>
     <string name="backup_sub_app_lock_desc">Password and biometric token</string>
     <string name="backup_sub_proxy">SOCKS5 proxy</string>
     <string name="backup_sub_proxy_desc">Proxy host, port and credentials</string>
+
+    <!-- Backup item labels: blur -->
+    <string name="blur_radius">Blur Radius</string>
+    <string name="blur_sampling">Blur Sampling</string>
+
+    <!-- Backup item labels: general -->
+    <string name="backup_shared_user_id">Shared User ID</string>
+    <string name="backup_include_anime_list">Include Anime List</string>
+    <string name="backup_include_manga_list">Include Manga List</string>
+    <string name="backup_subscription_interval_hours">Subscription Interval (Hours)</string>
+    <string name="backup_subscription_interval_minutes">Subscription Interval (Minutes)</string>
+    <string name="backup_anime_extension_repos">Anime Extension Repos</string>
+    <string name="backup_manga_extension_repos">Manga Extension Repos</string>
+    <string name="backup_novel_extension_repos">Novel Extension Repos</string>
+    <string name="backup_anime_sources_order">Anime Sources Order</string>
+    <string name="backup_manga_sources_order">Manga Sources Order</string>
+    <string name="backup_novel_sources_order">Novel Sources Order</string>
+    <string name="backup_anime_search_history">Anime Search History</string>
+    <string name="backup_manga_search_history">Manga Search History</string>
+    <string name="backup_character_search_history">Character Search History</string>
+    <string name="backup_staff_search_history">Staff Search History</string>
+    <string name="backup_studio_search_history">Studio Search History</string>
+    <string name="backup_user_search_history">User Search History</string>
+    <string name="backup_saved_animanga_filters">Saved AniList Filters</string>
+    <string name="backup_saved_mu_filters">Saved MangaUpdates Filters</string>
+    <string name="backup_saved_comick_filters">Saved Comick Filters</string>
+    <string name="backup_saved_list_filters">Saved List Filters</string>
+    <string name="backup_saved_extension_filters">Saved Extension Filters</string>
+    <string name="backup_mu_custom_list_titles">Custom List Titles</string>
+
+    <!-- Backup item labels: UI -->
+    <string name="backup_follower_layout">Follower Layout</string>
+    <string name="backup_popular_anime_list">Popular Anime List Style</string>
+    <string name="backup_popular_manga_list">Popular Manga List Style</string>
+    <string name="backup_anime_list_sort">Anime List Sort Order</string>
+    <string name="backup_manga_list_sort">Manga List Sort Order</string>
+    <string name="backup_comment_sort_order">Comment Sort Order</string>
+
+    <!-- Backup item labels: reader -->
+    <string name="backup_page_padding">Page Padding</string>
+    <string name="backup_crop_sensitivity">Crop Sensitivity</string>
+
+    <!-- Backup item labels: novel -->
+    <string name="backup_reader_theme">Reader Theme</string>
+    <string name="backup_invert_colors">Invert Colors</string>
+    <string name="backup_line_height">Line Height</string>
+    <string name="backup_page_margin">Page Margin</string>
+    <string name="backup_justify_text">Justify Text</string>
+    <string name="backup_hyphenation">Hyphenation</string>
+    <string name="backup_max_inline_size">Max Inline Size</string>
+    <string name="backup_max_block_size">Max Block Size</string>
+    <string name="backup_horizontal_scrollbar_novel">Horizontal Scroll Bar</string>
+
+    <!-- Backup item labels: player -->
+    <string name="backup_audio_language">Audio Language</string>
+
+    <!-- Backup item labels: accounts -->
+    <string name="backup_anilist_token">AniList Token</string>
+    <string name="backup_anilist_username">AniList Username</string>
+    <string name="backup_anilist_user_id">AniList User ID</string>
+    <string name="backup_mal_username">MAL Username</string>
+    <string name="backup_mal_code_challenge">MAL Code Challenge</string>
+    <string name="backup_mal_token">MAL Token</string>
+    <string name="backup_mu_username">MangaUpdates Username</string>
+    <string name="backup_mu_password">MangaUpdates Password</string>
+    <string name="backup_mu_token">MangaUpdates Token</string>
+    <string name="backup_discord_token">Discord Token</string>
+    <string name="backup_discord_id">Discord User ID</string>
+    <string name="backup_discord_username">Discord Username</string>
+    <string name="backup_discord_avatar">Discord Avatar</string>
+    <string name="backup_biometric_token">Biometric Token</string>
+    <string name="backup_override_password">Override Password</string>
+    <string name="backup_proxy_username">Proxy Username</string>
+    <string name="backup_proxy_password">Proxy Password</string>
 
 </resources>
 
