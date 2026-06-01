@@ -2,6 +2,8 @@ package ani.dantotsu.settings
 
 import android.content.Intent
 import android.graphics.Typeface
+import android.text.SpannableStringBuilder
+import android.text.style.RelativeSizeSpan
 import android.widget.CheckBox
 import android.os.Bundle
 import android.util.TypedValue
@@ -37,6 +39,7 @@ import ani.dantotsu.media.manga.MangaChapter as MediaMangaChapter
 import ani.dantotsu.media.manga.mangareader.MangaReaderActivity
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.openLinkInBrowser
+import nl.joery.animatedbottombar.AnimatedBottomBar
 import ani.dantotsu.parsers.DynamicMangaParser
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.snackString
@@ -44,6 +47,7 @@ import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.util.Logger
 import ani.dantotsu.util.customAlertDialog
+import com.google.android.material.chip.Chip
 import eu.kanade.tachiyomi.animesource.AnimeSource
 import eu.kanade.tachiyomi.animesource.model.SAnime
 import eu.kanade.tachiyomi.animesource.model.SEpisode
@@ -81,11 +85,11 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
     private var latestHasSub: Boolean = false
     private var latestHasDub: Boolean = false
     private var synopsisExpanded = false
-    private var chapterListExpanded = false
     private var sourceHeaders: Map<String, String> = emptyMap()
     private lateinit var markwon: Markwon
 
     private var allChapters: List<SChapter> = emptyList()
+    private var chaptersDataLoaded = false
     private var pkg: String? = null
     private var langIndex: Int = 0
 
@@ -97,12 +101,19 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
         initActivity(this)
         markwon = buildMarkwon(this, userInputContent = false, linkResolver = { openLinkInBrowser(it) })
 
-        binding.extensionInfoRoot.setPadding(0, 0, 0, navBarHeight)
+        binding.extensionInfoBottomBar.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+            bottomMargin = navBarHeight
+        }
+        binding.extensionInfoPages.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+            bottomMargin += navBarHeight
+        }
 
         binding.extensionInfoBack.updateLayoutParams<ViewGroup.MarginLayoutParams> {
             topMargin += statusBarHeight
         }
         binding.extensionInfoBack.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
+
+        setupBottomBar()
 
         @Suppress("DEPRECATION")
         manga = intent.getSerializableExtra(EXTRA_MANGA) as? SManga
@@ -121,6 +132,46 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
         configureSearchButtons()
 
         if (pkg != null) loadDetails(pkg!!, langIndex)
+    }
+
+    private var currentExtTabIndex = 0
+
+    private fun setupBottomBar() {
+        val navBar = binding.extensionInfoBottomBar
+        val infoTab = navBar.createTab(R.drawable.ic_round_info_24, R.string.info, R.id.info)
+        val chaptersTab = navBar.createTab(R.drawable.ic_round_import_contacts_24, R.string.read, R.id.read)
+        navBar.addTab(infoTab)
+        if (isManga) navBar.addTab(chaptersTab)
+        navBar.selectTabAt(0)
+        // Info is visible by default; chapters hidden
+        binding.extensionInfoScroll.visibility = View.VISIBLE
+        binding.extensionChaptersScroll.visibility = View.GONE
+
+        navBar.setOnTabSelectListener(object : AnimatedBottomBar.OnTabSelectListener {
+            override fun onTabSelected(lastIndex: Int, lastTab: AnimatedBottomBar.Tab?, newIndex: Int, newTab: AnimatedBottomBar.Tab) {
+                if (newIndex == currentExtTabIndex) return
+                slideExtToTab(from = currentExtTabIndex, to = newIndex)
+                currentExtTabIndex = newIndex
+            }
+        })
+    }
+
+    private fun slideExtToTab(from: Int, to: Int) {
+        val outView = if (from == 0) binding.extensionInfoScroll else binding.extensionChaptersScroll
+        val inView  = if (to   == 0) binding.extensionInfoScroll else binding.extensionChaptersScroll
+        val width = binding.extensionInfoPages.width.toFloat().takeIf { it > 0 }
+            ?: resources.displayMetrics.widthPixels.toFloat()
+        val goRight = to > from
+        inView.translationX = if (goRight) width else -width
+        inView.visibility = View.VISIBLE
+        outView.animate().translationX(if (goRight) -width else width).setDuration(280)
+            .withEndAction { outView.visibility = View.GONE; outView.translationX = 0f }.start()
+        inView.animate().translationX(0f).setDuration(280).start()
+        // If switching to the chapters tab and data is already loaded, re-populate
+        // using post{} so the view is measured at its final width first.
+        if (to == 1 && chaptersDataLoaded) {
+            inView.post { populateChapterListWithChips() }
+        }
     }
 
     private fun computeSourceHeaders(pkg: String, langIndex: Int): Map<String, String> {
@@ -236,6 +287,7 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
             latestHasSub = result.hasSub
             latestHasDub = result.hasDub
             allChapters = result.chapters
+            chaptersDataLoaded = true
             renderDetails()
             renderLatest()
             renderChapterList()
@@ -380,28 +432,9 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
     }
 
     private fun renderChapterList() {
-        if (!isManga || allChapters.isEmpty()) {
-            binding.extensionInfoChaptersHeader.isVisible = false
-            binding.extensionInfoChaptersList.isVisible = false
-            return
-        }
-
-        val missing = countMissingChapters()
-        binding.extensionInfoChaptersTitle.text = buildString {
-            append("Chapters (${allChapters.size})")
-            if (missing > 0) append(" · $missing missing")
-        }
-        binding.extensionInfoChaptersHeader.isVisible = true
-
-        binding.extensionInfoChaptersHeader.setOnClickListener {
-            chapterListExpanded = !chapterListExpanded
-            binding.extensionInfoChaptersList.isVisible = chapterListExpanded
-            binding.extensionInfoChaptersToggle.rotation =
-                if (chapterListExpanded) 180f else 0f
-            if (chapterListExpanded && binding.extensionInfoChaptersList.childCount == 0) {
-                populateChapterList()
-            }
-        }
+        if (!isManga) return
+        // post{} so chips are built after the view has been laid out at real width
+        binding.extensionChaptersScroll.post { populateChapterListWithChips() }
     }
 
     private val nonSequentialKeywords = setOf(
@@ -414,35 +447,87 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
         return if (n > 0f) n else MediaNameAdapter.findChapterNumber(sChap.name)
     }
 
-    private fun countMissingChapters(): Int {
-        var total = 0
-        for (i in 0 until allChapters.size - 1) {
-            val currIsNonSeq = nonSequentialKeywords.any { allChapters[i].name.lowercase().contains(it) }
-            val nextIsNonSeq = nonSequentialKeywords.any { allChapters[i + 1].name.lowercase().contains(it) }
-            if (!currIsNonSeq && !nextIsNonSeq) {
-                val c = resolveChapterNum(allChapters[i])
-                val n = resolveChapterNum(allChapters[i + 1])
-                if (c != null && n != null) {
-                    val missing = maxOf(c, n).toInt() - minOf(c, n).toInt() - 1
-                    if (missing > 0) total += missing
-                }
-            }
-        }
-        val sequentialNums = allChapters
-            .filter { ch -> !nonSequentialKeywords.any { ch.name.lowercase().contains(it) } }
-            .mapNotNull { resolveChapterNum(it) }
-        val minSeqNum = sequentialNums.minOrNull()
-        total += (minSeqNum?.toInt() ?: 1) - 1
-        return total
+
+    private fun chapterLimit(total: Int): Int {
+        val d = total / 10.0
+        return when { d < 25 -> 25; d < 50 -> 50; else -> 100 }
     }
 
-    private fun populateChapterList() {
-        binding.extensionInfoChaptersList.removeAllViews()
+    private fun populateChapterListWithChips() {
+        binding.extensionChaptersList.removeAllViews()
+        binding.extensionChaptersChipGroup.removeAllViews()
+
+        if (allChapters.isEmpty()) {
+            binding.extensionChaptersChipScroll.visibility = View.GONE
+            binding.extensionChaptersHeader.isVisible = false
+            binding.extensionChaptersEmpty.isVisible = true
+            return
+        }
+
+        binding.extensionChaptersEmpty.isVisible = false
+
+        // Sort ascending by resolved chapter number (falls back to name parsing)
+        val chapters = allChapters.sortedBy { ch -> resolveChapterNum(ch) ?: Float.MAX_VALUE }
+        val total = chapters.size
+
+        val missing = computeMissingChapters(chapters)
+        binding.extensionChaptersHeader.isVisible = true
+        binding.extensionChaptersHeader.text = buildChaptersHeader(missing)
+        val limit = chapterLimit(total)
+        if (total > limit) {
+            buildExtensionChipGroups(chapters, limit)
+        } else {
+            binding.extensionChaptersChipScroll.visibility = View.GONE
+            showExtensionChapterRange(chapters, 0, total - 1)
+        }
+    }
+
+    private fun buildExtensionChipGroups(chapters: List<SChapter>, limit: Int) {
+        binding.extensionChaptersChipScroll.visibility = View.VISIBLE
+        val total = chapters.size
+        val groupCount = (total + limit - 1) / limit
+        var firstChip: Chip? = null
+
+        for (groupIdx in 0 until groupCount) {
+            val startIdx = groupIdx * limit
+            val endIdx = minOf(startIdx + limit - 1, total - 1)
+
+            val startNum = resolveChapterNum(chapters[startIdx])
+            val endNum = resolveChapterNum(chapters[endIdx])
+            val chipText = when {
+                startNum != null && endNum != null -> {
+                    val lo = if (startNum % 1f == 0f) startNum.toInt().toString() else startNum.toString()
+                    val hi = if (endNum % 1f == 0f) endNum.toInt().toString() else endNum.toString()
+                    "Ch.$lo - Ch.$hi"
+                }
+                else -> "${startIdx + 1}-${endIdx + 1}"
+            }
+
+            val chip = ItemChipBinding.inflate(layoutInflater, binding.extensionChaptersChipGroup, false).root
+            chip.isCheckable = true
+            chip.text = chipText
+            chip.setTextColor(androidx.core.content.ContextCompat.getColorStateList(this, R.color.chip_text_color))
+            chip.setOnClickListener {
+                chip.isChecked = true
+                showExtensionChapterRange(chapters, startIdx, endIdx)
+            }
+            binding.extensionChaptersChipGroup.addView(chip)
+            if (groupIdx == 0) {
+                chip.isChecked = true
+                firstChip = chip
+            }
+        }
+
+        firstChip?.let { showExtensionChapterRange(chapters, 0, minOf(limit - 1, chapters.size - 1)) }
+    }
+
+    private fun showExtensionChapterRange(chapters: List<SChapter>, startIdx: Int, endIdx: Int) {
+        binding.extensionChaptersList.removeAllViews()
+        val rangeChapters = chapters.subList(startIdx, endIdx + 1)
 
         fun addChapterView(sChap: SChapter) {
-            val b = ItemChapterListBinding.inflate(
-                layoutInflater, binding.extensionInfoChaptersList, false
-            )
+            val b = ItemChapterListBinding.inflate(layoutInflater, binding.extensionChaptersList, false)
+            b.itemChapterDateLayout.layoutParams.height = ViewGroup.LayoutParams.WRAP_CONTENT
             b.itemDownload.isVisible = false
             b.itemEpisodeViewed.isVisible = false
             b.itemChapterBrowser.isVisible = false
@@ -460,11 +545,11 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
             b.itemChapterScan.text = scan ?: ""
             b.itemChapterDateDivider.isVisible = hasDate && hasScan
             b.root.setOnClickListener { openChapter(sChap) }
-            binding.extensionInfoChaptersList.addView(b.root)
+            binding.extensionChaptersList.addView(b.root)
         }
 
         fun inflateGapView(count: Int) = ItemChapterGapBinding.inflate(
-            layoutInflater, binding.extensionInfoChaptersList, false
+            layoutInflater, binding.extensionChaptersList, false
         ).also { b ->
             b.itemChapterGapText.text = if (count == 1)
                 getString(R.string.chapter_missing_single)
@@ -472,42 +557,19 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
                 getString(R.string.chapters_missing, count)
         }.root
 
-        // Newest chapter first
-        val chapters = allChapters.reversed()
-
-        // Render chapters with inter-chapter gap indicators
-        for (i in chapters.indices) {
-            addChapterView(chapters[i])
-            if (i < chapters.size - 1) {
-                val currIsNonSeq = nonSequentialKeywords.any { chapters[i].name.lowercase().contains(it) }
-                val nextIsNonSeq = nonSequentialKeywords.any { chapters[i + 1].name.lowercase().contains(it) }
+        for (i in rangeChapters.indices) {
+            addChapterView(rangeChapters[i])
+            if (i < rangeChapters.size - 1) {
+                val currIsNonSeq = nonSequentialKeywords.any { rangeChapters[i].name.lowercase().contains(it) }
+                val nextIsNonSeq = nonSequentialKeywords.any { rangeChapters[i + 1].name.lowercase().contains(it) }
                 if (!currIsNonSeq && !nextIsNonSeq) {
-                    val c = resolveChapterNum(chapters[i])
-                    val n = resolveChapterNum(chapters[i + 1])
+                    val c = resolveChapterNum(rangeChapters[i])
+                    val n = resolveChapterNum(rangeChapters[i + 1])
                     if (c != null && n != null) {
                         val missing = maxOf(c, n).toInt() - minOf(c, n).toInt() - 1
-                        if (missing > 0) binding.extensionInfoChaptersList.addView(inflateGapView(missing))
+                        if (missing > 0) binding.extensionChaptersList.addView(inflateGapView(missing))
                     }
                 }
-            }
-        }
-
-        // Gap for chapters missing before the first available chapter (e.g. source starts at Ch.3)
-        val sequentialNums = chapters
-            .filter { ch -> !nonSequentialKeywords.any { ch.name.lowercase().contains(it) } }
-            .mapNotNull { resolveChapterNum(it) }
-        val minSeqNum = sequentialNums.minOrNull()
-        val missingBefore = (minSeqNum?.toInt() ?: 1) - 1
-        if (missingBefore > 0) {
-            val gapView = inflateGapView(missingBefore)
-            val firstSeqNum = chapters.firstOrNull { ch ->
-                !nonSequentialKeywords.any { ch.name.lowercase().contains(it) } && resolveChapterNum(ch) != null
-            }?.let { resolveChapterNum(it) }
-            // Ascending list (oldest-first) → gap at the start; newest-first → gap at the end
-            if (firstSeqNum == minSeqNum) {
-                binding.extensionInfoChaptersList.addView(gapView, 0)
-            } else {
-                binding.extensionInfoChaptersList.addView(gapView)
             }
         }
     }
@@ -650,6 +712,33 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
             LinearLayout.LayoutParams.WRAP_CONTENT,
             LinearLayout.LayoutParams.WRAP_CONTENT
         ).apply { marginEnd = marginPx }
+    }
+
+    private fun computeMissingChapters(chapters: List<SChapter>): Int {
+        val nonSeq = nonSequentialKeywords
+        var missing = 0
+        var prevNum: Int? = null
+        for (ch in chapters) {
+            if (nonSeq.any { ch.name.lowercase().contains(it) }) { prevNum = null; continue }
+            val n = resolveChapterNum(ch)?.toInt() ?: continue
+            val prev = prevNum
+            if (prev != null && n > prev + 1) missing += n - prev - 1
+            prevNum = n
+        }
+        return missing
+    }
+
+    private fun buildChaptersHeader(missing: Int): SpannableStringBuilder {
+        val ssb = SpannableStringBuilder(getString(R.string.chaps))
+        if (missing > 0) {
+            ssb.append("\n")
+            val start = ssb.length
+            val label = if (missing == 1) getString(R.string.chapter_missing_single)
+                        else getString(R.string.chapters_missing, missing)
+            ssb.append(label)
+            ssb.setSpan(RelativeSizeSpan(0.68f), start, ssb.length, 0)
+        }
+        return ssb
     }
 
     private fun formatDate(timestamp: Long): String {

@@ -154,6 +154,17 @@ data class ComickCover(
     val b2key: String?
 ) : Serializable
 
+data class ComickChapter(
+    val hid: String?,
+    val chap: String?,
+    val vol: String?,
+    val title: String?,
+    val lang: String?,
+    val group_name: List<String>?,
+    val created_at: String?,
+    val updated_at: String?
+) : Serializable
+
 data class ComickTraits(
     val username: String?,
     val email: String?

@@ -646,6 +646,73 @@ object ComickApi {
     }
 
     /**
+     * Fetch chapters for a comic by its HID.
+     * Paginates automatically until all chapters are retrieved.
+     * @param hid The comic HID
+     * @param lang Language code (default "en")
+     * @return List of ComickChapter, newest first, or empty list on failure
+     */
+    suspend fun getChapters(hid: String, lang: String = "en"): List<ComickChapter> = withContext(Dispatchers.IO) {
+        val all = mutableListOf<ComickChapter>()
+        val limit = 300
+        var page = 0
+        try {
+            while (true) {
+                val url = "https://api.comick.dev/comic/$hid/chapters?lang=$lang&limit=$limit&page=$page&chap-order=0"
+                val request = Request.Builder().url(url).build()
+                val response = client.newCall(request).execute()
+                if (!response.isSuccessful) break
+                val body = response.body.string()
+                if (body.isBlank()) break
+                val obj = gson.fromJson(body, com.google.gson.JsonObject::class.java) ?: break
+                val arr = obj.getAsJsonArray("chapters") ?: break
+                if (arr.size() == 0) break
+                val page_chapters = gson.fromJson(arr, Array<ComickChapter>::class.java).toList()
+                all.addAll(page_chapters)
+                // Stop when the page returned fewer results than requested (last page)
+                if (page_chapters.size < limit) break
+                page++
+            }
+        } catch (e: Exception) {
+            Logger.log("Error fetching chapters for hid $hid: ${e.message}")
+        }
+        // Sort ascending by chapter number regardless of API return order
+        all.sortedBy { it.chap?.toDoubleOrNull() ?: Double.MAX_VALUE }
+    }
+
+    /**
+     * Fetch the latest (highest-numbered) chapter for a comic.
+     * Pass [nearChapter] (from ComickComic.last_chapter) to query near that number
+     * so the small fetch window is guaranteed to include it.
+     */
+    suspend fun getLatestChapter(
+        hid: String,
+        lang: String = "en",
+        nearChapter: Double? = null
+    ): ComickChapter? = withContext(Dispatchers.IO) {
+        try {
+            val chapParam = nearChapter?.let {
+                "&chap=${if (it % 1.0 == 0.0) it.toInt() else it}"
+            } ?: ""
+            val url = "https://api.comick.dev/comic/$hid/chapters?lang=$lang&limit=10$chapParam&chap-order=0"
+            val request = Request.Builder().url(url).build()
+            val response = client.newCall(request).execute()
+            if (!response.isSuccessful) return@withContext null
+            val body = response.body.string()
+            if (body.isBlank()) return@withContext null
+            val obj = gson.fromJson(body, com.google.gson.JsonObject::class.java) ?: return@withContext null
+            val arr = obj.getAsJsonArray("chapters") ?: return@withContext null
+            if (arr.size() == 0) return@withContext null
+            val chapters = gson.fromJson(arr, Array<ComickChapter>::class.java).toList()
+            // Take the chapter with the highest chapter number in the returned window
+            chapters.maxByOrNull { it.chap?.toDoubleOrNull() ?: -1.0 }
+        } catch (e: Exception) {
+            Logger.log("Error fetching latest chapter for hid $hid: ${e.message}")
+            null
+        }
+    }
+
+    /**
      * Fetch all comics in a specific custom list.
      * @param userId The list owner's user ID (UUID)
      * @param listSlug The list slug

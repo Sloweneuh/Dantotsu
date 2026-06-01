@@ -24,6 +24,7 @@ import ani.dantotsu.connections.malsync.MalSyncApi
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.copyToClipboard
 import ani.dantotsu.databinding.FragmentMediaInfoBinding
+import ani.dantotsu.databinding.ItemChapterListBinding
 import ani.dantotsu.databinding.ItemChipBinding
 import ani.dantotsu.databinding.ItemChipSynonymBinding
 import ani.dantotsu.databinding.ItemTitleTextBinding
@@ -893,26 +894,20 @@ class ComickInfoFragment : Fragment() {
                         finalChapterNum != null &&
                         lastChapter >= finalChapterNum
 
-        // Latest Chapter - hide if both status and translation are completed and latest >= final
+        // comickSlug is used throughout this function (covers, search links, latest chapter, etc.)
+        val comickSlug = comic.slug
+
+        // Restore the chapter number in the stats table row
         if (shouldHideLatestChapter) {
-            binding.mediaInfoTotal.parent?.let { parent ->
-                if (parent is ViewGroup) {
-                    parent.visibility = View.GONE
-                }
-            }
+            binding.mediaInfoTotal.parent?.let { if (it is ViewGroup) it.visibility = View.GONE }
         } else {
-            binding.mediaInfoTotal.parent?.let { parent ->
-                if (parent is ViewGroup) {
-                    parent.visibility = View.VISIBLE
-                }
-            }
-            binding.mediaInfoTotalTitle.setText(ani.dantotsu.R.string.latest_chapter)
-            binding.mediaInfoTotal.text =
-                    lastChapter?.let {
-                        if (it % 1.0 == 0.0) it.toInt().toString() else it.toString()
-                    }
-                            ?: getString(R.string.unknown_value)
+            binding.mediaInfoTotal.parent?.let { if (it is ViewGroup) it.visibility = View.VISIBLE }
+            binding.mediaInfoTotalTitle.setText(R.string.latest_chapter)
+            binding.mediaInfoTotal.text = lastChapter?.let {
+                if (it % 1.0 == 0.0) it.toInt().toString() else it.toString()
+            } ?: getString(R.string.unknown_value)
         }
+
 
         // Final Chapter (using duration container)
         val finalVolume = comic.final_volume
@@ -1078,9 +1073,74 @@ class ComickInfoFragment : Fragment() {
             }
         }
 
+        // Latest chapter — shown after synonyms
+        if (!shouldHideLatestChapter && lastChapter != null &&
+                parent.findViewWithTag<View>("latest_chapter_comick") == null) {
+            val chapText = "Ch." + if (lastChapter % 1.0 == 0.0) lastChapter.toInt().toString() else lastChapter.toString()
+            val hid = comic.hid
+
+            val header = ani.dantotsu.databinding.ItemTitleRecyclerBinding.inflate(layoutInflater, parent, false)
+            header.root.tag = "latest_chapter_comick"
+            header.itemTitle.setText(R.string.latest_chapter)
+            header.itemRecycler.visibility = View.GONE
+            if (!comickSlug.isNullOrBlank()) {
+                header.itemMore.visibility = View.VISIBLE
+                header.itemMore.setSafeOnClickListener {
+                    startActivity(
+                        Intent(requireContext(), ComickMediaActivity::class.java)
+                            .putExtra(ComickMediaActivity.EXTRA_SLUG, comickSlug)
+                            .putExtra(ComickMediaActivity.EXTRA_OPEN_CHAPTERS, true)
+                    )
+                }
+            }
+
+            val cb = ItemChapterListBinding.inflate(layoutInflater, parent, false)
+            cb.root.tag = "latest_chapter_comick"
+            cb.itemChapterDateLayout.layoutParams.height = ViewGroup.LayoutParams.WRAP_CONTENT
+            cb.itemDownload.visibility = View.GONE
+            cb.itemChapterBrowser.visibility = View.GONE
+            cb.itemEpisodeViewed.visibility = View.GONE
+            cb.itemChapterNumber.text = chapText
+            cb.itemChapterDateLayout.visibility = View.GONE
+            (cb.root.layoutParams as? android.widget.LinearLayout.LayoutParams)?.apply {
+                marginStart = 32f.px
+                marginEnd = 16f.px
+            }
+            cb.root.isClickable = false
+
+            parent.addView(header.root)
+            parent.addView(cb.root)
+
+            if (!hid.isNullOrBlank()) {
+                viewLifecycleOwner.lifecycleScope.launch {
+                    val latest = withContext(Dispatchers.IO) {
+                        ComickApi.getLatestChapter(hid, nearChapter = lastChapter)
+                    }
+                    if (latest == null || _binding == null) return@launch
+                    val chapNum = latest.chap
+                    val chapTitle = latest.title
+                    cb.itemChapterNumber.text = when {
+                        !chapNum.isNullOrBlank() && !chapTitle.isNullOrBlank() -> "Ch.$chapNum: $chapTitle"
+                        !chapNum.isNullOrBlank() -> "Ch.$chapNum"
+                        else -> chapText
+                    }
+                    val dateText = formatComickDate(latest.created_at)
+                    val scan = latest.group_name?.filter { it.isNotBlank() }?.joinToString(", ")
+                        ?.replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.ROOT) else it.toString() }
+                    val hasDate = dateText.isNotBlank()
+                    val hasScan = !scan.isNullOrBlank()
+                    cb.itemChapterDateLayout.visibility = if (hasDate || hasScan) View.VISIBLE else View.GONE
+                    cb.itemChapterDate.visibility = if (hasDate) View.VISIBLE else View.GONE
+                    cb.itemChapterDate.text = dateText
+                    cb.itemChapterScan.visibility = if (hasScan) View.VISIBLE else View.GONE
+                    cb.itemChapterScan.text = scan ?: ""
+                    cb.itemChapterDateDivider.visibility = if (hasDate && hasScan) View.VISIBLE else View.GONE
+                }
+            }
+        }
+
         // Add Covers section — placeholder is added synchronously so the position is reserved,
         // then the coroutine fills it in once the network fetch completes.
-        val comickSlug = comic.slug
         if (!comickSlug.isNullOrBlank() &&
                 parent.findViewWithTag<View>("covers_comick_placeholder") == null
         ) {
@@ -1583,5 +1643,28 @@ class ComickInfoFragment : Fragment() {
                 }
             parent.addView(unlinkButton)
         }
+    }
+
+    private fun formatComickDate(isoDate: String?): String {
+        if (isoDate.isNullOrBlank()) return ""
+        return try {
+            val epochMs = try {
+                java.time.Instant.parse(isoDate).toEpochMilli()
+            } catch (_: java.time.format.DateTimeParseException) {
+                java.time.OffsetDateTime.parse(isoDate).toInstant().toEpochMilli()
+            }
+            val diff = System.currentTimeMillis() - epochMs
+            val days = diff / (1000 * 60 * 60 * 24)
+            when {
+                days == 0L -> {
+                    val hours = diff / (1000 * 60 * 60)
+                    if (hours > 0) "$hours hour${if (hours > 1) "s" else ""} ago" else "Just now"
+                }
+                days == 1L -> "1 day ago"
+                days < 7L -> "$days days ago"
+                else -> java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault())
+                    .format(java.util.Date(epochMs))
+            }
+        } catch (_: Exception) { "" }
     }
 }
