@@ -592,12 +592,21 @@ class MangaReadAdapter(
                         media.id,
                         continueEp!!.number
                     )
-                    if ((binding.itemMediaProgress.layoutParams as LinearLayout.LayoutParams).weight > 0.8f) {
+                    val currPage = PrefManager.getNullableCustomVal("${media.id}_${continueEp!!.number}", null, Long::class.java)
+                    val maxPage = PrefManager.getNullableCustomVal("${media.id}_${continueEp!!.number}_max", null, Long::class.java)
+                    if (currPage != null && maxPage != null && maxPage > 0 && currPage >= maxPage - 1) {
                         val numberPlusOne =
                             formattedChapters.indexOfFirst { it.first?.toIntOrNull() == continueNumber.toInt() + 1 }
                         if (numberPlusOne != -1) {
                             continueEp =
                                 media.manga.chapters!![formattedChapters[numberPlusOne].second]
+                            handleProgress(
+                                binding.itemMediaProgressCont,
+                                binding.itemMediaProgress,
+                                binding.itemMediaProgressEmpty,
+                                media.id,
+                                continueEp!!.number
+                            )
                         }
                     }
                     binding.itemMediaImage.loadImage(media.banner ?: media.cover)
