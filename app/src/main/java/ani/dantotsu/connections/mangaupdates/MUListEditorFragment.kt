@@ -100,7 +100,11 @@ class MUListEditorFragment : BottomSheetDialogFragment() {
             muMedia.listId
         } else {
             val customIdx = customListExtras.indexOfFirst { it.first == muMedia.listId }
-            if (customIdx >= 0) statusNames.size + customIdx else 0
+            when {
+                customIdx >= 0 -> statusNames.size + customIdx
+                muMedia.listId == -1 -> 1 // new entry: default to Planning
+                else -> 0
+            }
         }
         binding.mediaListStatus.setText(allStatusNames[initialStatusIndex])
         binding.mediaListStatus.setAdapter(
@@ -109,7 +113,7 @@ class MUListEditorFragment : BottomSheetDialogFragment() {
 
         // Chapter progress
         val latestChapter = muMedia.latestChapter
-        binding.mediaListProgress.setText(muMedia.userChapter?.toString() ?: "1")
+        binding.mediaListProgress.setText(muMedia.userChapter?.toString() ?: "")
         binding.mediaListVolume.setText(muMedia.userVolume?.toString() ?: "")
         binding.mediaListProgressLayout.suffixText = if (latestChapter != null && latestChapter > 0) " / $latestChapter / ??" else " / ??"
         binding.mediaListProgressLayout.suffixTextView.updateLayoutParams {
@@ -119,6 +123,10 @@ class MUListEditorFragment : BottomSheetDialogFragment() {
 
         // +1 button
         binding.mediaListIncrement.setOnClickListener {
+            val selectedName = binding.mediaListStatus.text.toString()
+            val selectedIndex = allStatusNames.indexOf(selectedName).takeIf { it >= 0 } ?: initialStatusIndex
+            // Planning → Reading when progress starts
+            if (selectedIndex == 1) binding.mediaListStatus.setText(allStatusNames[0], false)
             val current = binding.mediaListProgress.text.toString().toIntOrNull() ?: 0
             binding.mediaListProgress.setText("${current + 1}")
         }
