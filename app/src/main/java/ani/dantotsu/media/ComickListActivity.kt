@@ -1,19 +1,28 @@
 package ani.dantotsu.media
 
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.os.Bundle
+import android.text.util.Linkify
 import android.view.View
+import android.view.ViewGroup
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.math.MathUtils
+import androidx.core.content.ContextCompat
+import androidx.core.text.HtmlCompat
+import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import ani.dantotsu.R
 import ani.dantotsu.connections.comick.ComickApi
 import ani.dantotsu.connections.comick.ComickListComic
 import ani.dantotsu.databinding.ActivityMediaListViewBinding
+import ani.dantotsu.getThemeColor
+import ani.dantotsu.hideSystemBarsExtendView
 import ani.dantotsu.initActivity
-import ani.dantotsu.navBarHeight
-import ani.dantotsu.px
+import ani.dantotsu.others.CustomBottomDialog
+import ani.dantotsu.settings.saving.PrefManager
+import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
 import com.google.android.material.chip.Chip
@@ -95,28 +104,40 @@ class ComickListActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         ThemeManager(this).applyTheme()
         binding = ActivityMediaListViewBinding.inflate(layoutInflater)
-        setContentView(binding.root)
         initActivity(this)
 
-        binding.listAppBar.setPadding(0, statusBarHeight, 0, 0)
-        binding.mediaRecyclerView.setPadding(
-            binding.mediaRecyclerView.paddingLeft,
-            binding.mediaRecyclerView.paddingTop,
-            binding.mediaRecyclerView.paddingRight,
-            navBarHeight + 8f.px
-        )
-        binding.mediaRecyclerView.clipToPadding = false
+        if (!PrefManager.getVal<Boolean>(PrefName.ImmersiveMode)) {
+            window.statusBarColor = ContextCompat.getColor(this, R.color.nav_bg_inv)
+            binding.root.fitsSystemWindows = true
+        } else {
+            binding.root.fitsSystemWindows = false
+            hideSystemBarsExtendView()
+            binding.settingsContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+                topMargin = statusBarHeight
+            }
+        }
+
+        setContentView(binding.root)
+
+        val primaryColor = getThemeColor(com.google.android.material.R.attr.colorSurface)
+        window.statusBarColor = primaryColor
+        window.navigationBarColor = primaryColor
+        binding.listAppBar.setBackgroundColor(primaryColor)
 
         binding.mediaList.visibility = View.GONE
-        binding.mediaGrid.visibility = View.GONE
 
-        // Repurpose the info button as a filter button
-        binding.listDescription.visibility = View.VISIBLE
-        binding.listDescription.setImageResource(R.drawable.ic_round_filter_list_24)
-        binding.listDescription.setOnClickListener {
+        // Filter button
+        binding.mediaGrid.visibility = View.VISIBLE
+        binding.mediaGrid.setImageResource(R.drawable.ic_round_filter_alt_24)
+        binding.mediaGrid.isClickable = true
+        binding.mediaGrid.isFocusable = true
+        binding.mediaGrid.setOnClickListener {
             ComickListFilterBottomSheet.newInstance()
                 .show(supportFragmentManager, "ComickListFilter")
         }
+
+        // Description button — shown once description is loaded
+        binding.listDescription.visibility = View.GONE
 
         val userId = intent.getStringExtra(EXTRA_USER_ID) ?: run { finish(); return }
         val listSlug = intent.getStringExtra(EXTRA_LIST_SLUG) ?: run { finish(); return }
@@ -126,12 +147,39 @@ class ComickListActivity : AppCompatActivity() {
         binding.listTitle.isSelected = true
         binding.listBack.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
 
-        val spanCount = MathUtils.clamp(resources.displayMetrics.widthPixels / 124f.px, 1, 4)
-        binding.mediaRecyclerView.layoutManager = GridLayoutManager(this, spanCount)
+        val screenWidth = resources.displayMetrics.run { widthPixels / density }
+        binding.mediaRecyclerView.layoutManager = GridLayoutManager(this, maxOf(1, (screenWidth / 120f).toInt()))
 
         lifecycleScope.launch {
             // Preload genres so chips and filtering work immediately after load
             launch(Dispatchers.IO) { ComickApi.getGenres() }
+
+            val description = withContext(Dispatchers.IO) {
+                ComickApi.getUserLists(userId)
+                    ?.firstOrNull { it.slug == listSlug }
+                    ?.description
+                    ?.takeIf { it.isNotBlank() }
+            }
+            if (description != null) {
+                binding.listDescription.setImageResource(R.drawable.ic_round_info_24)
+                binding.listDescription.visibility = View.VISIBLE
+                binding.listDescription.setOnClickListener {
+                    val descView = TextView(this@ComickListActivity).apply {
+                        setPadding(32, 16, 32, 16)
+                        text = HtmlCompat.fromHtml(
+                            description.replace("\n", "<br>"),
+                            HtmlCompat.FROM_HTML_MODE_LEGACY
+                        )
+                        textSize = 14f
+                        movementMethod = android.text.method.LinkMovementMethod.getInstance()
+                    }
+                    Linkify.addLinks(descView, Linkify.WEB_URLS)
+                    CustomBottomDialog.newInstance().apply {
+                        setTitleText(binding.listTitle.text.toString())
+                        addView(descView)
+                    }.show(supportFragmentManager, "listDesc")
+                }
+            }
 
             val comics = withContext(Dispatchers.IO) {
                 ComickApi.getListComics(userId, listSlug)
@@ -235,6 +283,13 @@ class ComickListActivity : AppCompatActivity() {
             val chip = Chip(this)
             chip.text = label
             chip.isCloseIconVisible = true
+            chip.chipBackgroundColor = ContextCompat.getColorStateList(this, R.color.chip_background_color)
+            chip.chipStrokeColor = ColorStateList.valueOf(
+                getThemeColor(com.google.android.material.R.attr.colorPrimaryContainer)
+            )
+            chip.setTextAppearance(R.style.Suffix)
+            chip.textSize = 14f
+            chip.setOnClickListener { removeChip(label) }
             chip.setOnCloseIconClickListener { removeChip(label) }
             binding.mediaFilterChipGroup.addView(chip)
         }

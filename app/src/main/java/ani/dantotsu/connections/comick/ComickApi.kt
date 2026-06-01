@@ -747,6 +747,29 @@ object ComickApi {
     }
 
     /**
+     * Fetch all public custom lists for a given user.
+     * @param userId The user's UUID
+     * @return List of custom lists, or null on failure
+     */
+    suspend fun getUserLists(userId: String): List<ComickCustomList>? = withContext(Dispatchers.IO) {
+        try {
+            val url = "https://api.comick.dev/list/list?user_id=$userId&limit=100"
+            val request = Request.Builder().url(url).build()
+            val response = client.newCall(request).execute()
+            if (!response.isSuccessful) {
+                Logger.log("Comick user lists API error: ${response.code} for $url")
+                return@withContext null
+            }
+            val body = response.body.string()
+            if (body.isBlank() || body == "[]") return@withContext emptyList()
+            gson.fromJson(body, Array<ComickCustomList>::class.java).toList()
+        } catch (e: Exception) {
+            Logger.log("Error fetching user lists for userId $userId: ${e.message}")
+            null
+        }
+    }
+
+    /**
      * Search for a Comick entry matching a MangaUpdates series by checking only [ComickLinks.mu].
      * Tries each title in order, fetches full details for each result, and returns the slug of
      * the comic whose `links.mu` equals the numeric or base-36 representation of [muSeriesId].

@@ -112,10 +112,13 @@ data class ComickSearchResult(
 ) : Serializable
 
 data class ComickCustomList(
+    val id: Int?,
     val title: String?,
+    val description: String?,
     val slug: String?,
     val user_id: String?,
     val is_public: Boolean?,
+    val visibility: String?,
     val follows_count: Int?,
     val cover: String?
 ) : Serializable
