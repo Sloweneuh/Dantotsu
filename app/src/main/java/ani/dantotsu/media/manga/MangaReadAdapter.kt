@@ -232,7 +232,7 @@ class MangaReadAdapter(
         // Settings
         binding.mediaSourceSettings.setOnClickListener {
             (mangaReadSources[source] as? DynamicMangaParser)?.let { ext ->
-                fragment.openSettings(ext.extension)
+                fragment.openSettings(ext.extension, ext.sourceLanguage)
             }
         }
 

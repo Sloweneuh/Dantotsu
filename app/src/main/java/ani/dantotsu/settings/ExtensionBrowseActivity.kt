@@ -5,9 +5,14 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.LinearLayout
+import android.widget.RadioGroup
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.AppCompatTextView
+import androidx.core.content.res.ResourcesCompat
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
+import androidx.core.widget.NestedScrollView
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -22,7 +27,9 @@ import ani.dantotsu.snackString
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.util.Logger
-import ani.dantotsu.util.customAlertDialog
+import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.google.android.material.color.MaterialColors
+import com.google.android.material.radiobutton.MaterialRadioButton
 import eu.kanade.tachiyomi.animesource.AnimeCatalogueSource
 import eu.kanade.tachiyomi.animesource.model.AnimeFilter
 import eu.kanade.tachiyomi.animesource.model.AnimeFilterList
@@ -132,7 +139,7 @@ class ExtensionBrowseActivity : AppCompatActivity() {
                 mangaExtension != null -> mangaExtension!!.sources.filterIsInstance<eu.kanade.tachiyomi.source.ConfigurableSource>()
                 else -> emptyList()
             }
-            ExtensionSettingsOpener.openConfigurableSourcePreferences(this, configurableSources, null)
+            ExtensionSettingsOpener.openConfigurableSourcePreferences(this, configurableSources, null, sourceIndex)
         }
 
         binding.extensionBrowseSearchIcon.setOnClickListener {
@@ -335,20 +342,74 @@ class ExtensionBrowseActivity : AppCompatActivity() {
         if (englishIndex != -1) sourceIndex = englishIndex
         binding.extensionBrowseLanguage.isVisible = true
         binding.extensionBrowseLanguage.setOnClickListener {
-            customAlertDialog().apply {
-                setTitle(getString(R.string.language))
-                singleChoiceItems(names, sourceIndex) { which ->
-                    if (which != sourceIndex) {
-                        sourceIndex = which
-                        defaultFilters = null
-                        adapter.setImageHeaders(currentSourceHeaders())
-                        configureChips()
-                        binding.chipPopular.isChecked = true
-                        load(Mode.POPULAR, null)
-                    }
-                }
-                show()
+            val sheet = BottomSheetDialog(this)
+            val dp = resources.displayMetrics.density
+            val onBgColor = MaterialColors.getColor(
+                binding.root, com.google.android.material.R.attr.colorOnBackground
+            )
+
+            val scrollView = NestedScrollView(this)
+            val container = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setBackgroundResource(R.drawable.bottom_sheet_background)
+                val h = (24 * dp).toInt()
+                setPadding(h, (20 * dp).toInt(), h, navBarHeight + (16 * dp).toInt())
             }
+
+            container.addView(AppCompatTextView(this).apply {
+                text = getString(R.string.language)
+                textSize = 18f
+                typeface = ResourcesCompat.getFont(this@ExtensionBrowseActivity, R.font.poppins_bold)
+                setTextColor(onBgColor)
+                setPadding(0, 0, 0, (12 * dp).toInt())
+            })
+
+            container.addView(View(this).apply {
+                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1).also {
+                    it.bottomMargin = (12 * dp).toInt()
+                }
+                alpha = 0.12f
+                setBackgroundColor(onBgColor)
+            })
+
+            val radioGroup = RadioGroup(this).apply {
+                orientation = RadioGroup.VERTICAL
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+            }
+            names.forEachIndexed { index, name ->
+                MaterialRadioButton(this@ExtensionBrowseActivity).apply {
+                    id = index
+                    text = name
+                    textSize = 15f
+                    typeface = ResourcesCompat.getFont(this@ExtensionBrowseActivity, R.font.poppins_semi_bold)
+                    isChecked = index == sourceIndex
+                    minHeight = (48 * dp).toInt()
+                    layoutParams = RadioGroup.LayoutParams(
+                        RadioGroup.LayoutParams.MATCH_PARENT,
+                        RadioGroup.LayoutParams.WRAP_CONTENT
+                    )
+                    radioGroup.addView(this)
+                }
+            }
+            radioGroup.setOnCheckedChangeListener { _, which ->
+                if (which >= 0 && which != sourceIndex) {
+                    sourceIndex = which
+                    defaultFilters = null
+                    adapter.setImageHeaders(currentSourceHeaders())
+                    configureChips()
+                    binding.chipPopular.isChecked = true
+                    load(Mode.POPULAR, null)
+                }
+                sheet.dismiss()
+            }
+
+            container.addView(radioGroup)
+            scrollView.addView(container)
+            sheet.setContentView(scrollView)
+            sheet.show()
         }
     }
 

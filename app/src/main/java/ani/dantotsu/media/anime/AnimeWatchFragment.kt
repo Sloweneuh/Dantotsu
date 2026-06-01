@@ -46,7 +46,6 @@ import ani.dantotsu.media.MediaType
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.notifications.subscription.SubscriptionHelper
 import ani.dantotsu.notifications.subscription.SubscriptionHelper.Companion.saveSubscription
-import ani.dantotsu.others.LanguageMapper
 import ani.dantotsu.parsers.AnimeParser
 import ani.dantotsu.parsers.AnimeSources
 import ani.dantotsu.parsers.HAnimeSources
@@ -59,7 +58,6 @@ import ani.dantotsu.toast
 import ani.dantotsu.util.Logger
 import ani.dantotsu.util.StoragePermissions.Companion.accessAlertDialog
 import ani.dantotsu.util.StoragePermissions.Companion.hasDirAccess
-import ani.dantotsu.util.customAlertDialog
 import com.anggrayudi.storage.file.extension
 import com.google.android.material.appbar.AppBarLayout
 import eu.kanade.tachiyomi.animesource.ConfigurableAnimeSource
@@ -434,7 +432,7 @@ class AnimeWatchFragment : Fragment() {
         )
     }
 
-    fun openSettings(pkg: AnimeExtension.Installed) {
+    fun openSettings(pkg: AnimeExtension.Installed, selectedLangIndex: Int = 0) {
         val changeUIVisibility: (Boolean) -> Unit = { show ->
             val activity = activity
             if (activity is MediaDetailsActivity && isAdded) {
@@ -446,57 +444,22 @@ class AnimeWatchFragment : Fragment() {
                 activity.findViewById<FrameLayout>(R.id.fragmentExtensionsContainer).isGone = show
             }
         }
-        var itemSelected = false
         val allSettings = pkg.sources.filterIsInstance<ConfigurableAnimeSource>()
         if (allSettings.isNotEmpty()) {
-            var selectedSetting = allSettings[0]
-            if (allSettings.size > 1) {
-                val names =
-                    allSettings.map { LanguageMapper.getLanguageName(it.lang) }.toTypedArray()
-                requireContext()
-                    .customAlertDialog()
-                    .apply {
-                        setTitle(getString(R.string.select_a_source))
-                        singleChoiceItems(names) { which ->
-                            selectedSetting = allSettings[which]
-                            itemSelected = true
-                            requireActivity().runOnUiThread {
-                                val fragment =
-                                    AnimeSourcePreferencesFragment().getInstance(selectedSetting.id) {
-                                        changeUIVisibility(true)
-                                        loadEpisodes(media.selected!!.sourceIndex, true)
-                                    }
-                                parentFragmentManager.beginTransaction()
-                                    .setCustomAnimations(R.anim.slide_up, R.anim.slide_down)
-                                    .replace(R.id.fragmentExtensionsContainer, fragment)
-                                    .addToBackStack(null)
-                                    .commit()
-                            }
-                        }
-                        onDismiss {
-                            if (!itemSelected) {
-                                changeUIVisibility(true)
-                            }
-                        }
-                        show()
+            val selectedSetting = allSettings.getOrElse(selectedLangIndex) { allSettings[0] }
+            requireActivity().runOnUiThread {
+                val fragment =
+                    AnimeSourcePreferencesFragment().getInstance(selectedSetting.id) {
+                        changeUIVisibility(true)
+                        loadEpisodes(media.selected!!.sourceIndex, true)
                     }
-            } else {
-                // If there's only one setting, proceed with the fragment transaction
-                requireActivity().runOnUiThread {
-                    val fragment =
-                        AnimeSourcePreferencesFragment().getInstance(selectedSetting.id) {
-                            changeUIVisibility(true)
-                            loadEpisodes(media.selected!!.sourceIndex, true)
-                        }
-                    parentFragmentManager.beginTransaction().apply {
-                        setCustomAnimations(R.anim.slide_up, R.anim.slide_down)
-                        replace(R.id.fragmentExtensionsContainer, fragment)
-                        addToBackStack(null)
-                        commit()
-                    }
+                parentFragmentManager.beginTransaction().apply {
+                    setCustomAnimations(R.anim.slide_up, R.anim.slide_down)
+                    replace(R.id.fragmentExtensionsContainer, fragment)
+                    addToBackStack(null)
+                    commit()
                 }
             }
-
             changeUIVisibility(false)
         } else {
             Toast.makeText(requireContext(), "Source is not configurable", Toast.LENGTH_SHORT)

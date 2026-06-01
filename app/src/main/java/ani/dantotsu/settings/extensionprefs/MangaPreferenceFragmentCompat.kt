@@ -2,6 +2,7 @@ package ani.dantotsu.settings.extensionprefs
 
 import android.content.Context
 import android.os.Bundle
+import android.view.View
 import androidx.core.os.bundleOf
 import androidx.lifecycle.lifecycleScope
 import androidx.preference.DialogPreference
@@ -9,6 +10,7 @@ import androidx.preference.EditTextPreference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.forEach
 import androidx.preference.getOnBindEditTextListener
+import ani.dantotsu.navBarHeight
 import eu.kanade.tachiyomi.PreferenceScreen
 import eu.kanade.tachiyomi.data.preference.SharedPreferencesDataStore
 import eu.kanade.tachiyomi.source.ConfigurableSource
@@ -24,6 +26,12 @@ class MangaSourcePreferencesFragment : PreferenceFragmentCompat() {
     }
 
     private var onCloseAction: (() -> Unit)? = null
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        listView.clipToPadding = false
+        listView.setPadding(0, 0, 0, navBarHeight)
+    }
 
     override fun onDestroyView() {
         super.onDestroyView()

@@ -230,7 +230,7 @@ class AnimeWatchAdapter(
         // Settings
         binding.mediaSourceSettings.setOnClickListener {
             (watchSources[source] as? DynamicAnimeParser)?.let { ext ->
-                fragment.openSettings(ext.extension)
+                fragment.openSettings(ext.extension, ext.sourceLanguage)
             }
         }
 

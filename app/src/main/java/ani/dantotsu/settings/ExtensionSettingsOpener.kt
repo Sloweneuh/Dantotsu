@@ -1,16 +1,24 @@
 package ani.dantotsu.settings
 
 import android.content.Intent
-import androidx.fragment.app.FragmentActivity
+import android.view.View
+import android.widget.LinearLayout
+import android.widget.RadioGroup
+import androidx.appcompat.widget.AppCompatTextView
+import androidx.core.content.res.ResourcesCompat
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
-import android.widget.LinearLayout
+import androidx.core.widget.NestedScrollView
+import androidx.fragment.app.FragmentActivity
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.chip.ChipGroup
-import android.widget.ProgressBar
 import ani.dantotsu.R
-import ani.dantotsu.util.customAlertDialog
+import ani.dantotsu.navBarHeight
 import ani.dantotsu.others.LanguageMapper.Companion.getLanguageName
+import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.google.android.material.chip.ChipGroup
+import com.google.android.material.color.MaterialColors
+import com.google.android.material.radiobutton.MaterialRadioButton
+import android.widget.ProgressBar
 import eu.kanade.tachiyomi.animesource.ConfigurableAnimeSource
 import eu.kanade.tachiyomi.source.ConfigurableSource
 
@@ -18,7 +26,8 @@ object ExtensionSettingsOpener {
     fun openConfigurableSourcePreferences(
         activity: FragmentActivity,
         configurableSources: List<Any>,
-        onCloseAction: (() -> Unit)? = null
+        onCloseAction: (() -> Unit)? = null,
+        selectedSourceIndex: Int = -1
     ) {
         if (configurableSources.isEmpty()) {
             // show toast via activity
@@ -131,8 +140,12 @@ object ExtensionSettingsOpener {
             }
         }
 
-        if (configurableSources.size == 1) {
-            openSingle(configurableSources[0])
+        if (configurableSources.size == 1 || selectedSourceIndex >= 0) {
+            val source = if (selectedSourceIndex >= 0)
+                configurableSources.getOrElse(selectedSourceIndex) { configurableSources[0] }
+            else
+                configurableSources[0]
+            openSingle(source)
             return
         }
 
@@ -143,15 +156,66 @@ object ExtensionSettingsOpener {
                 is ConfigurableSource -> getLanguageName(s.lang)
                 else -> ""
             }
-        }.toTypedArray()
-
-        var selectedIndex = 0
-        activity.customAlertDialog().apply {
-            setTitle(activity.getString(R.string.select_a_source))
-            singleChoiceItems(names, selectedIndex) { which ->
-                openSingle(configurableSources[which])
-            }
-            show()
         }
+
+        val sheet = BottomSheetDialog(activity)
+        val dp = activity.resources.displayMetrics.density
+        val rootView = activity.window.decorView
+        val onBgColor = MaterialColors.getColor(rootView, com.google.android.material.R.attr.colorOnBackground)
+
+        val scrollView = NestedScrollView(activity)
+        val container = LinearLayout(activity).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundResource(R.drawable.bottom_sheet_background)
+            val h = (24 * dp).toInt()
+            setPadding(h, (20 * dp).toInt(), h, navBarHeight + (16 * dp).toInt())
+        }
+
+        container.addView(AppCompatTextView(activity).apply {
+            text = activity.getString(R.string.select_a_source)
+            textSize = 18f
+            typeface = ResourcesCompat.getFont(activity, R.font.poppins_bold)
+            setTextColor(onBgColor)
+            setPadding(0, 0, 0, (12 * dp).toInt())
+        })
+
+        container.addView(View(activity).apply {
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1).also {
+                it.bottomMargin = (12 * dp).toInt()
+            }
+            alpha = 0.12f
+            setBackgroundColor(onBgColor)
+        })
+
+        val radioGroup = RadioGroup(activity).apply {
+            orientation = RadioGroup.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        }
+        names.forEachIndexed { index, name ->
+            MaterialRadioButton(activity).apply {
+                id = index
+                text = name
+                textSize = 15f
+                typeface = ResourcesCompat.getFont(activity, R.font.poppins_semi_bold)
+                minHeight = (48 * dp).toInt()
+                layoutParams = RadioGroup.LayoutParams(
+                    RadioGroup.LayoutParams.MATCH_PARENT,
+                    RadioGroup.LayoutParams.WRAP_CONTENT
+                )
+                radioGroup.addView(this)
+            }
+        }
+        radioGroup.setOnCheckedChangeListener { _, which ->
+            if (which >= 0) openSingle(configurableSources[which])
+            sheet.dismiss()
+        }
+
+        container.addView(radioGroup)
+        scrollView.addView(container)
+        sheet.setContentView(scrollView)
+        sheet.show()
     }
 }

@@ -3,6 +3,7 @@ package ani.dantotsu.settings.extensionprefs
 import android.content.Context
 import android.content.SharedPreferences
 import android.os.Bundle
+import android.view.View
 import androidx.core.os.bundleOf
 import androidx.lifecycle.lifecycleScope
 import androidx.preference.DialogPreference
@@ -12,6 +13,7 @@ import androidx.preference.forEach
 import androidx.preference.getOnBindEditTextListener
 import ani.dantotsu.R
 import ani.dantotsu.getThemeColor
+import ani.dantotsu.navBarHeight
 import ani.dantotsu.snackString
 import ani.dantotsu.themes.ThemeManager
 import eu.kanade.tachiyomi.PreferenceScreen
@@ -36,6 +38,12 @@ class AnimeSourcePreferencesFragment : PreferenceFragmentCompat() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         ThemeManager(requireActivity()).applyTheme()
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        listView.clipToPadding = false
+        listView.setPadding(0, 0, 0, navBarHeight)
     }
 
     private var onCloseAction: (() -> Unit)? = null
