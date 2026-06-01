@@ -91,6 +91,32 @@ object SavedFiltersStore {
         PrefManager.setVal(PrefName.SavedComickFilters, all.toList())
     }
 
+    // ---- Comick custom-list filter presets ----
+
+    fun loadComickList(): List<SavedComickListFilter> =
+        PrefManager.getVal<List<SavedComickListFilter>>(PrefName.SavedComickListFilters)
+
+    fun saveComickList(preset: SavedComickListFilter) {
+        val all = loadComickList().toMutableList()
+        all.removeAll { it.name == preset.name }
+        all.add(preset)
+        PrefManager.setVal(PrefName.SavedComickListFilters, all.toList())
+    }
+
+    fun deleteComickList(name: String) {
+        val all = loadComickList().toMutableList()
+        all.removeAll { it.name == name }
+        PrefManager.setVal(PrefName.SavedComickListFilters, all.toList())
+    }
+
+    fun renameComickList(oldName: String, newName: String) {
+        val all = loadComickList().toMutableList()
+        val idx = all.indexOfFirst { it.name == oldName }
+        if (idx < 0) return
+        all[idx] = all[idx].copy(name = newName)
+        PrefManager.setVal(PrefName.SavedComickListFilters, all.toList())
+    }
+
     // ---- User list filter presets (split per anime/manga) ----
 
     fun loadList(isAnime: Boolean): List<SavedListFilter> =

@@ -29,6 +29,7 @@ object ComickApi {
     data class FilterOption(
         val slug: String,
         val name: String,
+        val id: Int? = null,
     )
 
     @Volatile
@@ -62,6 +63,12 @@ object ComickApi {
     }
 
     fun resolveGenreName(slug: String): String? = genreCache?.firstOrNull { it.slug.equals(slug, ignoreCase = true) }?.name
+
+    fun resolveGenreId(slug: String): Int? = genreCache?.firstOrNull { it.slug.equals(slug, ignoreCase = true) }?.id
+
+    fun resolveGenreSlugById(id: Int): String? = genreCache?.firstOrNull { it.id == id }?.slug
+
+    fun resolveGenreSlugByName(name: String): String? = genreCache?.firstOrNull { it.name.equals(name, ignoreCase = true) }?.slug
 
     fun resolveCategoryName(slug: String): String? = categoryCache?.firstOrNull { it.slug.equals(slug, ignoreCase = true) }?.name
 
@@ -132,7 +139,9 @@ object ComickApi {
                 obj.get("title")?.asString?.trim().orEmpty().ifBlank { slug }
             }
 
-            FilterOption(slug = slug, name = name)
+            val id = runCatching { obj.get("id")?.takeIf { !it.isJsonNull }?.asInt }.getOrNull()
+
+            FilterOption(slug = slug, name = name, id = id)
         }.distinctBy { it.slug.lowercase() }
     }
 
@@ -730,7 +739,7 @@ object ComickApi {
             val body = response.body.string()
             if (body.isBlank() || body == "[]") return@withContext emptyList()
             gson.fromJson(body, Array<ComickFollowEntry>::class.java).toList()
-                .mapNotNull { it.md_comics }
+                .mapNotNull { entry -> entry.md_comics?.copy(created_at = entry.created_at) }
         } catch (e: Exception) {
             Logger.log("Error fetching list comics for user $userId, list $listSlug: ${e.message}")
             null

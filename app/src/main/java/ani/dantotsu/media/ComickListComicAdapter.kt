@@ -27,6 +27,12 @@ class ComickListComicAdapter(
         notifyItemRangeInserted(start, newItems.size)
     }
 
+    fun setItems(newItems: List<ComickListComic>) {
+        items.clear()
+        items.addAll(newItems)
+        notifyDataSetChanged()
+    }
+
     override fun getItemCount() = items.size
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder =

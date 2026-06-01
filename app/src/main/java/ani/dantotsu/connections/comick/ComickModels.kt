@@ -126,11 +126,22 @@ data class ComickListComic(
     val hid: String?,
     val last_chapter: Double?,
     val md_titles: List<ComickAlternativeTitle>?,
-    val md_covers: List<ComickCover>?
+    val md_covers: List<ComickCover>?,
+    val status: Int? = null,
+    val country: String? = null,
+    val demographic: Int? = null,
+    val content_rating: String? = null,
+    val bayesian_rating: String? = null,
+    val year: Int? = null,
+    val uploaded_at: String? = null,
+    val genres: List<Int>? = null,
+    val translation_completed: Boolean? = null,
+    val created_at: String? = null,
 ) : Serializable
 
 data class ComickFollowEntry(
-    val md_comics: ComickListComic?
+    val md_comics: ComickListComic?,
+    val created_at: String?,
 ) : Serializable
 
 data class ComickRecommendation(

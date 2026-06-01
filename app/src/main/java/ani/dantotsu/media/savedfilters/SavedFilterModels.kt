@@ -253,6 +253,54 @@ data class SavedComickFilter(
     }
 }
 
+data class SavedComickListFilter(
+    val name: String,
+    val sort: String? = null,
+    val status: List<Int>? = null,
+    val country: List<String>? = null,
+    val demographic: List<Int>? = null,
+    val contentRating: List<String>? = null,
+    val translationCompleted: Boolean? = null,
+    val genres: List<String>? = null,
+    val excludedGenres: List<String>? = null,
+    val fromYear: Int? = null,
+    val toYear: Int? = null,
+) : Serializable {
+    companion object {
+        private const val serialVersionUID: Long = 1L
+    }
+
+    fun chips(): List<String> {
+        val out = mutableListOf<String>()
+        sort?.let { out += "Sort: ${it.replace('_', ' ')}" }
+        status?.forEach {
+            out += "Status: " + when (it) {
+                1 -> "ongoing"; 2 -> "completed"; 3 -> "cancelled"; 4 -> "hiatus"
+                else -> it.toString()
+            }
+        }
+        country?.forEach { out += "Type: $it" }
+        demographic?.forEach {
+            out += "Demo: " + when (it) {
+                1 -> "shounen"; 2 -> "shoujo"; 3 -> "seinen"; 4 -> "josei"
+                else -> it.toString()
+            }
+        }
+        contentRating?.forEach { out += "Rating: $it" }
+        when (translationCompleted) {
+            true -> out += "Completed only"
+            false -> out += "Not completed"
+            null -> Unit
+        }
+        if (fromYear != null || toYear != null) {
+            out += "Year: ${fromYear ?: "?"}-${toYear ?: "?"}"
+        }
+        genres?.forEach { out += it }
+        excludedGenres?.forEach { out += "−$it" }
+        return out
+    }
+}
+
 data class SavedListFilter(
     val name: String,
     val isAnime: Boolean,
