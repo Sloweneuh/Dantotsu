@@ -92,8 +92,10 @@ class SubscriptionNotificationTask : Task {
                     subscriptions.toList().map {
                         val media = it.second
                         val text = if (media.isAnime) {
+                            // Null when the pinned source isn't available (uninstalled, or
+                            // not loaded yet): skip this run rather than check a wrong source.
                             val parser =
-                                SubscriptionHelper.getAnimeParser(media.id)
+                                SubscriptionHelper.getAnimeParser(media) ?: return@map
                             progress(index[it.first]!!, parser.name, media.name)
                             val ep: Episode? =
                                 SubscriptionHelper.getEpisode(
@@ -108,7 +110,7 @@ class SubscriptionNotificationTask : Task {
                             else null
                         } else {
                             val parser =
-                                SubscriptionHelper.getMangaParser(media.id)
+                                SubscriptionHelper.getMangaParser(media) ?: return@map
                             progress(index[it.first]!!, parser.name, media.name)
                             val ep: MangaChapter? =
                                 SubscriptionHelper.getChapter(

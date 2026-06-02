@@ -376,6 +376,7 @@ class AnimeWatchFragment : Fragment() {
         selected.sourceIndex = i
         selected.server = null
         model.saveSelected(media.id, selected)
+        model.saveSelectedSourceName(media.id, model.watchSources?.names?.getOrNull(i))
         media.selected = selected
         return model.watchSources?.get(i)!!
     }
@@ -425,7 +426,7 @@ class AnimeWatchFragment : Fragment() {
     var subscribed = false
     fun onNotificationPressed(subscribed: Boolean, source: String) {
         this.subscribed = subscribed
-        saveSubscription(media, subscribed)
+        saveSubscription(media, subscribed, source)
         snackString(
             if (subscribed) getString(R.string.subscribed_notification, source)
             else getString(R.string.unsubscribed_notification)

@@ -341,6 +341,7 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
         selected.sourceIndex = i
         selected.server = null
         model.saveSelected(media.id, selected)
+        model.saveSelectedSourceName(media.id, model.mangaReadSources?.names?.getOrNull(i))
         media.selected = selected
         return model.mangaReadSources?.get(i)!!
     }
@@ -385,7 +386,7 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
     var subscribed = false
     fun onNotificationPressed(subscribed: Boolean, source: String) {
         this.subscribed = subscribed
-        saveSubscription(media, subscribed)
+        saveSubscription(media, subscribed, source)
         snackString(
             if (subscribed) getString(R.string.subscribed_notification, source)
             else getString(R.string.unsubscribed_notification)

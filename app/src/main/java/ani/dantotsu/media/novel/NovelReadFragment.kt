@@ -290,6 +290,7 @@ class NovelReadFragment : Fragment(),
         source = i
         selected.server = null
         model.saveSelected(media.id, selected)
+        model.saveSelectedSourceName(media.id, model.novelSources.names.getOrNull(i))
         media.selected = selected
     }
 

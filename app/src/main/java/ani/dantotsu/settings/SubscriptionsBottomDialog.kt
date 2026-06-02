@@ -47,8 +47,7 @@ class SubscriptionsBottomDialog : BottomSheetDialogFragment() {
         binding.replyButton.visibility = View.GONE
 
         val groupedSubscriptions = subscriptions.values.groupBy {
-            if (it.isAnime) SubscriptionHelper.getAnimeParser(it.id).name
-            else SubscriptionHelper.getMangaParser(it.id).name
+            SubscriptionHelper.getSubscriptionSourceName(it)
         }
 
         groupedSubscriptions.forEach { (parserName, mediaList) ->

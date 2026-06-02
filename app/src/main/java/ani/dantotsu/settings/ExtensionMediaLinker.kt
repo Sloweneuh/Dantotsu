@@ -38,6 +38,7 @@ object ExtensionMediaLinker {
             preferDub = PrefManager.getVal(PrefName.SettingsPreferDub)
         }
         PrefManager.setCustomVal("Selected-$mediaId", selected)
+        PrefManager.setCustomVal("SelectedSource-$mediaId", ext.name)
 
         val response = ShowResponse(
             name = sManga.title,
@@ -70,6 +71,7 @@ object ExtensionMediaLinker {
             preferDub = PrefManager.getVal(PrefName.SettingsPreferDub)
         }
         PrefManager.setCustomVal("Selected-$mediaId", selected)
+        PrefManager.setCustomVal("SelectedSource-$mediaId", ext.name)
 
         val response = ShowResponse(
             name = sAnime.title,

@@ -21,6 +21,8 @@ import ani.dantotsu.others.Jikan
 import ani.dantotsu.others.Kitsu
 import ani.dantotsu.parsers.AnimeSources
 import ani.dantotsu.parsers.Book
+import ani.dantotsu.parsers.HAnimeSources
+import ani.dantotsu.parsers.HMangaSources
 import ani.dantotsu.parsers.MangaImage
 import ani.dantotsu.parsers.DynamicMangaParser
 import ani.dantotsu.parsers.MangaReadSources
@@ -322,6 +324,24 @@ class MediaDetailsViewModel : ViewModel() {
         PrefManager.setCustomVal("Selected-$id", data)
     }
 
+    // The selected source's name is persisted separately (as a plain string) and is the
+    // source of truth: Selected.sourceIndex is only a cache that is valid for one particular
+    // ordering of the installed extensions. Keeping the name in its own pref also avoids
+    // changing Selected's serialized layout, which would wipe existing selections on upgrade.
+    fun saveSelectedSourceName(id: Int, name: String?) {
+        PrefManager.setCustomVal("SelectedSource-$id", name)
+    }
+
+    private fun loadSelectedSourceName(id: Int): String? =
+            PrefManager.getNullableCustomVal("SelectedSource-$id", null, String::class.java)
+
+    private fun sourceNamesFor(media: Media): List<String> = when {
+        media.anime != null -> (if (media.isAdult) HAnimeSources else AnimeSources).names
+        media.format == "MANGA" || media.format == "ONE_SHOT" ->
+            (if (media.isAdult) HMangaSources else MangaSources).names
+        else -> NovelSources.names
+    }
+
     fun loadSelected(media: Media, isDownload: Boolean = false): Selected {
         val data =
                 PrefManager.getNullableCustomVal("Selected-${media.id}", null, Selected::class.java)
@@ -344,6 +364,19 @@ class MediaDetailsViewModel : ViewModel() {
                             NovelSources.list.size - 1
                         }
                     }
+        } else {
+            // The saved source name is the source of truth; the cached index is unreliable
+            // because installing/removing/reordering extensions shifts it. Resolve purely
+            // from the name:
+            //  - name saved and source installed  -> that source
+            //  - name saved but source not present -> first source (name is kept so it
+            //    re-selects if the extension comes back)
+            //  - no name saved                     -> first source
+            val names = sourceNamesFor(media)
+            if (names.isNotEmpty()) {
+                val savedName = loadSelectedSourceName(media.id)
+                data.sourceIndex = savedName?.let { names.indexOf(it).takeIf { i -> i >= 0 } } ?: 0
+            }
         }
         return data
     }

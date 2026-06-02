@@ -39,15 +39,43 @@ class SubscriptionHelper {
             PrefManager.setCustomVal("Selected-${mediaId}", data)
         }
 
-        fun getAnimeParser(id: Int): AnimeParser {
+        // A subscription is pinned to the source that was selected when it was created
+        // (sourceName), matching what the "subscribed" snackbar tells the user. Resolve
+        // that name to an index in the current list so installing/removing/reordering
+        // extensions can't point us at the wrong source.
+        //
+        // Returns null when the source can't be trusted right now and the check should be
+        // skipped rather than guessed:
+        //  - the source type hasn't finished loading yet (the worker's init race can leave
+        //    one of Anime/Manga uninitialised), or
+        //  - the pinned source is no longer installed.
+        // Deliberately never falls back to a different source: it almost certainly doesn't
+        // have this title and would fail or notify about the wrong series. The subscription
+        // is kept either way, so it resumes if the extension returns and can still be
+        // removed manually from settings.
+        private fun resolveSourceIndex(
+            media: SubscribeMedia,
+            names: List<String>,
+            initialized: Boolean
+        ): Int? {
+            if (!initialized || names.isEmpty()) return null
+            val snapshotName = media.sourceName
+                ?: PrefManager.getNullableCustomVal(
+                    "SelectedSource-${media.id}", null, String::class.java
+                )
+            // Legacy subscriptions with no recorded source keep the old default-to-first
+            // behaviour (there's nothing better to go on).
+            if (snapshotName == null) return 0
+            return names.indexOf(snapshotName).takeIf { it >= 0 }
+        }
+
+        fun getAnimeParser(media: SubscribeMedia): AnimeParser? {
             val sources = AnimeSources
             Logger.log("getAnimeParser size: ${sources.list.size}")
-            val selected = loadSelected(id)
-            if (selected.sourceIndex >= sources.list.size) {
-                selected.sourceIndex = 0
-            }
-            val parser = sources[selected.sourceIndex]
-            parser.selectDub = selected.preferDub
+            val index = resolveSourceIndex(media, sources.names, sources.isInitialized)
+                ?: return null
+            val parser = sources[index]
+            parser.selectDub = loadSelected(media.id).preferDub
             return parser
         }
 
@@ -82,14 +110,29 @@ class SubscriptionHelper {
             }
         }
 
-        fun getMangaParser(id: Int): MangaParser {
+        fun getMangaParser(media: SubscribeMedia): MangaParser? {
             val sources = MangaSources
             Logger.log("getMangaParser size: ${sources.list.size}")
-            val selected = loadSelected(id)
-            if (selected.sourceIndex >= sources.list.size) {
-                selected.sourceIndex = 0
+            val index = resolveSourceIndex(media, sources.names, sources.isInitialized)
+                ?: return null
+            return sources[index]
+        }
+
+        // Display name of the source a subscription is pinned to, for grouping in the
+        // settings list. Uses the stored snapshot so a subscription still shows under its
+        // real source even when that source isn't installed (or hasn't loaded yet).
+        fun getSubscriptionSourceName(media: SubscribeMedia): String {
+            media.sourceName?.let { return it }
+            val names: List<String>
+            val index: Int?
+            if (media.isAnime) {
+                names = AnimeSources.names
+                index = resolveSourceIndex(media, names, AnimeSources.isInitialized)
+            } else {
+                names = MangaSources.names
+                index = resolveSourceIndex(media, names, MangaSources.isInitialized)
             }
-            return sources[selected.sourceIndex]
+            return names.getOrNull(index ?: 0) ?: ""
         }
 
         suspend fun getChapter(
@@ -150,7 +193,10 @@ class SubscriptionHelper {
             val id: Int,
             val name: String,
             val image: String?,
-            val banner: String? = null
+            val banner: String? = null,
+            // Source selected when the subscription was created. Null for subscriptions
+            // saved before this was tracked (they fall back to the current selection).
+            val sourceName: String? = null
         ) : java.io.Serializable {
             companion object {
                 private const val serialVersionUID = 1L
@@ -182,7 +228,7 @@ class SubscriptionHelper {
         }
 
         @Suppress("UNCHECKED_CAST")
-        fun saveSubscription(media: Media, subscribed: Boolean) {
+        fun saveSubscription(media: Media, subscribed: Boolean, sourceName: String? = null) {
             val data = PrefManager.getNullableCustomVal(
                 SUBSCRIPTIONS,
                 null,
@@ -197,7 +243,8 @@ class SubscriptionHelper {
                         media.id,
                         media.userPreferredName,
                         media.cover,
-                        media.banner
+                        media.banner,
+                        sourceName
                     )
                     data[media.id] = new
                 }
