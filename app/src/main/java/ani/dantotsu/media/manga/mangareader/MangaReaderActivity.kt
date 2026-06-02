@@ -180,6 +180,20 @@ class MangaReaderActivity : AppCompatActivity() {
         }
     }
 
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        // These config changes (uiMode/density/etc.) are now handled in-place via the
+        // manifest's android:configChanges instead of recreating the activity. Recreation on
+        // resume was leaving the reader blank with broken status/navigation-bar insets, so we
+        // simply re-assert the immersive/inset state here rather than tearing everything down.
+        if (!PrefManager.getVal<Boolean>(PrefName.ShowSystemBars)) this.hideSystemBars() else this.showSystemBars()
+        checkNotch()
+        tryWith {
+            binding.mangaReaderPager.post { binding.mangaReaderPager.requestLayout(); binding.mangaReaderPager.invalidate() }
+            binding.mangaReaderRecycler.post { binding.mangaReaderRecycler.requestLayout(); binding.mangaReaderRecycler.invalidate() }
+        }
+    }
+
     private fun checkNotch() {
         binding.mangaReaderTopLayout.updateLayoutParams<ViewGroup.MarginLayoutParams> {
             topMargin = notchHeight ?: return
@@ -261,7 +275,9 @@ class MangaReaderActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        ani.dantotsu.util.Logger.log("MangaReaderActivity.onDestroy: clearing cache (size: ${mangaCache.size()})")
+        // Diagnostic: isChangingConfigurations=true => torn down for a config change (will be
+        // recreated); isFinishing=true => we (or back) closed it. Neither => process is going away.
+        ani.dantotsu.util.Logger.log("MangaReaderActivity.onDestroy (isChangingConfigurations=$isChangingConfigurations, isFinishing=$isFinishing, cacheSize=${mangaCache.size()})")
         autoscrollTimer?.cancel()
         // Don't clear cache on destroy - let LRU manage it and preserve cache for reloads
         // mangaCache.clear()
@@ -271,6 +287,10 @@ class MangaReaderActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Diagnostic: reveals whether the activity is being recreated (savedInstanceState != null
+        // means the system tore it down and is rebuilding it) vs a fresh open. Pair with the
+        // onDestroy log below to tell config-change recreation from process death / finish.
+        ani.dantotsu.util.Logger.log("MangaReaderActivity.onCreate (recreated=${savedInstanceState != null})")
         ThemeManager(this).applyTheme()
         binding = ActivityMangaReaderBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -348,17 +368,31 @@ class MangaReaderActivity : AppCompatActivity() {
             }
         }
 
+        // The reader's media lives only in volatile in-memory state (the ViewModel and
+        // MediaSingleton). After the OS kills the app process (common on WSA / occasional
+        // background kill on phones) Android recreates this activity with both of them empty.
+        // Rather than leaving a half-inflated, content-less, inset-less "zombie" reader that
+        // the user can only escape with the back button, close cleanly and let the restored
+        // MediaDetailsActivity below us take over. The per-chapter page position is already
+        // persisted to PrefManager, so reopening the chapter resumes where they left off.
+        fun bailStaleReader(reason: String) {
+            ani.dantotsu.util.Logger.log(
+                "MangaReaderActivity: $reason — closing reader (likely process death / state loss)"
+            )
+            finish()
+        }
+
         media = if (model.getMedia().value == null)
             try {
                 //(intent.getSerialized("media")) ?: return
-                MediaSingleton.media ?: return
+                MediaSingleton.media ?: return bailStaleReader("no media in singleton")
             } catch (e: Exception) {
                 logError(e)
-                return
+                return bailStaleReader("exception resolving media")
             } finally {
                 MediaSingleton.media = null
             }
-        else model.getMedia().value ?: return
+        else model.getMedia().value ?: return bailStaleReader("viewModel media is null")
         model.setMedia(media)
         @Suppress("UNCHECKED_CAST")
         val list = (PrefManager.getNullableCustomVal(
@@ -375,8 +409,9 @@ class MangaReaderActivity : AppCompatActivity() {
         )
         defaultSettings = loadReaderSettings("${media.id}_current_settings") ?: defaultSettings
 
-        chapters = media.manga?.chapters ?: return
-        chapter = chapters[media.manga!!.selectedChapter!!.uniqueNumber()] ?: return
+        chapters = media.manga?.chapters ?: return bailStaleReader("media has no chapters")
+        chapter = media.manga?.selectedChapter?.uniqueNumber()?.let { chapters[it] }
+            ?: return bailStaleReader("selected chapter missing after restore")
 
         val extParser = if (media.id < 0) MediaSingleton.extensionParser else null
         if (extParser != null) {

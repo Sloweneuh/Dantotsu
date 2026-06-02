@@ -243,14 +243,19 @@ class App : MultiDexApplication() {
                 lastUnreadChapterCheck = now
                 Logger.log("FTActivityLifecycleCallbacks: Triggering unread chapter check (${intervalMinutes}min interval)")
 
-                // Run the check in background
-                GlobalScope.launch(Dispatchers.IO) {
-                    try {
-                        ani.dantotsu.notifications.unread.UnreadChapterNotificationTask()
-                            .execute(this@App)
-                    } catch (e: Exception) {
-                        Logger.log("FTActivityLifecycleCallbacks: Error checking unread chapters: ${e.message}")
-                    }
+                // Enqueue the worker rather than running the task inline. The worker carries
+                // the DNS-readiness gate (avoids the transient post-wake UnknownHostException
+                // spam), the 60s de-dup guard, and WorkManager's retry/backoff.
+                try {
+                    androidx.work.WorkManager.getInstance(this@App).enqueueUniqueWork(
+                        ani.dantotsu.notifications.unread.UnreadChapterNotificationWorker.WORK_NAME + "_resume",
+                        androidx.work.ExistingWorkPolicy.KEEP,
+                        androidx.work.OneTimeWorkRequest.Builder(
+                            ani.dantotsu.notifications.unread.UnreadChapterNotificationWorker::class.java
+                        ).build()
+                    )
+                } catch (e: Exception) {
+                    Logger.log("FTActivityLifecycleCallbacks: Error enqueuing unread chapter check: ${e.message}")
                 }
             }
         }

@@ -238,7 +238,7 @@ fun initActivity(a: Activity) {
                 }
             }
         }
-    } else
+    } else {
         if (statusBarHeight == 0) {
             val windowInsets =
                 ViewCompat.getRootWindowInsets(window.decorView.findViewById(android.R.id.content))
@@ -249,6 +249,22 @@ fun initActivity(a: Activity) {
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) navBarHeight += 48.toPx
             }
         }
+        // Fallback for cold-restored processes: when the OS kills the app and later restores an
+        // inner activity (not MainActivity), window insets are often not dispatched yet when this
+        // runs, leaving these process-global bar heights at 0. Since every activity reads them,
+        // the whole app then draws without status/navigation-bar padding until something heals
+        // them. Backfill from the framework's own dimension resources so they are never 0; the
+        // per-activity inset listeners still refine them to exact values once insets arrive.
+        if (statusBarHeight == 0) {
+            val resId = a.resources.getIdentifier("status_bar_height", "dimen", "android")
+            if (resId > 0) statusBarHeight = a.resources.getDimensionPixelSize(resId)
+        }
+        if (navBarHeight == 0) {
+            val resId = a.resources.getIdentifier("navigation_bar_height", "dimen", "android")
+            if (resId > 0) navBarHeight = a.resources.getDimensionPixelSize(resId)
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) navBarHeight += 48.toPx
+        }
+    }
     if (a !is MainActivity) a.setNavigationTheme()
 }
 

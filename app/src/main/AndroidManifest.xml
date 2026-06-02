@@ -293,6 +293,7 @@
             android:parentActivityName=".profile.ProfileActivity" />
         <activity
             android:name=".media.manga.mangareader.MangaReaderActivity"
+            android:configChanges="uiMode|density|fontScale|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|locale|layoutDirection"
             android:excludeFromRecents="true"
             android:exported="true"
             android:label="@string/manga" />

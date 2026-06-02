@@ -14,6 +14,13 @@ class MuUnreadNotificationWorker(appContext: Context, workerParams: WorkerParame
             Logger.log("MuUnreadNotificationWorker: doWork skipped (too soon)")
             return Result.success()
         }
+
+        // See isResolverReady: avoid the transient post-wake DNS race that fails every host.
+        if (!isResolverReady(applicationContext)) {
+            Logger.log("MuUnreadNotificationWorker: DNS not ready yet (device likely just woke); retrying later")
+            return Result.retry()
+        }
+
         lastCheck = System.currentTimeMillis()
         return if (MuUnreadNotificationTask().execute(applicationContext)) {
             Result.success()
