@@ -28,6 +28,7 @@ import eu.kanade.tachiyomi.source.model.SChapter
 import eu.kanade.tachiyomi.source.model.SManga
 import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.util.lang.awaitSingle
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -425,6 +426,8 @@ class DynamicMangaParser(extension: MangaExtension.Installed) : MangaParser() {
 
                 deferreds.awaitAll()
 
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Logger.log("loadImages Exception: $e")
                 snackString("Failed to load images: $e")
@@ -459,6 +462,8 @@ class DynamicMangaParser(extension: MangaExtension.Installed) : MangaParser() {
                 }
 
                 deferreds.awaitAll()
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Logger.log("loadImages Exception: $e")
                 snackString("Failed to load images: $e")
