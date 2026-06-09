@@ -446,7 +446,9 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
                         isAnime = false,
                         mediaType = "MANGA",
                         title = muMedia.title,
-                        cover = muMedia.coverUrl,
+                        // muMedia.coverUrl is often null on entry; the cover is fetched async into
+                        // media.cover (that's what the details page shows), so prefer it.
+                        cover = media.cover ?: muMedia.coverUrl,
                         sourceName = model.loadSelectedSourceName(media.id),
                         muSeriesId = muMedia.id,
                         sourceMedia = HandoffPayload.encodeShowResponse(sourceMedia),

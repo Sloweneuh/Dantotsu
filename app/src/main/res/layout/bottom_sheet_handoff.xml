@@ -84,5 +84,36 @@
             app:icon="@drawable/ic_round_qr_code_24"
             app:iconGravity="textStart" />
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/handoffReceiveQr"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="24dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginEnd="24dp"
+            android:fontFamily="@font/poppins_semi_bold"
+            android:minHeight="48dp"
+            android:text="@string/handoff_receive_via_qr"
+            android:visibility="gone"
+            app:cornerRadius="16dp"
+            app:icon="@drawable/ic_round_qr_code_24"
+            app:iconGravity="textStart" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/handoffReceiveCode"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="24dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginEnd="24dp"
+            android:fontFamily="@font/poppins_semi_bold"
+            android:minHeight="48dp"
+            android:text="@string/handoff_receive_via_code"
+            android:visibility="gone"
+            app:cornerRadius="16dp"
+            app:icon="@drawable/ic_round_share_24"
+            app:iconGravity="textStart" />
+
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>

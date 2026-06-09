@@ -1725,4 +1725,11 @@
     <string name="handoff_loading_episodes">Chargement de la liste des épisodes…</string>
     <string name="handoff_opening_reader">Ouverture du lecteur…</string>
     <string name="handoff_opening_player">Ouverture du lecteur vidéo…</string>
+    <string name="handoff_receive_via_qr">Recevoir via un code QR</string>
+    <string name="handoff_receive_via_code">Recevoir via un code de partage</string>
+    <string name="handoff_scan_hint">Pointez la caméra vers le code QR affiché sur l\'autre appareil.</string>
+    <string name="handoff_scan_again">Scanner à nouveau</string>
+    <string name="handoff_camera_permission_needed">L\'autorisation de la caméra est requise pour scanner un code QR.</string>
+    <string name="handoff_camera_unavailable">Caméra indisponible sur cet appareil.</string>
+    <string name="handoff_sharing_code_coming_soon">Les codes de partage arrivent bientôt.</string>
 </resources>

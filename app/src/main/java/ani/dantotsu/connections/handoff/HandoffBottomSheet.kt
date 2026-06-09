@@ -1,5 +1,6 @@
 package ani.dantotsu.connections.handoff
 
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Build
@@ -78,6 +79,17 @@ class HandoffBottomSheet : BottomSheetDialogFragment() {
             binding.handoffSubtitle.text = getString(R.string.handoff_receive_hint)
             binding.handoffStatus.text = getString(R.string.handoff_discoverable_as, name)
             binding.handoffProgress.visibility = View.GONE
+
+            binding.handoffReceiveQr.visibility = View.VISIBLE
+            binding.handoffReceiveQr.setOnClickListener {
+                startActivity(Intent(requireContext(), HandoffScanActivity::class.java))
+                dismissAllowingStateLoss()
+            }
+            binding.handoffReceiveCode.visibility = View.VISIBLE
+            // Placeholder for a future cloud (Firebase) sharing-code flow.
+            binding.handoffReceiveCode.setOnClickListener {
+                snackString(getString(R.string.handoff_sharing_code_coming_soon))
+            }
         }
     }
 

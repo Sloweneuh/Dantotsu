@@ -77,6 +77,12 @@
         tools:targetApi="tiramisu" />
     <!-- Nearby Connections -->
 
+    <!-- Handoff QR-code scanner -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature
+        android:name="android.hardware.camera.any"
+        android:required="false" />
+
     <queries>
         <package android:name="idm.internet.download.manager.plus" />
         <package android:name="idm.internet.download.manager" />
@@ -304,6 +310,10 @@
                 <data android:scheme="dantotsuhandoff" android:host="media" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".connections.handoff.HandoffScanActivity"
+            android:screenOrientation="portrait"
+            android:exported="false" />
         <activity
             android:name=".media.MALReviewViewActivity"
             android:parentActivityName=".media.ReviewActivity" />
