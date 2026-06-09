@@ -111,6 +111,10 @@ dependencies {
     implementation "com.anggrayudi:storage:1.5.5"
     implementation "androidx.biometric:biometric:1.1.0"
 
+//  Nearby Connections (Continue on another device)
+    implementation 'com.google.android.gms:play-services-nearby:19.3.0'
+    implementation 'com.google.zxing:core:3.5.3'
+
 
 //  Glide
     ext.glide_version = '4.16.0'

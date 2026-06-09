@@ -52,6 +52,31 @@
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <!-- ExoPlayer: Bluetooth Headsets -->
 
+    <!-- Nearby Connections: Continue on another device -->
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_ADMIN"
+        android:maxSdkVersion="30" />
+    <uses-permission
+        android:name="android.permission.ACCESS_COARSE_LOCATION"
+        android:maxSdkVersion="31" />
+    <uses-permission
+        android:name="android.permission.ACCESS_FINE_LOCATION"
+        android:maxSdkVersion="31" />
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_ADVERTISE"
+        tools:targetApi="s" />
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation"
+        tools:targetApi="s" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission
+        android:name="android.permission.NEARBY_WIFI_DEVICES"
+        android:usesPermissionFlags="neverForLocation"
+        tools:targetApi="tiramisu" />
+    <!-- Nearby Connections -->
+
     <queries>
         <package android:name="idm.internet.download.manager.plus" />
         <package android:name="idm.internet.download.manager" />
@@ -265,6 +290,20 @@
         </activity>
         <activity
             android:name=".media.ComickListActivity" />
+        <activity
+            android:name=".connections.handoff.HandoffDeepLinkActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter android:label="@string/continue_on_another_device">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="dantotsuhandoff" android:host="media" />
+            </intent-filter>
+        </activity>
         <activity
             android:name=".media.MALReviewViewActivity"
             android:parentActivityName=".media.ReviewActivity" />

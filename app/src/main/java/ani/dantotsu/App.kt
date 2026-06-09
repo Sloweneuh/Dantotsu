@@ -9,6 +9,7 @@ import androidx.multidex.MultiDex
 import androidx.multidex.MultiDexApplication
 import ani.dantotsu.addons.download.DownloadAddonManager
 import ani.dantotsu.addons.torrent.TorrentAddonManager
+import ani.dantotsu.connections.handoff.GlobalHandoffReceiver
 import ani.dantotsu.aniyomi.anime.custom.AppModule
 import ani.dantotsu.aniyomi.anime.custom.PreferenceModule
 import ani.dantotsu.connections.comments.CommentsAPI
@@ -212,6 +213,7 @@ class App : MultiDexApplication() {
         var lastActivity: String? = null
         private var lastUnreadChapterCheck = 0L
         private var resumeCount = 0
+        private var startedActivities = 0
 
         override fun onActivityCreated(p0: Activity, p1: Bundle?) {
             lastActivity = p0.javaClass.simpleName
@@ -219,6 +221,10 @@ class App : MultiDexApplication() {
 
         override fun onActivityStarted(p0: Activity) {
             currentActivity = p0
+            // Stay discoverable for "Continue on another device" while the app is foreground.
+            if (startedActivities++ == 0) {
+                runCatching { GlobalHandoffReceiver.start(this@App) }
+            }
         }
 
         override fun onActivityResumed(p0: Activity) {
@@ -261,7 +267,12 @@ class App : MultiDexApplication() {
         }
 
         override fun onActivityPaused(p0: Activity) {}
-        override fun onActivityStopped(p0: Activity) {}
+        override fun onActivityStopped(p0: Activity) {
+            if (--startedActivities <= 0) {
+                startedActivities = 0
+                runCatching { GlobalHandoffReceiver.stop() }
+            }
+        }
         override fun onActivitySaveInstanceState(p0: Activity, p1: Bundle) {}
         override fun onActivityDestroyed(p0: Activity) {}
     }

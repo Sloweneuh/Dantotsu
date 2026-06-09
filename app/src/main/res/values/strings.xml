@@ -1787,6 +1787,34 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="backup_proxy_username">Proxy Username</string>
     <string name="backup_proxy_password">Proxy Password</string>
 
+    <!-- Continue on another device (Nearby handoff) -->
+    <string name="continue_on_another_device">Continue on another device</string>
+    <string name="receive_from_another_device">Receive from another device</string>
+    <string name="handoff_media_title">Send \"%1$s\" to a nearby device</string>
+    <string name="handoff_searching">Searching for nearby devices…</string>
+    <string name="handoff_waiting">Waiting for another device to send…\nKeep this screen open.</string>
+    <string name="handoff_receive_hint">On the other device, open the player, reader or media page and tap \"Continue on another device\", then pick this device.</string>
+    <string name="handoff_no_devices">No nearby devices yet. Make sure the other device has \"Receive from another device\" open, with Bluetooth and Wi-Fi enabled.</string>
+    <string name="handoff_sending">Sending to %1$s…</string>
+    <string name="handoff_sent">Sent to %1$s</string>
+    <string name="handoff_received">Opening %1$s…</string>
+    <string name="handoff_permission_needed">Nearby permissions are required to find other devices</string>
+    <string name="handoff_unsupported_media">This media can\'t be handed off (it isn\'t linked to AniList).</string>
+    <string name="handoff_media_not_found">Couldn\'t load the media on this device.</string>
+    <string name="handoff_discoverable_as">This device is discoverable as \"%1$s\" while Dantotsu is open. Send from the other device.</string>
+    <string name="handoff_show_qr">Show QR code instead</string>
+    <string name="handoff_qr_hint">Scan this with the other device\'s camera to open it in Dantotsu.</string>
+    <string name="handoff_qr_failed">Couldn\'t generate QR code</string>
+    <string name="handoff_source_missing">Open \"%1$s\" with %2$s on this device to continue — that source isn\'t installed.</string>
+    <string name="handoff_incoming_title">Continue on this device</string>
+    <string name="handoff_incoming_text">%1$s — tap to open</string>
+    <string name="handoff_incoming_dialog">Another device sent \"%1$s\". Open it here?</string>
+    <string name="handoff_incoming_from">From %1$s</string>
+    <string name="handoff_open">Open</string>
+    <string name="handoff_episode_label">Episode %1$s</string>
+    <string name="handoff_chapter_label">Chapter %1$s</string>
+    <string name="handoff_page_label">Page %1$s</string>
+
 </resources>
 
 

@@ -23,9 +23,14 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.Lifecycle
+import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import ani.dantotsu.R
+import ani.dantotsu.connections.handoff.HandoffBottomSheet
+import ani.dantotsu.connections.handoff.HandoffLoadingOverlay
+import ani.dantotsu.connections.handoff.HandoffNavigator
+import ani.dantotsu.connections.handoff.HandoffPayload
 import ani.dantotsu.Refresh
 import ani.dantotsu.ZoomOutPageTransformer
 import ani.dantotsu.blurImage
@@ -316,6 +321,10 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
 
         binding = ActivityMediaBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        // Block interaction while a received handoff resolves and auto-opens the reader.
+        if (intent.getBooleanExtra(HandoffNavigator.EXTRA_AUTO_START, false)) {
+            HandoffLoadingOverlay.show(this)
+        }
 
         screenWidth = resources.displayMetrics.widthPixels.toFloat()
         navBar = binding.mediaBottomBar
@@ -407,6 +416,23 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         applyExtensionLink(media.id)
         media.selected = model.loadSelected(media)
         model.setMedia(media)
+
+        // Continue on another device (MangaUpdates media, opened via the MU series link).
+        binding.mediaHandoff.isVisible = true
+        binding.mediaHandoff.setOnClickListener {
+            HandoffBottomSheet.send(
+                HandoffPayload(
+                    mediaId = media.id,
+                    isMAL = false,
+                    isAnime = false,
+                    mediaType = "MANGA",
+                    title = muMedia.title,
+                    cover = muMedia.coverUrl,
+                    sourceName = model.loadSelectedSourceName(media.id),
+                    muSeriesId = muMedia.id,
+                )
+            ).show(supportFragmentManager, "handoff")
+        }
 
         // Fetch full MU series data in background for the info tab
         val bannerAnimations: Boolean = PrefManager.getVal(PrefName.BannerAnimations)
@@ -736,6 +762,12 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
     override fun onDestroy() {
         Refresh.activity.remove(this.hashCode())
         super.onDestroy()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // The reader launched on top (or the user left): drop the handoff block.
+        HandoffLoadingOverlay.hide(this)
     }
 
     override fun onResume() {

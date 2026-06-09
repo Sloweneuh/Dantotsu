@@ -1694,4 +1694,32 @@
     <string name="backup_proxy_username">Nom d\'utilisateur du proxy</string>
     <string name="backup_proxy_password">Mot de passe du proxy</string>
     <string name="backup_sub_discord_desc">Jeton Discord RPC, profil et paramètres de présence</string>
+
+    <!-- Continuer sur un autre appareil (transfert de proximité) -->
+    <string name="continue_on_another_device">Continuer sur un autre appareil</string>
+    <string name="receive_from_another_device">Recevoir depuis un autre appareil</string>
+    <string name="handoff_media_title">Envoyer « %1$s » vers un appareil à proximité</string>
+    <string name="handoff_searching">Recherche d\'appareils à proximité…</string>
+    <string name="handoff_waiting">En attente d\'un envoi depuis un autre appareil…\nGardez cet écran ouvert.</string>
+    <string name="handoff_receive_hint">Sur l\'autre appareil, ouvrez le lecteur vidéo, le lecteur de manga ou la fiche du média et appuyez sur « Continuer sur un autre appareil », puis choisissez cet appareil.</string>
+    <string name="handoff_no_devices">Aucun appareil à proximité pour l\'instant. Assurez-vous que l\'autre appareil a « Recevoir depuis un autre appareil » ouvert, avec le Bluetooth et le Wi-Fi activés.</string>
+    <string name="handoff_sending">Envoi vers %1$s…</string>
+    <string name="handoff_sent">Envoyé vers %1$s</string>
+    <string name="handoff_received">Ouverture de %1$s…</string>
+    <string name="handoff_permission_needed">Les autorisations de proximité sont nécessaires pour trouver d\'autres appareils</string>
+    <string name="handoff_unsupported_media">Ce média ne peut pas être transféré (il n\'est pas lié à AniList).</string>
+    <string name="handoff_media_not_found">Impossible de charger le média sur cet appareil.</string>
+    <string name="handoff_discoverable_as">Cet appareil est détectable en tant que « %1$s » tant que Dantotsu est ouvert. Lancez l\'envoi depuis l\'autre appareil.</string>
+    <string name="handoff_show_qr">Afficher un code QR à la place</string>
+    <string name="handoff_qr_hint">Scannez ceci avec l\'appareil photo de l\'autre appareil pour l\'ouvrir dans Dantotsu.</string>
+    <string name="handoff_qr_failed">Impossible de générer le code QR</string>
+    <string name="handoff_source_missing">Ouvrez « %1$s » avec %2$s sur cet appareil pour continuer — cette source n\'est pas installée.</string>
+    <string name="handoff_incoming_title">Continuer sur cet appareil</string>
+    <string name="handoff_incoming_text">%1$s — appuyez pour ouvrir</string>
+    <string name="handoff_incoming_dialog">Un autre appareil a envoyé « %1$s ». L\'ouvrir ici ?</string>
+    <string name="handoff_incoming_from">Depuis %1$s</string>
+    <string name="handoff_open">Ouvrir</string>
+    <string name="handoff_episode_label">Épisode %1$s</string>
+    <string name="handoff_chapter_label">Chapitre %1$s</string>
+    <string name="handoff_page_label">Page %1$s</string>
 </resources>

@@ -28,6 +28,8 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
 import ani.dantotsu.R
+import ani.dantotsu.connections.handoff.HandoffLoadingOverlay
+import ani.dantotsu.connections.handoff.HandoffNavigator
 import ani.dantotsu.addons.download.DownloadAddonManager
 import ani.dantotsu.databinding.FragmentMediaSourceBinding
 import ani.dantotsu.download.DownloadedType
@@ -96,6 +98,12 @@ class AnimeWatchFragment : Fragment() {
 
     var continueEp: Boolean = false
     var loaded = false
+
+    // "Continue on another device" auto-launch: open this episode once episodes load.
+    private var handoffNumber: String? = null
+    private var handoffServer: String? = null
+    private var handoffSourceName: String? = null
+    private var handoffPending = false
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -171,6 +179,20 @@ class AnimeWatchFragment : Fragment() {
         }
 
         continueEp = model.continueMedia ?: false
+
+        // Read a pending \"Continue on another device\" request (anime only).
+        activity?.intent?.let { i ->
+            // Always pick up the source name from a handoff (even media-only).
+            if (!i.getBooleanExtra(HandoffNavigator.EXTRA_IS_ANIME, false)) return@let
+            handoffSourceName = i.getStringExtra(HandoffNavigator.EXTRA_SOURCE)
+            if (i.getBooleanExtra(HandoffNavigator.EXTRA_AUTO_START, false)) {
+                handoffNumber = i.getStringExtra(HandoffNavigator.EXTRA_NUMBER)
+                handoffServer = i.getStringExtra(HandoffNavigator.EXTRA_SERVER)
+                handoffPending = handoffNumber != null
+                i.removeExtra(HandoffNavigator.EXTRA_AUTO_START)
+            }
+        }
+
         model.getMedia().observe(viewLifecycleOwner) {
             if (it != null) {
                 media = it
@@ -205,6 +227,30 @@ class AnimeWatchFragment : Fragment() {
 
                     binding.mediaSourceRecycler.adapter =
                         ConcatAdapter(headerAdapter, episodeAdapter)
+
+                    // For a handoff, switch to the source the sender used (if installed),
+                    // otherwise tell the user it's missing and skip the auto-launch.
+                    // The source NAME is the source of truth (loadSelected resolves the index
+                    // from it on every emission), so persist the name, not just the index.
+                    handoffSourceName?.let { name ->
+                        val idx = model.watchSources!!.names.indexOf(name)
+                        if (idx >= 0) {
+                            media.selected!!.sourceIndex = idx
+                            model.saveSelectedSourceName(media.id, name)
+                            model.saveSelected(media.id, media.selected!!)
+                        } else {
+                            handoffPending = false
+                            activity?.let { HandoffLoadingOverlay.hide(it) }
+                            snackString(
+                                getString(
+                                    R.string.handoff_source_missing,
+                                    media.userPreferredName,
+                                    name
+                                )
+                            )
+                        }
+                        handoffSourceName = null
+                    }
 
                     lifecycleScope.launch(Dispatchers.IO) {
                         val offline =
@@ -303,6 +349,18 @@ class AnimeWatchFragment : Fragment() {
                     headerAdapter.subscribeButton(true)
                     headerAdapter.refreshBrowserButton()
                     reload()
+
+                    // Handoff auto-launch: open the sent episode straight into the player.
+                    if (handoffPending && episodes.containsKey(handoffNumber)) {
+                        handoffPending = false
+                        binding.root.post {
+                            // The server/loader dialog takes over the blocking from here.
+                            activity?.let { HandoffLoadingOverlay.hide(it) }
+                            handoffServer?.let { media.selected!!.server = it }
+                            handoffServer = null
+                            onEpisodeClick(handoffNumber!!)
+                        }
+                    }
                 }
             }
         }

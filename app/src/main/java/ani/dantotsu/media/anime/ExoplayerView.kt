@@ -100,6 +100,8 @@ import ani.dantotsu.GesturesListener
 import ani.dantotsu.NoPaddingArrayAdapter
 import ani.dantotsu.R
 import ani.dantotsu.addons.download.DownloadAddonManager
+import ani.dantotsu.connections.handoff.HandoffBottomSheet
+import ani.dantotsu.connections.handoff.HandoffPayload
 import ani.dantotsu.brightnessConverter
 import ani.dantotsu.circularReveal
 import ani.dantotsu.connections.anilist.Anilist
@@ -1284,6 +1286,30 @@ class ExoplayerView :
                 }
             exoPlayer.pause()
             onChangeSettings.launch(intent)
+        }
+
+        // Continue on another device. Extension-only media (id < 0) can't be re-fetched
+        // elsewhere, so hide the button for it.
+        playerView.findViewById<ImageButton>(R.id.exo_handoff).apply {
+            isVisible = media.id >= 0
+            setOnClickListener {
+                val episode = media.anime?.selectedEpisode
+                PrefManager.setCustomVal("${media.id}_$episode", exoPlayer.currentPosition)
+                HandoffBottomSheet.send(
+                    HandoffPayload(
+                        mediaId = media.id,
+                        isMAL = false,
+                        isAnime = true,
+                        mediaType = "ANIME",
+                        title = media.userPreferredName,
+                        cover = media.cover,
+                        sourceName = model.watchSources?.names?.getOrNull(media.selected!!.sourceIndex),
+                        number = episode,
+                        positionMs = exoPlayer.currentPosition,
+                        server = media.anime?.episodes?.get(episode)?.selectedExtractor,
+                    )
+                ).show(supportFragmentManager, "handoff")
+            }
         }
 
         // Speed

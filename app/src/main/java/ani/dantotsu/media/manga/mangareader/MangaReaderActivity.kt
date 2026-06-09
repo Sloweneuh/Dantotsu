@@ -43,6 +43,8 @@ import ani.dantotsu.NoPaddingArrayAdapter
 import ani.dantotsu.R
 import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.crashlytics.CrashlyticsInterface
+import ani.dantotsu.connections.handoff.HandoffBottomSheet
+import ani.dantotsu.connections.handoff.HandoffPayload
 import ani.dantotsu.connections.discord.Discord
 import ani.dantotsu.connections.discord.RPCManager
 import ani.dantotsu.connections.discord.RPC
@@ -499,6 +501,27 @@ class MangaReaderActivity : AppCompatActivity() {
 
         binding.mangaReaderSettings.setSafeOnClickListener {
             ReaderSettingsDialogFragment.newInstance().show(supportFragmentManager, "settings")
+        }
+
+        // Extension-only media (id < 0) isn't linked to AniList/MangaUpdates, so it can't be
+        // re-fetched on another device — hide the handoff button entirely for it.
+        binding.mangaReaderHandoff.isVisible = media.id >= 0
+        binding.mangaReaderHandoff.setSafeOnClickListener {
+            HandoffBottomSheet.send(
+                HandoffPayload(
+                    mediaId = media.id,
+                    isMAL = false,
+                    isAnime = false,
+                    mediaType = "MANGA",
+                    title = media.userPreferredName,
+                    cover = media.cover,
+                    sourceName = model.mangaReadSources?.names?.getOrNull(media.selected!!.sourceIndex),
+                    number = chapter.number,
+                    page = currentChapterPage,
+                    trackProgress = PrefManager.getCustomVal("${media.id}_save_progress", true),
+                    muSeriesId = media.muSeriesId,
+                )
+            ).show(supportFragmentManager, "handoff")
         }
 
         binding.mangaReaderAutoscroll.setOnClickListener {

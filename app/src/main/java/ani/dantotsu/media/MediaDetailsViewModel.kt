@@ -332,7 +332,7 @@ class MediaDetailsViewModel : ViewModel() {
         PrefManager.setCustomVal("SelectedSource-$id", name)
     }
 
-    private fun loadSelectedSourceName(id: Int): String? =
+    internal fun loadSelectedSourceName(id: Int): String? =
             PrefManager.getNullableCustomVal("SelectedSource-$id", null, String::class.java)
 
     private fun sourceNamesFor(media: Media): List<String> = when {

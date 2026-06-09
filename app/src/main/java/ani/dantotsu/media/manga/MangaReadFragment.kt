@@ -30,6 +30,8 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
 import ani.dantotsu.R
+import ani.dantotsu.connections.handoff.HandoffLoadingOverlay
+import ani.dantotsu.connections.handoff.HandoffNavigator
 import ani.dantotsu.databinding.FragmentMediaSourceBinding
 import ani.dantotsu.download.DownloadedType
 import ani.dantotsu.download.DownloadsManager
@@ -97,6 +99,11 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
 
     var continueEp: Boolean = false
     var loaded = false
+
+    // "Continue on another device" auto-launch: open this chapter once chapters load.
+    private var handoffNumber: String? = null
+    private var handoffSourceName: String? = null
+    private var handoffPending = false
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -169,6 +176,20 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
         }
 
         continueEp = model.continueMedia ?: false
+
+        // Read a pending "Continue on another device" request (manga only).
+        activity?.intent?.let { i ->
+            // Always pick up the source name from a handoff (even media-only).
+            if (i.getBooleanExtra(HandoffNavigator.EXTRA_IS_ANIME, false)) return@let
+            handoffSourceName = i.getStringExtra(HandoffNavigator.EXTRA_SOURCE)
+            if (i.getBooleanExtra(HandoffNavigator.EXTRA_AUTO_START, false)) {
+                handoffNumber = i.getStringExtra(HandoffNavigator.EXTRA_NUMBER)
+                handoffPending = handoffNumber != null
+                // Consume so rotation / re-entry doesn't re-trigger it.
+                i.removeExtra(HandoffNavigator.EXTRA_AUTO_START)
+            }
+        }
+
         model.getMedia().observe(viewLifecycleOwner) {
             if (it != null) {
                 media = it
@@ -205,6 +226,30 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
 
                         binding.mediaSourceRecycler.adapter =
                             ConcatAdapter(headerAdapter, chapterAdapter)
+
+                        // For a handoff, switch to the source the sender used (if installed),
+                        // otherwise tell the user it's missing and skip the auto-launch.
+                        // The source NAME is the source of truth (loadSelected resolves the index
+                        // from it on every emission), so persist the name, not just the index.
+                        handoffSourceName?.let { name ->
+                            val idx = model.mangaReadSources!!.names.indexOf(name)
+                            if (idx >= 0) {
+                                media.selected!!.sourceIndex = idx
+                                model.saveSelectedSourceName(media.id, name)
+                                model.saveSelected(media.id, media.selected!!)
+                            } else {
+                                handoffPending = false
+                                activity?.let { HandoffLoadingOverlay.hide(it) }
+                                snackString(
+                                    getString(
+                                        R.string.handoff_source_missing,
+                                        media.userPreferredName,
+                                        name
+                                    )
+                                )
+                            }
+                            handoffSourceName = null
+                        }
 
                         lifecycleScope.launch(Dispatchers.IO) {
                             val offline =
@@ -318,6 +363,20 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
                 headerAdapter.subscribeButton(true)
                 headerAdapter.refreshBrowserButton()
                 reload()
+
+                // Handoff auto-launch: open the sent chapter straight into the reader,
+                // skipping the progress prompt (the decision rode along in the payload).
+                if (handoffPending && filteredChapters.isNotEmpty()) {
+                    val target = filteredChapters.values.firstOrNull { it.number == handoffNumber }
+                    if (target != null) {
+                        handoffPending = false
+                        binding.root.post {
+                            // The chapter loader's modal sheet takes over the blocking from here.
+                            activity?.let { HandoffLoadingOverlay.hide(it) }
+                            onMangaChapterClick(target, skipProgressDialog = true)
+                        }
+                    }
+                }
             }
         }
     }
@@ -426,7 +485,7 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
         }
     }
 
-    fun onMangaChapterClick(i: MangaChapter) {
+    fun onMangaChapterClick(i: MangaChapter, skipProgressDialog: Boolean = false) {
         model.continueMedia = false
 
         // If chapter title/number contains a lock emoji, show premium dialog instead of opening reader
@@ -451,10 +510,14 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
         media.manga?.chapters?.get(i.uniqueNumber())?.let {
             media.manga?.selectedChapter = i
             model.saveSelected(media.id, media.selected!!)
-            ChapterLoaderDialog.showProgressPopupIfNecessary(requireActivity(), media) {
+            val launch = {
                 ChapterLoaderDialog.newInstance(it, true)
                     .show(requireActivity().supportFragmentManager, "dialog")
             }
+            // Handoffs carry the sender's progress-tracking choice (already seeded), so skip
+            // the "update progress?" prompt and open directly.
+            if (skipProgressDialog) launch()
+            else ChapterLoaderDialog.showProgressPopupIfNecessary(requireActivity(), media) { launch() }
         }
     }
 

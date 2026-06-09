@@ -39,6 +39,10 @@ import ani.dantotsu.Refresh
 import ani.dantotsu.ZoomOutPageTransformer
 import ani.dantotsu.blurImage
 import ani.dantotsu.connections.anilist.Anilist
+import ani.dantotsu.connections.handoff.HandoffBottomSheet
+import ani.dantotsu.connections.handoff.HandoffLoadingOverlay
+import ani.dantotsu.connections.handoff.HandoffNavigator
+import ani.dantotsu.connections.handoff.HandoffPayload
 import ani.dantotsu.copyToClipboard
 import ani.dantotsu.databinding.ActivityMediaBinding
 import ani.dantotsu.getThemeColor
@@ -111,6 +115,10 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
 
         binding = ActivityMediaBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        // Block interaction while a received handoff resolves and auto-opens.
+        if (intent.getBooleanExtra(HandoffNavigator.EXTRA_AUTO_START, false)) {
+            HandoffLoadingOverlay.show(this)
+        }
         screenWidth = resources.displayMetrics.widthPixels.toFloat()
         navBar = binding.mediaBottomBar
 
@@ -355,6 +363,15 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
 
         // Share Button
         binding.mediaShare.setOnClickListener { shareMediaLinks(media) }
+
+        // Continue on another device (media only, no progress). Hidden for extension-only
+        // media (id < 0) that can't be re-fetched elsewhere.
+        binding.mediaHandoff.isVisible = media.id >= 0
+        binding.mediaHandoff.setOnClickListener {
+            HandoffBottomSheet.send(
+                HandoffPayload.mediaOnly(media, model.loadSelectedSourceName(media.id))
+            ).show(supportFragmentManager, "handoff")
+        }
 
         // Extension function to convert dp to px
         fun Int.dpToPx(): Int {
@@ -1122,6 +1139,12 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                 progress()
             }
         }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        // The reader/player launched on top (or the user left): drop the handoff block.
+        HandoffLoadingOverlay.hide(this)
     }
 
     override fun onResume() {
