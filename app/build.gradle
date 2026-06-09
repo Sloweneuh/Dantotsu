@@ -28,11 +28,6 @@ android {
 
     flavorDimensions += "store"
     productFlavors {
-        fdroid {
-            // F-Droid specific configuration
-            dimension "store"
-            versionNameSuffix "-fdroid"
-        }
         google {
             // Google Play specific configuration
             dimension "store"
