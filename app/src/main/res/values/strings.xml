@@ -1794,7 +1794,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="handoff_searching">Searching for nearby devices…</string>
     <string name="handoff_waiting">Waiting for another device to send…\nKeep this screen open.</string>
     <string name="handoff_receive_hint">On the other device, open the player, reader or media page and tap \"Continue on another device\", then pick this device.</string>
-    <string name="handoff_no_devices">No nearby devices yet. Make sure the other device has \"Receive from another device\" open, with Bluetooth and Wi-Fi enabled.</string>
+    <string name="handoff_no_devices">No nearby devices yet. Make sure the other device has Dantotsu open, with Bluetooth and Wi-Fi enabled.</string>
     <string name="handoff_sending">Sending to %1$s…</string>
     <string name="handoff_sent">Sent to %1$s</string>
     <string name="handoff_received">Opening %1$s…</string>

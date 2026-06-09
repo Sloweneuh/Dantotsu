@@ -1702,7 +1702,7 @@
     <string name="handoff_searching">Recherche d\'appareils à proximité…</string>
     <string name="handoff_waiting">En attente d\'un envoi depuis un autre appareil…\nGardez cet écran ouvert.</string>
     <string name="handoff_receive_hint">Sur l\'autre appareil, ouvrez le lecteur vidéo, le lecteur de manga ou la fiche du média et appuyez sur « Continuer sur un autre appareil », puis choisissez cet appareil.</string>
-    <string name="handoff_no_devices">Aucun appareil à proximité pour l\'instant. Assurez-vous que l\'autre appareil a « Recevoir depuis un autre appareil » ouvert, avec le Bluetooth et le Wi-Fi activés.</string>
+    <string name="handoff_no_devices">Aucun appareil à proximité pour l\'instant. Assurez-vous que l\'autre appareil a Dantotsu ouvert, avec le Bluetooth et le Wi-Fi activés.</string>
     <string name="handoff_sending">Envoi vers %1$s…</string>
     <string name="handoff_sent">Envoyé vers %1$s</string>
     <string name="handoff_received">Ouverture de %1$s…</string>

@@ -17,7 +17,6 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import ani.dantotsu.BuildConfig
 import ani.dantotsu.R
-import ani.dantotsu.connections.handoff.HandoffBottomSheet
 import ani.dantotsu.copyToClipboard
 import ani.dantotsu.databinding.ActivitySettingsBinding
 import ani.dantotsu.initActivity
@@ -162,16 +161,6 @@ class SettingsActivity : AppCompatActivity() {
                             startActivity(Intent(context, SettingsNotificationActivity::class.java))
                         },
                         isActivity = true
-                    ),
-                    Settings(
-                        type = 1,
-                        name = getString(R.string.receive_from_another_device),
-                        desc = getString(R.string.handoff_receive_hint),
-                        icon = R.drawable.ic_round_cast_24,
-                        onClick = {
-                            HandoffBottomSheet.receive()
-                                .show(supportFragmentManager, "handoff")
-                        }
                     ),
                     Settings(
                         type = 1,

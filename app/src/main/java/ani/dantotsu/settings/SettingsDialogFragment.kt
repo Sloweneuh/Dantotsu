@@ -12,6 +12,7 @@ import ani.dantotsu.BottomSheetDialogFragment
 import ani.dantotsu.MainActivity
 import ani.dantotsu.R
 import ani.dantotsu.connections.anilist.Anilist
+import ani.dantotsu.connections.handoff.HandoffBottomSheet
 import ani.dantotsu.databinding.BottomSheetSettingsBinding
 import ani.dantotsu.download.anime.OfflineAnimeFragment
 import ani.dantotsu.download.manga.OfflineMangaFragment
@@ -115,6 +116,13 @@ class SettingsDialogFragment : BottomSheetDialogFragment() {
         binding.settingsSettings.setSafeOnClickListener {
             startActivity(Intent(activity, SettingsActivity::class.java))
             dismiss()
+        }
+
+        binding.settingsReceiveHandoff.setSafeOnClickListener {
+            // Show on the activity's manager so the sheet survives this one being dismissed.
+            val fm = requireActivity().supportFragmentManager
+            dismiss()
+            HandoffBottomSheet.receive().show(fm, "handoff")
         }
 
         binding.settingsActivity.setSafeOnClickListener {
