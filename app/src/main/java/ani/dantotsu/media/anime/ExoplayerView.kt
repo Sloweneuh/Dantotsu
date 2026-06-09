@@ -171,6 +171,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.util.Calendar
@@ -1295,20 +1296,31 @@ class ExoplayerView :
             setOnClickListener {
                 val episode = media.anime?.selectedEpisode
                 PrefManager.setCustomVal("${media.id}_$episode", exoPlayer.currentPosition)
-                HandoffBottomSheet.send(
-                    HandoffPayload(
-                        mediaId = media.id,
-                        isMAL = false,
-                        isAnime = true,
-                        mediaType = "ANIME",
-                        title = media.userPreferredName,
-                        cover = media.cover,
-                        sourceName = model.watchSources?.names?.getOrNull(media.selected!!.sourceIndex),
-                        number = episode,
-                        positionMs = exoPlayer.currentPosition,
-                        server = media.anime?.episodes?.get(episode)?.selectedExtractor,
-                    )
-                ).show(supportFragmentManager, "handoff")
+                lifecycleScope.launch {
+                    // The matched extension entry rides along so the receiver loads the episode
+                    // list directly instead of re-searching the source by title.
+                    val sourceMedia = withContext(Dispatchers.IO) {
+                        runCatching {
+                            model.watchSources?.get(media.selected!!.sourceIndex)
+                                ?.loadSavedShowResponse(media.id)
+                        }.getOrNull()
+                    }
+                    HandoffBottomSheet.send(
+                        HandoffPayload(
+                            mediaId = media.id,
+                            isMAL = false,
+                            isAnime = true,
+                            mediaType = "ANIME",
+                            title = media.userPreferredName,
+                            cover = media.cover,
+                            sourceName = model.watchSources?.names?.getOrNull(media.selected!!.sourceIndex),
+                            number = episode,
+                            positionMs = exoPlayer.currentPosition,
+                            server = media.anime?.episodes?.get(episode)?.selectedExtractor,
+                            sourceMedia = HandoffPayload.encodeShowResponse(sourceMedia),
+                        )
+                    ).show(supportFragmentManager, "handoff")
+                }
             }
         }
 
@@ -2101,10 +2113,14 @@ class ExoplayerView :
         changingServer = true
 
         media.selected!!.server = null
-        PrefManager.setCustomVal(
-            "${media.id}_${media.anime!!.selectedEpisode}",
-            exoPlayer.currentPosition,
-        )
+        // Don't clobber a saved/handoff-seeded resume position with 0 when the current stream
+        // never got far enough to report a real position (e.g. it failed during preparation).
+        if (exoPlayer.currentPosition > 0) {
+            PrefManager.setCustomVal(
+                "${media.id}_${media.anime!!.selectedEpisode}",
+                exoPlayer.currentPosition,
+            )
+        }
         model.saveSelected(media.id, media.selected!!)
         model.onEpisodeClick(
             media,
@@ -2487,8 +2503,20 @@ class ExoplayerView :
 
     override fun onPlayerError(error: PlaybackException) {
         when (error.errorCode) {
+            // Source/content problems where a different server is likely to work: reopen the
+            // server picker instead of dead-ending on a frozen player. This also recovers a
+            // handoff that auto-selected the sender's server but got a malformed/empty stream
+            // when it was re-extracted on this device (e.g. ERROR_CODE_PARSING_CONTAINER_MALFORMED).
             PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS,
             PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
+            PlaybackException.ERROR_CODE_IO_INVALID_HTTP_CONTENT_TYPE,
+            PlaybackException.ERROR_CODE_IO_READ_POSITION_OUT_OF_RANGE,
+            PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND,
+            PlaybackException.ERROR_CODE_IO_UNSPECIFIED,
+            PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED,
+            PlaybackException.ERROR_CODE_PARSING_MANIFEST_MALFORMED,
+            PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED,
+            PlaybackException.ERROR_CODE_PARSING_MANIFEST_UNSUPPORTED,
                 -> {
                 toast("Source Exception : ${error.message}")
                 isPlayerPlaying = true

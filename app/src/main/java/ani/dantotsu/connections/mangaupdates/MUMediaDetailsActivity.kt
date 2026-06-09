@@ -321,9 +321,19 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
 
         binding = ActivityMediaBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        // Block interaction while a received handoff resolves and auto-opens the reader.
+        // Block interaction while a received handoff resolves and auto-opens the reader, showing
+        // what's being opened so the user can see it's progressing rather than a blank spinner.
         if (intent.getBooleanExtra(HandoffNavigator.EXTRA_AUTO_START, false)) {
-            HandoffLoadingOverlay.show(this)
+            val number = intent.getStringExtra(HandoffNavigator.EXTRA_NUMBER)
+            HandoffLoadingOverlay.show(
+                this,
+                title = intent.getStringExtra(HandoffNavigator.EXTRA_TITLE),
+                cover = intent.getStringExtra(HandoffNavigator.EXTRA_COVER),
+                // Shown verbatim — the source already labels it (e.g. "Vol. 4 Ch. 20").
+                subtitle = number,
+                status = intent.getStringExtra(HandoffNavigator.EXTRA_SENDER)
+                    ?.let { getString(R.string.handoff_loading_from, it) },
+            )
         }
 
         screenWidth = resources.displayMetrics.widthPixels.toFloat()
@@ -420,18 +430,29 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         // Continue on another device (MangaUpdates media, opened via the MU series link).
         binding.mediaHandoff.isVisible = true
         binding.mediaHandoff.setOnClickListener {
-            HandoffBottomSheet.send(
-                HandoffPayload(
-                    mediaId = media.id,
-                    isMAL = false,
-                    isAnime = false,
-                    mediaType = "MANGA",
-                    title = muMedia.title,
-                    cover = muMedia.coverUrl,
-                    sourceName = model.loadSelectedSourceName(media.id),
-                    muSeriesId = muMedia.id,
-                )
-            ).show(supportFragmentManager, "handoff")
+            lifecycleScope.launch {
+                // Attach the matched extension entry (if the read tab has loaded one) so the
+                // receiver loads the chapter list directly instead of re-searching.
+                val sourceMedia = withContext(Dispatchers.IO) {
+                    runCatching {
+                        model.mangaReadSources?.get(media.selected?.sourceIndex ?: 0)
+                            ?.loadSavedShowResponse(media.id)
+                    }.getOrNull()
+                }
+                HandoffBottomSheet.send(
+                    HandoffPayload(
+                        mediaId = media.id,
+                        isMAL = false,
+                        isAnime = false,
+                        mediaType = "MANGA",
+                        title = muMedia.title,
+                        cover = muMedia.coverUrl,
+                        sourceName = model.loadSelectedSourceName(media.id),
+                        muSeriesId = muMedia.id,
+                        sourceMedia = HandoffPayload.encodeShowResponse(sourceMedia),
+                    )
+                ).show(supportFragmentManager, "handoff")
+            }
         }
 
         // Fetch full MU series data in background for the info tab

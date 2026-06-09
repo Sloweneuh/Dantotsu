@@ -1808,12 +1808,15 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="handoff_source_missing">Open \"%1$s\" with %2$s on this device to continue — that source isn\'t installed.</string>
     <string name="handoff_incoming_title">Continue on this device</string>
     <string name="handoff_incoming_text">%1$s — tap to open</string>
-    <string name="handoff_incoming_dialog">Another device sent \"%1$s\". Open it here?</string>
     <string name="handoff_incoming_from">From %1$s</string>
     <string name="handoff_open">Open</string>
-    <string name="handoff_episode_label">Episode %1$s</string>
-    <string name="handoff_chapter_label">Chapter %1$s</string>
     <string name="handoff_page_label">Page %1$s</string>
+    <string name="handoff_loading_status">Loading…</string>
+    <string name="handoff_loading_from">Continuing from %1$s</string>
+    <string name="handoff_loading_chapters">Loading chapter list…</string>
+    <string name="handoff_loading_episodes">Loading episode list…</string>
+    <string name="handoff_opening_reader">Opening reader…</string>
+    <string name="handoff_opening_player">Opening player…</string>
 
 </resources>
 

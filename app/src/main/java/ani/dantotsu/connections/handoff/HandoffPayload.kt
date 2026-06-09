@@ -4,7 +4,12 @@ import android.net.Uri
 import android.os.Build
 import android.util.Base64
 import ani.dantotsu.media.Media
+import ani.dantotsu.parsers.ShowResponse
 import com.google.gson.Gson
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.io.ObjectInputStream
+import java.io.ObjectOutputStream
 import java.io.Serializable
 
 /** This device's display name, stamped onto outgoing handoffs so the receiver can show it. */
@@ -38,9 +43,19 @@ data class HandoffPayload(
     val muSeriesId: Long? = null,   // set => MangaUpdates media (opened via MU deep link)
     val server: String? = null,     // video server the sender was watching on
     val senderName: String = localDeviceName(), // the sending device's name, for the prompt
+    val sourceMedia: String? = null, // Base64(Java-serialized ShowResponse) the sender matched in
+                                     // its extension, so the receiver can load the exact chapter/
+                                     // episode list directly instead of re-searching by title
+                                     // (which can miss or match the wrong entry, leaving the list
+                                     // empty). Carried as a blob because the ShowResponse holds an
+                                     // SManga/SAnime that Gson can't round-trip.
 ) : Serializable {
 
+    /** Full payload (with [sourceMedia]) for the discovery transports, which have no size limit. */
     fun toJson(): String = Gson().toJson(this)
+
+    /** The extension entry the sender matched, decoded back from [sourceMedia]. */
+    val decodedSourceMedia: ShowResponse? get() = sourceMedia?.let { decodeShowResponse(it) }
 
     val hasProgress: Boolean get() = number != null
     val isMangaUpdates: Boolean get() = muSeriesId != null
@@ -49,10 +64,16 @@ data class HandoffPayload(
     val mangaUpdatesUrl: String?
         get() = muSeriesId?.let { "https://www.mangaupdates.com/series/${it.toString(36)}" }
 
-    /** A scannable deep link encoding this payload (QR-code fallback transport). */
+    /**
+     * A scannable deep link encoding this payload (QR-code fallback transport).
+     *
+     * [sourceMedia] is dropped here: a serialized ShowResponse is far too large to fit in a
+     * scannable QR code, so the scan path falls back to the receiver's own title search.
+     */
     fun toDeepLink(): String {
+        val json = (if (sourceMedia == null) this else copy(sourceMedia = null)).let { Gson().toJson(it) }
         val data = Base64.encodeToString(
-            toJson().toByteArray(), Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING
+            json.toByteArray(), Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING
         )
         return "$SCHEME://$HOST?d=$data"
     }
@@ -76,7 +97,11 @@ data class HandoffPayload(
         }
 
         /** Builds a media-only payload (no chapter/episode/position). */
-        fun mediaOnly(media: Media, sourceName: String? = null): HandoffPayload = HandoffPayload(
+        fun mediaOnly(
+            media: Media,
+            sourceName: String? = null,
+            sourceMedia: ShowResponse? = null,
+        ): HandoffPayload = HandoffPayload(
             mediaId = media.id,
             isMAL = false,
             isAnime = media.anime != null,
@@ -85,6 +110,23 @@ data class HandoffPayload(
             cover = media.cover,
             sourceName = sourceName,
             muSeriesId = media.muSeriesId,
+            sourceMedia = encodeShowResponse(sourceMedia),
         )
+
+        /** Serializes a [ShowResponse] (incl. its SManga/SAnime) to a Base64 blob for the payload. */
+        fun encodeShowResponse(response: ShowResponse?): String? = response?.let {
+            runCatching {
+                val bytes = ByteArrayOutputStream().apply {
+                    ObjectOutputStream(this).use { oos -> oos.writeObject(response) }
+                }.toByteArray()
+                Base64.encodeToString(bytes, Base64.NO_WRAP)
+            }.getOrNull()
+        }
+
+        private fun decodeShowResponse(blob: String): ShowResponse? = runCatching {
+            ObjectInputStream(ByteArrayInputStream(Base64.decode(blob, Base64.NO_WRAP))).use {
+                it.readObject() as? ShowResponse
+            }
+        }.getOrNull()
     }
 }

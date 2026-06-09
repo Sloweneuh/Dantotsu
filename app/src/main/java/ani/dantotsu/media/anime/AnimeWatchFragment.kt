@@ -51,6 +51,7 @@ import ani.dantotsu.notifications.subscription.SubscriptionHelper.Companion.save
 import ani.dantotsu.parsers.AnimeParser
 import ani.dantotsu.parsers.AnimeSources
 import ani.dantotsu.parsers.HAnimeSources
+import ani.dantotsu.parsers.ShowResponse
 import ani.dantotsu.setNavigationTheme
 import ani.dantotsu.settings.extensionprefs.AnimeSourcePreferencesFragment
 import ani.dantotsu.settings.saving.PrefManager
@@ -103,6 +104,8 @@ class AnimeWatchFragment : Fragment() {
     private var handoffNumber: String? = null
     private var handoffServer: String? = null
     private var handoffSourceName: String? = null
+    // The extension entry the sender matched, so the episode list loads without re-searching.
+    private var handoffSourceMedia: ShowResponse? = null
     private var handoffPending = false
 
     override fun onCreateView(
@@ -185,6 +188,8 @@ class AnimeWatchFragment : Fragment() {
             // Always pick up the source name from a handoff (even media-only).
             if (!i.getBooleanExtra(HandoffNavigator.EXTRA_IS_ANIME, false)) return@let
             handoffSourceName = i.getStringExtra(HandoffNavigator.EXTRA_SOURCE)
+            handoffSourceMedia = @Suppress("DEPRECATION")
+                (i.getSerializableExtra(HandoffNavigator.EXTRA_SOURCE_MEDIA) as? ShowResponse)
             if (i.getBooleanExtra(HandoffNavigator.EXTRA_AUTO_START, false)) {
                 handoffNumber = i.getStringExtra(HandoffNavigator.EXTRA_NUMBER)
                 handoffServer = i.getStringExtra(HandoffNavigator.EXTRA_SERVER)
@@ -240,6 +245,9 @@ class AnimeWatchFragment : Fragment() {
                             model.saveSelected(media.id, media.selected!!)
                         } else {
                             handoffPending = false
+                            // The matched entry belongs to the missing source; don't seed it
+                            // into whatever source we fall back to.
+                            handoffSourceMedia = null
                             activity?.let { HandoffLoadingOverlay.hide(it) }
                             snackString(
                                 getString(
@@ -252,6 +260,13 @@ class AnimeWatchFragment : Fragment() {
                         handoffSourceName = null
                     }
 
+                    val seededMedia = handoffSourceMedia
+                    handoffSourceMedia = null
+                    if (handoffPending) activity?.let { act ->
+                        HandoffLoadingOverlay.updateStatus(
+                            act, getString(R.string.handoff_loading_episodes)
+                        )
+                    }
                     lifecycleScope.launch(Dispatchers.IO) {
                         val offline =
                             !isOnline(binding.root.context) || PrefManager.getVal(PrefName.OfflineMode)
@@ -264,7 +279,13 @@ class AnimeWatchFragment : Fragment() {
 
                             awaitAll(kitsuEpisodes, anifyEpisodes, fillerEpisodes)
                         }
-                        model.loadEpisodes(media, media.selected!!.sourceIndex)
+                        // A handoff carries the exact source entry the sender matched: seed it so
+                        // the episode list loads directly instead of re-searching by title.
+                        if (seededMedia != null && !offline) {
+                            model.overrideEpisodes(media.selected!!.sourceIndex, seededMedia, media.id)
+                        } else {
+                            model.loadEpisodes(media, media.selected!!.sourceIndex)
+                        }
                     }
                     loaded = true
                 } else {
@@ -355,7 +376,12 @@ class AnimeWatchFragment : Fragment() {
                         handoffPending = false
                         binding.root.post {
                             // The server/loader dialog takes over the blocking from here.
-                            activity?.let { HandoffLoadingOverlay.hide(it) }
+                            activity?.let {
+                                HandoffLoadingOverlay.updateStatus(
+                                    it, getString(R.string.handoff_opening_player)
+                                )
+                                HandoffLoadingOverlay.hide(it)
+                            }
                             handoffServer?.let { media.selected!!.server = it }
                             handoffServer = null
                             onEpisodeClick(handoffNumber!!)

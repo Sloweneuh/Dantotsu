@@ -55,6 +55,7 @@ import ani.dantotsu.parsers.HMangaSources
 import ani.dantotsu.parsers.MangaParser
 import ani.dantotsu.parsers.MangaSources
 import ani.dantotsu.parsers.OfflineMangaParser
+import ani.dantotsu.parsers.ShowResponse
 import ani.dantotsu.setNavigationTheme
 import ani.dantotsu.settings.extensionprefs.MangaSourcePreferencesFragment
 import ani.dantotsu.settings.saving.PrefManager
@@ -103,6 +104,8 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
     // "Continue on another device" auto-launch: open this chapter once chapters load.
     private var handoffNumber: String? = null
     private var handoffSourceName: String? = null
+    // The extension entry the sender matched, so the chapter list loads without re-searching.
+    private var handoffSourceMedia: ShowResponse? = null
     private var handoffPending = false
 
     override fun onCreateView(
@@ -182,6 +185,8 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
             // Always pick up the source name from a handoff (even media-only).
             if (i.getBooleanExtra(HandoffNavigator.EXTRA_IS_ANIME, false)) return@let
             handoffSourceName = i.getStringExtra(HandoffNavigator.EXTRA_SOURCE)
+            handoffSourceMedia = @Suppress("DEPRECATION")
+                (i.getSerializableExtra(HandoffNavigator.EXTRA_SOURCE_MEDIA) as? ShowResponse)
             if (i.getBooleanExtra(HandoffNavigator.EXTRA_AUTO_START, false)) {
                 handoffNumber = i.getStringExtra(HandoffNavigator.EXTRA_NUMBER)
                 handoffPending = handoffNumber != null
@@ -239,6 +244,9 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
                                 model.saveSelected(media.id, media.selected!!)
                             } else {
                                 handoffPending = false
+                                // The matched entry belongs to the missing source; don't seed it
+                                // into whatever source we fall back to.
+                                handoffSourceMedia = null
                                 activity?.let { HandoffLoadingOverlay.hide(it) }
                                 snackString(
                                     getString(
@@ -251,12 +259,27 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
                             handoffSourceName = null
                         }
 
+                        val seededMedia = handoffSourceMedia
+                        handoffSourceMedia = null
+                        if (handoffPending) activity?.let { act ->
+                            HandoffLoadingOverlay.updateStatus(
+                                act, getString(R.string.handoff_loading_chapters)
+                            )
+                        }
                         lifecycleScope.launch(Dispatchers.IO) {
                             val offline =
                                 !isOnline(binding.root.context) || PrefManager.getVal(PrefName.OfflineMode)
                             if (offline) media.selected!!.sourceIndex =
                                 model.mangaReadSources!!.list.lastIndex
-                            model.loadMangaChapters(media, media.selected!!.sourceIndex)
+                            // A handoff carries the exact source entry the sender matched: seed it
+                            // so the chapter list loads directly instead of re-searching by title.
+                            if (seededMedia != null && !offline) {
+                                model.overrideMangaChapters(
+                                    media.selected!!.sourceIndex, seededMedia, media.id
+                                )
+                            } else {
+                                model.loadMangaChapters(media, media.selected!!.sourceIndex)
+                            }
                         }
                         loaded = true
                     } else {
@@ -372,7 +395,12 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
                         handoffPending = false
                         binding.root.post {
                             // The chapter loader's modal sheet takes over the blocking from here.
-                            activity?.let { HandoffLoadingOverlay.hide(it) }
+                            activity?.let {
+                                HandoffLoadingOverlay.updateStatus(
+                                    it, getString(R.string.handoff_opening_reader)
+                                )
+                                HandoffLoadingOverlay.hide(it)
+                            }
                             onMangaChapterClick(target, skipProgressDialog = true)
                         }
                     }

@@ -1,7 +1,11 @@
 package ani.dantotsu.connections.handoff.transport
 
-/** A discovered receiver. [id] is prefixed with the transport tag so a manager can route back. */
-data class HandoffEndpoint(val id: String, val name: String)
+/**
+ * A discovered receiver. [id] is prefixed with the transport tag so a manager can route back.
+ * [deviceId] is the sender's stable per-install id (see [HandoffDevice]); it's the dedup key when
+ * the same device is found over multiple transports, falling back to [name] when absent.
+ */
+data class HandoffEndpoint(val id: String, val name: String, val deviceId: String? = null)
 
 /** Callbacks shared by all handoff transports. All callbacks are delivered on the main thread. */
 interface TransportListener {

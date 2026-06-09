@@ -2,6 +2,9 @@ package ani.dantotsu.connections.handoff.transport
 
 import android.content.Context
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
+import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.nearby.Nearby
 import com.google.android.gms.nearby.connection.AdvertisingOptions
 import com.google.android.gms.nearby.connection.ConnectionInfo
@@ -22,8 +25,11 @@ class NearbyTransport(private val context: Context) : HandoffTransport {
     override val tag = TAG
 
     private val client by lazy { Nearby.getConnectionsClient(context) }
-    private val localName: String =
+    private val displayName: String =
         "${Build.MANUFACTURER} ${Build.MODEL}".trim().ifEmpty { "Dantotsu device" }
+    // What we advertise: our stable device id + display name, so the sender can dedupe across
+    // transports and still show a friendly name. Nearby's endpoint name has ample room for this.
+    private val localName: String = "${HandoffDevice.id}$NAME_SEP$displayName"
 
     private val endpoints = LinkedHashMap<String, HandoffEndpoint>()
     private var listener: TransportListener? = null
@@ -31,12 +37,37 @@ class NearbyTransport(private val context: Context) : HandoffTransport {
     private var pendingJson: String? = null
     private var stopped = false
 
+    private val main = Handler(Looper.getMainLooper())
+    private var retriedDiscovery = false
+    private var retriedAdvertising = false
+
     override fun startSending(listener: TransportListener) {
         this.listener = listener
         sending = true
+        retriedDiscovery = false
+        startDiscoveryInternal()
+    }
+
+    private fun startDiscoveryInternal() {
+        if (stopped) return
         val options = DiscoveryOptions.Builder().setStrategy(STRATEGY).build()
         client.startDiscovery(SERVICE_ID, discoveryCallback, options)
-            .addOnFailureListener { listener.onError(it.localizedMessage ?: "Nearby discovery failed") }
+            .addOnFailureListener { e ->
+                // A leftover discovery session (e.g. from a previous transport instance GMS still
+                // holds) makes this fail with ALREADY_DISCOVERING and would silently leave us not
+                // scanning. Clear it and retry once so this instance owns the live session.
+                if ((e as? ApiException)?.statusCode ==
+                    ConnectionsStatusCodes.STATUS_ALREADY_DISCOVERING
+                ) {
+                    if (!retriedDiscovery) {
+                        retriedDiscovery = true
+                        runCatching { client.stopDiscovery() }
+                        main.postDelayed({ startDiscoveryInternal() }, RETRY_DELAY_MS)
+                    }
+                } else {
+                    listener?.onError(e.localizedMessage ?: "Nearby discovery failed")
+                }
+            }
     }
 
     override fun connectAndSend(endpointId: String, json: String) {
@@ -48,14 +79,38 @@ class NearbyTransport(private val context: Context) : HandoffTransport {
     override fun startReceiving(listener: TransportListener) {
         this.listener = listener
         sending = false
+        retriedAdvertising = false
+        startAdvertisingInternal()
+    }
+
+    private fun startAdvertisingInternal() {
+        if (stopped) return
         val options = AdvertisingOptions.Builder().setStrategy(STRATEGY).build()
         client.startAdvertising(localName, SERVICE_ID, connectionCallback, options)
-            .addOnFailureListener { listener.onError(it.localizedMessage ?: "Nearby advertising failed") }
+            .addOnFailureListener { e ->
+                // ALREADY_ADVERTISING means a stale session is still registered in GMS (often from
+                // an activity transition that recreated this transport). That old session is wired
+                // to a dead callback, so we'd look discoverable but silently drop connections.
+                // Clear it and retry once so incoming connections reach this instance.
+                if ((e as? ApiException)?.statusCode ==
+                    ConnectionsStatusCodes.STATUS_ALREADY_ADVERTISING
+                ) {
+                    if (!retriedAdvertising) {
+                        retriedAdvertising = true
+                        runCatching { client.stopAdvertising() }
+                        runCatching { client.stopAllEndpoints() }
+                        main.postDelayed({ startAdvertisingInternal() }, RETRY_DELAY_MS)
+                    }
+                } else {
+                    listener?.onError(e.localizedMessage ?: "Nearby advertising failed")
+                }
+            }
     }
 
     override fun stop() {
         stopped = true
         listener = null
+        main.removeCallbacksAndMessages(null)
         runCatching { client.stopDiscovery() }
         runCatching { client.stopAdvertising() }
         runCatching { client.stopAllEndpoints() }
@@ -64,7 +119,12 @@ class NearbyTransport(private val context: Context) : HandoffTransport {
 
     private val discoveryCallback = object : EndpointDiscoveryCallback() {
         override fun onEndpointFound(endpointId: String, info: DiscoveredEndpointInfo) {
-            endpoints["$TAG:$endpointId"] = HandoffEndpoint("$TAG:$endpointId", info.endpointName)
+            // Advertised name is "deviceIddisplayName"; split it back out (tolerating an
+            // un-stamped name from an older/other build).
+            val parts = info.endpointName.split(NAME_SEP, limit = 2)
+            val deviceId = if (parts.size == 2) parts[0] else null
+            val name = if (parts.size == 2) parts[1] else info.endpointName
+            endpoints["$TAG:$endpointId"] = HandoffEndpoint("$TAG:$endpointId", name, deviceId)
             listener?.onEndpointsChanged(TAG, endpoints.values.toList())
         }
 
@@ -111,6 +171,10 @@ class NearbyTransport(private val context: Context) : HandoffTransport {
     companion object {
         const val TAG = "nearby"
         private const val SERVICE_ID = "ani.dantotsu.handoff"
+        // Unit Separator: delimits the device id from the display name in the advertised name;
+        // it won't occur in a real device name.
+        private const val NAME_SEP = '\u001f'
+        private const val RETRY_DELAY_MS = 600L
         private val STRATEGY = Strategy.P2P_POINT_TO_POINT
 
         /** Permissions Nearby Connections needs at runtime, by platform version. */

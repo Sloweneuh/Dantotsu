@@ -93,6 +93,7 @@ import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
 import eu.kanade.tachiyomi.extension.manga.MangaExtensionManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.io.FileInputStream
@@ -507,21 +508,32 @@ class MangaReaderActivity : AppCompatActivity() {
         // re-fetched on another device — hide the handoff button entirely for it.
         binding.mangaReaderHandoff.isVisible = media.id >= 0
         binding.mangaReaderHandoff.setSafeOnClickListener {
-            HandoffBottomSheet.send(
-                HandoffPayload(
-                    mediaId = media.id,
-                    isMAL = false,
-                    isAnime = false,
-                    mediaType = "MANGA",
-                    title = media.userPreferredName,
-                    cover = media.cover,
-                    sourceName = model.mangaReadSources?.names?.getOrNull(media.selected!!.sourceIndex),
-                    number = chapter.number,
-                    page = currentChapterPage,
-                    trackProgress = PrefManager.getCustomVal("${media.id}_save_progress", true),
-                    muSeriesId = media.muSeriesId,
-                )
-            ).show(supportFragmentManager, "handoff")
+            scope.launch {
+                // The matched extension entry rides along so the receiver loads the chapter list
+                // directly instead of re-searching the source by title (which can come back empty).
+                val sourceMedia = withContext(Dispatchers.IO) {
+                    runCatching {
+                        model.mangaReadSources?.get(media.selected!!.sourceIndex)
+                            ?.loadSavedShowResponse(media.id)
+                    }.getOrNull()
+                }
+                HandoffBottomSheet.send(
+                    HandoffPayload(
+                        mediaId = media.id,
+                        isMAL = false,
+                        isAnime = false,
+                        mediaType = "MANGA",
+                        title = media.userPreferredName,
+                        cover = media.cover,
+                        sourceName = model.mangaReadSources?.names?.getOrNull(media.selected!!.sourceIndex),
+                        number = chapter.number,
+                        page = currentChapterPage,
+                        trackProgress = PrefManager.getCustomVal("${media.id}_save_progress", true),
+                        muSeriesId = media.muSeriesId,
+                        sourceMedia = HandoffPayload.encodeShowResponse(sourceMedia),
+                    )
+                ).show(supportFragmentManager, "handoff")
+            }
         }
 
         binding.mangaReaderAutoscroll.setOnClickListener {

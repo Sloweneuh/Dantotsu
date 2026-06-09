@@ -31,6 +31,10 @@ object HandoffNavigator {
     const val EXTRA_SOURCE = "handoffSourceName"
     const val EXTRA_IS_ANIME = "handoffIsAnime"
     const val EXTRA_SERVER = "handoffServer"
+    const val EXTRA_SOURCE_MEDIA = "handoffSourceMedia"
+    const val EXTRA_TITLE = "handoffTitle"
+    const val EXTRA_COVER = "handoffCover"
+    const val EXTRA_SENDER = "handoffSender"
 
     /** Must be called from a coroutine; an AniList handoff performs a network fetch. */
     suspend fun navigate(context: Context, payload: HandoffPayload) {
@@ -101,7 +105,15 @@ object HandoffNavigator {
         // Always forward the source name so the receiver can select the same extension,
         // even for media-only handoffs that don't auto-start a chapter/episode.
         payload.sourceName?.let { putExtra(EXTRA_SOURCE, it) }
+        // Forward the sender's matched extension entry so the read/watch fragment can seed it and
+        // load the chapter/episode list directly, rather than re-searching the source by title.
+        payload.decodedSourceMedia?.let { putExtra(EXTRA_SOURCE_MEDIA, it as Serializable) }
         putExtra(EXTRA_IS_ANIME, payload.isAnime)
+        // Display info for the receiving device's loading overlay, so the user can see what's
+        // being opened instead of a blank spinner.
+        payload.title?.let { putExtra(EXTRA_TITLE, it) }
+        payload.cover?.let { putExtra(EXTRA_COVER, it) }
+        putExtra(EXTRA_SENDER, payload.senderName)
         if (payload.hasProgress) {
             putExtra(EXTRA_AUTO_START, true)
             putExtra(EXTRA_NUMBER, payload.number)

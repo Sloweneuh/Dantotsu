@@ -36,6 +36,14 @@ class LanTransport(context: Context) : HandoffTransport {
     private var discoveryListener: NsdManager.DiscoveryListener? = null
     private var stopped = false
 
+    // NSD allows only one resolveService() in flight at a time; firing several concurrently fails
+    // with "listener already in use", so those services are silently never resolved (and never
+    // reported). Serialize resolves through this queue.
+    private val resolveLock = Any()
+    private val resolveQueue = ArrayDeque<NsdServiceInfo>()
+    private var resolving = false
+    private var registrationRetried = false
+
     override fun startSending(listener: TransportListener) {
         this.listener = listener
         startDiscovery()
@@ -94,10 +102,26 @@ class LanTransport(context: Context) : HandoffTransport {
             serviceName = localName
             serviceType = SERVICE_TYPE
             setPort(port)
+            // Stamp our stable device id (mDNS TXT record) so the sender can dedupe this receiver
+            // against the same device found over Nearby.
+            setAttribute(ATTR_DEVICE_ID, HandoffDevice.id)
         }
         registrationListener = object : NsdManager.RegistrationListener {
-            override fun onServiceRegistered(info: NsdServiceInfo) {}
-            override fun onRegistrationFailed(info: NsdServiceInfo, errorCode: Int) {}
+            override fun onServiceRegistered(info: NsdServiceInfo) {
+                Logger.log("Handoff/LAN: registered as ${info.serviceName}")
+            }
+
+            override fun onRegistrationFailed(info: NsdServiceInfo, errorCode: Int) {
+                Logger.log("Handoff/LAN: registration failed (code $errorCode)")
+                // A stale registration from a previous instance the OS still holds fails with
+                // ALREADY_ACTIVE; clear it and re-register once so the device is advertised.
+                if (!stopped && !registrationRetried) {
+                    registrationRetried = true
+                    runCatching { nsd.unregisterService(this) }
+                    main.postDelayed({ if (!stopped) registerService(port) }, REREGISTER_DELAY_MS)
+                }
+            }
+
             override fun onServiceUnregistered(info: NsdServiceInfo) {}
             override fun onUnregistrationFailed(info: NsdServiceInfo, errorCode: Int) {}
         }
@@ -117,7 +141,7 @@ class LanTransport(context: Context) : HandoffTransport {
             override fun onServiceFound(service: NsdServiceInfo) {
                 // Ignore our own advertisement.
                 if (service.serviceName == localName) return
-                resolve(service)
+                enqueueResolve(service)
             }
 
             override fun onServiceLost(service: NsdServiceInfo) {
@@ -130,27 +154,50 @@ class LanTransport(context: Context) : HandoffTransport {
         runCatching { nsd.discoverServices(SERVICE_TYPE, NsdManager.PROTOCOL_DNS_SD, discoveryListener) }
     }
 
-    private fun resolve(service: NsdServiceInfo) {
+    private fun enqueueResolve(service: NsdServiceInfo) {
+        val startNow: Boolean
+        synchronized(resolveLock) {
+            resolveQueue.addLast(service)
+            startNow = !resolving
+            if (startNow) resolving = true
+        }
+        if (startNow) resolveNext()
+    }
+
+    private fun resolveNext() {
+        val service = synchronized(resolveLock) {
+            resolveQueue.removeFirstOrNull().also { if (it == null) resolving = false }
+        } ?: return
+
         val resolveListener = object : NsdManager.ResolveListener {
             override fun onServiceResolved(info: NsdServiceInfo) {
-                val host: InetAddress = info.host ?: return
-                val id = "$TAG:${info.serviceName}"
-                resolved[id] = host.hostAddress.orEmpty() to info.port
-                Logger.log("Handoff/LAN: resolved ${info.serviceName} -> ${host.hostAddress}:${info.port}")
-                endpoints[id] = HandoffEndpoint(id, info.serviceName)
-                main.post { listener?.onEndpointsChanged(TAG, endpoints.values.toList()) }
+                val host: InetAddress? = info.host
+                val deviceId = info.attributes?.get(ATTR_DEVICE_ID)?.let { String(it) }
+                // A renamed copy of our own service (NSD appends a suffix on name clashes) resolves
+                // back to our id — skip it.
+                if (host != null && deviceId != HandoffDevice.id) {
+                    val id = "$TAG:${info.serviceName}"
+                    resolved[id] = host.hostAddress.orEmpty() to info.port
+                    Logger.log("Handoff/LAN: resolved ${info.serviceName} -> ${host.hostAddress}:${info.port}")
+                    endpoints[id] = HandoffEndpoint(id, info.serviceName, deviceId)
+                    main.post { listener?.onEndpointsChanged(TAG, endpoints.values.toList()) }
+                }
+                resolveNext()
             }
 
             override fun onResolveFailed(info: NsdServiceInfo, errorCode: Int) {
                 Logger.log("Handoff/LAN: resolve failed for ${info.serviceName} (code $errorCode)")
+                resolveNext()
             }
         }
         runCatching { nsd.resolveService(service, resolveListener) }
+            .onFailure { resolveNext() }
     }
 
     override fun stop() {
         stopped = true
         listener = null
+        main.removeCallbacksAndMessages(null)
         registrationListener?.let { runCatching { nsd.unregisterService(it) } }
         discoveryListener?.let { runCatching { nsd.stopServiceDiscovery(it) } }
         runCatching { serverSocket?.close() }
@@ -159,11 +206,17 @@ class LanTransport(context: Context) : HandoffTransport {
         serverSocket = null
         endpoints.clear()
         resolved.clear()
+        synchronized(resolveLock) {
+            resolveQueue.clear()
+            resolving = false
+        }
     }
 
     companion object {
         const val TAG = "lan"
         private const val SERVICE_TYPE = "_dantotsuho._tcp."
+        private const val ATTR_DEVICE_ID = "id"
         private const val CONNECT_TIMEOUT_MS = 8000
+        private const val REREGISTER_DELAY_MS = 600L
     }
 }

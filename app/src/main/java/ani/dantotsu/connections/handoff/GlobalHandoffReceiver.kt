@@ -1,22 +1,18 @@
 package ani.dantotsu.connections.handoff
 
-import android.app.Activity
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
-import android.view.LayoutInflater
+import android.os.Handler
+import android.os.Looper
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
-import androidx.core.view.isVisible
 import ani.dantotsu.App
 import ani.dantotsu.R
 import ani.dantotsu.connections.handoff.transport.NearbyTransport
-import ani.dantotsu.databinding.DialogHandoffIncomingBinding
-import ani.dantotsu.loadImage
-import ani.dantotsu.util.customAlertDialog
 import eu.kanade.tachiyomi.data.notification.Notifications
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -40,7 +36,17 @@ object GlobalHandoffReceiver {
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var notificationId = 7100
 
+    private val main = Handler(Looper.getMainLooper())
+    private var pendingStop: Runnable? = null
+    // How long to stay up after the last activity stops. Activity transitions (navigation,
+    // rotation, screen off/on) fire stop→start back-to-back; tearing the transports down and
+    // recreating them churns the Nearby/NSD sessions and can leave the device undiscoverable
+    // until the process is killed. Riding out a brief gap avoids that.
+    private const val STOP_DEBOUNCE_MS = 2_000L
+
     fun start(context: Context) {
+        // A start cancels a pending debounced stop from a transient transition.
+        pendingStop?.let { main.removeCallbacks(it); pendingStop = null }
         if (manager != null) return
         appContext = context.applicationContext
         manager = HandoffManager(appContext!!).also {
@@ -52,58 +58,22 @@ object GlobalHandoffReceiver {
     }
 
     fun stop() {
-        manager?.stop()
-        manager = null
+        pendingStop?.let { main.removeCallbacks(it) }
+        pendingStop = Runnable {
+            pendingStop = null
+            manager?.stop()
+            manager = null
+        }.also { main.postDelayed(it, STOP_DEBOUNCE_MS) }
     }
 
     private fun onHandoff(payload: HandoffPayload) {
         val activity = App.currentActivity()
-        if (activity != null && !activity.isFinishing) showDialog(activity, payload)
-        else appContext?.let { notify(it, payload) }
-    }
-
-    private fun showDialog(activity: Activity, payload: HandoffPayload) {
-        val view = DialogHandoffIncomingBinding.inflate(LayoutInflater.from(activity)).apply {
-            handoffIncomingFrom.text =
-                activity.getString(R.string.handoff_incoming_from, payload.senderName)
-            handoffIncomingTitle.text = payload.title
-            handoffIncomingCover.loadImage(payload.cover)
-            val info = progressLine(activity, payload)
-            handoffIncomingInfo.isVisible = info != null
-            handoffIncomingInfo.text = info
-        }
-        activity.customAlertDialog().apply {
-            setTitle(activity.getString(R.string.handoff_incoming_title))
-            setCustomView(view.root)
-            setPosButton(R.string.handoff_open) {
-                scope.launch {
-                    HandoffNavigator.navigate(activity.applicationContext, payload)
-                }
+        if (activity != null && !activity.isFinishing) {
+            // Self-dismissing banner on the current screen (doesn't block the rest of the UI).
+            HandoffIncomingBanner.show(activity, payload) {
+                scope.launch { HandoffNavigator.navigate(activity.applicationContext, payload) }
             }
-            setNegButton(R.string.cancel) {}
-            show()
-        }
-    }
-
-    /** "Episode 5 • 12:34" / "Chapter 12 • Page 8", or null for a media-only handoff. */
-    private fun progressLine(context: Context, payload: HandoffPayload): String? {
-        val number = payload.number?.takeIf { payload.hasProgress } ?: return null
-        return if (payload.isAnime) {
-            val ep = context.getString(R.string.handoff_episode_label, number)
-            payload.positionMs?.takeIf { it > 0 }?.let { "$ep • ${formatTime(it)}" } ?: ep
-        } else {
-            val ch = context.getString(R.string.handoff_chapter_label, number)
-            payload.page?.takeIf { it > 0 }
-                ?.let { "$ch • ${context.getString(R.string.handoff_page_label, it.toString())}" } ?: ch
-        }
-    }
-
-    private fun formatTime(ms: Long): String {
-        val totalSec = ms / 1000
-        val h = totalSec / 3600
-        val m = (totalSec % 3600) / 60
-        val s = totalSec % 60
-        return if (h > 0) String.format("%d:%02d:%02d", h, m, s) else String.format("%d:%02d", m, s)
+        } else appContext?.let { notify(it, payload) }
     }
 
     private fun notify(context: Context, payload: HandoffPayload) {

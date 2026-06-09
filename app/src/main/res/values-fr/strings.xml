@@ -1716,10 +1716,13 @@
     <string name="handoff_source_missing">Ouvrez « %1$s » avec %2$s sur cet appareil pour continuer — cette source n\'est pas installée.</string>
     <string name="handoff_incoming_title">Continuer sur cet appareil</string>
     <string name="handoff_incoming_text">%1$s — appuyez pour ouvrir</string>
-    <string name="handoff_incoming_dialog">Un autre appareil a envoyé « %1$s ». L\'ouvrir ici ?</string>
     <string name="handoff_incoming_from">Depuis %1$s</string>
     <string name="handoff_open">Ouvrir</string>
-    <string name="handoff_episode_label">Épisode %1$s</string>
-    <string name="handoff_chapter_label">Chapitre %1$s</string>
     <string name="handoff_page_label">Page %1$s</string>
+    <string name="handoff_loading_status">Chargement…</string>
+    <string name="handoff_loading_from">Reprise depuis %1$s</string>
+    <string name="handoff_loading_chapters">Chargement de la liste des chapitres…</string>
+    <string name="handoff_loading_episodes">Chargement de la liste des épisodes…</string>
+    <string name="handoff_opening_reader">Ouverture du lecteur…</string>
+    <string name="handoff_opening_player">Ouverture du lecteur vidéo…</string>
 </resources>

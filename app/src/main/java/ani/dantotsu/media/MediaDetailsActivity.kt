@@ -115,9 +115,17 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
 
         binding = ActivityMediaBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        // Block interaction while a received handoff resolves and auto-opens.
+        // Block interaction while a received handoff resolves and auto-opens, showing what's
+        // being opened so the user can see it's progressing rather than a blank spinner.
         if (intent.getBooleanExtra(HandoffNavigator.EXTRA_AUTO_START, false)) {
-            HandoffLoadingOverlay.show(this)
+            HandoffLoadingOverlay.show(
+                this,
+                title = intent.getStringExtra(HandoffNavigator.EXTRA_TITLE),
+                cover = intent.getStringExtra(HandoffNavigator.EXTRA_COVER),
+                subtitle = handoffSubtitle(),
+                status = intent.getStringExtra(HandoffNavigator.EXTRA_SENDER)
+                    ?.let { getString(R.string.handoff_loading_from, it) },
+            )
         }
         screenWidth = resources.displayMetrics.widthPixels.toFloat()
         navBar = binding.mediaBottomBar
@@ -368,9 +376,21 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
         // media (id < 0) that can't be re-fetched elsewhere.
         binding.mediaHandoff.isVisible = media.id >= 0
         binding.mediaHandoff.setOnClickListener {
-            HandoffBottomSheet.send(
-                HandoffPayload.mediaOnly(media, model.loadSelectedSourceName(media.id))
-            ).show(supportFragmentManager, "handoff")
+            lifecycleScope.launch {
+                // Attach the matched extension entry (if the source tab has loaded one) so the
+                // receiver loads the chapter/episode list directly instead of re-searching.
+                val sourceMedia = withContext(Dispatchers.IO) {
+                    runCatching {
+                        val sources = if (media.anime != null) model.watchSources
+                        else model.mangaReadSources
+                        sources?.get(media.selected?.sourceIndex ?: 0)
+                            ?.loadSavedShowResponse(media.id)
+                    }.getOrNull()
+                }
+                HandoffBottomSheet.send(
+                    HandoffPayload.mediaOnly(media, model.loadSelectedSourceName(media.id), sourceMedia)
+                ).show(supportFragmentManager, "handoff")
+            }
         }
 
         // Extension function to convert dp to px
@@ -1146,6 +1166,13 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
         // The reader/player launched on top (or the user left): drop the handoff block.
         HandoffLoadingOverlay.hide(this)
     }
+
+    /**
+     * The chapter/episode line for the handoff loading overlay, if a number was sent. Shown
+     * verbatim — the source already labels it (e.g. "Vol. 4 Ch. 20"), so we don't prefix our own.
+     */
+    private fun handoffSubtitle(): String? =
+        intent.getStringExtra(HandoffNavigator.EXTRA_NUMBER)
 
     override fun onResume() {
         super.onResume()
