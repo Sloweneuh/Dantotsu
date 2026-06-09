@@ -41,6 +41,7 @@ class ComickListFilter {
     var excludedGenres = mutableListOf<String>()
     var fromYear: Int? = null
     var toYear: Int? = null
+    var minChapters: Int? = null
 
     fun isDefault(): Boolean =
         sort == "created_at" &&
@@ -52,7 +53,8 @@ class ComickListFilter {
             selectedGenres.isEmpty() &&
             excludedGenres.isEmpty() &&
             fromYear == null &&
-            toYear == null
+            toYear == null &&
+            minChapters == null
 
     fun activeChips(): List<String> {
         val out = mutableListOf<String>()
@@ -80,6 +82,7 @@ class ComickListFilter {
             null -> Unit
         }
         if (fromYear != null || toYear != null) out += "Year: ${fromYear ?: "?"}-${toYear ?: "?"}"
+        minChapters?.let { out += "Min chapters: $it" }
         selectedGenres.forEach { out += ComickApi.resolveGenreName(it) ?: it }
         excludedGenres.forEach { out += "−${ComickApi.resolveGenreName(it) ?: it}" }
         return out
@@ -236,6 +239,10 @@ class ComickListActivity : AppCompatActivity() {
             }
         }
 
+        filterState.minChapters?.let { min ->
+            result = result.filter { (it.last_chapter ?: 0.0) >= min }
+        }
+
         if (filterState.selectedGenres.isNotEmpty()) {
             val includedIds = filterState.selectedGenres
                 .mapNotNull { ComickApi.resolveGenreId(it) }.toSet()
@@ -319,6 +326,8 @@ class ComickListActivity : AppCompatActivity() {
         if (label == "Not completed") { filterState.translationCompleted = null; applyFilterAndDisplay(); return }
         // Year range
         if (label.startsWith("Year: ")) { filterState.fromYear = null; filterState.toYear = null; applyFilterAndDisplay(); return }
+        // Minimum chapters
+        if (label.startsWith("Min chapters: ")) { filterState.minChapters = null; applyFilterAndDisplay(); return }
         // Genres (excluded start with −)
         if (label.startsWith("−")) {
             val name = label.removePrefix("−")

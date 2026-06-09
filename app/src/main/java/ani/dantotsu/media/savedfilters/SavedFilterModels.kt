@@ -265,6 +265,7 @@ data class SavedComickListFilter(
     val excludedGenres: List<String>? = null,
     val fromYear: Int? = null,
     val toYear: Int? = null,
+    val minChapters: Int? = null,
 ) : Serializable {
     companion object {
         private const val serialVersionUID: Long = 1L
@@ -295,6 +296,7 @@ data class SavedComickListFilter(
         if (fromYear != null || toYear != null) {
             out += "Year: ${fromYear ?: "?"}-${toYear ?: "?"}"
         }
+        minChapters?.let { out += "Min chapters: $it" }
         genres?.forEach { out += it }
         excludedGenres?.forEach { out += "−$it" }
         return out

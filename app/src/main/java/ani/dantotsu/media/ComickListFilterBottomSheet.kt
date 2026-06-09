@@ -51,6 +51,7 @@ class ComickListFilterBottomSheet : BottomSheetDialogFragment() {
     private var excludedGenres = mutableListOf<String>()
     private var selectedFromYear: Int? = null
     private var selectedToYear: Int? = null
+    private var selectedMinChapters: Int? = null
 
     private var allGenres: List<ComickApi.FilterOption> = emptyList()
 
@@ -78,6 +79,7 @@ class ComickListFilterBottomSheet : BottomSheetDialogFragment() {
         excludedGenres = state.excludedGenres.toMutableList()
         selectedFromYear = state.fromYear
         selectedToYear = state.toYear
+        selectedMinChapters = state.minChapters
 
         setupFilters()
         loadGenres()
@@ -205,6 +207,8 @@ class ComickListFilterBottomSheet : BottomSheetDialogFragment() {
             val v = slider.values
             updateYearLabel(v[0].toInt(), v[1].toInt())
         }
+
+        binding.comickListFilterMinChapters.setText(selectedMinChapters?.toString().orEmpty())
     }
 
     private fun setupSortButton(options: List<DropdownOption<*>>) {
@@ -311,6 +315,9 @@ class ComickListFilterBottomSheet : BottomSheetDialogFragment() {
         binding.comickListFilterYearRangeValue.text = getString(R.string.comick_year_range, from.toString(), to.toString())
     }
 
+    private fun readMinChapters(): Int? =
+        binding.comickListFilterMinChapters.text?.toString()?.trim()?.toIntOrNull()?.takeIf { it > 0 }
+
     private fun applyFilters() {
         val state = activity.filterState
         state.sort = selectedSort
@@ -327,6 +334,8 @@ class ComickListFilterBottomSheet : BottomSheetDialogFragment() {
         state.fromYear = if (isDefault) null else values[0].toInt()
         state.toYear = if (isDefault) null else values[1].toInt()
 
+        state.minChapters = readMinChapters()
+
         activity.applyFilterAndDisplay()
     }
 
@@ -341,11 +350,13 @@ class ComickListFilterBottomSheet : BottomSheetDialogFragment() {
         excludedGenres.clear()
         selectedFromYear = null
         selectedToYear = null
+        selectedMinChapters = null
 
         binding.comickListFilterGenreSearchText.setText("")
         updateGenreResults(allGenres)
         binding.comickListFilterYearRange.values = listOf(yearRangeMin.toFloat(), yearRangeMax.toFloat())
         updateYearLabel(yearRangeMin, yearRangeMax)
+        binding.comickListFilterMinChapters.setText("")
 
         setupFilters()
     }
@@ -386,6 +397,7 @@ class ComickListFilterBottomSheet : BottomSheetDialogFragment() {
             excludedGenres = excludedGenres.toList().ifEmpty { null },
             fromYear = if (isDefault) null else values[0].toInt(),
             toYear = if (isDefault) null else values[1].toInt(),
+            minChapters = readMinChapters(),
         )
     }
 
@@ -400,6 +412,8 @@ class ComickListFilterBottomSheet : BottomSheetDialogFragment() {
         excludedGenres = preset.excludedGenres?.toMutableList() ?: mutableListOf()
         selectedFromYear = preset.fromYear
         selectedToYear = preset.toYear
+        selectedMinChapters = preset.minChapters
+        binding.comickListFilterMinChapters.setText(preset.minChapters?.toString().orEmpty())
     }
 
     override fun onDestroyView() {
