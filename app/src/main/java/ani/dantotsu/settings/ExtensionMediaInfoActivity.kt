@@ -622,6 +622,9 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
                         val mc = sChapterToMediaMangaChapter(sch)
                         chaptersMap[mc.uniqueNumber()] = if (sch.url == sChapter.url) selectedChapter else mc
                     }
+                    // A duplicate with the same uniqueNumber could have overwritten selectedChapter
+                    // in the loop above; re-insert it so the reader always resolves the right chapter.
+                    chaptersMap[selectedChapter.uniqueNumber()] = selectedChapter
 
                     val title = manga?.title ?: ""
                     val coverUrl = manga?.thumbnail_url
