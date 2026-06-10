@@ -25,6 +25,7 @@ class UserInterfaceSettingsActivity : AppCompatActivity() {
         ThemeManager(this).applyTheme()
         binding = ActivityUserInterfaceSettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        SettingsRouter.handleHighlight(this)
 
         initActivity(this)
         binding.uiSettingsContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> {

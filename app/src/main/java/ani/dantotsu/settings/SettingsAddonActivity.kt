@@ -46,6 +46,7 @@ class SettingsAddonActivity : AppCompatActivity() {
         val context = this
         binding = ActivitySettingsAddonsBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        SettingsRouter.handleHighlight(this, binding.settingsRecyclerView)
 
         binding.apply {
             settingsAddonsLayout.updateLayoutParams<ViewGroup.MarginLayoutParams> {

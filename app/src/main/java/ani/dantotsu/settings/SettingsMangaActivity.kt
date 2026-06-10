@@ -32,6 +32,7 @@ class SettingsMangaActivity : AppCompatActivity() {
         val context = this
         binding = ActivitySettingsMangaBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        SettingsRouter.handleHighlight(this, binding.settingsRecyclerView)
         binding.apply {
             settingsMangaLayout.updateLayoutParams<ViewGroup.MarginLayoutParams> {
                 topMargin = statusBarHeight

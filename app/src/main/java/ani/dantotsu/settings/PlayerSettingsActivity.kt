@@ -61,6 +61,7 @@ class PlayerSettingsActivity :
         ThemeManager(this).applyTheme()
         binding = ActivityPlayerSettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        SettingsRouter.handleHighlight(this)
 
         initActivity(this)
 

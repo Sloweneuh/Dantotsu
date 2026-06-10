@@ -30,6 +30,7 @@ class SettingsConnectionsActivity : AppCompatActivity() {
 
         binding = ActivitySettingsConnectionsBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        SettingsRouter.handleHighlight(this, binding.connectionsRecyclerView)
 
         binding.settingsConnectionsLayout.updateLayoutParams<ViewGroup.MarginLayoutParams> {
             bottomMargin = navBarHeight

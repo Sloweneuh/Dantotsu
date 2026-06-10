@@ -9,10 +9,12 @@ import android.os.Build.VERSION.CODENAME
 import android.os.Build.VERSION.RELEASE
 import android.os.Build.VERSION.SDK_INT
 import android.os.Bundle
+import android.view.View
 import android.view.ViewGroup
 import androidx.activity.addCallback
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.updateLayoutParams
+import androidx.core.widget.addTextChangedListener
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import ani.dantotsu.BuildConfig
@@ -80,7 +82,7 @@ class SettingsActivity : AppCompatActivity() {
                 onBackPressedDispatcher.onBackPressed()
             }
 
-            binding.settingsRecyclerView.adapter = SettingsAdapter(
+            val sectionsAdapter = SettingsAdapter(
                 arrayListOf(
                     Settings(
                         type = 1,
@@ -175,9 +177,36 @@ class SettingsActivity : AppCompatActivity() {
                 )
             )
 
+            settingsRecyclerView.adapter = sectionsAdapter
             settingsRecyclerView.apply {
                 layoutManager = LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false)
                 setHasFixedSize(true)
+            }
+
+            settingsSearch.addTextChangedListener { text ->
+                val query = text?.toString().orEmpty()
+                val searching = query.isNotBlank()
+                if (!searching) {
+                    settingsRecyclerView.adapter = sectionsAdapter
+                    settingsSearchEmpty.visibility = View.GONE
+                    loginGithub.visibility = View.VISIBLE
+                    settingsVersion.visibility = View.VISIBLE
+                    return@addTextChangedListener
+                }
+                loginGithub.visibility = View.GONE
+                settingsVersion.visibility = View.GONE
+                val results = SettingsSearch.query(context, query).map { entry ->
+                    Settings(
+                        type = 1,
+                        name = getString(entry.titleRes),
+                        desc = getString(entry.sectionRes),
+                        icon = entry.icon,
+                        onClick = { SettingsRouter.open(context, entry) },
+                        isActivity = true
+                    )
+                }
+                settingsSearchEmpty.visibility = if (results.isEmpty()) View.VISIBLE else View.GONE
+                settingsRecyclerView.adapter = SettingsAdapter(ArrayList(results))
             }
 
             if (!BuildConfig.FLAVOR.contains("fdroid")) {

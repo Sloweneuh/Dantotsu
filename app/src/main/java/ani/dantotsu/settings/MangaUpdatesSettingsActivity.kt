@@ -24,6 +24,7 @@ class MangaUpdatesSettingsActivity : AppCompatActivity() {
 
         binding = ActivitySettingsMangaupdatesBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        SettingsRouter.handleHighlight(this, binding.mangaUpdatesRecyclerView)
 
         binding.settingsMangaUpdatesLayout.updateLayoutParams<ViewGroup.MarginLayoutParams> {
             bottomMargin = navBarHeight

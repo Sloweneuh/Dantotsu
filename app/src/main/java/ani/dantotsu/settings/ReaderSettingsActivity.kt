@@ -24,6 +24,7 @@ class ReaderSettingsActivity : AppCompatActivity() {
         ThemeManager(this).applyTheme()
         binding = ActivityReaderSettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        SettingsRouter.handleHighlight(this)
 
         initActivity(this)
         binding.readerSettingsContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> {

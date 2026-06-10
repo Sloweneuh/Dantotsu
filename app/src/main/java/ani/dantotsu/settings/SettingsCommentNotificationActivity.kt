@@ -27,6 +27,7 @@ class SettingsCommentNotificationActivity : AppCompatActivity() {
         val context = this
         binding = ActivitySettingsCommentNotificationsBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        SettingsRouter.handleHighlight(this, binding.settingsRecyclerView)
         binding.apply {
             settingsCommentNotificationsLayout.updateLayoutParams<ViewGroup.MarginLayoutParams> {
                 topMargin = statusBarHeight

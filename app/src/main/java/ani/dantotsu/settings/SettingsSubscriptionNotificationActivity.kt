@@ -31,6 +31,7 @@ class SettingsSubscriptionNotificationActivity : AppCompatActivity() {
         val context = this
         binding = ActivitySettingsSubscriptionNotificationsBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        SettingsRouter.handleHighlight(this, binding.settingsRecyclerView)
         binding.apply {
             settingsSubscriptionNotificationsLayout.updateLayoutParams<ViewGroup.MarginLayoutParams> {
                 topMargin = statusBarHeight

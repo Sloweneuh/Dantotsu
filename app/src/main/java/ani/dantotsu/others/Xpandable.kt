@@ -72,6 +72,18 @@ class Xpandable @JvmOverloads constructor(
         }, 300)
     }
 
+    /**
+     * Immediately expands the section (no animation, no-op if already expanded). Used by the
+     * settings search to reveal a control before scrolling to and highlighting it.
+     */
+    fun expand() {
+        if (expanded) return
+        expanded = true
+        children.forEach {
+            if (it != getChildAt(0)) it.visibility = VISIBLE
+        }
+    }
+
     @Suppress("unused")
     fun addOnChangeListener(listener: OnChangeListener) {
         listeners.add(listener)

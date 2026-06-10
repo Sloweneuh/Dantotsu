@@ -25,6 +25,8 @@
 
     <string name="search">Rechercher</string>
     <string name="search_results">Résultats de recherche</string>
+    <string name="search_settings">Rechercher dans les paramètres</string>
+    <string name="settings_search_no_results">Aucun paramètre correspondant</string>
     <string name="sort_by">Trier par</string>
     <string name="genre">Genre</string>
     <string name="top_score">Meilleur score</string>

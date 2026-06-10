@@ -26,6 +26,7 @@ class SettingsMuNotificationActivity : AppCompatActivity() {
         initActivity(this)
         binding = ActivitySettingsMuNotificationsBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        SettingsRouter.handleHighlight(this, binding.settingsRecyclerView)
         binding.settingsMuNotificationsLayout.updateLayoutParams<ViewGroup.MarginLayoutParams> {
             topMargin = statusBarHeight
             bottomMargin = navBarHeight

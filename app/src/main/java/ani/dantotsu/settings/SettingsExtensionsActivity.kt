@@ -40,6 +40,7 @@ class SettingsExtensionsActivity : AppCompatActivity() {
         val context = this
         binding = ActivitySettingsExtensionsBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        SettingsRouter.handleHighlight(this, binding.settingsRecyclerView)
         binding.apply {
             settingsExtensionsLayout.updateLayoutParams<ViewGroup.MarginLayoutParams> {
                 topMargin = statusBarHeight

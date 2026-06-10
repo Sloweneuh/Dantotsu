@@ -73,6 +73,7 @@ class SettingsCommonActivity : AppCompatActivity() {
         val context = this
         binding = ActivitySettingsCommonBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        SettingsRouter.handleHighlight(this, binding.settingsRecyclerView)
         val openDocumentLauncher =
             registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
                 if (uri != null) {

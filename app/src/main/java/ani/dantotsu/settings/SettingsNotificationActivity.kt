@@ -30,6 +30,7 @@ class SettingsNotificationActivity : AppCompatActivity() {
         val context = this
         binding = ActivitySettingsNotificationsBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        SettingsRouter.handleHighlight(this, binding.settingsRecyclerView)
         binding.apply {
             settingsNotificationsLayout.updateLayoutParams<ViewGroup.MarginLayoutParams> {
                 topMargin = statusBarHeight

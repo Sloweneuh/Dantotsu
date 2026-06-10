@@ -41,6 +41,7 @@ class SettingsAboutActivity : AppCompatActivity() {
 
         binding = ActivitySettingsAboutBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        SettingsRouter.handleHighlight(this, binding.settingsRecyclerView)
 
         binding.apply {
             settingsAboutLayout.updateLayoutParams<ViewGroup.MarginLayoutParams> {

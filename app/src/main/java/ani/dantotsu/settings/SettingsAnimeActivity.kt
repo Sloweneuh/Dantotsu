@@ -32,6 +32,7 @@ class SettingsAnimeActivity : AppCompatActivity() {
         val context = this
         binding = ActivitySettingsAnimeBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        SettingsRouter.handleHighlight(this, binding.settingsRecyclerView)
         binding.apply {
 
             settingsAnimeLayout.updateLayoutParams<ViewGroup.MarginLayoutParams> {

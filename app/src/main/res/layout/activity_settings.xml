@@ -76,6 +76,49 @@
             android:orientation="vertical"
             tools:ignore="ContentDescription">
 
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/settingsSearchLayout"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="8dp"
+                app:boxBackgroundColor="@color/bg"
+                app:boxBackgroundMode="outline"
+                app:boxCornerRadiusBottomEnd="28dp"
+                app:boxCornerRadiusBottomStart="28dp"
+                app:boxCornerRadiusTopEnd="28dp"
+                app:boxCornerRadiusTopStart="28dp"
+                app:endIconMode="clear_text"
+                app:hintAnimationEnabled="true"
+                app:startIconDrawable="@drawable/ic_round_search_24">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/settingsSearch"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="bottom"
+                    android:fontFamily="@font/poppins_bold"
+                    android:hint="@string/search_settings"
+                    android:imeOptions="actionSearch"
+                    android:inputType="text"
+                    android:maxLines="1"
+                    android:padding="8dp"
+                    android:textSize="14sp"
+                    tools:ignore="LabelFor,TextContrastCheck" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <TextView
+                android:id="@+id/settingsSearchEmpty"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginVertical="32dp"
+                android:alpha="0.58"
+                android:fontFamily="@font/poppins_semi_bold"
+                android:text="@string/settings_search_no_results"
+                android:textAlignment="center"
+                android:visibility="gone" />
+
             <ani.dantotsu.FadingEdgeRecyclerView
                 android:id="@+id/settingsRecyclerView"
                 android:layout_width="match_parent"

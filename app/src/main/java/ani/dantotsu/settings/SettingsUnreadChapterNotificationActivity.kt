@@ -30,6 +30,7 @@ class SettingsUnreadChapterNotificationActivity : AppCompatActivity() {
         val context = this
         binding = ActivitySettingsUnreadChapterNotificationsBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        SettingsRouter.handleHighlight(this, binding.settingsRecyclerView)
         binding.apply {
             settingsUnreadChapterNotificationsLayout.updateLayoutParams<ViewGroup.MarginLayoutParams> {
                 topMargin = statusBarHeight

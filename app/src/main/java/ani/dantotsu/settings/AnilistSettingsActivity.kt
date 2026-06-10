@@ -43,6 +43,7 @@ class AnilistSettingsActivity : AppCompatActivity() {
         val context = this
         binding = ActivitySettingsAnilistBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        SettingsRouter.handleHighlight(this, binding.settingsRecyclerView1, binding.settingsRecyclerView2)
 
         anilistMutations = AnilistMutations()
 

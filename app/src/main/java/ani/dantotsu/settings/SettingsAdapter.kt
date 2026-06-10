@@ -101,4 +101,8 @@ class SettingsAdapter(private val settings: ArrayList<Settings>) :
     override fun getItemViewType(position: Int): Int {
         return settings[position].type
     }
+
+    /** Position of the first visible row whose title matches [title], or -1 if none. */
+    fun indexOfTitle(title: String): Int =
+        settings.indexOfFirst { it.isVisible && it.name == title }
 }

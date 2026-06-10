@@ -36,6 +36,7 @@ class SettingsThemeActivity : AppCompatActivity(), SimpleDialog.OnDialogResultLi
         val context = this
         binding = ActivitySettingsThemeBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        SettingsRouter.handleHighlight(this, binding.settingsRecyclerView)
         binding.apply {
             settingsThemeLayout.updateLayoutParams<ViewGroup.MarginLayoutParams> {
                 topMargin = statusBarHeight
