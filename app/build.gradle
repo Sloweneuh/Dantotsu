@@ -13,14 +13,14 @@ def gitCommitHash = providers.exec {
 }.standardOutput.asText.get().trim()
 
 android {
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId "ani.dantotsu"
         // Android 6.0 (API 23). Google Play services dropped Lollipop (21/22) support in 2024,
         // so the Nearby/Firebase features this app relies on no longer work below 23 anyway.
         minSdk = 23
-        targetSdk = 35
+        targetSdk = 36
         versionName "4.4.0"
         def (major, minor, patch) = versionName.split("\\.").collect { it.toInteger() }
         versionCode = major * 1_000_000 + minor * 1_000 + patch
