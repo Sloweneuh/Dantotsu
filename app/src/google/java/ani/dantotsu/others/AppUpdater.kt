@@ -146,6 +146,13 @@ object AppUpdater {
     }
 
     suspend fun check(activity: FragmentActivity, post: Boolean = false) {
+        // Only stable (release) builds get update prompts. Beta (debug) and alpha builds are never
+        // published to GitHub releases, so checking only yields spurious popups (and would ping the
+        // fallback server). Bail early — a manual check still gets a "no update" reply.
+        if (BuildConfig.BUILD_TYPE != "release") {
+            if (post) snackString(currContext()?.getString(R.string.no_update_found))
+            return
+        }
         if (post) snackString(currContext()?.getString(R.string.checking_for_update))
         val repo = activity.getString(R.string.repo)
         tryWithSuspend {
@@ -202,29 +209,21 @@ object AppUpdater {
         }
     }
 
+    // Only reached by release builds (see check()). Plain semantic compare; VERSION_NAME has no suffix.
     private fun compareVersion(version: String): Boolean {
-        return when (BuildConfig.BUILD_TYPE) {
-            "debug" -> BuildConfig.VERSION_NAME != version
-            "alpha" -> false
-            else -> {
-                fun parseVersionSegments(ver: String): List<Int> {
-                    return ver.split(".").mapNotNull { it.toIntOrNull() }
-                }
-                
-                val newSegments = parseVersionSegments(version)
-                val currSegments = parseVersionSegments(BuildConfig.VERSION_NAME)
-                
-                // Compare segment by segment (proper semantic versioning)
-                for (i in 0 until maxOf(newSegments.size, currSegments.size)) {
-                    val newSeg = newSegments.getOrNull(i) ?: 0
-                    val currSeg = currSegments.getOrNull(i) ?: 0
-                    if (newSeg != currSeg) return newSeg > currSeg
-                }
-                
-                // Versions are equal
-                false
-            }
+        fun parseVersionSegments(ver: String): List<Int> =
+            ver.split(".").mapNotNull { it.toIntOrNull() }
+
+        val newSegments = parseVersionSegments(version)
+        val currSegments = parseVersionSegments(BuildConfig.VERSION_NAME)
+        // Compare segment by segment (proper semantic versioning).
+        for (i in 0 until maxOf(newSegments.size, currSegments.size)) {
+            val newSeg = newSegments.getOrNull(i) ?: 0
+            val currSeg = currSegments.getOrNull(i) ?: 0
+            if (newSeg != currSeg) return newSeg > currSeg
         }
+        // Versions are equal.
+        return false
     }
 
 
