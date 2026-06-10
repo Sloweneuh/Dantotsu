@@ -1,5 +1,6 @@
 package ani.dantotsu.connections.handoff.transport
 
+import android.bluetooth.BluetoothManager
 import android.content.Context
 import android.os.Build
 import android.os.Handler
@@ -19,7 +20,17 @@ import com.google.android.gms.nearby.connection.PayloadCallback
 import com.google.android.gms.nearby.connection.PayloadTransferUpdate
 import com.google.android.gms.nearby.connection.Strategy
 
-/** Primary transport: Google Nearby Connections (auto-negotiates Bluetooth/BLE/Wi-Fi). */
+/**
+ * Primary transport: Google Nearby Connections.
+ *
+ * To avoid force-enabling the user's radios (a plain advertise/discover call makes GMS silently
+ * switch on Bluetooth *and* Wi-Fi), this transport:
+ *  - runs in [AdvertisingOptions.Builder.setLowPower] / [DiscoveryOptions.Builder.setLowPower]
+ *    mode, restricting Nearby to BLE so it never touches Wi-Fi (the [LanTransport] is the
+ *    high-bandwidth path when Wi-Fi is already on); and
+ *  - is gated on Bluetooth already being enabled — when it's off we simply don't start Nearby
+ *    rather than turning it on, leaving LAN/QR/sharing-code as the fallback.
+ */
 class NearbyTransport(private val context: Context) : HandoffTransport {
 
     override val tag = TAG
@@ -45,12 +56,14 @@ class NearbyTransport(private val context: Context) : HandoffTransport {
         this.listener = listener
         sending = true
         retriedDiscovery = false
+        // Don't force Bluetooth on; if it's off, let LAN/QR/sharing-code handle the send.
+        if (!bluetoothEnabled()) return
         startDiscoveryInternal()
     }
 
     private fun startDiscoveryInternal() {
         if (stopped) return
-        val options = DiscoveryOptions.Builder().setStrategy(STRATEGY).build()
+        val options = DiscoveryOptions.Builder().setStrategy(STRATEGY).setLowPower(true).build()
         client.startDiscovery(SERVICE_ID, discoveryCallback, options)
             .addOnFailureListener { e ->
                 // A leftover discovery session (e.g. from a previous transport instance GMS still
@@ -80,12 +93,14 @@ class NearbyTransport(private val context: Context) : HandoffTransport {
         this.listener = listener
         sending = false
         retriedAdvertising = false
+        // Don't force Bluetooth on just to stay discoverable; LAN advertising still runs.
+        if (!bluetoothEnabled()) return
         startAdvertisingInternal()
     }
 
     private fun startAdvertisingInternal() {
         if (stopped) return
-        val options = AdvertisingOptions.Builder().setStrategy(STRATEGY).build()
+        val options = AdvertisingOptions.Builder().setStrategy(STRATEGY).setLowPower(true).build()
         client.startAdvertising(localName, SERVICE_ID, connectionCallback, options)
             .addOnFailureListener { e ->
                 // ALREADY_ADVERTISING means a stale session is still registered in GMS (often from
@@ -106,6 +121,12 @@ class NearbyTransport(private val context: Context) : HandoffTransport {
                 }
             }
     }
+
+    /** Whether Bluetooth is already on. Reading adapter state needs no runtime permission. */
+    private fun bluetoothEnabled(): Boolean = runCatching {
+        (context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager)
+            ?.adapter?.isEnabled == true
+    }.getOrDefault(false)
 
     override fun stop() {
         stopped = true

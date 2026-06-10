@@ -79,6 +79,8 @@ enum class PrefName(val data: Pref) {
     EnableSocks5Proxy(Pref(Location.General, Boolean::class, false)),
     ProxyAuthEnabled(Pref(Location.General, Boolean::class, false)),
     AniMangaSearchDirect(Pref(Location.General, Boolean::class, true)),
+    // Local "Continue on another device" discovery (Nearby + LAN); QR/sharing-code stay available.
+    HandoffDiscoveryEnabled(Pref(Location.General, Boolean::class, true)),
     // Connection toggles (allow disabling external info/tabs)
     ComickEnabled(Pref(Location.General, Boolean::class, true)),
     MalEnabled(Pref(Location.General, Boolean::class, true)),

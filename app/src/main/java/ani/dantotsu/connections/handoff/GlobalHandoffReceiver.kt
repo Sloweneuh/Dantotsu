@@ -47,6 +47,8 @@ object GlobalHandoffReceiver {
     fun start(context: Context) {
         // A start cancels a pending debounced stop from a transient transition.
         pendingStop?.let { main.removeCallbacks(it); pendingStop = null }
+        // Respect the user's "local discovery" setting; QR/sharing-code receiving is independent.
+        if (!HandoffManager.localDiscoveryEnabled()) return
         if (manager != null) return
         appContext = context.applicationContext
         manager = HandoffManager(appContext!!).also {
@@ -64,6 +66,18 @@ object GlobalHandoffReceiver {
             manager?.stop()
             manager = null
         }.also { main.postDelayed(it, STOP_DEBOUNCE_MS) }
+    }
+
+    /**
+     * Immediately tears down and restarts receiving (no debounce). Used when the relevant state
+     * changes while the app is foreground — the discovery setting is toggled, or Bluetooth/Wi-Fi
+     * is switched on from the handoff sheet — so advertising picks up the newly available radio.
+     */
+    fun restart(context: Context) {
+        pendingStop?.let { main.removeCallbacks(it); pendingStop = null }
+        manager?.stop()
+        manager = null
+        start(context)
     }
 
     private fun onHandoff(payload: HandoffPayload) {

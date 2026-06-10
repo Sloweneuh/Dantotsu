@@ -60,6 +60,51 @@
             android:textSize="13sp"
             tools:text="@string/handoff_searching" />
 
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/handoffEnableDiscovery"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="24dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginEnd="24dp"
+            android:fontFamily="@font/poppins_semi_bold"
+            android:minHeight="48dp"
+            android:text="@string/handoff_enable_discovery"
+            android:visibility="gone"
+            app:cornerRadius="16dp"
+            app:icon="@drawable/ic_round_cast_24"
+            app:iconGravity="textStart" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/handoffEnableBluetooth"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="24dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginEnd="24dp"
+            android:fontFamily="@font/poppins_semi_bold"
+            android:minHeight="48dp"
+            android:text="@string/handoff_enable_bluetooth"
+            android:visibility="gone"
+            app:cornerRadius="16dp"
+            app:icon="@drawable/ic_round_bluetooth_24"
+            app:iconGravity="textStart" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/handoffEnableWifi"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="24dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginEnd="24dp"
+            android:fontFamily="@font/poppins_semi_bold"
+            android:minHeight="48dp"
+            android:text="@string/handoff_enable_wifi"
+            android:visibility="gone"
+            app:cornerRadius="16dp"
+            app:icon="@drawable/ic_round_wifi_24"
+            app:iconGravity="textStart" />
+
         <LinearLayout
             android:id="@+id/handoffDeviceContainer"
             android:layout_width="match_parent"

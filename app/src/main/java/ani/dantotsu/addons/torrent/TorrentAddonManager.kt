@@ -1,7 +1,6 @@
 package ani.dantotsu.addons.torrent
 
 import android.content.Context
-import android.os.Build
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import ani.dantotsu.R
@@ -39,12 +38,6 @@ class TorrentAddonManager(
         withContext(Dispatchers.Main) {
             _isInitialized.value = false
         }
-        if (Build.VERSION.SDK_INT < 23) {
-            Logger.log("Torrent extension is not supported on this device.")
-            error = context.getString(R.string.torrent_extension_not_supported)
-            return
-        }
-
         AddonInstallReceiver()
             .setListener(InstallationListener(), type)
             .register(context)

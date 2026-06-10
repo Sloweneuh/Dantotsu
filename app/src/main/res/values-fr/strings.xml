@@ -1329,7 +1329,6 @@
     <string name="hide_private_desc">Appui long sur "Continuer à regarder" pour accéder</string>
     <string name="anime_downloader_addon">Add-on Téléchargeur Anime</string>
     <string name="install_torrent_addon">Installer l\'Add-on Torrent</string>
-    <string name="torrent_extension_not_supported">Add-on Torrent non supporté sur cet appareil</string>
     <string name="update_addon">Mise à jour d\'add-on disponible</string>
     <string name="download_addon_not_found">Add-on non trouvé</string>
     <string name="failed_ext_install_conflict">Échec de l\'installation de l\'extension dû à un conflit</string>
@@ -1698,10 +1697,11 @@
     <!-- Continuer sur un autre appareil (transfert de proximité) -->
     <string name="continue_on_another_device">Continuer sur un autre appareil</string>
     <string name="receive_from_another_device">Recevoir depuis un autre appareil</string>
-    <string name="handoff_media_title">Envoyer « %1$s » vers un appareil à proximité</string>
+    <string name="handoff_media_title">Envoyer « %1$s » vers un autre appareil</string>
     <string name="handoff_searching">Recherche d\'appareils à proximité…</string>
     <string name="handoff_waiting">En attente d\'un envoi depuis un autre appareil…\nGardez cet écran ouvert.</string>
-    <string name="handoff_receive_hint">Sur l\'autre appareil, ouvrez le lecteur vidéo, le lecteur de manga ou la fiche du média et appuyez sur « Continuer sur un autre appareil », puis choisissez cet appareil.</string>
+    <string name="handoff_receive_hint">Sur l\'autre appareil, ouvrez le lecteur vidéo, le lecteur de manga ou la fiche du média et appuyez sur [icon], puis choisissez cet appareil, affichez un code QR ou partagez un code.</string>
+    <string name="handoff_cast_icon">l\'icône de diffusion</string>
     <string name="handoff_no_devices">Aucun appareil à proximité pour l\'instant. Assurez-vous que l\'autre appareil a Dantotsu ouvert, avec le Bluetooth et le Wi-Fi activés.</string>
     <string name="handoff_sending">Envoi vers %1$s…</string>
     <string name="handoff_sent">Envoyé vers %1$s</string>
@@ -1713,7 +1713,7 @@
     <string name="handoff_show_qr">Afficher un code QR à la place</string>
     <string name="handoff_qr_hint">Scannez ceci avec l\'appareil photo de l\'autre appareil pour l\'ouvrir dans Dantotsu.</string>
     <string name="handoff_qr_failed">Impossible de générer le code QR</string>
-    <string name="handoff_source_missing">Ouvrez « %1$s » avec %2$s sur cet appareil pour continuer — cette source n\'est pas installée.</string>
+    <string name="handoff_source_missing">Impossible de reprendre — l\'extension « %1$s » n\'est pas installée sur cet appareil.</string>
     <string name="handoff_incoming_title">Continuer sur cet appareil</string>
     <string name="handoff_incoming_text">%1$s — appuyez pour ouvrir</string>
     <string name="handoff_incoming_from">Depuis %1$s</string>
@@ -1739,4 +1739,12 @@
     <string name="handoff_enter_code_hint">Code</string>
     <string name="handoff_fetching_code">Récupération…</string>
     <string name="handoff_code_not_found">Ce code est invalide ou a expiré.</string>
+    <string name="handoff_discovery_setting">Découverte des appareils locaux</string>
+    <string name="handoff_discovery_setting_desc">Annoncer et découvrir les appareils à proximité via Bluetooth et Wi-Fi pour « Continuer sur un autre appareil ». Désactivez pour ne jamais utiliser ces radios — les codes QR et les codes de partage fonctionnent toujours.</string>
+    <string name="handoff_enable_discovery">Activer la découverte locale</string>
+    <string name="handoff_enable_bluetooth">Activer le Bluetooth</string>
+    <string name="handoff_enable_wifi">Activer le Wi-Fi</string>
+    <string name="handoff_discovery_disabled">La découverte locale est désactivée. Utilisez un code QR ou un code de partage, ou activez-la ci-dessous.</string>
+    <string name="handoff_no_radios">Activez le Bluetooth ou le Wi-Fi pour trouver les appareils à proximité — ou utilisez un code QR ou un code de partage.</string>
+    <string name="handoff_no_radios_receive">Activez le Bluetooth ou le Wi-Fi pour être détectable par les autres appareils — ou recevez avec un code QR ou un code de partage.</string>
 </resources>

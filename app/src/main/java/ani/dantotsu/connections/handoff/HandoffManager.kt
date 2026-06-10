@@ -6,6 +6,8 @@ import ani.dantotsu.connections.handoff.transport.HandoffTransport
 import ani.dantotsu.connections.handoff.transport.LanTransport
 import ani.dantotsu.connections.handoff.transport.NearbyTransport
 import ani.dantotsu.connections.handoff.transport.TransportListener
+import ani.dantotsu.settings.saving.PrefManager
+import ani.dantotsu.settings.saving.PrefName
 
 /**
  * Runs every [HandoffTransport] at once and presents them as a single channel: discovered
@@ -86,6 +88,8 @@ class HandoffManager(context: Context) {
         sent = false
         sending = false
         sendQueue.clear()
+        // Local discovery can be turned off in settings; QR/sharing-code still work without it.
+        if (!localDiscoveryEnabled()) return
         transports.forEach { runCatching { it.startSending(transportListener) } }
     }
 
@@ -117,7 +121,14 @@ class HandoffManager(context: Context) {
 
     fun startReceiving(listener: Listener) {
         this.listener = listener
+        if (!localDiscoveryEnabled()) return
         transports.forEach { runCatching { it.startReceiving(transportListener) } }
+    }
+
+    companion object {
+        /** Whether local Nearby/LAN discovery & advertising is allowed (user setting). */
+        fun localDiscoveryEnabled(): Boolean =
+            PrefManager.getVal(PrefName.HandoffDiscoveryEnabled)
     }
 
     fun stop() {

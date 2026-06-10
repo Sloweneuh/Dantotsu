@@ -252,7 +252,6 @@ class AnimeWatchFragment : Fragment() {
                             snackString(
                                 getString(
                                     R.string.handoff_source_missing,
-                                    media.userPreferredName,
                                     name
                                 )
                             )

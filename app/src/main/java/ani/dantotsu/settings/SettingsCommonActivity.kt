@@ -23,6 +23,7 @@ import androidx.documentfile.provider.DocumentFile
 import androidx.recyclerview.widget.LinearLayoutManager
 import ani.dantotsu.R
 import ani.dantotsu.connections.anilist.Anilist
+import ani.dantotsu.connections.handoff.GlobalHandoffReceiver
 import ani.dantotsu.databinding.ActivitySettingsCommonBinding
 import ani.dantotsu.databinding.DialogSetPasswordBinding
 import ani.dantotsu.databinding.DialogUserAgentBinding
@@ -367,6 +368,18 @@ class SettingsCommonActivity : AppCompatActivity() {
                             isChecked = PrefManager.getVal(PrefName.ContinueMedia),
                             switch = { isChecked, _ ->
                                 PrefManager.setVal(PrefName.ContinueMedia, isChecked)
+                            },
+                        ),
+                        Settings(
+                            type = 2,
+                            name = getString(R.string.handoff_discovery_setting),
+                            desc = getString(R.string.handoff_discovery_setting_desc),
+                            icon = R.drawable.ic_round_cast_24,
+                            isChecked = PrefManager.getVal(PrefName.HandoffDiscoveryEnabled),
+                            switch = { isChecked, _ ->
+                                PrefManager.setVal(PrefName.HandoffDiscoveryEnabled, isChecked)
+                                if (isChecked) GlobalHandoffReceiver.restart(applicationContext)
+                                else GlobalHandoffReceiver.stop()
                             },
                         ),
                         Settings(
