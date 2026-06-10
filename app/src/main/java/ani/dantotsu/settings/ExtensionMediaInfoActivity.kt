@@ -453,6 +453,17 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
         return when { d < 25 -> 25; d < 50 -> 50; else -> 100 }
     }
 
+    /**
+     * The canonical chapter order, matching how AniList/MangaUpdates media resolve & display
+     * chapters: the source's [HttpSource.getChapterList] order (newest-first) reversed to oldest-
+     * first, with no re-sorting by parsed number. ([AniyomiAdapter.loadChapters] reverses the same
+     * way before [BaseSources.loadChapters] keys the map by uniqueNumber.)
+     *
+     * Used for BOTH the on-screen chapter list and the map handed to the reader, so the two stay in
+     * lock-step — including how equal-numbered duplicates (e.g. two "Chapter 0") are ordered.
+     */
+    private fun chaptersInReadingOrder(): List<SChapter> = allChapters.reversed()
+
     private fun populateChapterListWithChips() {
         binding.extensionChaptersList.removeAllViews()
         binding.extensionChaptersChipGroup.removeAllViews()
@@ -466,8 +477,7 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
 
         binding.extensionChaptersEmpty.isVisible = false
 
-        // Sort ascending by resolved chapter number (falls back to name parsing)
-        val chapters = allChapters.sortedBy { ch -> resolveChapterNum(ch) ?: Float.MAX_VALUE }
+        val chapters = chaptersInReadingOrder()
         val total = chapters.size
 
         val missing = computeMissingChapters(chapters)
@@ -618,7 +628,7 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
                     selectedChapter.addImages(images)
 
                     val chaptersMap = LinkedHashMap<String, MediaMangaChapter>()
-                    for (sch in allChapters.reversed()) {
+                    for (sch in chaptersInReadingOrder()) {
                         val mc = sChapterToMediaMangaChapter(sch)
                         chaptersMap[mc.uniqueNumber()] = if (sch.url == sChapter.url) selectedChapter else mc
                     }

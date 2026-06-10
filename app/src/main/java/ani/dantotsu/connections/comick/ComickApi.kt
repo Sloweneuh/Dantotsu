@@ -685,8 +685,12 @@ object ComickApi {
         } catch (e: Exception) {
             Logger.log("Error fetching chapters for hid $hid: ${e.message}")
         }
-        // Sort ascending by chapter number regardless of API return order
-        all.sortedBy { it.chap?.toDoubleOrNull() ?: Double.MAX_VALUE }
+        // Resolve chapters the same way the AniList/MangaUpdates/extension paths do: trust the
+        // source order and reverse it, rather than re-sorting by parsed number. The API is queried
+        // with chap-order=0 (newest-first) and paginated in that order, so reversing yields
+        // oldest-first. This keeps equal-numbered chapters (e.g. two "Chapter 0") in the same
+        // relative order as everywhere else instead of flipping them.
+        all.reversed()
     }
 
     /**
