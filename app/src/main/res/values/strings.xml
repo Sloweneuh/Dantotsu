@@ -1805,7 +1805,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="handoff_unsupported_media">This media can\'t be handed off (it isn\'t linked to AniList).</string>
     <string name="handoff_media_not_found">Couldn\'t load the media on this device.</string>
     <string name="handoff_discoverable_as">This device is discoverable as \"%1$s\" while Dantotsu is open. Send from the other device.</string>
-    <string name="handoff_show_qr">Show QR code instead</string>
+    <string name="handoff_show_qr">Show QR code</string>
     <string name="handoff_qr_hint">Scan this with the other device\'s camera to open it in Dantotsu.</string>
     <string name="handoff_qr_failed">Couldn\'t generate QR code</string>
     <string name="handoff_source_missing">Can\'t resume — the \"%1$s\" extension isn\'t installed on this device.</string>

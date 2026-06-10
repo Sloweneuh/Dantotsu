@@ -1712,7 +1712,7 @@
     <string name="handoff_unsupported_media">Ce média ne peut pas être transféré (il n\'est pas lié à AniList).</string>
     <string name="handoff_media_not_found">Impossible de charger le média sur cet appareil.</string>
     <string name="handoff_discoverable_as">Cet appareil est détectable en tant que « %1$s » tant que Dantotsu est ouvert. Lancez l\'envoi depuis l\'autre appareil.</string>
-    <string name="handoff_show_qr">Afficher un code QR à la place</string>
+    <string name="handoff_show_qr">Afficher un code QR</string>
     <string name="handoff_qr_hint">Scannez ceci avec l\'appareil photo de l\'autre appareil pour l\'ouvrir dans Dantotsu.</string>
     <string name="handoff_qr_failed">Impossible de générer le code QR</string>
     <string name="handoff_source_missing">Impossible de reprendre — l\'extension « %1$s » n\'est pas installée sur cet appareil.</string>
