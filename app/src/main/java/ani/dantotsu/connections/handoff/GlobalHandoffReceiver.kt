@@ -47,8 +47,9 @@ object GlobalHandoffReceiver {
     fun start(context: Context) {
         // A start cancels a pending debounced stop from a transient transition.
         pendingStop?.let { main.removeCallbacks(it); pendingStop = null }
-        // Respect the user's "local discovery" setting; QR/sharing-code receiving is independent.
-        if (!HandoffManager.localDiscoveryEnabled()) return
+        // Respect the user's "local discovery" setting and skip unsupported (WSA/emulator) devices;
+        // QR/sharing-code receiving is independent of this.
+        if (!HandoffManager.localDiscoveryActive(context)) return
         if (manager != null) return
         appContext = context.applicationContext
         manager = HandoffManager(appContext!!).also {

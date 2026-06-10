@@ -1790,10 +1790,12 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="continue_on_another_device">Continue on another device</string>
     <string name="receive_from_another_device">Receive from another device</string>
     <string name="handoff_media_title">Send \"%1$s\" to another device</string>
+    <string name="handoff_media_title_virtual">Send \"%1$s\" with a QR code or sharing code</string>
     <string name="handoff_searching">Searching for nearby devices…</string>
     <string name="handoff_waiting">Waiting for another device to send…\nKeep this screen open.</string>
     <!-- [icon] is replaced at runtime with the cast glyph; handoff_cast_icon is the spoken fallback. -->
     <string name="handoff_receive_hint">On the other device, open the player, reader or media page and tap [icon], then pick this device, show a QR code, or share a code.</string>
+    <string name="handoff_receive_hint_virtual">On the other device, open the player, reader or media page and tap [icon], then show a QR code or share a code.</string>
     <string name="handoff_cast_icon">the cast icon</string>
     <string name="handoff_no_devices">No nearby devices yet. Make sure the other device has Dantotsu open, with Bluetooth and Wi-Fi enabled.</string>
     <string name="handoff_sending">Sending to %1$s…</string>

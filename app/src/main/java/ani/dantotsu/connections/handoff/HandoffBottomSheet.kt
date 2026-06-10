@@ -95,7 +95,9 @@ class HandoffBottomSheet : BottomSheetDialogFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         if (mode == MODE_SEND) {
             binding.handoffTitle.text = getString(R.string.continue_on_another_device)
-            binding.handoffSubtitle.text = getString(R.string.handoff_media_title, payload?.title ?: "")
+            val titleRes = if (isVirtual())
+                R.string.handoff_media_title_virtual else R.string.handoff_media_title
+            binding.handoffSubtitle.text = getString(titleRes, payload?.title ?: "")
             binding.handoffQr.visibility = View.VISIBLE
             binding.handoffQr.setOnClickListener { showQrFallback() }
             binding.handoffShareCode.visibility = View.VISIBLE
@@ -104,7 +106,7 @@ class HandoffBottomSheet : BottomSheetDialogFragment() {
         } else {
             binding.handoffTitle.text = getString(R.string.receive_from_another_device)
             binding.handoffSubtitle.text = receiveHintWithIcon()
-            binding.handoffSubtitle.contentDescription = getString(R.string.handoff_receive_hint)
+            binding.handoffSubtitle.contentDescription = getString(receiveHintRes())
                 .replace(ICON_TOKEN, getString(R.string.handoff_cast_icon))
             binding.handoffProgress.visibility = View.GONE
 
@@ -130,6 +132,13 @@ class HandoffBottomSheet : BottomSheetDialogFragment() {
 
     /** Send side: kick off local discovery if the user hasn't turned it off in settings. */
     private fun startLocalDiscoveryIfEnabled() {
+        if (isVirtual()) {
+            // WSA/emulator: no Nearby/LAN — leave only the QR/sharing-code buttons.
+            manager?.stop()
+            binding.handoffProgress.visibility = View.GONE
+            binding.handoffStatus.visibility = View.GONE
+            return
+        }
         if (!HandoffManager.localDiscoveryEnabled()) {
             manager?.stop()
             binding.handoffProgress.visibility = View.GONE
@@ -151,9 +160,14 @@ class HandoffBottomSheet : BottomSheetDialogFragment() {
         if (missing.isEmpty()) startSending() else permissionLauncher.launch(missing.toTypedArray())
     }
 
+    /** On virtual devices the hint omits "pick this device" (no Nearby/LAN), leaving QR/code only. */
+    private fun receiveHintRes(): Int =
+        if (isVirtual()) R.string.handoff_receive_hint_virtual
+        else R.string.handoff_receive_hint
+
     /** The receive hint with [ICON_TOKEN] rendered inline as the cast glyph, sized to the text. */
     private fun receiveHintWithIcon(): CharSequence {
-        val text = getString(R.string.handoff_receive_hint)
+        val text = getString(receiveHintRes())
         val idx = text.indexOf(ICON_TOKEN)
         val drawable = ContextCompat.getDrawable(requireContext(), R.drawable.ic_round_cast_24)?.mutate()
         if (idx < 0 || drawable == null) {
@@ -187,6 +201,11 @@ class HandoffBottomSheet : BottomSheetDialogFragment() {
 
     private fun updateReceiveStatus() {
         if (_binding == null) return
+        if (isVirtual()) {
+            binding.handoffStatus.visibility = View.GONE
+            return
+        }
+        binding.handoffStatus.visibility = View.VISIBLE
         binding.handoffStatus.text = when {
             !HandoffManager.localDiscoveryEnabled() -> getString(R.string.handoff_discovery_disabled)
             !bluetoothOn() && !wifiOn() -> getString(R.string.handoff_no_radios_receive)
@@ -225,6 +244,12 @@ class HandoffBottomSheet : BottomSheetDialogFragment() {
     /** Shows only the buttons for prerequisites that are currently missing. */
     private fun refreshLocalControls() {
         if (_binding == null) return
+        if (isVirtual()) {
+            binding.handoffEnableDiscovery.visibility = View.GONE
+            binding.handoffEnableBluetooth.visibility = View.GONE
+            binding.handoffEnableWifi.visibility = View.GONE
+            return
+        }
         val enabled = HandoffManager.localDiscoveryEnabled()
         binding.handoffEnableDiscovery.visibility = if (!enabled) View.VISIBLE else View.GONE
         binding.handoffEnableBluetooth.visibility =
@@ -235,7 +260,7 @@ class HandoffBottomSheet : BottomSheetDialogFragment() {
 
     /** Re-evaluate after the user toggles a radio: refresh buttons and restart discovery. */
     private fun onRadiosMaybeChanged() {
-        if (_binding == null) return
+        if (_binding == null || isVirtual()) return
         refreshLocalControls()
         if (mode == MODE_SEND) {
             startLocalDiscoveryIfEnabled()
@@ -245,6 +270,9 @@ class HandoffBottomSheet : BottomSheetDialogFragment() {
             updateReceiveStatus()
         }
     }
+
+    /** WSA/emulator: hide all Nearby/LAN UI, leave only QR/sharing-code. */
+    private fun isVirtual(): Boolean = HandoffManager.isVirtualDevice(requireContext())
 
     private fun bluetoothOn(): Boolean = runCatching {
         (requireContext().getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager)

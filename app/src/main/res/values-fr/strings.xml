@@ -1698,9 +1698,11 @@
     <string name="continue_on_another_device">Continuer sur un autre appareil</string>
     <string name="receive_from_another_device">Recevoir depuis un autre appareil</string>
     <string name="handoff_media_title">Envoyer « %1$s » vers un autre appareil</string>
+    <string name="handoff_media_title_virtual">Envoyer « %1$s » avec un code QR ou un code de partage</string>
     <string name="handoff_searching">Recherche d\'appareils à proximité…</string>
     <string name="handoff_waiting">En attente d\'un envoi depuis un autre appareil…\nGardez cet écran ouvert.</string>
     <string name="handoff_receive_hint">Sur l\'autre appareil, ouvrez le lecteur vidéo, le lecteur de manga ou la fiche du média et appuyez sur [icon], puis choisissez cet appareil, affichez un code QR ou partagez un code.</string>
+    <string name="handoff_receive_hint_virtual">Sur l\'autre appareil, ouvrez le lecteur vidéo, le lecteur de manga ou la fiche du média et appuyez sur [icon], puis affichez un code QR ou partagez un code.</string>
     <string name="handoff_cast_icon">l\'icône de diffusion</string>
     <string name="handoff_no_devices">Aucun appareil à proximité pour l\'instant. Assurez-vous que l\'autre appareil a Dantotsu ouvert, avec le Bluetooth et le Wi-Fi activés.</string>
     <string name="handoff_sending">Envoi vers %1$s…</string>

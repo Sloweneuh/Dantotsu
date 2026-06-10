@@ -88,6 +88,10 @@
         <package android:name="idm.internet.download.manager" />
         <package android:name="idm.internet.download.manager.adm.lite" />
         <package android:name="com.dv.adm" />
+        <!-- WSA host packages: presence detects Windows Subsystem for Android even when its
+             Build props are spoofed (community/Magisk builds), to hide Nearby/LAN there. -->
+        <package android:name="com.microsoft.windows.userexperiencehost" />
+        <package android:name="com.microsoft.windows.systemapp" />
     </queries>
 
     <application

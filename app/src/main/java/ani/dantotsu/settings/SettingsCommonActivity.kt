@@ -24,6 +24,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import ani.dantotsu.R
 import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.handoff.GlobalHandoffReceiver
+import ani.dantotsu.connections.handoff.HandoffManager
 import ani.dantotsu.databinding.ActivitySettingsCommonBinding
 import ani.dantotsu.databinding.DialogSetPasswordBinding
 import ani.dantotsu.databinding.DialogUserAgentBinding
@@ -381,6 +382,8 @@ class SettingsCommonActivity : AppCompatActivity() {
                                 if (isChecked) GlobalHandoffReceiver.restart(applicationContext)
                                 else GlobalHandoffReceiver.stop()
                             },
+                            // No Nearby/LAN on WSA/emulator, so the toggle would be a no-op there.
+                            isVisible = !HandoffManager.isVirtualDevice(context),
                         ),
                         Settings(
                             type = 2,
