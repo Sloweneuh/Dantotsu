@@ -1823,7 +1823,14 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="handoff_scan_again">Scan again</string>
     <string name="handoff_camera_permission_needed">Camera permission is required to scan a QR code.</string>
     <string name="handoff_camera_unavailable">Camera unavailable on this device.</string>
-    <string name="handoff_sharing_code_coming_soon">Sharing codes are coming soon.</string>
+    <string name="handoff_share_code">Share via code</string>
+    <string name="handoff_share_code_hint">Enter this code on the other device under \"Receive via sharing code\". It expires in 10 minutes.</string>
+    <string name="handoff_uploading_code">Generating code…</string>
+    <string name="handoff_code_upload_failed">Couldn\'t generate a sharing code. Check your connection and try again.</string>
+    <string name="handoff_enter_code_message">Enter the code shown on the other device.</string>
+    <string name="handoff_enter_code_hint">Code</string>
+    <string name="handoff_fetching_code">Fetching…</string>
+    <string name="handoff_code_not_found">That code is invalid or has expired.</string>
 
 </resources>
 

@@ -3,14 +3,22 @@ package ani.dantotsu.connections.handoff
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.graphics.Typeface
 import android.os.Build
 import android.os.Bundle
+import android.text.InputFilter
+import android.text.InputType
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.EditText
 import android.widget.ImageView
+import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import ani.dantotsu.BottomSheetDialogFragment
 import ani.dantotsu.R
 import ani.dantotsu.connections.handoff.transport.HandoffEndpoint
@@ -19,6 +27,7 @@ import ani.dantotsu.databinding.BottomSheetHandoffBinding
 import ani.dantotsu.databinding.ItemHandoffDeviceBinding
 import ani.dantotsu.snackString
 import ani.dantotsu.util.customAlertDialog
+import kotlinx.coroutines.launch
 
 /**
  * "Continue on another device" sheet.
@@ -68,6 +77,8 @@ class HandoffBottomSheet : BottomSheetDialogFragment() {
             binding.handoffStatus.text = getString(R.string.handoff_searching)
             binding.handoffQr.visibility = View.VISIBLE
             binding.handoffQr.setOnClickListener { showQrFallback() }
+            binding.handoffShareCode.visibility = View.VISIBLE
+            binding.handoffShareCode.setOnClickListener { shareViaCode() }
 
             val missing = NearbyTransport.requiredPermissions().filter {
                 ContextCompat.checkSelfPermission(requireContext(), it) != PackageManager.PERMISSION_GRANTED
@@ -86,10 +97,78 @@ class HandoffBottomSheet : BottomSheetDialogFragment() {
                 dismissAllowingStateLoss()
             }
             binding.handoffReceiveCode.visibility = View.VISIBLE
-            // Placeholder for a future cloud (Firebase) sharing-code flow.
-            binding.handoffReceiveCode.setOnClickListener {
-                snackString(getString(R.string.handoff_sharing_code_coming_soon))
+            binding.handoffReceiveCode.setOnClickListener { promptForCode() }
+        }
+    }
+
+    /** Send side: upload the payload to the cloud and show the generated sharing code. */
+    private fun shareViaCode() {
+        val payload = payload ?: return
+        snackString(getString(R.string.handoff_uploading_code))
+        CloudHandoff.upload(payload) { code ->
+            if (_binding == null) return@upload
+            if (code == null) snackString(getString(R.string.handoff_code_upload_failed))
+            else showCodeDialog(code)
+        }
+    }
+
+    private fun showCodeDialog(code: String) {
+        val pad = (24 * resources.displayMetrics.density).toInt()
+        val view = TextView(requireContext()).apply {
+            text = code
+            textSize = 32f
+            gravity = Gravity.CENTER
+            typeface = Typeface.MONOSPACE
+            letterSpacing = 0.2f
+            setPadding(pad, pad, pad, pad)
+        }
+        requireContext().customAlertDialog().apply {
+            setTitle(getString(R.string.handoff_share_code))
+            setMessage(getString(R.string.handoff_share_code_hint))
+            setCustomView(view)
+            setPosButton(R.string.close) {}
+            show()
+        }
+    }
+
+    /** Receive side: ask for a sharing code, fetch the payload, then open it on this device. */
+    private fun promptForCode() {
+        val pad = (24 * resources.displayMetrics.density).toInt()
+        val input = EditText(requireContext()).apply {
+            hint = getString(R.string.handoff_enter_code_hint)
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS
+            filters = arrayOf(InputFilter.AllCaps(), InputFilter.LengthFilter(6))
+            gravity = Gravity.CENTER
+            textSize = 24f
+            typeface = Typeface.MONOSPACE
+            letterSpacing = 0.2f
+            setPadding(pad, pad, pad, pad)
+        }
+        requireContext().customAlertDialog().apply {
+            setTitle(getString(R.string.handoff_receive_via_code))
+            setMessage(getString(R.string.handoff_enter_code_message))
+            setCustomView(input)
+            setPosButton(R.string.ok) {
+                val code = input.text?.toString()?.trim().orEmpty()
+                if (code.isNotEmpty()) fetchByCode(code)
             }
+            setNegButton(R.string.cancel) {}
+            show()
+        }
+    }
+
+    private fun fetchByCode(code: String) {
+        snackString(getString(R.string.handoff_fetching_code))
+        val activity = activity as? AppCompatActivity
+        CloudHandoff.fetch(code) { payload ->
+            if (payload == null) {
+                snackString(getString(R.string.handoff_code_not_found))
+                return@fetch
+            }
+            activity?.lifecycleScope?.launch {
+                HandoffNavigator.navigate(activity.applicationContext, payload)
+            }
+            dismissAllowingStateLoss()
         }
     }
 

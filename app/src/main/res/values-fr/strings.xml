@@ -1731,5 +1731,12 @@
     <string name="handoff_scan_again">Scanner à nouveau</string>
     <string name="handoff_camera_permission_needed">L\'autorisation de la caméra est requise pour scanner un code QR.</string>
     <string name="handoff_camera_unavailable">Caméra indisponible sur cet appareil.</string>
-    <string name="handoff_sharing_code_coming_soon">Les codes de partage arrivent bientôt.</string>
+    <string name="handoff_share_code">Partager via un code</string>
+    <string name="handoff_share_code_hint">Saisissez ce code sur l\'autre appareil dans « Recevoir via un code de partage ». Il expire dans 10 minutes.</string>
+    <string name="handoff_uploading_code">Génération du code…</string>
+    <string name="handoff_code_upload_failed">Impossible de générer un code de partage. Vérifiez votre connexion et réessayez.</string>
+    <string name="handoff_enter_code_message">Saisissez le code affiché sur l\'autre appareil.</string>
+    <string name="handoff_enter_code_hint">Code</string>
+    <string name="handoff_fetching_code">Récupération…</string>
+    <string name="handoff_code_not_found">Ce code est invalide ou a expiré.</string>
 </resources>
