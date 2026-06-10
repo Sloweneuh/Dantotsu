@@ -4,7 +4,6 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import androidx.core.app.NotificationCompat
@@ -18,6 +17,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import java.io.Serializable
 
 /**
  * Keeps this device discoverable and able to receive handoffs while the app is in the foreground
@@ -97,7 +97,9 @@ object GlobalHandoffReceiver {
         ) return
 
         val openIntent = Intent(context, HandoffDeepLinkActivity::class.java).apply {
-            data = Uri.parse(payload.toDeepLink())
+            // Pass the full payload in-process (keeps sourceMedia, unlike a deep link) so tapping
+            // opens the exact source entry — same fidelity as the in-app banner.
+            putExtra(HandoffDeepLinkActivity.EXTRA_PAYLOAD, payload as Serializable)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         }
         val pending = PendingIntent.getActivity(

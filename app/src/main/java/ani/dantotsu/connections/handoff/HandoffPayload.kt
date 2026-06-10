@@ -67,15 +67,19 @@ data class HandoffPayload(
     /**
      * A scannable deep link encoding this payload (QR-code fallback transport).
      *
-     * [sourceMedia] is dropped here: a serialized ShowResponse is far too large to fit in a
-     * scannable QR code, so the scan path falls back to the receiver's own title search.
+     * [sourceMedia] is dropped from the embedded data: a serialized ShowResponse is far too large
+     * to fit in a scannable QR code. When [cloudCode] is supplied, the receiver can instead pull
+     * the *full* payload (incl. sourceMedia) from [CloudHandoff] by that code for an exact source
+     * match; the embedded lightweight data stays as an offline fallback (title search) for when the
+     * cloud is unreachable.
      */
-    fun toDeepLink(): String {
+    fun toDeepLink(cloudCode: String? = null): String {
         val json = (if (sourceMedia == null) this else copy(sourceMedia = null)).let { Gson().toJson(it) }
         val data = Base64.encodeToString(
             json.toByteArray(), Base64.URL_SAFE or Base64.NO_WRAP or Base64.NO_PADDING
         )
-        return "$SCHEME://$HOST?d=$data"
+        val code = if (!cloudCode.isNullOrEmpty()) "&$QUERY_CODE=$cloudCode" else ""
+        return "$SCHEME://$HOST?d=$data$code"
     }
 
     companion object {
@@ -83,6 +87,9 @@ data class HandoffPayload(
         // the broadly-scoped Discord/AniList login filters and trigger an "open with" chooser.
         const val SCHEME = "dantotsuhandoff"
         const val HOST = "media"
+        // Query params: "d" = Base64 lightweight payload, "c" = optional CloudHandoff code that
+        // resolves the full payload (with sourceMedia) for a smoother, exact-match transition.
+        const val QUERY_CODE = "c"
 
         fun fromJson(json: String): HandoffPayload? = runCatching {
             Gson().fromJson(json, HandoffPayload::class.java)

@@ -98,9 +98,15 @@ class HandoffScanActivity : AppCompatActivity() {
     /** Called on the analysis thread for every decoded QR; ignores non-handoff codes. */
     private fun onScanned(text: String) {
         if (handled) return
-        val payload = HandoffPayload.fromDeepLink(Uri.parse(text)) ?: return
+        val uri = Uri.parse(text)
+        val payload = HandoffPayload.fromDeepLink(uri) ?: return
         handled = true
-        runOnUiThread { showResult(payload) }
+        val code = uri.getQueryParameter(HandoffPayload.QUERY_CODE)
+        if (code != null) {
+            // Upgrade to the full payload (exact source entry) from the cloud; fall back to the
+            // QR's embedded payload if it's unavailable. CloudHandoff callbacks are on the main thread.
+            CloudHandoff.fetch(code, consume = false) { full -> showResult(full ?: payload) }
+        } else runOnUiThread { showResult(payload) }
     }
 
     private fun showResult(payload: HandoffPayload) {

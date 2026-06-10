@@ -42,10 +42,14 @@ object CloudHandoff {
     }
 
     /**
-     * Fetches and consumes the payload for [code]. Returns null via [onResult] when the code is
-     * unknown, expired, malformed, or the database is unreachable.
+     * Fetches the payload for [code]. Returns null via [onResult] when the code is unknown,
+     * expired, malformed, or the database is unreachable.
+     *
+     * [consume] deletes the entry on a successful read — true for the manual sharing-code flow
+     * (one-shot), false for the QR upgrade path (the same code may be scanned more than once, and
+     * it expires via [TTL_MS] anyway).
      */
-    fun fetch(code: String, onResult: (HandoffPayload?) -> Unit) {
+    fun fetch(code: String, consume: Boolean = true, onResult: (HandoffPayload?) -> Unit) {
         val node = runCatching { root().child(code.trim().uppercase()) }.getOrNull()
             ?: return onResult(null)
         node.get()
@@ -58,7 +62,7 @@ object CloudHandoff {
                     if (snapshot.exists()) node.removeValue() // drop a stale/garbage entry
                     onResult(null)
                 } else {
-                    node.removeValue() // one-shot: consume on first successful read
+                    if (consume) node.removeValue()
                     onResult(payload)
                 }
             }

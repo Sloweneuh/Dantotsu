@@ -338,7 +338,16 @@ class HandoffBottomSheet : BottomSheetDialogFragment() {
     }
 
     private fun showQrFallback() {
-        val link = payload?.toDeepLink() ?: return
+        val payload = payload ?: return
+        // Upload the full payload (incl. sourceMedia) so a scan can resolve the exact source entry
+        // for a smooth transition; the QR still embeds the lightweight deep link, so it keeps
+        // working (title-search fallback) if the upload failed or the cloud is unreachable.
+        CloudHandoff.upload(payload) { code ->
+            if (isAdded) showQr(payload.toDeepLink(code))
+        }
+    }
+
+    private fun showQr(link: String) {
         val bitmap = HandoffQr.encode(link) ?: run {
             snackString(getString(R.string.handoff_qr_failed)); return
         }
