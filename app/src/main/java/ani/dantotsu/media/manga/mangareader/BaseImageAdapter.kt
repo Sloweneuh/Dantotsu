@@ -267,7 +267,9 @@ abstract class BaseImageAdapter(
         }
 
         private fun downsampleBitmap(bitmap: Bitmap, maxWidth: Int, maxHeight: Int): Bitmap {
-            if (bitmap.width <= maxWidth && bitmap.height <= maxHeight) return bitmap
+            // Only constrain by width; tall images (e.g. long-strip pages) must not have their
+            // width crushed by the height limit, as SSIV handles scrolling within the page.
+            if (bitmap.width <= maxWidth) return bitmap
             val scale = minOf(maxWidth.toFloat() / bitmap.width, maxHeight.toFloat() / bitmap.height)
             return Bitmap.createScaledBitmap(
                 bitmap,

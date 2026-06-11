@@ -102,8 +102,9 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
         markwon = buildMarkwon(this, userInputContent = false, linkResolver = { openLinkInBrowser(it) })
 
         binding.extensionInfoBottomBar.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-            bottomMargin = navBarHeight
+            height += navBarHeight
         }
+        binding.extensionInfoBottomBar.setPadding(0, 0, 0, navBarHeight)
         binding.extensionInfoPages.updateLayoutParams<ViewGroup.MarginLayoutParams> {
             bottomMargin += navBarHeight
         }

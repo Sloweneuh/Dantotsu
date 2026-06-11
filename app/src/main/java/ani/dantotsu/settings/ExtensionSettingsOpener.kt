@@ -63,11 +63,14 @@ object ExtensionSettingsOpener {
                             .addToBackStack(null)
                             .commit()
                     } else if (activity is ExtensionBrowseActivity) {
+                        val filterChips = activity.findViewById<RecyclerView>(R.id.extensionBrowseActiveFilterChips)
+                        val filterChipsWasVisible = filterChips.isVisible
                         val changeUIVisibility: (Boolean) -> Unit = { show ->
                             activity.findViewById<LinearLayout>(R.id.extensionBrowseToolbar).isVisible = show
                             activity.findViewById<ChipGroup>(R.id.extensionBrowseChipGroup).isVisible = show
                             activity.findViewById<RecyclerView>(R.id.extensionBrowseRecycler).isVisible = show
                             activity.findViewById<ProgressBar>(R.id.extensionBrowseProgress).isVisible = if (show) activity.findViewById<ProgressBar>(R.id.extensionBrowseProgress).visibility == android.view.View.VISIBLE else false
+                            filterChips.isVisible = show && filterChipsWasVisible
                             activity.findViewById<android.widget.FrameLayout>(R.id.fragmentExtensionsContainer).isGone = show
                         }
                         val fragment = ani.dantotsu.settings.extensionprefs.AnimeSourcePreferencesFragment().getInstance(selected.id) {
@@ -109,11 +112,14 @@ object ExtensionSettingsOpener {
                             .addToBackStack(null)
                             .commit()
                     } else if (activity is ExtensionBrowseActivity) {
+                        val filterChips = activity.findViewById<RecyclerView>(R.id.extensionBrowseActiveFilterChips)
+                        val filterChipsWasVisible = filterChips.isVisible
                         val changeUIVisibility: (Boolean) -> Unit = { show ->
                             activity.findViewById<LinearLayout>(R.id.extensionBrowseToolbar).isVisible = show
                             activity.findViewById<ChipGroup>(R.id.extensionBrowseChipGroup).isVisible = show
                             activity.findViewById<RecyclerView>(R.id.extensionBrowseRecycler).isVisible = show
                             activity.findViewById<ProgressBar>(R.id.extensionBrowseProgress).isVisible = if (show) activity.findViewById<ProgressBar>(R.id.extensionBrowseProgress).visibility == android.view.View.VISIBLE else false
+                            filterChips.isVisible = show && filterChipsWasVisible
                             activity.findViewById<android.widget.FrameLayout>(R.id.fragmentExtensionsContainer).isGone = show
                         }
                         val fragment = ani.dantotsu.settings.extensionprefs.MangaSourcePreferencesFragment().getInstance(selected.id) {

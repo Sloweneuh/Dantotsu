@@ -19,6 +19,7 @@ import android.view.KeyEvent.KEYCODE_PAGE_DOWN
 import android.view.KeyEvent.KEYCODE_PAGE_UP
 import android.view.KeyEvent.KEYCODE_VOLUME_DOWN
 import android.view.KeyEvent.KEYCODE_VOLUME_UP
+import android.view.Choreographer
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
@@ -139,6 +140,29 @@ class MangaReaderActivity : AppCompatActivity() {
     var isAnimating = false
     private var autoscrollTimer: Timer? = null
     var autoscrollOn = false
+    private var autoscrollLastFrameNanos = 0L
+    private var autoscrollAccumulatedPx = 0f
+    private val autoscrollFrameCallback = object : Choreographer.FrameCallback {
+        override fun doFrame(frameTimeNanos: Long) {
+            if (!autoscrollOn) return
+            if (autoscrollLastFrameNanos != 0L) {
+                // Cap elapsed to 50 ms to avoid a large jump after a frame drop or resume
+                val elapsedSec = minOf(
+                    (frameTimeNanos - autoscrollLastFrameNanos) / 1_000_000_000f,
+                    0.05f
+                )
+                val speed = PrefManager.getVal<Float>(PrefName.AutoScrollSpeed)
+                autoscrollAccumulatedPx += speed * 240f * elapsedSec
+                val scroll = autoscrollAccumulatedPx.toInt()
+                if (scroll > 0) {
+                    autoscrollAccumulatedPx -= scroll
+                    binding.mangaReaderRecycler.scrollBy(0, scroll)
+                }
+            }
+            autoscrollLastFrameNanos = frameTimeNanos
+            Choreographer.getInstance().postFrameCallback(this)
+        }
+    }
 
     private val directionRLBT
         get() = defaultSettings.direction == RIGHT_TO_LEFT
@@ -244,20 +268,10 @@ class MangaReaderActivity : AppCompatActivity() {
                 }
             }, interval, interval)
         } else {
-            // Continuous: scroll by more pixels per tick for higher speed
-            val pxPerTick = (12 * PrefManager.getVal<Float>(PrefName.AutoScrollSpeed)).toInt()
-            val interval = 50L
-            autoscrollTimer = Timer()
-            autoscrollTimer?.scheduleAtFixedRate(object : TimerTask() {
-                override fun run() {
-                    binding.mangaReaderRecycler.post {
-                        try {
-                            binding.mangaReaderRecycler.smoothScrollBy(0, pxPerTick)
-                        } catch (e: Exception) {
-                        }
-                    }
-                }
-            }, interval, interval)
+            // Continuous: vsync-tied smooth scroll via Choreographer
+            autoscrollLastFrameNanos = 0L
+            autoscrollAccumulatedPx = 0f
+            Choreographer.getInstance().postFrameCallback(autoscrollFrameCallback)
         }
     }
 
@@ -265,15 +279,21 @@ class MangaReaderActivity : AppCompatActivity() {
         autoscrollOn = false
         autoscrollTimer?.cancel()
         autoscrollTimer = null
+        Choreographer.getInstance().removeFrameCallback(autoscrollFrameCallback)
+        autoscrollLastFrameNanos = 0L
+        autoscrollAccumulatedPx = 0f
         binding.mangaReaderAutoscroll.setImageResource(R.drawable.ic_round_play_arrow_24)
     }
 
     fun updateAutoscrollSpeed(newSpeed: Float) {
         PrefManager.setVal(PrefName.AutoScrollSpeed, newSpeed)
         if (autoscrollOn) {
-            // restart with new speed
-            autoscrollTimer?.cancel()
-            startAutoscroll()
+            if (defaultSettings.layout == CurrentReaderSettings.Layouts.PAGED) {
+                // Paged mode uses a timer interval, so must restart
+                autoscrollTimer?.cancel()
+                startAutoscroll()
+            }
+            // Continuous mode: Choreographer reads speed on every frame, no restart needed
         }
     }
 
@@ -950,7 +970,7 @@ class MangaReaderActivity : AppCompatActivity() {
                                     )))
                                 ) {
                                     handleController(true)
-                                } else handleController(false)
+                                } else if (!autoscrollOn) handleController(false)
                             }
                             updatePageNumber(
                                 manager.findLastVisibleItemPosition().toLong() * (dualPage { 2 }
@@ -1326,7 +1346,7 @@ class MangaReaderActivity : AppCompatActivity() {
                     }
                 }
                 handleController(true)
-            } else handleController(false)
+            } else if (!autoscrollOn) handleController(false)
         }
 
         // Track current chapter based on the last visible Image (skip Transition/Boundary

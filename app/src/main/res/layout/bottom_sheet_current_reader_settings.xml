@@ -548,8 +548,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:valueFrom="0.5"
-            android:valueTo="2.0"
-            android:stepSize="0.1"
+            android:valueTo="10.0"
+            android:stepSize="0.5"
             android:value="1.0" />
     </LinearLayout>
 

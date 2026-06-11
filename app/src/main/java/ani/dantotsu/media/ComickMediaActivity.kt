@@ -81,8 +81,9 @@ class ComickMediaActivity : AppCompatActivity() {
         initActivity(this)
 
         binding.comickMediaBottomBar.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-            bottomMargin = navBarHeight
+            height += navBarHeight
         }
+        binding.comickMediaBottomBar.setPadding(0, 0, 0, navBarHeight)
         binding.comickMediaPages.updateLayoutParams<ViewGroup.MarginLayoutParams> {
             bottomMargin += navBarHeight
         }

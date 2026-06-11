@@ -1257,12 +1257,25 @@ class SpinnerNoSwipe : androidx.appcompat.widget.AppCompatSpinner {
     }
 
     private fun setup() {
+        background = null
+        setPadding(0, 0, 0, 0)
+        minimumWidth = 0
         mGestureDetector =
             GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
                 override fun onSingleTapUp(e: MotionEvent): Boolean {
                     return performClick()
                 }
             })
+    }
+
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+        // AppCompatSpinner shrinks to content width in AT_MOST passes, which propagates
+        // into the parent LinearLayout's maxWidth and narrows sibling views (e.g. the title
+        // below). Fill the full allocated space whenever a size is imposed.
+        if (MeasureSpec.getMode(widthMeasureSpec) != MeasureSpec.UNSPECIFIED) {
+            setMeasuredDimension(MeasureSpec.getSize(widthMeasureSpec), measuredHeight)
+        }
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
