@@ -13,8 +13,12 @@ class PreferencePackager {
         /**
          * @return a json string of the packed preferences
          */
-        fun pack(map: Map<Location, SharedPreferences>, includeKeys: Set<String>? = null): String {
-            val prefsMap = packagePreferences(map, includeKeys)
+        fun pack(
+            map: Map<Location, SharedPreferences>,
+            includeKeys: Set<String>? = null,
+            excludeKeys: Set<String>? = null,
+        ): String {
+            val prefsMap = packagePreferences(map, includeKeys, excludeKeys)
             val gson = Gson()
             return gson.toJson(prefsMap)
         }
@@ -62,12 +66,14 @@ class PreferencePackager {
         private fun packagePreferences(
             map: Map<Location, SharedPreferences>,
             includeKeys: Set<String>?,
+            excludeKeys: Set<String>? = null,
         ): Map<String, Map<String, *>> {
             val result = mutableMapOf<String, Map<String, *>>()
             for ((location, preferences) in map) {
                 val prefMap = mutableMapOf<String, Any>()
                 preferences.all.forEach { (key, value) ->
                     if (includeKeys != null && key !in includeKeys) return@forEach
+                    if (excludeKeys != null && key in excludeKeys) return@forEach
                     val typeValueMap = mapOf(
                         "type" to value?.javaClass?.kotlin?.qualifiedName,
                         "value" to value

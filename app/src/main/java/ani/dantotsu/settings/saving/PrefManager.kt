@@ -349,6 +349,22 @@ object PrefManager {
         )
     }
 
+    /**
+     * Packs the given locations for cloud sync, dropping any key in [excludeKeys] (device-local
+     * prefs that must not propagate across devices). Unlike [exportAllPrefs] the caller is
+     * expected to leave out [Location.Protected] so secrets never leave the device.
+     */
+    fun exportSyncablePrefs(prefLocation: List<Location>, excludeKeys: Set<String>): String {
+        return PreferencePackager.pack(
+            prefLocation.associateWith { getPrefLocation(it) },
+            includeKeys = null,
+            excludeKeys = excludeKeys,
+        )
+    }
+
+    /** Applies a packed-prefs JSON string produced by [exportSyncablePrefs]/[exportAllPrefs]. */
+    fun importPackedPrefs(json: String): Boolean = PreferencePackager.unpack(json)
+
 
     /**
      * @param prefs Map of preferences to import

@@ -63,6 +63,7 @@ object SettingsSearch {
     private val IC_PLAYER = R.drawable.ic_round_video_settings_24
     private val IC_READER = R.drawable.ic_round_import_contacts_24
     private val IC_UI = R.drawable.ic_round_auto_awesome_24
+    private val IC_BACKUP = R.drawable.backup_restore
 
     val index: List<SearchableSetting> by lazy { buildIndex() }
 
@@ -116,7 +117,7 @@ object SettingsSearch {
         l += SearchableSetting(SettingsCommonActivity::class.java, R.string.download_manager_select, R.string.common, IC_COMMON, R.string.download_manager_select_desc)
         l += SearchableSetting(SettingsCommonActivity::class.java, R.string.allow_metered_downloads, R.string.common, IC_COMMON, R.string.allow_metered_downloads_desc, keywords = "data wifi mobile")
         l += SearchableSetting(SettingsCommonActivity::class.java, R.string.app_lock, R.string.common, IC_COMMON, R.string.app_lock_desc, keywords = "password biometric pin security")
-        l += SearchableSetting(SettingsCommonActivity::class.java, R.string.backup_restore, R.string.common, IC_COMMON, R.string.backup_restore_desc, keywords = "export import")
+        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.backup_sync, R.string.common, IC_BACKUP, R.string.backup_sync_desc, keywords = "cloud sync export import backup restore devices")
         l += SearchableSetting(SettingsCommonActivity::class.java, R.string.change_download_location, R.string.common, IC_COMMON, R.string.change_download_location_desc, keywords = "folder directory storage")
         l += SearchableSetting(SettingsCommonActivity::class.java, R.string.always_continue_content, R.string.common, IC_COMMON, R.string.always_continue_content_desc)
         l += SearchableSetting(SettingsCommonActivity::class.java, R.string.handoff_discovery_setting, R.string.common, IC_COMMON, R.string.handoff_discovery_setting_desc, keywords = "cast nearby lan")
@@ -126,6 +127,16 @@ object SettingsSearch {
         l += SearchableSetting(SettingsCommonActivity::class.java, R.string.adult_only_content, R.string.common, IC_COMMON, R.string.adult_only_content_desc, keywords = "nsfw 18")
         l += SearchableSetting(SettingsCommonActivity::class.java, R.string.selected_dns, R.string.common, IC_COMMON, anchorViewId = R.id.settingsExtensionDns, keywords = "doh dns over https cloudflare google")
         l += SearchableSetting(SettingsCommonActivity::class.java, R.string.startUpTab, R.string.common, IC_COMMON, anchorViewId = R.id.uiSettingsHome, keywords = "default startup home anime manga tab")
+
+        // ---- Backup & sync ----
+        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.backup_restore, R.string.backup_sync, IC_BACKUP, R.string.backup_restore_desc, keywords = "export import")
+        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.cloud_sync, R.string.backup_sync, IC_BACKUP, R.string.cloud_sync_desc, keywords = "anilist cloud sync devices firebase")
+        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.cloud_sync_now, R.string.backup_sync, IC_BACKUP, R.string.cloud_sync_now_desc, keywords = "cloud sync upload download")
+        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.sync_extensions, R.string.backup_sync, IC_EXTENSION, R.string.sync_extensions_desc, keywords = "extensions sources sync devices")
+        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.sync_extensions_now, R.string.backup_sync, IC_EXTENSION, R.string.sync_extensions_now_desc, keywords = "extensions sources install uninstall reconcile")
+        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.sync_extension_settings, R.string.backup_sync, IC_EXTENSION, R.string.sync_extension_settings_desc, keywords = "extension settings source preferences login credentials sync")
+        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.force_upload, R.string.backup_sync, IC_BACKUP, R.string.force_upload_desc, keywords = "force overwrite upload push cloud replace")
+        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.force_download, R.string.backup_sync, IC_BACKUP, R.string.force_download_desc, keywords = "force overwrite download pull cloud replace restore")
 
         // ---- User Interface ----
         l += SearchableSetting(UserInterfaceSettingsActivity::class.java, R.string.immersive_mode, R.string.ui_settings, IC_UI, anchorViewId = R.id.uiSettingsImmersive, keywords = "fullscreen")

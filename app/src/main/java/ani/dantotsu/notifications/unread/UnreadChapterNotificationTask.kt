@@ -12,6 +12,7 @@ import ani.dantotsu.R
 import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.malsync.MalSyncApi
 import ani.dantotsu.connections.malsync.UnreadChapterInfo
+import ani.dantotsu.connections.sync.UnreadSync
 import ani.dantotsu.media.Media
 import ani.dantotsu.media.MediaDetailsActivity
 import ani.dantotsu.notifications.Task
@@ -83,6 +84,18 @@ class UnreadChapterNotificationTask : Task {
                         }
 
                         Logger.log("UnreadChapterNotificationTask: found ${mangaList.size} manga")
+
+                        // If another of the user's devices already produced a fresh result, reuse it
+                        // instead of re-running the costly MALSync batch scan.
+                        val sharedMaxAgeMs = maxOf(
+                            PrefManager.getVal<Long>(PrefName.UnreadChapterNotificationInterval), 1L
+                        ) * 60_000L
+                        val shared = UnreadSync.fetchFresh(sharedMaxAgeMs)
+                        if (shared != null) {
+                            Logger.log("UnreadChapterNotificationTask: using shared cloud result (${shared.size}); skipping MALSync scan")
+                            handleUnreadResult(context, shared, mangaList)
+                            return@anilistCheck
+                        }
 
                         val notificationManager = NotificationManagerCompat.from(context)
 
@@ -176,38 +189,9 @@ class UnreadChapterNotificationTask : Task {
 
                         Logger.log("UnreadChapterNotificationTask: found ${unreadInfo.size} manga with unread chapters")
 
-                        try {
-                            UnreadCache.save(context, unreadInfo, mangaList)
-                            UnreadCache.broadcastUpdate(context)
-                        } catch (e: Exception) {
-                            Logger.log("UnreadChapterNotificationTask: Failed to cache/broadcast unread results: ${e.message}")
-                        }
-
-                        val notifiedKey = "notified_unread_chapters"
-                        val notified = getNotifiedSet(context, notifiedKey)
-                        val newNotifications = mutableListOf<Pair<Media, UnreadChapterInfo>>()
-
-                        unreadInfo.forEach { (mediaId, info) ->
-                            val key = "$mediaId:${info.lastChapter}"
-                            if (!notified.contains(key)) {
-                                val media = mangaList.find { it.id == mediaId }
-                                if (media != null) {
-                                    newNotifications.add(media to info)
-                                    notified.add(key)
-                                }
-                            }
-                        }
-
-                        saveNotifiedSet(context, notifiedKey, notified)
-
-                        Logger.log("UnreadChapterNotificationTask: ${newNotifications.size} new chapters to notify")
-
-                        if (newNotifications.isNotEmpty()) {
-                            withContext(Dispatchers.Main) {
-                                sendNotifications(context, newNotifications)
-                                storeNotifications(newNotifications)
-                            }
-                        }
+                        // Publish for the user's other devices, then cache + notify locally.
+                        UnreadSync.push(unreadInfo)
+                        handleUnreadResult(context, unreadInfo, mangaList)
 
                         if (progressNotification != null) {
                             Logger.log("UnreadChapterNotificationTask: Canceling progress notification")
@@ -226,6 +210,46 @@ class UnreadChapterNotificationTask : Task {
             Logger.log("UnreadChapterNotificationTask: error: ${e.message}")
             currentlyPerforming = false
             return false
+        }
+    }
+
+    /** Caches the result, broadcasts the update, and fires notifications for newly-unread chapters. */
+    private suspend fun handleUnreadResult(
+        context: Context,
+        unreadInfo: Map<Int, UnreadChapterInfo>,
+        mangaList: List<Media>,
+    ) {
+        try {
+            UnreadCache.save(context, unreadInfo, mangaList)
+            UnreadCache.broadcastUpdate(context)
+        } catch (e: Exception) {
+            Logger.log("UnreadChapterNotificationTask: Failed to cache/broadcast unread results: ${e.message}")
+        }
+
+        val notifiedKey = "notified_unread_chapters"
+        val notified = getNotifiedSet(context, notifiedKey)
+        val newNotifications = mutableListOf<Pair<Media, UnreadChapterInfo>>()
+
+        unreadInfo.forEach { (mediaId, info) ->
+            val key = "$mediaId:${info.lastChapter}"
+            if (!notified.contains(key)) {
+                val media = mangaList.find { it.id == mediaId }
+                if (media != null) {
+                    newNotifications.add(media to info)
+                    notified.add(key)
+                }
+            }
+        }
+
+        saveNotifiedSet(context, notifiedKey, notified)
+
+        Logger.log("UnreadChapterNotificationTask: ${newNotifications.size} new chapters to notify")
+
+        if (newNotifications.isNotEmpty()) {
+            withContext(Dispatchers.Main) {
+                sendNotifications(context, newNotifications)
+                storeNotifications(newNotifications)
+            }
         }
     }
 

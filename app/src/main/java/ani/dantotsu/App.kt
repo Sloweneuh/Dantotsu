@@ -271,6 +271,12 @@ class App : MultiDexApplication() {
             if (--startedActivities <= 0) {
                 startedActivities = 0
                 runCatching { GlobalHandoffReceiver.stop() }
+                // App backgrounded: push any settings changed during this session. This coalesces
+                // a whole foreground session's edits into a single upload (our "debounce").
+                runCatching { ani.dantotsu.connections.sync.CloudSync.pushInBackground() }
+                runCatching { ani.dantotsu.connections.sync.ExtensionSync.pushInBackground() }
+                runCatching { ani.dantotsu.connections.sync.ExtensionSettingsSync.pushInBackground() }
+                runCatching { ani.dantotsu.connections.sync.ProgressSync.pushInBackground() }
             }
         }
         override fun onActivitySaveInstanceState(p0: Activity, p1: Bundle) {}

@@ -81,6 +81,12 @@ enum class PrefName(val data: Pref) {
     AniMangaSearchDirect(Pref(Location.General, Boolean::class, true)),
     // Local "Continue on another device" discovery (Nearby + LAN); QR/sharing-code stay available.
     HandoffDiscoveryEnabled(Pref(Location.General, Boolean::class, true)),
+    // Master switch for syncing settings across devices via the Anilist account (Firebase RTDB).
+    CloudSyncEnabled(Pref(Location.General, Boolean::class, true)),
+    // Opt-in: also publish/reconcile the set of installed extensions across devices.
+    SyncExtensionsEnabled(Pref(Location.General, Boolean::class, false)),
+    // Opt-in: sync per-extension settings (may include source logins) across devices.
+    SyncExtensionSettingsEnabled(Pref(Location.General, Boolean::class, false)),
     // Connection toggles (allow disabling external info/tabs)
     ComickEnabled(Pref(Location.General, Boolean::class, true)),
     MalEnabled(Pref(Location.General, Boolean::class, true)),

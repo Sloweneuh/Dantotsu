@@ -29,6 +29,10 @@ import kotlinx.coroutines.withContext
 suspend fun getUserId(context: Context, block: () -> Unit) {
     if (!Anilist.initialized && PrefManager.getVal<String>(PrefName.AnilistToken) != "") {
         if (Anilist.query.getUserData()) {
+            // User is now identified; pull cloud settings from any other device of theirs.
+            ani.dantotsu.connections.sync.CloudSync.pullInBackground()
+            ani.dantotsu.connections.sync.ExtensionSettingsSync.pullInBackground()
+            ani.dantotsu.connections.sync.ProgressSync.pullInBackground()
             tryWithSuspend {
                 if (MAL.token != null && !MAL.query.getUserData())
                     snackString(context.getString(R.string.error_loading_mal_user_data))
