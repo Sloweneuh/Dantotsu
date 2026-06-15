@@ -130,6 +130,10 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
         screenWidth = resources.displayMetrics.widthPixels.toFloat()
         navBar = binding.mediaBottomBar
 
+        // Capture the height actually used so the insets listener can apply corrections if
+        // the real status bar height arrives later (e.g. cold-start directly into this activity).
+        var appliedStatusBarHeight = statusBarHeight
+
         binding.fragmentExtensionsContainer.setPadding(
             binding.fragmentExtensionsContainer.paddingLeft,
             statusBarHeight,
@@ -140,6 +144,28 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
         // Ensure the side rail is offset from system navigation insets and brought to front
         val rootView = window.decorView.findViewById(android.R.id.content) as View
         ViewCompat.setOnApplyWindowInsetsListener(rootView) { _, insets ->
+            val statusInsets = insets.getInsets(WindowInsetsCompat.Type.statusBars())
+            val realStatusBarHeight = statusInsets.top
+            if (realStatusBarHeight > 0 && realStatusBarHeight != appliedStatusBarHeight) {
+                val delta = realStatusBarHeight - appliedStatusBarHeight
+                appliedStatusBarHeight = realStatusBarHeight
+                statusBarHeight = realStatusBarHeight
+                binding.fragmentExtensionsContainer.setPadding(
+                    binding.fragmentExtensionsContainer.paddingLeft,
+                    realStatusBarHeight,
+                    binding.fragmentExtensionsContainer.paddingRight,
+                    binding.fragmentExtensionsContainer.paddingBottom,
+                )
+                binding.mediaBanner.updateLayoutParams { height += delta }
+                binding.mediaBannerNoKen.updateLayoutParams { height += delta }
+                binding.mediaClose.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+                    topMargin += delta
+                }
+                binding.incognito.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+                    topMargin += delta
+                }
+                binding.mediaCollapsing.minimumHeight = realStatusBarHeight
+            }
             val navInsets = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
             val isLandscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
             val rightInset = if (isLandscape) navInsets.right else 0
