@@ -393,8 +393,9 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                         removed++
                     }
                 }
-                // Republish so this device's new set is reflected for the others.
-                GlobalScope.launch(Dispatchers.IO) { ExtensionSync.push() }
+                // Do NOT push here: install/uninstall are async and localPayload() would still
+                // reflect the pre-reconcile state. pushInBackground() in App.kt fires once
+                // the installs have completed and the extension flow has settled.
                 toast(getString(R.string.ext_reconcile_summary, installed, removed))
             }
             .setNegativeButton(R.string.cancel, null)
