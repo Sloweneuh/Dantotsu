@@ -16,6 +16,7 @@ import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
+import ani.dantotsu.toast
 import ani.dantotsu.util.customAlertDialog
 import io.noties.markwon.Markwon
 import io.noties.markwon.SoftBreakAddsNewLinePlugin
@@ -170,9 +171,24 @@ class SettingsConnectionsActivity : AppCompatActivity() {
                     }
                 }
             )
+            ,
+            Settings(
+                type = 1,
+                name = getString(R.string.malsync_exclude_manage),
+                desc = getString(R.string.malsync_exclude_manage_desc),
+                icon = R.drawable.ic_malsync,
+                onClick = { showMalSyncExcludeDialog() },
+            )
         )
 
         binding.connectionsRecyclerView.adapter = SettingsAdapter(settingsList)
         binding.connectionsRecyclerView.layoutManager = LinearLayoutManager(this)
+    }
+
+    private fun showMalSyncExcludeDialog() {
+        MediaExcludeBottomDialog.newInstance(
+            PrefName.MalSyncExcludeList,
+            getString(R.string.malsync_exclude_manage)
+        ).show(supportFragmentManager, "malSyncExclude")
     }
 }

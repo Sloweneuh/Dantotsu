@@ -466,3 +466,7 @@ object PrefManager {
         }
     }
 }
+
+// Entries in media-ID sets are stored as "id" or "id||name".
+fun Set<String>.containsMediaId(id: String) = any { it == id || it.startsWith("$id||") }
+fun Set<String>.removeMediaId(id: String) = filter { it != id && !it.startsWith("$id||") }.toSet()

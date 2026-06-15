@@ -369,6 +369,13 @@ class SettingsCommonActivity : AppCompatActivity() {
                             },
                             isVisible = Anilist.adult,
                         ),
+                        Settings(
+                            type = 1,
+                            name = getString(R.string.hidden_from_lists_manage),
+                            desc = getString(R.string.hidden_from_lists_manage_desc),
+                            icon = R.drawable.ic_round_remove_red_eye_24,
+                            onClick = { showHiddenFromListsDialog() },
+                        ),
                     ),
                 )
             settingsRecyclerView.apply {
@@ -422,4 +429,10 @@ class SettingsCommonActivity : AppCompatActivity() {
         }
     }
 
+    private fun showHiddenFromListsDialog() {
+        MediaExcludeBottomDialog.newInstance(
+            PrefName.HiddenFromLists,
+            getString(R.string.hidden_from_lists_manage)
+        ).show(supportFragmentManager, "hiddenFromLists")
+    }
 }

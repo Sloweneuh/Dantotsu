@@ -20,6 +20,8 @@ import ani.dantotsu.navBarHeight
 import ani.dantotsu.others.getSerialized
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
+import ani.dantotsu.settings.saving.containsMediaId
+import ani.dantotsu.settings.saving.removeMediaId
 import ani.dantotsu.snackString
 import ani.dantotsu.util.Logger
 import kotlinx.coroutines.Dispatchers
@@ -246,19 +248,19 @@ class MediaListDialogSmallFragment : BottomSheetDialogFragment() {
         binding.mediaListPrivate.setOnCheckedChangeListener { _, checked ->
             media.isListPrivate = checked
         }
-        val removeList = PrefManager.getCustomVal("removeList", setOf<Int>())
+        val removeList = PrefManager.getVal<Set<String>>(PrefName.HiddenFromLists)
         var remove: Boolean? = null
-        binding.mediaListShow.isChecked = media.id in removeList
+        binding.mediaListShow.isChecked = removeList.containsMediaId(media.id.toString())
         binding.mediaListShow.setOnCheckedChangeListener { _, checked ->
             remove = checked
         }
-        val malSyncExcludeList = PrefManager.getCustomVal("malSyncBatchExcludeList", setOf<Int>())
+        val malSyncExcludeList = PrefManager.getVal<Set<String>>(PrefName.MalSyncExcludeList)
         var malSyncExclude: Boolean? = null
         binding.mediaListMalSyncExclude.setText(
             if (media.anime != null) R.string.exclude_from_unwatched_episodes
             else R.string.exclude_from_unread_chapters
         )
-        binding.mediaListMalSyncExclude.isChecked = media.id in malSyncExcludeList
+        binding.mediaListMalSyncExclude.isChecked = malSyncExcludeList.containsMediaId(media.id.toString())
         binding.mediaListMalSyncExclude.setOnCheckedChangeListener { _, checked ->
             malSyncExclude = checked
         }
@@ -310,14 +312,16 @@ class MediaListDialogSmallFragment : BottomSheetDialogFragment() {
                             }
                         }
                 if (remove == true) {
-                    PrefManager.setCustomVal("removeList", removeList.plus(media.id))
+                    val entry = "${media.id}||${media.cover.orEmpty()}||${media.userPreferredName}"
+                    PrefManager.setVal(PrefName.HiddenFromLists, removeList.removeMediaId(media.id.toString()).plus(entry))
                 } else if (remove == false) {
-                    PrefManager.setCustomVal("removeList", removeList.minus(media.id))
+                    PrefManager.setVal(PrefName.HiddenFromLists, removeList.removeMediaId(media.id.toString()))
                 }
                 if (malSyncExclude == true) {
-                    PrefManager.setCustomVal("malSyncBatchExcludeList", malSyncExcludeList.plus(media.id))
+                    val entry = "${media.id}||${media.cover.orEmpty()}||${media.userPreferredName}"
+                    PrefManager.setVal(PrefName.MalSyncExcludeList, malSyncExcludeList.removeMediaId(media.id.toString()).plus(entry))
                 } else if (malSyncExclude == false) {
-                    PrefManager.setCustomVal("malSyncBatchExcludeList", malSyncExcludeList.minus(media.id))
+                    PrefManager.setVal(PrefName.MalSyncExcludeList, malSyncExcludeList.removeMediaId(media.id.toString()))
                 }
                 Refresh.all()
                 if (anilistChangedLocal && !anilistOk) {

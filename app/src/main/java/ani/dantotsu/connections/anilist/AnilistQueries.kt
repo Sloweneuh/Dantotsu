@@ -28,6 +28,7 @@ import ani.dantotsu.others.MalScraper
 import ani.dantotsu.profile.User
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
+import ani.dantotsu.settings.saving.containsMediaId
 import ani.dantotsu.snackString
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -642,7 +643,7 @@ class AnilistQueries {
     }
 
     suspend fun initHomePage(): Map<String, ArrayList<Media>> {
-        val removeList = PrefManager.getCustomVal("removeList", setOf<Int>())
+        val removeList = PrefManager.getVal<Set<String>>(PrefName.HiddenFromLists)
         val hidePrivate = PrefManager.getVal<Boolean>(PrefName.HidePrivate)
         val removedMedia = ArrayList<Media>()
         val toShow: List<Boolean> =
@@ -689,7 +690,7 @@ class AnilistQueries {
 
             (currentMedia ?: emptyList()).forEach { entry ->
                 val media = Media(entry)
-                if (media.id !in removeList && (!hidePrivate || !media.isListPrivate)) {
+                if (!removeList.containsMediaId(media.id.toString()) && (!hidePrivate || !media.isListPrivate)) {
                     media.cameFromContinue = true
                     subMap[media.id] = media
                 } else {
@@ -699,7 +700,7 @@ class AnilistQueries {
 
             (repeatingMedia ?: emptyList()).forEach { entry ->
                 val media = Media(entry)
-                if (media.id !in removeList && (!hidePrivate || !media.isListPrivate)) {
+                if (!removeList.containsMediaId(media.id.toString()) && (!hidePrivate || !media.isListPrivate)) {
                     media.cameFromContinue = true
                     subMap[media.id] = media
                 } else {
@@ -751,7 +752,7 @@ class AnilistQueries {
             favorites?.forEach { edge ->
                 edge.node?.let {
                     val media = Media(it).apply { isFav = true }
-                    if (media.id !in removeList && (!hidePrivate || !media.isListPrivate)) {
+                    if (!removeList.containsMediaId(media.id.toString()) && (!hidePrivate || !media.isListPrivate)) {
                         returnArray.add(media)
                     } else {
                         removedMedia.add(media)

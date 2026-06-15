@@ -102,6 +102,7 @@ object SettingsSearch {
         l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.disable_comick, R.string.connections_settings, IC_ACCOUNT, R.string.disable_comick_desc)
         l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.disable_mal, R.string.connections_settings, IC_ACCOUNT, R.string.disable_mal_desc)
         l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.disable_malsync, R.string.connections_settings, IC_ACCOUNT, R.string.disable_malsync_desc)
+        l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.malsync_exclude_manage, R.string.connections_settings, IC_ACCOUNT, R.string.malsync_exclude_manage_desc, keywords = "exclude filter unread chapter episode notifications malsync")
 
         // ---- Theme ----
         l += SearchableSetting(SettingsThemeActivity::class.java, R.string.theme, R.string.theme, IC_THEME, anchorViewId = R.id.themeSwitcher, keywords = "color scheme palette dark light oled auto appearance")
@@ -125,6 +126,7 @@ object SettingsSearch {
         l += SearchableSetting(SettingsCommonActivity::class.java, R.string.search_source_list, R.string.common, IC_COMMON, R.string.search_source_list_desc)
         l += SearchableSetting(SettingsCommonActivity::class.java, R.string.recentlyListOnly, R.string.common, IC_COMMON, R.string.recentlyListOnly_desc)
         l += SearchableSetting(SettingsCommonActivity::class.java, R.string.adult_only_content, R.string.common, IC_COMMON, R.string.adult_only_content_desc, keywords = "nsfw 18")
+        l += SearchableSetting(SettingsCommonActivity::class.java, R.string.hidden_from_lists_manage, R.string.common, IC_COMMON, R.string.hidden_from_lists_manage_desc, keywords = "hide hidden remove filter continue watching reading list homepage")
         l += SearchableSetting(SettingsCommonActivity::class.java, R.string.selected_dns, R.string.common, IC_COMMON, anchorViewId = R.id.settingsExtensionDns, keywords = "doh dns over https cloudflare google")
         l += SearchableSetting(SettingsCommonActivity::class.java, R.string.startUpTab, R.string.common, IC_COMMON, anchorViewId = R.id.uiSettingsHome, keywords = "default startup home anime manga tab")
 

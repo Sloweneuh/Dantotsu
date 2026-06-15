@@ -281,6 +281,10 @@
     <string name="malsync_checks_option_anime">Anime</string>
     <string name="malsync_checks_option_both">Both</string>
     <string name="malsync_checks_desc">Checks: %1$s</string>
+    <string name="malsync_exclude_manage">Manage MALSync Exclusions</string>
+    <string name="malsync_exclude_manage_desc">Media excluded from unread chapter / episode checks</string>
+    <string name="malsync_exclude_empty">No exclusions set</string>
+    <string name="malsync_exclude_remove_selected">Remove Selected</string>
     <string name="extension_settings">Extensions</string>
     <string name="downloads">Downloads</string>
     <string name="offline_mode">Offline Mode</string>
@@ -1313,6 +1317,10 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="exclude_from_unread_chapters">Exclude from Unread Chapters checks</string>
     <string name="hidden">Hidden</string>
     <string name="no_hidden_items">No Hidden Items</string>
+    <string name="hidden_from_lists_manage">Manage Hidden Media</string>
+    <string name="hidden_from_lists_manage_desc">Media hidden from your Continue Watching / Reading lists</string>
+    <string name="hidden_from_lists_empty">No media hidden</string>
+    <string name="hidden_from_lists_remove_selected">Unhide Selected</string>
     <string name="download_addon_not_installed">Download Add-on not installed</string>
     <string name="would_you_like_to_install">Would you like to install it?</string>
     <string name="torrent_addon_not_available">Torrent Add-on not available</string>

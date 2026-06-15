@@ -13,6 +13,8 @@ import ani.dantotsu.media.anime.Anime
 import ani.dantotsu.media.manga.Manga
 import ani.dantotsu.profile.User
 import ani.dantotsu.settings.saving.PrefManager
+import ani.dantotsu.settings.saving.PrefName
+import ani.dantotsu.settings.saving.removeMediaId
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -170,9 +172,9 @@ fun Media?.deleteFromList(
                         Anilist.mutation.deleteList(listId)
                         MAL.query.deleteList(media.anime != null, media.idMAL)
 
-                        val removeList = PrefManager.getCustomVal("removeList", setOf<Int>())
-                        PrefManager.setCustomVal(
-                            "removeList", removeList.minus(listId)
+                        val removeList = PrefManager.getVal<Set<String>>(PrefName.HiddenFromLists)
+                        PrefManager.setVal(
+                            PrefName.HiddenFromLists, removeList.removeMediaId(media.id.toString())
                         )
 
                         onSuccess()

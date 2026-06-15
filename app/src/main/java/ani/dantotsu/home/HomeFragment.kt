@@ -52,6 +52,7 @@ import ani.dantotsu.settings.SettingsDialogFragment
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefManager.asLiveBool
 import ani.dantotsu.settings.saving.PrefName
+import ani.dantotsu.settings.saving.containsMediaId
 import ani.dantotsu.snackString
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.util.Logger
@@ -1380,12 +1381,12 @@ class HomeFragment : Fragment() {
 
             if (filtered.isNotEmpty()) {
                 val merged = mergedCachedInfoFor(currentManga)
-                val excludeList = ani.dantotsu.settings.saving.PrefManager.getCustomVal(
-                    "malSyncBatchExcludeList", setOf<Int>()
+                val excludeList = ani.dantotsu.settings.saving.PrefManager.getVal<Set<String>>(
+                    ani.dantotsu.settings.saving.PrefName.MalSyncExcludeList
                 )
                 // Further filter cached results to remove items the user has already caught up to or excluded
                 val filteredCached = filtered.filter { media ->
-                    if (media.id in excludeList) return@filter false
+                    if (excludeList.containsMediaId(media.id.toString())) return@filter false
                     val last = getLastChapterForMedia(media, merged)
                     val progress = merged[media.id]?.userProgress ?: media.userProgress ?: 0
                     last != null && last > progress

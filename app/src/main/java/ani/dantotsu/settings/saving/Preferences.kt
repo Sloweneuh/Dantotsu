@@ -98,6 +98,8 @@ enum class PrefName(val data: Pref) {
     MuCustomListTitles(Pref(Location.General, String::class, "")),
     MalSyncInfoEnabled(Pref(Location.General, Boolean::class, true)),
     MalSyncCheckMode(Pref(Location.General, String::class, "both")),
+    MalSyncExcludeList(Pref(Location.General, Set::class, setOf<String>())),
+    HiddenFromLists(Pref(Location.General, Set::class, setOf<String>())),
 
     //User Interface
     UseOLED(Pref(Location.UI, Boolean::class, false)),

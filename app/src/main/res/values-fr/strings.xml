@@ -56,6 +56,10 @@
     <string name="malsync_checks_option_anime">Anime</string>
     <string name="malsync_checks_option_both">Les deux</string>
     <string name="malsync_checks_desc">Vérifications : %1$s</string>
+    <string name="malsync_exclude_manage">Gérer les exclusions MALSync</string>
+    <string name="malsync_exclude_manage_desc">Médias exclus des vérifications de chapitres / épisodes non lus</string>
+    <string name="malsync_exclude_empty">Aucune exclusion définie</string>
+    <string name="malsync_exclude_remove_selected">Retirer la sélection</string>
     <string name="malsync_disabled_home">MALSync désactivé — activez MALSync dans Connexions pour voir les chapitres non lus</string>
     <string name="malsync_anime_only_home">MALSync configuré en mode anime uniquement — activez les vérifications manga dans Connexions pour voir les chapitres non lus</string>
 
@@ -862,6 +866,10 @@
     <string name="exclude_from_unread_chapters">Exclure des vérifications de chapitres non lus</string>
     <string name="hidden">Masqué</string>
     <string name="no_hidden_items">Aucun élément masqué</string>
+    <string name="hidden_from_lists_manage">Gérer les médias masqués</string>
+    <string name="hidden_from_lists_manage_desc">Médias masqués de vos listes En cours de visionnage / lecture</string>
+    <string name="hidden_from_lists_empty">Aucun média masqué</string>
+    <string name="hidden_from_lists_remove_selected">Afficher la sélection</string>
     <string name="download_subtitle">Télécharger les sous-titres</string>
     <string name="download_audio_tracks">Télécharger les pistes audio</string>
     <string name="no_video_selected">Aucune vidéo sélectionnée</string>
