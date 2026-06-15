@@ -1,10 +1,17 @@
 package ani.dantotsu.media.savedfilters
 
+import ani.dantotsu.R
+import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.anilist.AniMangaSearchResults
 import ani.dantotsu.connections.anilist.ComickSearchResults
 import ani.dantotsu.connections.anilist.MUSearchResults
+import ani.dantotsu.connections.comick.ComickApi
+import ani.dantotsu.currContext
 import ani.dantotsu.media.user.ListFilters
 import java.io.Serializable
+
+private fun excludeLabel(name: String): String =
+    currContext()?.getString(R.string.filter_exclude, name) ?: "−$name"
 
 data class SavedAniMangaFilter(
     val name: String,
@@ -69,7 +76,11 @@ data class SavedAniMangaFilter(
     /** One chip per active filter. Order roughly matches the filter sheet's sections. */
     fun chips(): List<String> {
         val out = mutableListOf<String>()
-        sort?.let { out += "Sort: ${it.replace("_", " ").lowercase()}" }
+        sort?.let { s ->
+            val idx = Anilist.sortBy.indexOf(s)
+            val label = currContext()?.resources?.getStringArray(R.array.sort_by)?.getOrNull(idx) ?: s.replace("_", " ").lowercase()
+            out += "Sort : $label"
+        }
         status?.let { out += "Status: ${it.replace("_", " ").lowercase()}" }
         format?.let { out += "Format: $it" }
         source?.let { out += "Source: ${it.replace("_", " ").lowercase()}" }
@@ -80,9 +91,9 @@ data class SavedAniMangaFilter(
             else "Year: $yearRangeStart-$yearRangeEnd"
         }
         genres?.forEach { out += it }
-        excludedGenres?.forEach { out += "−$it" }
+        excludedGenres?.forEach { out += excludeLabel(it) }
         tags?.forEach { out += it }
-        excludedTags?.forEach { out += "−$it" }
+        excludedTags?.forEach { out += excludeLabel(it) }
         if (isAdult) out += "18+"
         when (onList) {
             true -> out += "On list"
@@ -139,12 +150,12 @@ data class SavedMUFilter(
         format?.let { out += "Format: $it" }
         year?.let { out += "Year: $it" }
         licensed?.let { out += if (it == "yes") "Licensed" else "Not licensed" }
-        orderBy?.let { out += "Sort: $it" }
-        statusFilters?.forEach { out += it.replace("_", " ").replaceFirstChar { c -> c.uppercase() } }
+        orderBy?.let { out += "Sort: ${MUSearchResults.STATUS_FILTER_LABELS[it] ?: it}" }
+        statusFilters?.forEach { out += MUSearchResults.STATUS_FILTER_LABELS[it] ?: it.replace("_", " ").replaceFirstChar { c -> c.uppercase() } }
         genres?.forEach { out += it }
-        excludedGenres?.forEach { out += "−$it" }
+        excludedGenres?.forEach { out += excludeLabel(it) }
         categories?.forEach { out += it }
-        excludedCategories?.forEach { out += "−$it" }
+        excludedCategories?.forEach { out += excludeLabel(it) }
         return out
     }
 }
@@ -219,7 +230,7 @@ data class SavedComickFilter(
 
     fun chips(): List<String> {
         val out = mutableListOf<String>()
-        sort?.takeIf { it != "created_at" }?.let { out += "Sort: ${it.replace('_', ' ')}" }
+        sort?.takeIf { it != "created_at" }?.let { out += "Sort : ${ComickApi.SEARCH_SORT_LABELS[it] ?: it.replace('_', ' ')}" }
         status?.let {
             out += "Status: " + when (it) {
                 0 -> "ongoing"; 1 -> "completed"; 2 -> "hiatus"; 3 -> "cancelled"
@@ -227,7 +238,7 @@ data class SavedComickFilter(
             }
         }
         contentRating?.forEach { out += "Rating: $it" }
-        country?.forEach { out += "Type: $it" }
+        country?.forEach { out += "Type: ${ComickApi.resolveCountryName(it) ?: it}" }
         demographic?.forEach {
             out += "Demo: " + when (it) {
                 1 -> "shounen"; 2 -> "shoujo"; 3 -> "seinen"; 4 -> "josei"
@@ -243,12 +254,12 @@ data class SavedComickFilter(
         if (completed == true) out += "Completed only"
         if (completed == false) out += "Not completed"
         if (showAll == true) out += "Show all"
-        genres?.forEach { out += it }
-        excludedGenres?.forEach { out += "−$it" }
+        genres?.forEach { out += ComickApi.resolveGenreName(it) ?: it }
+        excludedGenres?.forEach { out += excludeLabel(ComickApi.resolveGenreName(it) ?: it) }
         tags?.forEach { out += it }
-        excludedTags?.forEach { out += "−$it" }
-        categories?.forEach { out += it }
-        excludedCategories?.forEach { out += "−$it" }
+        excludedTags?.forEach { out += excludeLabel(it) }
+        categories?.forEach { out += ComickApi.resolveCategoryName(it) ?: it }
+        excludedCategories?.forEach { out += excludeLabel(ComickApi.resolveCategoryName(it) ?: it) }
         return out
     }
 }
@@ -273,14 +284,14 @@ data class SavedComickListFilter(
 
     fun chips(): List<String> {
         val out = mutableListOf<String>()
-        sort?.let { out += "Sort: ${it.replace('_', ' ')}" }
+        sort?.takeIf { it != "created_at" }?.let { out += "Sort : ${ComickApi.LIST_SORT_LABELS[it] ?: it.replace('_', ' ')}" }
         status?.forEach {
             out += "Status: " + when (it) {
                 1 -> "ongoing"; 2 -> "completed"; 3 -> "cancelled"; 4 -> "hiatus"
                 else -> it.toString()
             }
         }
-        country?.forEach { out += "Type: $it" }
+        country?.forEach { out += "Type: ${ComickApi.resolveCountryName(it) ?: it}" }
         demographic?.forEach {
             out += "Demo: " + when (it) {
                 1 -> "shounen"; 2 -> "shoujo"; 3 -> "seinen"; 4 -> "josei"
@@ -297,8 +308,8 @@ data class SavedComickListFilter(
             out += "Year: ${fromYear ?: "?"}-${toYear ?: "?"}"
         }
         minChapters?.let { out += "Min chapters: $it" }
-        genres?.forEach { out += it }
-        excludedGenres?.forEach { out += "−$it" }
+        genres?.forEach { out += ComickApi.resolveGenreName(it) ?: it }
+        excludedGenres?.forEach { out += excludeLabel(ComickApi.resolveGenreName(it) ?: it) }
         return out
     }
 }
@@ -374,19 +385,19 @@ data class SavedListFilter(
             out += "Year: $yearRangeFrom-$yearRangeTo"
         }
         genres.forEach { out += it }
-        excludedGenres.forEach { out += "−$it" }
+        excludedGenres.forEach { out += excludeLabel(it) }
         tags.forEach { out += it }
-        excludedTags.forEach { out += "−$it" }
+        excludedTags.forEach { out += excludeLabel(it) }
         if (englishLicenced) out += "English licensed"
         // MangaUpdates section
         muFormat?.let { out += "MU Format: $it" }
         muYear?.let { out += "MU Year: $it" }
         muLicensed?.let { out += if (it == "yes") "MU Licensed" else "MU Not licensed" }
-        muStatusFilters.forEach { out += "MU " + it.replace("_", " ") }
+        muStatusFilters.forEach { out += "MU ${MUSearchResults.STATUS_FILTER_LABELS[it] ?: it.replace("_", " ")}" }
         muGenres.forEach { out += "MU $it" }
-        muExcludedGenres.forEach { out += "MU −$it" }
+        muExcludedGenres.forEach { out += "MU ${excludeLabel(it)}" }
         muCategories.forEach { out += "MU $it" }
-        muExcludedCategories.forEach { out += "MU −$it" }
+        muExcludedCategories.forEach { out += "MU ${excludeLabel(it)}" }
         return out
     }
 

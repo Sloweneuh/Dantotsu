@@ -32,6 +32,21 @@ object ComickApi {
         val id: Int? = null,
     )
 
+    val SEARCH_SORT_LABELS = mapOf(
+        "created_at" to "Latest",
+        "uploaded" to "Last Updated",
+        "rating" to "Rating",
+        "average_rating" to "Average Rating",
+        "user_follow_count" to "Popular",
+    )
+
+    val LIST_SORT_LABELS = mapOf(
+        "title" to "Title",
+        "bayesian_rating" to "Rating",
+        "uploaded_at" to "Last Upload",
+        "created_at" to "Date Added",
+    )
+
     @Volatile
     private var genreCache: List<FilterOption>? = null
 
