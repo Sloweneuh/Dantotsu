@@ -25,6 +25,7 @@ import ani.dantotsu.navBarHeight
 import ani.dantotsu.others.LanguageMapper.Companion.getLanguageName
 import ani.dantotsu.snackString
 import ani.dantotsu.statusBarHeight
+import ani.dantotsu.stripSpansOnPaste
 import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.util.Logger
 import com.google.android.material.bottomsheet.BottomSheetDialog
@@ -77,6 +78,8 @@ class ExtensionBrowseActivity : AppCompatActivity() {
     private var currentFilters: Any? = null // FilterList or AnimeFilterList
     private var defaultFilters: Any? = null // Snapshot of source defaults; FilterList or AnimeFilterList
     private var currentQuery: String = ""
+    private var searchBoxHasText = false // Tracks live text, even before it's submitted
+    private var suppressQueryChange = false // True while we clear the box's text ourselves
 
     private enum class Mode { POPULAR, LATEST, FILTER, SEARCH }
 
@@ -92,7 +95,7 @@ class ExtensionBrowseActivity : AppCompatActivity() {
         binding.extensionBrowseToolbar.updateLayoutParams<ViewGroup.MarginLayoutParams> {
             topMargin = statusBarHeight
         }
-        binding.extensionBrowseRecycler.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+        binding.extensionBrowseRefresh.updateLayoutParams<ViewGroup.MarginLayoutParams> {
             bottomMargin = navBarHeight
         }
         binding.fragmentExtensionsContainer.setPadding(
@@ -127,6 +130,16 @@ class ExtensionBrowseActivity : AppCompatActivity() {
         // show extension name in header; keep generic search hint
         binding.extensionBrowseTitle.text = name
         binding.extensionBrowseSearch.queryHint = getString(R.string.search)
+        // SearchView is a composite widget; XML textSize/fontFamily don't reach its internal
+        // EditText, so match the other search bars' sizing/font here explicitly. Pasted text
+        // carries its own spans (e.g. size) that override that, so strip those too.
+        binding.extensionBrowseSearch.findViewById<android.widget.AutoCompleteTextView>(
+            androidx.appcompat.R.id.search_src_text
+        )?.apply {
+            setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 14f)
+            typeface = ResourcesCompat.getFont(this@ExtensionBrowseActivity, R.font.poppins_bold)
+            stripSpansOnPaste()
+        }
         // initial header state: show title + icon, show search icon, hide search bar
         binding.extensionBrowseSearch.isVisible = false
         binding.extensionBrowseSearchIcon.isVisible = true
@@ -143,12 +156,16 @@ class ExtensionBrowseActivity : AppCompatActivity() {
         }
 
         binding.extensionBrowseSearchIcon.setOnClickListener {
-            binding.extensionBrowseSearch.isVisible = true
-            binding.extensionBrowseSearchIcon.isVisible = false
-            binding.extensionBrowseTitle.isVisible = false
-            binding.extensionBrowseIcon.isVisible = false
-            binding.extensionBrowseSearch.isIconified = false
-            binding.extensionBrowseSearch.requestFocus()
+            if (binding.extensionBrowseSearch.isVisible) {
+                closeSearch()
+            } else {
+                binding.extensionBrowseSearch.isVisible = true
+                binding.extensionBrowseTitle.isVisible = false
+                binding.extensionBrowseIcon.isVisible = false
+                binding.extensionBrowseSearchIcon.setImageResource(R.drawable.ic_round_search_off_24)
+                binding.extensionBrowseSearch.isIconified = false
+                binding.extensionBrowseSearch.requestFocus()
+            }
         }
 
         binding.extensionBrowseBack.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
@@ -172,6 +189,11 @@ class ExtensionBrowseActivity : AppCompatActivity() {
                 }
             }
         })
+
+        binding.extensionBrowseRefresh.setOnRefreshListener {
+            // Re-run whatever is currently active (popular/latest/filter/search) as-is.
+            load(currentMode, currentFilters)
+        }
 
         configureLanguageSwitch()
         configureChips()
@@ -261,11 +283,17 @@ class ExtensionBrowseActivity : AppCompatActivity() {
 
         binding.chipPopular.setOnClickListener {
             if (currentMode == Mode.POPULAR) binding.chipPopular.isChecked = true
-            else load(Mode.POPULAR, null)
+            else {
+                clearSearchQuery()
+                load(Mode.POPULAR, null)
+            }
         }
         binding.chipLatest.setOnClickListener {
             if (currentMode == Mode.LATEST) binding.chipLatest.isChecked = true
-            else load(Mode.LATEST, null)
+            else {
+                clearSearchQuery()
+                load(Mode.LATEST, null)
+            }
         }
         binding.chipFilter.setOnClickListener {
             // Keep the currently-loaded mode's chip checked while the sheet is open.
@@ -281,45 +309,89 @@ class ExtensionBrowseActivity : AppCompatActivity() {
         }
     }
 
+    // Derive which mode should be active from the current query/filter state, so that
+    // clearing text, applying filters, and removing filter chips all agree on whether
+    // a text search should keep combining with active filters.
+    private fun modeForState(): Mode = when {
+        currentQuery.isNotEmpty() -> Mode.SEARCH
+        hasActiveFilterChips() -> Mode.FILTER
+        else -> Mode.POPULAR
+    }
+
+    private fun hasActiveFilterChips(): Boolean = buildActiveFilterChips().isNotEmpty()
+
+    private fun reload() = load(modeForState(), currentFilters)
+
+    // Clear the tracked query and the SearchView's own text together so a search that was
+    // explicitly abandoned (e.g. by switching to Popular/Latest) can't resurface later via
+    // reload() when filters are subsequently applied or removed.
+    private fun clearSearchQuery() {
+        currentQuery = ""
+        if (binding.extensionBrowseSearch.query.isNullOrEmpty()) return
+        // Suppress so this programmatic clear doesn't also collapse the search bar; Popular/
+        // Latest/language-switch decide the header's visibility themselves.
+        suppressQueryChange = true
+        binding.extensionBrowseSearch.setQuery("", false)
+        suppressQueryChange = false
+    }
+
+    // Hide the search bar and bring back the title/icon header, i.e. the pre-search display.
+    private fun restoreSearchHeader() {
+        binding.extensionBrowseSearch.isVisible = false
+        binding.extensionBrowseSearchIcon.isVisible = true
+        binding.extensionBrowseSearchIcon.setImageResource(R.drawable.ic_round_search_24)
+        binding.extensionBrowseTitle.isVisible = true
+        binding.extensionBrowseIcon.isVisible = true
+    }
+
+    // Explicitly leave search via the toggled search/close icon, whether or not anything was
+    // ever typed or submitted, so an empty untouched search bar can always be dismissed.
+    private fun closeSearch() {
+        restoreSearchHeader()
+        searchBoxHasText = false
+        suppressQueryChange = true
+        binding.extensionBrowseSearch.setQuery("", false)
+        suppressQueryChange = false
+        if (currentQuery.isNotEmpty()) {
+            currentQuery = ""
+            reload()
+        }
+    }
+
     private fun configureSearch() {
         binding.extensionBrowseSearch.setOnQueryTextListener(object : androidx.appcompat.widget.SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(query: String?): Boolean {
-                val q = query?.trim() ?: ""
-                if (q.isEmpty()) {
-                    // empty -> go back to popular
-                    binding.chipPopular.isChecked = true
-                    binding.chipLatest.isChecked = false
-                    binding.chipFilter.isChecked = false
-                    load(Mode.POPULAR, null)
-                } else {
-                    currentQuery = q
-                    binding.chipPopular.isChecked = false
-                    binding.chipLatest.isChecked = false
-                    binding.chipFilter.isChecked = false
-                    load(Mode.SEARCH, currentFilters)
-                }
+                currentQuery = query?.trim() ?: ""
+                reload()
                 return true
             }
 
             override fun onQueryTextChange(newText: String?): Boolean {
-                // Do nothing for incremental changes to avoid excess requests.
+                // Only react when the text becomes empty (e.g. the inline clear icon or
+                // backspacing to nothing) so a stale search isn't left showing; otherwise
+                // do nothing for incremental changes to avoid excess requests.
+                val hasText = !newText.isNullOrEmpty()
+                val justCleared = searchBoxHasText && !hasText
+                searchBoxHasText = hasText
+                if (justCleared && !suppressQueryChange) {
+                    // Restore the header even if this search was never submitted, so clearing
+                    // unconfirmed text still takes you back to the pre-search display.
+                    restoreSearchHeader()
+                    if (currentQuery.isNotEmpty()) {
+                        currentQuery = ""
+                        reload()
+                    }
+                }
                 return false
             }
         })
 
-        // When search is cleared via the close button, restore popular and header UI.
+        // When search is cleared via the close button, restore popular/filter and header UI.
         binding.extensionBrowseSearch.setOnCloseListener {
-            // restore header
-            binding.extensionBrowseSearch.isVisible = false
-            binding.extensionBrowseSearchIcon.isVisible = true
-            binding.extensionBrowseTitle.isVisible = true
-            binding.extensionBrowseIcon.isVisible = true
-
-            binding.chipPopular.isChecked = true
-            binding.chipLatest.isChecked = false
-            binding.chipFilter.isChecked = false
+            restoreSearchHeader()
+            searchBoxHasText = false
             currentQuery = ""
-            load(Mode.POPULAR, null)
+            reload()
             false
         }
     }
@@ -400,6 +472,7 @@ class ExtensionBrowseActivity : AppCompatActivity() {
                     defaultFilters = null
                     adapter.setImageHeaders(currentSourceHeaders())
                     configureChips()
+                    clearSearchQuery()
                     binding.chipPopular.isChecked = true
                     load(Mode.POPULAR, null)
                 }
@@ -445,11 +518,7 @@ class ExtensionBrowseActivity : AppCompatActivity() {
         }
         val sheet = ExtensionFilterBottomSheet.newInstance(filters, sourceId) { applied ->
             currentFilters = applied
-            binding.chipFilter.isChecked = true
-            binding.chipPopular.isChecked = false
-            binding.chipLatest.isChecked = false
-            load(Mode.FILTER, applied)
-            refreshActiveFilterChips()
+            reload()
         }
         sheet.show(supportFragmentManager, "extension_filter")
     }
@@ -739,8 +808,7 @@ class ExtensionBrowseActivity : AppCompatActivity() {
                 isCloseIconVisible = true
                 val remove = {
                     chip.onRemove()
-                    val mode = if (currentQuery.isNotEmpty()) Mode.SEARCH else Mode.FILTER
-                    load(mode, currentFilters)
+                    reload()
                 }
                 setOnClickListener { remove() }
                 setOnCloseIconClickListener { remove() }
@@ -761,6 +829,7 @@ class ExtensionBrowseActivity : AppCompatActivity() {
             }
             result.exceptionOrNull()?.let { if (it is kotlinx.coroutines.CancellationException) throw it }
             binding.extensionBrowseProgress.isVisible = false
+            binding.extensionBrowseRefresh.isRefreshing = false
             val list = result.getOrNull()
             if (result.isFailure) {
                 Logger.log(result.exceptionOrNull() ?: Exception("fetch failed"))

@@ -1644,11 +1644,26 @@ fun String.decodeBase64ToString(): String {
 
 fun AutoCompleteTextView.stripSpansOnPaste() {
     addTextChangedListener(object : TextWatcher {
+        // A single keystroke inserts one character; a paste inserts several at once. Clipboard
+        // text coerced from HTML (e.g. copied from a webpage) often carries a trailing
+        // newline/space that browsers quietly trim on paste but a plain EditText doesn't.
+        private var pastedMultipleChars = false
+
         override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
-        override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {}
+
+        override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
+            pastedMultipleChars = count > 1
+        }
+
         override fun afterTextChanged(s: Editable) {
             val spans = s.getSpans(0, s.length, ParcelableSpan::class.java)
             if (spans.isNotEmpty()) spans.forEach { s.removeSpan(it) }
+
+            if (pastedMultipleChars) {
+                pastedMultipleChars = false
+                val trimmedLength = s.trimEnd().length
+                if (trimmedLength != s.length) s.delete(trimmedLength, s.length)
+            }
         }
     })
 }
