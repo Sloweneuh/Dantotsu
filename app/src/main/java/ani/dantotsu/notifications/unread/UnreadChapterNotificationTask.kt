@@ -20,6 +20,7 @@ import ani.dantotsu.hasNotificationPermission
 import eu.kanade.tachiyomi.data.notification.Notifications
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
+import ani.dantotsu.settings.saving.containsMediaId
 import ani.dantotsu.util.Logger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -219,8 +220,14 @@ class UnreadChapterNotificationTask : Task {
         unreadInfo: Map<Int, UnreadChapterInfo>,
         mangaList: List<Media>,
     ) {
+        // The map passed in may have come from another device via UnreadSync (a cached result
+        // computed under that device's exclude list at that time), so re-filter against this
+        // device's current MalSync exclude list rather than trusting it was already applied.
+        val excludeList = PrefManager.getVal<Set<String>>(PrefName.MalSyncExcludeList)
+        val filteredUnreadInfo = unreadInfo.filterKeys { !excludeList.containsMediaId(it.toString()) }
+
         try {
-            UnreadCache.save(context, unreadInfo, mangaList)
+            UnreadCache.save(context, filteredUnreadInfo, mangaList)
             UnreadCache.broadcastUpdate(context)
         } catch (e: Exception) {
             Logger.log("UnreadChapterNotificationTask: Failed to cache/broadcast unread results: ${e.message}")
@@ -230,7 +237,7 @@ class UnreadChapterNotificationTask : Task {
         val notified = getNotifiedSet(context, notifiedKey)
         val newNotifications = mutableListOf<Pair<Media, UnreadChapterInfo>>()
 
-        unreadInfo.forEach { (mediaId, info) ->
+        filteredUnreadInfo.forEach { (mediaId, info) ->
             val key = "$mediaId:${info.lastChapter}"
             if (!notified.contains(key)) {
                 val media = mangaList.find { it.id == mediaId }

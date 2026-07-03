@@ -1353,7 +1353,21 @@ class HomeFragment : Fragment() {
     // Class-level implementation of cached refresh so external triggers can call it
     private fun refreshUnreadFromCache() {
         try {
-            val cached = model.getUnreadChapters().value
+            // Read the persisted list directly rather than model.getUnreadChapters().value: the
+            // background UnreadChapterNotificationTask writes fresh results straight to
+            // PrefManager and broadcasts ACTION_CACHE_UPDATED without touching the ViewModel's
+            // in-memory LiveData, so the LiveData value can be stale (e.g. still whatever was
+            // loaded at process start) and would silently drop newly-found unread manga here.
+            @Suppress("UNCHECKED_CAST")
+            val cached = try {
+                ani.dantotsu.settings.saving.PrefManager.getNullableCustomVal(
+                    "cached_unread_chapters",
+                    null,
+                    ArrayList::class.java
+                ) as? ArrayList<Media>
+            } catch (e: Exception) {
+                null
+            }
             val currentManga = model.getMangaContinue().value
             if (cached == null) return
 
