@@ -71,7 +71,7 @@ object SettingsSearch {
         val l = ArrayList<SearchableSetting>()
 
         // ---- Top level sections ----
-        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.accounts, R.string.settings, IC_ACCOUNT, R.string.accounts_desc, keywords = "login profile anilist myanimelist mangaupdates connections")
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.accounts, R.string.settings, IC_ACCOUNT, R.string.accounts_desc, keywords = "login profile anilist myanimelist mangaupdates mangabaka connections")
         l += SearchableSetting(SettingsThemeActivity::class.java, R.string.theme, R.string.settings, IC_THEME, R.string.theme_desc, keywords = "appearance color dark light")
         l += SearchableSetting(SettingsCommonActivity::class.java, R.string.common, R.string.settings, IC_COMMON, R.string.common_desc, keywords = "general preferences")
         l += SearchableSetting(SettingsAnimeActivity::class.java, R.string.anime, R.string.settings, IC_ANIME, R.string.anime_desc, keywords = "video watch streaming episode")
@@ -86,6 +86,7 @@ object SettingsSearch {
         l += SearchableSetting(AnilistSettingsActivity::class.java, R.string.anilist_settings, R.string.accounts, IC_ACCOUNT, R.string.alsettings_desc, keywords = "anilist account profile activity")
         l += SearchableSetting(MangaUpdatesSettingsActivity::class.java, R.string.mangaupdates_settings, R.string.accounts, IC_ACCOUNT, R.string.mangaupdates_settings_desc, keywords = "mangaupdates mu account")
         l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.connections_settings, R.string.accounts, IC_ACCOUNT, R.string.connections_desc, keywords = "mal myanimelist malsync comick sync tracking")
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.login_to_mangabaka, R.string.accounts, IC_ACCOUNT, R.string.mangabaka_login_desc, anchorViewId = R.id.settingsMangaBakaLogin, keywords = "mangabaka mb token login logout account tracking")
         l += SearchableSetting(SettingsAccountActivity::class.java, R.string.comments_button, R.string.accounts, IC_ACCOUNT, R.string.comments_button_desc, keywords = "comment reply social discussion")
 
         // ---- Anilist account settings ----

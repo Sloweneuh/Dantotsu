@@ -569,6 +569,16 @@
     <string name="addons">Add-ons</string>
     <string name="myanimelist">MyAnimeList</string>
     <string name="mangaupdates">MangaUpdates</string>
+    <string name="mangabaka">MangaBaka</string>
+    <string name="logged_in">Logged In</string>
+    <string name="login_to_mangabaka">Login to MangaBaka</string>
+    <string name="mangabaka_login_desc">Enter a MangaBaka Personal Access Token (starts with \"mb-\"). Generate one from your MangaBaka account settings.</string>
+    <string name="mangabaka_access_token">Personal Access Token</string>
+    <string name="mangabaka_get_token">Get a token from MangaBaka</string>
+    <string name="mangabaka_token_required">Token required</string>
+    <string name="mangabaka_token_invalid">Invalid token</string>
+    <string name="mangabaka_login_success">Successfully logged into MangaBaka</string>
+    <string name="mangabaka_login_failed">Login failed. Check your token.</string>
     <string name="mal_not_logged_in_title">MyAnimeList Not Connected</string>
     <string name="mal_not_logged_in_desc">Connect your MyAnimeList account to view information from MAL</string>
     <string name="connect_to_mal">Login to MyAnimeList</string>
@@ -1754,6 +1764,8 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="backup_sub_mal_desc">MyAnimeList token and user info</string>
     <string name="backup_sub_mu">MangaUpdates</string>
     <string name="backup_sub_mu_desc">MangaUpdates credentials and token</string>
+    <string name="backup_sub_mangabaka">MangaBaka</string>
+    <string name="backup_sub_mangabaka_desc">MangaBaka access token and user info</string>
     <string name="backup_sub_discord">Discord</string>
     <string name="backup_sub_discord_desc">Discord RPC token, profile and presence settings</string>
     <string name="discord_rpc_show_icon_anime">Show Icon (Anime)</string>
@@ -1828,6 +1840,9 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="backup_mu_username">MangaUpdates Username</string>
     <string name="backup_mu_password">MangaUpdates Password</string>
     <string name="backup_mu_token">MangaUpdates Token</string>
+    <string name="backup_mangabaka_token">MangaBaka Token</string>
+    <string name="backup_mangabaka_username">MangaBaka Username</string>
+    <string name="backup_mangabaka_user_id">MangaBaka User ID</string>
     <string name="backup_discord_token">Discord Token</string>
     <string name="backup_discord_id">Discord User ID</string>
     <string name="backup_discord_username">Discord Username</string>

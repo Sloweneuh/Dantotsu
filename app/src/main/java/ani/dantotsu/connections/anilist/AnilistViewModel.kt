@@ -280,6 +280,7 @@ class AnilistHomeViewModel : ViewModel() {
         MAL.getSavedToken()
         Discord.getSavedToken()
         ani.dantotsu.connections.mangaupdates.MangaUpdates.getSavedToken()
+        ani.dantotsu.connections.mangabaka.MangaBaka.getSavedToken()
         if (!BuildConfig.FLAVOR.contains("fdroid")) {
             if (PrefManager.getVal(PrefName.CheckUpdate))
                 context.lifecycleScope.launch(Dispatchers.IO) {

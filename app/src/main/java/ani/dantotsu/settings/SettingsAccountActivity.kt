@@ -16,6 +16,8 @@ import ani.dantotsu.R
 import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.discord.Discord
 import ani.dantotsu.connections.mal.MAL
+import ani.dantotsu.connections.mangabaka.MangaBaka
+import ani.dantotsu.connections.mangabaka.MangaBakaLoginDialog
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.connections.mangaupdates.MangaUpdatesLoginDialog
 import ani.dantotsu.databinding.ActivitySettingsAccountsBinding
@@ -107,6 +109,7 @@ class SettingsAccountActivity : AppCompatActivity() {
                     settingsMALLogin.visibility = View.VISIBLE
                     settingsMALUsername.visibility = View.VISIBLE
                     settingsMangaUpdatesLoginContainer.visibility = View.VISIBLE
+                    settingsMangaBakaLoginContainer.visibility = View.VISIBLE
                     settingsRecyclerView.visibility = View.VISIBLE
 
                     if (MAL.token != null) {
@@ -149,6 +152,7 @@ class SettingsAccountActivity : AppCompatActivity() {
                     settingsMALLogin.visibility = View.GONE
                     settingsMALUsername.visibility = View.GONE
                     settingsMangaUpdatesLoginContainer.visibility = View.GONE
+                    settingsMangaBakaLoginContainer.visibility = View.GONE
                 }
 
                 if (Discord.token != null) {
@@ -270,6 +274,37 @@ class SettingsAccountActivity : AppCompatActivity() {
                             reload()
                         }
                         loginDialog.show(supportFragmentManager, "mangaupdates_login")
+                    }
+                }
+
+                // MangaBaka Login
+                if (MangaBaka.token != null) {
+                    settingsMangaBakaLogin.setText(R.string.logout)
+                    settingsMangaBakaLogin.setOnClickListener {
+                        MangaBaka.removeSavedToken()
+                        restartMainActivity.isEnabled = true
+                        reload()
+                    }
+                    settingsMangaBakaUsername.visibility = View.VISIBLE
+                    settingsMangaBakaUsername.text = MangaBaka.username ?: getString(R.string.logged_in)
+                    settingsMangaBakaAvatar.setImageResource(R.drawable.ic_round_person_24)
+                    settingsMangaBakaAvatar.setOnClickListener {
+                        it.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                        MangaBaka.username?.let { username ->
+                            openLinkInBrowser("${MangaBaka.WEB_URL}/u/$username")
+                        }
+                    }
+                } else {
+                    settingsMangaBakaAvatar.setImageResource(R.drawable.ic_round_person_24)
+                    settingsMangaBakaUsername.visibility = View.GONE
+                    settingsMangaBakaLogin.setText(R.string.login)
+                    settingsMangaBakaLogin.setOnClickListener {
+                        val loginDialog = MangaBakaLoginDialog()
+                        loginDialog.setOnLoginSuccessListener {
+                            restartMainActivity.isEnabled = true
+                            reload()
+                        }
+                        loginDialog.show(supportFragmentManager, "mangabaka_login")
                     }
                 }
 

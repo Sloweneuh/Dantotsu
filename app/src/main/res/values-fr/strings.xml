@@ -432,6 +432,16 @@
     <string name="addons">Add-ons</string>
     <string name="myanimelist">MyAnimeList</string>
     <string name="mangaupdates">MangaUpdates</string>
+    <string name="mangabaka">MangaBaka</string>
+    <string name="logged_in">Connecté</string>
+    <string name="login_to_mangabaka">Se connecter à MangaBaka</string>
+    <string name="mangabaka_login_desc">Saisissez un jeton d\'accès personnel MangaBaka (commençant par « mb- »). Générez-en un depuis les paramètres de votre compte MangaBaka.</string>
+    <string name="mangabaka_access_token">Jeton d\'accès personnel</string>
+    <string name="mangabaka_get_token">Obtenir un jeton depuis MangaBaka</string>
+    <string name="mangabaka_token_required">Jeton requis</string>
+    <string name="mangabaka_token_invalid">Jeton invalide</string>
+    <string name="mangabaka_login_success">Connexion à MangaBaka réussie</string>
+    <string name="mangabaka_login_failed">Échec de la connexion. Vérifiez votre jeton.</string>
     <string name="mal_not_logged_in_title">MyAnimeList non connecté</string>
     <string name="mal_not_logged_in_desc">Connectez votre compte MyAnimeList pour voir les informations de MAL</string>
     <string name="connect_to_mal">Se connecter à MyAnimeList</string>
@@ -1674,6 +1684,8 @@
     <string name="backup_sub_mal_desc">Jeton et infos du compte MyAnimeList</string>
     <string name="backup_sub_mu">MangaUpdates</string>
     <string name="backup_sub_mu_desc">Identifiants et jeton MangaUpdates</string>
+    <string name="backup_sub_mangabaka">MangaBaka</string>
+    <string name="backup_sub_mangabaka_desc">Jeton d\'accès et informations utilisateur MangaBaka</string>
     <string name="backup_sub_discord">Discord</string>
     <string name="backup_sub_app_lock">Verrouillage de l\'application</string>
     <string name="backup_sub_app_lock_desc">Mot de passe et jeton biométrique</string>
@@ -1733,6 +1745,9 @@
     <string name="backup_mu_username">Nom d\'utilisateur MangaUpdates</string>
     <string name="backup_mu_password">Mot de passe MangaUpdates</string>
     <string name="backup_mu_token">Jeton MangaUpdates</string>
+    <string name="backup_mangabaka_token">Jeton MangaBaka</string>
+    <string name="backup_mangabaka_username">Nom d\'utilisateur MangaBaka</string>
+    <string name="backup_mangabaka_user_id">Identifiant utilisateur MangaBaka</string>
     <string name="backup_discord_token">Jeton Discord</string>
     <string name="backup_discord_id">Identifiant utilisateur Discord</string>
     <string name="backup_discord_username">Nom d\'utilisateur Discord</string>
