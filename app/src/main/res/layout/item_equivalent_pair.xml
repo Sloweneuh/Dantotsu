@@ -46,6 +46,41 @@
             android:ellipsize="end" />
     </LinearLayout>
 
+    <!-- Middle: one-tap convert (delete from MangaUpdates, add to AniList), aligned to the covers -->
+    <LinearLayout
+        android:id="@+id/convertButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top"
+        android:layout_marginTop="18dp"
+        android:layout_marginStart="2dp"
+        android:layout_marginEnd="2dp"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:background="?attr/selectableItemBackground"
+        android:clickable="true"
+        android:focusable="true"
+        android:paddingHorizontal="6dp"
+        android:paddingVertical="8dp"
+        android:visibility="invisible">
+
+        <ImageView
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:contentDescription="@string/convert_to_anilist"
+            android:src="@drawable/swap_horizontal_circle_24"
+            app:tint="?attr/colorPrimary" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:fontFamily="@font/poppins_bold"
+            android:text="@string/convert_to_anilist"
+            android:textColor="?attr/colorPrimary"
+            android:textSize="12sp" />
+    </LinearLayout>
+
     <!-- Right column: match cover above title -->
     <LinearLayout
         android:layout_width="0dp"
@@ -83,16 +118,6 @@
             android:gravity="center"
             android:maxLines="3"
             android:ellipsize="end" />
-
-        <Button
-            android:id="@+id/matchQuickSearchButton"
-            style="@style/Widget.Material3.Button.TextButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="@string/quick_search"
-            android:textAllCaps="false"
-            android:visibility="gone" />
     </LinearLayout>
 
 </LinearLayout>

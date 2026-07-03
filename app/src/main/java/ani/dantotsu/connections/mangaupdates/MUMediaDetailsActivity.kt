@@ -60,6 +60,7 @@ import com.google.android.material.appbar.AppBarLayout
 import android.util.Log
 import android.widget.Toast
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import ani.dantotsu.connections.comick.ComickApi
@@ -93,6 +94,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
     private var extensionSManga: SManga? = null
 
     private var currentChapter: Int? = null
+    private var muUserEntryDeferred: kotlinx.coroutines.Deferred<Unit>? = null
     private var detectedAniListId: Int? = null
     private var quickSearchTitles: List<String> = emptyList()
     private var detectedComickComic: ComickComic? = null
@@ -308,6 +310,101 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         val pkg = extensionPkg ?: return
         val manga = extensionSManga ?: return
         ExtensionMediaLinker.linkMangaMedia(aniListId, pkg, extensionLangIndex, manga)
+    }
+
+    /**
+     * Shows the "AniList counterpart found" popup once per resolved id. When the MangaUpdates series
+     * is in the user's list, a third (neutral) button converts it: it's added to the AniList list
+     * and removed from MangaUpdates in one step.
+     */
+    private fun suggestSwitchToAniList(anilistId: Int) {
+        val currentAnilistId = model.getMedia().value?.id
+        val isMuMedia = model.getMedia().value?.muSeriesId != null
+        if (!isMuMedia || anilistId == currentAnilistId || lastSuggestedAniListId == anilistId) return
+        lastSuggestedAniListId = anilistId
+
+        // The Convert button requires knowing the MU list membership, which can load after match
+        // detection. Show the popup immediately with the neutral button hidden, then reveal it once
+        // we confirm the series is in the user's list (either already known or after a lazy load).
+        val dialog = AlertDialog.Builder(this, R.style.MyPopup)
+            .setTitle(getString(R.string.switch_to_anilist_title))
+            .setMessage(getString(R.string.switch_to_anilist_message))
+            .setPositiveButton(android.R.string.ok) { _, _ -> openAniListMedia(anilistId) }
+            .setNegativeButton(android.R.string.cancel, null)
+            .setNeutralButton(getString(R.string.convert_to_anilist)) { _, _ -> convertAndOpen(anilistId) }
+            .create()
+        dialog.setOnShowListener {
+            val convertButton = dialog.getButton(AlertDialog.BUTTON_NEUTRAL)
+            convertButton.visibility =
+                if (::muMedia.isInitialized && muMedia.listId in 0..4) View.VISIBLE else View.GONE
+            if (convertButton.visibility != View.VISIBLE) {
+                lifecycleScope.launch {
+                    ensureMuUserEntry()
+                    if (dialog.isShowing && muMedia.listId in 0..4) {
+                        convertButton.visibility = View.VISIBLE
+                    }
+                }
+            }
+        }
+        dialog.show()
+    }
+
+    /**
+     * Loads this series' MangaUpdates list membership once, when it wasn't provided up front (e.g.
+     * the media came from a search). The load is shared via a cached [Deferred] so the progress
+     * display and the convert popup never fetch it twice.
+     */
+    private suspend fun ensureMuUserEntry() {
+        if (!::muMedia.isInitialized || muMedia.listId >= 0) return
+        val deferred = muUserEntryDeferred ?: lifecycleScope.async(Dispatchers.IO) {
+            val userEntry = MangaUpdates.getAllUserLists().values.flatten()
+                .find { it.id == muMedia.id } ?: return@async
+            val updated = muMedia.copy(
+                listId = userEntry.listId,
+                userChapter = userEntry.userChapter,
+                userVolume = userEntry.userVolume,
+            )
+            withContext(Dispatchers.Main) {
+                muMedia = updated
+                currentChapter = updated.userChapter
+                model.getMedia().value?.let { m ->
+                    m.userProgress = updated.userChapter
+                    m.muListId = updated.listId
+                    model.setMedia(m)
+                }
+                progress()
+            }
+        }.also { muUserEntryDeferred = it }
+        deferred.await()
+    }
+
+    private fun openAniListMedia(anilistId: Int) {
+        applyExtensionLink(anilistId)
+        startActivity(
+            android.content.Intent(this, ani.dantotsu.media.MediaDetailsActivity::class.java)
+                .putExtra("mediaId", anilistId)
+        )
+    }
+
+    private fun convertAndOpen(anilistId: Int) {
+        lifecycleScope.launch {
+            val ok = withContext(Dispatchers.IO) {
+                convertMuToAnilist(
+                    muSeriesId = muMedia.id,
+                    muListId = muMedia.listId,
+                    anilistId = anilistId,
+                    chapter = muMedia.userChapter ?: currentChapter,
+                    volume = muMedia.userVolume,
+                )
+            }
+            if (ok) {
+                snackString(getString(R.string.converted_to_anilist))
+                Refresh.all()
+                openAniListMedia(anilistId)
+            } else {
+                snackString(getString(R.string.list_update_failed))
+            }
+        }
     }
 
     private fun launchMediaDetails(muMedia: MUMedia) {
@@ -565,27 +662,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         // When muMedia came from a search result, user list data (listId/userChapter) is absent.
         // Fetch it in the background and refresh the progress display when found.
         if (muMedia.listId < 0) {
-            lifecycleScope.launch(Dispatchers.IO) {
-                val userEntry = MangaUpdates.getAllUserLists().values.flatten()
-                    .find { it.id == muMedia.id }
-                if (userEntry != null) {
-                    val updated = muMedia.copy(
-                        listId = userEntry.listId,
-                        userChapter = userEntry.userChapter,
-                        userVolume = userEntry.userVolume,
-                    )
-                    withContext(Dispatchers.Main) {
-                        this@MUMediaDetailsActivity.muMedia = updated
-                        currentChapter = updated.userChapter
-                        model.getMedia().value?.let { m ->
-                            m.userProgress = updated.userChapter
-                            m.muListId = updated.listId
-                            model.setMedia(m)
-                        }
-                        progress()
-                    }
-                }
-            }
+            lifecycleScope.launch { ensureMuUserEntry() }
         }
         binding.mediaAddToList.visibility = View.VISIBLE
 
@@ -623,6 +700,19 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         }
         lifecycleScope.launch(Dispatchers.IO) {
             try {
+                // Prefer MangaBaka's cross-source mapping (MU slug -> series -> AniList id); it's far
+                // more reliable than Comick's title matching. Fall back to Comick when MangaBaka has
+                // no matching series or no AniList link.
+                val mangaBakaAniListId =
+                    ani.dantotsu.connections.mangabaka.MangaBakaApi.getAnilistIdFromMangaUpdates(muMedia.id)
+                if (mangaBakaAniListId != null) {
+                    withContext(Dispatchers.Main) {
+                        updateAniListButtonState(mangaBakaAniListId)
+                        suggestSwitchToAniList(mangaBakaAniListId)
+                    }
+                    return@launch
+                }
+
                 val slug = ComickApi.searchAndMatchComicByMuId(initialTitleCandidates, muMedia.id)
                 val comickData = slug?.let { ComickApi.getComicDetails(it) }
                 val comickComic = comickData?.comic
@@ -630,6 +720,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
                 withContext(Dispatchers.Main) {
                     detectedComickComic = comickComic
                     updateAniListButtonState(anilistId)
+                    if (anilistId != null) suggestSwitchToAniList(anilistId)
                 }
             } catch (_: Exception) {
                 withContext(Dispatchers.Main) {
@@ -759,22 +850,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
                     if (detectedAniListId == null) {
                         updateAniListButtonState(anilistId)
                     }
-                    val currentAnilistId = model.getMedia().value?.id
-                    val isMuMedia = model.getMedia().value?.muSeriesId != null
-                    if (anilistId != null && isMuMedia && anilistId != currentAnilistId && lastSuggestedAniListId != anilistId) {
-                        lastSuggestedAniListId = anilistId
-                        AlertDialog.Builder(this@MUMediaDetailsActivity, R.style.MyPopup)
-                            .setTitle(getString(R.string.switch_to_anilist_title).takeIf { resources.getIdentifier("switch_to_anilist_title", "string", this@MUMediaDetailsActivity.packageName) != 0 } ?: "Switch to AniList media?")
-                            .setMessage(getString(R.string.switch_to_anilist_message).takeIf { resources.getIdentifier("switch_to_anilist_message", "string", this@MUMediaDetailsActivity.packageName) != 0 } ?: "This Comick entry is linked to an AniList media. Would you like to open the AniList media instead?")
-                            .setPositiveButton(android.R.string.ok) { _, _ ->
-                                applyExtensionLink(anilistId)
-                                val intent = android.content.Intent(this@MUMediaDetailsActivity, ani.dantotsu.media.MediaDetailsActivity::class.java)
-                                intent.putExtra("mediaId", anilistId)
-                                startActivity(intent)
-                            }
-                            .setNegativeButton(android.R.string.cancel, null)
-                            .show()
-                    }
+                    if (anilistId != null) suggestSwitchToAniList(anilistId)
                 } catch (_: Exception) {
                     // ignore errors silently
                 }

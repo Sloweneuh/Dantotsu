@@ -1551,6 +1551,8 @@
     <string name="volume">Volume</string>
     <string name="mangaupdates_account_help">Comment fonctionne MangaUpdates \?</string>
     <string name="switch_to_anilist_title">Média Anilist trouvé</string>
+    <string name="convert_to_anilist">Convertir</string>
+    <string name="converted_to_anilist">Déplacé vers votre liste AniList</string>
     <string name="tracker">Tracker</string>
     <string name="filter_tracker">Tracker : %1$s</string>
     <string name="filter_tracker_both">Les deux</string>

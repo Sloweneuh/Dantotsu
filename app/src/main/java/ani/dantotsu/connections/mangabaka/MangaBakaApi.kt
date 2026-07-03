@@ -21,6 +21,7 @@ import okhttp3.Request
 object MangaBakaApi {
     const val API_URL = "https://api.mangabaka.org"
     private const val CACHE_PREFIX = "mangabaka_series_"
+    private const val AL_CACHE_PREFIX = "mangabaka_al_"
 
     /** External source path segments understood by the `/v1/source/{source}` routes. */
     enum class Source(val path: String) {
@@ -44,28 +45,11 @@ object MangaBakaApi {
         if (cached > 0L) return cached
         if (cacheKey in negativeCache) return null
 
-        // MangaUpdates' source route is keyed by the URL slug (e.g. "6bkr9t5"), which is the
-        // numeric series id encoded in base-36; every other source uses the plain numeric id.
-        val idSegment = if (source == Source.MANGAUPDATES) id.toString(36) else id.toString()
-
-        val resolved = tryWithSuspend {
-            val request = Request.Builder()
-                .url("$API_URL/v1/source/${source.path}/$idSegment?with_series=true")
-                .get()
-                .build()
-            val response = withContext(Dispatchers.IO) { okHttpClient.newCall(request).execute() }
-            val body = response.body?.string()
-            if (!response.isSuccessful || body.isNullOrBlank()) {
-                Logger.log("MangaBaka resolve[${source.path}/$id]: HTTP ${response.code}")
-                return@tryWithSuspend null
-            }
-            val series = Mapper.json.decodeFromString<SourceLookupResponse>(body).data?.series
-            val match = series?.firstOrNull { it.state == "active" } ?: series?.firstOrNull()
-            when {
-                match == null -> null
-                match.state == "merged" && match.mergedWith != null -> match.mergedWith
-                else -> match.id
-            }
+        val match = lookupSeries(source, id)
+        val resolved = when {
+            match == null -> null
+            match.state == "merged" && match.mergedWith != null -> match.mergedWith
+            else -> match.id
         }
 
         if (resolved != null) {
@@ -86,6 +70,47 @@ object MangaBakaApi {
         return null
     }
 
+    /**
+     * Resolves the AniList id for a MangaUpdates series through MangaBaka's cross-source mapping.
+     * Public route — no auth required. Returns null when MangaBaka has no matching series or the
+     * series isn't linked to AniList.
+     */
+    suspend fun getAnilistIdFromMangaUpdates(muSeriesId: Long): Int? {
+        val cacheKey = "$AL_CACHE_PREFIX${Source.MANGAUPDATES.path}_$muSeriesId"
+        val cached = PrefManager.getCustomVal(cacheKey, 0)
+        if (cached > 0) return cached
+        if (cacheKey in negativeCache) return null
+
+        val anilistId = lookupSeries(Source.MANGAUPDATES, muSeriesId)?.source?.anilist?.id
+        if (anilistId != null && anilistId > 0) {
+            PrefManager.setCustomVal(cacheKey, anilistId)
+        } else {
+            negativeCache.add(cacheKey)
+        }
+        return anilistId
+    }
+
+    /**
+     * Fetches the best-matching MangaBaka series for an external source id.
+     * MangaUpdates is keyed by its URL slug (the numeric id in base-36); other sources use the
+     * plain numeric id. Prefers the `active` series when several are returned.
+     */
+    private suspend fun lookupSeries(source: Source, id: Long): SourceSeries? = tryWithSuspend {
+        val idSegment = if (source == Source.MANGAUPDATES) id.toString(36) else id.toString()
+        val request = Request.Builder()
+            .url("$API_URL/v1/source/${source.path}/$idSegment?with_series=true")
+            .get()
+            .build()
+        val response = withContext(Dispatchers.IO) { okHttpClient.newCall(request).execute() }
+        val body = response.body?.string()
+        if (!response.isSuccessful || body.isNullOrBlank()) {
+            Logger.log("MangaBaka lookup[${source.path}/$idSegment]: HTTP ${response.code}")
+            return@tryWithSuspend null
+        }
+        val series = Mapper.json.decodeFromString<SourceLookupResponse>(body).data?.series
+        series?.firstOrNull { it.state == "active" } ?: series?.firstOrNull()
+    }
+
     @Serializable
     data class SourceLookupResponse(val data: SourceData? = null)
 
@@ -97,5 +122,15 @@ object MangaBakaApi {
         val id: Long,
         val state: String? = null,
         @SerialName("merged_with") val mergedWith: Long? = null,
+        val source: SourceIds? = null,
     )
+
+    @Serializable
+    data class SourceIds(
+        val anilist: SourceRef? = null,
+        @SerialName("my_anime_list") val myAnimeList: SourceRef? = null,
+    )
+
+    @Serializable
+    data class SourceRef(val id: Int? = null)
 }

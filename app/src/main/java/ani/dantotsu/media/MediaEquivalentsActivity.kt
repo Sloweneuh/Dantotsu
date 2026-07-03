@@ -138,56 +138,64 @@ class MediaEquivalentsActivity : AppCompatActivity() {
                         }
                     }
 
-                    val slug = if (!savedSlug.isNullOrBlank()) savedSlug else withContext(Dispatchers.IO) { ComickApi.searchAndMatchComicByMuId(listOf(title), it.mu.id) }
+                    // Resolve the AniList equivalent of this MangaUpdates series. Prefer MangaBaka's
+                    // cross-source mapping (reliable id linking); fall back to Comick when MangaBaka
+                    // has no matching series or no AniList link.
+                    var usedAni: ani.dantotsu.media.Media? = null
 
-                    if (!slug.isNullOrBlank()) {
-                        val details = withContext(Dispatchers.IO) { ComickApi.getComicDetails(slug) }
-                        val comic = details?.comic
-                        if (comic != null) {
-                            // Prefer AniList if Comick links include an AniList id
-                            val al = comic.links?.al?.takeIf { it.isNotBlank() }
-                            var usedAni: ani.dantotsu.media.Media? = null
-                            if (!al.isNullOrBlank()) {
-                                val alId = al.toIntOrNull()
-                                if (alId != null) {
-                                    try {
-                                        usedAni = withContext(Dispatchers.IO) { Anilist.query.getMedia(alId, false) }
-                                    } catch (_: Exception) {}
-                                }
-                            }
+                    val mbAniId = withContext(Dispatchers.IO) {
+                        ani.dantotsu.connections.mangabaka.MangaBakaApi.getAnilistIdFromMangaUpdates(it.mu.id)
+                    }
+                    if (mbAniId != null) {
+                        usedAni = try {
+                            withContext(Dispatchers.IO) { Anilist.query.getMedia(mbAniId, false) }
+                        } catch (_: Exception) { null }
+                    }
 
-                            if (usedAni != null) {
-                                it.matchedTitle = usedAni.userPreferredName.ifBlank { usedAni.mainName() }
-                                it.matchedAniCoverUrl = usedAni.cover
-                                it.matchedCoverB2key = null
-                                it.matchedAniId = usedAni.id
-                                it.matchedAniType = if (usedAni.anime != null) "anime" else "manga"
-                            } else {
-                                // Do NOT fall back to Comick entries — indicate no AniList match
-                                it.matchedTitle = getString(R.string.no_anilist_id_found)
-                                it.matchedAniCoverUrl = null
-                                it.matchedCoverB2key = null
-                                it.matchedAniId = null
-                                it.matchedAniType = null
+                    if (usedAni == null) {
+                        val slug = if (!savedSlug.isNullOrBlank()) savedSlug else withContext(Dispatchers.IO) { ComickApi.searchAndMatchComicByMuId(listOf(title), it.mu.id) }
+                        if (!slug.isNullOrBlank()) {
+                            val comic = withContext(Dispatchers.IO) { ComickApi.getComicDetails(slug) }?.comic
+                            val alId = comic?.links?.al?.takeIf { s -> s.isNotBlank() }?.toIntOrNull()
+                            if (alId != null) {
+                                usedAni = try {
+                                    withContext(Dispatchers.IO) { Anilist.query.getMedia(alId, false) }
+                                } catch (_: Exception) { null }
                             }
-                        } else {
-                            // No Comick details found — mark as no Comick entry
-                            it.matchedTitle = getString(R.string.no_comick_entry_found)
-                            it.matchedAniCoverUrl = null
-                            it.matchedCoverB2key = null
-                            it.matchedAniId = null
-                            it.matchedAniType = null
                         }
+                    }
+
+                    if (usedAni != null) {
+                        it.matchedTitle = usedAni.userPreferredName.ifBlank { usedAni.mainName() }
+                        it.matchedAniCoverUrl = usedAni.cover
+                        it.matchedCoverB2key = null
+                        it.matchedAniId = usedAni.id
+                        it.matchedAniType = if (usedAni.anime != null) "anime" else "manga"
                     } else {
-                        // No Comick slug found — mark as no Comick entry
-                        it.matchedTitle = getString(R.string.no_comick_entry_found)
+                        it.matchedTitle = getString(R.string.no_anilist_id_found)
                         it.matchedAniCoverUrl = null
                         it.matchedCoverB2key = null
                         it.matchedAniId = null
                         it.matchedAniType = null
                     }
                 } catch (_: Exception) {}
-                adapter.notifyItemChanged(idx)
+                // Float entries with a found equivalent to the top as they resolve (even late ones).
+                val from = items.indexOf(it)
+                if (from < 0) return@launch
+                if (it.matchedAniId != null && from > 0) {
+                    items.removeAt(from)
+                    items.add(0, it)
+                    adapter.notifyItemMoved(from, 0)
+                    adapter.notifyItemChanged(0)
+                    // Keep the moved item on screen only if the user is already at the top;
+                    // don't yank them back up if they've scrolled down.
+                    val lm = recycler.layoutManager as? LinearLayoutManager
+                    if (lm != null && lm.findFirstCompletelyVisibleItemPosition() <= 0) {
+                        recycler.scrollToPosition(0)
+                    }
+                } else {
+                    adapter.notifyItemChanged(from)
+                }
             }
         }
     }
@@ -206,11 +214,9 @@ class MediaEquivalentsActivity : AppCompatActivity() {
 
     private fun openQuickSearchPickerForUnmatched() {
         val noAnilistText = getString(R.string.no_anilist_id_found)
-        val noComickText = getString(R.string.no_comick_entry_found)
 
         val unmatchedIndexes = items.mapIndexedNotNull { idx, item ->
-            val unresolved = item.matchedAniId == null &&
-                (item.matchedTitle == noAnilistText || item.matchedTitle == noComickText)
+            val unresolved = item.matchedAniId == null && item.matchedTitle == noAnilistText
             if (unresolved) idx else null
         }
 
@@ -256,7 +262,7 @@ class MediaEquivalentsActivity : AppCompatActivity() {
             val matchCover: ImageView = view.findViewById(R.id.matchCover)
             val matchCoverCard: CardView = view.findViewById(R.id.matchCoverCard)
             val matchTitle: TextView = view.findViewById(R.id.matchTitle)
-            val matchQuickSearchButton: android.widget.Button = view.findViewById(R.id.matchQuickSearchButton)
+            val convertButton: View = view.findViewById(R.id.convertButton)
         }
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
@@ -266,8 +272,6 @@ class MediaEquivalentsActivity : AppCompatActivity() {
 
         override fun onBindViewHolder(holder: VH, position: Int) {
             val item = list[position]
-            val noAnilistText = getString(R.string.no_anilist_id_found)
-            val noComickText = getString(R.string.no_comick_entry_found)
             holder.muTitle.text = item.mu.title ?: ""
             // MU side: open MUMediaDetailsActivity when clicked
             val ctx = holder.itemView.context
@@ -314,6 +318,11 @@ class MediaEquivalentsActivity : AppCompatActivity() {
                     getThemeColor(com.google.android.material.R.attr.colorOutline)
                 )
                 holder.matchCoverCard.setCardBackgroundColor(getThemeColor(com.google.android.material.R.attr.colorSurface))
+                // Tapping the placeholder starts a quick search for a match.
+                holder.matchCoverCard.isClickable = true
+                holder.matchCoverCard.setOnClickListener { startQuickSearch(item, holder.bindingAdapterPosition) }
+                holder.matchTitle.isClickable = false
+                holder.matchTitle.setOnClickListener(null)
             } else {
                 holder.matchTitle.text = item.matchedTitle
                 // Make title and cover clickable when we have an AniList id
@@ -337,8 +346,9 @@ class MediaEquivalentsActivity : AppCompatActivity() {
                         } catch (_: Exception) {}
                     }
                 } else {
-                    holder.matchCoverCard.isClickable = false
-                    holder.matchCoverCard.setOnClickListener(null)
+                    // No AniList match: tapping the placeholder cover starts a quick search.
+                    holder.matchCoverCard.isClickable = true
+                    holder.matchCoverCard.setOnClickListener { startQuickSearch(item, holder.bindingAdapterPosition) }
                     holder.matchTitle.isClickable = false
                     holder.matchTitle.setOnClickListener(null)
                 }
@@ -363,10 +373,10 @@ class MediaEquivalentsActivity : AppCompatActivity() {
                         holder.matchCover.loadImage(thumb)
                     }
                     else -> {
-                        // No AniList match: show gray card + book icon
+                        // No AniList match: gray card with the AniList search icon (tap to quick-search)
                         Glide.with(holder.matchCover.context).clear(holder.matchCover)
                         holder.matchCover.scaleType = ImageView.ScaleType.CENTER_INSIDE
-                        holder.matchCover.setImageResource(R.drawable.ic_round_no_icon_24)
+                        holder.matchCover.setImageResource(R.drawable.ic_anilist_search_24)
                         holder.matchCover.imageTintList = android.content.res.ColorStateList.valueOf(
                             getThemeColor(com.google.android.material.R.attr.colorOutline)
                         )
@@ -375,18 +385,49 @@ class MediaEquivalentsActivity : AppCompatActivity() {
                 }
             }
 
-            val unresolved = item.matchedAniId == null &&
-                (item.matchedTitle == noAnilistText || item.matchedTitle == noComickText)
-            holder.matchQuickSearchButton.visibility = if (unresolved) View.VISIBLE else View.GONE
-            holder.matchQuickSearchButton.setOnClickListener {
-                val candidates = buildQuickCandidates(item.mu)
-                AniListQuickSearchDialogFragment
-                    .newInstance(ArrayList(candidates))
-                    .show(supportFragmentManager, "equiv_row_quick_sheet_${holder.bindingAdapterPosition}")
+            // One-tap convert: only when the MU series is in the user's list and has an AniList match.
+            val aniId = item.matchedAniId
+            val convertible = aniId != null && item.mu.listId in 0..4
+            // INVISIBLE (not GONE) so the middle column always reserves the same width and the
+            // cover columns line up whether or not a row has a convert button.
+            holder.convertButton.visibility = if (convertible) View.VISIBLE else View.INVISIBLE
+            holder.convertButton.setOnClickListener {
+                if (aniId == null) return@setOnClickListener
+                holder.convertButton.isEnabled = false
+                lifecycleScope.launch {
+                    val ok = withContext(Dispatchers.IO) {
+                        ani.dantotsu.connections.mangaupdates.convertMuToAnilist(
+                            muSeriesId = item.mu.id,
+                            muListId = item.mu.listId,
+                            anilistId = aniId,
+                            chapter = item.mu.userChapter,
+                            volume = item.mu.userVolume,
+                        )
+                    }
+                    if (ok) {
+                        toast(getString(R.string.converted_to_anilist))
+                        val pos = holder.bindingAdapterPosition
+                        if (pos != RecyclerView.NO_POSITION) {
+                            items.removeAt(pos)
+                            notifyItemRemoved(pos)
+                        }
+                    } else {
+                        toast(getString(R.string.list_update_failed))
+                        holder.convertButton.isEnabled = true
+                    }
+                }
             }
         }
 
         override fun getItemCount(): Int = list.size
+
+        /** Opens the AniList quick-search sheet for a MangaUpdates entry with no auto-detected match. */
+        private fun startQuickSearch(item: EquivalentItem, position: Int) {
+            val candidates = buildQuickCandidates(item.mu)
+            AniListQuickSearchDialogFragment
+                .newInstance(ArrayList(candidates))
+                .show(supportFragmentManager, "equiv_row_quick_sheet_$position")
+        }
 
         private fun buildThumbUrl(b2key: String): String {
             val dotIdx = b2key.lastIndexOf('.')

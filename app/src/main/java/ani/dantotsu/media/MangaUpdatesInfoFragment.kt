@@ -1172,6 +1172,29 @@ class MangaUpdatesInfoFragment : Fragment() {
                         continue
                     }
                     try {
+                        // Prefer MangaBaka's MU -> AniList mapping; fall back to Comick below.
+                        val mbAniId = withContext(Dispatchers.IO) {
+                            ani.dantotsu.connections.mangabaka.MangaBakaApi.getAnilistIdFromMangaUpdates(recSeriesId)
+                        }
+                        if (mbAniId != null) {
+                            if (mbAniId != currentAnilistId) {
+                                recAnilistPairs.add(Pair(index, mbAniId))
+                            } else {
+                                recMuMedia[index] = Media(
+                                    id = (recSeriesId and 0x7FFFFFFF).toInt(),
+                                    name = recName,
+                                    nameRomaji = recName,
+                                    userPreferredName = recName,
+                                    cover = coverUrl,
+                                    banner = coverUrl,
+                                    isAdult = false,
+                                    manga = Manga(),
+                                    format = "MANGA",
+                                    muSeriesId = recSeriesId,
+                                )
+                            }
+                            continue
+                        }
                         val slug = withContext(Dispatchers.IO) {
                             ComickApi.searchAndMatchComicByMuId(listOf(recName), recSeriesId)
                         }
