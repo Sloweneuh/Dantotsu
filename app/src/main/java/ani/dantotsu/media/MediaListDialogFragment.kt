@@ -18,6 +18,7 @@ import ani.dantotsu.Refresh
 import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.anilist.api.FuzzyDate
 import ani.dantotsu.connections.mal.MAL
+import ani.dantotsu.connections.mangabaka.MangaBakaSync
 import ani.dantotsu.databinding.BottomSheetMediaListBinding
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.settings.saving.PrefManager
@@ -389,6 +390,20 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                                                 startD,
                                                 endD
                                             )
+                                            if (media!!.manga != null) {
+                                                MangaBakaSync.syncFromAnilist(
+                                                    anilistId = media!!.id,
+                                                    malId = media!!.idMAL,
+                                                    status = status,
+                                                    progressChapter = progress,
+                                                    progressVolume = volume,
+                                                    score = score,
+                                                    rereads = rewatch,
+                                                    isPrivate = media?.isListPrivate ?: false,
+                                                    startDate = startD,
+                                                    finishDate = endD,
+                                                )
+                                            }
                                                 media?.userVolume = volume
                                         }
                                     }

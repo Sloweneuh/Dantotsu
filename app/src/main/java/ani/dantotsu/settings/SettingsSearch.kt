@@ -104,6 +104,7 @@ object SettingsSearch {
         l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.disable_mal, R.string.connections_settings, IC_ACCOUNT, R.string.disable_mal_desc, keywords = "myanimelist mal account tracking")
         l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.disable_malsync, R.string.connections_settings, IC_ACCOUNT, R.string.disable_malsync_desc, keywords = "malsync sync tracking progress")
         l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.malsync_exclude_manage, R.string.connections_settings, IC_ACCOUNT, R.string.malsync_exclude_manage_desc, keywords = "exclude filter unread chapter episode notifications malsync")
+        l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.mangabaka_list_sync, R.string.connections_settings, IC_ACCOUNT, R.string.mangabaka_list_sync_desc, keywords = "mangabaka mb list sync tracking anilist mangaupdates push")
 
         // ---- Theme ----
         l += SearchableSetting(SettingsThemeActivity::class.java, R.string.theme, R.string.theme, IC_THEME, anchorViewId = R.id.themeSwitcher, keywords = "color scheme palette dark light oled auto appearance")

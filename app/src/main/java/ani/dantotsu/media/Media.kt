@@ -171,6 +171,11 @@ fun Media?.deleteFromList(
                     try {
                         Anilist.mutation.deleteList(listId)
                         MAL.query.deleteList(media.anime != null, media.idMAL)
+                        if (media.manga != null) {
+                            ani.dantotsu.connections.mangabaka.MangaBakaSync.deleteFromAnilist(
+                                media.id, media.idMAL
+                            )
+                        }
 
                         val removeList = PrefManager.getVal<Set<String>>(PrefName.HiddenFromLists)
                         PrefManager.setVal(

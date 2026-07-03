@@ -4,6 +4,7 @@ import ani.dantotsu.R
 import ani.dantotsu.Refresh
 import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.mal.MAL
+import ani.dantotsu.connections.mangabaka.MangaBakaSync
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.currContext
 import ani.dantotsu.media.Media
@@ -53,6 +54,12 @@ fun updateProgress(media: Media, number: String) {
                         "${ani.dantotsu.connections.mangaupdates.PREF_MU_LAST_READ_PREFIX}$muSeriesId",
                         System.currentTimeMillis()
                     )
+                    MangaBakaSync.syncFromMangaUpdates(
+                        muSeriesId = muSeriesId,
+                        muListId = media.muListId,
+                        progressChapter = a,
+                        progressVolume = media.userVolume,
+                    )
                     toast(currContext()?.getString(R.string.setting_progress, a))
                     media.userProgress = a
                     Refresh.all()
@@ -81,6 +88,20 @@ fun updateProgress(media: Media, number: String) {
                     null,
                     media.userVolume
                 )
+                if (media.manga != null) {
+                    MangaBakaSync.syncFromAnilist(
+                        anilistId = media.id,
+                        malId = media.idMAL,
+                        status = if (media.userStatus == "REPEATING") media.userStatus else "CURRENT",
+                        progressChapter = a,
+                        progressVolume = media.userVolume,
+                        score = media.userScore.takeIf { it > 0 },
+                        rereads = null,
+                        isPrivate = media.isListPrivate,
+                        startDate = null,
+                        finishDate = null,
+                    )
+                }
                 toast(currContext()?.getString(R.string.setting_progress, a))
             }
             media.userProgress = a

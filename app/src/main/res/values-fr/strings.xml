@@ -442,6 +442,8 @@
     <string name="mangabaka_token_invalid">Jeton invalide</string>
     <string name="mangabaka_login_success">Connexion à MangaBaka réussie</string>
     <string name="mangabaka_login_failed">Échec de la connexion. Vérifiez votre jeton.</string>
+    <string name="mangabaka_list_sync">Synchronisation des listes MangaBaka</string>
+    <string name="mangabaka_list_sync_desc">Envoyer les mises à jour de mangas AniList et MangaUpdates vers votre bibliothèque MangaBaka (à sens unique)</string>
     <string name="mal_not_logged_in_title">MyAnimeList non connecté</string>
     <string name="mal_not_logged_in_desc">Connectez votre compte MyAnimeList pour voir les informations de MAL</string>
     <string name="connect_to_mal">Se connecter à MyAnimeList</string>

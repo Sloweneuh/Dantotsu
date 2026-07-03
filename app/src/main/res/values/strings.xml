@@ -579,6 +579,8 @@
     <string name="mangabaka_token_invalid">Invalid token</string>
     <string name="mangabaka_login_success">Successfully logged into MangaBaka</string>
     <string name="mangabaka_login_failed">Login failed. Check your token.</string>
+    <string name="mangabaka_list_sync">MangaBaka list sync</string>
+    <string name="mangabaka_list_sync_desc">Push AniList and MangaUpdates manga updates to your MangaBaka library (one way)</string>
     <string name="mal_not_logged_in_title">MyAnimeList Not Connected</string>
     <string name="mal_not_logged_in_desc">Connect your MyAnimeList account to view information from MAL</string>
     <string name="connect_to_mal">Login to MyAnimeList</string>

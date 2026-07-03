@@ -168,6 +168,12 @@ class MUListEditorFragment : BottomSheetDialogFragment() {
                             volume = newVolume
                         )
                     }
+                    ani.dantotsu.connections.mangabaka.MangaBakaSync.syncFromMangaUpdates(
+                        muSeriesId = muMedia.id,
+                        muListId = newListId,
+                        progressChapter = newChapter,
+                        progressVolume = newVolume,
+                    )
                     PrefManager.setCustomVal(
                         "$PREF_MU_LAST_READ_PREFIX${muMedia.id}",
                         System.currentTimeMillis()
@@ -191,6 +197,7 @@ class MUListEditorFragment : BottomSheetDialogFragment() {
             scope.launch {
                 withContext(Dispatchers.IO) {
                     MangaUpdates.removeFromList(muMedia.id)
+                    ani.dantotsu.connections.mangabaka.MangaBakaSync.deleteFromMangaUpdates(muMedia.id)
                 }
                 // Clear progress in the shared Media so MangaReadFragment reflects removal
                 model.getMedia().value?.let { media ->

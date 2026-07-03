@@ -178,6 +178,17 @@ class SettingsConnectionsActivity : AppCompatActivity() {
                 desc = getString(R.string.malsync_exclude_manage_desc),
                 icon = R.drawable.ic_malsync,
                 onClick = { showMalSyncExcludeDialog() },
+            ),
+            Settings(
+                type = 2,
+                name = getString(R.string.mangabaka_list_sync),
+                desc = getString(R.string.mangabaka_list_sync_desc),
+                icon = R.drawable.ic_round_mangabaka_24,
+                isChecked = PrefManager.getVal(PrefName.MangaBakaListSyncEnabled),
+                switch = { isChecked, _ ->
+                    PrefManager.setVal(PrefName.MangaBakaListSyncEnabled, isChecked)
+                },
+                isVisible = ani.dantotsu.connections.mangabaka.MangaBaka.token != null,
             )
         )
 
