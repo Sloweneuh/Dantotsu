@@ -6,6 +6,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.animation.AlphaAnimation
 import android.view.animation.Animation
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.databinding.ItemSearchHeaderBinding
 import ani.dantotsu.stripSpansOnPaste
@@ -17,6 +19,22 @@ abstract class HeaderInterface : RecyclerView.Adapter<HeaderInterface.SearchHead
     protected var textWatcher: TextWatcher? = null
     protected lateinit var searchHistoryAdapter: SearchHistoryAdapter
     protected lateinit var binding: ItemSearchHeaderBinding
+
+    private val _ready = MutableLiveData(false)
+
+    // Fires once this header's view holder has been bound (and its search/requestFocus
+    // Runnables populated). The header is always item 0, so unlike a footer item, it is
+    // guaranteed to bind on first layout regardless of RecyclerView content height.
+    val ready: LiveData<Boolean> get() = _ready
+
+    protected fun markReady() {
+        // Use postValue: this runs from onBindViewHolder, while the RecyclerView is still
+        // mid-layout. Dispatching synchronously here (setValue) lets observers trigger
+        // notifyDataSetChanged() reentrantly and crash with "Cannot call this method while
+        // RecyclerView is computing a layout or scrolling". postValue defers dispatch until
+        // after the current layout pass finishes.
+        if (_ready.value != true) _ready.postValue(true)
+    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SearchHeaderViewHolder {
         val binding =

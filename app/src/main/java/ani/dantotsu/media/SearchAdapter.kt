@@ -260,6 +260,7 @@ class SearchAdapter(private val activity: SearchActivity, private val type: Sear
 
         search = Runnable { searchTitle() }
         requestFocus = Runnable { binding.searchBarText.requestFocus() }
+        markReady()
     }
 
     private fun getIconForType(type: SearchType): Int {

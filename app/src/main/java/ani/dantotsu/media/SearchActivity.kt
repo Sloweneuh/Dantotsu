@@ -505,7 +505,7 @@ class SearchActivity : AppCompatActivity() {
             }
         }
 
-        progressAdapter.ready.observe(this) {
+        headerAdaptor.ready.observe(this) {
             if (it == true) {
                 if (!notSet) {
                     if (!model.searched) {
