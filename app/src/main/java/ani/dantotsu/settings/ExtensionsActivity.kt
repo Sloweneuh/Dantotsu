@@ -44,6 +44,9 @@ import java.util.Locale
 class ExtensionsActivity : AppCompatActivity() {
     lateinit var binding: ActivityExtensionsBinding
     private var hasUpdates = false
+    private lateinit var tabLayout: TabLayout
+    private lateinit var viewPager: ViewPager2
+    private var tabLayoutMediator: TabLayoutMediator? = null
     companion object {
         const val EXTRA_OPEN_SOURCE_ID = "open_source_id"
         const val EXTRA_OPEN_SOURCE_TYPE = "open_source_type"
@@ -84,8 +87,8 @@ class ExtensionsActivity : AppCompatActivity() {
             onBackPressedDispatcher.onBackPressed()
         }
 
-        val tabLayout = findViewById<TabLayout>(R.id.tabLayout)
-        val viewPager = findViewById<ViewPager2>(R.id.viewPager)
+        tabLayout = findViewById(R.id.tabLayout)
+        viewPager = findViewById(R.id.viewPager)
         viewPager.offscreenPageLimit = 1
 
         // Check if there are any extension updates
@@ -93,35 +96,7 @@ class ExtensionsActivity : AppCompatActivity() {
         hasUpdates = preferences.animeExtensionUpdatesCount().get() > 0 ||
                      preferences.mangaExtensionUpdatesCount().get() > 0
 
-        viewPager.adapter = object : FragmentStateAdapter(this) {
-            override fun getItemCount(): Int = if (hasUpdates) 7 else 6
-
-            override fun createFragment(position: Int): Fragment {
-                return if (hasUpdates) {
-                    when (position) {
-                        0 -> ExtensionUpdatesFragment()
-                        1 -> InstalledAnimeExtensionsFragment()
-                        2 -> AnimeExtensionsFragment()
-                        3 -> InstalledMangaExtensionsFragment()
-                        4 -> MangaExtensionsFragment()
-                        5 -> InstalledNovelExtensionsFragment()
-                        6 -> NovelExtensionsFragment()
-                        else -> ExtensionUpdatesFragment()
-                    }
-                } else {
-                    when (position) {
-                        0 -> InstalledAnimeExtensionsFragment()
-                        1 -> AnimeExtensionsFragment()
-                        2 -> InstalledMangaExtensionsFragment()
-                        3 -> MangaExtensionsFragment()
-                        4 -> InstalledNovelExtensionsFragment()
-                        5 -> NovelExtensionsFragment()
-                        else -> InstalledAnimeExtensionsFragment()
-                    }
-                }
-            }
-
-        }
+        setupExtensionsPager()
 
         val searchView: AutoCompleteTextView = findViewById(R.id.searchViewText)
         searchView.stripSpansOnPaste()
@@ -172,31 +147,6 @@ class ExtensionsActivity : AppCompatActivity() {
                 }
             }
         )
-
-        TabLayoutMediator(tabLayout, viewPager) { tab, position ->
-            tab.text = if (hasUpdates) {
-                when (position) {
-                    0 -> "Updates"
-                    1 -> "Installed Anime"
-                    2 -> "Available Anime"
-                    3 -> "Installed Manga"
-                    4 -> "Available Manga"
-                    5 -> "Installed Novels"
-                    6 -> "Available Novels"
-                    else -> null
-                }
-            } else {
-                when (position) {
-                    0 -> "Installed Anime"
-                    1 -> "Available Anime"
-                    2 -> "Installed Manga"
-                    3 -> "Available Manga"
-                    4 -> "Installed Novels"
-                    5 -> "Available Novels"
-                    else -> null
-                }
-            }
-        }.attach()
 
         // Set initial tab if provided in intent
         val initialTab = intent.getIntExtra("tab", -1)
@@ -296,6 +246,78 @@ class ExtensionsActivity : AppCompatActivity() {
             topMargin = statusBarHeight
             bottomMargin = navBarHeight
         }
+    }
+
+    private fun setupExtensionsPager() {
+        viewPager.adapter = object : FragmentStateAdapter(this) {
+            override fun getItemCount(): Int = if (hasUpdates) 7 else 6
+
+            override fun createFragment(position: Int): Fragment {
+                return if (hasUpdates) {
+                    when (position) {
+                        0 -> ExtensionUpdatesFragment()
+                        1 -> InstalledAnimeExtensionsFragment()
+                        2 -> AnimeExtensionsFragment()
+                        3 -> InstalledMangaExtensionsFragment()
+                        4 -> MangaExtensionsFragment()
+                        5 -> InstalledNovelExtensionsFragment()
+                        6 -> NovelExtensionsFragment()
+                        else -> ExtensionUpdatesFragment()
+                    }
+                } else {
+                    when (position) {
+                        0 -> InstalledAnimeExtensionsFragment()
+                        1 -> AnimeExtensionsFragment()
+                        2 -> InstalledMangaExtensionsFragment()
+                        3 -> MangaExtensionsFragment()
+                        4 -> InstalledNovelExtensionsFragment()
+                        5 -> NovelExtensionsFragment()
+                        else -> InstalledAnimeExtensionsFragment()
+                    }
+                }
+            }
+        }
+
+        tabLayoutMediator?.detach()
+        tabLayoutMediator = TabLayoutMediator(tabLayout, viewPager) { tab, position ->
+            tab.text = if (hasUpdates) {
+                when (position) {
+                    0 -> "Updates"
+                    1 -> "Installed Anime"
+                    2 -> "Available Anime"
+                    3 -> "Installed Manga"
+                    4 -> "Available Manga"
+                    5 -> "Installed Novels"
+                    6 -> "Available Novels"
+                    else -> null
+                }
+            } else {
+                when (position) {
+                    0 -> "Installed Anime"
+                    1 -> "Available Anime"
+                    2 -> "Installed Manga"
+                    3 -> "Available Manga"
+                    4 -> "Installed Novels"
+                    5 -> "Available Novels"
+                    else -> null
+                }
+            }
+        }
+        tabLayoutMediator?.attach()
+    }
+
+    fun onExtensionUpdatesFinished() {
+        val preferences: SourcePreferences = Injekt.get()
+        val stillHasUpdates = preferences.animeExtensionUpdatesCount().get() > 0 ||
+                preferences.mangaExtensionUpdatesCount().get() > 0
+
+        if (hasUpdates != stillHasUpdates) {
+            hasUpdates = stillHasUpdates
+            setupExtensionsPager()
+        }
+
+        val installedAnimeIndex = if (hasUpdates) 1 else 0
+        viewPager.setCurrentItem(installedAnimeIndex, false)
     }
 
     private fun generateRepositoryButton(type: MediaType) {

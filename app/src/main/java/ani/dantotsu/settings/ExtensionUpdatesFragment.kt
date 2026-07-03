@@ -184,6 +184,7 @@ class ExtensionUpdatesFragment : Fragment() {
         if (items.isEmpty()) {
             snackString("All extensions updated")
             loadUpdates() // Final refresh
+            (activity as? ExtensionsActivity)?.onExtensionUpdatesFinished()
             return
         }
 
