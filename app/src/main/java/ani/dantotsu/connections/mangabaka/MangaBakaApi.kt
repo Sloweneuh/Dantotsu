@@ -117,7 +117,7 @@ object MangaBakaApi {
         if (cached > 0L) return cached
         if (cacheKey in negativeCache) return null
 
-        val muId = lookupSeries(source, id)?.source?.mangaUpdates?.id?.toLong()
+        val muId = lookupSeries(source, id)?.source?.mangaUpdates?.toMuSeriesId()
         if (muId != null && muId > 0) {
             PrefManager.setCustomVal(cacheKey, muId)
         } else {
@@ -165,7 +165,7 @@ object MangaBakaApi {
     data class SourceIds(
         val anilist: SourceRef? = null,
         @SerialName("my_anime_list") val myAnimeList: SourceRef? = null,
-        @SerialName("manga_updates") val mangaUpdates: SourceRef? = null,
+        @SerialName("manga_updates") val mangaUpdates: StringSourceRef? = null,
     )
 
     @Serializable
