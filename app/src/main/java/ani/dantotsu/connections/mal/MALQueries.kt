@@ -62,10 +62,12 @@ class MALQueries {
         rewatch: Int? = null,
         volume: Int? = null,
         start: FuzzyDate? = null,
-        end: FuzzyDate? = null
+        end: FuzzyDate? = null,
+        force: Boolean = false
     ) {
         if (idMAL == null) return
-        if (!PrefManager.getVal<Boolean>(PrefName.MalListSyncEnabled)) return
+        // `force` bypasses the toggle for explicit user actions (e.g. the list-compare screen).
+        if (!force && !PrefManager.getVal<Boolean>(PrefName.MalListSyncEnabled)) return
         val data = mutableMapOf("status" to convertStatus(isAnime, status))
         if (progress != null)
             data[if (isAnime) "num_watched_episodes" else "num_chapters_read"] = progress.toString()
@@ -89,9 +91,9 @@ class MALQueries {
         }
     }
 
-    suspend fun deleteList(isAnime: Boolean, idMAL: Int?) {
+    suspend fun deleteList(isAnime: Boolean, idMAL: Int?, force: Boolean = false) {
         if (idMAL == null) return
-        if (!PrefManager.getVal<Boolean>(PrefName.MalListSyncEnabled)) return
+        if (!force && !PrefManager.getVal<Boolean>(PrefName.MalListSyncEnabled)) return
         tryWithSuspend {
             client.delete(
                 "$apiUrl/${if (isAnime) "anime" else "manga"}/$idMAL/my_list_status",
@@ -100,7 +102,28 @@ class MALQueries {
         }
     }
 
-    private fun convertStatus(isAnime: Boolean, status: String): String {
+    /**
+     * Fetches the authenticated user's full MAL list for the given type, following pagination.
+     * Returns the raw entries (media node + list_status). Empty when logged out or on failure.
+     */
+    suspend fun getUserList(isAnime: Boolean): List<MALListNode> {
+        val header = authHeader ?: return emptyList()
+        val type = if (isAnime) "animelist" else "mangalist"
+        val result = mutableListOf<MALListNode>()
+        var url: String? =
+            "$apiUrl/users/@me/$type?fields=list_status,main_picture&limit=1000&nsfw=true"
+        var guard = 0
+        while (url != null && guard++ < 50) {
+            val page = tryWithSuspend {
+                client.get(url!!, header).parsed<MALListResponse>()
+            } ?: break
+            result += page.data
+            url = page.paging?.next
+        }
+        return result
+    }
+
+    internal fun convertStatus(isAnime: Boolean, status: String): String {
         return when (status) {
             "PLANNING" -> if (isAnime) "plan_to_watch" else "plan_to_read"
             "COMPLETED" -> "completed"

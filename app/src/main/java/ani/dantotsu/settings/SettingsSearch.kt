@@ -107,6 +107,7 @@ object SettingsSearch {
         l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.malsync_exclude_manage, R.string.connections_settings, IC_ACCOUNT, R.string.malsync_exclude_manage_desc, keywords = "exclude filter unread chapter episode notifications malsync")
 
         // ---- List sync ----
+        l += SearchableSetting(ListSyncCompareActivity::class.java, R.string.compare_lists, R.string.list_sync_settings, IC_ACCOUNT, R.string.compare_lists_desc, keywords = "compare audit diff differences out of date myanimelist mal mangabaka anilist mangaupdates sync")
         l += SearchableSetting(SettingsListSyncActivity::class.java, R.string.mal_list_sync, R.string.list_sync_settings, IC_ACCOUNT, R.string.mal_list_sync_desc, keywords = "myanimelist mal list sync tracking anilist push")
         l += SearchableSetting(SettingsListSyncActivity::class.java, R.string.mangabaka_list_sync, R.string.list_sync_settings, IC_ACCOUNT, R.string.mangabaka_list_sync_desc, keywords = "mangabaka mb list sync tracking anilist mangaupdates push")
 

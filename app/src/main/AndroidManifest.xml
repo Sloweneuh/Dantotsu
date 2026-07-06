@@ -197,6 +197,9 @@
             android:name=".settings.SettingsListSyncActivity"
             android:parentActivityName=".MainActivity" />
         <activity
+            android:name=".settings.ListSyncCompareActivity"
+            android:parentActivityName=".MainActivity" />
+        <activity
             android:name=".settings.SettingsAnimeActivity"
             android:parentActivityName=".MainActivity" />
         <activity

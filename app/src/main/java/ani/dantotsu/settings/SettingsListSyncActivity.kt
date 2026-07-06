@@ -1,5 +1,6 @@
 package ani.dantotsu.settings
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
@@ -34,6 +35,17 @@ class SettingsListSyncActivity : AppCompatActivity() {
         binding.listSyncSettingsBack.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
 
         val settingsList = arrayListOf(
+            Settings(
+                type = 1,
+                name = getString(R.string.compare_lists),
+                desc = getString(R.string.compare_lists_desc),
+                icon = R.drawable.ic_round_sync_24,
+                onClick = {
+                    startActivity(Intent(this, ListSyncCompareActivity::class.java))
+                },
+                isActivity = true,
+                isVisible = MAL.token != null || MangaBaka.token != null,
+            ),
             Settings(
                 type = 2,
                 name = getString(R.string.mal_list_sync),

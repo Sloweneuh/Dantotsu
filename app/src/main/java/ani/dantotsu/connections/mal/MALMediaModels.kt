@@ -167,6 +167,43 @@ data class MALStatusStatistics(
     @SerialName("plan_to_read") val planToRead: String? = null
 )
 
+// ---- User list (GET /users/@me/{anime|manga}list?fields=list_status) ----
+
+@Serializable
+data class MALListResponse(
+    val data: List<MALListNode> = emptyList(),
+    val paging: MALPaging? = null,
+)
+
+@Serializable
+data class MALPaging(
+    val next: String? = null,
+)
+
+@Serializable
+data class MALListNode(
+    val node: MALListMedia,
+    @SerialName("list_status") val listStatus: MALListStatus? = null,
+)
+
+@Serializable
+data class MALListMedia(
+    val id: Int,
+    val title: String,
+    @SerialName("main_picture") val mainPicture: MALPicture? = null,
+)
+
+@Serializable
+data class MALListStatus(
+    val status: String? = null,
+    val score: Int = 0,
+    @SerialName("num_episodes_watched") val numEpisodesWatched: Int? = null,
+    @SerialName("num_chapters_read") val numChaptersRead: Int? = null,
+    @SerialName("num_volumes_read") val numVolumesRead: Int? = null,
+    @SerialName("is_rewatching") val isRewatching: Boolean = false,
+    @SerialName("is_rereading") val isRereading: Boolean = false,
+)
+
 @Serializable
 data class MALStack(
     val url: String,

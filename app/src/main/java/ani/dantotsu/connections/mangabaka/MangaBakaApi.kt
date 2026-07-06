@@ -6,11 +6,15 @@ import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.tryWithSuspend
 import ani.dantotsu.util.Logger
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Request
+import okhttp3.Response
 
 /**
  * Public, read-only MangaBaka endpoints.
@@ -36,6 +40,26 @@ object MangaBakaApi {
 
     /** In-memory cache of source lookups that returned no match, to avoid re-querying. */
     private val negativeCache = HashSet<String>()
+
+    /** Small shared concurrency limit — MangaBaka rate-limits (HTTP 429) aggressive bulk callers. */
+    private val rateLimiter = Semaphore(3)
+
+    /**
+     * Executes a MangaBaka request under the shared [rateLimiter] and retries on HTTP 429 with linear
+     * backoff. Every bulk caller (list-compare, sync) must funnel requests through here so we stay
+     * within the server's rate limit instead of hammering it in parallel.
+     */
+    internal suspend fun execute(request: Request): Response = rateLimiter.withPermit {
+        var response = withContext(Dispatchers.IO) { okHttpClient.newCall(request).execute() }
+        var attempt = 0
+        while (response.code == 429 && attempt < 4) {
+            response.close()
+            delay(700L * (attempt + 1))
+            response = withContext(Dispatchers.IO) { okHttpClient.newCall(request).execute() }
+            attempt++
+        }
+        response
+    }
 
     /**
      * Builds the path segment for a `/v1/source/{source}/{id}` lookup. MangaUpdates is keyed by its
@@ -137,7 +161,7 @@ object MangaBakaApi {
             .url("$API_URL/v1/source/${source.path}/$idSegment?with_series=true")
             .get()
             .build()
-        val response = withContext(Dispatchers.IO) { okHttpClient.newCall(request).execute() }
+        val response = execute(request)
         val body = response.body?.string()
         if (!response.isSuccessful || body.isNullOrBlank()) {
             Logger.log("MangaBaka lookup[${source.path}/$idSegment]: HTTP ${response.code}")
@@ -248,7 +272,7 @@ object MangaBakaApi {
             .url("$API_URL/v1/series/$seriesId")
             .get()
             .build()
-        val response = withContext(Dispatchers.IO) { okHttpClient.newCall(request).execute() }
+        val response = execute(request)
         val body = response.body?.string()
         if (!response.isSuccessful || body.isNullOrBlank()) {
             Logger.log("MangaBaka series[$seriesId]: HTTP ${response.code}")
