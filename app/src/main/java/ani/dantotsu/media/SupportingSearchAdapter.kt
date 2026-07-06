@@ -34,9 +34,7 @@ class SupportingSearchAdapter(private val activity: SearchActivity, private val 
     private var comickChipAdapter: ComickChipAdapter? = null
 
     @SuppressLint("ClickableViewAccessibility")
-    override fun onBindViewHolder(holder: SearchHeaderViewHolder, position: Int) {
-        binding = holder.binding
-
+    override fun bind() {
         searchHistoryAdapter = SearchHistoryAdapter(type) {
             binding.searchBarText.setText(it)
             binding.searchBarText.setSelection(it.length)

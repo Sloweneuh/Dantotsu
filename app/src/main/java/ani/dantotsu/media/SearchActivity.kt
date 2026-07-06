@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.os.Looper
 import android.os.Parcelable
 import android.view.View
+import android.view.ViewGroup
 import android.view.WindowManager
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -87,9 +88,12 @@ class SearchActivity : AppCompatActivity() {
         screenWidth = resources.displayMetrics.run { widthPixels / density }
 
         binding.searchRecyclerView.updatePaddingRelative(
-            top = statusBarHeight,
             bottom = navBarHeight + 80f.px
         )
+        (binding.searchHeader.root.layoutParams as? ViewGroup.MarginLayoutParams)?.let {
+            it.topMargin = statusBarHeight
+            binding.searchHeader.root.layoutParams = it
+        }
 
         val notSet = model.notSet
         searchType = SearchType.fromString(intent.getStringExtra("type") ?: "ANIME")
@@ -276,13 +280,13 @@ class SearchActivity : AppCompatActivity() {
         } else {
             SupportingSearchAdapter(this, searchType)
         }
+        headerAdaptor.attach(binding.searchHeader)
 
         val gridSize = (screenWidth / 120f).toInt()
         val gridLayoutManager = GridLayoutManager(this, gridSize)
         gridLayoutManager.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
             override fun getSpanSize(position: Int): Int {
                 return when (position) {
-                    0 -> gridSize
                     concatAdapter.itemCount - 1 -> gridSize
                     else -> {
                         val currentStyle = when (searchType) {
@@ -301,31 +305,31 @@ class SearchActivity : AppCompatActivity() {
 
         concatAdapter = when (searchType) {
             SearchType.ANIME, SearchType.MANGA -> {
-                ConcatAdapter(headerAdaptor, mediaAdaptor, progressAdapter)
+                ConcatAdapter(mediaAdaptor, progressAdapter)
             }
 
             SearchType.CHARACTER -> {
-                ConcatAdapter(headerAdaptor, characterAdaptor, progressAdapter)
+                ConcatAdapter(characterAdaptor, progressAdapter)
             }
 
             SearchType.STUDIO -> {
-                ConcatAdapter(headerAdaptor, studioAdaptor, progressAdapter)
+                ConcatAdapter(studioAdaptor, progressAdapter)
             }
 
             SearchType.STAFF -> {
-                ConcatAdapter(headerAdaptor, staffAdaptor, progressAdapter)
+                ConcatAdapter(staffAdaptor, progressAdapter)
             }
 
             SearchType.USER -> {
-                ConcatAdapter(headerAdaptor, usersAdapter, progressAdapter)
+                ConcatAdapter(usersAdapter, progressAdapter)
             }
 
             SearchType.MANGAUPDATES -> {
-                ConcatAdapter(headerAdaptor, muSearchAdaptor, progressAdapter)
+                ConcatAdapter(muSearchAdaptor, progressAdapter)
             }
 
             SearchType.COMICK -> {
-                ConcatAdapter(headerAdaptor, comickSearchAdaptor, progressAdapter)
+                ConcatAdapter(comickSearchAdaptor, progressAdapter)
             }
         }
 

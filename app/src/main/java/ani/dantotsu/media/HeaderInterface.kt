@@ -1,19 +1,15 @@
 package ani.dantotsu.media
 
 import android.text.TextWatcher
-import android.view.LayoutInflater
 import android.view.View
-import android.view.ViewGroup
 import android.view.animation.AlphaAnimation
 import android.view.animation.Animation
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.databinding.ItemSearchHeaderBinding
 import ani.dantotsu.stripSpansOnPaste
 
-abstract class HeaderInterface : RecyclerView.Adapter<HeaderInterface.SearchHeaderViewHolder>() {
-    private val itemViewType = 6969
+abstract class HeaderInterface {
     var search: Runnable? = null
     var requestFocus: Runnable? = null
     protected var textWatcher: TextWatcher? = null
@@ -22,26 +18,22 @@ abstract class HeaderInterface : RecyclerView.Adapter<HeaderInterface.SearchHead
 
     private val _ready = MutableLiveData(false)
 
-    // Fires once this header's view holder has been bound (and its search/requestFocus
-    // Runnables populated). The header is always item 0, so unlike a footer item, it is
-    // guaranteed to bind on first layout regardless of RecyclerView content height.
+    // Fires once the header has been bound (and its search/requestFocus Runnables
+    // populated). The header now lives outside the results RecyclerView as a fixed
+    // view, so it is bound exactly once during activity setup.
     val ready: LiveData<Boolean> get() = _ready
 
     protected fun markReady() {
-        // Use postValue: this runs from onBindViewHolder, while the RecyclerView is still
-        // mid-layout. Dispatching synchronously here (setValue) lets observers trigger
-        // notifyDataSetChanged() reentrantly and crash with "Cannot call this method while
-        // RecyclerView is computing a layout or scrolling". postValue defers dispatch until
-        // after the current layout pass finishes.
         if (_ready.value != true) _ready.postValue(true)
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): SearchHeaderViewHolder {
-        val binding =
-            ItemSearchHeaderBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+    fun attach(binding: ItemSearchHeaderBinding) {
+        this.binding = binding
         binding.searchBarText.stripSpansOnPaste()
-        return SearchHeaderViewHolder(binding)
+        bind()
     }
+
+    protected abstract fun bind()
 
     fun setHistoryVisibility(visible: Boolean) {
         if (visible) {
@@ -89,14 +81,5 @@ abstract class HeaderInterface : RecyclerView.Adapter<HeaderInterface.SearchHead
     // Return the current textual content of the header's search bar, or null if blank.
     fun getSearchText(): String? {
         return binding.searchBarText.text.toString().takeIf { it.isNotBlank() }
-    }
-
-    inner class SearchHeaderViewHolder(val binding: ItemSearchHeaderBinding) :
-        RecyclerView.ViewHolder(binding.root)
-
-    override fun getItemCount(): Int = 1
-
-    override fun getItemViewType(position: Int): Int {
-        return itemViewType
     }
 }

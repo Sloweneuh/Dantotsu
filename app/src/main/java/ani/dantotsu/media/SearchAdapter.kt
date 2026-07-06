@@ -6,7 +6,6 @@ import android.graphics.drawable.Drawable
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.LayoutInflater
-import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
@@ -52,9 +51,7 @@ class SearchAdapter(private val activity: SearchActivity, private val type: Sear
     }
 
     @SuppressLint("ClickableViewAccessibility")
-    override fun onBindViewHolder(holder: SearchHeaderViewHolder, position: Int) {
-        binding = holder.binding
-
+    override fun bind() {
         searchHistoryAdapter = SearchHistoryAdapter(type) {
             binding.searchBarText.setText(it)
             binding.searchBarText.setSelection(it.length)

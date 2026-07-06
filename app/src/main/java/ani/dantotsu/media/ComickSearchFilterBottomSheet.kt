@@ -487,6 +487,7 @@ class ComickSearchFilterBottomSheet : BottomSheetDialogFragment() {
 
     private fun applyFilters() {
         writeUiStateToResult()
+        activity.updateComickChips?.invoke()
         activity.search()
     }
 
@@ -538,6 +539,7 @@ class ComickSearchFilterBottomSheet : BottomSheetDialogFragment() {
                 val preset = SavedFiltersStore.loadComick()
                     .firstOrNull { it.name == name } ?: return@show
                 preset.applyTo(activity.comickSearchResult)
+                activity.updateComickChips?.invoke()
                 activity.search()
                 dismiss()
             },
