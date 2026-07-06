@@ -65,6 +65,7 @@ class MALQueries {
         end: FuzzyDate? = null
     ) {
         if (idMAL == null) return
+        if (!PrefManager.getVal<Boolean>(PrefName.MalListSyncEnabled)) return
         val data = mutableMapOf("status" to convertStatus(isAnime, status))
         if (progress != null)
             data[if (isAnime) "num_watched_episodes" else "num_chapters_read"] = progress.toString()
@@ -90,6 +91,7 @@ class MALQueries {
 
     suspend fun deleteList(isAnime: Boolean, idMAL: Int?) {
         if (idMAL == null) return
+        if (!PrefManager.getVal<Boolean>(PrefName.MalListSyncEnabled)) return
         tryWithSuspend {
             client.delete(
                 "$apiUrl/${if (isAnime) "anime" else "manga"}/$idMAL/my_list_status",

@@ -583,6 +583,10 @@
     <string name="mangabaka_login_failed">Login failed. Check your token.</string>
     <string name="mangabaka_list_sync">MangaBaka list sync</string>
     <string name="mangabaka_list_sync_desc">Push AniList and MangaUpdates manga updates to your MangaBaka library (one way)</string>
+    <string name="mal_list_sync">MyAnimeList list sync</string>
+    <string name="mal_list_sync_desc">Push AniList list updates to your MyAnimeList account (one way)</string>
+    <string name="list_sync_settings">List sync settings</string>
+    <string name="list_sync_settings_desc">Choose which trackers your list updates are pushed to</string>
     <string name="disable_mangabaka">Enable MangaBaka</string>
     <string name="disable_mangabaka_desc">Toggle fetching MangaBaka data and the MangaBaka info tab</string>
     <string name="mangabaka_requires_internet">MangaBaka data requires an internet connection</string>

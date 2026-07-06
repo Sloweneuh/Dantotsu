@@ -194,6 +194,9 @@
             android:name=".settings.SettingsConnectionsActivity"
             android:parentActivityName=".MainActivity" />
         <activity
+            android:name=".settings.SettingsListSyncActivity"
+            android:parentActivityName=".MainActivity" />
+        <activity
             android:name=".settings.SettingsAnimeActivity"
             android:parentActivityName=".MainActivity" />
         <activity

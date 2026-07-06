@@ -363,6 +363,17 @@ class SettingsAccountActivity : AppCompatActivity() {
                             isActivity = true
                         ),
                         Settings(
+                            type = 1,
+                            name = getString(R.string.list_sync_settings),
+                            desc = getString(R.string.list_sync_settings_desc),
+                            icon = R.drawable.ic_round_sync_24,
+                            onClick = {
+                                startActivity(Intent(context, SettingsListSyncActivity::class.java))
+                            },
+                            isActivity = true,
+                            isVisible = MAL.token != null || MangaBaka.token != null
+                        ),
+                        Settings(
                             type = 2,
                             name = getString(R.string.comments_button),
                             desc = getString(R.string.comments_button_desc),

@@ -86,6 +86,7 @@ object SettingsSearch {
         l += SearchableSetting(AnilistSettingsActivity::class.java, R.string.anilist_settings, R.string.accounts, IC_ACCOUNT, R.string.alsettings_desc, keywords = "anilist account profile activity")
         l += SearchableSetting(MangaUpdatesSettingsActivity::class.java, R.string.mangaupdates_settings, R.string.accounts, IC_ACCOUNT, R.string.mangaupdates_settings_desc, keywords = "mangaupdates mu account")
         l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.connections_settings, R.string.accounts, IC_ACCOUNT, R.string.connections_desc, keywords = "mal myanimelist malsync comick sync tracking")
+        l += SearchableSetting(SettingsListSyncActivity::class.java, R.string.list_sync_settings, R.string.accounts, IC_ACCOUNT, R.string.list_sync_settings_desc, keywords = "list sync tracking push myanimelist mal mangabaka anilist mangaupdates")
         l += SearchableSetting(SettingsAccountActivity::class.java, R.string.login_to_mangabaka, R.string.accounts, IC_ACCOUNT, R.string.mangabaka_login_desc, anchorViewId = R.id.settingsMangaBakaLogin, keywords = "mangabaka mb token login logout account tracking")
         l += SearchableSetting(SettingsAccountActivity::class.java, R.string.comments_button, R.string.accounts, IC_ACCOUNT, R.string.comments_button_desc, keywords = "comment reply social discussion")
 
@@ -104,7 +105,10 @@ object SettingsSearch {
         l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.disable_mal, R.string.connections_settings, IC_ACCOUNT, R.string.disable_mal_desc, keywords = "myanimelist mal account tracking")
         l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.disable_malsync, R.string.connections_settings, IC_ACCOUNT, R.string.disable_malsync_desc, keywords = "malsync sync tracking progress")
         l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.malsync_exclude_manage, R.string.connections_settings, IC_ACCOUNT, R.string.malsync_exclude_manage_desc, keywords = "exclude filter unread chapter episode notifications malsync")
-        l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.mangabaka_list_sync, R.string.connections_settings, IC_ACCOUNT, R.string.mangabaka_list_sync_desc, keywords = "mangabaka mb list sync tracking anilist mangaupdates push")
+
+        // ---- List sync ----
+        l += SearchableSetting(SettingsListSyncActivity::class.java, R.string.mal_list_sync, R.string.list_sync_settings, IC_ACCOUNT, R.string.mal_list_sync_desc, keywords = "myanimelist mal list sync tracking anilist push")
+        l += SearchableSetting(SettingsListSyncActivity::class.java, R.string.mangabaka_list_sync, R.string.list_sync_settings, IC_ACCOUNT, R.string.mangabaka_list_sync_desc, keywords = "mangabaka mb list sync tracking anilist mangaupdates push")
 
         // ---- Theme ----
         l += SearchableSetting(SettingsThemeActivity::class.java, R.string.theme, R.string.theme, IC_THEME, anchorViewId = R.id.themeSwitcher, keywords = "color scheme palette dark light oled auto appearance")

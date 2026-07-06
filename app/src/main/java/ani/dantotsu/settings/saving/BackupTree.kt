@@ -101,6 +101,7 @@ object BackupTree {
                         BackupItem(PrefName.MangaUpdatesEnabled, R.string.disable_mangaupdates),
                         BackupItem(PrefName.MangaUpdatesListEnabled, R.string.mu_list_fetch_enabled),
                         BackupItem(PrefName.MangaBakaListSyncEnabled, R.string.mangabaka_list_sync),
+                        BackupItem(PrefName.MalListSyncEnabled, R.string.mal_list_sync),
                         BackupItem(PrefName.MalSyncInfoEnabled, R.string.disable_malsync),
                         BackupItem(PrefName.MalSyncCheckMode, R.string.malsync_checks_dialog_title),
                         BackupItem(PrefName.CommentsEnabled, R.string.comments_button),
