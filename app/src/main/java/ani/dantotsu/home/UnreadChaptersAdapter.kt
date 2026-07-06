@@ -36,7 +36,8 @@ import kotlinx.coroutines.cancel
 class UnreadChaptersAdapter(
     private val items: List<Any>,  // List<Media | MUMedia>
     private val unreadInfo: Map<Int, UnreadChapterInfo>,
-    private var type: Int = 0 // 0 = grid/compact, 1 = list/large
+    private var type: Int = 0, // 0 = grid/compact, 1 = list/large
+    private val fromMalStack: Boolean = false
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
@@ -125,8 +126,11 @@ class UnreadChaptersAdapter(
             itemCompactUserProgress.text = info.userProgress.toString()
 
             val totalChapters = media.manga?.totalChapters ?: "~"
-            val lastChapterDisplay = if (info.lastChapter > 0) info.lastChapter.toString() else "?"
-            itemCompactTotal.text = " | $lastChapterDisplay | $totalChapters"
+            itemCompactTotal.text = if (info.lastChapter > 0) {
+                " | ${info.lastChapter} | $totalChapters"
+            } else {
+                " | $totalChapters"
+            }
 
             // Show source as badge on top of cover (icon + short code) to match anime badge
             itemCompactSourceBadge.visibility = View.GONE
@@ -139,6 +143,15 @@ class UnreadChaptersAdapter(
                 } else {
                     itemCompactLanguageBG.visibility = View.GONE
                     itemCompactSource.visibility = View.VISIBLE
+                }
+
+            // Show 'Novel' label when this stack item is a novel (only relevant for MAL stacks)
+            itemCompactNovel.text = "Novel"
+            itemCompactNovel.visibility =
+                if (fromMalStack && media.format != null && media.format.equals("NOVEL", true)) {
+                    View.VISIBLE
+                } else {
+                    View.GONE
                 }
 
             // Set score - divide by 10.0 to match Anilist format, fallback to mean score
@@ -214,10 +227,9 @@ class UnreadChaptersAdapter(
 
             // Set progress info - show: userProgress / (lastChapter | totalChapters)
             val totalChapters = media.manga?.totalChapters ?: "~"
-            val lastChapterDisplay = if (info.lastChapter > 0) info.lastChapter.toString() else "?"
             itemUserProgressLarge.text = (info.userProgress).toString()
             itemProgressSeparator.visibility = View.VISIBLE
-            itemCompactTotal.text = "$lastChapterDisplay | $totalChapters"
+            itemCompactTotal.text = if (info.lastChapter > 0) "${info.lastChapter} | $totalChapters" else "$totalChapters"
             itemTotal.text = ""
 
             // Synopsis preview (strip HTML) and make it scrollable
@@ -240,7 +252,7 @@ class UnreadChaptersAdapter(
                 itemCompactSynopsis.scrollTo(0, 0)
             }
 
-            // Show source as a badge on top of the cover (icon + short code), hide side relation
+            // Show source as a badge on top of the cover (icon + short code)
             itemCompactSourceBadge.visibility = View.GONE
             val sourceDisplay = info.source
                 if (!sourceDisplay.isNullOrBlank()) {
@@ -248,11 +260,23 @@ class UnreadChaptersAdapter(
                     itemCompactLanguageIcon.visibility = View.GONE
                     itemCompactLanguageCode.text = sourceDisplay
                     itemCompactLanguageBG.visibility = View.VISIBLE
-                    itemCompactType.visibility = View.GONE
                 } else {
                     itemCompactLanguageBG.visibility = View.GONE
-                    itemCompactType.visibility = View.GONE
                 }
+
+            // Show 'Novel' badge when this stack item is a novel (only relevant for MAL stacks)
+            if (fromMalStack && media.format != null && media.format.equals("NOVEL", true)) {
+                itemCompactRelation.text = "Novel"
+                itemCompactTypeImage.setImageDrawable(
+                    androidx.appcompat.content.res.AppCompatResources.getDrawable(
+                        root.context,
+                        R.drawable.ic_round_import_contacts_24
+                    )
+                )
+                itemCompactType.visibility = View.VISIBLE
+            } else {
+                itemCompactType.visibility = View.GONE
+            }
 
             // Show media status between title and synopsis when available
             itemCompactStatus.text = media.status ?: ""

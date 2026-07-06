@@ -140,7 +140,7 @@ class MediaListViewActivity : AppCompatActivity() {
             when {
                 localUnreadInfo != null -> {
                     // Manga with unread chapters
-                    binding.mediaRecyclerView.adapter = ani.dantotsu.home.UnreadChaptersAdapter(mediaList, localUnreadInfo, mode)
+                    binding.mediaRecyclerView.adapter = ani.dantotsu.home.UnreadChaptersAdapter(mediaList, localUnreadInfo, mode, fromMalStack)
                 }
                 localUnreleasedInfo != null -> {
                     // Anime with unreleased episodes
@@ -176,7 +176,7 @@ class MediaListViewActivity : AppCompatActivity() {
         } else when {
             localUnreadInfo != null -> {
                 // Use custom adapter for unread chapters (manga)
-                binding.mediaRecyclerView.adapter = ani.dantotsu.home.UnreadChaptersAdapter(mediaList, localUnreadInfo, view)
+                binding.mediaRecyclerView.adapter = ani.dantotsu.home.UnreadChaptersAdapter(mediaList, localUnreadInfo, view, fromMalStack)
             }
             localUnreleasedInfo != null -> {
                 // Use custom adapter for unreleased episodes (anime)
