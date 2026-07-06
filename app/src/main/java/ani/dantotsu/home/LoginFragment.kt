@@ -62,8 +62,15 @@ class LoginFragment : Fragment() {
                                         toast("Incorrect password")
                                         return@passwordAlertDialog
                                     }
-                                    if (PreferencePackager.unpack(decryptedJson))
-                                        restartApp()
+                                    try {
+                                        if (PreferencePackager.unpack(decryptedJson))
+                                            restartApp()
+                                        else
+                                            toast("Error importing settings")
+                                    } catch (e: Exception) {
+                                        Logger.log(e)
+                                        toast("Error importing settings")
+                                    }
                                 } else {
                                     toast("Password cannot be empty")
                                 }
