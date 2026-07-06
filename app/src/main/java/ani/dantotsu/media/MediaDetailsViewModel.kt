@@ -202,11 +202,10 @@ class MediaDetailsViewModel : ViewModel() {
                     }
                 }
 
-                if (savedMULink != null) {
-                    mangaUpdatesLink.postValue(savedMULink)
-                    fetchMUSeries(savedMULink)
-                } else if (comickSlugValue != null && ani.dantotsu.settings.saving.PrefManager.getVal<Boolean>(ani.dantotsu.settings.saving.PrefName.MangaUpdatesEnabled)) {
-                    try {
+                // Fallback: derive a MangaUpdates link from the Comick match (existing path).
+                suspend fun tryComickMuLink(): Boolean {
+                    if (comickSlugValue == null) return false
+                    return try {
                         val comickData = comickApi.getComicDetails(comickSlugValue)
                         val muLink = comickData?.comic?.links?.mu
                         if (!muLink.isNullOrBlank()) {
@@ -220,25 +219,42 @@ class MediaDetailsViewModel : ViewModel() {
                                     }
                             mangaUpdatesLink.postValue(link)
                             fetchMUSeries(link)
-                        } else {
-                            mangaUpdatesLink.postValue(null)
-                            mangaUpdatesSeries.postValue(null)
-                        }
+                            true
+                        } else false
                     } catch (e: Exception) {
+                        false
+                    }
+                }
+
+                val muEnabled = ani.dantotsu.settings.saving.PrefManager.getVal<Boolean>(ani.dantotsu.settings.saving.PrefName.MangaUpdatesEnabled)
+                if (savedMULink != null) {
+                    mangaUpdatesLink.postValue(savedMULink)
+                    fetchMUSeries(savedMULink)
+                } else if (muEnabled) {
+                    // Prefer MangaBaka's cross-source mapping (reliable id linking); fall back to
+                    // the Comick-derived MangaUpdates link when MangaBaka has no match.
+                    val mbMuId = try {
+                        ani.dantotsu.connections.mangabaka.MangaBakaApi
+                            .getMangaUpdatesIdFromAnilist(media.id, media.idMAL)
+                    } catch (e: Exception) { null }
+
+                    val resolvedViaMangaBaka = if (mbMuId != null) {
+                        val link = "https://www.mangaupdates.com/series.html?id=$mbMuId"
+                        mangaUpdatesLink.postValue(link)
+                        fetchMUSeries(link)
+                        true
+                    } else false
+
+                    if (!resolvedViaMangaBaka && !tryComickMuLink()) {
                         mangaUpdatesLink.postValue(null)
                         mangaUpdatesSeries.postValue(null)
                     }
-                    } else {
+                } else {
                     // If MangaUpdates is disabled, ensure LiveData reflect disabled state
-                    if (!ani.dantotsu.settings.saving.PrefManager.getVal<Boolean>(ani.dantotsu.settings.saving.PrefName.MangaUpdatesEnabled)) {
-                        mangaUpdatesLink.postValue(null)
-                        mangaUpdatesSeries.postValue(null)
-                        mangaUpdatesLoaded.postValue(true)
-                        mangaUpdatesLoading.postValue(false)
-                    } else {
-                        mangaUpdatesLink.postValue(null)
-                        mangaUpdatesSeries.postValue(null)
-                    }
+                    mangaUpdatesLink.postValue(null)
+                    mangaUpdatesSeries.postValue(null)
+                    mangaUpdatesLoaded.postValue(true)
+                    mangaUpdatesLoading.postValue(false)
                 }
                 mangaUpdatesLoading.postValue(false)
                 mangaUpdatesLoaded.postValue(true)

@@ -22,6 +22,7 @@ object MangaBakaApi {
     const val API_URL = "https://api.mangabaka.org"
     private const val CACHE_PREFIX = "mangabaka_series_"
     private const val AL_CACHE_PREFIX = "mangabaka_al_"
+    private const val MU_CACHE_PREFIX = "mangabaka_mu_"
 
     /** External source path segments understood by the `/v1/source/{source}` routes. */
     enum class Source(val path: String) {
@@ -91,6 +92,32 @@ object MangaBakaApi {
     }
 
     /**
+     * Resolves the MangaUpdates series id for an AniList id, falling back to the MyAnimeList id,
+     * through MangaBaka's cross-source mapping. Public route — no auth required. Returns null
+     * when MangaBaka has no matching series or the series isn't linked to MangaUpdates.
+     */
+    suspend fun getMangaUpdatesIdFromAnilist(anilistId: Int?, malId: Int? = null): Long? {
+        anilistId?.let { resolveMangaUpdatesId(Source.ANILIST, it.toLong())?.let { id -> return id } }
+        malId?.let { resolveMangaUpdatesId(Source.MYANIMELIST, it.toLong())?.let { id -> return id } }
+        return null
+    }
+
+    private suspend fun resolveMangaUpdatesId(source: Source, id: Long): Long? {
+        val cacheKey = "$MU_CACHE_PREFIX${source.path}_$id"
+        val cached = PrefManager.getCustomVal(cacheKey, 0L)
+        if (cached > 0L) return cached
+        if (cacheKey in negativeCache) return null
+
+        val muId = lookupSeries(source, id)?.source?.mangaUpdates?.id?.toLong()
+        if (muId != null && muId > 0) {
+            PrefManager.setCustomVal(cacheKey, muId)
+        } else {
+            negativeCache.add(cacheKey)
+        }
+        return muId
+    }
+
+    /**
      * Fetches the best-matching MangaBaka series for an external source id.
      * MangaUpdates is keyed by its URL slug (the numeric id in base-36); other sources use the
      * plain numeric id. Prefers the `active` series when several are returned.
@@ -129,6 +156,7 @@ object MangaBakaApi {
     data class SourceIds(
         val anilist: SourceRef? = null,
         @SerialName("my_anime_list") val myAnimeList: SourceRef? = null,
+        @SerialName("manga_updates") val mangaUpdates: SourceRef? = null,
     )
 
     @Serializable
