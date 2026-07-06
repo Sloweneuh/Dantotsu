@@ -387,9 +387,13 @@ class MediaRandomDialogFragment : DialogFragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
-        // clear any pending Glide targets to avoid leaks
-        currentCoverTarget?.let { Glide.with(requireContext()).clear(it) }
-        currentBackgroundTarget?.let { Glide.with(requireContext()).clear(it) }
+        // clear any pending Glide targets to avoid leaks, but Glide throws if the
+        // host activity is already destroyed (e.g. during a relaunch), so guard it
+        val hostActivity = activity
+        if (hostActivity != null && !hostActivity.isDestroyed && !hostActivity.isFinishing) {
+            currentCoverTarget?.let { Glide.with(hostActivity).clear(it) }
+            currentBackgroundTarget?.let { Glide.with(hostActivity).clear(it) }
+        }
         currentCoverTarget = null
         currentBackgroundTarget = null
         scope.cancel()

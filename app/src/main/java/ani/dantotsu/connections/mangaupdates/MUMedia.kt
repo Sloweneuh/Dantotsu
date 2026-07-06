@@ -35,7 +35,9 @@ fun MUMedia.toMedia(): Media = Media(
     cover = coverUrl,
     banner = coverUrl,
     isAdult = false,
-    manga = Manga(totalChapters = latestChapter),
+    // MangaUpdates has no concept of a definitive last/total chapter (latestChapter is
+    // just the newest known release), so leave this null to display "~" like AniList.
+    manga = Manga(totalChapters = null),
     format = if (format?.contains("novel", ignoreCase = true) == true) "NOVEL" else "MANGA",
     userProgress = userChapter,
     muSeriesId = id,
