@@ -1512,6 +1512,14 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
             if (muLink != null) {
                 linkOptions.add(Triple("MangaUpdates", muLink, R.drawable.ic_round_mangaupdates_24))
             }
+
+            // MangaBaka link (resolved id from the ViewModel)
+            val mangaBakaId = model.mangaBakaId.value
+            if (mangaBakaId != null && mangaBakaId > 0) {
+                linkOptions.add(
+                    Triple("MangaBaka", "https://mangabaka.org/$mangaBakaId", R.drawable.ic_round_mangabaka_24)
+                )
+            }
         }
 
         // Create custom dialog with icons in a row

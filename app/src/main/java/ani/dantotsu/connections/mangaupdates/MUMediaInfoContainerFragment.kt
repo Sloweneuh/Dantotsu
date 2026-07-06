@@ -6,13 +6,18 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.lifecycleScope
 import ani.dantotsu.R
+import ani.dantotsu.connections.mangabaka.MangaBakaApi
 import ani.dantotsu.databinding.FragmentMediaInfoContainerBinding
 import ani.dantotsu.media.ComickInfoFragment
 import ani.dantotsu.media.MediaDetailsViewModel
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import com.google.android.material.tabs.TabLayoutMediator
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Container fragment for the Info bottom tab in [MUMediaDetailsActivity].
@@ -40,16 +45,21 @@ class MUMediaInfoContainerFragment : Fragment() {
         _binding = null
     }
 
+    private data class TabInfo(val type: String, val fragment: Fragment, val iconRes: Int)
+    private var tabs: List<TabInfo> = emptyList()
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         val model: MediaDetailsViewModel by activityViewModels()
         val comickEnabled = PrefManager.getVal<Boolean>(PrefName.ComickEnabled)
+        val mangaBakaEnabled = PrefManager.getVal<Boolean>(PrefName.MangaBakaInfoEnabled)
 
-        data class TabInfo(val fragment: Fragment, val iconRes: Int)
-
-        val tabs = buildList {
-            add(TabInfo(MUMediaInfoFragment(), R.drawable.ic_round_mangaupdates_24))
+        tabs = buildList {
+            add(TabInfo("mangaupdates", MUMediaInfoFragment(), R.drawable.ic_round_mangaupdates_24))
             if (comickEnabled) {
-                add(TabInfo(ComickInfoFragment(), R.drawable.ic_round_comick_24))
+                add(TabInfo("comick", ComickInfoFragment(), R.drawable.ic_round_comick_24))
+            }
+            if (mangaBakaEnabled) {
+                add(TabInfo("mangabaka", ani.dantotsu.media.MangaBakaInfoFragment(), R.drawable.ic_round_mangabaka_24))
             }
         }
 
@@ -78,56 +88,79 @@ class MUMediaInfoContainerFragment : Fragment() {
             // Long-press the tab icon to open the corresponding external page in browser
             tab.view.setOnLongClickListener {
                 val media = model.getMedia().value
-                when (position) {
-                    0 -> {
-                        // MangaUpdates tab: prefer ViewModel link, fall back to search
+                val encoded = java.net.URLEncoder.encode(media?.userPreferredName ?: "", "utf-8").replace("+", "%20")
+                val url = when (tabs.getOrNull(position)?.type) {
+                    "mangaupdates" -> {
                         val muLink = model.mangaUpdatesLink.value ?: run {
                             media?.externalLinks?.firstOrNull { entry ->
                                 entry.getOrNull(1)?.contains("mangaupdates", ignoreCase = true) == true ||
                                         entry.getOrNull(0)?.contains("mangaupdates", ignoreCase = true) == true
-                            }?.getOrNull(1) ?: media?.userPreferredName
+                            }?.getOrNull(1)
                         }
-                        val url = if (muLink != null && muLink.contains("mangaupdates", ignoreCase = true)) muLink
-                        else {
-                            val encoded = java.net.URLEncoder.encode(media?.userPreferredName ?: "", "utf-8").replace("+", "%20")
-                            "https://www.mangaupdates.com/series?search=$encoded"
-                        }
-                        startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
-                        true
+                        if (muLink != null && muLink.contains("mangaupdates", ignoreCase = true)) muLink
+                        else "https://www.mangaupdates.com/series?search=$encoded"
                     }
-                    1 -> {
-                        // Comick tab: open Comick comic page if slug known, else search
+                    "comick" -> {
                         val comickSlug = model.comickSlug.value
-                        val url = if (!comickSlug.isNullOrBlank()) {
-                            "https://comick.dev/comic/$comickSlug"
-                        } else {
-                            val encoded = java.net.URLEncoder.encode(media?.userPreferredName ?: "", "utf-8").replace("+", "%20")
-                            "https://comick.dev/search?q=$encoded"
-                        }
-                        startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
-                        true
+                        if (!comickSlug.isNullOrBlank()) "https://comick.dev/comic/$comickSlug"
+                        else "https://comick.dev/search?q=$encoded"
                     }
-                    else -> false
+                    "mangabaka" -> {
+                        val id = model.mangaBakaId.value
+                        if (id != null && id > 0) "https://mangabaka.org/$id"
+                        else "https://mangabaka.org/search?q=$encoded"
+                    }
+                    else -> return@setOnLongClickListener false
                 }
+                startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+                true
             }
         }.attach()
 
-        // Dim the Comick tab icon until a slug is confirmed
-        model.comickSlug.observe(viewLifecycleOwner) {
-            applyTabAlpha(model)
-        }
-        model.comickLoaded.observe(viewLifecycleOwner) {
-            applyTabAlpha(model)
+        // Dim the Comick / MangaBaka tab icons until their data is confirmed
+        model.comickSlug.observe(viewLifecycleOwner) { applyTabAlpha(model) }
+        model.comickLoaded.observe(viewLifecycleOwner) { applyTabAlpha(model) }
+        model.mangaBakaId.observe(viewLifecycleOwner) { applyTabAlpha(model) }
+        model.mangaBakaLoaded.observe(viewLifecycleOwner) { applyTabAlpha(model) }
+
+        // preloadExternalData isn't run in the MangaUpdates activity, so fetch the MangaBaka series
+        // here (once, as soon as the media is available). The source route embeds the full object,
+        // so this both drives tab dimming *before the tab is opened* and is reused by the info
+        // fragment — observing (rather than reading .value once) avoids missing a media set later.
+        if (mangaBakaEnabled) {
+            var mbStarted = false
+            model.getMedia().observe(viewLifecycleOwner) { media ->
+                if (media != null && !mbStarted && model.mangaBakaLoaded.value != true) {
+                    mbStarted = true
+                    viewLifecycleOwner.lifecycleScope.launch {
+                        val series = withContext(Dispatchers.IO) {
+                            MangaBakaApi.getSeriesForMedia(media.muSeriesId, media.id, media.idMAL)
+                        }
+                        model.mangaBakaSeries.postValue(series)
+                        model.mangaBakaId.postValue(series?.id)
+                        model.mangaBakaLoaded.postValue(true)
+                    }
+                }
+            }
         }
     }
 
     private fun applyTabAlpha(model: MediaDetailsViewModel) {
-        val comickTabIndex = 1 // always index 1 when Comick is enabled (and tab count > 1)
-        val tab = binding.mediaInfoTabLayout.getTabAt(comickTabIndex) ?: return
-        tab.view.alpha = when {
-            model.comickSlug.value != null -> 1.0f
-            model.comickLoaded.value == true -> 0.4f   // loaded but not found
-            else -> 0.6f                                // still loading
+        tabs.forEachIndexed { index, info ->
+            val tab = binding.mediaInfoTabLayout.getTabAt(index) ?: return@forEachIndexed
+            tab.view.alpha = when (info.type) {
+                "comick" -> when {
+                    model.comickSlug.value != null -> 1.0f
+                    model.comickLoaded.value == true -> 0.4f
+                    else -> 0.6f
+                }
+                "mangabaka" -> when {
+                    (model.mangaBakaId.value ?: 0L) > 0L -> 1.0f
+                    model.mangaBakaLoaded.value == true -> 0.4f
+                    else -> 0.6f
+                }
+                else -> 1.0f
+            }
         }
     }
 }

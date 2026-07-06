@@ -68,6 +68,14 @@ class SettingsConnectionsActivity : AppCompatActivity() {
             ),
             Settings(
                 type = 2,
+                name = getString(R.string.disable_mangabaka),
+                desc = getString(R.string.disable_mangabaka_desc),
+                icon = R.drawable.ic_round_mangabaka_24,
+                isChecked = PrefManager.getVal<Boolean>(PrefName.MangaBakaInfoEnabled),
+                switch = { isChecked, _ -> PrefManager.setVal(PrefName.MangaBakaInfoEnabled, isChecked) },
+            ),
+            Settings(
+                type = 2,
                 name = getString(R.string.disable_mal),
                 desc = getString(R.string.disable_mal_desc),
                 icon = R.drawable.ic_myanimelist,

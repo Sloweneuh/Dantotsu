@@ -74,6 +74,9 @@ class MediaInfoFragment : Fragment() {
                     if (PrefManager.getVal<Boolean>(PrefName.MangaUpdatesEnabled)) {
                         tabsMutable.add(TabInfo("mangaupdates", MangaUpdatesInfoFragment(), ani.dantotsu.R.drawable.ic_round_mangaupdates_24))
                     }
+                    if (PrefManager.getVal<Boolean>(PrefName.MangaBakaInfoEnabled)) {
+                        tabsMutable.add(TabInfo("mangabaka", MangaBakaInfoFragment(), ani.dantotsu.R.drawable.ic_round_mangabaka_24))
+                    }
                 }
 
                 // Promote to class-level list for other methods to use
@@ -130,6 +133,18 @@ class MediaInfoFragment : Fragment() {
                 if (media.anime == null) {
                     updateTabStates(model, media)
                 }
+            }
+        }
+
+        model.mangaBakaId.observe(viewLifecycleOwner) {
+            currentMedia?.let { media ->
+                if (media.anime == null) updateTabStates(model, media)
+            }
+        }
+
+        model.mangaBakaLoaded.observe(viewLifecycleOwner) {
+            currentMedia?.let { media ->
+                if (media.anime == null) updateTabStates(model, media)
             }
         }
     }
@@ -191,6 +206,7 @@ class MediaInfoFragment : Fragment() {
         if (PrefManager.getVal<Boolean>(PrefName.MalEnabled)) tabTypes.add("mal")
         if (!isAnime && PrefManager.getVal<Boolean>(PrefName.ComickEnabled)) tabTypes.add("comick")
         if (!isAnime && PrefManager.getVal<Boolean>(PrefName.MangaUpdatesEnabled)) tabTypes.add("mangaupdates")
+        if (!isAnime && PrefManager.getVal<Boolean>(PrefName.MangaBakaInfoEnabled)) tabTypes.add("mangabaka")
 
         val type = tabTypes.getOrNull(position) ?: return false
 
@@ -220,6 +236,14 @@ class MediaInfoFragment : Fragment() {
                     "https://www.mangaupdates.com/series?search=$encoded"
                 }
             }
+            "mangabaka" -> {
+                val id = model.mangaBakaId.value
+                if (id != null && id > 0) "https://mangabaka.org/$id"
+                else {
+                    val encoded = java.net.URLEncoder.encode(media.userPreferredName, "utf-8").replace("+", "%20")
+                    "https://mangabaka.org/search?q=$encoded"
+                }
+            }
             else -> return false
         }
 
@@ -237,6 +261,7 @@ class MediaInfoFragment : Fragment() {
         if (PrefManager.getVal<Boolean>(PrefName.MalEnabled)) tabTypes.add("mal")
         if (PrefManager.getVal<Boolean>(PrefName.ComickEnabled)) tabTypes.add("comick")
         if (PrefManager.getVal<Boolean>(PrefName.MangaUpdatesEnabled)) tabTypes.add("mangaupdates")
+        if (PrefManager.getVal<Boolean>(PrefName.MangaBakaInfoEnabled)) tabTypes.add("mangabaka")
 
         for (i in 0 until binding.mediaInfoTabLayout.tabCount) {
             val tab = binding.mediaInfoTabLayout.getTabAt(i) ?: continue
@@ -252,6 +277,15 @@ class MediaInfoFragment : Fragment() {
                         hasData -> 1.0f
                         isLoading -> 0.6f
                         else -> 0.4f
+                    }
+                }
+                "mangabaka" -> {
+                    val resolved = model.mangaBakaLoaded.value == true
+                    val hasData = (model.mangaBakaId.value ?: 0L) > 0L
+                    when {
+                        hasData -> 1.0f
+                        resolved -> 0.4f
+                        else -> 0.6f
                     }
                 }
                 else -> 0.4f

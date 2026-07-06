@@ -56,6 +56,13 @@ class MediaDetailsViewModel : ViewModel() {
     val mangaUpdatesSeries = MutableLiveData<MUSeriesRecord?>(null)
     val mangaUpdatesError = MutableLiveData<String?>(null)
 
+    // MangaBaka info tab: resolved series id (null when unresolved/no match) + a "resolved" flag,
+    // used by the info container to dim the tab until a match is known. The full series object is
+    // fetched once here (the source route embeds it) and reused by the fragment — no second request.
+    val mangaBakaId = MutableLiveData<Long?>(null)
+    val mangaBakaLoaded = MutableLiveData(false)
+    val mangaBakaSeries = MutableLiveData<ani.dantotsu.connections.mangabaka.MangaBakaApi.Series?>(null)
+
     // Replace boolean flag with last preloaded media id to avoid cross-media cache issues
     private var lastPreloadedMediaId: Int? = null
 
@@ -67,6 +74,21 @@ class MediaDetailsViewModel : ViewModel() {
         // Only preload for manga and only once per media
         if (media.anime != null || lastPreloadedMediaId == media.id) return
         lastPreloadedMediaId = media.id
+
+        // Fetch the MangaBaka series in parallel (independent of Comick/MU). The source route embeds
+        // the full series object, so this single call both drives tab dimming and gives the fragment
+        // everything it needs to render — no second request when the tab is opened.
+        if (PrefManager.getVal<Boolean>(PrefName.MangaBakaInfoEnabled)) {
+            MainScope().launch(Dispatchers.IO) {
+                val series = try {
+                    ani.dantotsu.connections.mangabaka.MangaBakaApi
+                        .getSeriesForMedia(media.muSeriesId, media.id, media.idMAL)
+                } catch (e: Exception) { null }
+                mangaBakaSeries.postValue(series)
+                mangaBakaId.postValue(series?.id)
+                mangaBakaLoaded.postValue(true)
+            }
+        }
 
         MainScope().launch(Dispatchers.IO) {
             try {
