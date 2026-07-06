@@ -59,7 +59,6 @@ class MediaListViewActivity : AppCompatActivity() {
         binding.listTitle.isSelected = true
 
         val description = passedDescription
-        if (passedDescription != null) passedDescription = null
         if (!description.isNullOrBlank()) {
             binding.listDescription.visibility = View.VISIBLE
             binding.listDescription.setOnClickListener {
@@ -86,18 +85,14 @@ class MediaListViewActivity : AppCompatActivity() {
         val fromMalStack = passedMedia != null
         val mediaList =
             passedMedia ?: intent.getSerialized("media") as? ArrayList<Media> ?: ArrayList()
-        if (passedMedia != null) passedMedia = null
 
         val muMediaList: ArrayList<MUMedia> = passedMuMedia ?: arrayListOf()
-        if (passedMuMedia != null) passedMuMedia = null
 
         // Store unread info locally for use in changeView
         val localUnreadInfo = passedUnreadInfo
-        if (passedUnreadInfo != null) passedUnreadInfo = null
 
         // Store unreleased episode info locally for use in changeView
         val localUnreleasedInfo = passedUnreleasedInfo
-        if (passedUnreleasedInfo != null) passedUnreleasedInfo = null
 
         // Build a timestamp-sorted merged list when MU items are present
         val combinedItems: List<Any>? = if (muMediaList.isNotEmpty()) {
@@ -196,6 +191,20 @@ class MediaListViewActivity : AppCompatActivity() {
             this,
             if (view == 1) 1 else (screenWidth / 120f).toInt()
         )
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // These are passed via static fields (large lists would blow the Bundle size
+        // limit as extras) so they must survive a rotation-triggered recreation; only
+        // clear them once this activity is actually going away for good.
+        if (!isChangingConfigurations) {
+            passedMedia = null
+            passedMuMedia = null
+            passedUnreadInfo = null
+            passedUnreleasedInfo = null
+            passedDescription = null
+        }
     }
 
     companion object {

@@ -66,6 +66,20 @@ class MediaRandomDialogFragment : DialogFragment() {
             @Suppress("UNCHECKED_CAST")
             mediaList = it as ArrayList<Media>
         }
+        // A rotation destroys this fragment and recreates it via the no-arg constructor,
+        // losing the list assigned directly on the instance in newInstance(). Recover it
+        // from the static holder in that case.
+        if (mediaList.isEmpty()) {
+            pendingMediaList?.let { mediaList = it }
+        }
+        // Likewise recover the previously displayed media and shuffle order so rotating
+        // the screen doesn't swap in a brand-new random pick.
+        if (current == null) {
+            current = pendingCurrent
+        }
+        if (shuffledQueue.isEmpty()) {
+            pendingShuffledQueue?.let { shuffledQueue = ArrayDeque(it) }
+        }
         // Use default dialog theme from host activity (no explicit style set to avoid API requirements)
     }
 
@@ -101,6 +115,7 @@ class MediaRandomDialogFragment : DialogFragment() {
 
         fun bindMedia(media: Media, drawable: Drawable? = null, backgroundDrawable: Drawable? = null) {
             current = media
+            pendingCurrent = media
             // show placeholder immediately so card isn't empty while cover loads
             if (drawable != null) {
                 coverImage.setImageDrawable(drawable)
@@ -180,6 +195,7 @@ class MediaRandomDialogFragment : DialogFragment() {
                     shuffledQueue.addAll(shuffled)
                 }
                 val next = shuffledQueue.removeFirst()
+                pendingShuffledQueue = ArrayList(shuffledQueue)
                 // If there is a cover url try to preload it before flipping so the animation shows the loaded image
                 val url = next.cover
                 val backgroundUrl = next.banner ?: next.cover
@@ -266,8 +282,14 @@ class MediaRandomDialogFragment : DialogFragment() {
             }
         }
 
-        // initial selection without animation — preload then bind
-        if (mediaList.isNotEmpty()) pickRandom(false)
+        // initial selection without animation — preload then bind. If a selection was
+        // already restored (e.g. after a rotation), rebind it instead of picking a new one.
+        val restored = current
+        if (restored != null) {
+            bindMedia(restored)
+        } else if (mediaList.isNotEmpty()) {
+            pickRandom(false)
+        }
 
         rerollButton.setOnClickListener { pickRandom() }
 
@@ -376,11 +398,17 @@ class MediaRandomDialogFragment : DialogFragment() {
         }
 
     companion object {
+        private var pendingMediaList: ArrayList<Media>? = null
+        private var pendingCurrent: Media? = null
+        private var pendingShuffledQueue: ArrayList<Media>? = null
+
         fun newInstance(list: ArrayList<Media>): MediaRandomDialogFragment {
             val frag = MediaRandomDialogFragment()
             // Avoid putting large lists into fragment arguments (causes TransactionTooLargeException
-            // when the system saves fragment state). Set the list directly on the fragment instance.
+            // when the system saves fragment state). Set the list directly on the fragment instance,
+            // and also stash it statically so a rotation-recreated instance can recover it.
             frag.mediaList = list
+            pendingMediaList = list
             return frag
         }
     }
@@ -397,5 +425,16 @@ class MediaRandomDialogFragment : DialogFragment() {
         currentCoverTarget = null
         currentBackgroundTarget = null
         scope.cancel()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // Only clear the recovery holder once this dialog is actually gone, not when it's
+        // merely being torn down and recreated for a configuration change (e.g. rotation).
+        if (activity?.isChangingConfigurations != true) {
+            pendingMediaList = null
+            pendingCurrent = null
+            pendingShuffledQueue = null
+        }
     }
 }

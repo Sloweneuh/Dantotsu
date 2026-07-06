@@ -48,7 +48,6 @@ class StackListViewActivity : AppCompatActivity() {
         binding.listTitle.setTextColor(primaryTextColor)
 
         val stacks = passedStacks ?: ArrayList()
-        if (passedStacks != null) passedStacks = null
 
         val screenWidth = resources.displayMetrics.run { widthPixels / density }
 
@@ -101,6 +100,16 @@ class StackListViewActivity : AppCompatActivity() {
             binding.mediaRecyclerView.adapter = StackAdapter(stacks, isAnime)
         }
         binding.mediaRecyclerView.layoutManager = GridLayoutManager(this, if (view == 1) 1 else (screenWidth / 120f).toInt())
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // Passed via a static field (large lists would blow the Bundle size limit as
+        // extras) so it must survive a rotation-triggered recreation; only clear it
+        // once this activity is actually going away for good.
+        if (!isChangingConfigurations) {
+            passedStacks = null
+        }
     }
 
     companion object {

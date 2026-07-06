@@ -1232,6 +1232,20 @@ class HomeFragment : Fragment() {
             binding.homeUserStatusContainer,
         )
 
+        // Apply saved section visibility immediately so hidden sections stay hidden
+        // even when this view is recreated (e.g. on rotation) without a fresh network
+        // refresh triggering the same logic further below.
+        try {
+            val homeLayoutShow: List<Boolean> = PrefManager.getVal(PrefName.HomeLayout)
+            homeLayoutShow.indices.forEach { i ->
+                if (!homeLayoutShow.elementAt(i)) {
+                    containers[i].visibility = View.GONE
+                }
+            }
+        } catch (e: Exception) {
+            // Fail silently if pref malformed
+        }
+
         // Reorder container views according to saved HomeLayoutOrder preference
         try {
             val savedOrder = PrefManager.getVal<List<Int>>(PrefName.HomeLayoutOrder)
