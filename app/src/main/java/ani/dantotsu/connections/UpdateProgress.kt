@@ -3,6 +3,7 @@ package ani.dantotsu.connections
 import ani.dantotsu.R
 import ani.dantotsu.Refresh
 import ani.dantotsu.connections.anilist.Anilist
+import ani.dantotsu.connections.anilist.api.FuzzyDate
 import ani.dantotsu.connections.mal.MAL
 import ani.dantotsu.connections.mangabaka.MangaBakaSync
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
@@ -73,11 +74,18 @@ fun updateProgress(media: Media, number: String) {
         CoroutineScope(Dispatchers.IO).launch {
             val a = number.toFloatOrNull()?.toInt()
             if ((a ?: 0) > (media.userProgress ?: -1)) {
+                Anilist.query.userMediaDetails(media)
+                val status = if (media.userStatus == "REPEATING") media.userStatus else "CURRENT"
+                var startDate: FuzzyDate? = null
+                if (status == "CURRENT" && media.userStartedAt.isEmpty()) {
+                    startDate = FuzzyDate().getToday()
+                }
                 Anilist.mutation.editList(
                     media.id,
                     a,
                     progressVolumes = media.userVolume,
-                    status = if (media.userStatus == "REPEATING") media.userStatus else "CURRENT"
+                    status = status,
+                    startedAt = startDate
                 )
                 MAL.query.editList(
                     media.idMAL,
