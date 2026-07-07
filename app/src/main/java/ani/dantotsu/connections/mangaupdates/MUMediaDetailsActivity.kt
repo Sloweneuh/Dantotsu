@@ -96,7 +96,6 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
     private var currentChapter: Int? = null
     private var muUserEntryDeferred: kotlinx.coroutines.Deferred<Unit>? = null
     private var detectedAniListId: Int? = null
-    private var quickSearchTitles: List<String> = emptyList()
     private var detectedComickComic: ComickComic? = null
     private var useNovelReader: Boolean = false
 
@@ -163,11 +162,21 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         addTitle(comickComic?.title)
         comickComic?.md_titles?.forEach { addTitle(it.title) }
 
+        // MangaBaka titles (fetched into the shared model by MUMediaInfoContainerFragment)
+        model.mangaBakaSeries.value?.let { mb ->
+            addTitle(mb.title)
+            addTitle(mb.romanizedTitle)
+            addTitle(mb.nativeTitle)
+            mb.titles?.forEach { addTitle(it.title) }
+        }
+
         return titles.distinctBy { it.lowercase(Locale.ROOT) }
     }
 
     private fun launchAniListQuickSearch() {
-        val candidates = quickSearchTitles.ifEmpty { collectQuickSearchTitles() }
+        // Recompute rather than reuse the cached snapshot: MangaBaka/Comick data may have
+        // finished loading after the button state was last set.
+        val candidates = collectQuickSearchTitles()
         if (candidates.isEmpty()) return
         AniListQuickSearchDialogFragment
             .newInstance(
@@ -181,7 +190,6 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
 
     private fun updateAniListButtonState(anilistId: Int?) {
         detectedAniListId = anilistId
-        quickSearchTitles = collectQuickSearchTitles()
         binding.mediaAniList?.visibility = View.VISIBLE
         binding.mediaAniList?.setImageResource(
             if (anilistId != null) R.drawable.ic_anilist else R.drawable.ic_anilist_search_24

@@ -243,8 +243,9 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
                     }
 
                     // Build a deterministic list of candidate titles/synonyms for the dropdown.
-                    // Prefer AniList-style fields: english, userPreferred, romaji, native (from either a nested `title` object
-                    // or top-level fields), then append synonyms. Preserve order and dedupe.
+                    // Pull every title field available on the Media (AniList english,
+                    // userPreferred, romaji and MAL/native), then synonyms, Comick and
+                    // MangaUpdates titles. Preserve order and dedupe case-insensitively.
                     titleOptions = run {
                         val list = mutableListOf<String>()
 
@@ -252,78 +253,38 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
                             if (!s.isNullOrBlank()) list.add(s.trim())
                         }
 
-                        // Helper to read a string field from an arbitrary object (reflection or Map)
-                        fun readStringField(obj: Any?, field: String): String? {
-                            if (obj == null) return null
-                            try {
-                                // If it's a Map-like (JSONObject / Map), try keys
-                                if (obj is Map<*, *>) return (obj[field] as? String)?.takeIf { it.isNotBlank() }
-                                // try reflection
-                                val f = obj::class.java.getDeclaredField(field)
-                                f.isAccessible = true
-                                return (f.get(obj) as? String)?.takeIf { it.isNotBlank() }
-                            } catch (_: Throwable) {
+                        media?.let { m ->
+                            // 1) Core AniList/MAL title fields, in preferred order
+                            addIfNotBlank(m.name)               // English
+                            addIfNotBlank(m.userPreferredName)  // User preferred
+                            addIfNotBlank(m.nameRomaji)         // Romaji
+                            addIfNotBlank(m.nameMAL)            // MAL / native
+
+                            // 2) Synonyms / alternative titles
+                            m.synonyms.forEach { addIfNotBlank(it) }
+
+                            // 3) Comick English titles
+                            comickTitles.forEach { addIfNotBlank(it) }
+
+                            // 4) MangaUpdates associated/synonym titles
+                            model.mangaUpdatesSeries.value?.associated
+                                ?.forEach { addIfNotBlank(it.title) }
+
+                            // 5) MangaBaka titles (primary/romanized/native + alternates)
+                            model.mangaBakaSeries.value?.let { mb ->
+                                addIfNotBlank(mb.title)
+                                addIfNotBlank(mb.romanizedTitle)
+                                addIfNotBlank(mb.nativeTitle)
+                                mb.titles?.forEach { addIfNotBlank(it.title) }
                             }
-                            return null
                         }
 
-                        try {
-                            media?.let { m ->
-                                // 1) If there's a nested `title` object, prefer its fields (AniList-style)
-                                val titleObj = getAnyProp(m, "title")
-                                if (titleObj != null) {
-                                    addIfNotBlank(readStringField(titleObj, "english") ?: readStringField(titleObj, "en"))
-                                    addIfNotBlank(readStringField(titleObj, "userPreferred") ?: readStringField(titleObj, "userPreferredName"))
-                                    addIfNotBlank(readStringField(titleObj, "romaji") ?: readStringField(titleObj, "jaRomaji"))
-                                    addIfNotBlank(readStringField(titleObj, "native") ?: readStringField(titleObj, "nativeName") )
-                                }
-
-                                // 2) Also try common top-level fields (fallbacks)
-                                addIfNotBlank(getStringProp(m, "name") ?: getStringProp(m, "english"))
-                                addIfNotBlank(getStringProp(m, "userPreferredName") ?: getStringProp(m, "userPreferred"))
-                                addIfNotBlank(getStringProp(m, "nameRomaji") ?: getStringProp(m, "romaji"))
-                                addIfNotBlank(getStringProp(m, "nameMAL") ?: getStringProp(m, "native"))
-
-                                // 3) Synonyms - try common fields
-                                val synAny = getAnyProp(m, "synonyms")
-                                if (synAny is Collection<*>) {
-                                    synAny.forEach { if (it is String && it.isNotBlank()) list.add(it.trim()) }
-                                }
-
-                                // Also check alternativeTitles object (may hold en/ja etc.)
-                                val alt = getAnyProp(m, "alternativeTitles")
-                                if (alt is Map<*, *>) {
-                                    // collect english/romaji/native entries if present
-                                    list.addAll(listOfNotNull(
-                                        (alt["en"] as? String)?.takeIf { it.isNotBlank() },
-                                        (alt["english"] as? String)?.takeIf { it.isNotBlank() },
-                                        (alt["romaji"] as? String)?.takeIf { it.isNotBlank() },
-                                        (alt["native"] as? String)?.takeIf { it.isNotBlank() }
-                                    ))
-                                }
-
-                                // 4) finally, fallback helper
-                                val fallback = try { m.mangaName() } catch (_: Throwable) { null }
-                                if (!fallback.isNullOrBlank()) list.add(fallback)
-
-                                // 5) Add Comick English titles
-                                list.addAll(comickTitles)
-
-                                // 6) Add MangaUpdates associated/synonym titles
-                                model.mangaUpdatesSeries.value?.associated
-                                    ?.mapNotNull { it.title?.trim() }
-                                    ?.filter { it.isNotBlank() }
-                                    ?.forEach { if (!list.contains(it)) list.add(it) }
-                            }
-                        } catch (_: Throwable) {
-                        }
-
-                    // Filter to only Latin alphabet titles and dedupe while keeping original order
-                    val seen = linkedSetOf<String>()
-                    list.map { it.trim() }
-                        .filter { isLatinOnly(it) }
-                        .filterTo(mutableListOf()) { seen.add(it) }
-                }
+                        // Keep only Latin-script titles and dedupe case-insensitively,
+                        // preserving first-seen order.
+                        val seen = linkedSetOf<String>()
+                        list.filter { isLatinOnly(it) }
+                            .filter { seen.add(it.lowercase(java.util.Locale.ROOT)) }
+                    }
 
                     // Auto-search with first title if needed (after titleOptions is set)
                     if (!searched) {
@@ -410,26 +371,5 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
 
     override fun dismiss() {
         super.dismiss()
-    }
-
-    // Helper reflection getters to gather possible title fields without depending on Media implementation details
-    private fun getStringProp(obj: Any, name: String): String? {
-        return try {
-            val f = obj::class.java.getDeclaredField(name)
-            f.isAccessible = true
-            (f.get(obj) as? String)
-        } catch (_: Throwable) {
-            null
-        }
-    }
-
-    private fun getAnyProp(obj: Any, name: String): Any? {
-        return try {
-            val f = obj::class.java.getDeclaredField(name)
-            f.isAccessible = true
-            f.get(obj)
-        } catch (_: Throwable) {
-            null
-        }
     }
 }
