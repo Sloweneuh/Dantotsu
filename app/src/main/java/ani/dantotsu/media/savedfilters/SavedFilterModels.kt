@@ -5,7 +5,9 @@ import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.anilist.AniMangaSearchResults
 import ani.dantotsu.connections.anilist.ComickSearchResults
 import ani.dantotsu.connections.anilist.MUSearchResults
+import ani.dantotsu.connections.anilist.MangaBakaSearchResults
 import ani.dantotsu.connections.comick.ComickApi
+import ani.dantotsu.connections.mangabaka.MangaBakaApi
 import ani.dantotsu.currContext
 import ani.dantotsu.media.user.ListFilters
 import java.io.Serializable
@@ -260,6 +262,79 @@ data class SavedComickFilter(
         excludedTags?.forEach { out += excludeLabel(it) }
         categories?.forEach { out += ComickApi.resolveCategoryName(it) ?: it }
         excludedCategories?.forEach { out += excludeLabel(ComickApi.resolveCategoryName(it) ?: it) }
+        return out
+    }
+}
+
+data class SavedMangaBakaFilter(
+    val name: String,
+    val genres: List<String>? = null,
+    val excludedGenres: List<String>? = null,
+    val tags: List<String>? = null,
+    val excludedTags: List<String>? = null,
+    val types: List<String>? = null,
+    val excludedTypes: List<String>? = null,
+    val statuses: List<String>? = null,
+    val excludedStatuses: List<String>? = null,
+    val contentRatings: List<String>? = null,
+    val excludedContentRatings: List<String>? = null,
+    val fromYear: Int? = null,
+    val toYear: Int? = null,
+    val sort: String? = null,
+) : Serializable {
+    companion object {
+        private const val serialVersionUID: Long = 1L
+
+        fun from(name: String, r: MangaBakaSearchResults) = SavedMangaBakaFilter(
+            name = name,
+            genres = r.genres?.toList(),
+            excludedGenres = r.excludedGenres?.toList(),
+            tags = r.tags?.toList(),
+            excludedTags = r.excludedTags?.toList(),
+            types = r.types?.toList(),
+            excludedTypes = r.excludedTypes?.toList(),
+            statuses = r.statuses?.toList(),
+            excludedStatuses = r.excludedStatuses?.toList(),
+            contentRatings = r.contentRatings?.toList(),
+            excludedContentRatings = r.excludedContentRatings?.toList(),
+            fromYear = r.fromYear,
+            toYear = r.toYear,
+            sort = r.sort,
+        )
+    }
+
+    fun applyTo(r: MangaBakaSearchResults) {
+        r.genres = genres?.toMutableList()
+        r.excludedGenres = excludedGenres?.toMutableList()
+        r.tags = tags?.toMutableList()
+        r.excludedTags = excludedTags?.toMutableList()
+        r.types = types?.toMutableList()
+        r.excludedTypes = excludedTypes?.toMutableList()
+        r.statuses = statuses?.toMutableList()
+        r.excludedStatuses = excludedStatuses?.toMutableList()
+        r.contentRatings = contentRatings?.toMutableList()
+        r.excludedContentRatings = excludedContentRatings?.toMutableList()
+        r.fromYear = fromYear
+        r.toYear = toYear
+        r.sort = sort
+    }
+
+    fun chips(): List<String> {
+        val out = mutableListOf<String>()
+        sort?.takeIf { it.isNotBlank() }?.let { out += "Sort : ${it.replace('_', ' ')}" }
+        types?.forEach { out += "Format: $it" }
+        excludedTypes?.forEach { out += excludeLabel(it) }
+        statuses?.forEach { out += "Status: ${it.replace('_', ' ')}" }
+        excludedStatuses?.forEach { out += excludeLabel(it.replace('_', ' ')) }
+        contentRatings?.forEach { out += "Rating: $it" }
+        excludedContentRatings?.forEach { out += excludeLabel(it) }
+        if (fromYear != null || toYear != null) {
+            out += "Year: ${fromYear ?: "?"}-${toYear ?: "?"}"
+        }
+        genres?.forEach { out += MangaBakaApi.resolveGenreName(it) }
+        excludedGenres?.forEach { out += excludeLabel(MangaBakaApi.resolveGenreName(it)) }
+        tags?.forEach { out += it }
+        excludedTags?.forEach { out += excludeLabel(it) }
         return out
     }
 }

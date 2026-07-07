@@ -80,6 +80,10 @@ class SearchBottomSheet : BottomSheetDialogFragment() {
             startActivity(requireContext(), SearchType.COMICK, currentQuery)
             dismiss()
         }
+        binding.mangaBakaSearch.setOnClickListener {
+            startActivity(requireContext(), SearchType.MANGABAKA, currentQuery)
+            dismiss()
+        }
 
         applyConnectionVisibility()
     }
@@ -93,6 +97,10 @@ class SearchBottomSheet : BottomSheetDialogFragment() {
         val comickEnabled = PrefManager.getVal<Boolean>(PrefName.ComickEnabled) == true
         binding.comickSearch.visibility = if (comickEnabled) View.VISIBLE else View.GONE
         binding.comickSearch.isEnabled = comickEnabled
+
+        val mangaBakaEnabled = PrefManager.getVal<Boolean>(PrefName.MangaBakaInfoEnabled) == true
+        binding.mangaBakaSearch.visibility = if (mangaBakaEnabled) View.VISIBLE else View.GONE
+        binding.mangaBakaSearch.isEnabled = mangaBakaEnabled
     }
 
     private fun startActivity(context: Context, type: SearchType, query: String?) {

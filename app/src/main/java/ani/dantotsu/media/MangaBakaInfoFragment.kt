@@ -22,6 +22,8 @@ import androidx.lifecycle.lifecycleScope
 import ani.dantotsu.R
 import ani.dantotsu.buildMarkwon
 import ani.dantotsu.connections.anilist.Anilist
+import ani.dantotsu.connections.anilist.AnilistSearch.SearchType
+import ani.dantotsu.connections.anilist.AnilistSearch.SearchType.Companion.toAnilistString
 import ani.dantotsu.connections.anilist.api.FuzzyDate
 import ani.dantotsu.connections.mangabaka.MangaBakaApi
 import ani.dantotsu.copyToClipboard
@@ -436,7 +438,7 @@ class MangaBakaInfoFragment : Fragment() {
                 val display = labels[slug] ?: titleCase(slug.replace('_', ' '))
                 val chip = ItemChipBinding.inflate(LayoutInflater.from(context), bind.itemChipGroup, false).root
                 chip.text = display
-                chip.setOnClickListener { openLinkInBrowser("https://mangabaka.org/search?q=${Uri.encode(display)}") }
+                chip.setOnClickListener { startMangaBakaSearchInApp(genreSlug = slug, genreName = display) }
                 chip.setOnLongClickListener {
                     copyToClipboard(display)
                     Toast.makeText(requireContext(), getString(R.string.copied_title_toast, display), Toast.LENGTH_SHORT).show()
@@ -524,7 +526,7 @@ class MangaBakaInfoFragment : Fragment() {
             chip.closeIconStartPadding = 2f.px.toFloat()
         }
 
-        val search = { openLinkInBrowser("https://mangabaka.org/search?q=${Uri.encode(name)}") }
+        val search = { startMangaBakaSearchInApp(tag = name) }
 
         if (tag.isSpoiler == true) {
             chip.text = "▓".repeat(name.length.coerceIn(3, 12))
@@ -670,6 +672,24 @@ class MangaBakaInfoFragment : Fragment() {
     }
 
     // --- helpers ---
+
+    /** Launches the in-app MangaBaka search seeded with a genre or tag chip (mirrors the Comick tab). */
+    private fun startMangaBakaSearchInApp(
+        genreSlug: String? = null,
+        genreName: String? = null,
+        tag: String? = null,
+    ) {
+        if (!isAdded) return
+        val intent = Intent(requireContext(), SearchActivity::class.java)
+            .putExtra("type", SearchType.MANGABAKA.toAnilistString())
+        if (!genreSlug.isNullOrBlank()) {
+            intent.putExtra("genre", genreSlug)
+            if (!genreName.isNullOrBlank()) intent.putExtra("genreName", genreName)
+        }
+        if (!tag.isNullOrBlank()) intent.putExtra("tag", tag)
+        if (!genreSlug.isNullOrBlank() || !tag.isNullOrBlank()) intent.putExtra("search", true)
+        startActivity(intent)
+    }
 
     /** Parses an ISO date (`yyyy`, `yyyy-MM`, or `yyyy-MM-dd`) into a [FuzzyDate] for display. */
     private fun toFuzzyDate(iso: String?): FuzzyDate? {

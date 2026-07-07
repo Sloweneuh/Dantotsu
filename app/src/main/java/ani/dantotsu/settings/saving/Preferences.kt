@@ -6,6 +6,7 @@ import ani.dantotsu.connections.mal.MAL
 import ani.dantotsu.media.SearchHistory
 import ani.dantotsu.media.savedfilters.SavedAniMangaFilter
 import ani.dantotsu.media.savedfilters.SavedComickFilter
+import ani.dantotsu.media.savedfilters.SavedMangaBakaFilter
 import ani.dantotsu.media.savedfilters.SavedComickListFilter
 import ani.dantotsu.media.savedfilters.SavedExtensionFilterBundle
 import ani.dantotsu.media.savedfilters.SavedListFilter
@@ -56,6 +57,7 @@ enum class PrefName(val data: Pref) {
     SavedAniMangaFilters(Pref(Location.General, List::class, listOf<SavedAniMangaFilter>())),
     SavedMUFilters(Pref(Location.General, List::class, listOf<SavedMUFilter>())),
     SavedComickFilters(Pref(Location.General, List::class, listOf<SavedComickFilter>())),
+    SavedMangaBakaFilters(Pref(Location.General, List::class, listOf<SavedMangaBakaFilter>())),
     SavedComickListFilters(Pref(Location.General, List::class, listOf<SavedComickListFilter>())),
     SavedListFilters(Pref(Location.General, List::class, listOf<SavedListFilter>())),
     SavedExtensionFilters(Pref(Location.General, List::class, listOf<SavedExtensionFilterBundle>())),

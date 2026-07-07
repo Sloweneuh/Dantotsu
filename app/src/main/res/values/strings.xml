@@ -618,6 +618,8 @@
     <string name="mangabaka_no_data_title">No MangaBaka match</string>
     <string name="mangabaka_no_data_desc">This entry couldn\'t be matched to a MangaBaka series</string>
     <string name="open_on_mangabaka">Open on MangaBaka</string>
+    <string name="mangabaka_year_from">From year</string>
+    <string name="mangabaka_year_to">To year</string>
     <string name="rank">Rank</string>
     <string name="origin">Origin</string>
     <string name="final_volume_label">Final Volume</string>

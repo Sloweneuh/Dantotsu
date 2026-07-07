@@ -36,6 +36,7 @@ class SearchHistoryAdapter(type: SearchType, private val searchClicked: (String)
         SearchType.USER -> PrefName.SortedUserSH
         SearchType.MANGAUPDATES -> PrefName.SortedMangaSH
         SearchType.COMICK -> PrefName.SortedMangaSH
+        SearchType.MANGABAKA -> PrefName.SortedMangaSH
     }
 
     private fun MutableList<SearchHistory>?.sorted(): List<String>? =

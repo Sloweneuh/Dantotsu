@@ -91,6 +91,32 @@ object SavedFiltersStore {
         PrefManager.setVal(PrefName.SavedComickFilters, all.toList())
     }
 
+    // ---- MangaBaka presets ----
+
+    fun loadMangaBaka(): List<SavedMangaBakaFilter> =
+        PrefManager.getVal<List<SavedMangaBakaFilter>>(PrefName.SavedMangaBakaFilters)
+
+    fun saveMangaBaka(preset: SavedMangaBakaFilter) {
+        val all = loadMangaBaka().toMutableList()
+        all.removeAll { it.name == preset.name }
+        all.add(preset)
+        PrefManager.setVal(PrefName.SavedMangaBakaFilters, all.toList())
+    }
+
+    fun deleteMangaBaka(name: String) {
+        val all = loadMangaBaka().toMutableList()
+        all.removeAll { it.name == name }
+        PrefManager.setVal(PrefName.SavedMangaBakaFilters, all.toList())
+    }
+
+    fun renameMangaBaka(oldName: String, newName: String) {
+        val all = loadMangaBaka().toMutableList()
+        val idx = all.indexOfFirst { it.name == oldName }
+        if (idx < 0) return
+        all[idx] = all[idx].copy(name = newName)
+        PrefManager.setVal(PrefName.SavedMangaBakaFilters, all.toList())
+    }
+
     // ---- Comick custom-list filter presets ----
 
     fun loadComickList(): List<SavedComickListFilter> =

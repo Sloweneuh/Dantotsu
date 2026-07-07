@@ -22,8 +22,10 @@ import ani.dantotsu.connections.anilist.AnilistSearch.SearchType
 import ani.dantotsu.connections.anilist.CharacterSearchResults
 import ani.dantotsu.connections.anilist.ComickSearchResults
 import ani.dantotsu.connections.anilist.MUSearchResults
+import ani.dantotsu.connections.anilist.MangaBakaSearchResults
 import ani.dantotsu.connections.comick.ComickApi
 import ani.dantotsu.connections.comick.ComickComic
+import ani.dantotsu.connections.mangabaka.MangaBakaApi
 import ani.dantotsu.connections.anilist.StaffSearchResults
 import ani.dantotsu.connections.anilist.StudioSearchResults
 import ani.dantotsu.connections.anilist.UserSearchResults
@@ -61,6 +63,7 @@ class SearchActivity : AppCompatActivity() {
     private lateinit var usersAdapter: UsersAdapter
     private lateinit var muSearchAdaptor: MUMediaAdapter
     private lateinit var comickSearchAdaptor: ComickSearchAdapter
+    private lateinit var mangaBakaSearchAdaptor: MangaBakaSearchAdapter
 
     private lateinit var progressAdapter: ProgressAdapter
     private lateinit var concatAdapter: ConcatAdapter
@@ -73,10 +76,12 @@ class SearchActivity : AppCompatActivity() {
     lateinit var userResult: UserSearchResults
     lateinit var muSearchResult: MUSearchResults
     lateinit var comickSearchResult: ComickSearchResults
+    lateinit var mangaBakaSearchResult: MangaBakaSearchResults
 
     lateinit var updateChips: (() -> Unit)
     var updateMuChips: (() -> Unit)? = null
     var updateComickChips: (() -> Unit)? = null
+    var updateMangaBakaChips: (() -> Unit)? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -272,6 +277,44 @@ class SearchActivity : AppCompatActivity() {
                     onComickResultClicked(comic)
                 }
             }
+
+            SearchType.MANGABAKA -> {
+                if (model.notSet) {
+                    model.notSet = false
+                    val genres = intent.getStringArrayListExtra("genres")
+                        ?.toMutableList()
+                        ?: intent.getStringExtra("genre")?.let { mutableListOf(it) }
+                    val tags = intent.getStringArrayListExtra("tags")
+                        ?.toMutableList()
+                        ?: intent.getStringExtra("tag")?.let { mutableListOf(it) }
+                    model.mangaBakaSearchResults = MangaBakaSearchResults(
+                        search = intent.getStringExtra("query"),
+                        results = mutableListOf(),
+                        hasNextPage = false,
+                        genres = genres,
+                        excludedGenres = intent.getStringArrayListExtra("excludedGenres")?.toMutableList(),
+                        tags = tags,
+                        excludedTags = intent.getStringArrayListExtra("excludedTags")?.toMutableList(),
+                        types = intent.getStringArrayListExtra("types")?.toMutableList(),
+                        statuses = intent.getStringArrayListExtra("statuses")?.toMutableList(),
+                        contentRatings = intent.getStringArrayListExtra("contentRatings")?.toMutableList(),
+                        fromYear = intent.getIntExtra("fromYear", Int.MIN_VALUE).takeIf { it != Int.MIN_VALUE },
+                        toYear = intent.getIntExtra("toYear", Int.MIN_VALUE).takeIf { it != Int.MIN_VALUE },
+                        sort = intent.getStringExtra("sort"),
+                    )
+                    // Seed the genre display-name cache so chip labels are correct even before the
+                    // filter sheet (which fetches the full genre list) has been opened.
+                    intent.getStringExtra("genre")?.let { slug ->
+                        intent.getStringExtra("genreName")?.let { name ->
+                            MangaBakaApi.seedGenreName(slug, name)
+                        }
+                    }
+                }
+                mangaBakaSearchResult = model.mangaBakaSearchResults
+                mangaBakaSearchAdaptor = MangaBakaSearchAdapter(model.mangaBakaSearchResults.results, supportStyle) { series ->
+                    onMangaBakaResultClicked(series)
+                }
+            }
         }
 
         progressAdapter = ProgressAdapter(searched = model.searched)
@@ -290,7 +333,7 @@ class SearchActivity : AppCompatActivity() {
                     concatAdapter.itemCount - 1 -> gridSize
                     else -> {
                         val currentStyle = when (searchType) {
-                            SearchType.MANGAUPDATES, SearchType.COMICK -> supportStyle
+                            SearchType.MANGAUPDATES, SearchType.COMICK, SearchType.MANGABAKA -> supportStyle
                             SearchType.ANIME, SearchType.MANGA -> style
                             else -> 0
                         }
@@ -330,6 +373,10 @@ class SearchActivity : AppCompatActivity() {
 
             SearchType.COMICK -> {
                 ConcatAdapter(comickSearchAdaptor, progressAdapter)
+            }
+
+            SearchType.MANGABAKA -> {
+                ConcatAdapter(mangaBakaSearchAdaptor, progressAdapter)
             }
         }
 
@@ -507,6 +554,38 @@ class SearchActivity : AppCompatActivity() {
                     }
                 }
             }
+
+            SearchType.MANGABAKA -> {
+                model.getSearch<MangaBakaSearchResults>(searchType).observe(this) {
+                    if (it != null) {
+                        model.mangaBakaSearchResults.apply {
+                            search = it.search
+                            page = it.page
+                            hasNextPage = it.hasNextPage
+                            genres = it.genres
+                            excludedGenres = it.excludedGenres
+                            tags = it.tags
+                            excludedTags = it.excludedTags
+                            types = it.types
+                            excludedTypes = it.excludedTypes
+                            statuses = it.statuses
+                            excludedStatuses = it.excludedStatuses
+                            contentRatings = it.contentRatings
+                            excludedContentRatings = it.excludedContentRatings
+                            fromYear = it.fromYear
+                            toYear = it.toYear
+                            sort = it.sort
+                        }
+
+                        val prev = model.mangaBakaSearchResults.results.size
+                        model.mangaBakaSearchResults.results.addAll(it.results)
+                        mangaBakaSearchAdaptor.notifyItemRangeInserted(prev, it.results.size)
+                        progressAdapter.bar?.isVisible = it.hasNextPage
+                    } else {
+                        progressAdapter.bar?.isVisible = false
+                    }
+                }
+            }
         }
 
         headerAdaptor.ready.observe(this) {
@@ -580,6 +659,11 @@ class SearchActivity : AppCompatActivity() {
                 model.comickSearchResults.results.clear()
                 comickSearchAdaptor.notifyDataSetChanged()
             }
+
+            SearchType.MANGABAKA -> {
+                model.mangaBakaSearchResults.results.clear()
+                mangaBakaSearchAdaptor.notifyDataSetChanged()
+            }
         }
     }
 
@@ -648,6 +732,11 @@ class SearchActivity : AppCompatActivity() {
                 comickSearchResult.page = 1
                 comickSearchResult.hasNextPage = false
             }
+
+            SearchType.MANGABAKA -> {
+                mangaBakaSearchResult.page = 1
+                mangaBakaSearchResult.hasNextPage = false
+            }
         }
     }
 
@@ -669,6 +758,10 @@ class SearchActivity : AppCompatActivity() {
             SearchType.COMICK -> {
                 comickSearchAdaptor.type = supportStyle
                 comickSearchAdaptor.notifyDataSetChanged()
+            }
+            SearchType.MANGABAKA -> {
+                mangaBakaSearchAdaptor.type = supportStyle
+                mangaBakaSearchAdaptor.notifyDataSetChanged()
             }
             else -> Unit
         }
@@ -698,6 +791,13 @@ class SearchActivity : AppCompatActivity() {
         startActivity(
             Intent(this, ComickMediaActivity::class.java)
                 .putExtra(ComickMediaActivity.EXTRA_SLUG, slug)
+        )
+    }
+
+    private fun onMangaBakaResultClicked(series: MangaBakaApi.Series) {
+        startActivity(
+            Intent(this, MangaBakaMediaActivity::class.java)
+                .putExtra(MangaBakaMediaActivity.EXTRA_SERIES_ID, series.id)
         )
     }
 

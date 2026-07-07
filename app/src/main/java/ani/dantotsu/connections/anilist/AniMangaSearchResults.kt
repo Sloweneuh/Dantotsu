@@ -3,6 +3,7 @@ package ani.dantotsu.connections.anilist
 import ani.dantotsu.R
 import ani.dantotsu.connections.comick.ComickApi
 import ani.dantotsu.connections.comick.ComickComic
+import ani.dantotsu.connections.mangabaka.MangaBakaApi
 import ani.dantotsu.connections.mangaupdates.MUMedia
 import ani.dantotsu.currContext
 import ani.dantotsu.media.Author
@@ -425,4 +426,108 @@ data class ComickSearchResults(
             else -> sortValue.replace('_', ' ').replaceFirstChar { it.uppercase() }
         }
     }
+}
+
+data class MangaBakaSearchResults(
+    override var search: String?,
+    override var page: Int = 1,
+    override var results: MutableList<MangaBakaApi.Series>,
+    override var hasNextPage: Boolean,
+    var genres: MutableList<String>? = null,
+    var excludedGenres: MutableList<String>? = null,
+    var tags: MutableList<String>? = null,
+    var excludedTags: MutableList<String>? = null,
+    var types: MutableList<String>? = null,
+    var excludedTypes: MutableList<String>? = null,
+    var statuses: MutableList<String>? = null,
+    var excludedStatuses: MutableList<String>? = null,
+    var contentRatings: MutableList<String>? = null,
+    var excludedContentRatings: MutableList<String>? = null,
+    var fromYear: Int? = null,
+    var toYear: Int? = null,
+    var sort: String? = null,
+) : SearchResults<MangaBakaApi.Series>, Serializable {
+
+    fun toChipList(): List<AniMangaSearchResults.SearchChip> {
+        val list = mutableListOf<AniMangaSearchResults.SearchChip>()
+        val context = currContext()!!
+        types?.forEach { list.add(AniMangaSearchResults.SearchChip("MB_TYPE", context.getString(R.string.format) + ": " + labelForType(it))) }
+        excludedTypes?.forEach { list.add(AniMangaSearchResults.SearchChip("MB_EXCL_TYPE", context.getString(R.string.filter_exclude, labelForType(it)))) }
+        statuses?.forEach { list.add(AniMangaSearchResults.SearchChip("MB_STATUS", context.getString(R.string.status_title) + ": " + labelForStatus(it))) }
+        excludedStatuses?.forEach { list.add(AniMangaSearchResults.SearchChip("MB_EXCL_STATUS", context.getString(R.string.filter_exclude, labelForStatus(it)))) }
+        contentRatings?.forEach { list.add(AniMangaSearchResults.SearchChip("MB_CONTENT", context.getString(R.string.comick_content_rating) + ": " + titleCase(it))) }
+        excludedContentRatings?.forEach { list.add(AniMangaSearchResults.SearchChip("MB_EXCL_CONTENT", context.getString(R.string.filter_exclude, titleCase(it)))) }
+        genres?.forEach { list.add(AniMangaSearchResults.SearchChip("MB_GENRE", MangaBakaApi.resolveGenreName(it))) }
+        excludedGenres?.forEach {
+            list.add(AniMangaSearchResults.SearchChip("MB_EXCL_GENRE", context.getString(R.string.filter_exclude, MangaBakaApi.resolveGenreName(it))))
+        }
+        tags?.forEach { list.add(AniMangaSearchResults.SearchChip("MB_TAG", it)) }
+        excludedTags?.forEach { list.add(AniMangaSearchResults.SearchChip("MB_EXCL_TAG", context.getString(R.string.filter_exclude, it))) }
+        if (fromYear != null || toYear != null) {
+            list.add(AniMangaSearchResults.SearchChip("MB_YEAR_RANGE", context.getString(R.string.filter_year_range, "${fromYear ?: "?"} - ${toYear ?: "?"}")))
+        }
+        return list
+    }
+
+    fun removeChip(chip: AniMangaSearchResults.SearchChip) {
+        val context = currContext()!!
+        when (chip.type) {
+            "MB_GENRE" -> genres?.remove(findGenreSlug(chip.text, genres))
+            "MB_EXCL_GENRE" -> excludedGenres?.remove(findGenreSlug(chip.text.rawNotPrefixed(context), excludedGenres))
+            "MB_TAG" -> tags?.remove(chip.text)
+            "MB_EXCL_TAG" -> excludedTags?.remove(chip.text.rawNotPrefixed(context))
+            "MB_TYPE" -> {
+                val label = chip.text.removePrefix(context.getString(R.string.format) + ": ")
+                types?.remove(types?.firstOrNull { labelForType(it).equals(label, true) })
+            }
+            "MB_EXCL_TYPE" -> {
+                val label = chip.text.rawNotPrefixed(context)
+                excludedTypes?.remove(excludedTypes?.firstOrNull { labelForType(it).equals(label, true) })
+            }
+            "MB_STATUS" -> {
+                val label = chip.text.removePrefix(context.getString(R.string.status_title) + ": ")
+                statuses?.remove(statuses?.firstOrNull { labelForStatus(it).equals(label, true) })
+            }
+            "MB_EXCL_STATUS" -> {
+                val label = chip.text.rawNotPrefixed(context)
+                excludedStatuses?.remove(excludedStatuses?.firstOrNull { labelForStatus(it).equals(label, true) })
+            }
+            "MB_CONTENT" -> {
+                val label = chip.text.removePrefix(context.getString(R.string.comick_content_rating) + ": ")
+                contentRatings?.remove(contentRatings?.firstOrNull { titleCase(it).equals(label, true) })
+            }
+            "MB_EXCL_CONTENT" -> {
+                val label = chip.text.rawNotPrefixed(context)
+                excludedContentRatings?.remove(excludedContentRatings?.firstOrNull { titleCase(it).equals(label, true) })
+            }
+            "MB_YEAR_RANGE" -> { fromYear = null; toYear = null }
+        }
+    }
+
+    private fun findGenreSlug(displayText: String, values: MutableList<String>?): String =
+        values?.firstOrNull { MangaBakaApi.resolveGenreName(it).equals(displayText, true) } ?: displayText
+
+    private fun String.rawNotPrefixed(context: android.content.Context): String =
+        removePrefix(context.getString(R.string.filter_exclude, ""))
+
+    private fun labelForType(type: String): String = when (type.lowercase()) {
+        "manga" -> currContext()!!.getString(R.string.manga)
+        "manhwa" -> currContext()!!.getString(R.string.manhwa)
+        "manhua" -> currContext()!!.getString(R.string.manhua)
+        "novel" -> currContext()!!.getString(R.string.novel)
+        else -> titleCase(type)
+    }
+
+    private fun labelForStatus(status: String): String = when (status.lowercase()) {
+        "releasing" -> currContext()!!.getString(R.string.ongoing)
+        "completed" -> currContext()!!.getString(R.string.completed)
+        "hiatus" -> currContext()!!.getString(R.string.hiatus)
+        "cancelled" -> currContext()!!.getString(R.string.cancelled)
+        "upcoming" -> currContext()!!.getString(R.string.upcoming)
+        else -> titleCase(status)
+    }
+
+    private fun titleCase(text: String): String =
+        text.split('_', '-').filter { it.isNotBlank() }
+            .joinToString(" ") { p -> p.replaceFirstChar { c -> c.uppercase() } }
 }

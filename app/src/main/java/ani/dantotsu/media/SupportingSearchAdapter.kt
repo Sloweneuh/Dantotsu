@@ -32,6 +32,10 @@ class SupportingSearchAdapter(private val activity: SearchActivity, private val 
 
     private var muChipAdapter: MUChipAdapter? = null
     private var comickChipAdapter: ComickChipAdapter? = null
+    private var mangaBakaChipAdapter: MangaBakaChipAdapter? = null
+
+    private fun isSupportingList(t: SearchType) =
+        t == SearchType.MANGAUPDATES || t == SearchType.COMICK || t == SearchType.MANGABAKA
 
     @SuppressLint("ClickableViewAccessibility")
     override fun bind() {
@@ -51,7 +55,7 @@ class SupportingSearchAdapter(private val activity: SearchActivity, private val 
 
         binding.searchByImage.visibility = View.GONE
 
-        if (type == SearchType.MANGAUPDATES || type == SearchType.COMICK) {
+        if (isSupportingList(type)) {
             when (activity.supportStyle) {
                 0 -> {
                     binding.searchResultGrid.alpha = 1f
@@ -81,27 +85,36 @@ class SupportingSearchAdapter(private val activity: SearchActivity, private val 
             binding.searchResultList.visibility = View.GONE
         }
 
-        if (type == SearchType.MANGAUPDATES || type == SearchType.COMICK) {
+        if (isSupportingList(type)) {
             binding.searchFilter.visibility = View.VISIBLE
             binding.searchChipRecycler.visibility = View.VISIBLE
-            if (type == SearchType.MANGAUPDATES) {
-                muChipAdapter = MUChipAdapter(activity, this)
-                activity.updateMuChips = { muChipAdapter?.update() }
-                binding.searchChipRecycler.adapter = muChipAdapter
-            } else {
-                comickChipAdapter = ComickChipAdapter(activity)
-                activity.updateComickChips = { comickChipAdapter?.update() }
-                binding.searchChipRecycler.adapter = comickChipAdapter
+            when (type) {
+                SearchType.MANGAUPDATES -> {
+                    muChipAdapter = MUChipAdapter(activity, this)
+                    activity.updateMuChips = { muChipAdapter?.update() }
+                    binding.searchChipRecycler.adapter = muChipAdapter
+                }
+                SearchType.COMICK -> {
+                    comickChipAdapter = ComickChipAdapter(activity)
+                    activity.updateComickChips = { comickChipAdapter?.update() }
+                    binding.searchChipRecycler.adapter = comickChipAdapter
+                }
+                else -> {
+                    mangaBakaChipAdapter = MangaBakaChipAdapter(activity)
+                    activity.updateMangaBakaChips = { mangaBakaChipAdapter?.update() }
+                    binding.searchChipRecycler.adapter = mangaBakaChipAdapter
+                }
             }
             binding.searchChipRecycler.layoutManager =
                 LinearLayoutManager(binding.root.context, RecyclerView.HORIZONTAL, false)
             binding.searchFilter.setOnClickListener {
-                if (type == SearchType.MANGAUPDATES) {
-                    MUSearchFilterBottomSheet.newInstance()
+                when (type) {
+                    SearchType.MANGAUPDATES -> MUSearchFilterBottomSheet.newInstance()
                         .show(activity.supportFragmentManager, "mu_filter")
-                } else {
-                    ComickSearchFilterBottomSheet.newInstance()
+                    SearchType.COMICK -> ComickSearchFilterBottomSheet.newInstance()
                         .show(activity.supportFragmentManager, "comick_filter")
+                    else -> MangaBakaSearchFilterBottomSheet.newInstance()
+                        .show(activity.supportFragmentManager, "mangabaka_filter")
                 }
             }
         } else {
@@ -140,6 +153,7 @@ class SupportingSearchAdapter(private val activity: SearchActivity, private val 
             SearchType.USER -> activity.userResult.search
             SearchType.MANGAUPDATES -> activity.muSearchResult.search
             SearchType.COMICK -> activity.comickSearchResult.search
+            SearchType.MANGABAKA -> activity.mangaBakaSearchResult.search
             else -> throw IllegalArgumentException("Invalid search type")
         } ?: ""
 
@@ -168,6 +182,7 @@ class SupportingSearchAdapter(private val activity: SearchActivity, private val 
                 SearchType.USER -> activity.userResult
                 SearchType.MANGAUPDATES -> activity.muSearchResult
                 SearchType.COMICK -> activity.comickSearchResult
+                SearchType.MANGABAKA -> activity.mangaBakaSearchResult
                 else -> throw IllegalArgumentException("Invalid search type")
             }
 
@@ -189,6 +204,7 @@ class SupportingSearchAdapter(private val activity: SearchActivity, private val 
                         SearchType.USER -> activity.userResult.search = null
                         SearchType.MANGAUPDATES -> activity.muSearchResult.search = null
                         SearchType.COMICK -> activity.comickSearchResult.search = null
+                        SearchType.MANGABAKA -> activity.mangaBakaSearchResult.search = null
                         else -> Unit
                     }
                     activity.emptyMediaAdapter()
@@ -235,6 +251,7 @@ class SupportingSearchAdapter(private val activity: SearchActivity, private val 
             SearchType.STUDIO -> R.drawable.ic_round_movie_edit_24
             SearchType.MANGAUPDATES -> R.drawable.ic_round_mangaupdates_24
             SearchType.COMICK -> R.drawable.ic_round_comick_24
+            SearchType.MANGABAKA -> R.drawable.ic_round_mangabaka_24
             else -> R.drawable.ic_round_search_24
         }
     }
@@ -276,6 +293,21 @@ class SupportingSearchAdapter(private val activity: SearchActivity, private val 
                         completed != null ||
                         excludeMyList != null ||
                         showAll != null
+                }
+            }
+
+            SearchType.MANGABAKA -> {
+                activity.mangaBakaSearchResult.run {
+                    !genres.isNullOrEmpty() ||
+                        !excludedGenres.isNullOrEmpty() ||
+                        !tags.isNullOrEmpty() ||
+                        !excludedTags.isNullOrEmpty() ||
+                        !types.isNullOrEmpty() ||
+                        !statuses.isNullOrEmpty() ||
+                        !contentRatings.isNullOrEmpty() ||
+                        fromYear != null ||
+                        toYear != null ||
+                        !sort.isNullOrBlank()
                 }
             }
 
@@ -369,6 +401,48 @@ class SupportingSearchAdapter(private val activity: SearchActivity, private val 
         @SuppressLint("NotifyDataSetChanged")
         fun update() {
             chips = activity.comickSearchResult.toChipList()
+            notifyDataSetChanged()
+        }
+
+        override fun getItemCount(): Int = chips.size
+    }
+
+    class MangaBakaChipAdapter(
+        private val activity: SearchActivity,
+    ) : RecyclerView.Adapter<MangaBakaChipAdapter.MangaBakaChipViewHolder>() {
+
+        private var chips = activity.mangaBakaSearchResult.toChipList()
+
+        inner class MangaBakaChipViewHolder(val binding: ItemChipBinding) :
+            RecyclerView.ViewHolder(binding.root)
+
+        override fun onCreateViewHolder(
+            parent: android.view.ViewGroup,
+            viewType: Int,
+        ): MangaBakaChipViewHolder {
+            val binding = ItemChipBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+            return MangaBakaChipViewHolder(binding)
+        }
+
+        override fun onBindViewHolder(holder: MangaBakaChipViewHolder, position: Int) {
+            val chip = chips[position]
+            holder.binding.root.apply {
+                text = chip.text.replace("_", " ")
+                isCloseIconVisible = true
+                setOnClickListener { removeAndSearch(chip) }
+                setOnCloseIconClickListener { removeAndSearch(chip) }
+            }
+        }
+
+        private fun removeAndSearch(chip: ani.dantotsu.connections.anilist.AniMangaSearchResults.SearchChip) {
+            activity.mangaBakaSearchResult.removeChip(chip)
+            update()
+            activity.search()
+        }
+
+        @SuppressLint("NotifyDataSetChanged")
+        fun update() {
+            chips = activity.mangaBakaSearchResult.toChipList()
             notifyDataSetChanged()
         }
 

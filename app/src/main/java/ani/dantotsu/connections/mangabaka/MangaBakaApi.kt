@@ -305,6 +305,170 @@ object MangaBakaApi {
         Mapper.json.decodeFromString<ImagesResponse>(body).data ?: emptyList()
     } ?: emptyList()
 
+    // ---------------------------------------------------------------------------------------------
+    // Search (public, read-only) — powers the MangaBaka search screen.
+    // ---------------------------------------------------------------------------------------------
+
+    /** One page of search results plus whether another page is available. */
+    data class SearchPage(val results: List<Series>, val hasNextPage: Boolean)
+
+    /**
+     * Searches series via `GET /v1/series/search`. All filters are optional but the route requires
+     * at least one parameter, so a fully-empty search (no query/filters) short-circuits to empty.
+     *
+     * `genres` are slug values (e.g. `slice_of_life`); `tags`/`excludedTags` are tag names or ids —
+     * both are accepted by the route. When [allowAdult] is false and the caller supplied no explicit
+     * content rating, results are limited to `safe`/`suggestive`.
+     */
+    suspend fun searchSeries(
+        query: String?,
+        page: Int = 1,
+        limit: Int = 25,
+        genres: List<String>? = null,
+        excludedGenres: List<String>? = null,
+        tags: List<String>? = null,
+        excludedTags: List<String>? = null,
+        tagMode: String? = null,
+        types: List<String>? = null,
+        excludedTypes: List<String>? = null,
+        statuses: List<String>? = null,
+        excludedStatuses: List<String>? = null,
+        contentRatings: List<String>? = null,
+        excludedContentRatings: List<String>? = null,
+        fromYear: Int? = null,
+        toYear: Int? = null,
+        sort: String? = null,
+        allowAdult: Boolean = true,
+    ): SearchPage? = tryWithSuspend {
+        val q = query?.trim()?.takeIf { it.isNotBlank() }
+        val userPickedRating = !contentRatings.isNullOrEmpty()
+
+        // A bare search (no query, no filters) is a valid "browse everything" request — the route
+        // accepts an empty `q`, so we always send it rather than short-circuiting to no results.
+        val urlBuilder = "$API_URL/v1/series/search".toHttpUrl().newBuilder()
+            .addQueryParameter("page", page.toString())
+            .addQueryParameter("limit", limit.toString())
+        urlBuilder.addQueryParameter("q", q ?: "")
+        genres?.filter { it.isNotBlank() }?.forEach { urlBuilder.addQueryParameter("genre", it) }
+        excludedGenres?.filter { it.isNotBlank() }?.forEach { urlBuilder.addQueryParameter("genre_not", it) }
+        tags?.filter { it.isNotBlank() }?.forEach { urlBuilder.addQueryParameter("tag", it) }
+        excludedTags?.filter { it.isNotBlank() }?.forEach { urlBuilder.addQueryParameter("tag_not", it) }
+        if (!tags.isNullOrEmpty()) urlBuilder.addQueryParameter("tag_mode", tagMode ?: "and")
+        types?.filter { it.isNotBlank() }?.forEach { urlBuilder.addQueryParameter("type", it) }
+        excludedTypes?.filter { it.isNotBlank() }?.forEach { urlBuilder.addQueryParameter("type_not", it) }
+        statuses?.filter { it.isNotBlank() }?.forEach { urlBuilder.addQueryParameter("status", it) }
+        excludedStatuses?.filter { it.isNotBlank() }?.forEach { urlBuilder.addQueryParameter("status_not", it) }
+        excludedContentRatings?.filter { it.isNotBlank() }?.forEach { urlBuilder.addQueryParameter("not_content_rating", it) }
+        fromYear?.let { urlBuilder.addQueryParameter("year_lower", it.toString()) }
+        toYear?.let { urlBuilder.addQueryParameter("year_upper", it.toString()) }
+        sort?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("sort_by", it) }
+
+        val ratings = when {
+            userPickedRating -> contentRatings!!.filter { it.isNotBlank() }
+            !allowAdult -> listOf("safe", "suggestive")
+            else -> emptyList()
+        }
+        ratings.forEach { urlBuilder.addQueryParameter("content_rating", it) }
+
+        val request = Request.Builder().url(urlBuilder.build()).get().build()
+        val response = execute(request)
+        val body = response.body?.string()
+        if (!response.isSuccessful || body.isNullOrBlank()) {
+            Logger.log("MangaBaka search: HTTP ${response.code}")
+            return@tryWithSuspend null
+        }
+        val parsed = Mapper.json.decodeFromString<SearchResponse>(body)
+        val results = parsed.data.orEmpty().filter { it.state != "deleted" }
+        SearchPage(results, parsed.pagination?.next != null)
+    }
+
+    /** In-memory cache of the genre options (`/v1/genres`), preserving order. */
+    private var genreOptions: List<GenreOption>? = null
+
+    /** Synchronous slug → display-name cache for genre chips (seeded from options or the info tab). */
+    private val genreNameCache = HashMap<String, String>()
+
+    /** Returns the ordered genre options (value + label) from `GET /v1/genres`. Cached after first fetch. */
+    suspend fun getGenreOptions(): List<GenreOption> {
+        genreOptions?.let { return it }
+        val list = tryWithSuspend {
+            val request = Request.Builder().url("$API_URL/v1/genres").get().build()
+            val response = execute(request)
+            val body = response.body?.string()
+            if (!response.isSuccessful || body.isNullOrBlank()) {
+                Logger.log("MangaBaka genre options: HTTP ${response.code}")
+                return@tryWithSuspend null
+            }
+            Mapper.json.decodeFromString<GenresResponse>(body).data
+                ?.filter { !it.value.isNullOrBlank() && !it.label.isNullOrBlank() }
+        } ?: emptyList()
+        list.forEach { o -> if (o.value != null && o.label != null) genreNameCache[o.value] = o.label }
+        genreOptions = list
+        return list
+    }
+
+    /** Seeds the genre display-name cache so chip labels are correct before options are fetched. */
+    fun seedGenreName(value: String, label: String) { genreNameCache[value] = label }
+
+    /** Best-effort synchronous genre display name for a slug (title-cased fallback). */
+    fun resolveGenreName(value: String): String =
+        genreNameCache[value]
+            ?: genreOptions?.firstOrNull { it.value == value }?.label
+            ?: value.split('_', '-').filter { it.isNotBlank() }
+                .joinToString(" ") { p -> p.replaceFirstChar { c -> c.uppercase() } }
+
+    /** In-memory cache of the non-genre tag options (`/v1/tags`), fetched once. */
+    private var tagOptions: List<TagOption>? = null
+
+    /**
+     * Returns selectable tag options from `GET /v1/tags`, excluding tags that are actually genres.
+     * Cached after the first fetch; returns an empty list on failure.
+     */
+    suspend fun getTagOptions(): List<TagOption> {
+        tagOptions?.let { return it }
+        val list = tryWithSuspend {
+            val request = Request.Builder().url("$API_URL/v1/tags").get().build()
+            val response = execute(request)
+            val body = response.body?.string()
+            if (!response.isSuccessful || body.isNullOrBlank()) {
+                Logger.log("MangaBaka tags: HTTP ${response.code}")
+                return@tryWithSuspend null
+            }
+            Mapper.json.decodeFromString<TagsResponse>(body).data
+                ?.filter { it.isGenre != true && !it.name.isNullOrBlank() }
+        } ?: emptyList()
+        tagOptions = list
+        return list
+    }
+
+    @Serializable
+    data class SearchResponse(
+        val data: List<Series>? = null,
+        val pagination: Pagination? = null,
+    )
+
+    @Serializable
+    data class Pagination(
+        val count: Int? = null,
+        val page: Int? = null,
+        val limit: Int? = null,
+        val next: String? = null,
+        val previous: String? = null,
+    )
+
+    @Serializable
+    data class TagsResponse(val data: List<TagOption>? = null)
+
+    @Serializable
+    data class TagOption(
+        val id: Int? = null,
+        val name: String? = null,
+        @SerialName("name_path") val namePath: String? = null,
+        @SerialName("is_genre") val isGenre: Boolean? = null,
+        @SerialName("is_spoiler") val isSpoiler: Boolean? = null,
+        @SerialName("content_rating") val contentRating: String? = null,
+    )
+
     /** Fetches similar series via `GET /v1/series/{id}/similar`. Public route — no auth. */
     suspend fun getSimilar(seriesId: Long): List<SimilarItem> = tryWithSuspend {
         val request = Request.Builder()
