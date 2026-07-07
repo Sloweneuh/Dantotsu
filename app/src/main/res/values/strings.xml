@@ -596,6 +596,7 @@
     <string name="sync_all_count">Sync all (%1$d)</string>
     <string name="list_sync_syncing">Syncing…</string>
     <string name="list_sync_synced">Synced %1$d entries</string>
+    <string name="list_sync_synced_partial">Synced %1$d, %2$d failed</string>
     <string name="list_sync_failed">Sync failed</string>
     <string name="list_sync_total">Total %1$d</string>
     <string name="list_sync_up_to_date">List is up to date</string>
@@ -608,6 +609,9 @@
     <string name="list_diff_episodes">Episodes</string>
     <string name="list_diff_volumes">Volumes</string>
     <string name="list_diff_score">Score</string>
+    <string name="list_diff_start_date">Start date</string>
+    <string name="list_diff_end_date">End date</string>
+    <string name="list_diff_not_set">Not set</string>
     <string name="disable_mangabaka">Enable MangaBaka</string>
     <string name="disable_mangabaka_desc">Toggle fetching MangaBaka data and the MangaBaka info tab</string>
     <string name="mangabaka_requires_internet">MangaBaka data requires an internet connection</string>

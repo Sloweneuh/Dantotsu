@@ -109,9 +109,13 @@ class MALQueries {
     suspend fun getUserList(isAnime: Boolean): List<MALListNode> {
         val header = authHeader ?: return emptyList()
         val type = if (isAnime) "animelist" else "mangalist"
+        // Request MAL's own totals too (num_episodes / num_chapters,num_volumes) so the comparison can
+        // clamp progress to MAL's cap — it refuses counts beyond a finished title's total.
+        val fields = if (isAnime) "list_status,main_picture,num_episodes"
+        else "list_status,main_picture,num_chapters,num_volumes"
         val result = mutableListOf<MALListNode>()
         var url: String? =
-            "$apiUrl/users/@me/$type?fields=list_status,main_picture&limit=1000&nsfw=true"
+            "$apiUrl/users/@me/$type?fields=$fields&limit=1000&nsfw=true"
         var guard = 0
         while (url != null && guard++ < 50) {
             val page = tryWithSuspend {

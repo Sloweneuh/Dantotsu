@@ -457,6 +457,7 @@
     <string name="sync_all_count">Tout synchroniser (%1$d)</string>
     <string name="list_sync_syncing">Synchronisation…</string>
     <string name="list_sync_synced">%1$d entrées synchronisées</string>
+    <string name="list_sync_synced_partial">%1$d synchronisées, %2$d échouées</string>
     <string name="list_sync_failed">Échec de la synchronisation</string>
     <string name="list_sync_total">Total %1$d</string>
     <string name="list_sync_up_to_date">La liste est à jour</string>
@@ -469,6 +470,9 @@
     <string name="list_diff_episodes">Épisodes</string>
     <string name="list_diff_volumes">Volumes</string>
     <string name="list_diff_score">Note</string>
+    <string name="list_diff_start_date">Date de début</string>
+    <string name="list_diff_end_date">Date de fin</string>
+    <string name="list_diff_not_set">Non défini</string>
     <string name="disable_mangabaka">Activer MangaBaka</string>
     <string name="disable_mangabaka_desc">Activer ou désactiver la récupération des données MangaBaka et l\'onglet MangaBaka</string>
     <string name="mangabaka_requires_internet">MangaBaka requiert une connexion internet</string>

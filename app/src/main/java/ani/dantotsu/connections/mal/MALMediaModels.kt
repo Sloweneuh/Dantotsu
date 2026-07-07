@@ -191,6 +191,10 @@ data class MALListMedia(
     val id: Int,
     val title: String,
     @SerialName("main_picture") val mainPicture: MALPicture? = null,
+    // MAL's own totals for the title; 0 means "unknown/ongoing". MAL caps a user's progress at these.
+    @SerialName("num_episodes") val numEpisodes: Int? = null,
+    @SerialName("num_chapters") val numChapters: Int? = null,
+    @SerialName("num_volumes") val numVolumes: Int? = null,
 )
 
 @Serializable
@@ -202,6 +206,9 @@ data class MALListStatus(
     @SerialName("num_volumes_read") val numVolumesRead: Int? = null,
     @SerialName("is_rewatching") val isRewatching: Boolean = false,
     @SerialName("is_rereading") val isRereading: Boolean = false,
+    // "YYYY-MM-DD" (may be partial); present in the user's list_status when the user set them.
+    @SerialName("start_date") val startDate: String? = null,
+    @SerialName("finish_date") val finishDate: String? = null,
 )
 
 @Serializable

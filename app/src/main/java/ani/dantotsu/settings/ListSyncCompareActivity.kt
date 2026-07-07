@@ -113,7 +113,11 @@ class ListSyncCompareActivity : AppCompatActivity() {
         setStatsIcons(sb.statsSourceIcons, sourceIcons)
         setStatsIcons(sb.statsDestIcons, destIcons)
         sb.statsSource.text = statsText(sub.source)
-        sb.statsDest.text = statsText(sub.dest)
+        // Dest totals are updated in place as entries sync (see [ListCompare.applied]), so the header
+        // stays accurate without re-running the comparison.
+        var destStats = sub.dest
+        fun refreshStats() { sb.statsDest.text = statsText(destStats) }
+        refreshStats()
 
         val items = sub.diffs.toMutableList()
         lateinit var adapter: ListSyncDiffAdapter
@@ -137,6 +141,8 @@ class ListSyncCompareActivity : AppCompatActivity() {
             lifecycleScope.launch {
                 val ok = withContext(Dispatchers.IO) { ListCompare.sync(entry) }
                 if (ok) {
+                    destStats = ListCompare.applied(destStats, entry)
+                    refreshStats()
                     adapter.removeAt(position)
                     applyState()
                 } else {
@@ -159,9 +165,18 @@ class ListSyncCompareActivity : AppCompatActivity() {
             if (entries.isEmpty()) return@setOnClickListener
             sb.sectionSyncAll.isEnabled = false
             lifecycleScope.launch {
-                withContext(Dispatchers.IO) { entries.forEach { ListCompare.sync(it) } }
-                snackString(getString(R.string.list_sync_synced, entries.size))
-                load()
+                val results = withContext(Dispatchers.IO) { entries.map { it to ListCompare.sync(it) } }
+                // Drop the entries that synced; keep failures in the list for retry. Update the header
+                // stats from the successes instead of re-running the full (network-heavy) comparison.
+                results.forEach { (entry, ok) -> if (ok) destStats = ListCompare.applied(destStats, entry) }
+                refreshStats()
+                val failed = results.filterNot { it.second }.map { it.first }
+                adapter.replaceAll(failed)
+                applyState()
+                sb.sectionSyncAll.isEnabled = failed.isNotEmpty()
+                val synced = entries.size - failed.size
+                if (failed.isEmpty()) snackString(getString(R.string.list_sync_synced, synced))
+                else snackString(getString(R.string.list_sync_synced_partial, synced, failed.size))
             }
         }
 

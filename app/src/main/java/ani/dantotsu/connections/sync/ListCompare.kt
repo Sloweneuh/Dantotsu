@@ -2,6 +2,7 @@ package ani.dantotsu.connections.sync
 
 import ani.dantotsu.asyncMap
 import ani.dantotsu.connections.anilist.Anilist
+import ani.dantotsu.connections.anilist.api.FuzzyDate
 import ani.dantotsu.connections.mal.MAL
 import ani.dantotsu.connections.mal.MALListNode
 import ani.dantotsu.connections.mal.MALListStatus
@@ -32,10 +33,16 @@ object ListCompare {
     enum class Tracker { MAL, MANGABAKA }
 
     /** A single field that differs between source and destination. */
-    enum class DiffField { STATUS, PROGRESS, VOLUME, SCORE }
+    enum class DiffField { STATUS, PROGRESS, VOLUME, SCORE, START_DATE, END_DATE }
 
     /** `from` is the destination's current value, `to` is the source value we would push. */
     data class FieldDiff(val field: DiffField, val from: String, val to: String)
+
+    /**
+     * One field's values on both sides for the expandable per-row detail. A null value renders as
+     * "not set"; [differs] marks the row to highlight (and show `dest → source`) on the dest side.
+     */
+    data class DetailRow(val field: DiffField, val source: String?, val dest: String?, val differs: Boolean)
 
     /**
      * One out-of-date media, with the payload needed to reconcile it. When [delete] is true the entry
@@ -57,6 +64,14 @@ object ListCompare {
         val progress: Int?,
         val volume: Int?,
         val score: Int?,       // AniList POINT_100 (0..100)
+        val startDate: FuzzyDate? = null,
+        val endDate: FuzzyDate? = null,
+        val detail: List<DetailRow> = emptyList(),
+        // Canonical dest status before/after a successful sync, used to update the header stats in
+        // place (see [applied]). `from` is null when the media isn't on the dest yet (an addition);
+        // `to` is null when the entry will be removed (a deletion).
+        val fromStatusCanon: String? = null,
+        val toStatusCanon: String? = null,
         val delete: Boolean = false,
     )
 
@@ -109,7 +124,7 @@ object ListCompare {
 
         val diffs = source.mapNotNull { media ->
             val malId = media.idMAL ?: return@mapNotNull null
-            buildMalDiff(media, isAnime, malById[malId]?.listStatus)
+            buildMalDiff(media, isAnime, malById[malId])
         }
 
         // Deletions: on MAL but not on AniList (matched by MAL id) → offer to remove from MAL.
@@ -135,33 +150,65 @@ object ListCompare {
         progress = null,
         volume = null,
         score = null,
+        fromStatusCanon = malToCanon(node.listStatus?.status, node.listStatus.rereading(isAnime)),
+        toStatusCanon = null,
         delete = true,
     )
 
-    private fun buildMalDiff(media: Media, isAnime: Boolean, ls: MALListStatus?): DiffEntry? {
+    private fun buildMalDiff(media: Media, isAnime: Boolean, node: MALListNode?): DiffEntry? {
+        val ls = node?.listStatus
         val expectedStatus = MAL.query.convertStatus(isAnime, media.userStatus ?: "CURRENT")
-        val expectedProgress = media.userProgress ?: 0
+        val completed = expectedStatus == "completed"
+        val rawProgress = media.userProgress ?: 0
+        // AniList's own progress is the truth we mirror. The one exception: a *completed* entry
+        // recorded with 0 progress is a data glitch (you can't finish something at 0), so fall back to
+        // the media total there. A completed entry with a real count (e.g. 32/39) is kept exactly as
+        // AniList has it — forcing it to the total would invent a diff and desync MAL.
+        val aniTotal = (if (isAnime) media.anime?.totalEpisodes else media.manga?.totalChapters)
+            ?.takeIf { it > 0 }
+        val repairCompletedZero = completed && rawProgress == 0 && aniTotal != null
+        // MAL refuses a user's progress beyond the title's own total — e.g. a manga MAL lists as
+        // finished at 6 official chapters while AniList counts 66 unofficial ones, or a movie later
+        // split into streaming episodes. Clamp what we expect and push to MAL's total (0 = unknown, so
+        // not clamped) so the count converges instead of showing an unfixable diff forever.
+        val malTotal = (if (isAnime) node?.node?.numEpisodes else node?.node?.numChapters)?.takeIf { it > 0 }
+        val malVolTotal = if (!isAnime) node?.node?.numVolumes?.takeIf { it > 0 } else null
+        var expectedProgress = if (repairCompletedZero) aniTotal!! else rawProgress
+        if (malTotal != null) expectedProgress = expectedProgress.coerceAtMost(malTotal)
+        var expectedVolume = media.userVolume ?: 0
+        if (malVolTotal != null) expectedVolume = expectedVolume.coerceAtMost(malVolTotal)
         val expectedScore = media.userScore / 10          // MAL uses a 0..10 score
-        val expectedVolume = media.userVolume ?: 0
+        val actualStatus = ls?.status ?: ""
+        val actualProgress = ls?.let { if (isAnime) it.numEpisodesWatched else it.numChaptersRead } ?: 0
+        val actualVolume = ls?.numVolumesRead ?: 0
         val fieldDiffs = mutableListOf<FieldDiff>()
 
         if (ls == null) {
-            fieldDiffs += FieldDiff(DiffField.STATUS, DASH, expectedStatus)
+            fieldDiffs += FieldDiff(DiffField.STATUS, DASH, formatStatus(expectedStatus) ?: DASH)
             if (expectedProgress > 0)
                 fieldDiffs += FieldDiff(DiffField.PROGRESS, DASH, expectedProgress.toString())
         } else {
-            val actualStatus = ls.status ?: ""
             if (actualStatus != expectedStatus)
-                fieldDiffs += FieldDiff(DiffField.STATUS, actualStatus.ifEmpty { DASH }, expectedStatus)
-            val actualProgress = (if (isAnime) ls.numEpisodesWatched else ls.numChaptersRead) ?: 0
+                fieldDiffs += FieldDiff(DiffField.STATUS, formatStatus(actualStatus) ?: DASH, formatStatus(expectedStatus) ?: DASH)
             if (actualProgress != expectedProgress)
                 fieldDiffs += FieldDiff(DiffField.PROGRESS, actualProgress.toString(), expectedProgress.toString())
             if (media.userScore > 0 && ls.score != expectedScore)
-                fieldDiffs += FieldDiff(DiffField.SCORE, ls.score.toString(), expectedScore.toString())
-            if (!isAnime && expectedVolume > 0 && (ls.numVolumesRead ?: 0) != expectedVolume)
-                fieldDiffs += FieldDiff(DiffField.VOLUME, (ls.numVolumesRead ?: 0).toString(), expectedVolume.toString())
+                fieldDiffs += FieldDiff(DiffField.SCORE, formatScore(ls.score * 10) ?: DASH, formatScore(media.userScore) ?: DASH)
+            if (!isAnime && expectedVolume > 0 && actualVolume != expectedVolume)
+                fieldDiffs += FieldDiff(DiffField.VOLUME, actualVolume.toString(), expectedVolume.toString())
         }
+        dateDiff(DiffField.START_DATE, media.userStartedAt, ls?.startDate)?.let { fieldDiffs += it }
+        dateDiff(DiffField.END_DATE, media.userCompletedAt, ls?.finishDate)?.let { fieldDiffs += it }
         if (fieldDiffs.isEmpty()) return null
+        val detail = buildDetail(
+            isAnime, fieldDiffs.mapTo(HashSet()) { it.field }, onDest = ls != null,
+            status = expectedStatus to actualStatus,
+            progress = expectedProgress to actualProgress,
+            volume = if (!isAnime) expectedVolume to actualVolume else null,
+            score = media.userScore to ls?.score?.let { it * 10 },   // both on the 0..100 scale
+            start = media.userStartedAt to parseDestDate(ls?.startDate),
+            end = media.userCompletedAt to parseDestDate(ls?.finishDate),
+        )
         return DiffEntry(
             title = media.userPreferredName,
             coverUrl = media.cover,
@@ -174,9 +221,16 @@ object ListCompare {
             muListId = null,
             mangaBakaSeriesId = null,
             status = media.userStatus ?: "CURRENT",
-            progress = media.userProgress,
-            volume = media.userVolume,
+            // Push the clamped/repaired value when a cap or the completed-zero repair applies;
+            // otherwise mirror AniList's own count as-is.
+            progress = if (malTotal != null || repairCompletedZero) expectedProgress else media.userProgress,
+            volume = if (malVolTotal != null) expectedVolume else media.userVolume,
             score = media.userScore.takeIf { it > 0 },
+            startDate = media.userStartedAt.takeIf { !it.isEmpty() },
+            endDate = media.userCompletedAt.takeIf { !it.isEmpty() },
+            detail = detail,
+            fromStatusCanon = ls?.let { malToCanon(it.status, it.rereading(isAnime)) },
+            toStatusCanon = media.userStatus ?: "CURRENT",
         )
     }
 
@@ -200,16 +254,35 @@ object ListCompare {
         }
         val destStats = SideStats(destTotal, destPerStatus)
 
-        // Prefer matching against the enumerated library (one pass gives each entry's state + cover).
-        // Fall back to per-series lookups if the list endpoint didn't return series ids.
+        // Prefer matching against the enumerated library (one pass gives each entry's state, cover and,
+        // via the embedded series, its cross-source ids). Fall back to per-series lookups only if the
+        // list endpoint didn't return series ids.
         val libBySeriesId = snapshot.entries.mapNotNull { e -> e.resolvedSeriesId()?.let { it to e } }.toMap()
         val canEnumerate = libBySeriesId.isNotEmpty()
         suspend fun currentOf(seriesId: Long): LibraryStateEntry? =
             if (canEnumerate) libBySeriesId[seriesId] else MangaBakaSync.getLibraryEntry(seriesId)
 
+        // Reverse index over the enumerated library, keyed by the cross-source ids embedded in each
+        // entry's series. Media already in the library resolve to their MangaBaka series id from this
+        // map with zero network calls; only media missing from the library fall through to the
+        // per-item `/v1/source` route (which the server rate-limits). This is what keeps large lists
+        // from tripping HTTP 429 on a cold cache.
+        val byAnilist = HashMap<Int, Long>()
+        val byMal = HashMap<Int, Long>()
+        val byMu = HashMap<Long, Long>()
+        for (entry in snapshot.entries) {
+            val sid = entry.resolvedSeriesId() ?: continue
+            val src = entry.series?.source ?: continue
+            src.anilist?.id?.let { byAnilist[it] = sid }
+            src.myAnimeList?.id?.let { byMal[it] = sid }
+            src.mangaUpdates?.toMuSeriesId()?.let { byMu[it] = sid }
+        }
+
         // AniList manga forward diffs.
         val alProcessed = anilistManga.asyncMap { media ->
-            val seriesId = MangaBakaApi.resolveFromAnilist(media.id, media.idMAL)
+            val seriesId = byAnilist[media.id]
+                ?: media.idMAL?.let { byMal[it] }
+                ?: MangaBakaApi.resolveFromAnilist(media.id, media.idMAL)
             val diff = seriesId?.let { buildMangaBakaDiff(media, it, currentOf(it)) }
             Processed(media.userStatus ?: "CURRENT", seriesId, diff)
         }
@@ -218,7 +291,9 @@ object ListCompare {
         val alSeriesIds = alProcessed.mapNotNull { it.seriesId }.toHashSet()
         val muMedia = if (muActive) MangaUpdates.getAllUserLists().values.flatten() else emptyList()
         val muProcessed = muMedia
-            .asyncMap { mu -> mu to MangaBakaApi.resolveSeriesId(MangaBakaApi.Source.MANGAUPDATES, mu.id) }
+            .asyncMap { mu ->
+                mu to (byMu[mu.id] ?: MangaBakaApi.resolveSeriesId(MangaBakaApi.Source.MANGAUPDATES, mu.id))
+            }
             .filter { (_, seriesId) -> seriesId == null || seriesId !in alSeriesIds }
             .distinctBy { (mu, seriesId) -> seriesId ?: -mu.id }
             .asyncMap { (mu, seriesId) ->
@@ -263,8 +338,23 @@ object ListCompare {
             current, expectedState,
             expectedChapter = media.userProgress ?: 0,
             expectedVolume = media.userVolume ?: 0,
-        )
+        ).toMutableList()
+        // MangaBaka ratings use the same 0..100 scale as AniList, so compare directly.
+        val expectedScore = media.userScore
+        if (expectedScore > 0 && (current?.rating ?: 0) != expectedScore)
+            fieldDiffs += FieldDiff(DiffField.SCORE, formatScore(current?.rating) ?: DASH, formatScore(expectedScore) ?: DASH)
+        dateDiff(DiffField.START_DATE, media.userStartedAt, current?.startDate)?.let { fieldDiffs += it }
+        dateDiff(DiffField.END_DATE, media.userCompletedAt, current?.finishDate)?.let { fieldDiffs += it }
         if (fieldDiffs.isEmpty()) return null
+        val detail = buildDetail(
+            isAnime = false, fieldDiffs.mapTo(HashSet()) { it.field }, onDest = current != null,
+            status = expectedState to current?.state,
+            progress = (media.userProgress ?: 0) to (current?.progressChapter ?: 0),
+            volume = (media.userVolume ?: 0) to (current?.progressVolume ?: 0),
+            score = expectedScore to current?.rating,
+            start = media.userStartedAt to parseDestDate(current?.startDate),
+            end = media.userCompletedAt to parseDestDate(current?.finishDate),
+        )
         return DiffEntry(
             title = media.userPreferredName,
             coverUrl = media.cover ?: current?.coverUrl(),
@@ -280,6 +370,11 @@ object ListCompare {
             progress = media.userProgress,
             volume = media.userVolume,
             score = media.userScore.takeIf { it > 0 },
+            startDate = media.userStartedAt.takeIf { !it.isEmpty() },
+            endDate = media.userCompletedAt.takeIf { !it.isEmpty() },
+            detail = detail,
+            fromStatusCanon = current?.let { mbToCanon(it.state) },
+            toStatusCanon = media.userStatus,
         )
     }
 
@@ -291,6 +386,15 @@ object ListCompare {
             expectedVolume = mu.userVolume ?: 0,
         )
         if (fieldDiffs.isEmpty()) return null
+        val detail = buildDetail(
+            isAnime = false, fieldDiffs.mapTo(HashSet()) { it.field }, onDest = current != null,
+            status = expectedState to current?.state,
+            progress = (mu.userChapter ?: 0) to (current?.progressChapter ?: 0),
+            volume = (mu.userVolume ?: 0) to (current?.progressVolume ?: 0),
+            score = (null as Int?) to current?.rating,           // MangaUpdates has no score
+            start = (null as FuzzyDate?) to parseDestDate(current?.startDate),
+            end = (null as FuzzyDate?) to parseDestDate(current?.finishDate),
+        )
         return DiffEntry(
             title = mu.title ?: "",
             coverUrl = mu.coverUrl ?: current?.coverUrl(),
@@ -306,6 +410,9 @@ object ListCompare {
             progress = mu.userChapter,
             volume = mu.userVolume,
             score = null,
+            detail = detail,
+            fromStatusCanon = current?.let { mbToCanon(it.state) },
+            toStatusCanon = muListToCanon(mu.listId),
         )
     }
 
@@ -325,6 +432,8 @@ object ListCompare {
         progress = null,
         volume = null,
         score = null,
+        fromStatusCanon = mbToCanon(entry.state),
+        toStatusCanon = null,
         delete = true,
     )
 
@@ -336,12 +445,12 @@ object ListCompare {
     ): List<FieldDiff> {
         val fieldDiffs = mutableListOf<FieldDiff>()
         if (current == null) {
-            fieldDiffs += FieldDiff(DiffField.STATUS, DASH, expectedState)
+            fieldDiffs += FieldDiff(DiffField.STATUS, DASH, formatStatus(expectedState) ?: DASH)
             if (expectedChapter > 0)
                 fieldDiffs += FieldDiff(DiffField.PROGRESS, DASH, expectedChapter.toString())
         } else {
             if (current.state != expectedState)
-                fieldDiffs += FieldDiff(DiffField.STATUS, current.state ?: DASH, expectedState)
+                fieldDiffs += FieldDiff(DiffField.STATUS, formatStatus(current.state) ?: DASH, formatStatus(expectedState) ?: DASH)
             if ((current.progressChapter ?: 0) != expectedChapter)
                 fieldDiffs += FieldDiff(DiffField.PROGRESS, (current.progressChapter ?: 0).toString(), expectedChapter.toString())
             if (expectedVolume > 0 && (current.progressVolume ?: 0) != expectedVolume)
@@ -369,7 +478,8 @@ object ListCompare {
             Tracker.MAL -> {
                 MAL.query.editList(
                     entry.malId, entry.isAnime, entry.progress, entry.score,
-                    entry.status ?: "CURRENT", volume = entry.volume, force = true,
+                    entry.status ?: "CURRENT", volume = entry.volume,
+                    start = entry.startDate, end = entry.endDate, force = true,
                 )
                 true
             }
@@ -378,7 +488,7 @@ object ListCompare {
                     anilistId = entry.anilistId, malId = entry.malId, status = entry.status,
                     progressChapter = entry.progress, progressVolume = entry.volume,
                     score = entry.score, rereads = null, isPrivate = null,
-                    startDate = null, finishDate = null, force = true,
+                    startDate = entry.startDate, finishDate = entry.endDate, force = true,
                 )
             } else {
                 MangaBakaSync.syncFromMangaUpdates(
@@ -393,10 +503,106 @@ object ListCompare {
 
     private const val DASH = "—"
 
+    private fun FuzzyDate.isComplete(): Boolean = year != null && month != null && day != null
+
+    /** Parses a destination date (`YYYY-MM-DD` from MAL or an ISO date-time from MangaBaka). */
+    private fun parseDestDate(s: String?): FuzzyDate? {
+        val d = s?.take(10)?.takeIf { it.isNotBlank() } ?: return null
+        val p = d.split("-")
+        val y = p.getOrNull(0)?.toIntOrNull() ?: return null
+        return FuzzyDate(y, p.getOrNull(1)?.toIntOrNull(), p.getOrNull(2)?.toIntOrNull())
+    }
+
+    /** App-standard date display (e.g. "13 April 2026"), or null when unset. */
+    private fun FuzzyDate?.display(): String? = this?.takeIf { !it.isEmpty() }?.toStringOrEmpty()
+
+    /**
+     * A start/end date diff, emitted only when the AniList (source) date is complete (year+month+day)
+     * and differs from the destination's date. We never clear a date the source doesn't have, so an
+     * empty source date is ignored. Values are shown in the app's standard date format.
+     */
+    private fun dateDiff(field: DiffField, source: FuzzyDate, dest: String?): FieldDiff? {
+        if (!source.isComplete()) return null
+        val destDate = parseDestDate(dest)
+        if (source.toMALString() == (destDate?.toMALString() ?: "")) return null
+        return FieldDiff(field, destDate.display() ?: DASH, source.toStringOrEmpty())
+    }
+
+    /**
+     * Formats a POINT_100 score (0..100) in the viewer's AniList scoring system, so scores read the
+     * same as everywhere else in the app. Returns null when unset (0). Destination scores must be
+     * normalised to 0..100 before being passed here (MAL's 0..10 ×10; MangaBaka is already 0..100).
+     */
+    /** Readable status label: underscores to spaces, first letter capitalised (e.g. "plan_to_read"
+     *  → "Plan to read", "completed" → "Completed"). Null/blank stays null. */
+    private fun formatStatus(s: String?): String? =
+        s?.takeIf { it.isNotBlank() }?.replace('_', ' ')?.replaceFirstChar { it.uppercase() }
+
+    private fun formatScore(score100: Int?): String? {
+        val s = score100?.takeIf { it > 0 } ?: return null
+        return when (Anilist.scoreFormat) {
+            "POINT_100" -> s.toString()
+            "POINT_10" -> ((s + 5) / 10).coerceIn(1, 10).toString()
+            "POINT_5" -> ((s + 10) / 20).coerceIn(1, 5).toString() + "★"
+            "POINT_3" -> if (s <= 35) "🙁" else if (s <= 60) "😐" else "🙂"
+            else -> "${s / 10}.${s % 10}"   // POINT_10_DECIMAL and app default
+        }
+    }
+
+    /**
+     * Builds the ordered both-side field values shown when a diff row is expanded. Values are given
+     * in the destination's own vocabulary (e.g. MAL status words); scores are pre-normalised to the
+     * 0..100 scale and rendered in the viewer's scoring system. [source] of each pair is the value we
+     * would push, [dest] the current value. A 0 score / empty date shows as "not set" (null); when
+     * [onDest] is false the media isn't on the destination yet, so every dest value is "not set".
+     */
+    private fun buildDetail(
+        isAnime: Boolean,
+        diffs: Set<DiffField>,
+        onDest: Boolean,
+        status: Pair<String?, String?>,
+        progress: Pair<Int, Int>,
+        volume: Pair<Int, Int>?,
+        score: Pair<Int?, Int?>,
+        start: Pair<FuzzyDate?, FuzzyDate?>,
+        end: Pair<FuzzyDate?, FuzzyDate?>,
+    ): List<DetailRow> {
+        fun dst(v: String?) = if (onDest) v else null
+        return buildList {
+            add(DetailRow(DiffField.STATUS, formatStatus(status.first), dst(formatStatus(status.second)), DiffField.STATUS in diffs))
+            add(DetailRow(DiffField.PROGRESS, progress.first.toString(), dst(progress.second.toString()), DiffField.PROGRESS in diffs))
+            if (!isAnime && volume != null)
+                add(DetailRow(DiffField.VOLUME, volume.first.takeIf { it > 0 }?.toString(), dst(volume.second.takeIf { it > 0 }?.toString()), DiffField.VOLUME in diffs))
+            add(DetailRow(DiffField.SCORE, formatScore(score.first), dst(formatScore(score.second)), DiffField.SCORE in diffs))
+            add(DetailRow(DiffField.START_DATE, start.first.display(), dst(start.second.display()), DiffField.START_DATE in diffs))
+            add(DetailRow(DiffField.END_DATE, end.first.display(), dst(end.second.display()), DiffField.END_DATE in diffs))
+        }
+    }
+
     private fun empty() = SubsectionResult(SideStats(0, emptyMap()), SideStats(0, emptyMap()), emptyList())
 
     private fun statsOf(statuses: List<String>): SideStats =
         SideStats(statuses.size, statuses.groupingBy { it }.eachCount())
+
+    /**
+     * Returns [stats] updated for one successfully-synced [entry], so the destination totals can be
+     * refreshed in place without re-running the whole comparison. Moves the entry between status
+     * buckets for a status change, adds it (from `null`) for a new entry, and removes it (to `null`)
+     * for a deletion; a progress/score-only change leaves the buckets untouched.
+     */
+    fun applied(stats: SideStats, entry: DiffEntry): SideStats {
+        val perStatus = LinkedHashMap(stats.perStatus)
+        var total = stats.total
+        entry.fromStatusCanon?.let { s ->
+            perStatus[s] = (perStatus[s] ?: 1) - 1
+            if (entry.toStatusCanon == null) total--   // removed from the destination
+        }
+        entry.toStatusCanon?.let { s ->
+            perStatus[s] = (perStatus[s] ?: 0) + 1
+            if (entry.fromStatusCanon == null) total++ // added to the destination
+        }
+        return SideStats(total.coerceAtLeast(0), perStatus.filterValues { it > 0 })
+    }
 
     private fun MALListStatus?.rereading(isAnime: Boolean): Boolean =
         if (isAnime) this?.isRewatching == true else this?.isRereading == true

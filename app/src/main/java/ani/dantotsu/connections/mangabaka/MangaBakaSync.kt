@@ -269,9 +269,9 @@ object MangaBakaSync {
     )
 
     /**
-     * The user-specific state of a series in their MangaBaka library. The embedded [series] (and
-     * [seriesId]) are present on the list endpoint ("with series info"); unknown keys are ignored, so
-     * this parses whether or not they show up at runtime.
+     * The user-specific state of a series in their MangaBaka library. The list endpoint embeds the
+     * full series ("with series info") under the JSON key `Series` (capital S) alongside a top-level
+     * `series_id`; unknown keys are ignored, so this parses whether or not they show up at runtime.
      */
     @Serializable
     data class LibraryStateEntry(
@@ -279,8 +279,11 @@ object MangaBakaSync {
         @SerialName("progress_chapter") val progressChapter: Int? = null,
         @SerialName("progress_volume") val progressVolume: Int? = null,
         val rating: Int? = null,
+        // ISO-8601 date-time (e.g. "2026-07-05T00:00:00.000Z"); the date portion is what we compare.
+        @SerialName("start_date") val startDate: String? = null,
+        @SerialName("finish_date") val finishDate: String? = null,
         @SerialName("series_id") val seriesId: Long? = null,
-        val series: MangaBakaApi.Series? = null,
+        @SerialName("Series") val series: MangaBakaApi.Series? = null,
     ) {
         /** MangaBaka series id, taken from the top-level field or the embedded series object. */
         fun resolvedSeriesId(): Long? = seriesId ?: series?.id
