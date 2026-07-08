@@ -106,6 +106,14 @@ enum class PrefName(val data: Pref) {
     MalSyncExcludeList(Pref(Location.General, Set::class, setOf<String>())),
     HiddenFromLists(Pref(Location.General, Set::class, setOf<String>())),
 
+    // Info tab order/visibility per media context (indices into InfoTabContext.tabs)
+    InfoTabOrderAnilistAnime(Pref(Location.UI, List::class, listOf(0, 1))),
+    InfoTabVisibilityAnilistAnime(Pref(Location.UI, List::class, listOf(true, true))),
+    InfoTabOrderAnilistManga(Pref(Location.UI, List::class, listOf(0, 1, 2, 3, 4))),
+    InfoTabVisibilityAnilistManga(Pref(Location.UI, List::class, listOf(true, true, true, true, true))),
+    InfoTabOrderMangaUpdates(Pref(Location.UI, List::class, listOf(0, 1, 2))),
+    InfoTabVisibilityMangaUpdates(Pref(Location.UI, List::class, listOf(true, true, true))),
+
     //User Interface
     UseOLED(Pref(Location.UI, Boolean::class, false)),
     UseCustomTheme(Pref(Location.UI, Boolean::class, false)),

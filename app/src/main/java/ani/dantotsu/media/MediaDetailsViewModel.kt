@@ -63,6 +63,10 @@ class MediaDetailsViewModel : ViewModel() {
     val mangaBakaLoaded = MutableLiveData(false)
     val mangaBakaSeries = MutableLiveData<ani.dantotsu.connections.mangabaka.MangaBakaApi.Series?>(null)
 
+    // Guards the "found on AniList" prompt shown from MangaUpdates media when the MangaBaka tab
+    // is hidden, so it's only offered once per details screen instance.
+    var mangaBakaEquivalentPromptShown = false
+
     // Replace boolean flag with last preloaded media id to avoid cross-media cache issues
     private var lastPreloadedMediaId: Int? = null
 

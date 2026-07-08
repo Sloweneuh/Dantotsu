@@ -11,9 +11,10 @@ import ani.dantotsu.R
 import ani.dantotsu.connections.mangabaka.MangaBakaApi
 import ani.dantotsu.databinding.FragmentMediaInfoContainerBinding
 import ani.dantotsu.media.ComickInfoFragment
+import ani.dantotsu.media.InfoTabContext
+import ani.dantotsu.media.InfoTabType
 import ani.dantotsu.media.MediaDetailsViewModel
-import ani.dantotsu.settings.saving.PrefManager
-import ani.dantotsu.settings.saving.PrefName
+import ani.dantotsu.util.customAlertDialog
 import com.google.android.material.tabs.TabLayoutMediator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -48,19 +49,18 @@ class MUMediaInfoContainerFragment : Fragment() {
     private data class TabInfo(val type: String, val fragment: Fragment, val iconRes: Int)
     private var tabs: List<TabInfo> = emptyList()
 
+    private fun createTabFragment(type: InfoTabType): Fragment = when (type) {
+        InfoTabType.MANGAUPDATES -> MUMediaInfoFragment()
+        InfoTabType.COMICK -> ComickInfoFragment()
+        InfoTabType.MANGABAKA -> ani.dantotsu.media.MangaBakaInfoFragment()
+        InfoTabType.ANILIST, InfoTabType.MAL -> error("$type is not a MangaUpdates info tab")
+    }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         val model: MediaDetailsViewModel by activityViewModels()
-        val comickEnabled = PrefManager.getVal<Boolean>(PrefName.ComickEnabled)
-        val mangaBakaEnabled = PrefManager.getVal<Boolean>(PrefName.MangaBakaInfoEnabled)
 
-        tabs = buildList {
-            add(TabInfo("mangaupdates", MUMediaInfoFragment(), R.drawable.ic_round_mangaupdates_24))
-            if (comickEnabled) {
-                add(TabInfo("comick", ComickInfoFragment(), R.drawable.ic_round_comick_24))
-            }
-            if (mangaBakaEnabled) {
-                add(TabInfo("mangabaka", ani.dantotsu.media.MangaBakaInfoFragment(), R.drawable.ic_round_mangabaka_24))
-            }
+        tabs = InfoTabContext.MANGAUPDATES_MANGA.visibleOrderedTabs().map { type ->
+            TabInfo(type.key, createTabFragment(type), type.iconRes)
         }
 
         val adapter = object : androidx.viewpager2.adapter.FragmentStateAdapter(
@@ -74,6 +74,39 @@ class MUMediaInfoContainerFragment : Fragment() {
         binding.mediaInfoViewPager.isUserInputEnabled = false
         // Only load adjacent pages to reduce unnecessary API calls
         binding.mediaInfoViewPager.offscreenPageLimit = 1
+
+        // preloadExternalData isn't run in the MangaUpdates activity, so fetch the MangaBaka series
+        // here (once, as soon as the media is available). The source route embeds the full object,
+        // so this both drives tab dimming *before the tab is opened* and is reused by the info
+        // fragment — observing (rather than reading .value once) avoids missing a media set later.
+        // Gated only on the connection being enabled, not on whether the MangaBaka tab is
+        // actually visible (checked further down, before the early return below): an AniList
+        // equivalent must still be found and offered even when the user has hidden the tab.
+        if (InfoTabType.MANGABAKA.fetchEnabled) {
+            var mbStarted = false
+            model.getMedia().observe(viewLifecycleOwner) { media ->
+                if (media != null && !mbStarted && model.mangaBakaLoaded.value != true) {
+                    mbStarted = true
+                    viewLifecycleOwner.lifecycleScope.launch {
+                        val series = withContext(Dispatchers.IO) {
+                            MangaBakaApi.getSeriesForMedia(media.muSeriesId, media.id, media.idMAL)
+                        }
+                        model.mangaBakaSeries.postValue(series)
+                        model.mangaBakaId.postValue(series?.id)
+                        model.mangaBakaLoaded.postValue(true)
+
+                        val anilistId = series?.source?.anilist?.id
+                        val mangaBakaTabVisible = tabs.any { it.type == InfoTabType.MANGABAKA.key }
+                        if (anilistId != null && anilistId > 0 && !mangaBakaTabVisible &&
+                            !model.mangaBakaEquivalentPromptShown
+                        ) {
+                            model.mangaBakaEquivalentPromptShown = true
+                            showAnilistEquivalentDialog(anilistId)
+                        }
+                    }
+                }
+            }
+        }
 
         if (tabs.size <= 1) {
             binding.mediaInfoTabLayout.visibility = View.GONE
@@ -122,26 +155,20 @@ class MUMediaInfoContainerFragment : Fragment() {
         model.comickLoaded.observe(viewLifecycleOwner) { applyTabAlpha(model) }
         model.mangaBakaId.observe(viewLifecycleOwner) { applyTabAlpha(model) }
         model.mangaBakaLoaded.observe(viewLifecycleOwner) { applyTabAlpha(model) }
+    }
 
-        // preloadExternalData isn't run in the MangaUpdates activity, so fetch the MangaBaka series
-        // here (once, as soon as the media is available). The source route embeds the full object,
-        // so this both drives tab dimming *before the tab is opened* and is reused by the info
-        // fragment — observing (rather than reading .value once) avoids missing a media set later.
-        if (mangaBakaEnabled) {
-            var mbStarted = false
-            model.getMedia().observe(viewLifecycleOwner) { media ->
-                if (media != null && !mbStarted && model.mangaBakaLoaded.value != true) {
-                    mbStarted = true
-                    viewLifecycleOwner.lifecycleScope.launch {
-                        val series = withContext(Dispatchers.IO) {
-                            MangaBakaApi.getSeriesForMedia(media.muSeriesId, media.id, media.idMAL)
-                        }
-                        model.mangaBakaSeries.postValue(series)
-                        model.mangaBakaId.postValue(series?.id)
-                        model.mangaBakaLoaded.postValue(true)
-                    }
-                }
+    private fun showAnilistEquivalentDialog(anilistId: Int) {
+        val ctx = context ?: return
+        ctx.customAlertDialog().apply {
+            setTitle(getString(R.string.anilist_equivalent_found_title))
+            setMessage(getString(R.string.anilist_equivalent_found_desc))
+            setPosButton(R.string.view_on_anilist) {
+                val intent = android.content.Intent(ctx, ani.dantotsu.media.MediaDetailsActivity::class.java)
+                intent.putExtra("mediaId", anilistId)
+                startActivity(intent)
             }
+            setNegButton(R.string.cancel, null)
+            show()
         }
     }
 

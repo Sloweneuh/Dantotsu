@@ -58,6 +58,10 @@
     <string name="malsync_checks_desc">Vérifications : %1$s</string>
     <string name="malsync_exclude_manage">Gérer les exclusions MALSync</string>
     <string name="malsync_exclude_manage_desc">Médias exclus des vérifications de chapitres / épisodes non lus</string>
+    <string name="customize_info_tabs">Ordre des onglets d\'infos</string>
+    <string name="customize_info_tabs_desc">Réorganiser et afficher/masquer les onglets d\'infos pour AniList anime, AniList manga et MangaUpdates manga</string>
+    <string name="anilist_equivalent_found_title">Correspondance AniList trouvée</string>
+    <string name="anilist_equivalent_found_desc">Ce manga possède également une entrée correspondante sur AniList. Souhaitez-vous plutôt la consulter là-bas ?</string>
     <string name="malsync_exclude_empty">Aucune exclusion définie</string>
     <string name="malsync_exclude_remove_selected">Retirer la sélection</string>
     <string name="malsync_disabled_home">MALSync désactivé — activez MALSync dans Connexions pour voir les chapitres non lus</string>
@@ -479,6 +483,8 @@
     <string name="mangabaka_no_data_title">Aucune correspondance MangaBaka</string>
     <string name="mangabaka_no_data_desc">Cette entrée n\'a pas pu être associée à une série MangaBaka</string>
     <string name="open_on_mangabaka">Ouvrir sur MangaBaka</string>
+    <string name="mangabaka_year_from">De l\'année</string>
+    <string name="mangabaka_year_to">À l\'année</string>
     <string name="rank">Classement</string>
     <string name="origin">Origine</string>
     <string name="final_volume_label">Volume final</string>

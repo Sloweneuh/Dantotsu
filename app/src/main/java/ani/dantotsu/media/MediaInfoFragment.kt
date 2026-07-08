@@ -12,8 +12,6 @@ import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import ani.dantotsu.databinding.FragmentMediaInfoContainerBinding
-import ani.dantotsu.settings.saving.PrefManager
-import ani.dantotsu.settings.saving.PrefName
 import com.google.android.material.tabs.TabLayoutMediator
 
 class MediaInfoFragment : Fragment() {
@@ -58,29 +56,12 @@ class MediaInfoFragment : Fragment() {
                 // Setup ViewPager - show tabs depending on media type and enabled connections
                 val isAnime = media.anime != null
 
-                // Build list of tabs dynamically according to user connection settings
-                val tabsMutable = mutableListOf<TabInfo>()
-                // AniList always present
-                tabsMutable.add(TabInfo("anilist", AniListInfoFragment(), ani.dantotsu.R.drawable.ic_anilist))
-                // MAL tab is optional based on settings
-                if (PrefManager.getVal<Boolean>(PrefName.MalEnabled)) {
-                    tabsMutable.add(TabInfo("mal", MALInfoFragment(), ani.dantotsu.R.drawable.ic_myanimelist))
+                // Build list of tabs according to the user's saved order/visibility for this
+                // media context (falls back to fetch-enabled connections only)
+                val tabContext = if (isAnime) InfoTabContext.ANILIST_ANIME else InfoTabContext.ANILIST_MANGA
+                tabs = tabContext.visibleOrderedTabs().map { type ->
+                    TabInfo(type.key, createTabFragment(type), type.iconRes)
                 }
-
-                if (!isAnime) {
-                    if (PrefManager.getVal<Boolean>(PrefName.ComickEnabled)) {
-                        tabsMutable.add(TabInfo("comick", ComickInfoFragment(), ani.dantotsu.R.drawable.ic_round_comick_24))
-                    }
-                    if (PrefManager.getVal<Boolean>(PrefName.MangaUpdatesEnabled)) {
-                        tabsMutable.add(TabInfo("mangaupdates", MangaUpdatesInfoFragment(), ani.dantotsu.R.drawable.ic_round_mangaupdates_24))
-                    }
-                    if (PrefManager.getVal<Boolean>(PrefName.MangaBakaInfoEnabled)) {
-                        tabsMutable.add(TabInfo("mangabaka", MangaBakaInfoFragment(), ani.dantotsu.R.drawable.ic_round_mangabaka_24))
-                    }
-                }
-
-                // Promote to class-level list for other methods to use
-                tabs = tabsMutable.toList()
 
                 val adapter = object : androidx.viewpager2.adapter.FragmentStateAdapter(childFragmentManager, viewLifecycleOwner.lifecycle) {
                     override fun getItemCount(): Int = tabs.size
@@ -193,26 +174,26 @@ class MediaInfoFragment : Fragment() {
         }
     }
 
+    private fun createTabFragment(type: InfoTabType): Fragment = when (type) {
+        InfoTabType.ANILIST -> AniListInfoFragment()
+        InfoTabType.MAL -> MALInfoFragment()
+        InfoTabType.COMICK -> ComickInfoFragment()
+        InfoTabType.MANGAUPDATES -> MangaUpdatesInfoFragment()
+        InfoTabType.MANGABAKA -> MangaBakaInfoFragment()
+    }
+
     private fun handleTabLongClick(
             position: Int,
             model: MediaDetailsViewModel,
             media: Media
     ): Boolean {
         val isAnime = media.anime != null
-
-        // Build tab types dynamically (same order as setupTabs) so indexes match enabled tabs
-        val tabTypes = mutableListOf<String>()
-        tabTypes.add("anilist")
-        if (PrefManager.getVal<Boolean>(PrefName.MalEnabled)) tabTypes.add("mal")
-        if (!isAnime && PrefManager.getVal<Boolean>(PrefName.ComickEnabled)) tabTypes.add("comick")
-        if (!isAnime && PrefManager.getVal<Boolean>(PrefName.MangaUpdatesEnabled)) tabTypes.add("mangaupdates")
-        if (!isAnime && PrefManager.getVal<Boolean>(PrefName.MangaBakaInfoEnabled)) tabTypes.add("mangabaka")
-
-        val type = tabTypes.getOrNull(position) ?: return false
+        val tabContext = if (isAnime) InfoTabContext.ANILIST_ANIME else InfoTabContext.ANILIST_MANGA
+        val type = tabContext.visibleOrderedTabs().getOrNull(position) ?: return false
 
         val url = when (type) {
-            "anilist" -> "https://anilist.co/${if (isAnime) "anime" else "manga"}/${media.id}"
-            "mal" -> {
+            InfoTabType.ANILIST -> "https://anilist.co/${if (isAnime) "anime" else "manga"}/${media.id}"
+            InfoTabType.MAL -> {
                 val mediaType = if (isAnime) "anime" else "manga"
                 if (media.idMAL != null) {
                     "https://myanimelist.net/$mediaType/${media.idMAL}"
@@ -220,7 +201,7 @@ class MediaInfoFragment : Fragment() {
                     "https://myanimelist.net/$mediaType.php?q=${java.net.URLEncoder.encode(media.userPreferredName, "utf-8")}&cat=$mediaType"
                 }
             }
-            "comick" -> {
+            InfoTabType.COMICK -> {
                 val comickSlug = model.comickSlug.value
                 if (comickSlug != null) {
                     "https://comick.dev/comic/$comickSlug"
@@ -228,7 +209,7 @@ class MediaInfoFragment : Fragment() {
                     "https://comick.dev/search?q=${java.net.URLEncoder.encode(media.userPreferredName, "utf-8").replace("+", "%20") }"
                 }
             }
-            "mangaupdates" -> {
+            InfoTabType.MANGAUPDATES -> {
                 val muLink = model.mangaUpdatesLink.value
                 if (muLink != null) muLink
                 else {
@@ -236,7 +217,7 @@ class MediaInfoFragment : Fragment() {
                     "https://www.mangaupdates.com/series?search=$encoded"
                 }
             }
-            "mangabaka" -> {
+            InfoTabType.MANGABAKA -> {
                 val id = model.mangaBakaId.value
                 if (id != null && id > 0) "https://mangabaka.org/$id"
                 else {
@@ -244,7 +225,6 @@ class MediaInfoFragment : Fragment() {
                     "https://mangabaka.org/search?q=$encoded"
                 }
             }
-            else -> return false
         }
 
         startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
@@ -255,22 +235,17 @@ class MediaInfoFragment : Fragment() {
         val isAnime = media.anime != null
         if (isAnime) return
 
-        // Build a list of tab types in current order to compute alpha states
-        val tabTypes = mutableListOf<String>()
-        tabTypes.add("anilist")
-        if (PrefManager.getVal<Boolean>(PrefName.MalEnabled)) tabTypes.add("mal")
-        if (PrefManager.getVal<Boolean>(PrefName.ComickEnabled)) tabTypes.add("comick")
-        if (PrefManager.getVal<Boolean>(PrefName.MangaUpdatesEnabled)) tabTypes.add("mangaupdates")
-        if (PrefManager.getVal<Boolean>(PrefName.MangaBakaInfoEnabled)) tabTypes.add("mangabaka")
+        // Tab types in current display order to compute alpha states
+        val tabTypes = InfoTabContext.ANILIST_MANGA.visibleOrderedTabs()
 
         for (i in 0 until binding.mediaInfoTabLayout.tabCount) {
             val tab = binding.mediaInfoTabLayout.getTabAt(i) ?: continue
-            val type = tabTypes.getOrNull(i) ?: ""
+            val type = tabTypes.getOrNull(i)
             val alpha = when (type) {
-                "anilist" -> 1.0f
-                "mal" -> if (media.idMAL != null) 1.0f else 0.4f
-                "comick" -> if (model.comickSlug.value != null) 1.0f else 0.4f
-                "mangaupdates" -> {
+                InfoTabType.ANILIST -> 1.0f
+                InfoTabType.MAL -> if (media.idMAL != null) 1.0f else 0.4f
+                InfoTabType.COMICK -> if (model.comickSlug.value != null) 1.0f else 0.4f
+                InfoTabType.MANGAUPDATES -> {
                     val isLoading = model.mangaUpdatesLoading.value == true
                     val hasData = model.mangaUpdatesLink.value != null
                     when {
@@ -279,7 +254,7 @@ class MediaInfoFragment : Fragment() {
                         else -> 0.4f
                     }
                 }
-                "mangabaka" -> {
+                InfoTabType.MANGABAKA -> {
                     val resolved = model.mangaBakaLoaded.value == true
                     val hasData = (model.mangaBakaId.value ?: 0L) > 0L
                     when {
@@ -288,7 +263,7 @@ class MediaInfoFragment : Fragment() {
                         else -> 0.6f
                     }
                 }
-                else -> 0.4f
+                null -> 0.4f
             }
             tab.view.alpha = alpha
         }

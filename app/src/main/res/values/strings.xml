@@ -285,6 +285,10 @@
     <string name="malsync_checks_desc">Checks: %1$s</string>
     <string name="malsync_exclude_manage">Manage MALSync Exclusions</string>
     <string name="malsync_exclude_manage_desc">Media excluded from unread chapter / episode checks</string>
+    <string name="customize_info_tabs">Info Tab Order</string>
+    <string name="customize_info_tabs_desc">Reorder and show/hide info tabs for AniList anime, AniList manga and MangaUpdates manga</string>
+    <string name="anilist_equivalent_found_title">AniList Match Found</string>
+    <string name="anilist_equivalent_found_desc">This manga also has a matching entry on AniList. Would you like to view it there instead?</string>
     <string name="malsync_exclude_empty">No exclusions set</string>
     <string name="malsync_exclude_remove_selected">Remove Selected</string>
     <string name="extension_settings">Extensions</string>

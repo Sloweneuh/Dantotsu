@@ -11,6 +11,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import ani.dantotsu.R
 import ani.dantotsu.databinding.ActivitySettingsConnectionsBinding
 import ani.dantotsu.initActivity
+import ani.dantotsu.media.InfoTabContext
 import ani.dantotsu.others.CustomBottomDialog
 import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.navBarHeight
@@ -186,7 +187,14 @@ class SettingsConnectionsActivity : AppCompatActivity() {
                 desc = getString(R.string.malsync_exclude_manage_desc),
                 icon = R.drawable.ic_malsync,
                 onClick = { showMalSyncExcludeDialog() },
-            )
+            ),
+            Settings(
+                type = 1,
+                name = getString(R.string.customize_info_tabs),
+                desc = getString(R.string.customize_info_tabs_desc),
+                icon = R.drawable.ic_round_equal_24,
+                onClick = { openInfoTabOrderDialog() },
+            ),
         )
 
         binding.connectionsRecyclerView.adapter = SettingsAdapter(settingsList)
@@ -198,5 +206,127 @@ class SettingsConnectionsActivity : AppCompatActivity() {
             PrefName.MalSyncExcludeList,
             getString(R.string.malsync_exclude_manage)
         ).show(supportFragmentManager, "malSyncExclude")
+    }
+
+    /**
+     * Opens one dialog covering all three [InfoTabContext]s (AniList anime, AniList manga,
+     * MangaUpdates manga) from a single button. A [TabLayout] selector switches which context's
+     * list is shown; each is a full-width, vertically drag-to-reorder list (same row style as
+     * [UserInterfaceSettingsActivity]'s home-layout reorder) so touch targets stay comfortable
+     * regardless of how many tabs a context has. All three lists are built up front so switching
+     * the selector doesn't lose in-progress edits in the other sections; everything is committed
+     * together on OK.
+     *
+     * The checkbox only controls whether the tab appears - it does not affect whether the
+     * underlying connection's data fetching runs (see [ani.dantotsu.media.InfoTabType.fetchEnabled]).
+     * Connections disabled via their switch above are left out of the list entirely, since there's
+     * nothing to show or reorder for them.
+     */
+    private fun openInfoTabOrderDialog() {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_info_tab_order, null)
+        val tabLayout = dialogView.findViewById<com.google.android.material.tabs.TabLayout>(R.id.infoTabContextTabs)
+        val recycler = dialogView.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.infoTabRecycler)
+        recycler.layoutManager = LinearLayoutManager(this)
+
+        val sections = listOf(
+            InfoTabContext.ANILIST_ANIME to getString(R.string.anime),
+            InfoTabContext.ANILIST_MANGA to getString(R.string.manga),
+            InfoTabContext.MANGAUPDATES_MANGA to getString(R.string.mangaupdates),
+        )
+        val adapters = sections.associate { (tabContext, _) -> tabContext to buildInfoTabAdapter(tabContext) }
+
+        var touchHelper: androidx.recyclerview.widget.ItemTouchHelper? = null
+        fun showSection(tabContext: InfoTabContext) {
+            touchHelper?.attachToRecyclerView(null)
+            val adapter = adapters.getValue(tabContext)
+            recycler.adapter = adapter
+            touchHelper = attachReorderTouchHelper(recycler, adapter)
+        }
+
+        sections.forEach { (_, label) -> tabLayout.addTab(tabLayout.newTab().setText(label)) }
+        tabLayout.addOnTabSelectedListener(object : com.google.android.material.tabs.TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: com.google.android.material.tabs.TabLayout.Tab) {
+                showSection(sections[tab.position].first)
+            }
+            override fun onTabUnselected(tab: com.google.android.material.tabs.TabLayout.Tab) {}
+            override fun onTabReselected(tab: com.google.android.material.tabs.TabLayout.Tab) {}
+        })
+        showSection(sections.first().first)
+
+        customAlertDialog().apply {
+            setTitle(R.string.customize_info_tabs)
+            setCustomView(dialogView)
+            setPosButton(R.string.ok) {
+                adapters.forEach { (tabContext, adapter) -> saveInfoTabOrder(tabContext, adapter) }
+            }
+            setNegButton(R.string.cancel, null)
+            show()
+        }
+    }
+
+    /**
+     * Builds one [InfoTabContext]'s fetch-enabled tabs, in saved order, as an [InfoTabOrderAdapter].
+     * Tabs whose connection switch is off are left out entirely - there's nothing to show or
+     * reorder for a connection that never fetches data.
+     */
+    private fun buildInfoTabAdapter(tabContext: InfoTabContext): InfoTabOrderAdapter {
+        val tabs = tabContext.tabs
+        val order = tabContext.savedOrder()
+        val visibility = tabContext.savedVisibility()
+
+        val items = order
+            .filter { tabs[it].fetchEnabled }
+            .map { originalIndex ->
+                InfoTabOrderItem(
+                    originalIndex,
+                    getString(tabs[originalIndex].labelRes),
+                    tabs[originalIndex].iconRes,
+                    visibility.getOrNull(originalIndex) == true
+                )
+            }.toMutableList()
+
+        return InfoTabOrderAdapter(items)
+    }
+
+    /** Wires up/down drag-to-reorder for [adapter] on [recycler]; returns the helper so it can be detached later. */
+    private fun attachReorderTouchHelper(
+        recycler: androidx.recyclerview.widget.RecyclerView,
+        adapter: InfoTabOrderAdapter
+    ): androidx.recyclerview.widget.ItemTouchHelper {
+        val callback = object : androidx.recyclerview.widget.ItemTouchHelper.SimpleCallback(
+            androidx.recyclerview.widget.ItemTouchHelper.UP or androidx.recyclerview.widget.ItemTouchHelper.DOWN,
+            0
+        ) {
+            override fun onMove(
+                rv: androidx.recyclerview.widget.RecyclerView,
+                vh: androidx.recyclerview.widget.RecyclerView.ViewHolder,
+                target: androidx.recyclerview.widget.RecyclerView.ViewHolder
+            ): Boolean {
+                adapter.onItemMove(vh.bindingAdapterPosition, target.bindingAdapterPosition)
+                return true
+            }
+
+            override fun onSwiped(viewHolder: androidx.recyclerview.widget.RecyclerView.ViewHolder, direction: Int) {}
+        }
+        return androidx.recyclerview.widget.ItemTouchHelper(callback).apply { attachToRecyclerView(recycler) }
+    }
+
+    /**
+     * Persists [tabContext]'s order/visibility from the dialog's final state. Fetch-disabled tabs
+     * were never shown in [adapter], so they're appended after the reordered visible ones in their
+     * previous relative order - their position doesn't matter since they're filtered out of
+     * [InfoTabContext.visibleOrderedTabs] regardless.
+     */
+    private fun saveInfoTabOrder(tabContext: InfoTabContext, adapter: InfoTabOrderAdapter) {
+        val tabs = tabContext.tabs
+        val finalItems = adapter.getItems()
+        val visibleIds = finalItems.map { it.id }
+        val hiddenIds = tabContext.savedOrder().filterNot { it in visibleIds }
+        val newOrder = visibleIds + hiddenIds
+        val newVisibility = MutableList(tabs.size) { i ->
+            finalItems.find { it.id == i }?.visible ?: true
+        }
+        PrefManager.setVal(tabContext.orderPref, newOrder)
+        PrefManager.setVal(tabContext.visibilityPref, newVisibility)
     }
 }
