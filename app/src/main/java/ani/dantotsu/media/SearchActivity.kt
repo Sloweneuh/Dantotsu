@@ -429,6 +429,7 @@ class SearchActivity : AppCompatActivity() {
                         val prev = model.aniMangaSearchResults.results.size
                         model.aniMangaSearchResults.results.addAll(it.results)
                         mediaAdaptor.notifyItemRangeInserted(prev, it.results.size)
+                        if (prev == 0) binding.searchRecyclerView.scrollToPosition(0)
 
                         progressAdapter.bar?.isVisible = it.hasNextPage
                     }
@@ -447,6 +448,7 @@ class SearchActivity : AppCompatActivity() {
                         val prev = model.characterSearchResults.results.size
                         model.characterSearchResults.results.addAll(it.results)
                         characterAdaptor.notifyItemRangeInserted(prev, it.results.size)
+                        if (prev == 0) binding.searchRecyclerView.scrollToPosition(0)
 
                         progressAdapter.bar?.isVisible = it.hasNextPage
                     }
@@ -465,6 +467,7 @@ class SearchActivity : AppCompatActivity() {
                         val prev = model.studioSearchResults.results.size
                         model.studioSearchResults.results.addAll(it.results)
                         studioAdaptor.notifyItemRangeInserted(prev, it.results.size)
+                        if (prev == 0) binding.searchRecyclerView.scrollToPosition(0)
 
                         progressAdapter.bar?.isVisible = it.hasNextPage
                     }
@@ -483,6 +486,7 @@ class SearchActivity : AppCompatActivity() {
                         val prev = model.staffSearchResults.results.size
                         model.staffSearchResults.results.addAll(it.results)
                         staffAdaptor.notifyItemRangeInserted(prev, it.results.size)
+                        if (prev == 0) binding.searchRecyclerView.scrollToPosition(0)
 
                         progressAdapter.bar?.isVisible = it.hasNextPage
                     }
@@ -501,6 +505,7 @@ class SearchActivity : AppCompatActivity() {
                         val prev = model.userSearchResults.results.size
                         model.userSearchResults.results.addAll(it.results)
                         usersAdapter.notifyItemRangeInserted(prev, it.results.size)
+                        if (prev == 0) binding.searchRecyclerView.scrollToPosition(0)
 
                         progressAdapter.bar?.isVisible = it.hasNextPage
                     }
@@ -527,6 +532,7 @@ class SearchActivity : AppCompatActivity() {
                         val prev = model.muSearchResults.results.size
                         model.muSearchResults.results.addAll(it.results)
                         muSearchAdaptor.notifyItemRangeInserted(prev, it.results.size)
+                        if (prev == 0) binding.searchRecyclerView.scrollToPosition(0)
                         progressAdapter.bar?.isVisible = it.hasNextPage
                     } else {
                         progressAdapter.bar?.isVisible = false
@@ -548,6 +554,7 @@ class SearchActivity : AppCompatActivity() {
                         val prev = model.comickSearchResults.results.size
                         model.comickSearchResults.results.addAll(it.results)
                         comickSearchAdaptor.notifyItemRangeInserted(prev, it.results.size)
+                        if (prev == 0) binding.searchRecyclerView.scrollToPosition(0)
                         progressAdapter.bar?.isVisible = it.hasNextPage
                     } else {
                         progressAdapter.bar?.isVisible = false
@@ -580,6 +587,7 @@ class SearchActivity : AppCompatActivity() {
                         val prev = model.mangaBakaSearchResults.results.size
                         model.mangaBakaSearchResults.results.addAll(it.results)
                         mangaBakaSearchAdaptor.notifyItemRangeInserted(prev, it.results.size)
+                        if (prev == 0) binding.searchRecyclerView.scrollToPosition(0)
                         progressAdapter.bar?.isVisible = it.hasNextPage
                     } else {
                         progressAdapter.bar?.isVisible = false
