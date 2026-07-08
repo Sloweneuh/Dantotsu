@@ -192,6 +192,14 @@
         \n\n L\'API MangaUpdates est bien plus limitée que celle d\'Anilist, certaines fonctionnalités peuvent donc être plus lentes ou plus limitées que sur le site MangaUpdates.
         \n\n *Notez que l\'intégration MangaUpdates est optionnelle et n\'ajoute des fonctionnalités supplémentaires que pour les mangas. Dantotsu continuera à fonctionner parfaitement sans connexion à MangaUpdates.*
     </string>
+    <string name="mangabaka_account_help">Comment fonctionne MangaBaka \?</string>
+    <string name="full_mangabaka_account_help">
+        MangaBaka est une base de données multi-sources qui relie les titres entre Anilist, MangaUpdates et MyAnimeList. Se connecter avec votre compte MangaBaka ajoute les fonctionnalités suivantes :
+        \n - Envoyer vos mises à jour de listes Anilist et MangaUpdates vers votre bibliothèque MangaBaka — configurez cela dans **Synchronisation des listes MangaBaka**, dans les paramètres **Synchronisation des listes**
+        \n - Comparer vos listes entre services et repérer les entrées obsolètes
+        \n\n La connexion n\'est pas nécessaire pour l\'onglet d\'informations MangaBaka ni pour la liaison multi-sources entre Anilist, MangaUpdates et MyAnimeList — celles-ci fonctionnent via l\'API publique MangaBaka, connecté ou non (voir le bouton **MangaBaka** dans les paramètres **Connexions**).
+        \n\n *Notez que la connexion à MangaBaka est optionnelle et n\'ajoute que la synchronisation et la comparaison de listes. Dantotsu continuera à fonctionner parfaitement sans connexion à MangaBaka.*
+    </string>
     <string name="connections_settings">Connexions</string>
     <string name="connections_desc">Activer ou désactiver les connexions externes et les onglets d\'information</string>
     <string name="disable_comick">Activer Comick</string>
@@ -200,11 +208,9 @@
     <string name="disable_mal_desc">Activer ou désactiver la récupération des données MAL et l\'onglet MAL</string>
     <string name="mal_connections_help">Comment fonctionne le bouton MAL ?</string>
     <string name="full_mal_connections_help">
-        Activer MAL ajoute les fonctionnalités suivantes :
-        \n - **Onglet MAL** — un onglet d\'informations supplémentaire dans les détails du contenu avec des données propres à MAL (scores, genres, staff, recommandations, etc.)
-        \n - **Stacks MAL** — informations supplémentaires affichées sur l\'écran d\'accueil basées sur votre liste MAL
-        \n\n **Désactiver MAL masque uniquement l\'onglet MAL et les stacks. Cela ne désactive PAS la synchronisation de la progression.**
-        \n\n La synchronisation de la progression vers votre compte MAL est contrôlée séparément — connectez votre compte MAL dans les paramètres **Comptes** et la synchronisation se fait automatiquement en parallèle de votre activité Anilist.
+        Activer MAL ajoute un **onglet MAL** — un onglet d\'informations supplémentaire dans les détails du contenu avec des données propres à MAL (scores, genres, staff, recommandations, avis, etc.), récupérées anonymement via l\'API publique Jikan.
+        \n\n Aucun compte MAL n\'est requis pour cet onglet. **Désactiver MAL arrête tous les appels à l\'API Jikan et retire MAL du sélecteur d\'onglets (Connexions \> Ordre des onglets d\'infos). Cela ne désactive PAS la synchronisation de la progression.**
+        \n\n La synchronisation de la progression vers votre compte MAL est contrôlée séparément — connectez votre compte MAL dans les paramètres **Comptes**, puis activez la **Synchronisation des listes MyAnimeList** dans les paramètres **Synchronisation des listes** pour envoyer vos mises à jour de liste Anilist vers MAL.
     </string>
     <string name="disable_mangaupdates">Activer MangaUpdates</string>
     <string name="disable_mangaupdates_desc">Activer ou désactiver la récupération des données MangaUpdates et l\'onglet MangaUpdates</string>
@@ -227,10 +233,22 @@
         Comick est un agrégateur de mangas que Dantotsu utilise pour enrichir les entrées manga avec des données supplémentaires.
         \n\n Activer Comick ajoute les fonctionnalités suivantes :
         \n - **Onglet Comick** — un onglet d\'informations supplémentaire dans les détails manga avec données de chapitres et illustrations depuis Comick
-        \n - **Liaison MangaUpdates** — les données Comick sont utilisées pour trouver et lier automatiquement la série MangaUpdates correspondante
+        \n - **Liaison MangaUpdates de secours** — la correspondance croisée de MangaBaka est essayée en premier ; si elle ne trouve pas de correspondance MangaUpdates, les données Comick sont utilisées à la place pour trouver et lier la série MangaUpdates correspondante
         \n - **Images de couverture** — des couvertures alternatives ou en haute résolution peuvent être récupérées depuis Comick
+        \n - **Raccourci de recherche rapide** — un bouton de recherche Comick dans la fiche de recherche rapide
         \n\n Aucun compte Comick n\'est requis. Toutes les données sont récupérées anonymement via l\'API publique de Comick. **L\'API de Comick ne prend pas en charge les opérations de compte.**
-        \n\n *Désactiver Comick masque l\'onglet Comick et arrête toute récupération de données associée. La liaison automatique avec MangaUpdates sera également désactivée.*
+        \n\n *Désactiver Comick arrête toute récupération de données associée et retire Comick du sélecteur d\'onglets (Connexions \> Ordre des onglets d\'infos). La liaison MangaUpdates de secours décrite ci-dessus sera également désactivée.*
+    </string>
+    <string name="mangabaka_connections_help">Comment fonctionne MangaBaka ?</string>
+    <string name="full_mangabaka_connections_help">
+        MangaBaka est une base de données multi-sources que Dantotsu utilise pour recouper et enrichir les entrées manga.
+        \n\n Activer MangaBaka ajoute les fonctionnalités suivantes :
+        \n - **Onglet MangaBaka** — un onglet d\'informations supplémentaire dans les détails manga avec les données de la série, les tags et les titres liés provenant de MangaBaka
+        \n - **Liaison multi-sources** — la correspondance d\'identifiants de MangaBaka relie les entrées AniList, MangaUpdates et MyAnimeList à la même série
+        \n - **Alertes de correspondance AniList** — en consultant une entrée MangaUpdates, si MangaBaka trouve une entrée AniList correspondante, il vous sera proposé de l\'ouvrir, même si l\'onglet MangaBaka lui-même est masqué
+        \n - **Raccourci de recherche rapide** — un bouton de recherche MangaBaka dans la fiche de recherche rapide
+        \n\n Aucun compte MangaBaka n\'est requis pour tout cela — les données sont récupérées anonymement via l\'API publique de MangaBaka. La connexion à un compte MangaBaka pour la synchronisation des listes se configure séparément dans les paramètres **Synchronisation des listes**.
+        \n\n *Désactiver MangaBaka masque l\'onglet MangaBaka, arrête toutes les recherches et liaisons multi-sources associées, le retire du sélecteur d\'onglets (Connexions \> Ordre des onglets d\'infos), et désactive l\'alerte de correspondance AniList sur les médias MangaUpdates.*
     </string>
     <string name="switch_to_anilist_message">Ce média MangaUpdates a un équivalent sur Anilist. Voulez-vous ouvrir le média ?</string>
     <string name="malsync_connections_help">Comment fonctionne MALSync ?</string>
@@ -1200,20 +1218,17 @@
     <string name="timestamp_proxy_desc">Utile si vous obtenez des échecs de Handshake</string>
     <string name="account_help">Comment ça marche \?</string>
     <string name="full_account_help">
-        Dantotsu est une application basée sur Anilist, donc pour la synchronisation avec votre compte MAL, elle nécessite qu\'un compte Anilist soit connecté.
-        \nUne fois connecté avec les comptes Anilist et MAL, l\'application mettra automatiquement à jour votre compte MAL chaque fois que :
-        \n- Vous ajoutez un nouveau média
-        \n- Vous éditez un média
-        \n- Vous supprimez un média
-        
-        \n\nNote : L\'application ne synchronisera pas les anciens médias d\'Anilist vers MAL, il est recommandé de les synchroniser.
+        Dantotsu est une application basée sur Anilist, donc connecter un compte MAL nécessite qu\'un compte Anilist soit d\'abord connecté.
+        \n\nUne fois connecté avec les deux comptes, activez la **Synchronisation des listes MyAnimeList** dans les paramètres **Synchronisation des listes** pour envoyer vos modifications de liste Anilist (ajouts, modifications, suppressions) vers votre compte MAL à partir de maintenant.
+
+        \n\nNote : Cela n\'envoie que les nouveaux changements — cela ne synchronisera pas l\'historique existant de votre liste Anilist vers MAL. Il est recommandé de le synchroniser manuellement au préalable.
         \n- Vérifiez la __FAQ__ pour la _Méthode Facile_
-        
+
         \n\nEt pour les _Intermédiaires_ :
         \n- [Comment synchroniser les données Anilist avec MAL](https://anilist.co/forum/thread/2654)
         \n- [Comment synchroniser les données MAL avec Anilist](https://anilist.co/forum/thread/3393)
-        
-        \n\n_Il n\'est pas nécessaire de synchroniser à la fois les comptes MAL et Anilist._
+
+        \n\n_Connecter un compte MAL est entièrement optionnel — l\'onglet d\'informations MAL fonctionne sans, et il n\'est pas nécessaire de synchroniser à la fois les comptes MAL et Anilist._
     </string>
     <string name="use_alarm_manager_reliable">Utiliser Alarm Manager pour des notifications fiables</string>
     <string name="use_alarm_manager_confirm">L\'utilisation d\'Alarm Manager peut aider à lutter contre l\'optimisation de la batterie, mais peut consommer plus de batterie. Il nécessite également la permission Alarm Manager.</string>

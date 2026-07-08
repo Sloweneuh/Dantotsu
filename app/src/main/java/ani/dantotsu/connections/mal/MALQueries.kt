@@ -41,7 +41,7 @@ class MALQueries {
     suspend fun getUserData(): Boolean {
         val res = tryWithSuspend {
             client.get(
-                "$apiUrl/users/@me",
+                "$apiUrl/users/@me?fields=picture",
                 authHeader ?: return@tryWithSuspend null
             ).parsed<MalUser>()
         } ?: return false

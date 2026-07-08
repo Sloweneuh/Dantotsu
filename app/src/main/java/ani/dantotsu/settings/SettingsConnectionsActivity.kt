@@ -74,6 +74,24 @@ class SettingsConnectionsActivity : AppCompatActivity() {
                 icon = R.drawable.ic_round_mangabaka_24,
                 isChecked = PrefManager.getVal<Boolean>(PrefName.MangaBakaInfoEnabled),
                 switch = { isChecked, _ -> PrefManager.setVal(PrefName.MangaBakaInfoEnabled, isChecked) },
+                attachToSwitch = { b ->
+                    b.settingsExtraIcon.visibility = View.VISIBLE
+                    b.settingsExtraIcon.setImageDrawable(
+                        ContextCompat.getDrawable(this, R.drawable.ic_round_help_24)
+                    )
+                    b.settingsExtraIcon.setOnClickListener {
+                        CustomBottomDialog.newInstance().apply {
+                            setTitleText(this@SettingsConnectionsActivity.getString(R.string.mangabaka_connections_help))
+                            addView(
+                                TextView(it.context).apply {
+                                    val markWon = Markwon.builder(it.context)
+                                        .usePlugin(SoftBreakAddsNewLinePlugin.create()).build()
+                                    markWon.setMarkdown(this, this@SettingsConnectionsActivity.getString(R.string.full_mangabaka_connections_help))
+                                }
+                            )
+                        }.show(supportFragmentManager, "mangabaka_help")
+                    }
+                }
             ),
             Settings(
                 type = 2,

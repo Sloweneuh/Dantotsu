@@ -215,6 +215,14 @@
         \n\n The MangaUpdates API is far more limited than Anilist\'s, so some features might be slow or more limited compared to the MangaUpdates website.
         \n\n *Note that MangaUpdates integration is optional and only adds additional features for manga. Dantotsu will continue to work perfectly fine without logging in to MangaUpdates.*
     </string>
+    <string name="mangabaka_account_help">How does MangaBaka work\?</string>
+    <string name="full_mangabaka_account_help">
+        MangaBaka is a cross-source database that links titles across Anilist, MangaUpdates and MyAnimeList. Logging in with your MangaBaka account adds the following features:
+        \n - Push your Anilist and MangaUpdates list updates to your MangaBaka library — configure this in **MangaBaka list sync**, under **List Sync** settings
+        \n - Compare your lists across services and spot entries that are out of date
+        \n\n Logging in isn\'t required for the MangaBaka info tab or for cross-source id linking between Anilist, MangaUpdates and MyAnimeList — those work from the public MangaBaka API regardless of login (see the **MangaBaka** toggle in **Connections** settings).
+        \n\n *Note that MangaBaka login is optional and only adds list syncing and comparison. Dantotsu will continue to work perfectly fine without logging in to MangaBaka.*
+    </string>
     <string name="connections_settings">Connections</string>
     <string name="connections_desc">Enable or disable external connections and info tabs</string>
     <string name="disable_comick">Enable Comick</string>
@@ -223,11 +231,9 @@
     <string name="disable_mal_desc">Toggle fetching MAL data and MAL tab</string>
     <string name="mal_connections_help">How does the MAL toggle work\?</string>
     <string name="full_mal_connections_help">
-        Enabling MAL adds the following features:
-        \n - **MAL tab** — an extra info tab in media details with MAL-specific data (scores, genres, staff, recommendations, etc.)
-        \n - **MAL stacks** — additional info displayed on the home screen based on your MAL list
-        \n\n **Disabling MAL only hides the MAL tab and stacks. It does NOT disable progress syncing.**
-        \n\n Progress syncing to your MAL account is controlled separately — connect your MAL account in **Accounts** settings and syncing happens automatically alongside your Anilist activity.
+        Enabling MAL adds a **MAL tab** — an extra info tab in media details with MAL-specific data (scores, genres, staff, recommendations, reviews, etc.), fetched anonymously from the public Jikan API.
+        \n\n No MAL account is required for this tab. **Disabling MAL stops all Jikan API calls and removes MAL from the info tab picker (Connections \> Info Tab Order). It does NOT disable progress syncing.**
+        \n\n Progress syncing to your MAL account is controlled separately — connect your MAL account in **Accounts** settings, then enable **MyAnimeList list sync** in **List Sync** settings to push your Anilist list updates to MAL.
     </string>
     <string name="disable_mangaupdates">Enable MangaUpdates</string>
     <string name="disable_mangaupdates_desc">Toggle fetching MangaUpdates data and tab</string>
@@ -260,10 +266,22 @@
         Comick is a manga aggregator that Dantotsu uses to enhance manga entries with additional data.
         \n\n Enabling Comick adds the following features:
         \n - **Comick tab** — an extra info tab in manga details with chapter data and cover art from Comick
-        \n - **MangaUpdates linking** — Comick data is used to automatically find and link the matching MangaUpdates series
+        \n - **MangaUpdates linking fallback** — MangaBaka\'s cross-source mapping is tried first; if it has no MangaUpdates match, Comick data is used instead to find and link the matching MangaUpdates series
         \n - **Cover images** — higher-resolution or alternative covers may be sourced from Comick
+        \n - **Quick search shortcut** — a Comick search button in the quick search sheet
         \n\n No Comick account is required. All data is fetched anonymously from the public Comick API. **The Comick API doesn\'t support account operations.**
-        \n\n *Disabling Comick hides the Comick tab and stops all related data fetching. MangaUpdates auto-linking will also be disabled.*
+        \n\n *Disabling Comick stops all related data fetching and removes it from the info tab picker (Connections \> Info Tab Order). The MangaUpdates linking fallback described above will also be disabled.*
+    </string>
+    <string name="mangabaka_connections_help">How does MangaBaka work\?</string>
+    <string name="full_mangabaka_connections_help">
+        MangaBaka is a cross-source database that Dantotsu uses to cross-reference and enhance manga entries.
+        \n\n Enabling MangaBaka adds the following features:
+        \n - **MangaBaka tab** — an extra info tab in manga details with series data, tags and related titles from MangaBaka
+        \n - **Cross-source linking** — MangaBaka\'s id mapping links AniList, MangaUpdates and MyAnimeList entries to the same series
+        \n - **AniList match alerts** — when viewing a MangaUpdates entry, if MangaBaka finds a matching AniList entry you\'ll be offered to open it there, even if the MangaBaka tab itself is hidden
+        \n - **Quick search shortcut** — a MangaBaka search button in the quick search sheet
+        \n\n No MangaBaka account is required for any of this — data is fetched anonymously from the public MangaBaka API. Logging into a MangaBaka account for list syncing is configured separately in **List Sync** settings.
+        \n\n *Disabling MangaBaka hides the MangaBaka tab, stops all related lookups and cross-source linking, removes it from the info tab picker (Connections \> Info Tab Order), and disables the AniList match alert on MangaUpdates media.*
     </string>
         <string name="switch_to_anilist_title">AniList media found</string>
         <string name="switch_to_anilist_message">This MangaUpdates media has an Anilist counterpart. Would you like to open the AniList media instead?</string>
@@ -655,20 +673,17 @@
     <string name="anilist">Anilist</string>
     <string name="account_help">How does this work\?</string>
     <string name="full_account_help">
-        Dantotsu is an Anilist Based App, so for syncing with your MAL Account, It needs an Anilist account to be logged in.
-        \nOnce logged in with both Anilist and MAL accounts, the app will automatically update your MAL account whenever:
-        \n- Add a new Media
-        \n- Edit a Media
-        \n- Delete a Media
+        Dantotsu is an Anilist based app, so connecting a MAL account requires an Anilist account to be logged in first.
+        \n\nOnce logged in with both accounts, enable **MyAnimeList list sync** in **List Sync** settings to push your Anilist list changes (additions, edits, removals) to your MAL account going forward.
 
-        \n\nNote: The app will not sync old Media\'s from Anilist to MAL, It\'s recommended to sync them.
+        \n\nNote: This only pushes new changes — it will not sync your existing Anilist list history to MAL. It\'s recommended to sync that manually first.
         \n- Check __FAQs__ for _Easy Method_
 
         \n\nAnd for _Intermediates_ :
         \n- [How to sync Anilist data with MAL](https://anilist.co/forum/thread/2654)
         \n- [How to sync MAL data with Anilist](https://anilist.co/forum/thread/3393)
 
-        \n\n_It is not required to sync both MAL and Anilist accounts._
+        \n\n_Connecting a MAL account is entirely optional — the MAL info tab works without it, and it is not required to sync both MAL and Anilist accounts._
     </string>
     <string name="notification_for_checking_subscriptions">Checking Subscriptions notification</string>
     <string name="use_alarm_manager">Use Alarm Manager</string>

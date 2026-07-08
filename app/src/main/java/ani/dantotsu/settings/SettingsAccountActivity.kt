@@ -85,6 +85,19 @@ class SettingsAccountActivity : AppCompatActivity() {
                 }.show(supportFragmentManager, "dialog")
             }
 
+            settingsMangaBakaHelp.setOnClickListener {
+                CustomBottomDialog.newInstance().apply {
+                    setTitleText(context.getString(R.string.mangabaka_account_help))
+                    addView(
+                        TextView(it.context).apply {
+                            val markWon = Markwon.builder(it.context)
+                                .usePlugin(SoftBreakAddsNewLinePlugin.create()).build()
+                            markWon.setMarkdown(this, context.getString(R.string.full_mangabaka_account_help))
+                        }
+                    )
+                }.show(supportFragmentManager, "dialog")
+            }
+
             fun reload() {
                 if (Anilist.token != null) {
                     settingsAnilistLogin.setText(R.string.logout)
@@ -119,7 +132,7 @@ class SettingsAccountActivity : AppCompatActivity() {
                             restartMainActivity.isEnabled = true
                             reload()
                         }
-                        if (MAL.username == null) {
+                        if (MAL.username == null || MAL.avatar == null) {
                             lifecycleScope.launch {
                                 MAL.query.getUserData()
                                 reload()
@@ -127,7 +140,11 @@ class SettingsAccountActivity : AppCompatActivity() {
                         }
                         settingsMALUsername.visibility = View.VISIBLE
                         settingsMALUsername.text = MAL.username
-                        settingsMALAvatar.loadImage(MAL.avatar)
+                        if (!MAL.avatar.isNullOrBlank()) {
+                            settingsMALAvatar.loadImage(MAL.avatar)
+                        } else {
+                            settingsMALAvatar.setImageResource(R.drawable.ic_round_person_24)
+                        }
                         settingsMALAvatar.setOnClickListener {
                             it.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                             openLinkInBrowser(getString(R.string.myanilist_link, MAL.username))
@@ -287,7 +304,9 @@ class SettingsAccountActivity : AppCompatActivity() {
                     }
                     settingsMangaBakaUsername.visibility = View.VISIBLE
                     settingsMangaBakaUsername.text = MangaBaka.username ?: getString(R.string.logged_in)
-                    settingsMangaBakaAvatar.setImageResource(R.drawable.ic_round_person_24)
+                    // MangaBaka has no avatar system - use an "open" icon instead of the generic
+                    // person placeholder, since tapping opens the user's MangaBaka profile page.
+                    settingsMangaBakaAvatar.setImageResource(R.drawable.ic_open_24)
                     settingsMangaBakaAvatar.setOnClickListener {
                         it.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                         MangaBaka.username?.let { username ->
