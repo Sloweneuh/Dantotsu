@@ -1,0 +1,378 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bottom_sheet_background"
+    android:orientation="vertical">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        android:orientation="vertical">
+
+        <androidx.cardview.widget.CardView
+            android:layout_width="32dp"
+            android:layout_height="4dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="8dp"
+            app:cardBackgroundColor="?attr/colorPrimary"
+            app:cardCornerRadius="2dp"
+            app:cardElevation="0dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:fontFamily="@font/poppins"
+            android:gravity="bottom|center_horizontal"
+            android:text="@string/screenshot"
+            android:textSize="20sp"
+            android:textStyle="bold" />
+
+        <androidx.core.widget.NestedScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="80dp"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <!-- The share card. This whole container is what gets rendered to the saved image. -->
+                <LinearLayout
+                    android:id="@+id/screenshotCard"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_screenshot_card"
+                    android:orientation="vertical"
+                    android:padding="12dp">
+
+                    <ImageView
+                        android:id="@+id/screenshotImage"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:adjustViewBounds="true"
+                        android:contentDescription="@string/screenshot_preview"
+                        android:scaleType="fitCenter"
+                        tools:src="@tools:sample/backgrounds/scenic[0]" />
+
+                  <LinearLayout
+                      android:id="@+id/screenshotDecorContainer"
+                      android:layout_width="match_parent"
+                      android:layout_height="wrap_content"
+                      android:orientation="vertical">
+
+                    <LinearLayout
+                        android:id="@+id/screenshotCaptionRow"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:gravity="bottom"
+                        android:orientation="horizontal"
+                        android:visibility="gone"
+                        tools:visibility="visible">
+
+                        <TextView
+                            android:id="@+id/screenshotCaption"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:fontFamily="@font/poppins_bold"
+                            android:lineSpacingMultiplier="1.05"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textSize="18sp"
+                            tools:text="What a moment!" />
+
+                        <ImageView
+                            android:id="@+id/screenshotLogoCaption"
+                            android:layout_width="wrap_content"
+                            android:layout_height="22dp"
+                            android:layout_gravity="bottom"
+                            android:layout_marginStart="8dp"
+                            android:adjustViewBounds="true"
+                            android:contentDescription="@string/app_name"
+                            android:src="@drawable/ic_dantotsu_logo"
+                            android:visibility="gone"
+                            tools:visibility="visible" />
+
+                    </LinearLayout>
+
+                    <!-- Media info -->
+                    <LinearLayout
+                        android:id="@+id/screenshotMediaInfo"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:id="@+id/screenshotCover"
+                            android:layout_width="48dp"
+                            android:layout_height="72dp"
+                            android:contentDescription="@string/cover"
+                            android:scaleType="centerCrop"
+                            tools:src="@tools:sample/backgrounds/scenic[1]" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="12dp"
+                            android:layout_weight="1"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/screenshotTitle"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:ellipsize="end"
+                                android:fontFamily="@font/poppins_bold"
+                                android:maxLines="2"
+                                android:textColor="?attr/colorOnSurface"
+                                android:textSize="15sp"
+                                tools:text="One Piece" />
+
+                            <TextView
+                                android:id="@+id/screenshotSubtitle"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:fontFamily="@font/poppins"
+                                android:textColor="?attr/colorOnSurfaceVariant"
+                                android:textSize="13sp"
+                                tools:text="1050 • 8/24" />
+
+                            <TextView
+                                android:id="@+id/screenshotDate"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:fontFamily="@font/poppins"
+                                android:textColor="?attr/colorOnSurfaceVariant"
+                                android:textSize="12sp"
+                                tools:text="Jul 11, 2026 · 14:30" />
+
+                            <TextView
+                                android:id="@+id/screenshotSource"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:fontFamily="@font/poppins"
+                                android:textColor="?attr/colorOnSurfaceVariant"
+                                android:textSize="12sp"
+                                tools:text="MangaDex" />
+
+                        </LinearLayout>
+
+                        <ImageView
+                            android:id="@+id/screenshotLogoInline"
+                            android:layout_width="wrap_content"
+                            android:layout_height="22dp"
+                            android:layout_gravity="bottom"
+                            android:layout_marginStart="8dp"
+                            android:adjustViewBounds="true"
+                            android:contentDescription="@string/app_name"
+                            android:src="@drawable/ic_dantotsu_logo" />
+
+                    </LinearLayout>
+
+                    <!-- User + app footer -->
+                    <LinearLayout
+                        android:id="@+id/screenshotFooter"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <LinearLayout
+                            android:id="@+id/screenshotUserInfo"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal"
+                            android:visibility="gone"
+                            tools:visibility="visible">
+
+                            <ImageView
+                                android:id="@+id/screenshotAvatar"
+                                android:layout_width="28dp"
+                                android:layout_height="28dp"
+                                android:contentDescription="@string/avatar"
+                                android:scaleType="centerCrop"
+                                tools:src="@tools:sample/avatars" />
+
+                            <TextView
+                                android:id="@+id/screenshotUsername"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="8dp"
+                                android:fontFamily="@font/poppins_bold"
+                                android:textColor="?attr/colorOnSurface"
+                                android:textSize="13sp"
+                                tools:text="Username" />
+
+                        </LinearLayout>
+
+                        <Space
+                            android:layout_width="0dp"
+                            android:layout_height="1dp"
+                            android:layout_weight="1" />
+
+                        <ImageView
+                            android:id="@+id/screenshotLogoFooter"
+                            android:layout_width="wrap_content"
+                            android:layout_height="22dp"
+                            android:adjustViewBounds="true"
+                            android:contentDescription="@string/app_name"
+                            android:src="@drawable/ic_dantotsu_logo" />
+
+                    </LinearLayout>
+
+                  </LinearLayout>
+
+                </LinearLayout>
+
+                <!-- Caption input -->
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/screenshotCaptionLayout"
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    app:boxCornerRadiusBottomEnd="12dp"
+                    app:boxCornerRadiusBottomStart="12dp"
+                    app:boxCornerRadiusTopEnd="12dp"
+                    app:boxCornerRadiusTopStart="12dp">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/screenshotCaptionInput"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/poppins"
+                        android:hint="@string/screenshot_caption_hint"
+                        android:imeOptions="actionDone"
+                        android:inputType="textCapSentences"
+                        android:maxLength="120"
+                        android:maxLines="2" />
+
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <!-- Toggles -->
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/switchMediaInfo"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:checked="true"
+                    android:fontFamily="@font/poppins_bold"
+                    android:minHeight="56dp"
+                    android:text="@string/screenshot_show_media_info"
+                    android:textAlignment="viewStart"
+                    android:textColor="?attr/colorOnBackground" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/switchDate"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:checked="true"
+                    android:fontFamily="@font/poppins_bold"
+                    android:minHeight="56dp"
+                    android:text="@string/screenshot_show_date"
+                    android:textAlignment="viewStart"
+                    android:textColor="?attr/colorOnBackground" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/switchSource"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:checked="true"
+                    android:fontFamily="@font/poppins_bold"
+                    android:minHeight="56dp"
+                    android:text="@string/screenshot_show_source"
+                    android:textAlignment="viewStart"
+                    android:textColor="?attr/colorOnBackground" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/switchUserInfo"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:checked="false"
+                    android:fontFamily="@font/poppins_bold"
+                    android:minHeight="56dp"
+                    android:text="@string/screenshot_show_user_info"
+                    android:textAlignment="viewStart"
+                    android:textColor="?attr/colorOnBackground" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/switchAppIcon"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:checked="true"
+                    android:fontFamily="@font/poppins_bold"
+                    android:minHeight="56dp"
+                    android:text="@string/screenshot_show_app_icon"
+                    android:textAlignment="viewStart"
+                    android:textColor="?attr/colorOnBackground" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/switchFrame"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:checked="true"
+                    android:fontFamily="@font/poppins_bold"
+                    android:minHeight="56dp"
+                    android:text="@string/screenshot_show_frame"
+                    android:textAlignment="viewStart"
+                    android:textColor="?attr/colorOnBackground" />
+
+            </LinearLayout>
+        </androidx.core.widget.NestedScrollView>
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:background="@drawable/linear_gradient_bg"
+        android:orientation="horizontal"
+        android:padding="8dp">
+
+        <Button
+            android:id="@+id/screenshotSave"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_margin="8dp"
+            android:layout_weight="1"
+            android:fontFamily="@font/poppins_bold"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:padding="8dp"
+            android:text="@string/save"
+            android:textSize="16sp"
+            app:cornerRadius="16dp"
+            app:strokeColor="?attr/colorPrimaryContainer"
+            tools:ignore="SpeakableTextPresentCheck" />
+
+        <Button
+            android:id="@+id/screenshotShare"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_margin="8dp"
+            android:layout_weight="1"
+            android:fontFamily="@font/poppins_bold"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:padding="8dp"
+            android:text="@string/share"
+            android:textSize="16sp"
+            app:cornerRadius="16dp"
+            app:strokeColor="?attr/colorPrimaryContainer"
+            tools:ignore="SpeakableTextPresentCheck" />
+
+    </LinearLayout>
+</FrameLayout>

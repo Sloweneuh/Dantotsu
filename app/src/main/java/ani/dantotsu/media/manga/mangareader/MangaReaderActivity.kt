@@ -27,6 +27,7 @@ import android.view.WindowManager
 import android.view.animation.OvershootInterpolator
 import android.widget.AdapterView
 import android.widget.CheckBox
+import android.widget.PopupMenu
 import androidx.activity.addCallback
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -46,6 +47,8 @@ import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.crashlytics.CrashlyticsInterface
 import ani.dantotsu.connections.handoff.HandoffBottomSheet
 import ani.dantotsu.connections.handoff.HandoffPayload
+import ani.dantotsu.media.screenshot.ScreenshotDialogFragment
+import ani.dantotsu.media.screenshot.ScreenshotUtil
 import ani.dantotsu.connections.discord.Discord
 import ani.dantotsu.connections.discord.RPCManager
 import ani.dantotsu.connections.discord.RPC
@@ -524,10 +527,32 @@ class MangaReaderActivity : AppCompatActivity() {
             ReaderSettingsDialogFragment.newInstance().show(supportFragmentManager, "settings")
         }
 
-        // Extension-only media (id < 0) isn't linked to AniList/MangaUpdates, so it can't be
-        // re-fetched on another device — hide the handoff button entirely for it.
-        binding.mangaReaderHandoff.isVisible = media.id >= 0
-        binding.mangaReaderHandoff.setSafeOnClickListener {
+        // Screenshot of the current page(s). The reader chrome is a sibling overlay, so drawing
+        // the page container captures the pages (at their current zoom/pan) without any buttons.
+        fun takeScreenshot() {
+            val bitmap = ScreenshotUtil.captureView(binding.mangaReaderSwipy)
+            if (bitmap == null) {
+                snackString(getString(R.string.screenshot_failed))
+                return
+            }
+            val sourceName = model.mangaReadSources?.names?.getOrNull(media.selected!!.sourceIndex)
+            val sourceLabel = listOfNotNull(
+                sourceName,
+                chapter.scanlator?.takeIf { it.isNotBlank() }
+            ).joinToString(" · ").ifBlank { null }
+            ScreenshotDialogFragment.newInstance(
+                screenshot = bitmap,
+                title = media.userPreferredName,
+                coverUrl = media.cover,
+                numberLabel = chapter.number,
+                progressLabel = "$currentChapterPage/$maxChapterPage",
+                sourceLabel = sourceLabel,
+            ).show(supportFragmentManager, "screenshot")
+        }
+
+        // "Continue on another device" — extension-only media (id < 0) isn't linked to AniList/
+        // MangaUpdates, so it can't be re-fetched elsewhere; the menu item is hidden for it.
+        fun sendHandoff() {
             scope.launch {
                 // The matched extension entry rides along so the receiver loads the chapter list
                 // directly instead of re-searching the source by title (which can come back empty).
@@ -554,6 +579,25 @@ class MangaReaderActivity : AppCompatActivity() {
                     )
                 ).show(supportFragmentManager, "handoff")
             }
+        }
+
+        // Portrait has no room for a separate screenshot button, so both actions live in a "more"
+        // dropdown that replaces the old cast button.
+        binding.mangaReaderMore.setSafeOnClickListener {
+            val popup = PopupMenu(this, binding.mangaReaderMore)
+            popup.menuInflater.inflate(R.menu.manga_reader_more, popup.menu)
+            popup.menu.findItem(R.id.action_screenshot)
+                .setIcon(ScreenshotUtil.screenshotIcon(this))
+            popup.menu.findItem(R.id.action_handoff).isVisible = media.id >= 0
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) popup.setForceShowIcon(true)
+            popup.setOnMenuItemClickListener { item ->
+                when (item.itemId) {
+                    R.id.action_screenshot -> { takeScreenshot(); true }
+                    R.id.action_handoff -> { sendHandoff(); true }
+                    else -> false
+                }
+            }
+            popup.show()
         }
 
         binding.mangaReaderAutoscroll.setOnClickListener {

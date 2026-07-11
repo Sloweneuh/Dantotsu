@@ -130,6 +130,7 @@ object SettingsSearch {
         l += SearchableSetting(SettingsCommonActivity::class.java, R.string.change_download_location, R.string.common, IC_COMMON, R.string.change_download_location_desc, keywords = "folder directory storage")
         l += SearchableSetting(SettingsCommonActivity::class.java, R.string.always_continue_content, R.string.common, IC_COMMON, R.string.always_continue_content_desc, keywords = "resume auto continue watching reading")
         l += SearchableSetting(SettingsCommonActivity::class.java, R.string.handoff_discovery_setting, R.string.common, IC_COMMON, R.string.handoff_discovery_setting_desc, keywords = "cast nearby lan")
+        l += SearchableSetting(SettingsCommonActivity::class.java, R.string.screenshot_defaults, R.string.common, IC_COMMON, R.string.screenshot_defaults_desc, keywords = "screenshot capture share card media info user logo frame rounded date source scanlator caption default reader player anime manga")
         l += SearchableSetting(SettingsCommonActivity::class.java, R.string.hide_private, R.string.common, IC_COMMON, R.string.hide_private_desc, keywords = "private list entries hidden")
         l += SearchableSetting(SettingsCommonActivity::class.java, R.string.search_source_list, R.string.common, IC_COMMON, R.string.search_source_list_desc, keywords = "search library local list source")
         l += SearchableSetting(SettingsCommonActivity::class.java, R.string.recentlyListOnly, R.string.common, IC_COMMON, R.string.recentlyListOnly_desc, keywords = "recently watched read history list")

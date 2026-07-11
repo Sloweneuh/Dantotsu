@@ -18,6 +18,7 @@ import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.handoff.GlobalHandoffReceiver
 import ani.dantotsu.connections.handoff.HandoffManager
 import ani.dantotsu.databinding.ActivitySettingsCommonBinding
+import ani.dantotsu.databinding.DialogScreenshotDefaultsBinding
 import ani.dantotsu.databinding.DialogSetPasswordBinding
 import ani.dantotsu.download.DownloadsManager
 import ani.dantotsu.initActivity
@@ -327,6 +328,13 @@ class SettingsCommonActivity : AppCompatActivity() {
                             isVisible = !HandoffManager.isVirtualDevice(context),
                         ),
                         Settings(
+                            type = 1,
+                            name = getString(R.string.screenshot_defaults),
+                            desc = getString(R.string.screenshot_defaults_desc),
+                            icon = R.drawable.ic_round_screenshot_frame_24,
+                            onClick = { showScreenshotDefaultsDialog() },
+                        ),
+                        Settings(
                             type = 2,
                             name = getString(R.string.hide_private),
                             desc = getString(R.string.hide_private_desc),
@@ -426,6 +434,28 @@ class SettingsCommonActivity : AppCompatActivity() {
             uiSettingsManga.setOnClickListener {
                 uiDefault(2, it)
             }
+        }
+    }
+
+    private fun showScreenshotDefaultsDialog() {
+        val view = DialogScreenshotDefaultsBinding.inflate(layoutInflater)
+        view.dsMediaInfo.isChecked = PrefManager.getVal(PrefName.ScreenshotShowMediaInfo)
+        view.dsDate.isChecked = PrefManager.getVal(PrefName.ScreenshotShowDate)
+        view.dsSource.isChecked = PrefManager.getVal(PrefName.ScreenshotShowSource)
+        view.dsUserInfo.isChecked = PrefManager.getVal(PrefName.ScreenshotShowUserInfo)
+        view.dsAppLogo.isChecked = PrefManager.getVal(PrefName.ScreenshotShowAppLogo)
+        view.dsFrame.isChecked = PrefManager.getVal(PrefName.ScreenshotShowFrame)
+        view.dsMediaInfo.setOnCheckedChangeListener { _, c -> PrefManager.setVal(PrefName.ScreenshotShowMediaInfo, c) }
+        view.dsDate.setOnCheckedChangeListener { _, c -> PrefManager.setVal(PrefName.ScreenshotShowDate, c) }
+        view.dsSource.setOnCheckedChangeListener { _, c -> PrefManager.setVal(PrefName.ScreenshotShowSource, c) }
+        view.dsUserInfo.setOnCheckedChangeListener { _, c -> PrefManager.setVal(PrefName.ScreenshotShowUserInfo, c) }
+        view.dsAppLogo.setOnCheckedChangeListener { _, c -> PrefManager.setVal(PrefName.ScreenshotShowAppLogo, c) }
+        view.dsFrame.setOnCheckedChangeListener { _, c -> PrefManager.setVal(PrefName.ScreenshotShowFrame, c) }
+        customAlertDialog().apply {
+            setTitle(getString(R.string.screenshot_defaults))
+            setCustomView(view.root)
+            setPosButton(R.string.ok) {}
+            show()
         }
     }
 

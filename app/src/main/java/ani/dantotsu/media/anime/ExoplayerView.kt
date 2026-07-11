@@ -102,6 +102,8 @@ import ani.dantotsu.R
 import ani.dantotsu.addons.download.DownloadAddonManager
 import ani.dantotsu.connections.handoff.HandoffBottomSheet
 import ani.dantotsu.connections.handoff.HandoffPayload
+import ani.dantotsu.media.screenshot.ScreenshotDialogFragment
+import ani.dantotsu.media.screenshot.ScreenshotUtil
 import ani.dantotsu.brightnessConverter
 import ani.dantotsu.circularReveal
 import ani.dantotsu.connections.anilist.Anilist
@@ -1321,6 +1323,48 @@ class ExoplayerView :
                         )
                     ).show(supportFragmentManager, "handoff")
                 }
+            }
+        }
+
+        // Screenshot the current frame. Uses PixelCopy so the video SurfaceView (and subtitles)
+        // are captured, which requires API 24+.
+        playerView.findViewById<ImageButton>(R.id.exo_screenshot).apply {
+            setImageResource(ScreenshotUtil.screenshotIcon(this@ExoplayerView))
+            setOnClickListener {
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
+                    snackString(getString(R.string.screenshot_unsupported))
+                    return@setOnClickListener
+                }
+                val episode = media.anime?.selectedEpisode
+                val position = exoPlayer.currentPosition
+                // Freeze on the exact frame the user tapped, then hide the controls before the grab.
+                val wasPlaying = exoPlayer.isPlaying
+                if (wasPlaying) exoPlayer.pause()
+                playerView.hideController()
+                playerView.postDelayed({
+                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return@postDelayed
+                    ScreenshotUtil.captureFromWindow(window, playerView) { bitmap ->
+                        if (bitmap == null) {
+                            if (wasPlaying) exoPlayer.play()
+                            snackString(getString(R.string.screenshot_failed))
+                            return@captureFromWindow
+                        }
+                        ScreenshotDialogFragment.newInstance(
+                            screenshot = bitmap,
+                            title = media.userPreferredName,
+                            coverUrl = media.cover,
+                            numberLabel = episode ?: "",
+                            progressLabel = ScreenshotUtil.formatTimestamp(position),
+                            sourceLabel = model.watchSources?.names
+                                ?.getOrNull(media.selected!!.sourceIndex),
+                        ).apply {
+                            // Resume where we left off once the user closes the review sheet.
+                            onDismissed = {
+                                if (wasPlaying && !isDestroyed && !isFinishing) exoPlayer.play()
+                            }
+                        }.show(supportFragmentManager, "screenshot")
+                    }
+                }, 100)
             }
         }
 

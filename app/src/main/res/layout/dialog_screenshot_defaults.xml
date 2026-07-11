@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp">
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/dsMediaInfo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/poppins_bold"
+            android:minHeight="52dp"
+            android:text="@string/screenshot_show_media_info"
+            android:textAlignment="viewStart"
+            android:textColor="?attr/colorOnBackground" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/dsDate"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/poppins_bold"
+            android:minHeight="52dp"
+            android:text="@string/screenshot_show_date"
+            android:textAlignment="viewStart"
+            android:textColor="?attr/colorOnBackground" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/dsSource"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/poppins_bold"
+            android:minHeight="52dp"
+            android:text="@string/screenshot_show_source"
+            android:textAlignment="viewStart"
+            android:textColor="?attr/colorOnBackground" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/dsUserInfo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/poppins_bold"
+            android:minHeight="52dp"
+            android:text="@string/screenshot_show_user_info"
+            android:textAlignment="viewStart"
+            android:textColor="?attr/colorOnBackground" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/dsAppLogo"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/poppins_bold"
+            android:minHeight="52dp"
+            android:text="@string/screenshot_show_app_icon"
+            android:textAlignment="viewStart"
+            android:textColor="?attr/colorOnBackground" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/dsFrame"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/poppins_bold"
+            android:minHeight="52dp"
+            android:text="@string/screenshot_show_frame"
+            android:textAlignment="viewStart"
+            android:textColor="?attr/colorOnBackground" />
+
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

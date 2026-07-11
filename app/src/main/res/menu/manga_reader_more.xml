@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/action_screenshot"
+        android:icon="@drawable/ic_round_screenshot_frame_24"
+        android:title="@string/screenshot"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_handoff"
+        android:icon="@drawable/ic_round_cast_24"
+        android:title="@string/continue_on_another_device"
+        app:showAsAction="never" />
+
+</menu>

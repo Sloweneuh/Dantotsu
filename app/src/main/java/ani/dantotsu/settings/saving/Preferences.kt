@@ -83,6 +83,13 @@ enum class PrefName(val data: Pref) {
     AniMangaSearchDirect(Pref(Location.General, Boolean::class, true)),
     // Local "Continue on another device" discovery (Nearby + LAN); QR/sharing-code stay available.
     HandoffDiscoveryEnabled(Pref(Location.General, Boolean::class, true)),
+    // Default toggle states for the reader/player screenshot composer.
+    ScreenshotShowMediaInfo(Pref(Location.General, Boolean::class, true)),
+    ScreenshotShowDate(Pref(Location.General, Boolean::class, true)),
+    ScreenshotShowSource(Pref(Location.General, Boolean::class, true)),
+    ScreenshotShowUserInfo(Pref(Location.General, Boolean::class, false)),
+    ScreenshotShowAppLogo(Pref(Location.General, Boolean::class, true)),
+    ScreenshotShowFrame(Pref(Location.General, Boolean::class, true)),
     // Master switch for syncing settings across devices via the Anilist account (Firebase RTDB).
     CloudSyncEnabled(Pref(Location.General, Boolean::class, true)),
     // Opt-in: also publish/reconcile the set of installed extensions across devices.
