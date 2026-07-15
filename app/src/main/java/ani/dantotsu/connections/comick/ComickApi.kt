@@ -53,6 +53,12 @@ object ComickApi {
     @Volatile
     private var categoryCache: List<FilterOption>? = null
 
+    // Slug -> name lookups seeded from navigation (e.g. tapping a genre/tag chip) before the full
+    // list has been fetched. Kept separate from genreCache/categoryCache so seeding never fools
+    // getGenres()/getCategories() into thinking the full list was already fetched.
+    private val genreNameCache = java.util.concurrent.ConcurrentHashMap<String, String>()
+    private val categoryNameCache = java.util.concurrent.ConcurrentHashMap<String, String>()
+
     suspend fun getGenres(): List<FilterOption> = withContext(Dispatchers.IO) {
         val cached = genreCache
         if (!cached.isNullOrEmpty()) {
@@ -77,7 +83,9 @@ object ComickApi {
         fetched
     }
 
-    fun resolveGenreName(slug: String): String? = genreCache?.firstOrNull { it.slug.equals(slug, ignoreCase = true) }?.name
+    fun resolveGenreName(slug: String): String? =
+        genreCache?.firstOrNull { it.slug.equals(slug, ignoreCase = true) }?.name
+            ?: genreNameCache[slug.lowercase()]
 
     fun resolveGenreId(slug: String): Int? = genreCache?.firstOrNull { it.slug.equals(slug, ignoreCase = true) }?.id
 
@@ -85,20 +93,26 @@ object ComickApi {
 
     fun resolveGenreSlugByName(name: String): String? = genreCache?.firstOrNull { it.name.equals(name, ignoreCase = true) }?.slug
 
-    fun resolveCategoryName(slug: String): String? = categoryCache?.firstOrNull { it.slug.equals(slug, ignoreCase = true) }?.name
+    fun resolveCategoryName(slug: String): String? =
+        categoryCache?.firstOrNull { it.slug.equals(slug, ignoreCase = true) }?.name
+            ?: categoryNameCache[slug.lowercase()]
 
-    /** Pre-populate a single known slug→name entry so the chip label is correct before the full genre list is fetched. */
+    /**
+     * Pre-populate a single known slug→name entry so the chip label is correct before the full
+     * genre list is fetched. Writes only to [genreNameCache], never to [genreCache], so it can't
+     * make getGenres() think the full list was already fetched and skip the real request.
+     */
     fun seedGenreCache(slug: String, name: String) {
-        val existing = genreCache
-        if (existing != null && existing.any { it.slug.equals(slug, ignoreCase = true) }) return
-        genreCache = (existing ?: emptyList()) + FilterOption(slug = slug, name = name)
+        genreNameCache.putIfAbsent(slug.lowercase(), name)
     }
 
-    /** Pre-populate a single known slug→name entry so the chip label is correct before the full category list is fetched. */
+    /**
+     * Pre-populate a single known slug→name entry so the chip label is correct before the full
+     * category list is fetched. Writes only to [categoryNameCache], never to [categoryCache], so
+     * it can't make getCategories() think the full list was already fetched and skip the real request.
+     */
     fun seedCategoryCache(slug: String, name: String) {
-        val existing = categoryCache
-        if (existing != null && existing.any { it.slug.equals(slug, ignoreCase = true) }) return
-        categoryCache = (existing ?: emptyList()) + FilterOption(slug = slug, name = name)
+        categoryNameCache.putIfAbsent(slug.lowercase(), name)
     }
 
     fun resolveCountryName(code: String): String? {
