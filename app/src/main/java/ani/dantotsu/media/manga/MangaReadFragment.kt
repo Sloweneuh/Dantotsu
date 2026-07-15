@@ -14,9 +14,11 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import android.widget.CheckBox
 import android.widget.Toast
 import androidx.cardview.widget.CardView
 import androidx.core.app.ActivityCompat
+import androidx.documentfile.provider.DocumentFile
 import androidx.core.content.ContextCompat
 import androidx.core.math.MathUtils.clamp
 import androidx.core.view.isGone
@@ -54,6 +56,9 @@ import ani.dantotsu.parsers.DynamicMangaParser
 import ani.dantotsu.parsers.HMangaSources
 import ani.dantotsu.parsers.MangaParser
 import ani.dantotsu.parsers.MangaSources
+import ani.dantotsu.media.manga.mangareader.PDF_CHAPTERS_FILE
+import ani.dantotsu.media.manga.mangareader.PdfChapterMetadata
+import ani.dantotsu.media.manga.mangareader.PdfPageRenderer
 import ani.dantotsu.parsers.OfflineMangaParser
 import ani.dantotsu.parsers.ShowResponse
 import ani.dantotsu.setNavigationTheme
@@ -61,6 +66,8 @@ import ani.dantotsu.settings.extensionprefs.MangaSourcePreferencesFragment
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.snackString
+import ani.dantotsu.util.Logger
+import com.google.gson.Gson
 import ani.dantotsu.util.StoragePermissions.Companion.accessAlertDialog
 import ani.dantotsu.util.StoragePermissions.Companion.hasDirAccess
 import ani.dantotsu.util.customAlertDialog
@@ -94,6 +101,14 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
     private lateinit var chapterAdapter: MangaChapterAdapter
 
     val downloadManager = Injekt.get<DownloadsManager>()
+
+    // One-file PDF downloads register a single library entry (the range), so the individual
+    // chapters they contain have no per-chapter download record. These maps let the online
+    // chapter list still show and delete those bundled chapters.
+    // Live: task uniqueName -> the constituent chapters' unique numbers (pending download).
+    private val pendingOneFileBundles = HashMap<String, List<String>>()
+    // Persistent: a bundled chapter's unique number -> its bundle folder (range) name.
+    private val bundledChapterFolders = HashMap<String, String>()
 
     var screenWidth = 0f
     private var progress = View.VISIBLE
@@ -305,35 +320,157 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
         updateChapters()
     }
 
-    fun multiDownload(n: Int) {
-        lifecycleScope.launch {
-            // Get the last viewed chapter
-            val selected = media.userProgress ?: 0
-            val chapters = media.manga?.chapters?.values?.toList()
-            // Ensure chapters are available in the extensions
-            if (chapters.isNullOrEmpty() || n < 1) return@launch
-            // Find the index of the last viewed chapter
-            val progressChapterIndex = (chapters.indexOfFirst {
-                MediaNameAdapter.findChapterNumber(it.number)?.toInt() == selected
-            } + 1).coerceAtLeast(0)
-            // Calculate the end value for the range of chapters to download
-            val endIndex = (progressChapterIndex + n).coerceAtMost(chapters.size)
-            // Get the list of chapters to download
-            val chaptersToDownload = chapters.subList(progressChapterIndex, endIndex)
-            // Trigger the download for each chapter sequentially
-            for (chapter in chaptersToDownload) {
-                try {
-                    downloadChapterSequentially(chapter)
-                } catch (e: Exception) {
-                    Toast.makeText(requireContext(), "Failed to download chapter: ${chapter.title}", Toast.LENGTH_SHORT).show()
+    fun multiDownload(
+        startIndex: Int,
+        endIndex: Int,
+        asPdf: Boolean = false,
+        oneFile: Boolean = false
+    ) {
+        val chapters = media.manga?.chapters?.values?.toList()
+        // Ensure chapters are available in the extensions
+        if (chapters.isNullOrEmpty()) return
+        // Clamp the requested range to the available chapters
+        val start = startIndex.coerceIn(0, chapters.size - 1)
+        val end = endIndex.coerceIn(start, chapters.size - 1)
+        // Get the list of chapters to download (end is inclusive)
+        val chaptersToDownload = chapters.subList(start, end + 1)
+
+        if (!asPdf) {
+            // Standard per-chapter image download (readable offline)
+            lifecycleScope.launch {
+                for (chapter in chaptersToDownload) {
+                    try {
+                        downloadChapterSequentially(chapter)
+                    } catch (e: Exception) {
+                        snackString("Failed to download chapter: ${chapter.title}")
+                    }
                 }
             }
-            Toast.makeText(requireContext(), "All downloads completed!", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // PDF download
+        val parser = model.mangaReadSources?.get(media.selected!!.sourceIndex) as? DynamicMangaParser
+            ?: return
+        runWithDownloadPermissions {
+            model.continueMedia = false
+            if (oneFile) {
+                // Combine every selected chapter's pages into a single PDF, inserting a
+                // transition page between chapters (mirrors the continuous reader's
+                // chapter dividers so chapters stay separated even in paged mode).
+                CoroutineScope(Dispatchers.IO).launch {
+                    val allImages = mutableListOf<ImageData>()
+                    val transitions = mutableListOf<MangaDownloaderService.DownloadTask.PdfTransition>()
+                    val skipped = mutableListOf<String>()
+                    val included = mutableListOf<MangaChapter>()
+                    var prev: MangaChapter? = null
+                    for (chapter in chaptersToDownload) {
+                        val ch = media.manga?.chapters?.get(chapter.uniqueNumber()) ?: continue
+                        val images = parser.imageList(ch.sChapter)
+                        // A chapter with no pages can't be included; record it as missing so
+                        // the gap surfaces both in the PDF divider and the offline list.
+                        if (images.isEmpty()) {
+                            skipped.add(ch.title ?: ch.number)
+                            continue
+                        }
+                        // A boundary precedes every chapter except the first included one.
+                        if (prev != null) {
+                            transitions.add(
+                                MangaDownloaderService.DownloadTask.PdfTransition(
+                                    beforePageIndex = allImages.size,
+                                    prevTitle = prev.title ?: prev.number,
+                                    nextTitle = ch.title ?: ch.number,
+                                    missingChapters = chapterGap(prev, ch),
+                                    prevScanlator = prev.scanlator ?: "Unknown",
+                                    nextScanlator = ch.scanlator ?: "Unknown"
+                                )
+                            )
+                        }
+                        allImages.addAll(images)
+                        included.add(ch)
+                        prev = ch
+                    }
+                    if (allImages.isEmpty()) {
+                        snackString(getString(R.string.source_not_found))
+                        return@launch
+                    }
+                    if (skipped.isNotEmpty()) {
+                        snackString(getString(R.string.download_skipped_chapters, skipped.size))
+                    }
+                    val first = chaptersToDownload.first()
+                    val last = chaptersToDownload.last()
+                    val rangeName =
+                        "${first.title ?: first.number} - ${last.title ?: last.number}"
+                    val task = MangaDownloaderService.DownloadTask(
+                        title = media.mainName(),
+                        chapter = rangeName,
+                        scanlator = first.scanlator ?: "Unknown",
+                        imageData = allImages,
+                        sourceMedia = media,
+                        retries = 25,
+                        simultaneousDownloads = 2,
+                        asPdf = true,
+                        pdfTransitions = transitions
+                    )
+                    // Mark every bundled chapter as downloading, and remember them so the
+                    // single "range" finish/failed broadcast updates them all at once.
+                    val includedKeys = included.map { it.uniqueNumber() }
+                    withContext(Dispatchers.Main) {
+                        pendingOneFileBundles[task.uniqueName] = includedKeys
+                        includedKeys.forEach {
+                            bundledChapterFolders[it] = rangeName
+                            chapterAdapter.startDownload(it)
+                        }
+                    }
+                    enqueueMangaDownload(task)
+                }
+            } else {
+                // One PDF per chapter
+                for (chapter in chaptersToDownload) {
+                    CoroutineScope(Dispatchers.IO).launch {
+                        val ch = media.manga?.chapters?.get(chapter.uniqueNumber())
+                            ?: return@launch
+                        // Mark as downloading before fetching pages (see note above).
+                        withContext(Dispatchers.Main) {
+                            chapterAdapter.startDownload(chapter.uniqueNumber())
+                        }
+                        val images = parser.imageList(ch.sChapter)
+                        if (images.isEmpty()) {
+                            withContext(Dispatchers.Main) {
+                                chapterAdapter.purgeDownload(chapter.uniqueNumber())
+                            }
+                            return@launch
+                        }
+                        val task = MangaDownloaderService.DownloadTask(
+                            title = media.mainName(),
+                            chapter = ch.title ?: ch.number,
+                            scanlator = ch.scanlator ?: "Unknown",
+                            imageData = images,
+                            sourceMedia = media,
+                            retries = 25,
+                            simultaneousDownloads = 2,
+                            asPdf = true
+                        )
+                        enqueueMangaDownload(task)
+                    }
+                }
+            }
         }
     }
+
+    /** Number of chapters missing between two consecutive downloaded chapters (0 if none). */
+    private fun chapterGap(a: MangaChapter, b: MangaChapter): Int {
+        val an = MediaNameAdapter.findChapterNumber(a.number) ?: return 0
+        val bn = MediaNameAdapter.findChapterNumber(b.number) ?: return 0
+        val diff = bn.toInt() - an.toInt() - 1
+        return if (diff > 0) diff else 0
+    }
+
     private suspend fun downloadChapterSequentially(chapter: MangaChapter) {
         withContext(Dispatchers.IO) {
-            onMangaChapterDownloadClick(chapter)
+            // This path is only used for the non-PDF multi download; PDF multi downloads
+            // are handled directly in multiDownload().
+            onMangaChapterDownloadClick(chapter, asPdf = false)
             delay(2000) // A 2-second download
         }
     }
@@ -568,71 +705,125 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
         }
     }
 
-    fun onMangaChapterDownloadClick(i: MangaChapter) {
-        activity?.let {
-            if (!PrefManager.getVal<Boolean>(PrefName.AllowMeteredDownloads) && isOnMeteredNetwork(requireContext())) {
-                snackString(getString(R.string.download_blocked_metered_desc))
-                return@let
+    /**
+     * Entry point for an explicit single-chapter download from the chapter list. Asks
+     * whether to download as PDF (with a "never ask again" checkbox, mirroring the
+     * update-progress prompt); once dismissed with "never ask again", the remembered
+     * choice in [PrefName.MangaDownloadPdf] is used silently.
+     */
+    fun downloadChapterWithPdfPrompt(chapter: MangaChapter) {
+        if (!PrefManager.getVal<Boolean>(PrefName.AskDownloadPdf)) {
+            onMangaChapterDownloadClick(chapter)
+            return
+        }
+        val dialogView = layoutInflater.inflate(R.layout.item_custom_dialog, null)
+        val checkbox = dialogView.findViewById<CheckBox>(R.id.dialog_checkbox)
+        checkbox.text = getString(R.string.never_ask_again)
+        checkbox.setOnCheckedChangeListener { _, isChecked ->
+            PrefManager.setVal(PrefName.AskDownloadPdf, !isChecked)
+        }
+        requireContext().customAlertDialog().apply {
+            setTitle(R.string.download_as_pdf)
+            setMessage(R.string.download_as_pdf_desc)
+            setCustomView(dialogView)
+            setPosButton(R.string.yes) {
+                PrefManager.setVal(PrefName.MangaDownloadPdf, true)
+                onMangaChapterDownloadClick(chapter, asPdf = true)
             }
-            if (!isNotificationPermissionGranted()) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    ActivityCompat.requestPermissions(
-                        it,
-                        arrayOf(Manifest.permission.POST_NOTIFICATIONS),
-                        1
-                    )
-                }
+            setNegButton(R.string.no) {
+                PrefManager.setVal(PrefName.MangaDownloadPdf, false)
+                onMangaChapterDownloadClick(chapter, asPdf = false)
             }
-            fun continueDownload() {
-                model.continueMedia = false
-                media.manga?.chapters?.get(i.uniqueNumber())?.let { chapter ->
-                    val parser =
-                        model.mangaReadSources?.get(media.selected!!.sourceIndex) as? DynamicMangaParser
-                    parser?.let {
-                        CoroutineScope(Dispatchers.IO).launch {
-                            val images = parser.imageList(chapter.sChapter)
+            show()
+        }
+    }
 
-                            // Create a download task
-                            val downloadTask = MangaDownloaderService.DownloadTask(
-                                title = media.mainName(),
-                                chapter = chapter.title!!,
-                                scanlator = chapter.scanlator ?: "Unknown",
-                                imageData = images,
-                                sourceMedia = media,
-                                retries = 25,
-                                simultaneousDownloads = 2
-                            )
-
-                            MangaServiceDataSingleton.downloadQueue.offer(downloadTask)
-
-                            // If the service is not already running, start it
-                            if (!MangaServiceDataSingleton.isServiceRunning) {
-                                val intent = Intent(context, MangaDownloaderService::class.java)
-                                withContext(Dispatchers.Main) {
-                                    ContextCompat.startForegroundService(requireContext(), intent)
-                                }
-                                MangaServiceDataSingleton.isServiceRunning = true
-                            }
-
-                            // Inform the adapter that the download has started
-                            withContext(Dispatchers.Main) {
-                                chapterAdapter.startDownload(i.uniqueNumber())
-                            }
+    fun onMangaChapterDownloadClick(
+        i: MangaChapter,
+        asPdf: Boolean = PrefManager.getVal(PrefName.MangaDownloadPdf)
+    ) {
+        runWithDownloadPermissions {
+            model.continueMedia = false
+            media.manga?.chapters?.get(i.uniqueNumber())?.let { chapter ->
+                val parser =
+                    model.mangaReadSources?.get(media.selected!!.sourceIndex) as? DynamicMangaParser
+                parser?.let {
+                    CoroutineScope(Dispatchers.IO).launch {
+                        // Mark as downloading up front, before the (slow) page fetch and
+                        // before the service can broadcast completion, so the icon updates
+                        // immediately and never races the finish signal.
+                        withContext(Dispatchers.Main) {
+                            chapterAdapter.startDownload(i.uniqueNumber())
                         }
+
+                        val images = parser.imageList(chapter.sChapter)
+
+                        // Create a download task
+                        val downloadTask = MangaDownloaderService.DownloadTask(
+                            title = media.mainName(),
+                            chapter = chapter.title ?: chapter.number,
+                            scanlator = chapter.scanlator ?: "Unknown",
+                            imageData = images,
+                            sourceMedia = media,
+                            retries = 25,
+                            simultaneousDownloads = 2,
+                            asPdf = asPdf
+                        )
+
+                        enqueueMangaDownload(downloadTask)
                     }
                 }
             }
-            if (!hasDirAccess(it)) {
-                (it as MediaDetailsActivity).accessAlertDialog(it.launcher) { success ->
-                    if (success) {
-                        continueDownload()
-                    } else {
-                        snackString(getString(R.string.download_permission_required))
-                    }
-                }
-            } else {
-                continueDownload()
+        }
+    }
+
+    /**
+     * Runs [action] once metered-network, notification and storage-access
+     * requirements are satisfied. If storage access still needs to be granted the
+     * action runs after the user completes the access prompt.
+     */
+    private fun runWithDownloadPermissions(action: () -> Unit) {
+        val activity = activity ?: return
+        if (!PrefManager.getVal<Boolean>(PrefName.AllowMeteredDownloads) && isOnMeteredNetwork(
+                requireContext()
+            )
+        ) {
+            snackString(getString(R.string.download_blocked_metered_desc))
+            return
+        }
+        if (!isNotificationPermissionGranted()) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                ActivityCompat.requestPermissions(
+                    activity,
+                    arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                    1
+                )
             }
+        }
+        if (!hasDirAccess(activity)) {
+            (activity as MediaDetailsActivity).accessAlertDialog(activity.launcher) { success ->
+                if (success) {
+                    action()
+                } else {
+                    snackString(getString(R.string.download_permission_required))
+                }
+            }
+        } else {
+            action()
+        }
+    }
+
+    private suspend fun enqueueMangaDownload(task: MangaDownloaderService.DownloadTask) {
+        MangaServiceDataSingleton.downloadQueue.offer(task)
+        // If the service is not already running, start it
+        if (!MangaServiceDataSingleton.isServiceRunning) {
+            withContext(Dispatchers.Main) {
+                ContextCompat.startForegroundService(
+                    requireContext(),
+                    Intent(context, MangaDownloaderService::class.java)
+                )
+            }
+            MangaServiceDataSingleton.isServiceRunning = true
         }
     }
 
@@ -648,6 +839,35 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
 
 
     fun onMangaChapterRemoveDownloadClick(i: MangaChapter) {
+        // Chapters bundled inside a one-file PDF share a single download entry (named after
+        // the range); deleting any of them removes the whole file, then reloads the list.
+        if (PdfPageRenderer.isPdfChapter(i.link)) {
+            val pdfUri = PdfPageRenderer.decodeChapter(i.link)?.first ?: return
+            val entryName = DocumentFile.fromSingleUri(requireContext(), pdfUri)?.name
+                ?.removeSuffix(".pdf") ?: return
+            downloadManager.removeDownload(
+                DownloadedType(media.mainName(), entryName, MediaType.MANGA)
+            ) {
+                loadChapters(media.selected!!.sourceIndex, true)
+            }
+            return
+        }
+        // Online view of a chapter that belongs to a one-file bundle: remove the whole
+        // bundle and clear the downloaded mark from all of its chapters.
+        bundledChapterFolders[i.uniqueNumber()]?.let { bundleName ->
+            downloadManager.removeDownload(
+                DownloadedType(media.mainName(), bundleName, MediaType.MANGA)
+            ) {
+                bundledChapterFolders.entries
+                    .filter { it.value == bundleName }
+                    .map { it.key }
+                    .forEach { key ->
+                        bundledChapterFolders.remove(key)
+                        chapterAdapter.purgeDownload(key)
+                    }
+            }
+            return
+        }
         downloadManager.removeDownload(
             DownloadedType(
                 media.mainName(),
@@ -689,13 +909,28 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
 
                 ACTION_DOWNLOAD_FINISHED -> {
                     val chapterNumber = intent.getStringExtra(EXTRA_CHAPTER_NUMBER)
-                    chapterNumber?.let { chapterAdapter.stopDownload(it) }
+                    chapterNumber?.let { key ->
+                        val bundle = pendingOneFileBundles.remove(key)
+                        if (bundle != null) {
+                            bundle.forEach { chapterAdapter.stopDownload(it) }
+                        } else {
+                            chapterAdapter.stopDownload(key)
+                        }
+                    }
                 }
 
                 ACTION_DOWNLOAD_FAILED -> {
                     val chapterNumber = intent.getStringExtra(EXTRA_CHAPTER_NUMBER)
-                    chapterNumber?.let {
-                        chapterAdapter.purgeDownload(it)
+                    chapterNumber?.let { key ->
+                        val bundle = pendingOneFileBundles.remove(key)
+                        if (bundle != null) {
+                            bundle.forEach {
+                                bundledChapterFolders.remove(it)
+                                chapterAdapter.purgeDownload(it)
+                            }
+                        } else {
+                            chapterAdapter.purgeDownload(key)
+                        }
                     }
                 }
 
@@ -807,9 +1042,59 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
             }
         }
 
+        chapterAdapter.offlineMode =
+            model.mangaReadSources?.get(media.selected!!.sourceIndex) is OfflineMangaParser
         chapterAdapter.arr = displayList
         chapterAdapter.updateType(style ?: PrefManager.getVal(PrefName.MangaDefaultView))
         chapterAdapter.notifyItemRangeInserted(0, displayList.size)
+
+        // Mark chapters that are downloaded as part of a one-file PDF bundle (they have no
+        // per-chapter download record, so the standard marking above misses them).
+        if (!chapterAdapter.offlineMode) {
+            lifecycleScope.launch(Dispatchers.IO) {
+                val bundled = loadBundledChapters()
+                withContext(Dispatchers.Main) {
+                    bundledChapterFolders.putAll(bundled)
+                    bundled.keys.forEach { chapterAdapter.markDownloaded(it) }
+                }
+            }
+        }
+    }
+
+    /**
+     * Scans this media's one-file PDF downloads and returns a map of each bundled chapter's
+     * unique number to the bundle (range) folder that stores it, read from the bundle's
+     * [PDF_CHAPTERS_FILE] sidecar. Used to show/delete bundled chapters in the online list.
+     */
+    private fun loadBundledChapters(): Map<String, String> {
+        val result = HashMap<String, String>()
+        val gson = Gson()
+        downloadManager.mangaDownloadedTypes
+            .filter { media.compareName(it.titleName) }
+            // Bundle entries are named after a range ("X - Y"); skip the file I/O for the
+            // (typically many) single-chapter folders that can't be bundles.
+            .filter { it.chapterName.contains(" - ") }
+            .forEach { dl ->
+                val folder = DownloadsManager.getSubDirectory(
+                    requireContext(), MediaType.MANGA, false, dl.titleName, dl.chapterName
+                ) ?: return@forEach
+                val metaFile = folder.listFiles().firstOrNull {
+                    it.isFile && it.name == PDF_CHAPTERS_FILE
+                } ?: return@forEach
+                try {
+                    val text = requireContext().contentResolver.openInputStream(metaFile.uri)
+                        ?.use { it.readBytes().toString(Charsets.UTF_8) } ?: return@forEach
+                    val meta = gson.fromJson(text, PdfChapterMetadata::class.java) ?: return@forEach
+                    meta.chapters.forEach { entry ->
+                        // Key matches MangaChapter.uniqueNumber() for these chapters; using the
+                        // per-chapter scanlator keeps same-numbered chapters distinct.
+                        result["${entry.title}-${entry.scanlator}"] = dl.chapterName
+                    }
+                } catch (e: Exception) {
+                    Logger.log("Failed to read bundle metadata: ${e.message}")
+                }
+            }
+        return result
     }
 
     override fun onDestroy() {

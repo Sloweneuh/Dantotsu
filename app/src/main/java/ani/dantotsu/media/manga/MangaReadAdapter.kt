@@ -9,11 +9,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.CheckBox
-import android.widget.EditText
 import android.widget.ImageButton
 import android.widget.LinearLayout
-import android.widget.NumberPicker
-import android.widget.TextView
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.content.ContextCompat
 import androidx.core.content.ContextCompat.getString
@@ -27,6 +24,7 @@ import ani.dantotsu.currActivity
 import ani.dantotsu.currContext
 import ani.dantotsu.databinding.CustomDialogLayoutBinding
 import ani.dantotsu.databinding.DialogLayoutBinding
+import ani.dantotsu.databinding.DialogMultiDownloadBinding
 import ani.dantotsu.databinding.ItemChipBinding
 import ani.dantotsu.databinding.ItemMediaSourceBinding
 import ani.dantotsu.isOnline
@@ -256,6 +254,52 @@ class MangaReadAdapter(
             openSettings(fragment.requireContext(), CHANNEL_SUBSCRIPTION_CHECK)
         }
 
+        // Multi download
+        binding.mediaSourceDownload.setOnClickListener {
+            val chapters = media.manga?.chapters?.values?.toList()
+            if (chapters.isNullOrEmpty()) {
+                toast(fragment.getString(R.string.source_not_found))
+                return@setOnClickListener
+            }
+            val numbers = chapters.map { it.number }
+            val pickerBinding = DialogMultiDownloadBinding.inflate(fragment.layoutInflater)
+            var startIndex = 0
+            var endIndex = chapters.lastIndex
+            pickerBinding.downloadRangeStart.apply {
+                setSimpleItems(numbers.toTypedArray())
+                setText(numbers[startIndex], false)
+                setOnItemClickListener { _, _, position, _ -> startIndex = position }
+            }
+            pickerBinding.downloadRangeEnd.apply {
+                setSimpleItems(numbers.toTypedArray())
+                setText(numbers[endIndex], false)
+                setOnItemClickListener { _, _, position, _ -> endIndex = position }
+            }
+            // "Download as PDF" is a sticky preference shared with single-chapter
+            // downloads; "One file" only applies to this multi-download operation.
+            pickerBinding.downloadPdf.isChecked =
+                PrefManager.getVal(PrefName.MangaDownloadPdf)
+            pickerBinding.downloadOneFile.isEnabled = pickerBinding.downloadPdf.isChecked
+            pickerBinding.downloadPdf.setOnCheckedChangeListener { _, isChecked ->
+                pickerBinding.downloadOneFile.isEnabled = isChecked
+                if (!isChecked) pickerBinding.downloadOneFile.isChecked = false
+            }
+            fragment.requireContext().customAlertDialog().apply {
+                setTitle(fragment.getString(R.string.multi_chapter_downloader))
+                setCustomView(pickerBinding.root)
+                setPosButton(R.string.ok) {
+                    val start = minOf(startIndex, endIndex)
+                    val end = maxOf(startIndex, endIndex)
+                    val asPdf = pickerBinding.downloadPdf.isChecked
+                    val oneFile = asPdf && pickerBinding.downloadOneFile.isChecked
+                    PrefManager.setVal(PrefName.MangaDownloadPdf, asPdf)
+                    fragment.multiDownload(start, end, asPdf, oneFile)
+                }
+                setNegButton(R.string.cancel)
+                show()
+            }
+        }
+
         binding.mediaNestedButton.setOnClickListener {
             val dialogBinding = DialogLayoutBinding.inflate(fragment.layoutInflater)
             var refresh = false
@@ -322,28 +366,6 @@ class MangaReadAdapter(
                     }
                 }
 
-                // Multi download
-                //downloadNo.text = "0"
-                mediaDownloadTop.setOnClickListener {
-                    fragment.requireContext().customAlertDialog().apply {
-                        setTitle(fragment.getString(R.string.multi_chapter_downloader))
-                        setMessage(fragment.getString(R.string.enter_number_of_chapters))
-                        val input = View.inflate(currContext(), R.layout.dialog_layout, null)
-                        val editText = input.findViewById<EditText>(R.id.downloadNo)
-                        setCustomView(input)
-                        setPosButton(R.string.ok) {
-                            val value = editText.text.toString().toIntOrNull()
-                            if (value != null && value > 0) {
-                                downloadNo.setText(value.toString(), TextView.BufferType.EDITABLE)
-                                fragment.multiDownload(value)
-                            } else {
-                                toast(fragment.getString(R.string.please_enter_valid_number))
-                            }
-                        }
-                        setNegButton(R.string.cancel)
-                        show()
-                    }
-                }
                 resetProgress.setOnClickListener {
                     fragment.requireContext().customAlertDialog().apply {
                         setTitle(fragment.getString(R.string.delete_progress_for_chapters, media.nameRomaji))
@@ -443,10 +465,6 @@ class MangaReadAdapter(
                     setCustomView(root)
                     setPosButton("OK") {
                         if (run) fragment.onIconPressed(style, reversed)
-                        val value = downloadNo.text.toString().toIntOrNull()
-                        if (value != null && value > 0) {
-                            fragment.multiDownload(value)
-                        }
                         if (refresh) fragment.loadChapters(source, true)
                     }
                     setNegButton("Cancel") {

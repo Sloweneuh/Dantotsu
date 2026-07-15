@@ -1044,6 +1044,14 @@
     <string name="enter_chapter_episode_tag">Entrer un tag de chapitre/épisode</string>
     <string name="delete_item">Supprimer %1$s ?</string>
     <string name="multi_chapter_downloader">Téléchargeur multi-chapitres</string>
+    <string name="from">De</string>
+    <string name="to">À</string>
+    <string name="download_as_pdf">Télécharger en PDF</string>
+    <string name="download_as_pdf_desc">Télécharger ce chapitre en fichier PDF au lieu d\'images ?</string>
+    <string name="never_ask_again">Ne plus demander</string>
+    <string name="one_file_download">Téléchargement en un seul fichier (tous les chapitres dans un seul PDF)</string>
+    <string name="delete_one_file_warning">Ce chapitre est regroupé avec %1$d chapitres dans un seul fichier. Le supprimer supprimera les %1$d chapitres.</string>
+    <string name="download_skipped_chapters">%1$d chapitre(s) ignoré(s) car impossible(s) à charger</string>
     <string name="delete_chapter">Supprimer le chapitre</string>
     <string name="delete_episode">Supprimer l\'épisode</string>
     <string name="delete_progress_for_chapters">Supprimer la progression de tous les chapitres de %1$s</string>

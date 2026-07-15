@@ -186,6 +186,11 @@ abstract class BaseImageAdapter(
                 val maxW = dm.widthPixels * 2
                 val maxH = maxHeightOverride ?: (dm.heightPixels * 2)
                 withContext(Dispatchers.IO) {
+                    // Downloaded PDF chapters: render the requested page on demand.
+                    if (PdfPageRenderer.isPdfPage(link.url)) {
+                        return@withContext PdfPageRenderer.render(this@loadBitmap, link.url, maxW)
+                    }
+
                     val localFile = File(link.url)
                     if (localFile.exists()) {
                         return@withContext Glide.with(this@loadBitmap)

@@ -16,6 +16,7 @@ import ani.dantotsu.databinding.ItemChapterListBinding
 import ani.dantotsu.databinding.ItemEpisodeCompactBinding
 import ani.dantotsu.media.Media
 import ani.dantotsu.media.MediaNameAdapter
+import ani.dantotsu.media.manga.mangareader.PdfPageRenderer
 import ani.dantotsu.parsers.DynamicMangaParser
 import ani.dantotsu.setAnimation
 import ani.dantotsu.util.customAlertDialog
@@ -112,7 +113,33 @@ class MangaChapterAdapter(
     private val activeDownloads = mutableSetOf<String>()
     private val downloadedChapters = mutableSetOf<String>()
 
+    /**
+     * When reading from the offline source, every listed chapter is local by definition, so
+     * treat them all as downloaded (shows the delete affordance instead of a download icon).
+     * Set right before the chapter list is (re)bound, so no extra notify is needed here.
+     */
+    var offlineMode: Boolean = false
+
+    private fun isDownloaded(chapterNumber: String): Boolean =
+        offlineMode || downloadedChapters.contains(chapterNumber)
+
+    /**
+     * If [chapter] is bundled inside a one-file PDF, returns how many chapters share that
+     * file (they'd all be deleted together); otherwise 1.
+     */
+    private fun pdfSiblingCount(chapter: MangaChapter): Int {
+        val uri = PdfPageRenderer.decodeChapter(chapter.link)?.first ?: return 1
+        return arr.count {
+            it is MangaChapterListItem.Chapter &&
+                    PdfPageRenderer.decodeChapter(it.chapter.link)?.first == uri
+        }
+    }
+
     fun startDownload(chapterNumber: String) {
+        // If completion was already processed (e.g. a fast batch download finished before
+        // this "started" signal arrived), don't flip the chapter back to the downloading
+        // state — that would leave the icon stuck spinning instead of showing "downloaded".
+        if (downloadedChapters.contains(chapterNumber)) return
         activeDownloads.add(chapterNumber)
         val position = chapterIndexOf(chapterNumber)
         if (position != -1) notifyItemChanged(position)
@@ -126,6 +153,18 @@ class MangaChapterAdapter(
             (arr[position] as? MangaChapterListItem.Chapter)?.chapter?.progress = "Downloaded"
             notifyItemChanged(position)
         }
+    }
+
+    /**
+     * Marks a chapter as downloaded (delete icon) without the transient "Downloaded" label.
+     * Used when restoring state on a list rebuild, matching how ordinary downloads look once
+     * their fresh chapter objects (with empty progress) are re-bound.
+     */
+    fun markDownloaded(chapterNumber: String) {
+        activeDownloads.remove(chapterNumber)
+        downloadedChapters.add(chapterNumber)
+        val position = chapterIndexOf(chapterNumber)
+        if (position != -1) notifyItemChanged(position)
     }
 
     fun deleteDownload(chapterNumber: MangaChapter) {
@@ -164,7 +203,7 @@ class MangaChapterAdapter(
             if (item !is MangaChapterListItem.Chapter) continue
             count++
             val chapterNumber = item.chapter.uniqueNumber()
-            if (!activeDownloads.contains(chapterNumber) && !downloadedChapters.contains(chapterNumber)) {
+            if (!activeDownloads.contains(chapterNumber) && !isDownloaded(chapterNumber)) {
                 fragment.onMangaChapterDownloadClick(item.chapter)
             }
         }
@@ -182,7 +221,7 @@ class MangaChapterAdapter(
             when {
                 activeDownloads.contains(chapterNumber) ->
                     fragment.onMangaChapterStopDownloadClick(item.chapter)
-                downloadedChapters.contains(chapterNumber) ->
+                isDownloaded(chapterNumber) ->
                     fragment.onMangaChapterRemoveDownloadClick(item.chapter)
             }
         }
@@ -205,7 +244,11 @@ class MangaChapterAdapter(
                 startOrContinueRotation(chapterNumber) {
                     binding.itemDownload.rotation = 0f
                 }
-            } else if (downloadedChapters.contains(chapterNumber)) {
+            } else if (offlineMode) {
+                // Everything is local; show the delete affordance directly (no check flash).
+                binding.itemDownload.setImageResource(R.drawable.ic_round_delete_24)
+                binding.itemDownload.rotation = 0f
+            } else if (isDownloaded(chapterNumber)) {
                 binding.itemDownload.setImageResource(R.drawable.ic_circle_check)
                 binding.itemDownload.postDelayed({
                     binding.itemDownload.setImageResource(R.drawable.ic_round_delete_24)
@@ -257,10 +300,27 @@ class MangaChapterAdapter(
                             fragment.onMangaChapterStopDownloadClick(chapter)
                             return@setOnClickListener
                         }
-                        downloadedChapters.contains(chapterNumber) -> {
+                        isDownloaded(chapterNumber) -> {
+                            val siblingCount = pdfSiblingCount(chapter)
                             it.context.customAlertDialog().apply {
                                 setTitle(it.context.getString(R.string.delete_chapter))
-                                setMessage(it.context.getString(R.string.are_you_sure_delete_item, chapterNumber))
+                                // A one-file PDF bundles several chapters; make it clear that
+                                // deleting one removes every chapter sharing the file.
+                                if (siblingCount > 1) {
+                                    setMessage(
+                                        it.context.getString(
+                                            R.string.delete_one_file_warning,
+                                            siblingCount
+                                        )
+                                    )
+                                } else {
+                                    setMessage(
+                                        it.context.getString(
+                                            R.string.are_you_sure_delete_item,
+                                            chapterNumber
+                                        )
+                                    )
+                                }
                                 setPosButton(R.string.delete) {
                                     fragment.onMangaChapterRemoveDownloadClick(chapter)
                                 }
@@ -269,7 +329,7 @@ class MangaChapterAdapter(
                             }
                             return@setOnClickListener
                         }
-                        else -> fragment.onMangaChapterDownloadClick(chapter)
+                        else -> fragment.downloadChapterWithPdfPrompt(chapter)
                     }
                 }
             }
@@ -279,7 +339,7 @@ class MangaChapterAdapter(
                     val item = arr[pos] as? MangaChapterListItem.Chapter ?: return@setOnLongClickListener true
                     val chapterNumber = item.chapter.uniqueNumber()
                     val chaptersAvailable = chapterCountFrom(pos)
-                    if (activeDownloads.contains(chapterNumber) || downloadedChapters.contains(chapterNumber)) {
+                    if (activeDownloads.contains(chapterNumber) || isDownloaded(chapterNumber)) {
                         fragment.requireContext().customAlertDialog().apply {
                             setTitle("Multi Chapter Deleter")
                             setMessage("Enter the number of chapters to delete")

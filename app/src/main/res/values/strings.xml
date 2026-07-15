@@ -1565,6 +1565,14 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="enter_chapter_episode_tag">Enter a chapter/episode number tag</string>
     <string name="delete_item">Delete %1$s?</string>
     <string name="multi_chapter_downloader">Multi Chapter Downloader</string>
+    <string name="from">From</string>
+    <string name="to">To</string>
+    <string name="download_as_pdf">Download as PDF</string>
+    <string name="download_as_pdf_desc">Download this chapter as a PDF file instead of images?</string>
+    <string name="never_ask_again">Never ask again</string>
+    <string name="one_file_download">One file download (all chapters in a single PDF)</string>
+    <string name="delete_one_file_warning">This chapter is bundled with %1$d chapters in a single file. Deleting it will remove all %1$d chapters.</string>
+    <string name="download_skipped_chapters">Skipped %1$d chapter(s) that couldn\'t be loaded</string>
     <string name="delete_chapter">Delete Chapter</string>
     <string name="delete_episode">Delete Episode</string>
     <string name="delete_progress_for_chapters">Delete Progress for all chapters of %1$s</string>

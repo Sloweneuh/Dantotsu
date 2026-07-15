@@ -7,7 +7,6 @@ import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.ImageButton
 import android.widget.LinearLayout
-import android.widget.NumberPicker
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.content.ContextCompat
 import androidx.core.content.ContextCompat.getString
@@ -22,6 +21,7 @@ import ani.dantotsu.R
 import ani.dantotsu.currActivity
 import ani.dantotsu.currContext
 import ani.dantotsu.databinding.DialogLayoutBinding
+import ani.dantotsu.databinding.DialogMultiDownloadBinding
 import ani.dantotsu.databinding.ItemChipBinding
 import ani.dantotsu.databinding.ItemMediaSourceBinding
 import ani.dantotsu.displayTimer
@@ -256,6 +256,42 @@ class AnimeWatchAdapter(
             openSettings(fragment.requireContext(), CHANNEL_SUBSCRIPTION_CHECK)
         }
 
+        // Multi download
+        binding.mediaSourceDownload.setOnClickListener {
+            val episodes = media.anime?.episodes?.values?.toList()
+            if (episodes.isNullOrEmpty()) {
+                toast(fragment.getString(R.string.source_not_found))
+                return@setOnClickListener
+            }
+            val numbers = episodes.map { it.number }
+            val pickerBinding = DialogMultiDownloadBinding.inflate(fragment.layoutInflater)
+            // PDF options are manga-only
+            pickerBinding.pdfOptionsContainer.visibility = View.GONE
+            var startIndex = 0
+            var endIndex = episodes.lastIndex
+            pickerBinding.downloadRangeStart.apply {
+                setSimpleItems(numbers.toTypedArray())
+                setText(numbers[startIndex], false)
+                setOnItemClickListener { _, _, position, _ -> startIndex = position }
+            }
+            pickerBinding.downloadRangeEnd.apply {
+                setSimpleItems(numbers.toTypedArray())
+                setText(numbers[endIndex], false)
+                setOnItemClickListener { _, _, position, _ -> endIndex = position }
+            }
+            fragment.requireContext().customAlertDialog().apply {
+                setTitle(fragment.getString(R.string.multi_episode_downloader))
+                setCustomView(pickerBinding.root)
+                setPosButton(R.string.ok) {
+                    val start = minOf(startIndex, endIndex)
+                    val end = maxOf(startIndex, endIndex)
+                    fragment.multiDownload(start, end)
+                }
+                setNegButton(R.string.cancel)
+                show()
+            }
+        }
+
         // Nested Button
         binding.mediaNestedButton.setOnClickListener {
             val dialogBinding = DialogLayoutBinding.inflate(fragment.layoutInflater)
@@ -324,26 +360,6 @@ class AnimeWatchAdapter(
                     }
                 }
 
-                //implement Multi download
-                downloadNo.setText("0")
-                mediaDownloadTop.setOnClickListener {
-                    // Alert dialog asking for the number of Episodes to download
-                    fragment.requireContext().customAlertDialog().apply {
-                        setTitle("Multi Episode Downloader")
-                        setMessage("Enter the number of episodes to download")
-                        val input = NumberPicker(currContext())
-                        input.minValue = 1
-                        input.maxValue = 20
-                        input.value = 1
-                        setCustomView(input)
-                        setPosButton(R.string.ok) {
-                            downloadNo.setText("${input.value}")
-                        }
-                        setNegButton(R.string.cancel)
-                        show()
-                    }
-                }
-
                 resetProgress.setOnClickListener {
                     fragment.requireContext().customAlertDialog().apply {
                         setTitle(" Delete Progress for all episodes of ${media.nameRomaji}")
@@ -376,9 +392,6 @@ class AnimeWatchAdapter(
                     setCustomView(root)
                     setPosButton("OK") {
                         if (run) fragment.onIconPressed(style, reversed)
-                        if (downloadNo.text.toString() != "0") {
-                            fragment.multiDownload(n = downloadNo.text.toString().toInt())
-                        }
                         if (refresh) fragment.loadEpisodes(source, true)
                     }
                     setNegButton("Cancel") {

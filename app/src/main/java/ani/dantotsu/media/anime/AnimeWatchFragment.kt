@@ -436,6 +436,19 @@ class AnimeWatchFragment : Fragment() {
         onAnimeEpisodesDownload(episodesToDownload)
     }
 
+    fun multiDownload(startIndex: Int, endIndex: Int) {
+        val episodes = media.anime?.episodes?.values?.toList()
+        if (episodes.isNullOrEmpty()) return
+        // Clamp the requested range to the available episodes
+        val start = startIndex.coerceIn(0, episodes.size - 1)
+        val end = endIndex.coerceIn(start, episodes.size - 1)
+        // Get the list of episodes to download (end is inclusive)
+        val episodesToDownload: ArrayList<String> = ArrayList(
+            episodes.subList(start, end + 1).map { it.number }
+        )
+        onAnimeEpisodesDownload(episodesToDownload)
+    }
+
     fun multiDelete(episodeNumber: String? = null, n: Int){
         val episodes = media.anime?.episodes?.values?.toList()
         val progressEpisodeIndex = episodes?.indexOfFirst { it.number == episodeNumber } ?: 0
