@@ -33,6 +33,7 @@ import ani.dantotsu.connections.handoff.HandoffNavigator
 import ani.dantotsu.addons.download.DownloadAddonManager
 import ani.dantotsu.databinding.FragmentMediaSourceBinding
 import ani.dantotsu.download.DownloadedType
+import ani.dantotsu.download.DownloadTracker
 import ani.dantotsu.download.DownloadsManager
 import ani.dantotsu.download.DownloadsManager.Companion.compareName
 import ani.dantotsu.download.DownloadsManager.Companion.getSubDirectory
@@ -56,6 +57,7 @@ import ani.dantotsu.setNavigationTheme
 import ani.dantotsu.settings.extensionprefs.AnimeSourcePreferencesFragment
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
+import ani.dantotsu.downloadStats
 import ani.dantotsu.snackString
 import ani.dantotsu.toast
 import ani.dantotsu.util.Logger
@@ -436,17 +438,22 @@ class AnimeWatchFragment : Fragment() {
         onAnimeEpisodesDownload(episodesToDownload)
     }
 
-    fun multiDownload(startIndex: Int, endIndex: Int) {
-        val episodes = media.anime?.episodes?.values?.toList()
-        if (episodes.isNullOrEmpty()) return
-        // Clamp the requested range to the available episodes
-        val start = startIndex.coerceIn(0, episodes.size - 1)
-        val end = endIndex.coerceIn(start, episodes.size - 1)
-        // Get the list of episodes to download (end is inclusive)
-        val episodesToDownload: ArrayList<String> = ArrayList(
-            episodes.subList(start, end + 1).map { it.number }
-        )
-        onAnimeEpisodesDownload(episodesToDownload)
+    fun multiDownload(episodeNumbers: List<String>) {
+        if (episodeNumbers.isEmpty()) return
+        onAnimeEpisodesDownload(ArrayList(episodeNumbers))
+    }
+
+    /** Downloadable episodes for the range picker: excludes ones already downloaded or in-flight. */
+    fun downloadableEpisodes(): List<Episode> {
+        val episodes = media.anime?.episodes?.values?.toList() ?: return emptyList()
+        return episodes.filterNot { isEpisodeDownloadedOrActive(it.number) }
+    }
+
+    private fun isEpisodeDownloadedOrActive(number: String): Boolean {
+        if (downloadManager.queryDownload(media.mainName(), number, MediaType.ANIME)) return true
+        return DownloadTracker.items.value.any {
+            it.type == MediaType.ANIME && it.mediaId == media.id && it.label == number
+        }
     }
 
     fun multiDelete(episodeNumber: String? = null, n: Int){
@@ -798,8 +805,13 @@ class AnimeWatchFragment : Fragment() {
                     val progress = intent.getIntExtra("progress", 0)
                     val mediaId = intent.getIntExtra("mediaId", -1)
                     if (mediaId != media.id) return
+                    val stats = downloadStats(
+                        intent.getLongExtra("speed", 0),
+                        intent.getLongExtra("eta", -1),
+                        intent.getLongExtra("bytesDone", 0)
+                    )
                     chapterNumber?.let {
-                        episodeAdapter.updateDownloadProgress(it, progress)
+                        episodeAdapter.updateDownloadProgress(it, progress, stats)
                     }
                 }
             }

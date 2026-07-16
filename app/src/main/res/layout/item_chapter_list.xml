@@ -128,8 +128,8 @@
             android:alpha="0.66"
             android:ellipsize="end"
             android:fontFamily="@font/poppins_bold"
-            android:maxLines="1"
-            android:textSize="14dp"
+            android:maxLines="2"
+            android:textSize="12dp"
             android:visibility="gone"
             tools:ignore="SpUsage" />
     </com.google.android.material.appbar.AppBarLayout>

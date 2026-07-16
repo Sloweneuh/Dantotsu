@@ -18,9 +18,14 @@ import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import ani.dantotsu.R
 import ani.dantotsu.connections.crashlytics.CrashlyticsInterface
+import ani.dantotsu.download.DownloadTracker
+import ani.dantotsu.download.downloadActivityIntent
 import ani.dantotsu.download.DownloadedType
 import ani.dantotsu.download.DownloadsManager
 import ani.dantotsu.download.DownloadsManager.Companion.getSubDirectory
+import ani.dantotsu.formatBytes
+import ani.dantotsu.formatDownloadSpeed
+import ani.dantotsu.formatEta
 import ani.dantotsu.media.Media
 import ani.dantotsu.media.MediaType
 import ani.dantotsu.media.novel.NovelReadFragment
@@ -82,6 +87,7 @@ class NovelDownloaderService : Service() {
                 priority = NotificationCompat.PRIORITY_DEFAULT
                 setOnlyAlertOnce(true)
                 setProgress(0, 0, false)
+                setContentIntent(downloadActivityIntent())
             }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(
@@ -153,6 +159,7 @@ class NovelDownloaderService : Service() {
                 downloadJobs[chapter]?.cancel()
                 downloadJobs.remove(chapter)
                 NovelServiceDataSingleton.downloadQueue.removeAll { it.chapter == chapter }
+                DownloadTracker.removeByKey(MediaType.NOVEL, chapter)
                 updateNotification() // Update the notification after cancellation
             }
         }
@@ -208,6 +215,7 @@ class NovelDownloaderService : Service() {
     }
 
     suspend fun download(task: DownloadTask) {
+        val itemId = DownloadTracker.idOf(MediaType.NOVEL, task.title, task.chapter)
         try {
             withContext(Dispatchers.Main) {
                 val notifi = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -220,6 +228,7 @@ class NovelDownloaderService : Service() {
                 }
 
                 broadcastDownloadStarted(task.originalLink)
+                DownloadTracker.markDownloading(itemId)
 
                 if (notifi) {
                     builder.setContentText("Downloading ${task.title} - ${task.chapter}")
@@ -230,11 +239,13 @@ class NovelDownloaderService : Service() {
                     if (isAlreadyDownloaded(task.originalLink)) {
                         Logger.log("Already downloaded")
                         broadcastDownloadFinished(task.originalLink)
+                        DownloadTracker.remove(itemId)
                         snackString("Already downloaded")
                         return@withContext
                     }
                     Logger.log("Download link is not an .epub file")
                     broadcastDownloadFailed(task.originalLink)
+                    DownloadTracker.remove(itemId)
                     snackString("Download link is not an .epub file")
                     return@withContext
                 }
@@ -282,6 +293,7 @@ class NovelDownloaderService : Service() {
                             val responseBody = response.body
                             val totalBytes = responseBody.contentLength()
                             var downloadedBytes = 0L
+                            val startTime = System.currentTimeMillis()
 
                             val notificationUpdateInterval = 1024 * 1024 // 1 MB
                             val broadcastUpdateInterval = 1024 * 256 // 256 KB
@@ -296,11 +308,24 @@ class NovelDownloaderService : Service() {
                                     sink.emit()
 
                                     // Update progress at intervals
+                                    val elapsed = System.currentTimeMillis() - startTime
+                                    val speed =
+                                        if (elapsed > 0) downloadedBytes * 1000 / elapsed else 0
+                                    val etaMs =
+                                        if (speed > 0 && totalBytes > 0)
+                                            (totalBytes - downloadedBytes) * 1000 / speed else -1L
+                                    val progress =
+                                        if (totalBytes > 0)
+                                            (downloadedBytes * 100 / totalBytes).toInt() else 0
                                     if (downloadedBytes - lastNotificationUpdate >= notificationUpdateInterval) {
                                         withContext(Dispatchers.Main) {
-                                            val progress =
-                                                (downloadedBytes * 100 / totalBytes).toInt()
                                             builder.setProgress(100, progress, false)
+                                                .setContentText(
+                                                    downloadProgressText(
+                                                        task, progress, downloadedBytes,
+                                                        totalBytes, speed, etaMs
+                                                    )
+                                                )
                                             if (notifi) {
                                                 notificationManager.notify(
                                                     NOTIFICATION_ID,
@@ -311,12 +336,14 @@ class NovelDownloaderService : Service() {
                                         lastNotificationUpdate = downloadedBytes
                                     }
                                     if (downloadedBytes - lastBroadcastUpdate >= broadcastUpdateInterval) {
-                                        withContext(Dispatchers.Main) {
-                                            val progress =
-                                                (downloadedBytes * 100 / totalBytes).toInt()
-                                            Logger.log("Download progress: $progress")
-                                            broadcastDownloadProgress(task.originalLink, progress)
-                                        }
+                                        DownloadTracker.updateProgress(
+                                            itemId, progress, downloadedBytes,
+                                            totalBytes, speed, etaMs
+                                        )
+                                        broadcastDownloadProgress(
+                                            task.originalLink, progress, downloadedBytes,
+                                            totalBytes, speed, etaMs
+                                        )
                                         lastBroadcastUpdate = downloadedBytes
                                     }
                                 }
@@ -350,14 +377,38 @@ class NovelDownloaderService : Service() {
                     )
                 )
                 broadcastDownloadFinished(task.originalLink)
+                DownloadTracker.remove(itemId)
                 snackString("${task.title} - ${task.chapter} Download finished")
             }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            // User cancelled the download; not an error.
+            DownloadTracker.remove(itemId)
+            throw e
         } catch (e: Exception) {
             Logger.log("Exception while downloading .epub: ${e.message}")
             snackString("Exception while downloading .epub: ${e.message}")
             Injekt.get<CrashlyticsInterface>().logException(e)
             broadcastDownloadFailed(task.originalLink)
+            DownloadTracker.remove(itemId)
         }
+    }
+
+    /** Builds the notification/progress text with percent, speed, ETA and size. */
+    private fun downloadProgressText(
+        task: DownloadTask,
+        percent: Int,
+        bytesDone: Long,
+        bytesTotal: Long,
+        speedBps: Long,
+        etaMs: Long
+    ): String {
+        val parts = mutableListOf("$percent%")
+        formatDownloadSpeed(speedBps).takeIf { it.isNotEmpty() }?.let { parts.add(it) }
+        formatEta(etaMs).takeIf { it.isNotEmpty() }?.let { parts.add("ETA $it") }
+        val sizeStr = if (bytesTotal > 0) "${formatBytes(bytesDone)}/${formatBytes(bytesTotal)}"
+        else formatBytes(bytesDone)
+        parts.add(sizeStr)
+        return "${task.chapter} • ${parts.joinToString(" • ")}"
     }
 
     @OptIn(DelicateCoroutinesApi::class)
@@ -456,10 +507,21 @@ class NovelDownloaderService : Service() {
         sendBroadcast(intent)
     }
 
-    private fun broadcastDownloadProgress(link: String, progress: Int) {
+    private fun broadcastDownloadProgress(
+        link: String,
+        progress: Int,
+        bytesDone: Long = 0,
+        bytesTotal: Long = 0,
+        speed: Long = 0,
+        eta: Long = -1
+    ) {
         val intent = Intent(NovelReadFragment.ACTION_DOWNLOAD_PROGRESS).apply {
             putExtra(NovelReadFragment.EXTRA_NOVEL_LINK, link)
             putExtra("progress", progress)
+            putExtra("bytesDone", bytesDone)
+            putExtra("bytesTotal", bytesTotal)
+            putExtra("speed", speed)
+            putExtra("eta", eta)
         }
         sendBroadcast(intent)
     }
@@ -498,4 +560,14 @@ object NovelServiceDataSingleton {
 
     @Volatile
     var isServiceRunning: Boolean = false
+
+    /** Reorders the pending queue so its tasks follow [orderedKeys] (by chapter). */
+    @Synchronized
+    fun reorderQueue(orderedKeys: List<String>) {
+        val ordered = downloadQueue.toList().sortedBy {
+            val i = orderedKeys.indexOf(it.chapter); if (i == -1) Int.MAX_VALUE else i
+        }
+        downloadQueue.clear()
+        downloadQueue.addAll(ordered)
+    }
 }

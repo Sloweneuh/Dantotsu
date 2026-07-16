@@ -244,6 +244,9 @@
             android:parentActivityName=".MainActivity"
             android:windowSoftInputMode="adjustResize|stateHidden" />
         <activity
+            android:name=".download.DownloadActivity"
+            android:parentActivityName=".MainActivity" />
+        <activity
             android:name=".settings.ExtensionBrowseActivity"
             android:parentActivityName=".settings.ExtensionsActivity" />
         <activity

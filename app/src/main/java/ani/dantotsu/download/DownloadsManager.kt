@@ -29,15 +29,17 @@ class DownloadsManager(private val context: Context) {
     private val gson = Gson()
     private val downloadsList = loadDownloads().toMutableList()
 
+    // Snapshots taken under lock: services add downloads concurrently while the manager UI
+    // reads these, which would otherwise throw ConcurrentModificationException.
     val mangaDownloadedTypes: List<DownloadedType>
-        get() = downloadsList.filter { it.type == MediaType.MANGA }
+        get() = synchronized(downloadsList) { downloadsList.filter { it.type == MediaType.MANGA } }
     val animeDownloadedTypes: List<DownloadedType>
-        get() = downloadsList.filter { it.type == MediaType.ANIME }
+        get() = synchronized(downloadsList) { downloadsList.filter { it.type == MediaType.ANIME } }
     val novelDownloadedTypes: List<DownloadedType>
-        get() = downloadsList.filter { it.type == MediaType.NOVEL }
+        get() = synchronized(downloadsList) { downloadsList.filter { it.type == MediaType.NOVEL } }
 
     private fun saveDownloads() {
-        val jsonString = gson.toJson(downloadsList)
+        val jsonString = synchronized(downloadsList) { gson.toJson(downloadsList) }
         PrefManager.setVal(PrefName.DownloadsKeys, jsonString)
     }
 
@@ -52,7 +54,7 @@ class DownloadsManager(private val context: Context) {
     }
 
     fun addDownload(downloadedType: DownloadedType) {
-        downloadsList.add(downloadedType)
+        synchronized(downloadsList) { downloadsList.add(downloadedType) }
         saveDownloads()
     }
 
@@ -353,10 +355,15 @@ class DownloadsManager(private val context: Context) {
             chapter: String? = null
         ): Long {
             val directory = getSubDirectory(context, type, false, title, chapter) ?: return 0
+            return folderSize(directory)
+        }
+
+        /** Recursively sums the byte length of every file under [file]. */
+        fun folderSize(file: DocumentFile?): Long {
+            if (file == null || !file.exists()) return 0
+            if (file.isFile) return file.length()
             var size = 0L
-            directory.listFiles().forEach {
-                size += it.length()
-            }
+            file.listFiles().forEach { size += folderSize(it) }
             return size
         }
 

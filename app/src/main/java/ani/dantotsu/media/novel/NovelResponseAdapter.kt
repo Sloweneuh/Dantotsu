@@ -159,14 +159,15 @@ class NovelResponseAdapter(
         }
     }
 
-    fun updateDownloadProgress(link: String, progress: Int) {
+    fun updateDownloadProgress(link: String, progress: Int, stats: String = "") {
         if (!activeDownloads.contains(link)) {
             activeDownloads.add(link)
         }
         val position = list.indexOfFirst { it.link == link }
         if (position != -1) {
             list[position].extra?.remove("0")
-            list[position].extra?.set("0", fragment.getString(R.string.downloading_progress, progress))
+            val base = fragment.getString(R.string.downloading_progress, progress)
+            list[position].extra?.set("0", if (stats.isEmpty()) base else "$base · $stats")
             Logger.log("updateDownloadProgress: $progress, position: $position")
             notifyItemChanged(position)
         }

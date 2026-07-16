@@ -256,9 +256,9 @@ class MangaReadAdapter(
 
         // Multi download
         binding.mediaSourceDownload.setOnClickListener {
-            val chapters = media.manga?.chapters?.values?.toList()
-            if (chapters.isNullOrEmpty()) {
-                toast(fragment.getString(R.string.source_not_found))
+            val chapters = fragment.downloadableChapters()
+            if (chapters.isEmpty()) {
+                toast(fragment.getString(R.string.all_chapters_downloaded))
                 return@setOnClickListener
             }
             val numbers = chapters.map { it.number }
@@ -293,7 +293,7 @@ class MangaReadAdapter(
                     val asPdf = pickerBinding.downloadPdf.isChecked
                     val oneFile = asPdf && pickerBinding.downloadOneFile.isChecked
                     PrefManager.setVal(PrefName.MangaDownloadPdf, asPdf)
-                    fragment.multiDownload(start, end, asPdf, oneFile)
+                    fragment.multiDownload(chapters.subList(start, end + 1), asPdf, oneFile)
                 }
                 setNegButton(R.string.cancel)
                 show()

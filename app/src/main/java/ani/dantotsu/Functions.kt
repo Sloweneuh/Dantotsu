@@ -266,6 +266,7 @@ fun initActivity(a: Activity) {
         }
     }
     if (a !is MainActivity) a.setNavigationTheme()
+    ani.dantotsu.download.attachDownloadFab(a)
 }
 
 fun Activity.hideSystemBars() {
@@ -1180,6 +1181,41 @@ fun toast(string: String?) {
 
 fun toast(res: Int) {
     toast(getAppString(res))
+}
+
+/** Human-readable byte size, e.g. "12.3 MB". */
+fun formatBytes(bytes: Long): String {
+    if (bytes <= 0) return "0 B"
+    val units = arrayOf("B", "KB", "MB", "GB", "TB")
+    val group = (Math.log10(bytes.toDouble()) / Math.log10(1024.0)).toInt()
+        .coerceIn(0, units.size - 1)
+    if (group == 0) return "$bytes B"
+    val value = bytes / Math.pow(1024.0, group.toDouble())
+    return String.format(java.util.Locale.US, "%.1f %s", value, units[group])
+}
+
+/** Human-readable download speed, e.g. "1.2 MB/s" ("" when unknown). */
+fun formatDownloadSpeed(bytesPerSec: Long): String =
+    if (bytesPerSec <= 0) "" else "${formatBytes(bytesPerSec)}/s"
+
+/** "speed · ETA t · size" line for list rows/notifications ("" when nothing is known). */
+fun downloadStats(speedBps: Long, etaMs: Long, bytesDone: Long): String {
+    val parts = mutableListOf<String>()
+    formatDownloadSpeed(speedBps).takeIf { it.isNotEmpty() }?.let { parts.add(it) }
+    formatEta(etaMs).takeIf { it.isNotEmpty() }?.let { parts.add("ETA $it") }
+    if (bytesDone > 0) parts.add(formatBytes(bytesDone))
+    return parts.joinToString(" · ")
+}
+
+/** Human-readable ETA as m:ss or h:mm:ss ("" when unknown). */
+fun formatEta(millis: Long): String {
+    if (millis <= 0) return ""
+    val totalSec = millis / 1000
+    val h = totalSec / 3600
+    val m = (totalSec % 3600) / 60
+    val s = totalSec % 60
+    return if (h > 0) String.format(java.util.Locale.US, "%d:%02d:%02d", h, m, s)
+    else String.format(java.util.Locale.US, "%d:%02d", m, s)
 }
 
 fun snackString(s: String?, activity: Activity? = null, clipboard: String? = null): Snackbar? {

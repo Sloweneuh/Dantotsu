@@ -20,8 +20,13 @@ import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import ani.dantotsu.R
 import ani.dantotsu.connections.crashlytics.CrashlyticsInterface
+import ani.dantotsu.download.DownloadTracker
+import ani.dantotsu.download.downloadActivityIntent
 import ani.dantotsu.download.DownloadedType
 import ani.dantotsu.download.DownloadsManager
+import ani.dantotsu.formatBytes
+import ani.dantotsu.formatDownloadSpeed
+import ani.dantotsu.formatEta
 import ani.dantotsu.download.DownloadsManager.Companion.getSubDirectory
 import ani.dantotsu.download.findValidName
 import ani.dantotsu.media.Media
@@ -90,6 +95,7 @@ class MangaDownloaderService : Service() {
             priority = NotificationCompat.PRIORITY_DEFAULT
             setOnlyAlertOnce(true)
             setProgress(0, 0, false)
+            setContentIntent(downloadActivityIntent())
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(
@@ -161,6 +167,7 @@ class MangaDownloaderService : Service() {
                 downloadJobs[chapter]?.cancel()
                 downloadJobs.remove(chapter)
                 MangaServiceDataSingleton.downloadQueue.removeAll { it.chapter == chapter }
+                DownloadTracker.removeByKey(MediaType.MANGA, chapter)
                 updateNotification() // Update the notification after cancellation
             }
         }
@@ -186,6 +193,7 @@ class MangaDownloaderService : Service() {
     }
 
     suspend fun download(task: DownloadTask) {
+        val itemId = DownloadTracker.idOf(MediaType.MANGA, task.title, task.chapter)
         try {
             withContext(Dispatchers.IO) {
                 val notifi = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -221,7 +229,11 @@ class MangaDownloaderService : Service() {
 
                 outputDir.deleteRecursively(this@MangaDownloaderService, true)
 
-                var farthest = 0
+                DownloadTracker.markDownloading(itemId)
+                val startTime = System.currentTimeMillis()
+                val totalBytes = java.util.concurrent.atomic.AtomicLong(0)
+                val pagesDone = java.util.concurrent.atomic.AtomicInteger(0)
+
                 for ((index, image) in task.imageData.withIndex()) {
                     if (deferredMap.size >= task.simultaneousDownloads) {
                         deferredMap.values.awaitAll()
@@ -248,15 +260,20 @@ class MangaDownloaderService : Service() {
                             throw Exception("${task.chapter} - Unable to download all pages after $retryCount attempts. Try again.")
                         }
 
-                        saveToDisk("${index.ofLength(3)}.jpg", outputDir, bitmap)
-                        farthest++
+                        val written = saveToDisk("${index.ofLength(3)}.jpg", outputDir, bitmap)
+                        val done = totalBytes.addAndGet(written)
+                        val pages = pagesDone.incrementAndGet()
+                        val total = task.imageData.size
+                        val percent = pages * 100 / total
+                        val elapsed = System.currentTimeMillis() - startTime
+                        val speed = if (elapsed > 0) done * 1000 / elapsed else 0
+                        // ETA estimate: remaining pages at the current average page time.
+                        val etaMs = if (pages > 0) (elapsed / pages) * (total - pages) else -1L
 
-                        builder.setProgress(task.imageData.size, farthest, false)
-
-                        broadcastDownloadProgress(
-                            task.uniqueName,
-                            farthest * 100 / task.imageData.size
-                        )
+                        builder.setProgress(total, pages, false)
+                            .setContentText(downloadProgressText(task, percent, done, 0, speed, etaMs))
+                        DownloadTracker.updateProgress(itemId, percent, done, 0, speed, etaMs)
+                        broadcastDownloadProgress(task.uniqueName, percent, done, 0, speed, etaMs)
                         if (notifi) {
                             withContext(Dispatchers.Main) {
                                 notificationManager.notify(NOTIFICATION_ID, builder.build())
@@ -303,22 +320,47 @@ class MangaDownloaderService : Service() {
                     )
                 )
                 broadcastDownloadFinished(task.uniqueName)
+                DownloadTracker.remove(itemId)
                 snackString("${task.title} - ${task.chapter} Download finished")
             }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            // User cancelled the download; not an error.
+            DownloadTracker.remove(itemId)
+            throw e
         } catch (e: Exception) {
             Logger.log("Exception while downloading file: ${e.message}")
             snackString("Exception while downloading file: ${e.message}")
             Injekt.get<CrashlyticsInterface>().logException(e)
             broadcastDownloadFailed(task.uniqueName)
+            DownloadTracker.remove(itemId)
         }
     }
 
+    /** Builds the notification/progress text with percent, speed, ETA and size. */
+    private fun downloadProgressText(
+        task: DownloadTask,
+        percent: Int,
+        bytesDone: Long,
+        bytesTotal: Long,
+        speedBps: Long,
+        etaMs: Long
+    ): String {
+        val parts = mutableListOf("$percent%")
+        formatDownloadSpeed(speedBps).takeIf { it.isNotEmpty() }?.let { parts.add(it) }
+        formatEta(etaMs).takeIf { it.isNotEmpty() }?.let { parts.add("ETA $it") }
+        val sizeStr = if (bytesTotal > 0) "${formatBytes(bytesDone)}/${formatBytes(bytesTotal)}"
+        else formatBytes(bytesDone)
+        parts.add(sizeStr)
+        return "${task.chapter} • ${parts.joinToString(" • ")}"
+    }
 
+
+    /** Saves [bitmap] as JPEG and returns the number of bytes written (0 on failure). */
     private fun saveToDisk(
         fileName: String,
         directory: DocumentFile,
         bitmap: Bitmap
-    ) {
+    ): Long {
         try {
             directory.findFile(fileName)?.forceDelete(this)
             val file =
@@ -328,10 +370,12 @@ class MangaDownloaderService : Service() {
                 if (outputStream == null) throw Exception("Output stream is null")
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
             }
+            return file.length()
         } catch (e: Exception) {
             println("Exception while saving image: ${e.message}")
             snackString("Exception while saving image: ${e.message}")
             Injekt.get<CrashlyticsInterface>().logException(e)
+            return 0
         }
     }
 
@@ -759,10 +803,21 @@ class MangaDownloaderService : Service() {
         sendBroadcast(intent)
     }
 
-    private fun broadcastDownloadProgress(chapterNumber: String, progress: Int) {
+    private fun broadcastDownloadProgress(
+        chapterNumber: String,
+        progress: Int,
+        bytesDone: Long = 0,
+        bytesTotal: Long = 0,
+        speed: Long = 0,
+        eta: Long = -1
+    ) {
         val intent = Intent(ACTION_DOWNLOAD_PROGRESS).apply {
             putExtra(EXTRA_CHAPTER_NUMBER, chapterNumber)
             putExtra("progress", progress)
+            putExtra("bytesDone", bytesDone)
+            putExtra("bytesTotal", bytesTotal)
+            putExtra("speed", speed)
+            putExtra("eta", eta)
         }
         sendBroadcast(intent)
     }
@@ -821,4 +876,14 @@ object MangaServiceDataSingleton {
 
     @Volatile
     var isServiceRunning: Boolean = false
+
+    /** Reorders the pending queue so its tasks follow [orderedKeys] (by chapter). */
+    @Synchronized
+    fun reorderQueue(orderedKeys: List<String>) {
+        val ordered = downloadQueue.toList().sortedBy {
+            val i = orderedKeys.indexOf(it.chapter); if (i == -1) Int.MAX_VALUE else i
+        }
+        downloadQueue.clear()
+        downloadQueue.addAll(ordered)
+    }
 }

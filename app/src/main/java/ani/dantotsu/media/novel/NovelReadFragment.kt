@@ -24,6 +24,9 @@ import ani.dantotsu.databinding.FragmentMediaSourceBinding
 import ani.dantotsu.download.DownloadedType
 import ani.dantotsu.download.DownloadsManager
 import ani.dantotsu.download.novel.NovelDownloaderService
+import ani.dantotsu.downloadStats
+import ani.dantotsu.download.DownloadItem
+import ani.dantotsu.download.DownloadTracker
 import ani.dantotsu.download.novel.NovelServiceDataSingleton
 import ani.dantotsu.isOnMeteredNetwork
 import ani.dantotsu.media.Media
@@ -83,6 +86,19 @@ class NovelReadFragment : Fragment(),
                     retries = 2,
                 )
                 NovelServiceDataSingleton.downloadQueue.offer(downloadTask)
+                DownloadTracker.enqueue(
+                    DownloadItem(
+                        id = DownloadTracker.idOf(
+                            MediaType.NOVEL, downloadTask.title, downloadTask.chapter
+                        ),
+                        type = MediaType.NOVEL,
+                        mediaId = media.id,
+                        serviceKey = downloadTask.chapter,
+                        title = downloadTask.title,
+                        coverUrl = media.cover,
+                        label = downloadTask.chapter
+                    )
+                )
                 CoroutineScope(Dispatchers.IO).launch {
 
                     if (!NovelServiceDataSingleton.isServiceRunning) {
@@ -197,8 +213,13 @@ class NovelReadFragment : Fragment(),
                 ACTION_DOWNLOAD_PROGRESS -> {
                     val link = intent.getStringExtra(EXTRA_NOVEL_LINK)
                     val progress = intent.getIntExtra("progress", 0)
+                    val stats = downloadStats(
+                        intent.getLongExtra("speed", 0),
+                        intent.getLongExtra("eta", -1),
+                        intent.getLongExtra("bytesDone", 0)
+                    )
                     link?.let {
-                        novelResponseAdapter.updateDownloadProgress(it, progress)
+                        novelResponseAdapter.updateDownloadProgress(it, progress, stats)
                     }
                 }
             }

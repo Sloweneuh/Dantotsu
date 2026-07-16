@@ -258,9 +258,9 @@ class AnimeWatchAdapter(
 
         // Multi download
         binding.mediaSourceDownload.setOnClickListener {
-            val episodes = media.anime?.episodes?.values?.toList()
-            if (episodes.isNullOrEmpty()) {
-                toast(fragment.getString(R.string.source_not_found))
+            val episodes = fragment.downloadableEpisodes()
+            if (episodes.isEmpty()) {
+                toast(fragment.getString(R.string.all_episodes_downloaded))
                 return@setOnClickListener
             }
             val numbers = episodes.map { it.number }
@@ -285,7 +285,7 @@ class AnimeWatchAdapter(
                 setPosButton(R.string.ok) {
                     val start = minOf(startIndex, endIndex)
                     val end = maxOf(startIndex, endIndex)
-                    fragment.multiDownload(start, end)
+                    fragment.multiDownload(numbers.subList(start, end + 1))
                 }
                 setNegButton(R.string.cancel)
                 show()

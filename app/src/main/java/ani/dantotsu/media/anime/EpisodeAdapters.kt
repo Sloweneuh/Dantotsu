@@ -285,12 +285,13 @@ class EpisodeAdapter(
         }
     }
 
-    fun updateDownloadProgress(episodeNumber: String, progress: Int) {
+    fun updateDownloadProgress(episodeNumber: String, progress: Int, stats: String = "") {
         // Find the position of the chapter and notify only that item
         val position = arr.indexOfFirst { it.number == episodeNumber }
         if (position != -1) {
-            arr[position].downloadProgress = "Downloading: $progress%"
-
+            arr[position].downloadProgress =
+                if (stats.isEmpty()) "Downloading: $progress%"
+                else "Downloading: $progress% · $stats"
             notifyItemChanged(position)
         }
     }

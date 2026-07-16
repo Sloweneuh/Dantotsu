@@ -22,9 +22,14 @@ import ani.dantotsu.R
 import ani.dantotsu.addons.download.DownloadAddonManager
 import ani.dantotsu.connections.crashlytics.CrashlyticsInterface
 import ani.dantotsu.defaultHeaders
+import ani.dantotsu.download.DownloadTracker
+import ani.dantotsu.download.downloadActivityIntent
 import ani.dantotsu.download.DownloadedType
 import ani.dantotsu.download.DownloadsManager
 import ani.dantotsu.download.DownloadsManager.Companion.getSubDirectory
+import ani.dantotsu.formatBytes
+import ani.dantotsu.formatDownloadSpeed
+import ani.dantotsu.formatEta
 import ani.dantotsu.download.anime.AnimeDownloaderService.AnimeDownloadTask.Companion.getTaskName
 import ani.dantotsu.download.findValidName
 import ani.dantotsu.media.Media
@@ -94,6 +99,7 @@ class AnimeDownloaderService : Service() {
                 priority = NotificationCompat.PRIORITY_DEFAULT
                 setOnlyAlertOnce(true)
                 setProgress(100, 0, false)
+                setContentIntent(downloadActivityIntent())
             }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(
@@ -170,6 +176,7 @@ class AnimeDownloaderService : Service() {
             ffExtension!!.cancelDownload(it)
         }
         currentTasks.removeAll { it.getTaskName() == taskName }
+        DownloadTracker.removeByKey(MediaType.ANIME, taskName)
         CoroutineScope(Dispatchers.Default).launch {
             mutex.withLock {
                 downloadJobs[taskName]?.cancel()
@@ -201,6 +208,7 @@ class AnimeDownloaderService : Service() {
     @androidx.annotation.OptIn(UnstableApi::class)
     suspend fun download(task: AnimeDownloadTask) {
         withContext(Dispatchers.IO) {
+            val itemId = DownloadTracker.idOf(MediaType.ANIME, task.title, task.getTaskName())
             try {
                 val notifi = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     ContextCompat.checkSelfPermission(
@@ -243,6 +251,11 @@ class AnimeDownloaderService : Service() {
                         outputFileName
                     )
                         ?: throw Exception("Failed to create output file")
+
+                DownloadTracker.markDownloading(itemId)
+                val startTime = System.currentTimeMillis()
+                var lastBytes = 0L
+                var lastTime = startTime
 
                 var percent = 0
                 var totalLength = 0.0
@@ -316,16 +329,33 @@ class AnimeDownloaderService : Service() {
                         )
                         currentTasks.removeAll { it.getTaskName() == task.getTaskName() }
                         broadcastDownloadFailed(task.episode, task.sourceMedia?.id)
+                        DownloadTracker.remove(itemId)
                         break
                     }
-                    builder.setProgress(
-                        100, percent.coerceAtMost(99),
-                        false
-                    )
+                    val p = percent.coerceAtMost(99)
+                    val bytesDone = outputFile.length()
+                    val now = System.currentTimeMillis()
+                    val dt = now - lastTime
+                    val speed = if (dt > 0) (bytesDone - lastBytes) * 1000 / dt else 0
+                    lastBytes = bytesDone
+                    lastTime = now
+                    val elapsed = now - startTime
+                    // ETA from percent-over-time (FFmpeg exposes no byte total mid-download).
+                    val etaMs = if (p in 1..99) elapsed * (100 - p) / p else -1L
+
+                    builder.setProgress(100, p, false)
+                        .setContentText(
+                            downloadProgressText(task, p, bytesDone, 0, speed, etaMs)
+                        )
+                    DownloadTracker.updateProgress(itemId, p, bytesDone, 0, speed, etaMs)
                     broadcastDownloadProgress(
                         task.episode,
-                        percent.coerceAtMost(99),
-                        task.sourceMedia?.id
+                        p,
+                        task.sourceMedia?.id,
+                        bytesDone,
+                        0,
+                        speed,
+                        etaMs
                     )
                     if (notifi) {
                         withContext(Dispatchers.Main) {
@@ -363,6 +393,7 @@ class AnimeDownloaderService : Service() {
                         )
                         currentTasks.removeAll { it.getTaskName() == task.getTaskName() }
                         broadcastDownloadFailed(task.episode, task.sourceMedia?.id)
+                        DownloadTracker.remove(itemId)
                         return@withContext
                     }
                     Logger.log("Download completed")
@@ -394,6 +425,7 @@ class AnimeDownloaderService : Service() {
                     downloadsManager.addDownload(downloadType)
                     currentTasks.removeAll { it.getTaskName() == task.getTaskName() }
                     broadcastDownloadFinished(task.episode, task.sourceMedia?.id, downloadType.size)
+                    DownloadTracker.remove(itemId)
                 } else throw Exception("Download failed")
 
             } catch (e: Exception) {
@@ -404,8 +436,25 @@ class AnimeDownloaderService : Service() {
                     Injekt.get<CrashlyticsInterface>().logException(e)
                 }
                 broadcastDownloadFailed(task.episode, task.sourceMedia?.id)
+                DownloadTracker.remove(itemId)
             }
         }
+    }
+
+    /** Builds the notification/progress text with percent, speed, ETA and size. */
+    private fun downloadProgressText(
+        task: AnimeDownloadTask,
+        percent: Int,
+        bytesDone: Long,
+        bytesTotal: Long,
+        speedBps: Long,
+        etaMs: Long
+    ): String {
+        val parts = mutableListOf("$percent%")
+        formatDownloadSpeed(speedBps).takeIf { it.isNotEmpty() }?.let { parts.add(it) }
+        formatEta(etaMs).takeIf { it.isNotEmpty() }?.let { parts.add("ETA $it") }
+        parts.add(formatBytes(bytesDone))
+        return "${task.episode} • ${parts.joinToString(" • ")}"
     }
 
     private fun saveMediaInfo(task: AnimeDownloadTask, directory: DocumentFile) {
@@ -559,11 +608,23 @@ class AnimeDownloaderService : Service() {
         sendBroadcast(intent)
     }
 
-    private fun broadcastDownloadProgress(episodeNumber: String, progress: Int, mediaId: Int?) {
+    private fun broadcastDownloadProgress(
+        episodeNumber: String,
+        progress: Int,
+        mediaId: Int?,
+        bytesDone: Long = 0,
+        bytesTotal: Long = 0,
+        speed: Long = 0,
+        eta: Long = -1
+    ) {
         val intent = Intent(AnimeWatchFragment.ACTION_DOWNLOAD_PROGRESS).apply {
             putExtra(AnimeWatchFragment.EXTRA_EPISODE_NUMBER, episodeNumber)
             putExtra("progress", progress)
             putExtra("mediaId", mediaId)
+            putExtra("bytesDone", bytesDone)
+            putExtra("bytesTotal", bytesTotal)
+            putExtra("speed", speed)
+            putExtra("eta", eta)
         }
         sendBroadcast(intent)
     }
@@ -617,6 +678,16 @@ object AnimeServiceDataSingleton {
 
     @Volatile
     var isServiceRunning: Boolean = false
+
+    /** Reorders the pending queue so its tasks follow [orderedKeys] (by getTaskName()). */
+    @Synchronized
+    fun reorderQueue(orderedKeys: List<String>) {
+        val ordered = downloadQueue.toList().sortedBy {
+            val i = orderedKeys.indexOf(it.getTaskName()); if (i == -1) Int.MAX_VALUE else i
+        }
+        downloadQueue.clear()
+        downloadQueue.addAll(ordered)
+    }
 }
 
 object AnimeDownloader{

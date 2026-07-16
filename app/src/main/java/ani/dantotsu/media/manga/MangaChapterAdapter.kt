@@ -127,12 +127,21 @@ class MangaChapterAdapter(
      * If [chapter] is bundled inside a one-file PDF, returns how many chapters share that
      * file (they'd all be deleted together); otherwise 1.
      */
-    private fun pdfSiblingCount(chapter: MangaChapter): Int {
-        val uri = PdfPageRenderer.decodeChapter(chapter.link)?.first ?: return 1
-        return arr.count {
-            it is MangaChapterListItem.Chapter &&
-                    PdfPageRenderer.decodeChapter(it.chapter.link)?.first == uri
+    private fun pdfSiblings(chapter: MangaChapter): List<MangaChapter> {
+        val uri = PdfPageRenderer.decodeChapter(chapter.link)?.first ?: return listOf(chapter)
+        return arr.filterIsInstance<MangaChapterListItem.Chapter>()
+            .map { it.chapter }
+            .filter { PdfPageRenderer.decodeChapter(it.link)?.first == uri }
+    }
+
+    /** "First - Last" chapter range covered by a set of bundled sibling chapters. */
+    private fun pdfSiblingRange(siblings: List<MangaChapter>): String {
+        val sorted = siblings.sortedBy {
+            MediaNameAdapter.findChapterNumber(it.number) ?: Float.MAX_VALUE
         }
+        val first = sorted.first()
+        val last = sorted.last()
+        return "${first.title ?: first.number} - ${last.title ?: last.number}"
     }
 
     fun startDownload(chapterNumber: String) {
@@ -186,10 +195,12 @@ class MangaChapterAdapter(
         }
     }
 
-    fun updateDownloadProgress(chapterNumber: String, progress: Int) {
+    fun updateDownloadProgress(chapterNumber: String, progress: Int, stats: String = "") {
         val position = chapterIndexOf(chapterNumber)
         if (position != -1) {
-            (arr[position] as? MangaChapterListItem.Chapter)?.chapter?.progress = "Downloading: ${progress}%"
+            val text = if (stats.isEmpty()) "Downloading: ${progress}%"
+            else "Downloading: ${progress}% · $stats"
+            (arr[position] as? MangaChapterListItem.Chapter)?.chapter?.progress = text
             notifyItemChanged(position)
         }
     }
@@ -301,23 +312,26 @@ class MangaChapterAdapter(
                             return@setOnClickListener
                         }
                         isDownloaded(chapterNumber) -> {
-                            val siblingCount = pdfSiblingCount(chapter)
+                            val siblings = pdfSiblings(chapter)
+                            val prettyName = chapter.title ?: chapter.number
                             it.context.customAlertDialog().apply {
                                 setTitle(it.context.getString(R.string.delete_chapter))
                                 // A one-file PDF bundles several chapters; make it clear that
-                                // deleting one removes every chapter sharing the file.
-                                if (siblingCount > 1) {
+                                // deleting one removes every chapter sharing the file, and name
+                                // the chapter range that will be removed.
+                                if (siblings.size > 1) {
                                     setMessage(
                                         it.context.getString(
-                                            R.string.delete_one_file_warning,
-                                            siblingCount
+                                            R.string.delete_one_file_warning_range,
+                                            siblings.size,
+                                            pdfSiblingRange(siblings)
                                         )
                                     )
                                 } else {
                                     setMessage(
                                         it.context.getString(
                                             R.string.are_you_sure_delete_item,
-                                            chapterNumber
+                                            prettyName
                                         )
                                     )
                                 }

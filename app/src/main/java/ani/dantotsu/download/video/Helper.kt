@@ -23,6 +23,8 @@ import androidx.media3.exoplayer.scheduler.Requirements
 import ani.dantotsu.R
 import ani.dantotsu.defaultHeaders
 import ani.dantotsu.download.DownloadedType
+import ani.dantotsu.download.DownloadItem
+import ani.dantotsu.download.DownloadTracker
 import ani.dantotsu.download.DownloadsManager
 import ani.dantotsu.isOnMeteredNetwork
 import ani.dantotsu.download.anime.AnimeDownloader
@@ -90,6 +92,19 @@ object Helper {
 
         if (!downloadCheck && !AnimeDownloader.isDownloading(sourceMedia?.id ?: -1, episode)) {
             AnimeServiceDataSingleton.downloadQueue.offer(animeDownloadTask)
+            DownloadTracker.enqueue(
+                DownloadItem(
+                    id = DownloadTracker.idOf(
+                        MediaType.ANIME, title, animeDownloadTask.getTaskName()
+                    ),
+                    type = MediaType.ANIME,
+                    mediaId = sourceMedia?.id ?: -1,
+                    serviceKey = animeDownloadTask.getTaskName(),
+                    title = title,
+                    coverUrl = sourceMedia?.cover,
+                    label = episode
+                )
+            )
             if (!AnimeServiceDataSingleton.isServiceRunning) {
                 val intent = Intent(context, AnimeDownloaderService::class.java)
                 ContextCompat.startForegroundService(context, intent)

@@ -35,6 +35,10 @@ import ani.dantotsu.R
 import ani.dantotsu.connections.handoff.HandoffLoadingOverlay
 import ani.dantotsu.connections.handoff.HandoffNavigator
 import ani.dantotsu.databinding.FragmentMediaSourceBinding
+import ani.dantotsu.downloadStats
+import ani.dantotsu.formatBytes
+import ani.dantotsu.download.DownloadItem
+import ani.dantotsu.download.DownloadTracker
 import ani.dantotsu.download.DownloadedType
 import ani.dantotsu.download.DownloadsManager
 import ani.dantotsu.download.DownloadsManager.Companion.compareName
@@ -320,20 +324,31 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
         updateChapters()
     }
 
+    /** Downloadable chapters for the range picker: excludes ones already downloaded or in-flight. */
+    fun downloadableChapters(): List<MangaChapter> {
+        val chapters = media.manga?.chapters?.values?.toList() ?: return emptyList()
+        return chapters.filterNot { isChapterDownloadedOrActive(it) }
+    }
+
+    private fun isChapterDownloadedOrActive(ch: MangaChapter): Boolean {
+        val key = ch.uniqueNumber()
+        if (bundledChapterFolders.containsKey(key)) return true
+        if (downloadManager.queryDownload(
+                media.mainName(), ch.title ?: ch.number, MediaType.MANGA
+            )
+        ) return true
+        val serviceKey = ch.title ?: ch.number
+        return DownloadTracker.items.value.any {
+            it.type == MediaType.MANGA && it.serviceKey == serviceKey
+        }
+    }
+
     fun multiDownload(
-        startIndex: Int,
-        endIndex: Int,
+        chaptersToDownload: List<MangaChapter>,
         asPdf: Boolean = false,
         oneFile: Boolean = false
     ) {
-        val chapters = media.manga?.chapters?.values?.toList()
-        // Ensure chapters are available in the extensions
-        if (chapters.isNullOrEmpty()) return
-        // Clamp the requested range to the available chapters
-        val start = startIndex.coerceIn(0, chapters.size - 1)
-        val end = endIndex.coerceIn(start, chapters.size - 1)
-        // Get the list of chapters to download (end is inclusive)
-        val chaptersToDownload = chapters.subList(start, end + 1)
+        if (chaptersToDownload.isEmpty()) return
 
         if (!asPdf) {
             // Standard per-chapter image download (readable offline)
@@ -815,6 +830,17 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
 
     private suspend fun enqueueMangaDownload(task: MangaDownloaderService.DownloadTask) {
         MangaServiceDataSingleton.downloadQueue.offer(task)
+        DownloadTracker.enqueue(
+            DownloadItem(
+                id = DownloadTracker.idOf(MediaType.MANGA, task.title, task.chapter),
+                type = MediaType.MANGA,
+                mediaId = media.id,
+                serviceKey = task.chapter,
+                title = task.title,
+                coverUrl = media.cover,
+                label = task.chapter
+            )
+        )
         // If the service is not already running, start it
         if (!MangaServiceDataSingleton.isServiceRunning) {
             withContext(Dispatchers.Main) {
@@ -937,8 +963,13 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
                 ACTION_DOWNLOAD_PROGRESS -> {
                     val chapterNumber = intent.getStringExtra(EXTRA_CHAPTER_NUMBER)
                     val progress = intent.getIntExtra("progress", 0)
+                    val stats = downloadStats(
+                        intent.getLongExtra("speed", 0),
+                        intent.getLongExtra("eta", -1),
+                        intent.getLongExtra("bytesDone", 0)
+                    )
                     chapterNumber?.let {
-                        chapterAdapter.updateDownloadProgress(it, progress)
+                        chapterAdapter.updateDownloadProgress(it, progress, stats)
                     }
                 }
             }
@@ -1056,6 +1087,42 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
                 withContext(Dispatchers.Main) {
                     bundledChapterFolders.putAll(bundled)
                     bundled.keys.forEach { chapterAdapter.markDownloaded(it) }
+                }
+            }
+        } else {
+            computeOfflineSizes()
+        }
+    }
+
+    /**
+     * When viewing the "Downloaded" source, show each chapter's on-disk size. Own-folder
+     * chapters use the exact folder size; bundled chapters (sharing one PDF) get a
+     * page-proportional estimate since per-chapter bytes don't exist on disk.
+     */
+    private fun computeOfflineSizes() {
+        val title = media.mainName()
+        lifecycleScope.launch(Dispatchers.IO) {
+            val ctx = context ?: return@launch
+            chapterAdapter.arr.forEach { item ->
+                if (item !is MangaChapterListItem.Chapter) return@forEach
+                val ch = item.chapter
+                val size = if (PdfPageRenderer.isPdfChapter(ch.link)) {
+                    val decoded = PdfPageRenderer.decodeChapter(ch.link)
+                    if (decoded != null) {
+                        val (uri, pages) = decoded
+                        val total = PdfPageRenderer.pageCount(ctx, uri).coerceAtLeast(1)
+                        val pdfLen = DocumentFile.fromSingleUri(ctx, uri)?.length() ?: 0L
+                        pdfLen * pages.size / total
+                    } else 0L
+                } else {
+                    DownloadsManager.getDirSize(ctx, MediaType.MANGA, title, ch.number)
+                }
+                ch.progress = formatBytes(size)
+            }
+            withContext(Dispatchers.Main) {
+                if (this@MangaReadFragment::chapterAdapter.isInitialized) {
+                    @Suppress("NotifyDataSetChanged")
+                    chapterAdapter.notifyDataSetChanged()
                 }
             }
         }
