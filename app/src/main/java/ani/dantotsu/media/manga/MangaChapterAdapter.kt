@@ -40,6 +40,15 @@ class MangaChapterAdapter(
         const val VIEW_TYPE_COMPACT = 1
         const val VIEW_TYPE_GAP = 2
         const val VIEW_TYPE_GAP_COMPACT = 3
+
+        /**
+         * Payload marker for download-state-only changes (progress %, downloaded/downloading icon).
+         * Rebinding with this payload updates just the download button/progress text instead of the
+         * whole item, so frequent progress ticks don't replay the item's entrance animation or touch
+         * unrelated views (title, date, scanlator, viewed cover) — that full rebind was causing the
+         * chapter row to visibly flash and bounce on every download progress update.
+         */
+        private const val PAYLOAD_DOWNLOAD_STATE = "download_state"
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
@@ -85,9 +94,11 @@ class MangaChapterAdapter(
         }
     }
 
-    // Helper to get actual chapter count after a given adapter position (for multi-op dialogs)
+    // Helper to get actual chapter count after a given adapter position (for multi-op dialogs).
+    // Premium chapters can't be downloaded or deleted, so they're excluded from this count.
     private fun chapterCountFrom(adapterPosition: Int): Int {
-        return arr.drop(adapterPosition).count { it is MangaChapterListItem.Chapter }
+        return arr.drop(adapterPosition)
+            .count { it is MangaChapterListItem.Chapter && !it.chapter.isPremium() }
     }
 
     inner class ChapterGapViewHolder(val binding: ItemChapterGapBinding) :
@@ -151,7 +162,7 @@ class MangaChapterAdapter(
         if (downloadedChapters.contains(chapterNumber)) return
         activeDownloads.add(chapterNumber)
         val position = chapterIndexOf(chapterNumber)
-        if (position != -1) notifyItemChanged(position)
+        if (position != -1) notifyItemChanged(position, PAYLOAD_DOWNLOAD_STATE)
     }
 
     fun stopDownload(chapterNumber: String) {
@@ -160,7 +171,7 @@ class MangaChapterAdapter(
         val position = chapterIndexOf(chapterNumber)
         if (position != -1) {
             (arr[position] as? MangaChapterListItem.Chapter)?.chapter?.progress = "Downloaded"
-            notifyItemChanged(position)
+            notifyItemChanged(position, PAYLOAD_DOWNLOAD_STATE)
         }
     }
 
@@ -173,7 +184,7 @@ class MangaChapterAdapter(
         activeDownloads.remove(chapterNumber)
         downloadedChapters.add(chapterNumber)
         val position = chapterIndexOf(chapterNumber)
-        if (position != -1) notifyItemChanged(position)
+        if (position != -1) notifyItemChanged(position, PAYLOAD_DOWNLOAD_STATE)
     }
 
     fun deleteDownload(chapterNumber: MangaChapter) {
@@ -181,7 +192,7 @@ class MangaChapterAdapter(
         val position = chapterIndexOf(chapterNumber.uniqueNumber())
         if (position != -1) {
             (arr[position] as? MangaChapterListItem.Chapter)?.chapter?.progress = ""
-            notifyItemChanged(position)
+            notifyItemChanged(position, PAYLOAD_DOWNLOAD_STATE)
         }
     }
 
@@ -191,33 +202,48 @@ class MangaChapterAdapter(
         val position = chapterIndexOf(chapterNumber)
         if (position != -1) {
             (arr[position] as? MangaChapterListItem.Chapter)?.chapter?.progress = ""
-            notifyItemChanged(position)
+            notifyItemChanged(position, PAYLOAD_DOWNLOAD_STATE)
         }
     }
 
     fun updateDownloadProgress(chapterNumber: String, progress: Int, stats: String = "") {
+        // Ignore a stale tick for a chapter that's no longer actively downloading. A page whose
+        // fetch was already in flight when the chapter was cancelled has no suspension point left
+        // before it saves to disk and broadcasts its progress, so it can still emit one last
+        // update *after* the cancel's own broadcast clears the line — silently resurrecting the
+        // frozen "Downloading: ..." text regardless of broadcast arrival order. This check makes
+        // the fix independent of that race instead of trying to win it.
+        if (!activeDownloads.contains(chapterNumber)) return
         val position = chapterIndexOf(chapterNumber)
         if (position != -1) {
             val text = if (stats.isEmpty()) "Downloading: ${progress}%"
             else "Downloading: ${progress}% · $stats"
             (arr[position] as? MangaChapterListItem.Chapter)?.chapter?.progress = text
-            notifyItemChanged(position)
+            notifyItemChanged(position, PAYLOAD_DOWNLOAD_STATE)
         }
     }
 
     fun downloadNChaptersFrom(position: Int, n: Int) {
         if (position < 0 || position >= arr.size) return
         var count = 0
+        val toDownload = mutableListOf<MangaChapter>()
         for (i in position until arr.size) {
             if (count >= n) break
             val item = arr[i]
             if (item !is MangaChapterListItem.Chapter) continue
+            // Premium chapters have no downloadable content, so skip them entirely without
+            // consuming one of the N slots — they're not part of the mass download range.
+            if (item.chapter.isPremium()) continue
             count++
             val chapterNumber = item.chapter.uniqueNumber()
             if (!activeDownloads.contains(chapterNumber) && !isDownloaded(chapterNumber)) {
-                fragment.onMangaChapterDownloadClick(item.chapter)
+                toDownload += item.chapter
             }
         }
+        // Downloaded as one ordered batch (rather than one independent call per chapter) so the
+        // resulting download queue matches this chapter order instead of racing on each
+        // chapter's page-list fetch time.
+        if (toDownload.isNotEmpty()) fragment.downloadChaptersInOrder(toDownload)
     }
 
     fun deleteNChaptersFrom(position: Int, n: Int) {
@@ -242,10 +268,24 @@ class MangaChapterAdapter(
         RecyclerView.ViewHolder(binding.root) {
         private val activeCoroutines = mutableSetOf<String>()
 
-        fun bind(chapterNumber: String, progress: String?) {
-            if (progress != null) {
+        fun bind(chapter: MangaChapter) {
+            val chapterNumber = chapter.uniqueNumber()
+            val progress = chapter.progress
+            if (chapter.isPremium()) {
+                // No downloadable content behind a premium chapter — hide the download
+                // affordance entirely instead of showing a button that can't do anything.
+                binding.itemChapterTitle.visibility = View.GONE
+                binding.itemChapterTitle.text = ""
+                binding.itemDownload.visibility = View.GONE
+                return
+            }
+            binding.itemDownload.visibility = View.VISIBLE
+            // An empty (not just null) progress means "nothing to show" — e.g. purgeDownload
+            // clears it to "" on cancel/delete — so it must collapse the row too, or it's left
+            // visible-but-empty, reserving blank space under the date/scanlator line.
+            if (!progress.isNullOrEmpty()) {
                 binding.itemChapterTitle.visibility = View.VISIBLE
-                binding.itemChapterTitle.text = "$progress"
+                binding.itemChapterTitle.text = progress
             } else {
                 binding.itemChapterTitle.visibility = View.GONE
                 binding.itemChapterTitle.text = ""
@@ -305,6 +345,7 @@ class MangaChapterAdapter(
                 if (pos in 0 until arr.size) {
                     val item = arr[pos] as? MangaChapterListItem.Chapter ?: return@setOnClickListener
                     val chapter = item.chapter
+                    if (chapter.isPremium()) return@setOnClickListener
                     val chapterNumber = chapter.uniqueNumber()
                     when {
                         activeDownloads.contains(chapterNumber) -> {
@@ -405,6 +446,19 @@ class MangaChapterAdapter(
         }
     }
 
+    override fun onBindViewHolder(
+        holder: RecyclerView.ViewHolder,
+        position: Int,
+        payloads: MutableList<Any>
+    ) {
+        if (payloads.contains(PAYLOAD_DOWNLOAD_STATE) && holder is ChapterListViewHolder) {
+            val item = arr.getOrNull(position) as? MangaChapterListItem.Chapter ?: return
+            holder.bind(item.chapter)
+            return
+        }
+        super.onBindViewHolder(holder, position, payloads)
+    }
+
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         when (holder) {
             is ChapterGapViewHolder -> {
@@ -446,7 +500,7 @@ class MangaChapterAdapter(
                 val item = arr[position] as? MangaChapterListItem.Chapter ?: return
                 val ep = item.chapter
                 val binding = holder.binding
-                holder.bind(ep.uniqueNumber(), ep.progress)
+                holder.bind(ep)
                 setAnimation(fragment.requireContext(), binding.root)
                 binding.itemChapterNumber.text = ep.number
 
@@ -465,10 +519,6 @@ class MangaChapterAdapter(
                 if (formatDate(ep.date) == "" || ep.scanlator == null) {
                     binding.itemChapterDateDivider.visibility = View.GONE
                 } else binding.itemChapterDateDivider.visibility = View.VISIBLE
-
-                if (ep.progress.isNullOrEmpty()) {
-                    binding.itemChapterTitle.visibility = View.GONE
-                } else binding.itemChapterTitle.visibility = View.VISIBLE
 
                 if (media.userProgress != null) {
                     if ((MediaNameAdapter.findChapterNumber(ep.number) ?: 9999f) <= media.userProgress!!.toFloat()) {

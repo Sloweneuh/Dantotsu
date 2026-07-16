@@ -1,5 +1,6 @@
 package ani.dantotsu.media.manga
 
+import ani.dantotsu.download.findValidName
 import ani.dantotsu.parsers.MangaChapter
 import ani.dantotsu.parsers.MangaImage
 import eu.kanade.tachiyomi.source.model.SChapter
@@ -40,6 +41,16 @@ data class MangaChapter(
     private val dualPages = mutableListOf<Pair<MangaImage, MangaImage?>>()
     fun dualPages(): List<Pair<MangaImage, MangaImage?>> = dualPages
 
-    fun uniqueNumber(): String = "${number}-${scanlator ?: "Unknown"}"
+    // Sanitized the same way DownloadedType.chapterName is (both feed the same on-disk folder
+    // name), so this identity key matches what's persisted even when `number` contains characters
+    // like ':' or '/' that aren't valid in a folder name.
+    fun uniqueNumber(): String = "${number.findValidName()}-${scanlator ?: "Unknown"}"
+
+    /**
+     * Some sources mark subscriber/purchase-only chapters by putting a lock emoji in the title or
+     * number rather than a structured flag. There's still no page content behind these, so they
+     * can't be read or downloaded — only opened in the browser to purchase/unlock.
+     */
+    fun isPremium(): Boolean = title?.contains("🔒") == true || number.contains("🔒")
 
 }

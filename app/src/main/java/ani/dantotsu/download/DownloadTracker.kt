@@ -150,6 +150,11 @@ object DownloadTracker {
         remove(item.id)
     }
 
+    /** Cancels every currently queued or in-progress download, across all three services. */
+    fun cancelAll(context: Context) {
+        _items.value.forEach { cancel(context, it) }
+    }
+
     /** Moves the queued item [fromId] to the position of [toId]. Active items don't move. */
     @Synchronized
     fun moveQueued(fromId: String, toId: String) {

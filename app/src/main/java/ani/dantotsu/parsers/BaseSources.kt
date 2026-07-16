@@ -90,7 +90,11 @@ abstract class MangaReadSources : BaseSources() {
         show.sManga?.let { sManga ->
             tryWithSuspend(true) {
                 parser.loadChapters(show.link, show.extra, sManga).forEach {
-                    map["${it.number}-${it.scanlator}"] = MangaChapter(it)
+                    val mangaChapter = MangaChapter(it)
+                    // Keyed by uniqueNumber() (not a raw "$number-$scanlator" string) so this map
+                    // agrees with every other lookup of the same chapter — including ones after a
+                    // download, whose identity is sanitized to be folder-name-safe.
+                    map[mangaChapter.uniqueNumber()] = mangaChapter
                 }
             }
         }
@@ -102,7 +106,8 @@ abstract class MangaReadSources : BaseSources() {
             tryWithSuspend(true) {
                 // Since we've checked, we can safely cast parser to OfflineMangaParser and call its methods
                 parser.loadChapters(show.link, show.extra, SManga.create()).forEach {
-                    map["${it.number}-${it.scanlator}"] = MangaChapter(it)
+                    val mangaChapter = MangaChapter(it)
+                    map[mangaChapter.uniqueNumber()] = mangaChapter
                 }
             }
         } else {

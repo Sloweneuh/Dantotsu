@@ -1586,6 +1586,8 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="download_in_progress">In progress</string>
     <string name="all_chapters_downloaded">All chapters are already downloaded</string>
     <string name="all_episodes_downloaded">All episodes are already downloaded</string>
+    <string name="cancel_all_downloads">Cancel all</string>
+    <string name="cancel_all_downloads_confirm">Cancel every queued and in-progress download?</string>
     <string name="download_chapters_count">%1$d chapters · %2$s</string>
     <string name="download_episodes_count">%1$d episodes · %2$s</string>
     <string name="cancel_download">Cancel download</string>

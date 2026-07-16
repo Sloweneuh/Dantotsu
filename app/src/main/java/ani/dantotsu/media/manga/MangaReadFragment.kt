@@ -351,16 +351,10 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
         if (chaptersToDownload.isEmpty()) return
 
         if (!asPdf) {
-            // Standard per-chapter image download (readable offline)
-            lifecycleScope.launch {
-                for (chapter in chaptersToDownload) {
-                    try {
-                        downloadChapterSequentially(chapter)
-                    } catch (e: Exception) {
-                        snackString("Failed to download chapter: ${chapter.title}")
-                    }
-                }
-            }
+            // Standard per-chapter image download (readable offline). Delegates to
+            // downloadChaptersInOrder so the queue ends up in the same order as the picked
+            // range instead of racing on each chapter's page-list fetch time.
+            downloadChaptersInOrder(chaptersToDownload, asPdf = false)
             return
         }
 
@@ -440,33 +434,13 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
                     enqueueMangaDownload(task)
                 }
             } else {
-                // One PDF per chapter
-                for (chapter in chaptersToDownload) {
-                    CoroutineScope(Dispatchers.IO).launch {
-                        val ch = media.manga?.chapters?.get(chapter.uniqueNumber())
-                            ?: return@launch
-                        // Mark as downloading before fetching pages (see note above).
-                        withContext(Dispatchers.Main) {
-                            chapterAdapter.startDownload(chapter.uniqueNumber())
-                        }
-                        val images = parser.imageList(ch.sChapter)
-                        if (images.isEmpty()) {
-                            withContext(Dispatchers.Main) {
-                                chapterAdapter.purgeDownload(chapter.uniqueNumber())
-                            }
-                            return@launch
-                        }
-                        val task = MangaDownloaderService.DownloadTask(
-                            title = media.mainName(),
-                            chapter = ch.title ?: ch.number,
-                            scanlator = ch.scanlator ?: "Unknown",
-                            imageData = images,
-                            sourceMedia = media,
-                            retries = 25,
-                            simultaneousDownloads = 2,
-                            asPdf = true
-                        )
-                        enqueueMangaDownload(task)
+                // One PDF per chapter — fetched and enqueued strictly one at a time (instead of
+                // one independent coroutine per chapter) so the download queue ends up in the
+                // same order as the picked range instead of racing on fetch time.
+                chaptersToDownload.forEach { chapterAdapter.startDownload(it.uniqueNumber()) }
+                CoroutineScope(Dispatchers.IO).launch {
+                    for (chapter in chaptersToDownload) {
+                        fetchAndEnqueueChapter(chapter, asPdf = true)
                     }
                 }
             }
@@ -480,16 +454,6 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
         val diff = bn.toInt() - an.toInt() - 1
         return if (diff > 0) diff else 0
     }
-
-    private suspend fun downloadChapterSequentially(chapter: MangaChapter) {
-        withContext(Dispatchers.IO) {
-            // This path is only used for the non-PDF multi download; PDF multi downloads
-            // are handled directly in multiDownload().
-            onMangaChapterDownloadClick(chapter, asPdf = false)
-            delay(2000) // A 2-second download
-        }
-    }
-
 
     private fun updateChapters() {
         val loadedChapters = model.getMangaChapters().value
@@ -667,9 +631,9 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
     fun onMangaChapterClick(i: MangaChapter, skipProgressDialog: Boolean = false) {
         model.continueMedia = false
 
-        // If chapter title/number contains a lock emoji, show premium dialog instead of opening reader
-        val hasLock = (i.title?.contains("🔒") == true) || (i.number.contains("🔒"))
-        if (hasLock) {
+        // Premium (subscriber/purchase-only) chapters have no page content — show a dialog to
+        // open them in the browser instead of opening the reader.
+        if (i.isPremium()) {
             val parser = model.mangaReadSources?.get(media.selected!!.sourceIndex) as? ani.dantotsu.parsers.DynamicMangaParser
             val sourceName = parser?.name
                 ?: (parser?.extension?.sources?.getOrNull(parser.sourceLanguage)?.name ?: getString(R.string.open_in_browser))
@@ -727,6 +691,7 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
      * choice in [PrefName.MangaDownloadPdf] is used silently.
      */
     fun downloadChapterWithPdfPrompt(chapter: MangaChapter) {
+        if (chapter.isPremium()) return
         if (!PrefManager.getVal<Boolean>(PrefName.AskDownloadPdf)) {
             onMangaChapterDownloadClick(chapter)
             return
@@ -757,39 +722,74 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
         i: MangaChapter,
         asPdf: Boolean = PrefManager.getVal(PrefName.MangaDownloadPdf)
     ) {
+        // Premium chapters have no page content to fetch, so there's nothing to download.
+        if (i.isPremium()) return
         runWithDownloadPermissions {
             model.continueMedia = false
-            media.manga?.chapters?.get(i.uniqueNumber())?.let { chapter ->
-                val parser =
-                    model.mangaReadSources?.get(media.selected!!.sourceIndex) as? DynamicMangaParser
-                parser?.let {
-                    CoroutineScope(Dispatchers.IO).launch {
-                        // Mark as downloading up front, before the (slow) page fetch and
-                        // before the service can broadcast completion, so the icon updates
-                        // immediately and never races the finish signal.
-                        withContext(Dispatchers.Main) {
-                            chapterAdapter.startDownload(i.uniqueNumber())
-                        }
+            // Mark as downloading up front, before the (slow) page fetch and before the service
+            // can broadcast completion, so the icon updates immediately and never races the
+            // finish signal.
+            chapterAdapter.startDownload(i.uniqueNumber())
+            CoroutineScope(Dispatchers.IO).launch {
+                fetchAndEnqueueChapter(i, asPdf)
+            }
+        }
+    }
 
-                        val images = parser.imageList(chapter.sChapter)
-
-                        // Create a download task
-                        val downloadTask = MangaDownloaderService.DownloadTask(
-                            title = media.mainName(),
-                            chapter = chapter.title ?: chapter.number,
-                            scanlator = chapter.scanlator ?: "Unknown",
-                            imageData = images,
-                            sourceMedia = media,
-                            retries = 25,
-                            simultaneousDownloads = 2,
-                            asPdf = asPdf
-                        )
-
-                        enqueueMangaDownload(downloadTask)
-                    }
+    /**
+     * Downloads [chapters] in the given order (used by the chapter list's mass-download picker).
+     * Each chapter's page list is a separate network fetch with its own latency, so firing them
+     * all off independently would make the resulting download queue order depend on whichever
+     * fetch happens to finish first rather than the chapter order — this fetches them strictly
+     * one at a time instead, so the queue always ends up in the order the user picked.
+     */
+    fun downloadChaptersInOrder(
+        chapters: List<MangaChapter>,
+        asPdf: Boolean = PrefManager.getVal(PrefName.MangaDownloadPdf)
+    ) {
+        val toDownload = chapters.filterNot { it.isPremium() }
+        if (toDownload.isEmpty()) return
+        runWithDownloadPermissions {
+            model.continueMedia = false
+            // Show every chapter as downloading immediately, before any of the (slow) page-list
+            // fetches begin, so the batch reads as "queued" right away.
+            toDownload.forEach { chapterAdapter.startDownload(it.uniqueNumber()) }
+            CoroutineScope(Dispatchers.IO).launch {
+                for (chapter in toDownload) {
+                    fetchAndEnqueueChapter(chapter, asPdf)
                 }
             }
         }
+    }
+
+    /**
+     * Fetches [chapter]'s page list and enqueues its download task. If the source has no pages
+     * for it (e.g. a since-removed chapter), the "downloading" state is cleared instead of
+     * enqueuing an empty task.
+     */
+    private suspend fun fetchAndEnqueueChapter(chapter: MangaChapter, asPdf: Boolean) {
+        val mangaChapter = media.manga?.chapters?.get(chapter.uniqueNumber()) ?: return
+        val parser =
+            model.mangaReadSources?.get(media.selected!!.sourceIndex) as? DynamicMangaParser
+                ?: return
+        val images = parser.imageList(mangaChapter.sChapter)
+        if (images.isEmpty()) {
+            withContext(Dispatchers.Main) {
+                chapterAdapter.purgeDownload(chapter.uniqueNumber())
+            }
+            return
+        }
+        val downloadTask = MangaDownloaderService.DownloadTask(
+            title = media.mainName(),
+            chapter = mangaChapter.title ?: mangaChapter.number,
+            scanlator = mangaChapter.scanlator ?: "Unknown",
+            imageData = images,
+            sourceMedia = media,
+            retries = 25,
+            simultaneousDownloads = 2,
+            asPdf = asPdf
+        )
+        enqueueMangaDownload(downloadTask)
     }
 
     /**

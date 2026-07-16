@@ -13,6 +13,7 @@ import ani.dantotsu.snackString
 import ani.dantotsu.util.Logger
 import eu.kanade.tachiyomi.source.model.Page
 import eu.kanade.tachiyomi.source.online.HttpSource
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -35,6 +36,12 @@ data class ImageData(
                 val bitmap = BitmapFactory.decodeStream(inputStream)
                 inputStream.close()
                 return@withContext bitmap
+            } catch (e: CancellationException) {
+                // Must propagate, not be treated as a failed page fetch — swallowing this here
+                // breaks structured concurrency: the retry loop below would keep retrying (and
+                // showing this error toast) instead of stopping, because the coroutine itself
+                // never sees that its job was cancelled.
+                throw e
             } catch (e: Exception) {
                 Logger.log("An error occurred: ${e.message}")
                 snackString("An error occurred: ${e.message}")

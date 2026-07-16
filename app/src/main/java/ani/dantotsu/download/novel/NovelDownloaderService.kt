@@ -378,7 +378,6 @@ class NovelDownloaderService : Service() {
                 )
                 broadcastDownloadFinished(task.originalLink)
                 DownloadTracker.remove(itemId)
-                snackString("${task.title} - ${task.chapter} Download finished")
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
             // User cancelled the download; not an error.

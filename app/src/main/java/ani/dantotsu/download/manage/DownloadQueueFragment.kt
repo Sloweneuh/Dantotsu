@@ -9,9 +9,12 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import ani.dantotsu.R
 import ani.dantotsu.databinding.FragmentDownloadQueueBinding
 import ani.dantotsu.download.DownloadState
 import ani.dantotsu.download.DownloadTracker
+import ani.dantotsu.setSafeOnClickListener
+import ani.dantotsu.util.customAlertDialog
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -85,12 +88,25 @@ class DownloadQueueFragment : Fragment() {
         itemTouchHelper = ItemTouchHelper(callback)
         itemTouchHelper.attachToRecyclerView(binding.downloadQueueRecycler)
 
+        binding.downloadQueueCancelAll.setSafeOnClickListener {
+            requireContext().customAlertDialog().apply {
+                setTitle(R.string.cancel_all_downloads)
+                setMessage(R.string.cancel_all_downloads_confirm)
+                setPosButton(R.string.yes) {
+                    DownloadTracker.cancelAll(requireContext())
+                }
+                setNegButton(R.string.no)
+            }.show()
+        }
+
         viewLifecycleOwner.lifecycleScope.launch {
             DownloadTracker.items.collectLatest { list ->
                 if (dragging) return@collectLatest
                 adapter.submit(list)
                 binding.downloadQueueEmpty.visibility =
                     if (list.isEmpty()) View.VISIBLE else View.GONE
+                binding.downloadQueueCancelAllContainer.visibility =
+                    if (list.isEmpty()) View.GONE else View.VISIBLE
             }
         }
     }

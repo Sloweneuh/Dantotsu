@@ -78,6 +78,10 @@ class MangaDownloaderService : Service() {
     private val downloadsManager: DownloadsManager = Injekt.get<DownloadsManager>()
 
     private val downloadJobs = mutableMapOf<String, Job>()
+    // Tracks the task currently owning each downloadJobs entry, so a cancel can look up its
+    // sanitized identity (DownloadTask.uniqueName) to broadcast — cancelDownload only receives
+    // the bare chapter key (no scanlator), which doesn't match what the chapter list listens for.
+    private val activeTasks = mutableMapOf<String, DownloadTask>()
     private val mutex = Mutex()
     private var isCurrentlyProcessing = false
 
@@ -145,10 +149,12 @@ class MangaDownloaderService : Service() {
                     val job = launch { download(task) }
                     mutex.withLock {
                         downloadJobs[task.chapter] = job
+                        activeTasks[task.chapter] = task
                     }
                     job.join()
                     mutex.withLock {
                         downloadJobs.remove(task.chapter)
+                        activeTasks.remove(task.chapter)
                     }
                     updateNotification()
                 }
@@ -164,11 +170,21 @@ class MangaDownloaderService : Service() {
     fun cancelDownload(chapter: String) {
         CoroutineScope(Dispatchers.Default).launch {
             mutex.withLock {
+                // Find the task (queued or currently downloading) before removing it, so its
+                // sanitized identity can be broadcast below — the chapter list's icon state is
+                // keyed by DownloadTask.uniqueName, not the bare chapter string used here for
+                // queue/job bookkeeping.
+                val task = activeTasks[chapter]
+                    ?: MangaServiceDataSingleton.downloadQueue.find { it.chapter == chapter }
                 downloadJobs[chapter]?.cancel()
                 downloadJobs.remove(chapter)
+                activeTasks.remove(chapter)
                 MangaServiceDataSingleton.downloadQueue.removeAll { it.chapter == chapter }
                 DownloadTracker.removeByKey(MediaType.MANGA, chapter)
                 updateNotification() // Update the notification after cancellation
+                // Reuse the "failed" broadcast — the chapter list receiver's handling (reset the
+                // icon, clear one-file-bundle tracking) is exactly what a cancel needs too.
+                task?.let { broadcastDownloadFailed(it.uniqueName) }
             }
         }
     }
@@ -321,7 +337,6 @@ class MangaDownloaderService : Service() {
                 )
                 broadcastDownloadFinished(task.uniqueName)
                 DownloadTracker.remove(itemId)
-                snackString("${task.title} - ${task.chapter} Download finished")
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
             // User cancelled the download; not an error.
@@ -845,8 +860,11 @@ class MangaDownloaderService : Service() {
         val asPdf: Boolean = false,
         val pdfTransitions: List<PdfTransition> = emptyList(),
     ) {
+        // Sanitized to match MangaChapter.uniqueNumber() and DownloadedType.chapterName — all
+        // three identify the same chapter and must agree even when `chapter` contains characters
+        // that aren't valid in a folder name (e.g. ':' or '/').
         val uniqueName: String
-            get() = "$chapter-$scanlator"
+            get() = "${chapter.findValidName()}-$scanlator"
 
         /**
          * Marks a chapter boundary inside a combined ("one file") PDF: a divider page is

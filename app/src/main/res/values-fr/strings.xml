@@ -1064,6 +1064,7 @@
     <string name="download_in_progress">En cours</string>
     <string name="all_chapters_downloaded">Tous les chapitres sont déjà téléchargés</string>
     <string name="all_episodes_downloaded">Tous les épisodes sont déjà téléchargés</string>
+    <string name="cancel_all_downloads_confirm">Annuler tous les téléchargements en cours et en attente ?</string>
     <string name="download_chapters_count">%1$d chapitres · %2$s</string>
     <string name="download_episodes_count">%1$d épisodes · %2$s</string>
     <string name="cancel_download">Annuler le téléchargement</string>
@@ -1926,4 +1927,5 @@
     <string name="handoff_no_radios">Activez le Bluetooth ou le Wi-Fi pour trouver les appareils à proximité — ou utilisez un code QR ou un code de partage.</string>
     <string name="handoff_no_radios_receive">Activez le Bluetooth ou le Wi-Fi pour être détectable par les autres appareils — ou recevez avec un code QR ou un code de partage.</string>
     <string name="downloaded_anime">Anime Téléchargés</string>
+    <string name="cancel_all_downloads">Tout annuler</string>
 </resources>

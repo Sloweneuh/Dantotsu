@@ -246,10 +246,15 @@ class DownloadsManager(private val context: Context) {
     }
 
     fun queryDownload(title: String, chapter: String, type: MediaType? = null): Boolean {
+        // titleName/chapterName are sanitized (folder-name-safe) getters, so the query values
+        // must be sanitized the same way or a title/chapter containing e.g. ':' or '/' would
+        // never match a persisted download.
+        val validTitle = title.findValidName()
+        val validChapter = chapter.findValidName()
         return if (type == null) {
-            downloadsList.any { it.titleName == title && it.chapterName == chapter }
+            downloadsList.any { it.titleName == validTitle && it.chapterName == validChapter }
         } else {
-            downloadsList.any { it.titleName == title && it.chapterName == chapter && it.type == type }
+            downloadsList.any { it.titleName == validTitle && it.chapterName == validChapter && it.type == type }
         }
     }
 

@@ -29,6 +29,11 @@ class DownloadManagementFragment : Fragment() {
     private lateinit var adapter: DownloadManagementAdapter
     private val downloadsManager get() = Injekt.get<DownloadsManager>()
 
+    // Only the very first load (nothing shown on screen yet) should show the loading spinner —
+    // subsequent reloads (live refresh on download completion, onResume, after a delete) refresh
+    // the already-visible list in place and shouldn't spin again.
+    private var hasLoadedOnce = false
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -63,6 +68,11 @@ class DownloadManagementFragment : Fragment() {
     }
 
     private fun reload() {
+        val isInitialLoad = !hasLoadedOnce
+        if (isInitialLoad) {
+            binding.downloadManageProgressBar.visibility = View.VISIBLE
+            binding.downloadManageEmpty.visibility = View.GONE
+        }
         viewLifecycleOwner.lifecycleScope.launch {
             val (groups, totals) = withContext(Dispatchers.IO) {
                 try {
@@ -73,6 +83,8 @@ class DownloadManagementFragment : Fragment() {
                 }
             }
             if (_binding == null) return@launch
+            hasLoadedOnce = true
+            binding.downloadManageProgressBar.visibility = View.GONE
             binding.downloadTotalSize.text =
                 getString(R.string.download_total_size, formatBytes(totals.total))
             binding.downloadSubSize.text = getString(

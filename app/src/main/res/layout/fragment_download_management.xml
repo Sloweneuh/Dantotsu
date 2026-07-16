@@ -53,6 +53,14 @@
             android:fontFamily="@font/poppins_bold"
             android:text="@string/download_management_empty"
             android:visibility="gone" />
+
+        <ProgressBar
+            android:id="@+id/downloadManageProgressBar"
+            style="?android:attr/progressBarStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:visibility="gone" />
     </FrameLayout>
 
 </LinearLayout>

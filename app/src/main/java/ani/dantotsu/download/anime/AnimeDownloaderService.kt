@@ -410,7 +410,6 @@ class AnimeDownloaderService : Service() {
                             notificationManager.notify(NOTIFICATION_ID, builder.build())
                         }
                     }
-                    snackString("${getTaskName(task.title, task.episode)} Download completed")
                     PrefManager.getAnimeDownloadPreferences().edit().putString(
                         task.getTaskName(),
                         task.video.file.url
