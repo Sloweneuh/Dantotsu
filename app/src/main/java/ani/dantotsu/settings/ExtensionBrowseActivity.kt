@@ -1,6 +1,7 @@
 package ani.dantotsu.settings
 
 import android.content.Intent
+import android.content.res.Configuration
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -200,6 +201,13 @@ class ExtensionBrowseActivity : AppCompatActivity() {
         configureSearch()
 
         load(Mode.POPULAR, null)
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        val spanCount = newConfig.screenWidthDp / 120
+        (binding.extensionBrowseRecycler.layoutManager as? GridLayoutManager)?.spanCount =
+            spanCount.coerceAtLeast(2)
     }
 
     private fun supportsLatest(): Boolean {

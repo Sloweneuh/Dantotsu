@@ -248,6 +248,7 @@
             android:parentActivityName=".MainActivity" />
         <activity
             android:name=".settings.ExtensionBrowseActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode"
             android:parentActivityName=".settings.ExtensionsActivity" />
         <activity
             android:name=".settings.ExtensionMediaInfoActivity"
