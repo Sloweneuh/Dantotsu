@@ -62,6 +62,9 @@ class ExtensionBrowseActivity : AppCompatActivity() {
         const val EXTRA_TYPE = "type"
         const val TYPE_ANIME = "anime"
         const val TYPE_MANGA = "manga"
+        private const val KEY_SOURCE_INDEX = "sourceIndex"
+        private const val KEY_MODE = "mode"
+        private const val KEY_QUERY = "query"
     }
 
     private lateinit var binding: ActivityExtensionBrowseBinding
@@ -127,6 +130,9 @@ class ExtensionBrowseActivity : AppCompatActivity() {
             finish()
             return
         }
+        val restoredSourceIndex = savedInstanceState?.getInt(KEY_SOURCE_INDEX, -1)?.takeIf { it != -1 }
+        if (restoredSourceIndex != null) sourceIndex = restoredSourceIndex
+
         if (icon != null) binding.extensionBrowseIcon.setImageDrawable(icon)
         // show extension name in header; keep generic search hint
         binding.extensionBrowseTitle.text = name
@@ -196,11 +202,32 @@ class ExtensionBrowseActivity : AppCompatActivity() {
             load(currentMode, currentFilters)
         }
 
-        configureLanguageSwitch()
+        configureLanguageSwitch(applyDefaultLanguage = restoredSourceIndex == null)
         configureChips()
         configureSearch()
 
-        load(Mode.POPULAR, null)
+        val restoredMode = savedInstanceState?.getInt(KEY_MODE, -1)?.takeIf { it != -1 }
+            ?.let { Mode.values().getOrNull(it) }
+        val restoredQuery = savedInstanceState?.getString(KEY_QUERY).orEmpty()
+        if (restoredQuery.isNotEmpty()) {
+            currentQuery = restoredQuery
+            searchBoxHasText = true
+            binding.extensionBrowseSearch.isVisible = true
+            binding.extensionBrowseTitle.isVisible = false
+            binding.extensionBrowseIcon.isVisible = false
+            binding.extensionBrowseSearchIcon.setImageResource(R.drawable.ic_round_search_off_24)
+            suppressQueryChange = true
+            binding.extensionBrowseSearch.setQuery(restoredQuery, false)
+            suppressQueryChange = false
+        }
+        load(restoredMode ?: Mode.POPULAR, null)
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putInt(KEY_SOURCE_INDEX, sourceIndex)
+        outState.putInt(KEY_MODE, currentMode.ordinal)
+        outState.putString(KEY_QUERY, currentQuery)
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -404,7 +431,7 @@ class ExtensionBrowseActivity : AppCompatActivity() {
         }
     }
 
-    private fun configureLanguageSwitch() {
+    private fun configureLanguageSwitch(applyDefaultLanguage: Boolean) {
         val names: Array<String> = when {
             animeExtension != null -> animeExtension!!.sources.map { getLanguageName(it.lang) }.toTypedArray()
             mangaExtension != null -> mangaExtension!!.sources.map { getLanguageName(it.lang) }.toTypedArray()
@@ -419,7 +446,7 @@ class ExtensionBrowseActivity : AppCompatActivity() {
             mangaExtension != null -> mangaExtension!!.sources.indexOfFirst { it.lang == "en" }
             else -> -1
         }
-        if (englishIndex != -1) sourceIndex = englishIndex
+        if (applyDefaultLanguage && englishIndex != -1) sourceIndex = englishIndex
         binding.extensionBrowseLanguage.isVisible = true
         binding.extensionBrowseLanguage.setOnClickListener {
             val sheet = BottomSheetDialog(this)
