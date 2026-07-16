@@ -13,7 +13,10 @@ import ani.dantotsu.databinding.FragmentMediaInfoContainerBinding
 import ani.dantotsu.media.ComickInfoFragment
 import ani.dantotsu.media.InfoTabContext
 import ani.dantotsu.media.InfoTabType
+import ani.dantotsu.isOnline
 import ani.dantotsu.media.MediaDetailsViewModel
+import ani.dantotsu.settings.saving.PrefManager
+import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.util.customAlertDialog
 import com.google.android.material.tabs.TabLayoutMediator
 import kotlinx.coroutines.Dispatchers
@@ -59,9 +62,14 @@ class MUMediaInfoContainerFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         val model: MediaDetailsViewModel by activityViewModels()
 
-        tabs = InfoTabContext.MANGAUPDATES_MANGA.visibleOrderedTabs().map { type ->
-            TabInfo(type.key, createTabFragment(type), type.iconRes)
-        }
+        // Comick and MangaBaka tabs are pure network lookups, so offline show only the
+        // MangaUpdates tab (which renders the downloaded basics).
+        val offline = PrefManager.getVal<Boolean>(PrefName.OfflineMode) ||
+                !isOnline(requireContext())
+        tabs = InfoTabContext.MANGAUPDATES_MANGA.visibleOrderedTabs()
+            .filter { !offline || it == InfoTabType.MANGAUPDATES }
+            .ifEmpty { listOf(InfoTabType.MANGAUPDATES) }
+            .map { type -> TabInfo(type.key, createTabFragment(type), type.iconRes) }
 
         val adapter = object : androidx.viewpager2.adapter.FragmentStateAdapter(
             childFragmentManager, viewLifecycleOwner.lifecycle
@@ -82,7 +90,7 @@ class MUMediaInfoContainerFragment : Fragment() {
         // Gated only on the connection being enabled, not on whether the MangaBaka tab is
         // actually visible (checked further down, before the early return below): an AniList
         // equivalent must still be found and offered even when the user has hidden the tab.
-        if (InfoTabType.MANGABAKA.fetchEnabled) {
+        if (InfoTabType.MANGABAKA.fetchEnabled && !offline) {
             var mbStarted = false
             model.getMedia().observe(viewLifecycleOwner) { media ->
                 if (media != null && !mbStarted && model.mangaBakaLoaded.value != true) {

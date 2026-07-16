@@ -58,6 +58,7 @@ class ListActivity : AppCompatActivity() {
     private var muSeparateTabs: List<String> = emptyList()
     private val muStandardKeys = setOf("Reading", "Planning", "Completed", "Dropped", "Paused")
     private var anime: Boolean = true
+    private var offline: Boolean = false
     private var lastTabSignature: String = ""
     private var isRebuildingTabs = false
 
@@ -96,10 +97,15 @@ class ListActivity : AppCompatActivity() {
 
         val anime = intent.getBooleanExtra("anime", true)
         this.anime = anime
-        binding.listTitle.text = getString(
-            R.string.user_list, intent.getStringExtra("username"),
-            if (anime) getString(R.string.anime) else getString(R.string.manga)
-        )
+        this.offline = intent.getBooleanExtra("offline", false)
+        binding.listTitle.text = if (offline) {
+            getString(if (anime) R.string.downloaded_anime else R.string.downloaded_manga)
+        } else {
+            getString(
+                R.string.user_list, intent.getStringExtra("username"),
+                if (anime) getString(R.string.anime) else getString(R.string.manga)
+            )
+        }
 
         binding.listBack.setOnClickListener {
             finish()
@@ -233,10 +239,14 @@ class ListActivity : AppCompatActivity() {
             if (it) {
                 scope.launch {
                     withContext(Dispatchers.IO) {
-                        model.loadLists(
-                            anime,
-                            intent.getIntExtra("userId", 0)
-                        )
+                        if (offline) {
+                            model.loadDownloadedLists(anime, applicationContext)
+                        } else {
+                            model.loadLists(
+                                anime,
+                                intent.getIntExtra("userId", 0)
+                            )
+                        }
                     }
                     live.postValue(false)
                 }
@@ -282,11 +292,15 @@ class ListActivity : AppCompatActivity() {
                     binding.listViewPager.adapter = null
                     scope.launch {
                         withContext(Dispatchers.IO) {
-                            model.loadLists(
-                                anime,
-                                intent.getIntExtra("userId", 0),
-                                sort
-                            )
+                            if (offline) {
+                                model.loadDownloadedLists(anime, applicationContext, sort)
+                            } else {
+                                model.loadLists(
+                                    anime,
+                                    intent.getIntExtra("userId", 0),
+                                    sort
+                                )
+                            }
                         }
                     }
                 }

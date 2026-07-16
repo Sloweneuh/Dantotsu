@@ -34,9 +34,12 @@ import ani.dantotsu.connections.handoff.HandoffPayload
 import ani.dantotsu.Refresh
 import ani.dantotsu.ZoomOutPageTransformer
 import ani.dantotsu.blurImage
+import ani.dantotsu.connections.anilist.api.FuzzyDate
 import ani.dantotsu.getThemeColor
+import ani.dantotsu.media.Author
 import ani.dantotsu.databinding.ActivityMediaBinding
 import ani.dantotsu.initActivity
+import ani.dantotsu.isOnline
 import ani.dantotsu.hideSystemBars
 import ani.dantotsu.showSystemBars
 import ani.dantotsu.loadImage
@@ -321,6 +324,47 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
     }
 
     /**
+     * Returns a copy of the synthetic [media] enriched with the MangaUpdates series metadata, so it
+     * gets saved into the download's `media.json` (and therefore shown offline). MangaUpdates fields
+     * are mapped onto their AniList-Media equivalents: categories → tags, followers → favourites,
+     * etc. `status`/`meanScore` are `val` on Media so they're set via `copy`; the rest are mutated
+     * on the returned instance.
+     */
+    private fun applySeriesToMedia(media: Media, details: MUSeriesRecord): Media {
+        var totalChapters: Int? = null
+        var status: String? = media.status
+        // e.g. "143 Chapters (Ongoing)" → totalChapters=143, status="Ongoing"
+        details.status?.let { full ->
+            Regex("""(\d+)\s+Chapter""").find(full)?.groupValues?.getOrNull(1)?.toIntOrNull()
+                ?.let { totalChapters = it }
+            Regex("""\(([^)]+)\)""").find(full)?.groupValues?.getOrNull(1)?.let { status = it }
+        }
+        val meanScore =
+            details.bayesian_rating?.toDoubleOrNull()?.let { (it * 10).toInt() } ?: media.meanScore
+
+        val enriched = media.copy(status = status, meanScore = meanScore)
+        totalChapters?.let { enriched.manga?.totalChapters = it }
+        if (enriched.description.isNullOrBlank()) enriched.description = details.description
+        details.year?.toIntOrNull()?.let { enriched.startDate = FuzzyDate(year = it) }
+        details.genres?.mapNotNull { it.genre?.trim() }?.filter { it.isNotEmpty() }
+            ?.takeIf { it.isNotEmpty() }?.let { enriched.genres = ArrayList(it) }
+        details.categories?.mapNotNull { it.category?.trim() }?.filter { it.isNotEmpty() }
+            ?.takeIf { it.isNotEmpty() }?.let { enriched.tags = ArrayList(it) }
+        details.associated?.mapNotNull { it.title?.trim() }?.filter { it.isNotEmpty() }
+            ?.takeIf { it.isNotEmpty() }?.let { enriched.synonyms = ArrayList(it) }
+        details.authors?.firstOrNull { !it.name.isNullOrBlank() }?.name?.let { name ->
+            enriched.manga?.author = Author(0, name, null, "Author")
+        }
+        details.rank?.lists?.let { lists ->
+            val followers = (lists.reading ?: 0) + (lists.wish ?: 0) + (lists.complete ?: 0) +
+                    (lists.unfinished ?: 0) + (lists.custom ?: 0)
+            if (followers > 0) enriched.favourites = followers
+        }
+        if (enriched.format.isNullOrBlank()) enriched.format = details.type
+        return enriched
+    }
+
+    /**
      * Shows the "AniList counterpart found" popup once per resolved id. When the MangaUpdates series
      * is in the user's list, a third (neutral) button converts it: it's added to the AniList list
      * and removed from MangaUpdates in one step.
@@ -423,6 +467,10 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         extensionSManga = intent.getSerializableExtra(EXTRA_EXT_MANGA) as? SManga
         ThemeManager(this).applyTheme()
         initActivity(this)
+
+        // MangaUpdates details (series metadata, Comick/MangaBaka/AniList matching, list editing,
+        // handoff) all need the network. Offline we skip them and render the downloaded basics.
+        val offline = !isOnline(this) || PrefManager.getVal<Boolean>(PrefName.OfflineMode)
 
         binding = ActivityMediaBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -533,7 +581,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         model.setMedia(media)
 
         // Continue on another device (MangaUpdates media, opened via the MU series link).
-        binding.mediaHandoff.isVisible = true
+        binding.mediaHandoff.isVisible = !offline
         binding.mediaHandoff.setOnClickListener {
             lifecycleScope.launch {
                 // Attach the matched extension entry (if the read tab has loaded one) so the
@@ -565,33 +613,38 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         // Fetch full MU series data in background for the info tab
         val bannerAnimations: Boolean = PrefManager.getVal(PrefName.BannerAnimations)
         val banner = if (bannerAnimations) binding.mediaBanner else binding.mediaBannerNoKen
-        lifecycleScope.launch(Dispatchers.IO) {
-            val details = MangaUpdates.getSeriesDetails(muMedia.id)
-            if (details != null) {
-                model.mangaUpdatesSeries.postValue(details)
-                val detailsIndicateNovel = isNovelType(details.type)
-                // Update the cover/banner if the list item didn't have a cover URL
-                val coverUrl = details.image?.url?.original ?: details.image?.url?.thumb
-                if (!coverUrl.isNullOrBlank() && muMedia.coverUrl == null) {
-                    // Persist the cover on the Media object so MangaReadAdapter can use it
-                    media.cover = coverUrl
-                    media.banner = coverUrl
-                    model.setMedia(media)
-                    withContext(Dispatchers.Main) {
-                        binding.mediaCoverImage.loadImage(coverUrl)
-                        blurImage(banner, coverUrl)
-                    }
+        if (!offline) lifecycleScope.launch(Dispatchers.IO) {
+            val details = MangaUpdates.getSeriesDetails(muMedia.id) ?: return@launch
+            model.mangaUpdatesSeries.postValue(details)
+
+            // Enrich the Media with the series metadata so it's persisted in the download's
+            // media.json and shown offline (parity with AniList media).
+            val enriched = applySeriesToMedia(media, details)
+
+            val coverUrl = details.image?.url?.original ?: details.image?.url?.thumb
+            val needNewCover = !coverUrl.isNullOrBlank() && muMedia.coverUrl == null
+            val switchToNovel = isNovelType(details.type) && !useNovelReader
+
+            withContext(Dispatchers.Main) {
+                if (needNewCover) {
+                    enriched.cover = coverUrl
+                    enriched.banner = coverUrl
                 }
-                if (detailsIndicateNovel && !useNovelReader) {
+                if (switchToNovel) {
                     useNovelReader = true
-                    media.format = "NOVEL"
-                    media.selected = model.loadSelected(media)
-                    model.setMedia(media)
-                    withContext(Dispatchers.Main) {
-                        val currentItem = binding.mediaViewPager.currentItem
-                        binding.mediaViewPager.adapter = ViewPagerAdapter(supportFragmentManager, lifecycle, useNovelReader)
-                        binding.mediaViewPager.setCurrentItem(currentItem, false)
-                    }
+                    enriched.format = "NOVEL"
+                    enriched.selected = model.loadSelected(enriched)
+                }
+                model.setMedia(enriched)
+                if (needNewCover) {
+                    binding.mediaCoverImage.loadImage(coverUrl)
+                    blurImage(banner, coverUrl)
+                }
+                if (switchToNovel) {
+                    val currentItem = binding.mediaViewPager.currentItem
+                    binding.mediaViewPager.adapter =
+                        ViewPagerAdapter(supportFragmentManager, lifecycle, useNovelReader)
+                    binding.mediaViewPager.setCurrentItem(currentItem, false)
                 }
             }
         }
@@ -669,10 +722,11 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
 
         // When muMedia came from a search result, user list data (listId/userChapter) is absent.
         // Fetch it in the background and refresh the progress display when found.
-        if (muMedia.listId < 0) {
+        if (muMedia.listId < 0 && !offline) {
             lifecycleScope.launch { ensureMuUserEntry() }
         }
-        binding.mediaAddToList.visibility = View.VISIBLE
+        // Editing the MangaUpdates list entry needs the network.
+        binding.mediaAddToList.visibility = if (offline) View.GONE else View.VISIBLE
 
         binding.mediaAddToList.setOnClickListener {
             if (supportFragmentManager.findFragmentByTag("muListEditor") == null) {
@@ -706,7 +760,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         val initialTitleCandidates = collectQuickSearchTitles().ifEmpty {
             listOfNotNull(muMedia.title).filter { it.isNotBlank() }
         }
-        lifecycleScope.launch(Dispatchers.IO) {
+        if (!offline) lifecycleScope.launch(Dispatchers.IO) {
             try {
                 // Prefer MangaBaka's cross-source mapping (MU slug -> series -> AniList id); it's far
                 // more reliable than Comick's title matching. Fall back to Comick when MangaBaka has

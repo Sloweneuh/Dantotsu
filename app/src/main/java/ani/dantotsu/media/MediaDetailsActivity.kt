@@ -1138,9 +1138,12 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                 navBar.createTab(R.drawable.ic_round_comment_24, R.string.comments, R.id.comment)
         navBar.addTab(infoTab)
         navBar.addTab(watchTab)
-        if (PrefManager.getVal<Int>(PrefName.CommentsEnabled) == 1) {
+        // Comments need the network, so drop the tab entirely when offline.
+        val offlineMode = isDownload || !isOnline(this)
+        if (PrefManager.getVal<Int>(PrefName.CommentsEnabled) == 1 && !offlineMode) {
             navBar.addTab(commentTab)
         }
+        if (offlineMode) selected = selected.coerceIn(0, 1)
         if (model.continueMedia == null && media.cameFromContinue) {
             model.continueMedia = PrefManager.getVal(PrefName.ContinueMedia)
             selected = 1

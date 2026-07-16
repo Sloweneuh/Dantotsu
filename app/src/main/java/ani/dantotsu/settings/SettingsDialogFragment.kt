@@ -15,8 +15,6 @@ import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.handoff.HandoffBottomSheet
 import ani.dantotsu.databinding.BottomSheetSettingsBinding
 import ani.dantotsu.download.DownloadActivity
-import ani.dantotsu.download.anime.OfflineAnimeFragment
-import ani.dantotsu.download.manga.OfflineMangaFragment
 import ani.dantotsu.getThemeColor
 import ani.dantotsu.home.AnimeFragment
 import ani.dantotsu.home.HomeFragment
@@ -24,8 +22,8 @@ import ani.dantotsu.home.LoginFragment
 import ani.dantotsu.home.MangaFragment
 import ani.dantotsu.home.NoInternet
 import ani.dantotsu.incognitoNotification
+import ani.dantotsu.isOnline
 import ani.dantotsu.loadImage
-import ani.dantotsu.offline.OfflineFragment
 import ani.dantotsu.profile.ProfileActivity
 import ani.dantotsu.profile.activity.FeedActivity
 import ani.dantotsu.profile.notification.NotificationActivity
@@ -63,55 +61,83 @@ class SettingsDialogFragment : BottomSheetDialogFragment() {
         window?.statusBarColor = Color.CYAN
         window?.navigationBarColor =
             requireContext().getThemeColor(com.google.android.material.R.attr.colorSurface)
-        val notificationIcon = if (Anilist.unreadNotificationCount > 0) {
-            R.drawable.ic_round_notifications_active_24
-        } else {
-            R.drawable.ic_round_notifications_none_24
-        }
-        binding.settingsNotification.setImageResource(notificationIcon)
 
-        if (Anilist.token != null) {
-            binding.settingsLogin.setText(R.string.logout)
-            binding.settingsLogin.setOnClickListener {
-                requireContext().customAlertDialog().apply {
-                    setTitle(R.string.logout)
-                    setMessage(R.string.logout_confirm)
-                    setPosButton(R.string.yes) {
-                        Anilist.removeSavedToken()
-                        startMainActivity(requireActivity())
+        // Account info, notifications, the activity feed, extension browsing, and cross-device
+        // handoff all require the network — hide them entirely rather than showing broken/stuck UI.
+        val offline = !isOnline(requireContext()) || PrefManager.getVal<Boolean>(PrefName.OfflineMode)
+        binding.settingsAccountRow.isVisible = !offline
+        binding.settingsActivity.isVisible = !offline
+        binding.settingsExtensionSettings.isVisible = !offline
+        binding.settingsReceiveHandoff.isVisible = !offline
+
+        if (!offline) {
+            val notificationIcon = if (Anilist.unreadNotificationCount > 0) {
+                R.drawable.ic_round_notifications_active_24
+            } else {
+                R.drawable.ic_round_notifications_none_24
+            }
+            binding.settingsNotification.setImageResource(notificationIcon)
+
+            if (Anilist.token != null) {
+                binding.settingsLogin.setText(R.string.logout)
+                binding.settingsLogin.setOnClickListener {
+                    requireContext().customAlertDialog().apply {
+                        setTitle(R.string.logout)
+                        setMessage(R.string.logout_confirm)
+                        setPosButton(R.string.yes) {
+                            Anilist.removeSavedToken()
+                            startMainActivity(requireActivity())
+                        }
+                        setNegButton(R.string.no)
+                        show()
                     }
-                    setNegButton(R.string.no)
-                    show()
+                }
+                binding.settingsUsername.text = Anilist.username
+                binding.settingsUserAvatar.loadImage(Anilist.avatar)
+            } else {
+                binding.settingsUsername.visibility = View.GONE
+                binding.settingsLogin.setText(R.string.login)
+                binding.settingsLogin.setOnClickListener {
+                    dismiss()
+                    Anilist.loginIntent(requireActivity())
                 }
             }
-            binding.settingsUsername.text = Anilist.username
-            binding.settingsUserAvatar.loadImage(Anilist.avatar)
-        } else {
-            binding.settingsUsername.visibility = View.GONE
-            binding.settingsLogin.setText(R.string.login)
-            binding.settingsLogin.setOnClickListener {
-                dismiss()
-                Anilist.loginIntent(requireActivity())
+            binding.settingsNotificationCount.isVisible = Anilist.unreadNotificationCount > 0
+            binding.settingsNotificationCount.text = Anilist.unreadNotificationCount.toString()
+            binding.settingsUserAvatar.setOnClickListener {
+                ContextCompat.startActivity(
+                    requireContext(), Intent(requireContext(), ProfileActivity::class.java)
+                        .putExtra("userId", Anilist.userid), null
+                )
             }
-        }
-        binding.settingsNotificationCount.isVisible = Anilist.unreadNotificationCount > 0
-        binding.settingsNotificationCount.text = Anilist.unreadNotificationCount.toString()
-        binding.settingsUserAvatar.setOnClickListener {
-            ContextCompat.startActivity(
-                requireContext(), Intent(requireContext(), ProfileActivity::class.java)
-                    .putExtra("userId", Anilist.userid), null
-            )
+
+            binding.settingsExtensionSettings.setSafeOnClickListener {
+                startActivity(Intent(activity, ExtensionsActivity::class.java))
+                dismiss()
+            }
+
+            binding.settingsReceiveHandoff.setSafeOnClickListener {
+                // Show on the activity's manager so the sheet survives this one being dismissed.
+                val fm = requireActivity().supportFragmentManager
+                dismiss()
+                HandoffBottomSheet.receive().show(fm, "handoff")
+            }
+
+            binding.settingsActivity.setSafeOnClickListener {
+                startActivity(Intent(activity, FeedActivity::class.java))
+                dismiss()
+            }
+
+            binding.settingsNotification.setOnClickListener {
+                startActivity(Intent(activity, NotificationActivity::class.java))
+                dismiss()
+            }
         }
 
         binding.settingsIncognito.isChecked = PrefManager.getVal(PrefName.Incognito)
         binding.settingsIncognito.setOnCheckedChangeListener { _, isChecked ->
             PrefManager.setVal(PrefName.Incognito, isChecked)
             incognitoNotification(requireContext())
-        }
-
-        binding.settingsExtensionSettings.setSafeOnClickListener {
-            startActivity(Intent(activity, ExtensionsActivity::class.java))
-            dismiss()
         }
 
         binding.settingsDownloadQueue.setSafeOnClickListener {
@@ -123,49 +149,14 @@ class SettingsDialogFragment : BottomSheetDialogFragment() {
             startActivity(Intent(activity, SettingsActivity::class.java))
             dismiss()
         }
-
-        binding.settingsReceiveHandoff.setSafeOnClickListener {
-            // Show on the activity's manager so the sheet survives this one being dismissed.
-            val fm = requireActivity().supportFragmentManager
-            dismiss()
-            HandoffBottomSheet.receive().show(fm, "handoff")
-        }
-
-        binding.settingsActivity.setSafeOnClickListener {
-            startActivity(Intent(activity, FeedActivity::class.java))
-            dismiss()
-        }
-
-        binding.settingsNotification.setOnClickListener {
-            startActivity(Intent(activity, NotificationActivity::class.java))
-            dismiss()
-        }
         binding.settingsDownloads.isChecked = PrefManager.getVal(PrefName.OfflineMode)
         binding.settingsDownloads.setOnCheckedChangeListener { _, isChecked ->
             Timer().schedule(300) {
                 when (pageType) {
-                    PageType.MANGA -> {
-                        val intent = Intent(activity, NoInternet::class.java)
-                        intent.putExtra(
-                            "FRAGMENT_CLASS_NAME",
-                            OfflineMangaFragment::class.java.name
-                        )
-                        startActivity(intent)
-                    }
-
-                    PageType.ANIME -> {
-                        val intent = Intent(activity, NoInternet::class.java)
-                        intent.putExtra(
-                            "FRAGMENT_CLASS_NAME",
-                            OfflineAnimeFragment::class.java.name
-                        )
-                        startActivity(intent)
-                    }
-
-                    PageType.HOME -> {
-                        val intent = Intent(activity, NoInternet::class.java)
-                        intent.putExtra("FRAGMENT_CLASS_NAME", OfflineFragment::class.java.name)
-                        startActivity(intent)
+                    PageType.MANGA, PageType.ANIME, PageType.HOME -> {
+                        // Entering offline mode: the single offline home is shown regardless of
+                        // which page we came from.
+                        startActivity(Intent(activity, NoInternet::class.java))
                     }
 
                     PageType.OfflineMANGA -> {

@@ -1,10 +1,12 @@
 package ani.dantotsu.media.user
 
+import android.content.Context
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ani.dantotsu.connections.anilist.Anilist
+import ani.dantotsu.download.OfflineMediaLoader
 import ani.dantotsu.connections.mangaupdates.MUDetailsCache
 import ani.dantotsu.connections.mangaupdates.MUMedia
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
@@ -120,6 +122,51 @@ class ListViewModel : ViewModel() {
                 }
             }
         }
+    }
+
+    /**
+     * Offline equivalent of [loadLists]: builds the list buckets from downloaded media instead of
+     * querying AniList. Everything downstream (tabs, filters, search, sort) is client-side and works
+     * unchanged. All downloads go under a single "All" bucket; there are no MangaUpdates lists offline.
+     */
+    suspend fun loadDownloadedLists(anime: Boolean, context: Context, sortOrder: String? = null) {
+        tryWithSuspend {
+            activeSortOrder = sortOrder
+            rawMuData = null
+            val media = OfflineMediaLoader.loadDownloadedMediaList(context, anime)
+            val sorted = sortDownloadedMedia(media, sortOrder)
+            val res: MutableMap<String, ArrayList<Media>> =
+                linkedMapOf("All" to ArrayList(sorted))
+            unfilteredLists.postValue(res)
+
+            val filters = currentFilters.value
+            if (currentSearchQuery.isNotEmpty()) {
+                performSearch(currentSearchQuery, filters, res)
+            } else if (filters != null && !filters.isEmpty()) {
+                lists.postValue(res.mapValues { entry ->
+                    ArrayList(entry.value.filter { matchesFilters(it, filters) })
+                }.toMutableMap())
+            } else {
+                lists.postValue(res)
+            }
+            filteredMuLists.postValue(emptyMap())
+        }
+    }
+
+    private fun sortDownloadedMedia(media: List<Media>, sortOrder: String?): List<Media> {
+        if (sortOrder.isNullOrBlank()) return media
+        val descending = !sortOrder.endsWith("_asc")
+        val base = sortOrder.removeSuffix("_asc").removeSuffix("_desc")
+        val sorted = when (base) {
+            "title" -> media.sortedBy { it.userPreferredName.lowercase() }
+            "score" -> media.sortedBy {
+                if (it.userScore != 0) it.userScore else (it.meanScore ?: 0)
+            }
+            "release" -> media.sortedBy { it.startDate?.year ?: Int.MIN_VALUE }
+            "updatedAt" -> media.sortedBy { it.userUpdatedAt ?: 0L }
+            else -> return media
+        }
+        return if (descending) sorted.reversed() else sorted
     }
 
     fun reverseLists() {

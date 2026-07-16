@@ -812,6 +812,7 @@
     <string name="use_oled_theme">Utiliser le thème OLED</string>
     <string name="scanlators">Scanlateurs</string>
     <string name="no_offline_manga_found">Aucun manga hors ligne trouvé</string>
+    <string name="downloaded_manga">Manga Téléchargés</string>
     <string name="sort">Trier</string>
     <string name="download">Télécharger</string>
     <string name="scanlator">Scanlateur</string>
@@ -1924,4 +1925,5 @@
     <string name="handoff_discovery_disabled">La découverte locale est désactivée. Utilisez un code QR ou un code de partage, ou activez-la ci-dessous.</string>
     <string name="handoff_no_radios">Activez le Bluetooth ou le Wi-Fi pour trouver les appareils à proximité — ou utilisez un code QR ou un code de partage.</string>
     <string name="handoff_no_radios_receive">Activez le Bluetooth ou le Wi-Fi pour être détectable par les autres appareils — ou recevez avec un code QR ou un code de partage.</string>
+    <string name="downloaded_anime">Anime Téléchargés</string>
 </resources>

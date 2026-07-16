@@ -1124,6 +1124,8 @@
     <string name="manga_queue">Manga Queue (WIP)</string>
     <string name="anime_queue">Anime Queue (WIP)</string>
     <string name="no_offline_manga_found">No offline manga found</string>
+    <string name="downloaded_anime">Downloaded Anime</string>
+    <string name="downloaded_manga">Downloaded Manga</string>
     <string name="sort">Sort</string>
     <string name="download">Download</string>
     <string name="scanlator">Scanlator</string>

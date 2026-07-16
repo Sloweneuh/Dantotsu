@@ -12,6 +12,9 @@ import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import ani.dantotsu.databinding.FragmentMediaInfoContainerBinding
+import ani.dantotsu.isOnline
+import ani.dantotsu.settings.saving.PrefManager
+import ani.dantotsu.settings.saving.PrefName
 import com.google.android.material.tabs.TabLayoutMediator
 
 class MediaInfoFragment : Fragment() {
@@ -59,7 +62,16 @@ class MediaInfoFragment : Fragment() {
                 // Build list of tabs according to the user's saved order/visibility for this
                 // media context (falls back to fetch-enabled connections only)
                 val tabContext = if (isAnime) InfoTabContext.ANILIST_ANIME else InfoTabContext.ANILIST_MANGA
-                tabs = tabContext.visibleOrderedTabs().map { type ->
+                // Offline, the external source tabs (MAL/Comick/MangaUpdates/MangaBaka) can't fetch
+                // anything, so show only the AniList tab, whose info is stored with the download.
+                val offline = PrefManager.getVal<Boolean>(PrefName.OfflineMode) ||
+                        !isOnline(requireContext())
+                val orderedTabs = tabContext.visibleOrderedTabs().let { ordered ->
+                    if (offline) ordered.filter { it == InfoTabType.ANILIST }
+                        .ifEmpty { listOf(InfoTabType.ANILIST) }
+                    else ordered
+                }
+                tabs = orderedTabs.map { type ->
                     TabInfo(type.key, createTabFragment(type), type.iconRes)
                 }
 

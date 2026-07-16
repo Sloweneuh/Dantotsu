@@ -27,6 +27,7 @@ import androidx.viewpager2.widget.ViewPager2
 import ani.dantotsu.R
 import ani.dantotsu.blurImage
 import ani.dantotsu.currActivity
+import ani.dantotsu.isOnline
 import ani.dantotsu.databinding.ItemMediaCompactBinding
 import ani.dantotsu.databinding.ItemMediaLargeBinding
 import ani.dantotsu.databinding.ItemMediaPageBinding
@@ -627,12 +628,15 @@ class MediaAdaptor(
                     transition
                 )
             } else {
+                // Offline, open the downloaded copy (media.json + local chapters/episodes)
+                // instead of trying to fetch the media from the network.
+                val offline = !isOnline(activity) ||
+                        PrefManager.getVal<Boolean>(PrefName.OfflineMode)
                 ContextCompat.startActivity(
                     activity,
-                    Intent(activity, MediaDetailsActivity::class.java).putExtra(
-                        "media",
-                        media as Serializable
-                    ),
+                    Intent(activity, MediaDetailsActivity::class.java)
+                        .putExtra("media", media as Serializable)
+                        .putExtra("download", offline),
                     transition
                 )
             }

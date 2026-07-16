@@ -22,6 +22,7 @@ import ani.dantotsu.R
 import ani.dantotsu.copyToClipboard
 import ani.dantotsu.databinding.ActivitySettingsBinding
 import ani.dantotsu.initActivity
+import ani.dantotsu.isOnline
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.openLinkInBrowser
 import ani.dantotsu.others.AppUpdater
@@ -82,18 +83,23 @@ class SettingsActivity : AppCompatActivity() {
                 onBackPressedDispatcher.onBackPressed()
             }
 
+            // Accounts is entirely about logging into/out of online services (AniList, MAL,
+            // MangaUpdates, etc.), so it's meaningless (and non-functional) offline.
+            val offline = !isOnline(context) || PrefManager.getVal<Boolean>(PrefName.OfflineMode)
             val sectionsAdapter = SettingsAdapter(
                 arrayListOf(
-                    Settings(
-                        type = 1,
-                        name = getString(R.string.accounts),
-                        desc = getString(R.string.accounts_desc),
-                        icon = R.drawable.ic_round_person_24,
-                        onClick = {
-                            startActivity(Intent(context, SettingsAccountActivity::class.java))
-                        },
-                        isActivity = true
-                    ),
+                    *listOfNotNull(
+                        if (!offline) Settings(
+                            type = 1,
+                            name = getString(R.string.accounts),
+                            desc = getString(R.string.accounts_desc),
+                            icon = R.drawable.ic_round_person_24,
+                            onClick = {
+                                startActivity(Intent(context, SettingsAccountActivity::class.java))
+                            },
+                            isActivity = true
+                        ) else null
+                    ).toTypedArray(),
                     Settings(
                         type = 1,
                         name = getString(R.string.theme),

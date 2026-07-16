@@ -29,11 +29,14 @@ import ani.dantotsu.databinding.ItemTitleChipgroupMultilineBinding
 import ani.dantotsu.databinding.ItemChapterListBinding
 import ani.dantotsu.databinding.ItemTitleRecyclerBinding
 import ani.dantotsu.databinding.ItemTitleTextBinding
+import ani.dantotsu.isOnline
 import ani.dantotsu.media.MediaDetailsViewModel
 import ani.dantotsu.media.SearchActivity
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.openLinkInBrowser
 import ani.dantotsu.px
+import ani.dantotsu.settings.saving.PrefManager
+import ani.dantotsu.settings.saving.PrefName
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
@@ -82,6 +85,129 @@ class MUMediaInfoFragment : Fragment() {
 
         model.mangaUpdatesSeries.observe(viewLifecycleOwner) { series ->
             if (series != null) displaySeriesDetails(series)
+        }
+
+        // Offline the activity never fetches series details, so render the basics from the
+        // downloaded media instead of spinning forever.
+        val offline = PrefManager.getVal<Boolean>(PrefName.OfflineMode) ||
+                !isOnline(requireContext())
+        if (offline && model.mangaUpdatesSeries.value == null) {
+            displayOfflineInfo()
+        }
+    }
+
+    /**
+     * Info shown offline, built from the downloaded [Media] (which [MUMediaDetailsActivity] enriched
+     * with the MangaUpdates series metadata at download time). No network is used.
+     */
+    private fun displayOfflineInfo() {
+        if (_binding == null) return
+        val media = model.getMedia().value
+        binding.mediaInfoProgressBar.visibility = View.GONE
+        binding.mediaInfoContainer.visibility = View.VISIBLE
+
+        val tripleTab = "\t\t\t"
+        val title = media?.userPreferredName?.takeIf { it.isNotBlank() }
+            ?: media?.name ?: getString(R.string.unknown_title)
+        binding.mediaInfoName.text = tripleTab + title
+        binding.mediaInfoName.setOnLongClickListener { copyToClipboard(title); true }
+        binding.mediaInfoNameRomajiContainer.visibility = View.GONE
+
+        binding.mediaInfoMeanScore.text =
+            media?.meanScore?.let { String.format(Locale.US, "%.1f", it / 10.0) }
+                ?: getString(R.string.unknown_value)
+        binding.mediaInfoStatus.text =
+            media?.status?.takeIf { it.isNotBlank() } ?: getString(R.string.unknown)
+        binding.mediaInfoTotalTitle.setText(R.string.total_chaps)
+        binding.mediaInfoTotal.text = media?.manga?.totalChapters?.toString() ?: "~"
+        binding.mediaInfoFormat.text = media?.format ?: getString(R.string.manga)
+        binding.mediaInfoSourceContainer.visibility = View.GONE
+
+        val author = media?.manga?.author?.name
+        if (!author.isNullOrBlank()) {
+            binding.mediaInfoAuthorContainer.visibility = View.VISIBLE
+            binding.mediaInfoAuthor.text = author
+        } else {
+            binding.mediaInfoAuthorContainer.visibility = View.GONE
+        }
+
+        binding.mediaInfoStart.text =
+            media?.startDate?.year?.toString() ?: getString(R.string.unknown_value)
+        binding.mediaInfoEnd.visibility = View.GONE
+        (binding.mediaInfoEnd.parent as? ViewGroup)?.visibility = View.GONE
+        binding.mediaInfoPopularity.visibility = View.GONE
+        (binding.mediaInfoPopularity.parent as? ViewGroup)?.visibility = View.GONE
+
+        // Re-label "Favourites" as "Followers"
+        val favRow = binding.mediaInfoFavorites.parent as? ViewGroup
+        favRow?.let { row ->
+            for (i in 0 until row.childCount) {
+                val child = row.getChildAt(i)
+                if (child is TextView && child.id != binding.mediaInfoFavorites.id) {
+                    child.text = getString(R.string.followers)
+                    break
+                }
+            }
+        }
+        binding.mediaInfoFavorites.text =
+            media?.favourites?.takeIf { it > 0 }?.toString() ?: getString(R.string.question_marks)
+
+        val desc = media?.description?.takeIf { it.isNotBlank() }
+            ?: getString(R.string.no_description_available)
+        binding.mediaInfoDescription.text = desc
+        binding.mediaInfoDescription.setOnClickListener {
+            ObjectAnimator.ofInt(
+                binding.mediaInfoDescription, "maxLines",
+                if (binding.mediaInfoDescription.maxLines == 5) 100 else 5
+            ).setDuration(if (binding.mediaInfoDescription.maxLines == 5) 950L else 400L).start()
+        }
+
+        val parent = binding.mediaInfoContainer
+
+        // Genres
+        val genres = media?.genres.orEmpty()
+        if (genres.isNotEmpty()) {
+            val bind = ItemTitleChipgroupBinding.inflate(LayoutInflater.from(context), parent, false)
+            bind.itemTitle.setText(R.string.genres)
+            genres.forEach { genre ->
+                val chip = ItemChipBinding
+                    .inflate(LayoutInflater.from(context), bind.itemChipGroup, false).root
+                chip.text = genre
+                chip.setOnLongClickListener { copyToClipboard(genre); true }
+                bind.itemChipGroup.addView(chip)
+            }
+            parent.addView(bind.root)
+        }
+
+        // Categories (stored in Media.tags)
+        val categories = media?.tags.orEmpty()
+        if (categories.isNotEmpty()) {
+            val bind = ItemTitleChipgroupMultilineBinding
+                .inflate(LayoutInflater.from(context), parent, false)
+            bind.itemTitle.text = getString(R.string.categories)
+            categories.forEach { category ->
+                val chip = ItemChipBinding
+                    .inflate(LayoutInflater.from(context), bind.itemChipGroup, false).root
+                chip.text = category
+                chip.setOnLongClickListener { copyToClipboard(category); true }
+                bind.itemChipGroup.addView(chip)
+            }
+            parent.addView(bind.root)
+        }
+
+        // Associated / alternative titles
+        val synonyms = media?.synonyms.orEmpty()
+        if (synonyms.isNotEmpty()) {
+            val bind = ItemTitleChipgroupBinding.inflate(LayoutInflater.from(context), parent, false)
+            bind.itemTitle.setText(R.string.synonyms)
+            synonyms.forEach { syn ->
+                val chip = ItemChipSynonymBinding
+                    .inflate(LayoutInflater.from(context), bind.itemChipGroup, false).root
+                chip.text = syn
+                chip.setOnLongClickListener { copyToClipboard(syn); true }
+                bind.itemChipGroup.addView(chip)
+            }
+            parent.addView(bind.root)
         }
     }
 

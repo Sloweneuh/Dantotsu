@@ -300,7 +300,13 @@ object SettingsSearch {
         val q = raw.trim().lowercase()
         if (q.isEmpty()) return emptyList()
         val tokens = q.split(" ").filter { it.isNotBlank() }
+        // Offline, the entire Accounts section (login/connections/list-sync) is non-functional,
+        // so exclude it from search too — otherwise it'd be reachable despite being hidden from
+        // the top-level list.
+        val offline = !ani.dantotsu.isOnline(context) ||
+                ani.dantotsu.settings.saving.PrefManager.getVal<Boolean>(ani.dantotsu.settings.saving.PrefName.OfflineMode)
         return index.mapNotNull { e ->
+            if (offline && e.sectionRes == R.string.accounts) return@mapNotNull null
             val title = context.getString(e.titleRes).lowercase()
             val desc = if (e.descRes != 0) context.getString(e.descRes).lowercase() else ""
             val section = context.getString(e.sectionRes).lowercase()

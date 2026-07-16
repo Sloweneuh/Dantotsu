@@ -314,7 +314,7 @@ class AniListInfoFragment : Fragment() {
                 val parent = _binding?.mediaInfoContainer!!
                 val screenWidth = resources.displayMetrics.run { widthPixels / density }
 
-                if (media.externalLinks.isNotEmpty()) {
+                if (media.externalLinks.isNotEmpty() && !offline) {
                     val bind = ItemTitleChipgroupBinding.inflate(
                         LayoutInflater.from(context),
                         parent,
@@ -383,7 +383,7 @@ class AniListInfoFragment : Fragment() {
                     try {
                         val mediaTypeLower = if (media.anime != null) "anime" else "manga"
                         // Show quicklinks whenever MALSync info is enabled (include anime and manga)
-                        if (PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled)) {
+                        if (PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled) && !offline) {
                             lifecycleScope.launch {
                                 val quicklinks = withContext(Dispatchers.IO) {
                                     try {
@@ -730,38 +730,60 @@ class AniListInfoFragment : Fragment() {
                     }
                 }
 
-                if (media.genres.isNotEmpty() && !offline) {
-                    val bind = ActivityGenreBinding.inflate(
-                        LayoutInflater.from(context),
-                        parent,
-                        false
-                    )
-                    val adapter = GenreAdapter(type)
-                    genreModel.doneListener = {
-                        MainScope().launch {
-                            bind.mediaInfoGenresProgressBar.visibility = View.GONE
+                if (media.genres.isNotEmpty()) {
+                    if (offline) {
+                        // The online view renders each genre as a card with a network-loaded
+                        // thumbnail; offline we fall back to plain text chips of the stored genres.
+                        val bind = ItemTitleChipgroupBinding.inflate(
+                            LayoutInflater.from(context),
+                            parent,
+                            false
+                        )
+                        bind.itemTitle.setText(R.string.genres)
+                        for (genre in media.genres) {
+                            val chip = ItemChipBinding.inflate(
+                                LayoutInflater.from(context),
+                                bind.itemChipGroup,
+                                false
+                            ).root
+                            chip.text = genre
+                            chip.setOnLongClickListener { copyToClipboard(genre); true }
+                            bind.itemChipGroup.addView(chip)
                         }
-                    }
-                    if (genreModel.genres != null) {
-                        adapter.genres = genreModel.genres!!
-                        adapter.pos = ArrayList(genreModel.genres!!.keys)
-                        if (genreModel.done) genreModel.doneListener?.invoke()
-                    }
-                    bind.mediaInfoGenresRecyclerView.adapter = adapter
-                    bind.mediaInfoGenresRecyclerView.layoutManager =
-                        GridLayoutManager(requireActivity(), (screenWidth / 156f).toInt())
-
-                    lifecycleScope.launch(Dispatchers.IO) {
-                        genreModel.loadGenres(media.genres) {
+                        parent.addView(bind.root)
+                    } else {
+                        val bind = ActivityGenreBinding.inflate(
+                            LayoutInflater.from(context),
+                            parent,
+                            false
+                        )
+                        val adapter = GenreAdapter(type)
+                        genreModel.doneListener = {
                             MainScope().launch {
-                                adapter.addGenre(it)
+                                bind.mediaInfoGenresProgressBar.visibility = View.GONE
                             }
                         }
+                        if (genreModel.genres != null) {
+                            adapter.genres = genreModel.genres!!
+                            adapter.pos = ArrayList(genreModel.genres!!.keys)
+                            if (genreModel.done) genreModel.doneListener?.invoke()
+                        }
+                        bind.mediaInfoGenresRecyclerView.adapter = adapter
+                        bind.mediaInfoGenresRecyclerView.layoutManager =
+                            GridLayoutManager(requireActivity(), (screenWidth / 156f).toInt())
+
+                        lifecycleScope.launch(Dispatchers.IO) {
+                            genreModel.loadGenres(media.genres) {
+                                MainScope().launch {
+                                    adapter.addGenre(it)
+                                }
+                            }
+                        }
+                        parent.addView(bind.root)
                     }
-                    parent.addView(bind.root)
                 }
 
-                if (media.tags.isNotEmpty() && !offline) {
+                if (media.tags.isNotEmpty()) {
                     val bind = ItemTitleChipgroupBinding.inflate(
                         LayoutInflater.from(context),
                         parent,
@@ -775,26 +797,29 @@ class AniListInfoFragment : Fragment() {
                             false
                         ).root
                         chip.text = media.tags[position]
-                        chip.setSafeOnClickListener {
-                            ContextCompat.startActivity(
-                                chip.context,
-                                Intent(chip.context, SearchActivity::class.java)
-                                    .putExtra("type", type)
-                                    .putExtra("sortBy", Anilist.sortBy[2])
-                                    .putExtra("tag", media.tags[position].substringBefore(" :"))
-                                    .putExtra("search", true)
-                                    .also {
-                                        if (media.isAdult) {
-                                            if (!Anilist.adult) Toast.makeText(
-                                                chip.context,
-                                                currActivity()?.getString(R.string.content_18),
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                            it.putExtra("hentai", true)
-                                        }
-                                    },
-                                null
-                            )
+                        // The tag search needs the network, so only wire it up when online.
+                        if (!offline) {
+                            chip.setSafeOnClickListener {
+                                ContextCompat.startActivity(
+                                    chip.context,
+                                    Intent(chip.context, SearchActivity::class.java)
+                                        .putExtra("type", type)
+                                        .putExtra("sortBy", Anilist.sortBy[2])
+                                        .putExtra("tag", media.tags[position].substringBefore(" :"))
+                                        .putExtra("search", true)
+                                        .also {
+                                            if (media.isAdult) {
+                                                if (!Anilist.adult) Toast.makeText(
+                                                    chip.context,
+                                                    currActivity()?.getString(R.string.content_18),
+                                                    Toast.LENGTH_SHORT
+                                                ).show()
+                                                it.putExtra("hentai", true)
+                                            }
+                                        },
+                                    null
+                                )
+                            }
                         }
                         chip.setOnLongClickListener { copyToClipboard(media.tags[position]);true }
                         bind.itemChipGroup.addView(chip)
@@ -866,7 +891,7 @@ class AniListInfoFragment : Fragment() {
                         parent.addView(root)
                     }
                 }
-                ItemTitleRecyclerBinding.inflate(
+                if (!offline) ItemTitleRecyclerBinding.inflate(
                     LayoutInflater.from(context),
                     parent,
                     false
