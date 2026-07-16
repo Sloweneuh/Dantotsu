@@ -703,6 +703,8 @@
     <string name="loading_chap_number">Loading Chapter %1$s</string>
     <string name="sort_by_release_date">Sort by Release Date</string>
     <string name="crop_borders">Crop Borders</string>
+    <string name="preload_amount">Preload Amount</string>
+    <string name="preload_amount_info">Number of upcoming pages to preload while reading</string>
     <string name="note">NOTE</string>
 
     <string name="manage_extension_repos">Manage Extension Repos</string>

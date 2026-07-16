@@ -968,7 +968,7 @@ class MangaReaderActivity : AppCompatActivity() {
                     RecyclerView.HORIZONTAL,
                 directionRLBT
             )
-            manager.preloadItemCount = 5
+            manager.preloadItemCount = defaultSettings.preloadAmount.coerceIn(4, 20)
 
             binding.mangaReaderPager.visibility = View.GONE
 

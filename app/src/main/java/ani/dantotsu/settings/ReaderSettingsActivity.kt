@@ -191,6 +191,31 @@ class ReaderSettingsActivity : AppCompatActivity() {
             PrefManager.setVal(PrefName.LongClickImage, isChecked)
         }
 
+        binding.readerSettingsPreloadAmount.setText(defaultSettings.preloadAmount.toString())
+        binding.readerSettingsPreloadAmount.setOnFocusChangeListener { _, hasFocus ->
+            if (!hasFocus) {
+                val value = (binding.readerSettingsPreloadAmount.text.toString().toIntOrNull()
+                    ?: defaultSettings.preloadAmount).coerceIn(4, 20)
+                defaultSettings.preloadAmount = value
+                binding.readerSettingsPreloadAmount.setText(value.toString())
+                PrefManager.setVal(PrefName.PreloadAmount, value)
+            }
+        }
+
+        binding.readerSettingsIncrementPreloadAmount.setOnClickListener {
+            val value = (defaultSettings.preloadAmount + 1).coerceIn(4, 20)
+            defaultSettings.preloadAmount = value
+            binding.readerSettingsPreloadAmount.setText(value.toString())
+            PrefManager.setVal(PrefName.PreloadAmount, value)
+        }
+
+        binding.readerSettingsDecrementPreloadAmount.setOnClickListener {
+            val value = (defaultSettings.preloadAmount - 1).coerceIn(4, 20)
+            defaultSettings.preloadAmount = value
+            binding.readerSettingsPreloadAmount.setText(value.toString())
+            PrefManager.setVal(PrefName.PreloadAmount, value)
+        }
+
         // Autoscroll speed (clamp stored preference to slider bounds)
         run {
             val pref = PrefManager.getVal<Float>(PrefName.AutoScrollSpeed)

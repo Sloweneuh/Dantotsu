@@ -346,6 +346,7 @@ object BackupTree {
                         BackupItem(PrefName.VolumeButtonsReader, R.string.volume_buttons),
                         BackupItem(PrefName.LongClickImage, R.string.image_long_clicking),
                         BackupItem(PrefName.ContinuousMultiChapter, R.string.continuous_multi_chapter),
+                        BackupItem(PrefName.PreloadAmount, R.string.preload_amount),
                     )
                 ),
                 BackupSubCategory(

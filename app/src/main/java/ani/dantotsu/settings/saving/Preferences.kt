@@ -241,6 +241,7 @@ enum class PrefName(val data: Pref) {
     AutoScrollSpeed(Pref(Location.Reader, Float::class, 1f)),
     ContinuousMultiChapter(Pref(Location.Reader, Boolean::class, false)),
     LockRotation(Pref(Location.Reader, Boolean::class, true)),
+    PreloadAmount(Pref(Location.Reader, Int::class, 5)),
 
     //Novel Reader
     CurrentThemeName(Pref(Location.NovelReader, String::class, "Default")),

@@ -547,6 +547,8 @@
     <string name="loading_chap_number">Chargement du chapitre %1$s</string>
     <string name="sort_by_release_date">Trier par date de sortie</string>
     <string name="crop_borders">Rogner les bordures</string>
+    <string name="preload_amount">Nombre de pages préchargées</string>
+    <string name="preload_amount_info">Nombre de pages à venir à précharger pendant la lecture</string>
     <string name="note">NOTE</string>
 
     <string name="manage_extension_repos">Gérer les dépôts d\'extensions</string>

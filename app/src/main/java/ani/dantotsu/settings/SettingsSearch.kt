@@ -233,6 +233,7 @@ object SettingsSearch {
         l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.volume_buttons, R.string.reader_settings, IC_READER, anchorViewId = R.id.readerSettingsVolumeButton, keywords = "manga")
         l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.wrap_images, R.string.reader_settings, IC_READER, anchorViewId = R.id.readerSettingsWrapImages, keywords = "image fit width stretch wrap")
         l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.image_long_clicking, R.string.reader_settings, IC_READER, anchorViewId = R.id.readerSettingsLongClickImage, keywords = "save image download long press")
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.preload_amount, R.string.reader_settings, IC_READER, anchorViewId = R.id.readerSettingsPreloadAmount, keywords = "preload images pages buffer cache ahead")
         l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.layout, R.string.reader_settings, IC_READER, anchorViewId = R.id.readerSettingsLayoutText, keywords = "manga reading mode paged webtoon continuous")
         l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.direction, R.string.reader_settings, IC_READER, anchorViewId = R.id.readerSettingsDirectionText, keywords = "manga reading ltr rtl")
         l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.dual_page, R.string.reader_settings, IC_READER, anchorViewId = R.id.readerSettingsDualPageText, keywords = "manga double page spread")
