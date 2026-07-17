@@ -98,6 +98,26 @@ object ComickApi {
             ?: categoryNameCache[slug.lowercase()]
 
     /**
+     * Server-side search over Comick's ~9,500 tags/categories, instead of fetching and
+     * filtering the full cached list client-side. Backs the category search box in
+     * [ani.dantotsu.media.ComickSearchFilterBottomSheet].
+     * @param query Search text (Comick caps this at 40 chars: GET /comic-tags/search?k=)
+     * @return Matching tags ranked by Comick's own relevance/popularity, or empty on failure
+     */
+    suspend fun searchCategories(query: String): List<FilterOption> = withContext(Dispatchers.IO) {
+        val trimmed = query.trim().take(40)
+        if (trimmed.isBlank()) return@withContext emptyList()
+        val url = "https://api.comick.dev/comic-tags/search"
+            .toHttpUrlOrNull()
+            ?.newBuilder()
+            ?.addQueryParameter("k", trimmed)
+            ?.build()
+            ?.toString()
+            ?: return@withContext emptyList()
+        fetchFilterOptions(url)
+    }
+
+    /**
      * Pre-populate a single known slug→name entry so the chip label is correct before the full
      * genre list is fetched. Writes only to [genreNameCache], never to [genreCache], so it can't
      * make getGenres() think the full list was already fetched and skip the real request.
@@ -663,11 +683,22 @@ object ComickApi {
     /**
      * Fetch all public custom lists that contain a specific comic (identified by HID).
      * @param hid The comic's HID (e.g. "NYH8PELZ")
+     * @param allowAdult Mirrors the accept_mature/erotic/pornographic_content flags the
+     * comick.dev web client sends; the API filters returned lists by content rating using
+     * these, defaulting to "safe only" when they're absent (many lists are erotica/suggestive).
      * @return List of custom lists, or null on failure
      */
-    suspend fun getComicLists(hid: String): List<ComickCustomList>? = withContext(Dispatchers.IO) {
+    suspend fun getComicLists(hid: String, allowAdult: Boolean = false): List<ComickCustomList>? = withContext(Dispatchers.IO) {
         try {
-            val url = "https://api.comick.dev/list/comic/$hid"
+            val urlBuilder = "https://api.comick.dev/list/comic/$hid"
+                .toHttpUrlOrNull()
+                ?.newBuilder()
+                ?: return@withContext null
+            urlBuilder.addQueryParameter("limit", "60")
+            urlBuilder.addQueryParameter("accept_mature_content", allowAdult.toString())
+            urlBuilder.addQueryParameter("accept_erotic_content", allowAdult.toString())
+            urlBuilder.addQueryParameter("accept_pornographic_content", allowAdult.toString())
+            val url = urlBuilder.build().toString()
             val request = Request.Builder().url(url).build()
             val response = client.newCall(request).execute()
             if (!response.isSuccessful) {
@@ -675,6 +706,7 @@ object ComickApi {
                 return@withContext null
             }
             val body = response.body.string()
+            Logger.log("Comick lists API response for hid $hid: ${body.take(500)}")
             if (body.isBlank() || body == "[]") return@withContext emptyList()
             gson.fromJson(body, Array<ComickCustomList>::class.java).toList()
         } catch (e: Exception) {

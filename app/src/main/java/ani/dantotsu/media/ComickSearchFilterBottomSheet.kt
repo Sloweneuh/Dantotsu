@@ -38,6 +38,8 @@ import com.google.android.material.chip.Chip
 import eu.kanade.tachiyomi.util.system.getResourceColor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Calendar
@@ -58,6 +60,7 @@ class ComickSearchFilterBottomSheet : BottomSheetDialogFragment() {
     private var allGenres: List<ComickApi.FilterOption> = emptyList()
     private var allCategories: List<ComickApi.FilterOption> = emptyList()
     private var filteredGenres: List<ComickApi.FilterOption> = emptyList()
+    private var categorySearchJob: Job? = null
 
     private var selectedSort: String? = null
     private var selectedStatus: Int? = null
@@ -153,12 +156,16 @@ class ComickSearchFilterBottomSheet : BottomSheetDialogFragment() {
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
             override fun afterTextChanged(s: Editable?) {
                 val q = s?.toString()?.trim().orEmpty()
+                categorySearchJob?.cancel()
                 if (q.isBlank()) {
                     updateCategoryResults(selectedCategoryOptions())
-                } else {
-                    updateCategoryResults(
-                        allCategories.filter { it.name.contains(q, ignoreCase = true) }
-                    )
+                    return
+                }
+                categorySearchJob = CoroutineScope(Dispatchers.Main).launch {
+                    delay(300)
+                    val results = withContext(Dispatchers.IO) { ComickApi.searchCategories(q) }
+                    if (_binding == null) return@launch
+                    updateCategoryResults(results)
                 }
             }
         })
@@ -582,6 +589,7 @@ class ComickSearchFilterBottomSheet : BottomSheetDialogFragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        categorySearchJob?.cancel()
         _binding = null
     }
 

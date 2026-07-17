@@ -35,6 +35,7 @@ import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.setSafeOnClickListener
 import ani.dantotsu.stripSpansOnPaste
+import ani.dantotsu.util.Logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -1523,6 +1524,9 @@ class ComickInfoFragment : Fragment() {
 
         // Custom Lists — placeholder added synchronously so it sits between recommendations and reviews
         val comickHid = comic.hid
+        if (comickHid.isNullOrBlank()) {
+            Logger.log("Comick custom lists: skipped, comic.hid is blank")
+        }
         val customListsPlaceholder = if (!comickHid.isNullOrBlank() &&
                 parent.findViewWithTag<View>("custom_lists_comick_placeholder") == null) {
             android.widget.FrameLayout(requireContext()).apply {
@@ -1581,8 +1585,16 @@ class ComickInfoFragment : Fragment() {
         // Fetch and fill the custom lists placeholder
         if (customListsPlaceholder != null) {
             viewLifecycleOwner.lifecycleScope.launch {
-                val lists = withContext(Dispatchers.IO) { ComickApi.getComicLists(comickHid!!) }
-                if (lists.isNullOrEmpty()) return@launch
+                val allowAdult = PrefManager.getVal<Boolean>(PrefName.AdultOnly)
+                val lists = withContext(Dispatchers.IO) { ComickApi.getComicLists(comickHid!!, allowAdult) }
+                if (lists == null) {
+                    Logger.log("Comick custom lists: API call failed for hid $comickHid")
+                    return@launch
+                }
+                if (lists.isEmpty()) {
+                    Logger.log("Comick custom lists: no lists returned for hid $comickHid (allowAdult=$allowAdult)")
+                    return@launch
+                }
                 if (_binding == null) return@launch
                 withContext(Dispatchers.Main) {
                     if (_binding == null) return@withContext
