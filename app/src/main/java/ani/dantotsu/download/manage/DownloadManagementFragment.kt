@@ -1,5 +1,7 @@
 package ani.dantotsu.download.manage
 
+import android.content.Context
+import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -9,12 +11,18 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import ani.dantotsu.R
 import ani.dantotsu.databinding.FragmentDownloadManagementBinding
+import ani.dantotsu.download.DownloadActivity
 import ani.dantotsu.download.DownloadTracker
 import ani.dantotsu.download.DownloadedType
 import ani.dantotsu.download.DownloadsManager
 import ani.dantotsu.formatBytes
+import ani.dantotsu.openInFileManager
+import ani.dantotsu.settings.saving.PrefManager
+import ani.dantotsu.settings.saving.PrefName
+import ani.dantotsu.toast
 import ani.dantotsu.util.Logger
 import ani.dantotsu.util.customAlertDialog
+import com.anggrayudi.storage.file.getAbsolutePath
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -46,10 +54,14 @@ class DownloadManagementFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         adapter = DownloadManagementAdapter(
             onDeleteMedia = { confirmDeleteMedia(it) },
-            onDeleteChild = { confirmDeleteChild(it) }
+            onDeleteChild = { confirmDeleteChild(it) },
+            onOpenMediaFolder = { openMediaFolder(it) },
+            onOpenChildFolder = { openChildFolder(it) },
         )
         binding.downloadManageRecycler.layoutManager = LinearLayoutManager(requireContext())
         binding.downloadManageRecycler.adapter = adapter
+        binding.downloadLocationRow.setOnClickListener { changeDownloadLocation() }
+        binding.downloadLocationOpen.setOnClickListener { openDownloadLocation() }
         reload()
 
         // Refresh whenever a download starts or finishes (membership change, not each progress
@@ -59,6 +71,12 @@ class DownloadManagementFragment : Fragment() {
                 .map { list -> list.map { it.id }.toSet() }
                 .distinctUntilChanged()
                 .collect { reload() }
+        }
+
+        // Refresh after a bulk purge, which can happen from the download settings dialog while
+        // this tab is the one currently on screen.
+        viewLifecycleOwner.lifecycleScope.launch {
+            DownloadsManager.libraryChanges.collect { reload() }
         }
     }
 
@@ -72,19 +90,24 @@ class DownloadManagementFragment : Fragment() {
         if (isInitialLoad) {
             binding.downloadManageProgressBar.visibility = View.VISIBLE
             binding.downloadManageEmpty.visibility = View.GONE
+            binding.downloadLocationRow.visibility = View.GONE
         }
         viewLifecycleOwner.lifecycleScope.launch {
+            val context = requireContext()
             val (groups, totals) = withContext(Dispatchers.IO) {
                 try {
-                    DownloadManageLoader.load(requireContext())
+                    DownloadManageLoader.load(context)
                 } catch (e: Exception) {
                     Logger.log("Failed to load downloads: ${e.message}")
                     emptyList<DownloadMediaGroup>() to DownloadTotals(0, 0, 0)
                 }
             }
+            val locationPath = withContext(Dispatchers.IO) { downloadLocationText(context) }
             if (_binding == null) return@launch
             hasLoadedOnce = true
             binding.downloadManageProgressBar.visibility = View.GONE
+            binding.downloadLocationRow.visibility = View.VISIBLE
+            binding.downloadLocationPath.text = locationPath
             binding.downloadTotalSize.text =
                 getString(R.string.download_total_size, formatBytes(totals.total))
             binding.downloadSubSize.text = getString(
@@ -96,6 +119,90 @@ class DownloadManagementFragment : Fragment() {
             adapter.submit(groups)
             binding.downloadManageEmpty.visibility =
                 if (groups.isEmpty()) View.VISIBLE else View.GONE
+        }
+    }
+
+    private fun downloadLocationText(context: Context): String {
+        val root = DownloadsManager.getDownloadsRootDirectory(context)
+        val path = root?.getAbsolutePath(context)?.takeIf { it.isNotBlank() }
+        return path ?: getString(R.string.dir_access_msg)
+    }
+
+    private fun changeDownloadLocation() {
+        val activity = requireActivity() as DownloadActivity
+        requireContext().customAlertDialog().apply {
+            setTitle(R.string.change_download_location)
+            setMessage(R.string.download_location_msg)
+            setPosButton(R.string.ok) {
+                val oldUri = PrefManager.getVal<String>(PrefName.DownloadsDir)
+                activity.launcher.registerForCallback { success ->
+                    if (success) {
+                        toast(getString(R.string.please_wait))
+                        val newUri = PrefManager.getVal<String>(PrefName.DownloadsDir)
+                        downloadsManager.moveDownloadsDir(
+                            activity,
+                            Uri.parse(oldUri),
+                            Uri.parse(newUri),
+                        ) { finished, message ->
+                            if (finished) {
+                                toast(getString(R.string.success))
+                                if (_binding != null) reload()
+                            } else {
+                                toast(message)
+                            }
+                        }
+                    } else {
+                        toast(getString(R.string.error))
+                    }
+                }
+                activity.launcher.launch()
+            }
+            setNegButton(R.string.cancel)
+            show()
+        }
+    }
+
+    private fun openDownloadLocation() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val context = requireContext()
+            val root = withContext(Dispatchers.IO) {
+                DownloadsManager.getDownloadsRootDirectory(context)
+            }
+            if (root == null) {
+                toast(getString(R.string.dir_access_msg))
+                return@launch
+            }
+            openInFileManager(context, root.uri)
+        }
+    }
+
+    private fun openMediaFolder(group: DownloadMediaGroup) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val context = requireContext()
+            val folder = withContext(Dispatchers.IO) {
+                DownloadsManager.getSubDirectory(context, group.type, false, group.titleName)
+            }
+            if (folder == null) {
+                toast(getString(R.string.dir_error))
+                return@launch
+            }
+            openInFileManager(context, folder.uri)
+        }
+    }
+
+    private fun openChildFolder(child: DownloadChild) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val context = requireContext()
+            val folder = withContext(Dispatchers.IO) {
+                DownloadsManager.getSubDirectory(
+                    context, child.type, false, child.titleName, child.chapterName
+                )
+            }
+            if (folder == null) {
+                toast(getString(R.string.dir_error))
+                return@launch
+            }
+            openInFileManager(context, folder.uri)
         }
     }
 

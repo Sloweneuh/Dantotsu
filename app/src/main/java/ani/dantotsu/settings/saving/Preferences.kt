@@ -305,6 +305,7 @@ enum class PrefName(val data: Pref) {
     ),
     UnreadCommentNotifications(Pref(Location.Irrelevant, Int::class, 0)),
     DownloadsDir(Pref(Location.Irrelevant, String::class, "")),
+    DownloadsDirNested(Pref(Location.Irrelevant, Boolean::class, true)),
     OC(Pref(Location.Irrelevant, Boolean::class, false)),
     RefreshStatus(Pref(Location.Irrelevant, Boolean::class, false)),
     rpcEnabled(Pref(Location.Irrelevant, Boolean::class, true)),

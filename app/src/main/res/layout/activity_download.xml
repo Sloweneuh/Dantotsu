@@ -35,13 +35,25 @@
             android:layout_width="0dp"
             android:layout_height="48dp"
             android:layout_marginStart="32dp"
-            android:layout_marginEnd="32dp"
             android:layout_weight="1"
             android:fontFamily="@font/poppins_bold"
             android:gravity="center_vertical"
             android:text="@string/downloads"
             android:textColor="?attr/colorPrimary"
             android:textSize="16sp" />
+
+        <ImageButton
+            android:id="@+id/downloadSettingsButton"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginEnd="16dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/download_settings"
+            android:padding="12dp"
+            app:srcCompat="@drawable/ic_round_settings_24"
+            app:tint="?attr/colorOnBackground"
+            tools:ignore="SpeakableTextPresentCheck"
+            xmlns:tools="http://schemas.android.com/tools" />
     </LinearLayout>
 
     <nl.joery.animatedbottombar.AnimatedBottomBar

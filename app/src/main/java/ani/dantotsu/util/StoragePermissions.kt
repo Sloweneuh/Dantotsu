@@ -11,6 +11,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.documentfile.provider.DocumentFile
 import ani.dantotsu.R
 import ani.dantotsu.download.DownloadsManager
 import ani.dantotsu.settings.saving.PrefManager
@@ -108,7 +109,10 @@ class LauncherWrapper(
                 )
 
                 if (StoragePermissions.hasDirAccess(activity, uri)) {
+                    val root = DocumentFile.fromTreeUri(activity, uri)
+                    val nested = root?.let { DownloadsManager.shouldNestDownloadsFolder(it) } ?: true
                     PrefManager.setVal(PrefName.DownloadsDir, uri.toString())
+                    PrefManager.setVal(PrefName.DownloadsDirNested, nested)
                     DownloadsManager.addNoMedia(activity)
                     complete(true)
                 } else {

@@ -18,10 +18,14 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import me.xdrop.fuzzywuzzy.FuzzySearch
 import java.io.Serializable
+import kotlin.coroutines.resume
 import kotlin.math.ln
 import kotlin.math.pow
 
@@ -176,60 +180,35 @@ class DownloadsManager(private val context: Context) {
         }
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val oldBase =
+                val oldRoot =
                     DocumentFile.fromTreeUri(context, oldUri) ?: throw Exception("Old base is null")
-                val newBase =
+                val newRoot =
                     DocumentFile.fromTreeUri(context, newUri) ?: throw Exception("New base is null")
-                val folder =
-                    oldBase.findFolder(BASE_LOCATION) ?: throw Exception("Base folder not found")
-                folder.moveFolderTo(context, newBase, false, BASE_LOCATION, object :
-                    FolderCallback() {
-                    override fun onFailed(errorCode: ErrorCode) {
-                        when (errorCode) {
-                            ErrorCode.CANCELED -> finished(false, "Move canceled")
-                            ErrorCode.CANNOT_CREATE_FILE_IN_TARGET -> finished(
-                                false,
-                                "Cannot create file in target"
-                            )
 
-                            ErrorCode.INVALID_TARGET_FOLDER -> finished(
-                                true,
-                                "Invalid target folder"
-                            ) // seems to still work
-                            ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH -> finished(
-                                false,
-                                "No space left on target path"
-                            )
+                // Only the folders the app itself manages are moved, never the whole picked
+                // directory — the old or new root may be a shared folder (e.g. Downloads) with
+                // unrelated files that must be left untouched.
+                val oldNested = PrefManager.getVal<Boolean>(PrefName.DownloadsDirNested)
+                val oldContentBase = if (oldNested) oldRoot.findFolder(BASE_LOCATION) else oldRoot
+                val subFolders = oldContentBase?.listFiles()
+                    ?.filter { it.isDirectory && it.name in SUB_LOCATIONS }
+                    .orEmpty()
 
-                            ErrorCode.UNKNOWN_IO_ERROR -> finished(false, "Unknown IO error")
-                            ErrorCode.SOURCE_FOLDER_NOT_FOUND -> finished(
-                                false,
-                                "Source folder not found"
-                            )
+                val newNested = shouldNestDownloadsFolder(newRoot)
+                val newContentBase = if (newNested) {
+                    newRoot.findOrCreateFolder(BASE_LOCATION, false)
+                        ?: throw Exception("Could not create target folder")
+                } else newRoot
 
-                            ErrorCode.STORAGE_PERMISSION_DENIED -> finished(
-                                false,
-                                "Storage permission denied"
-                            )
-
-                            ErrorCode.TARGET_FOLDER_CANNOT_HAVE_SAME_PATH_WITH_SOURCE_FOLDER -> finished(
-                                false,
-                                "Target folder cannot have same path with source folder"
-                            )
-
-                            else -> finished(false, "Failed to move downloads: $errorCode")
-                        }
-                        Logger.log("Failed to move downloads: $errorCode")
-                        super.onFailed(errorCode)
+                for (folder in subFolders) {
+                    val (success, message) = moveFolder(context, folder, newContentBase)
+                    if (!success) {
+                        finished(false, message)
+                        return@launch
                     }
-
-                    override fun onCompleted(result: Result) {
-                        finished(true, "Successfully moved downloads")
-                        super.onCompleted(result)
-                    }
-
-                })
-
+                }
+                PrefManager.setVal(PrefName.DownloadsDirNested, newNested)
+                finished(true, "Successfully moved downloads")
             } catch (e: Exception) {
                 snackString("Error: ${e.message}")
                 Logger.log("Failed to move downloads: ${e.message}")
@@ -239,6 +218,40 @@ class DownloadsManager(private val context: Context) {
                 return@launch
             }
         }
+    }
+
+    private suspend fun moveFolder(
+        context: Context,
+        folder: DocumentFile,
+        targetParent: DocumentFile
+    ): Pair<Boolean, String> = suspendCancellableCoroutine { cont ->
+        folder.moveFolderTo(context, targetParent, false, folder.name, object : FolderCallback() {
+            override fun onFailed(errorCode: ErrorCode) {
+                Logger.log("Failed to move downloads: $errorCode")
+                val message = when (errorCode) {
+                    ErrorCode.CANCELED -> "Move canceled"
+                    ErrorCode.CANNOT_CREATE_FILE_IN_TARGET -> "Cannot create file in target"
+                    ErrorCode.INVALID_TARGET_FOLDER -> "Invalid target folder"
+                    ErrorCode.NO_SPACE_LEFT_ON_TARGET_PATH -> "No space left on target path"
+                    ErrorCode.UNKNOWN_IO_ERROR -> "Unknown IO error"
+                    ErrorCode.SOURCE_FOLDER_NOT_FOUND -> "Source folder not found"
+                    ErrorCode.STORAGE_PERMISSION_DENIED -> "Storage permission denied"
+                    ErrorCode.TARGET_FOLDER_CANNOT_HAVE_SAME_PATH_WITH_SOURCE_FOLDER ->
+                        "Target folder cannot have same path with source folder"
+
+                    else -> "Failed to move downloads: $errorCode"
+                }
+                // INVALID_TARGET_FOLDER seems to still work despite being reported as a failure.
+                val success = errorCode == ErrorCode.INVALID_TARGET_FOLDER
+                if (cont.isActive) cont.resume(success to message)
+                super.onFailed(errorCode)
+            }
+
+            override fun onCompleted(result: Result) {
+                if (cont.isActive) cont.resume(true to "Successfully moved downloads")
+                super.onCompleted(result)
+            }
+        })
     }
 
     fun queryDownload(downloadedType: DownloadedType): Boolean {
@@ -292,6 +305,7 @@ class DownloadsManager(private val context: Context) {
 
         downloadsList.removeAll { it.type == type }
         saveDownloads()
+        _libraryChanges.tryEmit(Unit)
     }
 
     companion object {
@@ -299,7 +313,24 @@ class DownloadsManager(private val context: Context) {
         private const val MANGA_SUB_LOCATION = "Manga"
         private const val ANIME_SUB_LOCATION = "Anime"
         private const val NOVEL_SUB_LOCATION = "Novel"
+        private val SUB_LOCATIONS =
+            setOf(MANGA_SUB_LOCATION, ANIME_SUB_LOCATION, NOVEL_SUB_LOCATION)
 
+        /** Emits whenever downloaded content is bulk-removed (e.g. purge), so UI showing the
+         *  downloaded library — not just the active queue — knows to refresh. */
+        private val _libraryChanges = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+        val libraryChanges: SharedFlow<Unit> = _libraryChanges
+
+        /**
+         * Whether downloads should be nested inside a "Dantotsu" subfolder of the picked root,
+         * or written directly into the root. Nesting is skipped only when the picked folder is
+         * already empty or is itself named "Dantotsu" — otherwise it keeps the app's files
+         * isolated from whatever else lives in a shared folder the user picked (e.g. Downloads).
+         */
+        fun shouldNestDownloadsFolder(root: DocumentFile): Boolean {
+            if (root.name?.equals(BASE_LOCATION, ignoreCase = true) == true) return false
+            return root.listFiles().isNotEmpty()
+        }
 
         /**
          * Get and create a base directory for the given type
@@ -309,10 +340,7 @@ class DownloadsManager(private val context: Context) {
          */
         @Synchronized
         private fun getBaseDirectory(context: Context, type: MediaType): DocumentFile? {
-            val baseDirectory = Uri.parse(PrefManager.getVal<String>(PrefName.DownloadsDir))
-            if (baseDirectory == Uri.EMPTY) return null
-            var base = DocumentFile.fromTreeUri(context, baseDirectory) ?: return null
-            base = base.findOrCreateFolder(BASE_LOCATION, false) ?: return null
+            val base = getBaseDirectory(context) ?: return null
             return when (type) {
                 MediaType.MANGA -> {
                     base.findOrCreateFolder(MANGA_SUB_LOCATION, false)
@@ -379,12 +407,19 @@ class DownloadsManager(private val context: Context) {
             }
         }
 
+        /** The root folder ("Dantotsu") all downloads are stored under. */
+        fun getDownloadsRootDirectory(context: Context): DocumentFile? = getBaseDirectory(context)
+
         @Synchronized
         private fun getBaseDirectory(context: Context): DocumentFile? {
             val baseDirectory = Uri.parse(PrefManager.getVal<String>(PrefName.DownloadsDir))
             if (baseDirectory == Uri.EMPTY) return null
-            val base = DocumentFile.fromTreeUri(context, baseDirectory) ?: return null
-            return base.findOrCreateFolder(BASE_LOCATION, false)
+            val root = DocumentFile.fromTreeUri(context, baseDirectory) ?: return null
+            return if (PrefManager.getVal<Boolean>(PrefName.DownloadsDirNested)) {
+                root.findOrCreateFolder(BASE_LOCATION, false)
+            } else {
+                root
+            }
         }
 
         private val lock = Any()

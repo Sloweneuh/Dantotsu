@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -30,6 +31,53 @@
             android:fontFamily="@font/poppins_semi_bold"
             android:textSize="12sp"
             tools:text="Manga: 800 MB · Anime: 400 MB · Novels: 0 B" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/downloadLocationRow"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="?android:attr/selectableItemBackground"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="8dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:alpha="0.7"
+                android:fontFamily="@font/poppins_semi_bold"
+                android:text="@string/change_download_location"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/downloadLocationPath"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="middle"
+                android:fontFamily="@font/poppins"
+                android:maxLines="1"
+                android:textSize="13sp"
+                tools:text="/storage/emulated/0/Documents/Dantotsu" />
+        </LinearLayout>
+
+        <ImageView
+            android:id="@+id/downloadLocationOpen"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/open_folder"
+            android:padding="8dp"
+            app:srcCompat="@drawable/ic_round_folder_24"
+            app:tint="?attr/colorOnBackground" />
+
     </LinearLayout>
 
     <FrameLayout

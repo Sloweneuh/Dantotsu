@@ -39,6 +39,7 @@ import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
 import android.os.SystemClock
+import android.provider.DocumentsContract
 import android.provider.Settings
 import android.telephony.TelephonyManager
 import android.text.Editable
@@ -888,6 +889,20 @@ fun openLinkInYouTube(link: String?) {
         } catch (e: Exception) {
             Logger.log(e)
         }
+    }
+}
+
+fun openInFileManager(context: Context, uri: Uri) {
+    try {
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, DocumentsContract.Document.MIME_TYPE_DIR)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        context.startActivity(intent)
+    } catch (e: ActivityNotFoundException) {
+        snackString(context.getString(R.string.no_file_manager_found))
+    } catch (e: Exception) {
+        Logger.log(e)
     }
 }
 

@@ -1582,10 +1582,13 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="download_skipped_chapters">Skipped %1$d chapter(s) that couldn\'t be loaded</string>
     <string name="download_queue">Queue</string>
     <string name="download_management">Manage</string>
+    <string name="download_settings">Download Settings</string>
     <string name="download_queue_empty">No active downloads</string>
     <string name="download_management_empty">No downloads</string>
     <string name="download_total_size">Total: %1$s</string>
     <string name="download_subsize">Manga: %1$s · Anime: %2$s · Novels: %3$s</string>
+    <string name="open_folder">Open folder</string>
+    <string name="no_file_manager_found">No app found to open this folder</string>
     <string name="download_queued">Queued</string>
     <string name="download_in_progress">In progress</string>
     <string name="all_chapters_downloaded">All chapters are already downloaded</string>

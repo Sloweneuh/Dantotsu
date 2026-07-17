@@ -9,18 +9,13 @@ import androidx.core.view.updateLayoutParams
 import androidx.recyclerview.widget.LinearLayoutManager
 import ani.dantotsu.R
 import ani.dantotsu.databinding.ActivitySettingsMangaBinding
-import ani.dantotsu.download.DownloadsManager
 import ani.dantotsu.initActivity
-import ani.dantotsu.media.MediaType
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.restartApp
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
-import ani.dantotsu.util.customAlertDialog
-import uy.kohesive.injekt.Injekt
-import uy.kohesive.injekt.api.get
 
 class SettingsMangaActivity : AppCompatActivity() {
     private lateinit var binding: ActivitySettingsMangaBinding
@@ -74,43 +69,6 @@ class SettingsMangaActivity : AppCompatActivity() {
                             startActivity(Intent(context, ReaderSettingsActivity::class.java))
                         },
                         isActivity = true
-                    ),
-                    Settings(
-                        type = 1,
-                        name = getString(R.string.purge_manga_downloads),
-                        desc = getString(R.string.purge_manga_downloads_desc),
-                        icon = R.drawable.ic_round_delete_24,
-                        onClick = {
-                            context.customAlertDialog().apply {
-                                setTitle(R.string.purge_manga_downloads)
-                                setMessage(R.string.purge_confirm, getString(R.string.manga))
-                                setPosButton(R.string.yes, onClick = {
-                                    val downloadsManager = Injekt.get<DownloadsManager>()
-                                    downloadsManager.purgeDownloads(MediaType.MANGA)
-                                })
-                                setNegButton(R.string.no)
-                                show()
-                            }
-                        }
-
-                    ),
-                    Settings(
-                        type = 1,
-                        name = getString(R.string.purge_novel_downloads),
-                        desc = getString(R.string.purge_novel_downloads_desc),
-                        icon = R.drawable.ic_round_delete_24,
-                        onClick = {
-                            context.customAlertDialog().apply {
-                                setTitle(R.string.purge_novel_downloads)
-                                setMessage(R.string.purge_confirm, getString(R.string.novels))
-                                setPosButton(R.string.yes) {
-                                    val downloadsManager = Injekt.get<DownloadsManager>()
-                                    downloadsManager.purgeDownloads(MediaType.NOVEL)
-                                }
-                                setNegButton(R.string.no)
-                                show()
-                            }
-                        }
                     ),
                     Settings(
                         type = 2,

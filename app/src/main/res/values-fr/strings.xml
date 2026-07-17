@@ -1058,10 +1058,12 @@
     <string name="download_skipped_chapters">%1$d chapitre(s) ignoré(s) car impossible(s) à charger</string>
     <string name="download_queue">File d\'attente</string>
     <string name="download_management">Gérer</string>
+    <string name="download_settings">Paramètres de téléchargement</string>
     <string name="download_queue_empty">Aucun téléchargement en cours</string>
     <string name="download_management_empty">Aucun téléchargement</string>
     <string name="download_total_size">Total : %1$s</string>
     <string name="download_subsize">Manga : %1$s · Animé : %2$s · Romans : %3$s</string>
+    <string name="no_file_manager_found">Aucune application trouvée pour ouvrir ce dossier</string>
     <string name="download_queued">En attente</string>
     <string name="download_in_progress">En cours</string>
     <string name="all_chapters_downloaded">Tous les chapitres sont déjà téléchargés</string>
@@ -1932,4 +1934,5 @@
     <string name="handoff_no_radios_receive">Activez le Bluetooth ou le Wi-Fi pour être détectable par les autres appareils — ou recevez avec un code QR ou un code de partage.</string>
     <string name="downloaded_anime">Anime Téléchargés</string>
     <string name="cancel_all_downloads">Tout annuler</string>
+    <string name="open_folder">Ouvrir le dossier</string>
 </resources>

@@ -1,13 +1,10 @@
 package ani.dantotsu.settings
 
-import android.content.Context
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.biometric.BiometricManager
 import androidx.core.view.isVisible
@@ -20,7 +17,6 @@ import ani.dantotsu.connections.handoff.HandoffManager
 import ani.dantotsu.databinding.ActivitySettingsCommonBinding
 import ani.dantotsu.databinding.DialogScreenshotDefaultsBinding
 import ani.dantotsu.databinding.DialogSetPasswordBinding
-import ani.dantotsu.download.DownloadsManager
 import ani.dantotsu.initActivity
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.others.calc.BiometricPromptUtils
@@ -31,25 +27,16 @@ import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.toast
-import ani.dantotsu.util.LauncherWrapper
 import ani.dantotsu.util.customAlertDialog
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
-import uy.kohesive.injekt.Injekt
-import uy.kohesive.injekt.api.get
 import java.util.UUID
 
 class SettingsCommonActivity : AppCompatActivity() {
     private lateinit var binding: ActivitySettingsCommonBinding
-    private lateinit var launcher: LauncherWrapper
 
     override fun attachBaseContext(newBase: android.content.Context?) {
         super.attachBaseContext(newBase?.let { ani.dantotsu.util.LanguageHelper.applyLanguageToContext(it) })
     }
 
-    @OptIn(DelicateCoroutinesApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         ThemeManager(this).applyTheme()
@@ -58,8 +45,6 @@ class SettingsCommonActivity : AppCompatActivity() {
         binding = ActivitySettingsCommonBinding.inflate(layoutInflater)
         setContentView(binding.root)
         SettingsRouter.handleHighlight(this, binding.settingsRecyclerView)
-        val contract = ActivityResultContracts.OpenDocumentTree()
-        launcher = LauncherWrapper(this, contract)
 
         binding.apply {
             settingsCommonLayout.updateLayoutParams<ViewGroup.MarginLayoutParams> {
@@ -154,35 +139,6 @@ class SettingsCommonActivity : AppCompatActivity() {
                         ),
                         Settings(
                             type = 1,
-                            name = getString(R.string.download_manager_select),
-                            desc = getString(R.string.download_manager_select_desc),
-                            icon = R.drawable.ic_download_24,
-                            onClick = {
-                                val managers = arrayOf("Default", "1DM", "ADM")
-                                customAlertDialog().apply {
-                                    setTitle(getString(R.string.download_manager))
-                                    singleChoiceItems(
-                                        managers,
-                                        PrefManager.getVal(PrefName.DownloadManager),
-                                    ) { count ->
-                                        PrefManager.setVal(PrefName.DownloadManager, count)
-                                    }
-                                    show()
-                                }
-                            },
-                        ),
-                        Settings(
-                            type = 2,
-                            name = getString(R.string.allow_metered_downloads),
-                            desc = getString(R.string.allow_metered_downloads_desc),
-                            icon = R.drawable.ic_download_24,
-                            isChecked = PrefManager.getVal(PrefName.AllowMeteredDownloads),
-                            switch = { isChecked, _ ->
-                                PrefManager.setVal(PrefName.AllowMeteredDownloads, isChecked)
-                            },
-                        ),
-                        Settings(
-                            type = 1,
                             name = getString(R.string.app_lock),
                             desc = getString(R.string.app_lock_desc),
                             icon = R.drawable.ic_round_lock_open_24,
@@ -261,46 +217,6 @@ class SettingsCommonActivity : AppCompatActivity() {
                                 startActivity(
                                     Intent(context, SettingsBackupSyncActivity::class.java)
                                 )
-                            },
-                        ),
-                        Settings(
-                            type = 1,
-                            name = getString(R.string.change_download_location),
-                            desc = getString(R.string.change_download_location_desc),
-                            icon = R.drawable.ic_round_source_24,
-                            onClick = {
-                                context.customAlertDialog().apply {
-                                    setTitle(R.string.change_download_location)
-                                    setMessage(R.string.download_location_msg)
-                                    setPosButton(R.string.ok) {
-                                        val oldUri = PrefManager.getVal<String>(PrefName.DownloadsDir)
-                                        launcher.registerForCallback { success ->
-                                            if (success) {
-                                                toast(getString(R.string.please_wait))
-                                                val newUri =
-                                                    PrefManager.getVal<String>(PrefName.DownloadsDir)
-                                                GlobalScope.launch(Dispatchers.IO) {
-                                                    Injekt.get<DownloadsManager>().moveDownloadsDir(
-                                                        context,
-                                                        Uri.parse(oldUri),
-                                                        Uri.parse(newUri),
-                                                    ) { finished, message ->
-                                                        if (finished) {
-                                                            toast(getString(R.string.success))
-                                                        } else {
-                                                            toast(message)
-                                                        }
-                                                    }
-                                                }
-                                            } else {
-                                                toast(getString(R.string.error))
-                                            }
-                                        }
-                                        launcher.launch()
-                                    }
-                                    setNegButton(R.string.cancel)
-                                    show()
-                                }
                             },
                         ),
                         Settings(

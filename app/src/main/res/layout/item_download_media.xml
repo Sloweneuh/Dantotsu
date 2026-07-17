@@ -54,6 +54,16 @@
     </LinearLayout>
 
     <ImageView
+        android:id="@+id/itemMediaOpenFolder"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/open_folder"
+        android:padding="8dp"
+        app:srcCompat="@drawable/ic_round_folder_24"
+        app:tint="?attr/colorOnBackground" />
+
+    <ImageView
         android:id="@+id/itemMediaDelete"
         android:layout_width="40dp"
         android:layout_height="40dp"

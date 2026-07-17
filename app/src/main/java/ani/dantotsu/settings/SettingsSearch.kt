@@ -18,6 +18,7 @@ import androidx.core.view.doOnPreDraw
 import androidx.core.widget.NestedScrollView
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
+import ani.dantotsu.download.DownloadActivity
 import ani.dantotsu.others.Xpandable
 import com.google.android.material.color.MaterialColors
 
@@ -37,6 +38,11 @@ import com.google.android.material.color.MaterialColors
  * @param anchorViewId for XML-based screens, the id of the control to scroll to & flash. When 0,
  *                     the destination is a list screen and the row is matched by [titleRes].
  * @param keywords     extra space separated search terms that aren't part of the visible label
+ * @param intentTab    for [ani.dantotsu.download.DownloadActivity], which ViewPager tab ("tab"
+ *                     intent extra) to land on; -1 leaves it at the activity's default. The
+ *                     setting itself lives inside a Fragment-hosted list there, not a plain
+ *                     Activity RecyclerView, so it can't be scroll-highlighted like the rest of
+ *                     the registry — landing on the right tab is the best this can do.
  */
 data class SearchableSetting(
     val dest: Class<out Activity>,
@@ -46,6 +52,7 @@ data class SearchableSetting(
     val descRes: Int = 0,
     val anchorViewId: Int = 0,
     val keywords: String = "",
+    val intentTab: Int = -1,
 )
 
 object SettingsSearch {
@@ -64,6 +71,7 @@ object SettingsSearch {
     private val IC_READER = R.drawable.ic_round_import_contacts_24
     private val IC_UI = R.drawable.ic_round_auto_awesome_24
     private val IC_BACKUP = R.drawable.backup_restore
+    private val IC_DOWNLOAD = R.drawable.ic_download_24
 
     val index: List<SearchableSetting> by lazy { buildIndex() }
 
@@ -123,11 +131,8 @@ object SettingsSearch {
         // ---- Common ----
         l += SearchableSetting(SettingsCommonActivity::class.java, R.string.language_setting, R.string.common, IC_COMMON, keywords = "locale translation")
         l += SearchableSetting(UserInterfaceSettingsActivity::class.java, R.string.ui_settings, R.string.common, IC_UI, R.string.ui_settings_desc, keywords = "interface layout display home")
-        l += SearchableSetting(SettingsCommonActivity::class.java, R.string.download_manager_select, R.string.common, IC_COMMON, R.string.download_manager_select_desc, keywords = "download manager aria idm")
-        l += SearchableSetting(SettingsCommonActivity::class.java, R.string.allow_metered_downloads, R.string.common, IC_COMMON, R.string.allow_metered_downloads_desc, keywords = "data wifi mobile")
         l += SearchableSetting(SettingsCommonActivity::class.java, R.string.app_lock, R.string.common, IC_COMMON, R.string.app_lock_desc, keywords = "password biometric pin security")
         l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.backup_sync, R.string.common, IC_BACKUP, R.string.backup_sync_desc, keywords = "cloud sync export import backup restore devices")
-        l += SearchableSetting(SettingsCommonActivity::class.java, R.string.change_download_location, R.string.common, IC_COMMON, R.string.change_download_location_desc, keywords = "folder directory storage")
         l += SearchableSetting(SettingsCommonActivity::class.java, R.string.always_continue_content, R.string.common, IC_COMMON, R.string.always_continue_content_desc, keywords = "resume auto continue watching reading")
         l += SearchableSetting(SettingsCommonActivity::class.java, R.string.handoff_discovery_setting, R.string.common, IC_COMMON, R.string.handoff_discovery_setting_desc, keywords = "cast nearby lan")
         l += SearchableSetting(SettingsCommonActivity::class.java, R.string.screenshot_defaults, R.string.common, IC_COMMON, R.string.screenshot_defaults_desc, keywords = "screenshot capture share card media info user logo frame rounded date source scanlator caption default reader player anime manga")
@@ -138,6 +143,16 @@ object SettingsSearch {
         l += SearchableSetting(SettingsCommonActivity::class.java, R.string.hidden_from_lists_manage, R.string.common, IC_COMMON, R.string.hidden_from_lists_manage_desc, keywords = "hide hidden remove filter continue watching reading list homepage")
         l += SearchableSetting(SettingsCommonActivity::class.java, R.string.selected_dns, R.string.common, IC_COMMON, anchorViewId = R.id.settingsExtensionDns, keywords = "doh dns over https cloudflare google")
         l += SearchableSetting(SettingsCommonActivity::class.java, R.string.startUpTab, R.string.common, IC_COMMON, anchorViewId = R.id.uiSettingsHome, keywords = "default startup home anime manga tab")
+
+        // ---- Downloads ---- (live inside DownloadActivity, not a Settings screen: most are in
+        // the settings dialog opened via its cog icon, which these entries open automatically;
+        // only the download location stays inline, on the Manage tab)
+        l += SearchableSetting(DownloadActivity::class.java, R.string.download_manager_select, R.string.downloads, IC_DOWNLOAD, R.string.download_manager_select_desc, keywords = "download manager aria idm")
+        l += SearchableSetting(DownloadActivity::class.java, R.string.allow_metered_downloads, R.string.downloads, IC_DOWNLOAD, R.string.allow_metered_downloads_desc, keywords = "data wifi mobile")
+        l += SearchableSetting(DownloadActivity::class.java, R.string.change_download_location, R.string.downloads, IC_DOWNLOAD, R.string.change_download_location_desc, intentTab = 1, keywords = "folder directory storage")
+        l += SearchableSetting(DownloadActivity::class.java, R.string.purge_anime_downloads, R.string.downloads, IC_DOWNLOAD, R.string.purge_anime_downloads_desc, keywords = "delete clear anime")
+        l += SearchableSetting(DownloadActivity::class.java, R.string.purge_manga_downloads, R.string.downloads, IC_DOWNLOAD, R.string.purge_manga_downloads_desc, keywords = "delete clear manga")
+        l += SearchableSetting(DownloadActivity::class.java, R.string.purge_novel_downloads, R.string.downloads, IC_DOWNLOAD, R.string.purge_novel_downloads_desc, keywords = "delete clear novel")
 
         // ---- Backup & sync ----
         l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.backup_restore, R.string.backup_sync, IC_BACKUP, R.string.backup_restore_desc, keywords = "export import")
@@ -165,7 +180,6 @@ object SettingsSearch {
 
         // ---- Anime ----
         l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.player_settings, R.string.anime, IC_PLAYER, R.string.player_settings_desc, keywords = "player video anime episode")
-        l += SearchableSetting(SettingsAnimeActivity::class.java, R.string.purge_anime_downloads, R.string.anime, IC_ANIME, R.string.purge_anime_downloads_desc, keywords = "delete clear")
         l += SearchableSetting(SettingsAnimeActivity::class.java, R.string.prefer_dub, R.string.anime, IC_ANIME, R.string.prefer_dub_desc, keywords = "dubbed audio")
         l += SearchableSetting(SettingsAnimeActivity::class.java, R.string.show_yt, R.string.anime, IC_ANIME, R.string.show_yt_desc, keywords = "youtube trailer")
         l += SearchableSetting(SettingsAnimeActivity::class.java, R.string.include_list, R.string.anime, IC_ANIME, R.string.include_list_anime_desc, keywords = "anime list watching include source")
@@ -173,8 +187,6 @@ object SettingsSearch {
 
         // ---- Manga ----
         l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.reader_settings, R.string.manga, IC_READER, R.string.reader_settings_desc, keywords = "reader manga chapter")
-        l += SearchableSetting(SettingsMangaActivity::class.java, R.string.purge_manga_downloads, R.string.manga, IC_MANGA, R.string.purge_manga_downloads_desc, keywords = "delete clear")
-        l += SearchableSetting(SettingsMangaActivity::class.java, R.string.purge_novel_downloads, R.string.manga, IC_MANGA, R.string.purge_novel_downloads_desc, keywords = "delete clear")
         l += SearchableSetting(SettingsMangaActivity::class.java, R.string.include_list, R.string.manga, IC_MANGA, R.string.include_list_desc, keywords = "manga list reading include source")
         l += SearchableSetting(SettingsMangaActivity::class.java, R.string.default_chp_view, R.string.manga, IC_MANGA, anchorViewId = R.id.settingsChpList, keywords = "chapter list compact")
 
@@ -341,6 +353,7 @@ object SettingsRouter {
         } else {
             intent.putExtra(EXTRA_ANCHOR_TITLE, setting.titleRes)
         }
+        if (setting.intentTab >= 0) intent.putExtra("tab", setting.intentTab)
         context.startActivity(intent)
     }
 
