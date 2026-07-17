@@ -543,9 +543,10 @@ class MangaReaderActivity : AppCompatActivity() {
             ScreenshotDialogFragment.newInstance(
                 screenshot = bitmap,
                 title = media.userPreferredName,
+                titleOptions = media.mainTitleOptions(),
                 coverUrl = media.cover,
                 numberLabel = chapter.number,
-                progressLabel = "$currentChapterPage/$maxChapterPage",
+                progressLabel = getString(R.string.handoff_page_label, "$currentChapterPage/$maxChapterPage"),
                 sourceLabel = sourceLabel,
             ).show(supportFragmentManager, "screenshot")
         }

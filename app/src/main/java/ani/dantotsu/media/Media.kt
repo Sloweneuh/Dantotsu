@@ -20,6 +20,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.Serializable
+import java.util.Locale
 import ani.dantotsu.connections.anilist.api.Media as ApiMedia
 
 data class Media(
@@ -156,6 +157,25 @@ data class Media(
 
     fun mainName() = name ?: nameMAL ?: nameRomaji
     fun mangaName() = if (countryOfOrigin != "JP") mainName() else nameRomaji
+
+    /**
+     * Candidate titles for pickers (e.g. the screenshot title selector): the AniList/MAL name
+     * fields plus synonyms, deduped case-insensitively while preserving first-seen order. Unlike
+     * [ani.dantotsu.media.SourceSearchDialogFragment]'s title list, this isn't restricted to Latin
+     * script — a display picker should offer native-language titles/synonyms too, not just ones
+     * likely to work as a source search query.
+     */
+    fun mainTitleOptions(): List<String> {
+        val candidates = mutableListOf<String>()
+        listOfNotNull(name, userPreferredName, nameRomaji, nameMAL).forEach { candidates.add(it) }
+        synonyms.forEach { candidates.add(it) }
+
+        val seen = linkedSetOf<String>()
+        return candidates
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+            .filter { seen.add(it.lowercase(Locale.ROOT)) }
+    }
 }
 
 fun Media?.deleteFromList(

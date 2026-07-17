@@ -1352,6 +1352,7 @@ class ExoplayerView :
                         ScreenshotDialogFragment.newInstance(
                             screenshot = bitmap,
                             title = media.userPreferredName,
+                            titleOptions = media.mainTitleOptions(),
                             coverUrl = media.cover,
                             numberLabel = episode ?: "",
                             progressLabel = ScreenshotUtil.formatTimestamp(position),

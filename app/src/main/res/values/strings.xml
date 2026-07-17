@@ -868,10 +868,12 @@
     <string name="screenshot_show_media_info">Show media info</string>
     <string name="screenshot_show_user_info">Show user info</string>
     <string name="screenshot_show_app_icon">Show app logo</string>
-    <string name="screenshot_show_frame">Frame &amp; rounded corners</string>
+    <string name="screenshot_show_frame">Frame</string>
+    <string name="screenshot_show_rounded_corners">Rounded corners</string>
     <string name="screenshot_show_date">Show date</string>
     <string name="screenshot_show_source">Show source</string>
     <string name="screenshot_caption_hint">Add a caption…</string>
+    <string name="screenshot_title_label">Title</string>
     <string name="screenshot_defaults">Screenshot defaults</string>
     <string name="screenshot_defaults_desc">Choose which sections are shown by default when composing a screenshot</string>
     <string name="error_update_progress">Failed to update progress</string>

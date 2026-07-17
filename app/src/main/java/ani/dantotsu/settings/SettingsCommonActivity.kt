@@ -445,12 +445,14 @@ class SettingsCommonActivity : AppCompatActivity() {
         view.dsUserInfo.isChecked = PrefManager.getVal(PrefName.ScreenshotShowUserInfo)
         view.dsAppLogo.isChecked = PrefManager.getVal(PrefName.ScreenshotShowAppLogo)
         view.dsFrame.isChecked = PrefManager.getVal(PrefName.ScreenshotShowFrame)
+        view.dsRounded.isChecked = PrefManager.getVal(PrefName.ScreenshotShowRoundedCorners)
         view.dsMediaInfo.setOnCheckedChangeListener { _, c -> PrefManager.setVal(PrefName.ScreenshotShowMediaInfo, c) }
         view.dsDate.setOnCheckedChangeListener { _, c -> PrefManager.setVal(PrefName.ScreenshotShowDate, c) }
         view.dsSource.setOnCheckedChangeListener { _, c -> PrefManager.setVal(PrefName.ScreenshotShowSource, c) }
         view.dsUserInfo.setOnCheckedChangeListener { _, c -> PrefManager.setVal(PrefName.ScreenshotShowUserInfo, c) }
         view.dsAppLogo.setOnCheckedChangeListener { _, c -> PrefManager.setVal(PrefName.ScreenshotShowAppLogo, c) }
         view.dsFrame.setOnCheckedChangeListener { _, c -> PrefManager.setVal(PrefName.ScreenshotShowFrame, c) }
+        view.dsRounded.setOnCheckedChangeListener { _, c -> PrefManager.setVal(PrefName.ScreenshotShowRoundedCorners, c) }
         customAlertDialog().apply {
             setTitle(getString(R.string.screenshot_defaults))
             setCustomView(view.root)

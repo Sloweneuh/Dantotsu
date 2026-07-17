@@ -70,5 +70,15 @@
             android:textAlignment="viewStart"
             android:textColor="?attr/colorOnBackground" />
 
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/dsRounded"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/poppins_bold"
+            android:minHeight="52dp"
+            android:text="@string/screenshot_show_rounded_corners"
+            android:textAlignment="viewStart"
+            android:textColor="?attr/colorOnBackground" />
+
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>

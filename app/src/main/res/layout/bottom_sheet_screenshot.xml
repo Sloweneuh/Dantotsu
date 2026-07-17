@@ -103,13 +103,13 @@
                     </LinearLayout>
 
                     <!-- Media info -->
-                    <LinearLayout
+                    <!-- ConstraintLayout so the logo (bottom-aligned, next to the lower text rows)
+                         doesn't steal width from the title, which visually sits above it. -->
+                    <androidx.constraintlayout.widget.ConstraintLayout
                         android:id="@+id/screenshotMediaInfo"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="10dp"
-                        android:gravity="center_vertical"
-                        android:orientation="horizontal">
+                        android:layout_marginTop="10dp">
 
                         <ImageView
                             android:id="@+id/screenshotCover"
@@ -117,25 +117,35 @@
                             android:layout_height="72dp"
                             android:contentDescription="@string/cover"
                             android:scaleType="centerCrop"
+                            app:layout_constraintBottom_toBottomOf="parent"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintTop_toTopOf="parent"
                             tools:src="@tools:sample/backgrounds/scenic[1]" />
 
-                        <LinearLayout
+                        <TextView
+                            android:id="@+id/screenshotTitle"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_marginStart="12dp"
-                            android:layout_weight="1"
-                            android:orientation="vertical">
+                            android:ellipsize="end"
+                            android:fontFamily="@font/poppins_bold"
+                            android:maxLines="2"
+                            android:textColor="?attr/colorOnSurface"
+                            android:textSize="15sp"
+                            app:layout_constraintEnd_toEndOf="parent"
+                            app:layout_constraintStart_toEndOf="@id/screenshotCover"
+                            app:layout_constraintTop_toTopOf="@id/screenshotCover"
+                            tools:text="One Piece" />
 
-                            <TextView
-                                android:id="@+id/screenshotTitle"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:ellipsize="end"
-                                android:fontFamily="@font/poppins_bold"
-                                android:maxLines="2"
-                                android:textColor="?attr/colorOnSurface"
-                                android:textSize="15sp"
-                                tools:text="One Piece" />
+                        <LinearLayout
+                            android:id="@+id/screenshotTitleBelow"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="12dp"
+                            android:orientation="vertical"
+                            app:layout_constraintEnd_toStartOf="@id/screenshotLogoInline"
+                            app:layout_constraintStart_toEndOf="@id/screenshotCover"
+                            app:layout_constraintTop_toBottomOf="@id/screenshotTitle">
 
                             <TextView
                                 android:id="@+id/screenshotSubtitle"
@@ -170,13 +180,14 @@
                             android:id="@+id/screenshotLogoInline"
                             android:layout_width="wrap_content"
                             android:layout_height="22dp"
-                            android:layout_gravity="bottom"
                             android:layout_marginStart="8dp"
                             android:adjustViewBounds="true"
                             android:contentDescription="@string/app_name"
-                            android:src="@drawable/ic_dantotsu_logo" />
+                            android:src="@drawable/ic_dantotsu_logo"
+                            app:layout_constraintBottom_toBottomOf="parent"
+                            app:layout_constraintEnd_toEndOf="parent" />
 
-                    </LinearLayout>
+                    </androidx.constraintlayout.widget.ConstraintLayout>
 
                     <!-- User + app footer -->
                     <LinearLayout
@@ -184,14 +195,14 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="12dp"
-                        android:gravity="center_vertical"
+                        android:gravity="bottom"
                         android:orientation="horizontal">
 
                         <LinearLayout
                             android:id="@+id/screenshotUserInfo"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:gravity="center_vertical"
+                            android:gravity="bottom"
                             android:orientation="horizontal"
                             android:visibility="gone"
                             tools:visibility="visible">
@@ -225,6 +236,7 @@
                             android:id="@+id/screenshotLogoFooter"
                             android:layout_width="wrap_content"
                             android:layout_height="22dp"
+                            android:layout_gravity="bottom"
                             android:adjustViewBounds="true"
                             android:contentDescription="@string/app_name"
                             android:src="@drawable/ic_dantotsu_logo" />
@@ -234,6 +246,33 @@
                   </LinearLayout>
 
                 </LinearLayout>
+
+                <!-- Title selector (which of the media's titles/synonyms to show on the card).
+                     Only made visible when there's more than one option. -->
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/screenshotTitleSelectLayout"
+                    style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
+                    android:hint="@string/screenshot_title_label"
+                    android:visibility="gone"
+                    app:boxCornerRadiusBottomEnd="12dp"
+                    app:boxCornerRadiusBottomStart="12dp"
+                    app:boxCornerRadiusTopEnd="12dp"
+                    app:boxCornerRadiusTopStart="12dp"
+                    tools:visibility="visible">
+
+                    <AutoCompleteTextView
+                        android:id="@+id/screenshotTitleSelect"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/poppins"
+                        android:inputType="none"
+                        tools:ignore="LabelFor"
+                        tools:text="One Piece" />
+
+                </com.google.android.material.textfield.TextInputLayout>
 
                 <!-- Caption input -->
                 <com.google.android.material.textfield.TextInputLayout
@@ -324,6 +363,17 @@
                     android:fontFamily="@font/poppins_bold"
                     android:minHeight="56dp"
                     android:text="@string/screenshot_show_frame"
+                    android:textAlignment="viewStart"
+                    android:textColor="?attr/colorOnBackground" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/switchRounded"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:checked="true"
+                    android:fontFamily="@font/poppins_bold"
+                    android:minHeight="56dp"
+                    android:text="@string/screenshot_show_rounded_corners"
                     android:textAlignment="viewStart"
                     android:textColor="?attr/colorOnBackground" />
 

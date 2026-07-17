@@ -994,8 +994,8 @@ fun shareImage(title: String, bitmap: Bitmap, context: Context) {
 
     val intent = Intent(Intent.ACTION_SEND)
     intent.type = "image/png"
-    intent.putExtra(Intent.EXTRA_TEXT, title)
     intent.putExtra(Intent.EXTRA_STREAM, contentUri)
+    intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     context.startActivity(Intent.createChooser(intent, "Share $title"))
 }
 

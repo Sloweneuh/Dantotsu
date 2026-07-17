@@ -92,6 +92,7 @@ enum class PrefName(val data: Pref) {
     ScreenshotShowUserInfo(Pref(Location.General, Boolean::class, false)),
     ScreenshotShowAppLogo(Pref(Location.General, Boolean::class, true)),
     ScreenshotShowFrame(Pref(Location.General, Boolean::class, true)),
+    ScreenshotShowRoundedCorners(Pref(Location.General, Boolean::class, true)),
     // Master switch for syncing settings across devices via the Anilist account (Firebase RTDB).
     CloudSyncEnabled(Pref(Location.General, Boolean::class, true)),
     // Opt-in: also publish/reconcile the set of installed extensions across devices.

@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ArrayAdapter
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.graphics.drawable.RoundedBitmapDrawableFactory
 import androidx.core.os.bundleOf
@@ -54,15 +55,20 @@ class ScreenshotDialogFragment : BottomSheetDialogFragment() {
     var onDismissed: (() -> Unit)? = null
 
     private val title get() = arguments?.getString(ARG_TITLE).orEmpty()
+    private val titleOptions get() = arguments?.getStringArrayList(ARG_TITLE_OPTIONS).orEmpty()
     private val coverUrl get() = arguments?.getString(ARG_COVER)
     private val numberLabel get() = arguments?.getString(ARG_NUMBER).orEmpty()
     private val progressLabel get() = arguments?.getString(ARG_PROGRESS).orEmpty()
     private val sourceLabel get() = arguments?.getString(ARG_SOURCE)
 
+    /** Currently displayed title, switchable via the title dropdown when there's more than one option. */
+    private var selectedTitle: String = ""
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         screenshot = pending
         pending = null
+        selectedTitle = title
     }
 
     override fun onCreateView(
@@ -83,7 +89,7 @@ class ScreenshotDialogFragment : BottomSheetDialogFragment() {
         }
 
         // Static metadata
-        binding.screenshotTitle.text = title
+        binding.screenshotTitle.text = selectedTitle
         binding.screenshotSubtitle.text =
             listOf(numberLabel, progressLabel).filter { it.isNotBlank() }.joinToString("  •  ")
         binding.screenshotSubtitle.isVisible = binding.screenshotSubtitle.text.isNotBlank()
@@ -100,6 +106,7 @@ class ScreenshotDialogFragment : BottomSheetDialogFragment() {
         binding.switchUserInfo.isChecked = PrefManager.getVal(PrefName.ScreenshotShowUserInfo)
         binding.switchAppIcon.isChecked = PrefManager.getVal(PrefName.ScreenshotShowAppLogo)
         binding.switchFrame.isChecked = PrefManager.getVal(PrefName.ScreenshotShowFrame)
+        binding.switchRounded.isChecked = PrefManager.getVal(PrefName.ScreenshotShowRoundedCorners)
 
         // User info is only meaningful when signed in to AniList.
         val loggedIn = !Anilist.username.isNullOrEmpty()
@@ -107,11 +114,13 @@ class ScreenshotDialogFragment : BottomSheetDialogFragment() {
         if (!loggedIn) binding.switchUserInfo.isChecked = false
 
         loadRemoteImages()
+        setupTitleSelector()
 
         // Re-render the card whenever anything changes.
         val toggles = listOf(
             binding.switchMediaInfo, binding.switchDate, binding.switchSource,
-            binding.switchUserInfo, binding.switchAppIcon, binding.switchFrame
+            binding.switchUserInfo, binding.switchAppIcon, binding.switchFrame,
+            binding.switchRounded
         )
         toggles.forEach { it.setOnCheckedChangeListener { _, _ -> applyLayout() } }
         binding.screenshotCaptionInput.doOnTextChanged { _, _, _, _ -> applyLayout() }
@@ -160,10 +169,29 @@ class ScreenshotDialogFragment : BottomSheetDialogFragment() {
         }
     }
 
+    /** Wires the "which title?" dropdown; hidden entirely when there's nothing to switch between. */
+    private fun setupTitleSelector() {
+        val options = titleOptions
+        if (options.size <= 1) {
+            binding.screenshotTitleSelectLayout.isVisible = false
+            return
+        }
+        binding.screenshotTitleSelectLayout.isVisible = true
+        binding.screenshotTitleSelect.setAdapter(
+            ArrayAdapter(requireContext(), R.layout.item_titles_dropdown, options)
+        )
+        binding.screenshotTitleSelect.setText(selectedTitle, false)
+        binding.screenshotTitleSelect.setOnItemClickListener { _, _, position, _ ->
+            selectedTitle = options[position]
+            binding.screenshotTitle.text = selectedTitle
+        }
+    }
+
     /** Applies the current toggle state to the live preview card. */
     private fun applyLayout() {
         val shot = screenshot ?: return
         val frame = binding.switchFrame.isChecked
+        val rounded = binding.switchRounded.isChecked
         val mediaInfo = binding.switchMediaInfo.isChecked
         val userInfo = binding.switchUserInfo.isChecked && !Anilist.username.isNullOrEmpty()
         val appIcon = binding.switchAppIcon.isChecked
@@ -202,8 +230,8 @@ class ScreenshotDialogFragment : BottomSheetDialogFragment() {
         val hasDecor = caption.isNotEmpty() || mediaInfo || userInfo || appIcon
         binding.screenshotDecorContainer.isVisible = hasDecor
 
-        // The screenshot itself gets rounded corners only in "framed" mode.
-        if (frame) {
+        // The screenshot itself gets rounded corners independently of the card frame/background.
+        if (rounded) {
             binding.screenshotImage.setImageDrawable(
                 RoundedBitmapDrawableFactory.create(resources, shot).apply {
                     cornerRadius = dp(12).toFloat()
@@ -235,16 +263,26 @@ class ScreenshotDialogFragment : BottomSheetDialogFragment() {
         }
     }
 
-    /** The raw capture when nothing is added (keeps full resolution), else the rendered card. */
+    /**
+     * The raw capture when nothing is added (keeps full resolution), else the rendered card.
+     * Rendered at [CARD_EXPORT_SCALE]x the on-screen size: text is redrawn at that resolution
+     * (not just upscaled after the fact), which keeps captions/labels sharp once chat apps like
+     * Discord recompress the shared image.
+     */
     private fun buildOutputBitmap(): Bitmap? {
         val shot = screenshot ?: return null
-        val bare = !binding.switchFrame.isChecked && !binding.screenshotDecorContainer.isVisible
+        val bare = !binding.switchFrame.isChecked && !binding.switchRounded.isChecked &&
+            !binding.screenshotDecorContainer.isVisible
         if (bare) return shot
         val card = binding.screenshotCard
         if (card.width <= 0 || card.height <= 0) return null
         return runCatching {
-            Bitmap.createBitmap(card.width, card.height, Bitmap.Config.ARGB_8888).also {
-                card.draw(Canvas(it))
+            val width = (card.width * CARD_EXPORT_SCALE).toInt()
+            val height = (card.height * CARD_EXPORT_SCALE).toInt()
+            Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).also {
+                val canvas = Canvas(it)
+                canvas.scale(CARD_EXPORT_SCALE, CARD_EXPORT_SCALE)
+                card.draw(canvas)
             }
         }.getOrNull()
     }
@@ -256,7 +294,7 @@ class ScreenshotDialogFragment : BottomSheetDialogFragment() {
     }
 
     private fun fileName(): String {
-        val raw = listOf(title, numberLabel, progressLabel)
+        val raw = listOf(selectedTitle, numberLabel, progressLabel)
             .filter { it.isNotBlank() }.joinToString(" - ")
             .ifBlank { getString(R.string.screenshot) }
         return raw.replace(Regex("[\\\\/:*?\"<>|]"), "").take(120)
@@ -275,7 +313,9 @@ class ScreenshotDialogFragment : BottomSheetDialogFragment() {
     }
 
     companion object {
+        private const val CARD_EXPORT_SCALE = 2f
         private const val ARG_TITLE = "title"
+        private const val ARG_TITLE_OPTIONS = "titleOptions"
         private const val ARG_COVER = "cover"
         private const val ARG_NUMBER = "number"
         private const val ARG_PROGRESS = "progress"
@@ -288,10 +328,13 @@ class ScreenshotDialogFragment : BottomSheetDialogFragment() {
          * @param numberLabel  e.g. "Chapter 1050" or "Episode 5"
          * @param progressLabel e.g. "8/24" (manga page) or "12:34" (anime timestamp)
          * @param sourceLabel  extension/source name, or null to hide the row
+         * @param titleOptions alternate titles/synonyms offered in the title dropdown (e.g. via
+         *   [ani.dantotsu.media.Media.mainTitleOptions]); the selector is hidden when there's 1 or fewer
          */
         fun newInstance(
             screenshot: Bitmap,
             title: String,
+            titleOptions: List<String> = emptyList(),
             coverUrl: String?,
             numberLabel: String,
             progressLabel: String,
@@ -301,6 +344,7 @@ class ScreenshotDialogFragment : BottomSheetDialogFragment() {
             return ScreenshotDialogFragment().apply {
                 arguments = bundleOf(
                     ARG_TITLE to title,
+                    ARG_TITLE_OPTIONS to ArrayList(titleOptions),
                     ARG_COVER to coverUrl,
                     ARG_NUMBER to numberLabel,
                     ARG_PROGRESS to progressLabel,

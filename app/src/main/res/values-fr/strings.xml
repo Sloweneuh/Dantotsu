@@ -1652,10 +1652,12 @@
     <string name="screenshot_show_media_info">Afficher les infos du média</string>
     <string name="screenshot_show_user_info">Afficher les infos utilisateur</string>
     <string name="screenshot_show_app_icon">Afficher le logo de l\'application</string>
-    <string name="screenshot_show_frame">Cadre et coins arrondis</string>
+    <string name="screenshot_show_frame">Cadre</string>
+    <string name="screenshot_show_rounded_corners">Coins arrondis</string>
     <string name="screenshot_show_date">Afficher la date</string>
     <string name="screenshot_show_source">Afficher la source</string>
     <string name="screenshot_caption_hint">Ajouter une légende…</string>
+    <string name="screenshot_title_label">Titre</string>
     <string name="screenshot_defaults">Réglages par défaut des captures</string>
     <string name="screenshot_defaults_desc">Choisissez les sections affichées par défaut lors de la composition d\'une capture</string>
     <string name="mangaupdates_account_help">Comment fonctionne MangaUpdates \?</string>
