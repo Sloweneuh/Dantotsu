@@ -1586,13 +1586,19 @@ class ComickInfoFragment : Fragment() {
         if (customListsPlaceholder != null) {
             viewLifecycleOwner.lifecycleScope.launch {
                 val allowAdult = PrefManager.getVal<Boolean>(PrefName.AdultOnly)
-                val lists = withContext(Dispatchers.IO) { ComickApi.getComicLists(comickHid!!, allowAdult) }
-                if (lists == null) {
+                val fetched = withContext(Dispatchers.IO) { ComickApi.getComicLists(comickHid!!, allowAdult) }
+                if (fetched == null) {
                     Logger.log("Comick custom lists: API call failed for hid $comickHid")
                     return@launch
                 }
+                // Viewing a list's contents requires a Comick account login for anything above
+                // "safe" (see ComickApi.getListComics); hide those here since they're dead ends.
+                val lists = fetched.filter { it.content_rating == "safe" }
                 if (lists.isEmpty()) {
-                    Logger.log("Comick custom lists: no lists returned for hid $comickHid (allowAdult=$allowAdult)")
+                    Logger.log(
+                        "Comick custom lists: no accessible (safe-rated) lists for hid $comickHid " +
+                            "(fetched ${fetched.size}, allowAdult=$allowAdult)"
+                    )
                     return@launch
                 }
                 if (_binding == null) return@launch

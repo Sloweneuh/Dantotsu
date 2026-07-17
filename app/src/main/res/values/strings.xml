@@ -1727,6 +1727,8 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="unlink_comick">Unlink Comick</string>
     <string name="failed_fetch_comick">Failed to fetch Comick data</string>
     <string name="comick_custom_lists">Lists</string>
+    <string name="comick_list_load_failed">Failed to load list</string>
+    <string name="comick_list_needs_login">This list\'s content rating requires a Comick account login to view, which isn\'t supported yet</string>
     <string name="comick_list_comics_count">%d comics</string>
     <string name="comick_chapters_count">chapters</string>
     <string name="comick_open_anilist">View on AniList</string>

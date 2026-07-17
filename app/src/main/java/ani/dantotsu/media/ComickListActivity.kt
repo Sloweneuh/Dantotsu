@@ -7,6 +7,7 @@ import android.text.util.Linkify
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.text.HtmlCompat
@@ -25,6 +26,7 @@ import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
+import ani.dantotsu.util.Logger
 import com.google.android.material.chip.Chip
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -157,12 +159,10 @@ class ComickListActivity : AppCompatActivity() {
             // Preload genres so chips and filtering work immediately after load
             launch(Dispatchers.IO) { ComickApi.getGenres() }
 
-            val description = withContext(Dispatchers.IO) {
-                ComickApi.getUserLists(userId)
-                    ?.firstOrNull { it.slug == listSlug }
-                    ?.description
-                    ?.takeIf { it.isNotBlank() }
+            val listMeta = withContext(Dispatchers.IO) {
+                ComickApi.getUserLists(userId)?.firstOrNull { it.slug == listSlug }
             }
+            val description = listMeta?.description?.takeIf { it.isNotBlank() }
             if (description != null) {
                 binding.listDescription.setImageResource(R.drawable.ic_round_info_24)
                 binding.listDescription.visibility = View.VISIBLE
@@ -197,6 +197,17 @@ class ComickListActivity : AppCompatActivity() {
                 }
                 binding.mediaRecyclerView.adapter = adapter
                 applyFilterAndDisplay()
+            } else if (comics == null) {
+                Logger.log("Comick list comics: API call failed for user $userId, list $listSlug")
+                Toast.makeText(this@ComickListActivity, R.string.comick_list_load_failed, Toast.LENGTH_LONG).show()
+            } else {
+                val rating = listMeta?.content_rating
+                if (rating != null && rating != "safe") {
+                    Logger.log("Comick list comics: empty for user $userId, list $listSlug (content_rating=$rating, likely requires Comick login)")
+                    Toast.makeText(this@ComickListActivity, R.string.comick_list_needs_login, Toast.LENGTH_LONG).show()
+                } else {
+                    Logger.log("Comick list comics: no comics returned for user $userId, list $listSlug")
+                }
             }
         }
     }

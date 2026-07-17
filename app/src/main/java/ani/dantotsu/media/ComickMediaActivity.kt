@@ -710,7 +710,10 @@ class ComickMediaActivity : AppCompatActivity() {
             }
             parent.addView(customListsPlaceholder)
             lifecycleScope.launch {
-                val lists = withContext(Dispatchers.IO) { ComickApi.getComicLists(hid) }
+                val fetched = withContext(Dispatchers.IO) { ComickApi.getComicLists(hid) }
+                // Viewing a list's contents requires a Comick account login for anything above
+                // "safe" (see ComickApi.getListComics); hide those here since they're dead ends.
+                val lists = fetched?.filter { it.content_rating == "safe" }
                 if (!lists.isNullOrEmpty()) {
                     ItemTitleRecyclerBinding.inflate(LayoutInflater.from(this@ComickMediaActivity), customListsPlaceholder, false).apply {
                         itemTitle.setText(R.string.comick_custom_lists)

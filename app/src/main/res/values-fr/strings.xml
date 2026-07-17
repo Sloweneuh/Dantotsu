@@ -1570,6 +1570,8 @@
     <string name="unknown_value">\??</string>
 
     <string name="comick_custom_lists">Listes</string>
+    <string name="comick_list_load_failed">Échec du chargement de la liste</string>
+    <string name="comick_list_needs_login">La classification de contenu de cette liste nécessite une connexion à un compte Comick, ce qui n\'est pas encore pris en charge</string>
     <string name="comick_list_comics_count">%d comics</string>
     <string name="comick_chapters_count">chapitres</string>
     <string name="comick_open_anilist">Voir sur AniList</string>

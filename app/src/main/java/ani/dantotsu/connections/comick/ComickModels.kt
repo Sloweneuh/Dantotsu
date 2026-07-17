@@ -120,7 +120,8 @@ data class ComickCustomList(
     val is_public: Boolean?,
     val visibility: String?,
     val follows_count: Int?,
-    val cover: String?
+    val cover: String?,
+    val content_rating: String?
 ) : Serializable
 
 data class ComickListComic(
