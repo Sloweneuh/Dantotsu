@@ -14,6 +14,7 @@ import ani.dantotsu.InputFilterMinMax
 import ani.dantotsu.R
 import ani.dantotsu.Refresh
 import ani.dantotsu.connections.anilist.Anilist
+import ani.dantotsu.connections.anilist.api.FuzzyDate
 import ani.dantotsu.connections.mal.MAL
 import ani.dantotsu.databinding.BottomSheetMediaListSmallBinding
 import ani.dantotsu.navBarHeight
@@ -289,6 +290,12 @@ class MediaListDialogSmallFragment : BottomSheetDialogFragment() {
                                 || media.userStatus == null
                             if (anilistChanged) {
                                 anilistChangedLocal = true
+                                // Entering the reading/watching list with no start date
+                                // recorded yet: backfill it with today, matching the
+                                // auto-progress-update behavior in UpdateProgress.kt.
+                                val startDate = if (status == "CURRENT" && media.userStartedAt.isEmpty())
+                                    FuzzyDate().getToday()
+                                else null
                                 anilistOk = Anilist.mutation.editList(
                                     media.id,
                                     progress,
@@ -297,7 +304,8 @@ class MediaListDialogSmallFragment : BottomSheetDialogFragment() {
                                     null,
                                     null,
                                     status,
-                                    media.isListPrivate
+                                    media.isListPrivate,
+                                    startDate
                                 )
                                 MAL.query.editList(
                                     media.idMAL,

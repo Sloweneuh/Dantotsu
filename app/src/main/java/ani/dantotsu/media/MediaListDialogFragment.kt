@@ -226,14 +226,18 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                 start.dialog.setOnDismissListener { _binding?.mediaListStart?.setText(start.date.toStringOrEmpty()) }
                 end.dialog.setOnDismissListener { _binding?.mediaListEnd?.setText(end.date.toStringOrEmpty()) }
 
-                fun onComplete() {
-                    if (total != null) {
-                        binding.mediaListProgress.setText(total.toString())
-                    }
+                fun fillStartDateIfNeeded() {
                     if (start.date.year == null) {
                         start.date = FuzzyDate().getToday()
                         binding.mediaListStart.setText(start.date.toString())
                     }
+                }
+
+                fun onComplete() {
+                    if (total != null) {
+                        binding.mediaListProgress.setText(total.toString())
+                    }
+                    fillStartDateIfNeeded()
                     end.date = FuzzyDate().getToday()
                     binding.mediaListEnd.setText(end.date.toString())
                 }
@@ -257,14 +261,18 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                             binding.mediaListEnd.setText(endBackupDate.toString())
                             end.date = endBackupDate
                         }
+                        if (i == 1) fillStartDateIfNeeded()
                     }
                 }
 
                 binding.mediaListIncrement.setOnClickListener {
-                    if (binding.mediaListStatus.text.toString() == statusStrings[0]) binding.mediaListStatus.setText(
-                        statusStrings[1],
-                        false
-                    )
+                    if (binding.mediaListStatus.text.toString() == statusStrings[0]) {
+                        binding.mediaListStatus.setText(
+                            statusStrings[1],
+                            false
+                        )
+                        fillStartDateIfNeeded()
+                    }
                     val init =
                         if (binding.mediaListProgress.text.toString() != "") binding.mediaListProgress.text.toString()
                             .toInt() else 0
@@ -351,7 +359,12 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                                             _binding?.mediaListRewatch?.text?.toString()?.toIntOrNull()
                                         val volume = _binding?.mediaListVolume?.text?.toString()?.toIntOrNull()
                                         val notes = _binding?.mediaListNotes?.text?.toString()
-                                        val startD = start.date
+                                        // Entering the reading/watching list with no start date
+                                        // recorded yet: backfill it with today, matching the
+                                        // auto-progress-update behavior in UpdateProgress.kt.
+                                        val startD = if (status == "CURRENT" && start.date.isEmpty())
+                                            FuzzyDate().getToday()
+                                        else start.date
                                         val endD = end.date
                                         val anilistChanged = progress != initialProgress
                                             || score != initialScore
