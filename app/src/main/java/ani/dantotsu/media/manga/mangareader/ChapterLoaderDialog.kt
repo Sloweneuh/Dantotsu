@@ -164,6 +164,7 @@ class ChapterLoaderDialog : BottomSheetDialogFragment() {
                         PrefManager.setCustomVal("${media.id}_save_progress", false)
                         onResult()
                     }
+                    setNeutralButton(R.string.cancel)
                     show()
                 }
             } else {
