@@ -368,7 +368,9 @@ class AnimeWatchFragment : Fragment() {
                         )
                     }
 
-                    headerAdapter.subscribeButton(true)
+                    val found = episodes.isNotEmpty()
+                    headerAdapter.subscribeButton(found)
+                    headerAdapter.downloadButton(found)
                     headerAdapter.refreshBrowserButton()
                     reload()
 

@@ -198,6 +198,7 @@ class MangaReadAdapter(
             }
             setupBrowserButton(binding, i)
             subscribeButton(false)
+            downloadButton(false)
             // Invalidate if it's the last source
             val invalidate = i == mangaReadSources.names.size - 1
             fragment.loadChapters(i, invalidate)
@@ -222,6 +223,7 @@ class MangaReadAdapter(
                     setLanguageList(i, source)
                 }
                 subscribeButton(false)
+                downloadButton(false)
                 fragment.loadChapters(media.selected!!.sourceIndex, true)
             } ?: run {
             }
@@ -249,6 +251,7 @@ class MangaReadAdapter(
         }
 
         subscribeButton(false)
+        downloadButton(false)
 
         binding.mediaSourceSubscribe.setOnLongClickListener {
             openSettings(fragment.requireContext(), CHANNEL_SUBSCRIPTION_CHECK)
@@ -480,6 +483,11 @@ class MangaReadAdapter(
 
     fun subscribeButton(enabled: Boolean) {
         subscribe?.enabled(enabled)
+    }
+
+    fun downloadButton(enabled: Boolean) {
+        binding?.mediaSourceDownload?.isEnabled = enabled
+        binding?.mediaSourceDownload?.alpha = if (enabled) 1f else 0.33f
     }
 
     fun refreshSourceList() {
@@ -765,6 +773,7 @@ class MangaReadAdapter(
                             } ?: setLanguageList(nd, nextIndex)
                         }
                         subscribeButton(false)
+                        downloadButton(false)
                         // Invalidate if it's the last source
                         val invalidate = nextIndex == mangaReadSources.names.size - 1
                         fragment.loadChapters(nextIndex, invalidate)

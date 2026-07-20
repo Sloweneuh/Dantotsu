@@ -197,6 +197,7 @@ class AnimeWatchAdapter(
             }
             setupBrowserButton(binding, i)
             subscribeButton(false)
+            downloadButton(false)
             fragment.loadEpisodes(i, false)
         }
 
@@ -223,6 +224,7 @@ class AnimeWatchAdapter(
                     setLanguageList(i, source)
                 }
                 subscribeButton(false)
+                downloadButton(false)
                 fragment.loadEpisodes(media.selected!!.sourceIndex, true)
             } ?: run { }
         }
@@ -251,6 +253,7 @@ class AnimeWatchAdapter(
         }
 
         subscribeButton(false)
+        downloadButton(false)
 
         binding.mediaSourceSubscribe.setOnLongClickListener {
             openSettings(fragment.requireContext(), CHANNEL_SUBSCRIPTION_CHECK)
@@ -407,6 +410,11 @@ class AnimeWatchAdapter(
 
     fun subscribeButton(enabled: Boolean) {
         subscribe?.enabled(enabled)
+    }
+
+    fun downloadButton(enabled: Boolean) {
+        binding?.mediaSourceDownload?.isEnabled = enabled
+        binding?.mediaSourceDownload?.alpha = if (enabled) 1f else 0.33f
     }
 
     fun refreshSourceList() {
@@ -593,6 +601,7 @@ class AnimeWatchAdapter(
                             try { fragment.onLangChange(nd) } catch (_: Exception) { }
                         }
                         subscribeButton(false)
+                        downloadButton(false)
                         fragment.loadEpisodes(nextIndex, false)
                     }
                 }

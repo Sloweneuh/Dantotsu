@@ -498,7 +498,9 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
                     )
                 }
 
-                headerAdapter.subscribeButton(true)
+                val found = filteredChapters.isNotEmpty()
+                headerAdapter.subscribeButton(found)
+                headerAdapter.downloadButton(found)
                 headerAdapter.refreshBrowserButton()
                 reload()
 
