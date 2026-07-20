@@ -989,7 +989,10 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:fontFamily="@font/poppins_bold"
-                        android:text="Line Height" />
+                        android:text="Line Height"
+                        app:drawableStartCompat="@drawable/ic_format_line_spacing_24"
+                        android:drawablePadding="16dp"
+                        app:drawableTint="?attr/colorPrimary" />
 
                     <androidx.cardview.widget.CardView
                         android:layout_width="wrap_content"
@@ -1060,7 +1063,10 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:fontFamily="@font/poppins_bold"
-                        android:text="Margin" />
+                        android:text="Margin"
+                        app:drawableStartCompat="@drawable/ic_margin_24"
+                        android:drawablePadding="16dp"
+                        app:drawableTint="?attr/colorPrimary" />
 
                     <androidx.cardview.widget.CardView
                         android:layout_width="wrap_content"
@@ -1130,7 +1136,10 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:fontFamily="@font/poppins_bold"
-                        android:text="Maximum Inline Size" />
+                        android:text="Maximum Inline Size"
+                        app:drawableStartCompat="@drawable/ic_width_24"
+                        android:drawablePadding="16dp"
+                        app:drawableTint="?attr/colorPrimary" />
 
                     <androidx.cardview.widget.CardView
                         android:layout_width="wrap_content"
@@ -1211,7 +1220,10 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:fontFamily="@font/poppins_bold"
-                        android:text="Maximum Block Size" />
+                        android:text="Maximum Block Size"
+                        app:drawableStartCompat="@drawable/ic_height_24"
+                        android:drawablePadding="16dp"
+                        app:drawableTint="?attr/colorPrimary" />
 
                     <androidx.cardview.widget.CardView
                         android:layout_width="wrap_content"
