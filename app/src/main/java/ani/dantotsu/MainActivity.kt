@@ -38,6 +38,8 @@ import ani.dantotsu.addons.torrent.TorrentAddonManager
 import ani.dantotsu.addons.torrent.TorrentServerService
 import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.anilist.AnilistHomeViewModel
+import ani.dantotsu.connections.sync.CloudSync
+import ani.dantotsu.connections.sync.showCloudSyncConflictDialog
 import ani.dantotsu.databinding.ActivityMainBinding
 import ani.dantotsu.databinding.DialogUserAgentBinding
 import ani.dantotsu.databinding.SplashScreenBinding
@@ -89,6 +91,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var incognitoLiveData: SharedPreferenceBooleanLiveData
     private val scope = lifecycleScope
     private var load = false
+    private var cloudSyncConflictShown = false
 
     override fun attachBaseContext(newBase: android.content.Context?) {
         super.attachBaseContext(newBase?.let { ani.dantotsu.util.LanguageHelper.applyLanguageToContext(it) })
@@ -590,6 +593,48 @@ class MainActivity : AppCompatActivity() {
         // Request a layout pass to ensure window insets are recalculated
         // This fixes layout issues after screen turns off and back on
         binding.root.requestApplyInsets()
+        maybeShowCloudSyncConflict()
+        // A pull that lands while we're on screen changes prefs the live UI already read, so it's
+        // otherwise invisible. Offer a reload instead of silently recreating under the user.
+        CloudSync.onBackgroundApply = {
+            runOnUiThread {
+                if (!isFinishing && !isDestroyed) {
+                    snackString(getString(R.string.cloud_sync_done_updated))?.setAction(R.string.reload) {
+                        PrefManager.setCustomVal("reload", true)
+                        recreate()
+                    }
+                }
+            }
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        CloudSync.onBackgroundApply = null // holds a reference to this activity
+    }
+
+    /**
+     * A background pull can find cloud settings it isn't allowed to adopt silently (this device has
+     * settings of its own and no sync baseline). It has no UI, so it leaves a flag; this raises the
+     * prompt at the first opportunity. Once per process — onResume fires on every return to the
+     * app, and re-asking every time would be nagging rather than helpful.
+     */
+    private fun maybeShowCloudSyncConflict() {
+        if (cloudSyncConflictShown || !CloudSync.bootstrapPromptPending()) return
+        cloudSyncConflictShown = true
+        lifecycleScope.launch(Dispatchers.IO) {
+            val result = CloudSync.syncManual()
+            if (result !is CloudSync.SyncOutcome.Conflict) return@launch
+            withContext(Dispatchers.Main) {
+                if (isFinishing || isDestroyed) return@withContext
+                showCloudSyncConflictDialog(
+                    result.remotePayload, result.remoteTs, result.remoteDevice
+                ) {
+                    PrefManager.setCustomVal("reload", true)
+                    recreate()
+                }
+            }
+        }
     }
 
     //ViewPager

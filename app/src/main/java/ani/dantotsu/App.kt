@@ -212,8 +212,13 @@ class App : MultiDexApplication() {
         var currentActivity: Activity? = null
         var lastActivity: String? = null
         private var lastUnreadChapterCheck = 0L
+        private var lastCloudPull = 0L
         private var resumeCount = 0
         private var startedActivities = 0
+
+        /** Every settings screen lives in this package, and none share a base class to hook. */
+        private fun isSettingsScreen(activity: Activity) =
+            activity.javaClass.name.startsWith("ani.dantotsu.settings.")
 
         override fun onActivityCreated(p0: Activity, p1: Bundle?) {
             lastActivity = p0.javaClass.simpleName
@@ -230,12 +235,27 @@ class App : MultiDexApplication() {
         override fun onActivityResumed(p0: Activity) {
             currentActivity = p0
             resumeCount++
+            if (isSettingsScreen(p0)) ani.dantotsu.connections.sync.CloudSync.settingsUiOpen = true
+            val now = System.currentTimeMillis()
+
+            // Pull cloud settings when returning to the app, not just on cold start: the pull in
+            // getUserId() only runs once per process, so a change made on another device otherwise
+            // didn't land until this one was fully restarted. Rate-limited because onActivityResumed
+            // fires on every screen change; the in-flight flags coalesce anything that slips past.
+            // Skipped on the first resume of a launch, where the cold-start pull already covers us.
+            if (resumeCount > 1 && now - lastCloudPull > CLOUD_PULL_INTERVAL_MS) {
+                lastCloudPull = now
+                runCatching {
+                    ani.dantotsu.connections.sync.CloudSync.pullInBackground()
+                    ani.dantotsu.connections.sync.ProgressSync.pullInBackground()
+                    ani.dantotsu.connections.sync.ExtensionSettingsSync.pullInBackground()
+                }
+            }
 
             // Check for unread chapters when app comes to foreground
             // Only check if:
             // 1. It's been more than the configured interval since last check
             // 2. This isn't the very first activity resume (skip initial app launch)
-            val now = System.currentTimeMillis()
             val timeSinceLastCheck = now - lastUnreadChapterCheck
 
             // Get user's configured interval (in minutes), with a minimum of 15 minutes
@@ -266,17 +286,17 @@ class App : MultiDexApplication() {
             }
         }
 
-        override fun onActivityPaused(p0: Activity) {}
+        override fun onActivityPaused(p0: Activity) {
+            if (isSettingsScreen(p0)) ani.dantotsu.connections.sync.CloudSync.settingsUiOpen = false
+        }
         override fun onActivityStopped(p0: Activity) {
             if (--startedActivities <= 0) {
                 startedActivities = 0
                 runCatching { GlobalHandoffReceiver.stop() }
-                // App backgrounded: push any settings changed during this session. This coalesces
-                // a whole foreground session's edits into a single upload (our "debounce").
-                runCatching { ani.dantotsu.connections.sync.CloudSync.pushInBackground() }
-                runCatching { ani.dantotsu.connections.sync.ExtensionSync.pushInBackground() }
-                runCatching { ani.dantotsu.connections.sync.ExtensionSettingsSync.pushInBackground() }
-                runCatching { ani.dantotsu.connections.sync.ProgressSync.pushInBackground() }
+                // App backgrounded: push anything changed during this session. This coalesces a
+                // whole foreground session's edits into a single upload (our "debounce"). Goes
+                // through WorkManager so a swipe-away doesn't kill the upload mid-flight.
+                ani.dantotsu.connections.sync.SyncPushWorker.enqueue(this@App)
             }
         }
         override fun onActivitySaveInstanceState(p0: Activity, p1: Bundle) {}
@@ -284,6 +304,9 @@ class App : MultiDexApplication() {
     }
 
     companion object {
+        /** How often returning to the app may trigger a cloud pull. */
+        private const val CLOUD_PULL_INTERVAL_MS = 5 * 60 * 1000L
+
         var instance: App? = null
 
         /** Reference to the application context.

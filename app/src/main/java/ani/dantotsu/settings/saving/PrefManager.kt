@@ -336,48 +336,84 @@ object PrefManager {
     fun getAnimeDownloadPreferences(): SharedPreferences =
         animeDownloadsPreferences!!  //needs to be used externally
 
+    /** Raw key→value snapshot of a location, for callers that need to inspect what's actually set. */
+    fun rawPrefs(location: Location): Map<String, *> = getPrefLocation(location).all
+
+    /**
+     * [Location.Reader] and [Location.NovelReader] share one [SharedPreferences] file, so naively
+     * mapping every location would pack that file twice — doubling the payload and importing it
+     * twice on the way back in. Keep only the first location per distinct file.
+     */
+    private fun distinctLocations(prefLocation: List<Location>): Map<Location, SharedPreferences> =
+        prefLocation.distinctBy { getPrefLocation(it) }.associateWith { getPrefLocation(it) }
+
     fun exportAllPrefs(prefLocation: List<Location>): String {
-        return PreferencePackager.pack(
-            prefLocation.associateWith { getPrefLocation(it) }
-        )
+        return PreferencePackager.pack(distinctLocations(prefLocation))
     }
 
     fun exportSelectedPrefs(prefLocation: List<Location>, includeKeys: Set<String>): String {
+        return PreferencePackager.pack(distinctLocations(prefLocation), includeKeys)
+    }
+
+    /**
+     * Packs the given locations for cloud sync, keeping only the keys [keyFilter] accepts. Unlike
+     * [exportAllPrefs] the caller is expected to leave out [Location.Protected] so secrets never
+     * leave the device.
+     */
+    fun exportSyncablePrefs(
+        prefLocation: List<Location>,
+        keyFilter: (Location, String) -> Boolean,
+    ): String {
         return PreferencePackager.pack(
-            prefLocation.associateWith { getPrefLocation(it) },
-            includeKeys
+            distinctLocations(prefLocation),
+            includeKeys = null,
+            keyFilter = keyFilter,
         )
     }
 
     /**
-     * Packs the given locations for cloud sync, dropping any key in [excludeKeys] (device-local
-     * prefs that must not propagate across devices). Unlike [exportAllPrefs] the caller is
-     * expected to leave out [Location.Protected] so secrets never leave the device.
+     * Applies a packed-prefs JSON string produced by [exportSyncablePrefs]/[exportAllPrefs].
+     * Silent: this runs on the cloud-sync background path, where import toasts are just noise.
+     *
+     * @param prune see [importAllPrefs]; pass the same filter used to build the payload.
      */
-    fun exportSyncablePrefs(prefLocation: List<Location>, excludeKeys: Set<String>): String {
-        return PreferencePackager.pack(
-            prefLocation.associateWith { getPrefLocation(it) },
-            includeKeys = null,
-            excludeKeys = excludeKeys,
-        )
-    }
-
-    /** Applies a packed-prefs JSON string produced by [exportSyncablePrefs]/[exportAllPrefs]. */
-    fun importPackedPrefs(json: String): Boolean = PreferencePackager.unpack(json)
+    fun importPackedPrefs(
+        json: String,
+        prune: ((Location, String) -> Boolean)? = null,
+    ): Boolean = PreferencePackager.unpack(json, silent = true, prune = prune)
 
 
     /**
      * @param prefs Map of preferences to import
      * @param prefLocation Location to import to
+     * @param silent skips the result snackbars (background cloud sync)
+     * @param prune when set, local keys this predicate accepts that are absent from [prefs] are
+     *   deleted. Import is otherwise purely additive, so a pref deleted on another device would
+     *   linger here forever — and this device's next push would resurrect it there. Pass the same
+     *   filter used to build the payload, so only keys we would have uploaded are ever eligible:
+     *   secrets, caches and the sync's own bookkeeping are outside it and never touched.
      * @return true if successful, false if error
      */
 
     @Suppress("UNCHECKED_CAST")
-    fun importAllPrefs(prefs: Map<String, *>, prefLocation: Location): Boolean {
+    fun importAllPrefs(
+        prefs: Map<String, *>,
+        prefLocation: Location,
+        silent: Boolean = false,
+        prune: ((Location, String) -> Boolean)? = null,
+    ): Boolean {
         if (prefs.isEmpty()) return true
         val pref = getPrefLocation(prefLocation)
         var hadError = false
         with(pref.edit()) {
+            if (prune != null) {
+                pref.all.keys.forEach { key ->
+                    if (key !in prefs && prune(prefLocation, key)) {
+                        remove(key)
+                        Logger.log("importAllPrefs: pruned $key from $prefLocation")
+                    }
+                }
+            }
             prefs.forEach { (key, value) ->
                 when (value) {
                     is Boolean -> putBoolean(key, value)
@@ -393,10 +429,11 @@ object PrefManager {
             }
             apply()
             return if (hadError) {
-                snackString(R.string.error_importing_preferences)
+                if (!silent) snackString(R.string.error_importing_preferences)
+                else Logger.log("importAllPrefs: dropped unsupported value(s) in $prefLocation")
                 false
             } else {
-                snackString(R.string.preferences_imported)
+                if (!silent) snackString(R.string.preferences_imported)
                 true
             }
         }

@@ -537,15 +537,22 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
         return scanlators.distinct()
     }
 
-    fun onSourceChange(i: Int): MangaParser {
+    /**
+     * @param persist whether this becomes the media's remembered source. False for switches the
+     *   user didn't ask for (the auto-hop when a source finds no match) — those must not overwrite
+     *   a deliberate choice, since a source that's merely down would then lose it permanently.
+     */
+    fun onSourceChange(i: Int, persist: Boolean = true): MangaParser {
         media.manga?.chapters = null
         reload()
         val selected = model.loadSelected(media)
         model.mangaReadSources?.get(selected.sourceIndex)?.showUserTextListener = null
         selected.sourceIndex = i
         selected.server = null
-        model.saveSelected(media.id, selected)
-        model.saveSelectedSourceName(media.id, model.mangaReadSources?.names?.getOrNull(i))
+        if (persist) {
+            model.saveSelected(media.id, selected)
+            model.saveSelectedSourceName(media.id, model.mangaReadSources?.names?.getOrNull(i))
+        }
         media.selected = selected
         return model.mangaReadSources?.get(i)!!
     }

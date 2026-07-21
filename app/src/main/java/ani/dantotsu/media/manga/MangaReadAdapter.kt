@@ -216,7 +216,9 @@ class MangaReadAdapter(
             (mangaReadSources[source] as? DynamicMangaParser)?.let { ext ->
                 ext.sourceLanguage = i
                 fragment.onLangChange(i, ext.saveName)
-                fragment.onSourceChange(media.selected!!.sourceIndex).apply {
+                // Reloads the current source for the new language; it isn't a source choice, so
+                // don't re-persist sourceIndex (which may be an auto-hop fallback, not the user's).
+                fragment.onSourceChange(media.selected!!.sourceIndex, persist = false).apply {
                     binding.mediaSourceTitle.text = showUserText
                     showUserTextListener =
                         { MainScope().launch { binding.mediaSourceTitle.text = it } }
@@ -759,7 +761,8 @@ class MangaReadAdapter(
                             binding.mediaSource.adapter
                                 .getItem(nextIndex).toString(), false
                         )
-                        fragment.onSourceChange(nextIndex).apply {
+                        // Not persisted: the user didn't pick this source, we fell through to it.
+                        fragment.onSourceChange(nextIndex, persist = false).apply {
                             binding.mediaSourceTitle.text = showUserText
                             showUserTextListener =
                                 { MainScope().launch { binding.mediaSourceTitle.text = it } }

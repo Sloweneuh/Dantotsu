@@ -8,9 +8,6 @@ import com.google.firebase.database.FirebaseDatabase
 import com.google.gson.Gson
 import eu.kanade.tachiyomi.extension.anime.AnimeExtensionManager
 import eu.kanade.tachiyomi.extension.manga.MangaExtensionManager
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import rx.android.schedulers.AndroidSchedulers
 import uy.kohesive.injekt.Injekt
@@ -40,7 +37,6 @@ object ExtensionSync {
     private const val HASH_KEY = "ext_sync_hash"
 
     private val gson = Gson()
-    private val scope = CoroutineScope(Dispatchers.IO)
 
     enum class ExtType { ANIME, MANGA, NOVEL }
 
@@ -158,21 +154,22 @@ object ExtensionSync {
      * was changed elsewhere (e.g. a force upload from another device), it's left untouched for the
      * manual reconcile to pick up. No-op when disabled or signed out.
      */
-    fun pushInBackground() {
+    suspend fun pushNow() {
         if (!enabled() || userId() == null) return
-        scope.launch {
-            runCatching {
-                val uid = userId() ?: return@runCatching
-                val json = gson.toJson(localPayload())
-                if (json.hashCode() == lastHash()) return@runCatching // nothing changed locally
-                // On fetch failure, skip rather than risk clobbering a cloud we couldn't read.
-                val remote = fetchRemote(uid).getOrElse { return@runCatching }
-                if (remote != null && remote.rawHash != lastHash()) {
-                    Logger.log("ExtensionSync: cloud changed elsewhere; leaving for manual reconcile")
-                    return@runCatching
-                }
-                doUpload(uid, json)
+        runCatching {
+            val uid = userId() ?: return
+            val json = gson.toJson(localPayload())
+            if (json.hashCode() == lastHash()) return // nothing changed locally
+            // On fetch failure, skip rather than risk clobbering a cloud we couldn't read.
+            val remote = fetchRemote(uid).getOrElse {
+                Logger.log("ExtensionSync: push skipped, cloud unreadable: ${it.message}")
+                return
             }
+            if (remote != null && remote.rawHash != lastHash()) {
+                Logger.log("ExtensionSync: cloud changed elsewhere; leaving for manual reconcile")
+                return
+            }
+            doUpload(uid, json)
         }
     }
 

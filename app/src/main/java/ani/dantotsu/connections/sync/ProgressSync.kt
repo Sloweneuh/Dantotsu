@@ -13,18 +13,26 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
 /**
- * Syncs per-media "continue where you left off" progress across a user's devices — the resume data
- * that AniList itself doesn't store: playback position per episode (`<id>_<ep>`), reading page per
- * chapter (`<id>_<chapter>` / `<id>_<chapter>_max`) and the current chapter (`<id>_current_chp`).
- * These live as custom vals (see e.g. `ExoplayerView`/`MangaReaderActivity`).
+ * Syncs per-media state across a user's devices — the things AniList itself doesn't store:
+ *  - resume data: playback position per episode (`<id>_<ep>`), reading page per chapter
+ *    (`<id>_<chapter>` / `<id>_<chapter>_max`), current chapter/episode (`<id>_current_chp|_ep`)
+ *  - the user's per-media choices: which source is selected (`SelectedSource-<id>`, plus the
+ *    `Selected-<id>` blob holding language/scanlators/dub preference), and the per-media lookups
+ *    `comick_slug_<id>` / `subLang_<id>`
+ *
+ * These all live as custom vals (see e.g. `ExoplayerView`, `MangaReaderActivity`,
+ * `MediaDetailsViewModel`), i.e. in [ani.dantotsu.settings.saving.internal.Location.Irrelevant].
  *
  * Each media gets its own child node `users/{uid}/progress/{mediaId}` so independent reading on
  * different devices doesn't last-write-wins over each other; only changed media are uploaded. As in
  * [CloudSync], the background paths never clobber: a pull skips any media whose local copy diverged
  * since the last sync. Gated on the master [PrefName.CloudSyncEnabled] toggle.
  *
- * Device-specific per-media keys (speed, fullscreen, sub language, save-progress toggles…) have
- * non-numeric suffixes and are deliberately excluded by [PROGRESS_RE].
+ * Per-media state is deliberately synced *here* rather than in [CloudSync]'s settings blob: it
+ * changes constantly and there can be thousands of keys, so folding it into one last-write-wins
+ * payload would make every source switch on one device conflict with every settings tweak on
+ * another. Genuinely device-local per-media keys (playback speed, fullscreen, save-progress
+ * toggles…) are excluded by [mediaIdOf].
  */
 object ProgressSync {
 
@@ -32,9 +40,19 @@ object ProgressSync {
     private const val NODE = "progress"
     private const val STATE_KEY = "progress_sync_state"
 
-    // "<id>_<num>", "<id>_<num>_max", or "<id>_current_chp" — num may be decimal. Positive ids only
-    // (extension-only media with id < 0 can't be re-fetched elsewhere, so they're skipped).
-    private val PROGRESS_RE = Regex("""^(\d+)_(?:\d+(?:\.\d+)?(?:_max)?|current_chp)$""")
+    // "<id>_<num>", "<id>_<num>_max", "<id>_current_chp" or "<id>_current_ep" — num may be decimal.
+    private val PROGRESS_RE =
+        Regex("""^(\d+)_(?:\d+(?:\.\d+)?(?:_max)?|current_chp|current_ep)$""")
+
+    // Per-media user choices, keyed with the id as a suffix instead of a prefix.
+    private val SELECTION_RE = Regex("""^(?:Selected|SelectedSource|comick_slug|subLang)[-_](\d+)$""")
+
+    /**
+     * The media id a custom-val key belongs to, or null if it isn't per-media syncable state.
+     * Positive ids only — extension-only media with id < 0 can't be re-resolved on another device.
+     */
+    private fun mediaIdOf(key: String): String? =
+        (PROGRESS_RE.matchEntire(key) ?: SELECTION_RE.matchEntire(key))?.groupValues?.get(1)
 
     private val gson = Gson()
     private val stateType = object : TypeToken<Map<String, MediaState>>() {}.type
@@ -58,17 +76,37 @@ object ProgressSync {
     private fun typed(value: Any?): Map<String, Any?> =
         mapOf("type" to value?.javaClass?.kotlin?.qualifiedName, "value" to value)
 
-    /** All progress custom vals grouped by media id → { key → {type, value} }. */
+    /** All syncable per-media custom vals grouped by media id → { key → {type, value} }. */
     private fun collect(): Map<String, Map<String, Map<String, Any?>>> {
         val out = mutableMapOf<String, MutableMap<String, Map<String, Any?>>>()
         PrefManager.getAllCustomValsForMedia("").forEach { (key, value) ->
-            val id = PROGRESS_RE.matchEntire(key)?.groupValues?.get(1) ?: return@forEach
+            val id = mediaIdOf(key) ?: return@forEach
             out.getOrPut(id) { mutableMapOf() }[key] = typed(value)
         }
         return out
     }
 
-    private fun applyMedia(data: Map<String, Map<String, Any?>>) {
+    /**
+     * @param localKeys what this device currently holds for the same media. Anything in there that
+     *   the cloud copy doesn't have was deleted on the other device (e.g. "delete stored progress
+     *   for all episodes"); without removing it here the deletion never propagates and our next
+     *   push would resurrect it over there.
+     */
+    private fun applyMedia(data: Map<String, Map<String, Any?>>, localKeys: Set<String>) {
+        // Prune per category, and only when the cloud copy actually carries that category. A node
+        // last written by a build that synced progress but not selections holds progress keys only
+        // — pruning against it wholesale would delete the very selections we're here to sync.
+        val remoteHasProgress = data.keys.any { PROGRESS_RE.matches(it) }
+        val remoteHasSelection = data.keys.any { SELECTION_RE.matches(it) }
+        localKeys.forEach { key ->
+            if (key in data) return@forEach
+            val prunable = when {
+                PROGRESS_RE.matches(key) -> remoteHasProgress
+                SELECTION_RE.matches(key) -> remoteHasSelection
+                else -> false
+            }
+            if (prunable) PrefManager.removeCustomVal(key)
+        }
         data.forEach { (key, tv) ->
             val type = tv["type"] as? String
             val value = tv["value"]
@@ -123,29 +161,27 @@ object ProgressSync {
     // ---- triggers ----
 
     /** Push on app background: upload media whose progress changed since the last sync. */
-    fun pushInBackground() {
+    suspend fun pushNow() {
         if (!enabled() || userId() == null) return
-        scope.launch {
-            runCatching {
-                val uid = userId() ?: return@runCatching
-                val grouped = collect()
-                val state = loadState()
-                val updates = mutableMapOf<String, Any>()
-                val pending = mutableMapOf<String, MediaState>()
-                val now = System.currentTimeMillis()
-                grouped.forEach { (id, data) ->
-                    val hash = gson.toJson(data).hashCode()
-                    if (state[id]?.hash != hash) {
-                        updates[id] = mapOf("payload" to gson.toJson(data), "ts" to now)
-                        pending[id] = MediaState(hash, now)
-                    }
+        runCatching {
+            val uid = userId() ?: return
+            val grouped = collect()
+            val state = loadState()
+            val updates = mutableMapOf<String, Any>()
+            val pending = mutableMapOf<String, MediaState>()
+            val now = System.currentTimeMillis()
+            grouped.forEach { (id, data) ->
+                val hash = gson.toJson(data).hashCode()
+                if (state[id]?.hash != hash) {
+                    updates[id] = mapOf("payload" to gson.toJson(data), "ts" to now)
+                    pending[id] = MediaState(hash, now)
                 }
-                if (updates.isEmpty()) return@runCatching
-                if (pushChanges(uid, updates)) {
-                    state.putAll(pending)
-                    saveState(state)
-                    Logger.log("ProgressSync: pushed ${updates.size} media")
-                }
+            }
+            if (updates.isEmpty()) return
+            if (pushChanges(uid, updates)) {
+                state.putAll(pending)
+                saveState(state)
+                Logger.log("ProgressSync: pushed ${updates.size} media")
             }
         }
     }
@@ -171,7 +207,7 @@ object ProgressSync {
                         }
                         val data = runCatching { gson.fromJson<Map<String, Map<String, Any?>>>(payload, dataType) }
                             .getOrNull() ?: return@forEach
-                        applyMedia(data)
+                        applyMedia(data, local[id]?.keys.orEmpty())
                         applied[id] = ts
                     }
                     if (applied.isNotEmpty()) {

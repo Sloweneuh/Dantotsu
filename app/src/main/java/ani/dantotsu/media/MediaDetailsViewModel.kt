@@ -381,6 +381,10 @@ class MediaDetailsViewModel : ViewModel() {
     // ordering of the installed extensions. Keeping the name in its own pref also avoids
     // changing Selected's serialized layout, which would wipe existing selections on upgrade.
     fun saveSelectedSourceName(id: Int, name: String?) {
+        // A null/blank name means the source list wasn't ready yet, not "the user cleared their
+        // choice" — and setCustomVal(key, null) *removes* the key, silently destroying a selection
+        // that loadSelected would then resolve to index 0.
+        if (name.isNullOrBlank()) return
         PrefManager.setCustomVal("SelectedSource-$id", name)
     }
 

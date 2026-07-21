@@ -22,6 +22,7 @@ import ani.dantotsu.connections.sync.CloudSync
 import ani.dantotsu.connections.sync.ExtensionSettingsStore
 import ani.dantotsu.connections.sync.ExtensionSettingsSync
 import ani.dantotsu.connections.sync.ExtensionSync
+import ani.dantotsu.connections.sync.showCloudSyncConflictDialog
 import ani.dantotsu.databinding.ActivitySettingsBackupSyncBinding
 import ani.dantotsu.databinding.DialogUserAgentBinding
 import ani.dantotsu.initActivity
@@ -320,45 +321,8 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
     }
 
     @OptIn(DelicateCoroutinesApi::class)
-    private fun showConflictDialog(remotePayload: String, remoteTs: Long, remoteDevice: String?) {
-        val relative = android.text.format.DateUtils.getRelativeTimeSpanString(
-            remoteTs, System.currentTimeMillis(), android.text.format.DateUtils.MINUTE_IN_MILLIS
-        )
-        val absolute = java.text.DateFormat
-            .getDateTimeInstance(java.text.DateFormat.MEDIUM, java.text.DateFormat.SHORT)
-            .format(java.util.Date(remoteTs))
-        val savedLine = if (!remoteDevice.isNullOrBlank()) {
-            getString(R.string.cloud_sync_conflict_saved_device, "$relative ($absolute)", remoteDevice)
-        } else {
-            getString(R.string.cloud_sync_conflict_saved, "$relative ($absolute)")
-        }
-        val message = getString(R.string.cloud_sync_conflict_msg) + "\n\n" + savedLine
-        customAlertDialog().apply {
-            setTitle(R.string.cloud_sync_conflict_title)
-            setMessage(message)
-            setPosButton(R.string.cloud_sync_keep_local) {
-                GlobalScope.launch(Dispatchers.IO) {
-                    val ok = CloudSync.resolveKeepLocal()
-                    toast(getString(if (ok) R.string.cloud_sync_done else R.string.cloud_sync_failed))
-                }
-            }
-            setNegButton(R.string.cloud_sync_use_remote) {
-                GlobalScope.launch(Dispatchers.IO) {
-                    val ok = CloudSync.resolveUseRemote(remotePayload, remoteTs)
-                    runOnUiThread {
-                        if (ok) {
-                            toast(getString(R.string.cloud_sync_done_updated))
-                            applyRestore()
-                        } else {
-                            toast(getString(R.string.cloud_sync_failed))
-                        }
-                    }
-                }
-            }
-            setNeutralButton(R.string.cancel) {}
-            show()
-        }
-    }
+    private fun showConflictDialog(remotePayload: String, remoteTs: Long, remoteDevice: String?) =
+        showCloudSyncConflictDialog(remotePayload, remoteTs, remoteDevice) { applyRestore() }
 
     @OptIn(DelicateCoroutinesApi::class)
     private fun showExtensionReconcileDialog(diff: ExtensionSync.Diff) {
@@ -394,8 +358,8 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                     }
                 }
                 // Do NOT push here: install/uninstall are async and localPayload() would still
-                // reflect the pre-reconcile state. pushInBackground() in App.kt fires once
-                // the installs have completed and the extension flow has settled.
+                // reflect the pre-reconcile state. The SyncPushWorker enqueued from App.kt fires
+                // once the installs have completed and the extension flow has settled.
                 toast(getString(R.string.ext_reconcile_summary, installed, removed))
             }
             .setNegativeButton(R.string.cancel, null)

@@ -50,6 +50,9 @@ object ExtensionSettingsSync {
     private fun lastTs(): Long = PrefManager.getCustomVal(TS_KEY, 0L)
     private fun lastHash(): Int = PrefManager.getCustomVal(HASH_KEY, 0)
 
+    /** See [CloudSync.neverSynced] — no baseline means no divergence to defend, so the cloud wins. */
+    private fun neverSynced(): Boolean = lastTs() == 0L && lastHash() == 0
+
     // ---- Firebase primitives ----
 
     private suspend fun fetchRemote(uid: String): Result<Remote?> = runCatching {
@@ -119,20 +122,21 @@ object ExtensionSettingsSync {
     // ---- background triggers (never clobber the other side) ----
 
     /** Push on app background; uploads only local-only changes. No-op when disabled/divergent. */
-    fun pushInBackground() {
-        if (!enabled() || userId() == null) return
-        scope.launch {
-            runCatching {
-                val uid = userId() ?: return@runCatching
-                val local = packLocal() ?: return@runCatching
-                if (local.hashCode() == lastHash()) return@runCatching
-                val remote = fetchRemote(uid).getOrElse { return@runCatching }
-                if (remote != null && remote.ts > lastTs()) {
-                    Logger.log("ExtensionSettingsSync: divergent; leaving for manual/force")
-                    return@runCatching
-                }
-                doPush(uid, local)
+    suspend fun pushNow() {
+        if (!enabled() || userId() == null || applyingRemote) return
+        runCatching {
+            val uid = userId() ?: return
+            val local = packLocal() ?: return
+            if (local.hashCode() == lastHash()) return
+            val remote = fetchRemote(uid).getOrElse {
+                Logger.log("ExtensionSettingsSync: push skipped, remote unreadable: ${it.message}")
+                return
             }
+            if (remote != null && remote.ts > lastTs()) {
+                Logger.log("ExtensionSettingsSync: divergent; leaving for manual/force")
+                return
+            }
+            doPush(uid, local)
         }
     }
 
@@ -144,10 +148,14 @@ object ExtensionSettingsSync {
             try {
                 runCatching {
                     val uid = userId() ?: return@runCatching
-                    val remote = fetchRemote(uid).getOrNull() ?: return@runCatching
+                    val remote = fetchRemote(uid).getOrElse {
+                        Logger.log("ExtensionSettingsSync: pull skipped, remote unreadable: ${it.message}")
+                        return@runCatching
+                    } ?: return@runCatching
                     if (remote.ts <= lastTs()) return@runCatching
-                    val localChanged = (packLocal()?.hashCode() ?: 0) != lastHash()
-                    if (localChanged) {
+                    if (neverSynced()) {
+                        Logger.log("ExtensionSettingsSync: no local baseline; adopting cloud copy")
+                    } else if ((packLocal()?.hashCode() ?: 0) != lastHash()) {
                         Logger.log("ExtensionSettingsSync: divergent; leaving for manual/force")
                         return@runCatching
                     }
