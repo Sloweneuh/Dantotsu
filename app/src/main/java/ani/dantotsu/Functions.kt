@@ -875,6 +875,45 @@ fun openLinkInBrowser(link: String?) {
     }
 }
 
+/**
+ * Opens a MangaUpdates *series* link directly inside the app via [MUMediaDetailsActivity] instead
+ * of routing it through an external browser. Opening such a link with a plain browser intent makes
+ * the browser flash on screen before its deep-link filter bounces control back into the app; going
+ * straight to the activity avoids that.
+ *
+ * Accepts both link shapes MangaUpdates uses — `/series/<slugOrId>` and `/series.html?id=<num>` —
+ * and normalizes them to the `/series/<slugOrId>` form the activity's deep-link handler expects.
+ *
+ * @return true if [link] was a MangaUpdates series link and was handled in-app; false otherwise, in
+ *   which case the caller should fall back to [openLinkInBrowser].
+ */
+fun openMangaUpdatesSeriesInApp(link: String?): Boolean {
+    val uri = link?.let { Uri.parse(it) } ?: return false
+    val host = uri.host?.lowercase()?.removePrefix("www.")
+    if (host != "mangaupdates.com") return false
+
+    val segments = uri.pathSegments ?: emptyList()
+    val slugOrId = when (segments.firstOrNull()) {
+        "series" -> segments.getOrNull(1)
+        "series.html" -> uri.getQueryParameter("id")
+        else -> null
+    }?.takeIf { it.isNotBlank() } ?: return false
+
+    return try {
+        val ctx = currContext() ?: return false
+        val normalized = Uri.parse("https://www.mangaupdates.com/series/$slugOrId")
+        val intent = Intent(Intent.ACTION_VIEW, normalized).apply {
+            setClass(ctx, ani.dantotsu.connections.mangaupdates.MUMediaDetailsActivity::class.java)
+            if (ctx !is Activity) addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        ctx.startActivity(intent)
+        true
+    } catch (e: Exception) {
+        Logger.log(e)
+        false
+    }
+}
+
 fun openLinkInYouTube(link: String?) {
     link?.let {
         try {

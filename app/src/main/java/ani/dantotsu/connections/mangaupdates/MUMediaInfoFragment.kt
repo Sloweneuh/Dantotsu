@@ -290,7 +290,7 @@ class MUMediaInfoFragment : Fragment() {
             requireContext(),
             userInputContent = false,
             fragment = this
-        ) { link -> openLinkInBrowser(link) }
+        ) { link -> if (!ani.dantotsu.openMangaUpdatesSeriesInApp(link)) openLinkInBrowser(link) }
         markwon.setMarkdown(binding.mediaInfoDescription, desc)
         binding.mediaInfoDescription.movementMethod = LinkMovementMethod.getInstance()
         // Use a touch listener so that link span taps are consumed before View.onTouchEvent

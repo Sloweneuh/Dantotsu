@@ -370,7 +370,8 @@ class MangaUpdatesInfoFragment : Fragment() {
                     ?.apply {
                         visibility = View.VISIBLE
                         setOnClickListener {
-                            ani.dantotsu.openLinkInBrowser(muLink)
+                            if (!ani.dantotsu.openMangaUpdatesSeriesInApp(muLink))
+                                ani.dantotsu.openLinkInBrowser(muLink)
                         }
                     }
 
@@ -830,7 +831,7 @@ class MangaUpdatesInfoFragment : Fragment() {
                 requireContext(),
                 userInputContent = false,
                 fragment = this,
-                linkResolver = { link -> ani.dantotsu.openLinkInBrowser(link) }
+                linkResolver = { link -> if (!ani.dantotsu.openMangaUpdatesSeriesInApp(link)) ani.dantotsu.openLinkInBrowser(link) }
         )
         markwon.setMarkdown(binding.mediaInfoDescription, descCleaned)
         binding.mediaInfoDescription.movementMethod = android.text.method.LinkMovementMethod.getInstance()

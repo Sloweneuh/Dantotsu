@@ -39,6 +39,7 @@ import ani.dantotsu.initActivity
 import ani.dantotsu.loadImage
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.openLinkInBrowser
+import ani.dantotsu.openMangaUpdatesSeriesInApp
 import ani.dantotsu.openOrCopyAnilistLink
 import ani.dantotsu.media.manga.Manga
 import ani.dantotsu.px
@@ -130,7 +131,8 @@ class MangaBakaMediaActivity : AppCompatActivity() {
             binding.mangaBakaMediaMuBtn.visibility = View.VISIBLE
             binding.mangaBakaMediaMuBtn.setText(R.string.comick_open_mangaupdates)
             binding.mangaBakaMediaMuBtn.setOnClickListener {
-                openLinkInBrowser("https://www.mangaupdates.com/series/$muId")
+                val url = "https://www.mangaupdates.com/series/$muId"
+                if (!openMangaUpdatesSeriesInApp(url)) openLinkInBrowser(url)
             }
             anyShown = true
         }
@@ -236,7 +238,7 @@ class MangaBakaMediaActivity : AppCompatActivity() {
 
         val desc = series.description?.takeIf { it.isNotBlank() }
             ?: getString(R.string.no_description_available)
-        val markwon = buildMarkwon(this, userInputContent = false, linkResolver = { link -> openLinkInBrowser(link) })
+        val markwon = buildMarkwon(this, userInputContent = false, linkResolver = { link -> if (!openMangaUpdatesSeriesInApp(link)) openLinkInBrowser(link) })
         markwon.setMarkdown(info.mediaInfoDescription, desc.replace(Regex("\\n{3,}"), "\n\n").trim())
         info.mediaInfoDescription.movementMethod = android.text.method.LinkMovementMethod.getInstance()
         info.mediaInfoDescription.setOnClickListener {

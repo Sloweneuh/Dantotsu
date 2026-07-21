@@ -38,6 +38,7 @@ import ani.dantotsu.isOnline
 import ani.dantotsu.media.manga.Manga
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.openLinkInBrowser
+import ani.dantotsu.openMangaUpdatesSeriesInApp
 import ani.dantotsu.px
 import ani.dantotsu.setSafeOnClickListener
 import ani.dantotsu.settings.saving.PrefManager
@@ -321,7 +322,7 @@ class MangaBakaInfoFragment : Fragment() {
             requireContext(),
             userInputContent = false,
             fragment = this,
-            linkResolver = { link -> openLinkInBrowser(link) }
+            linkResolver = { link -> if (!openMangaUpdatesSeriesInApp(link)) openLinkInBrowser(link) }
         )
         markwon.setMarkdown(binding.mediaInfoDescription, desc.replace(Regex("\\n{3,}"), "\n\n").trim())
         binding.mediaInfoDescription.movementMethod = android.text.method.LinkMovementMethod.getInstance()
