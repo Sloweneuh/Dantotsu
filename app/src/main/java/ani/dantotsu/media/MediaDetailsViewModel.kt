@@ -39,6 +39,7 @@ import ani.dantotsu.util.Logger
 import com.bumptech.glide.load.resource.bitmap.BitmapTransformation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 
 class MediaDetailsViewModel : ViewModel() {
@@ -172,22 +173,30 @@ class MediaDetailsViewModel : ViewModel() {
                             String::class.java
                         )
                     } else null
-                val comickSlugValue = if (ani.dantotsu.settings.saving.PrefManager.getVal<Boolean>(ani.dantotsu.settings.saving.PrefName.ComickEnabled)) {
-                    if (savedSlug != null) {
-                        savedSlug
-                    } else if (titlesToTry.isNotEmpty()) {
-                        comickApi.searchAndMatchComic(
-                                titlesToTry,
-                                media.id,
-                                media.idMAL,
-                                malSyncSlugs.takeIf { it.isNotEmpty() },
-                                externalLinkUrls.takeIf { it.isNotEmpty() }
-                        )
-                    } else null
-                } else null
-
-                // Update comickSlug
-                comickSlug.postValue(comickSlugValue)
+                // Resolve the Comick slug asynchronously. The MangaUpdates tab prefers MangaBaka's
+                // cross-source mapping (which only needs the AniList/MAL id), so it must not wait for
+                // the Comick search to finish — only the Comick MU-link *fallback* awaits this.
+                val comickSlugDeferred = async {
+                    try {
+                        if (ani.dantotsu.settings.saving.PrefManager.getVal<Boolean>(ani.dantotsu.settings.saving.PrefName.ComickEnabled)) {
+                            if (savedSlug != null) {
+                                savedSlug
+                            } else if (titlesToTry.isNotEmpty()) {
+                                comickApi.searchAndMatchComic(
+                                        titlesToTry,
+                                        media.id,
+                                        media.idMAL,
+                                        malSyncSlugs.takeIf { it.isNotEmpty() },
+                                        externalLinkUrls.takeIf { it.isNotEmpty() }
+                                )
+                            } else null
+                        } else null
+                    } catch (e: Exception) {
+                        null
+                    }
+                }
+                // Publish the slug once resolved, without blocking MangaUpdates resolution below.
+                launch { comickSlug.postValue(comickSlugDeferred.await()) }
 
                 // Check if user has manually saved a MangaUpdates link (only if MU enabled)
                 val savedMULink = if (ani.dantotsu.settings.saving.PrefManager.getVal<Boolean>(ani.dantotsu.settings.saving.PrefName.MangaUpdatesEnabled)) {
@@ -230,6 +239,7 @@ class MediaDetailsViewModel : ViewModel() {
 
                 // Fallback: derive a MangaUpdates link from the Comick match (existing path).
                 suspend fun tryComickMuLink(): Boolean {
+                    val comickSlugValue = comickSlugDeferred.await()
                     if (comickSlugValue == null) return false
                     return try {
                         val comickData = comickApi.getComicDetails(comickSlugValue)
