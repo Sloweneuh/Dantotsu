@@ -158,7 +158,10 @@ class MediaAdaptor(
                                 R.drawable.ic_round_import_contacts_24
                             )
                         )
-                        b.itemCompactTotal.text = " | ${media.manga.totalChapters ?: "~"}"
+                        // MangaUpdates has no reliable total, so show its latest chapter in the
+                        // middle slot and leave the total as "~".
+                        b.itemCompactTotal.text = media.muLatestChapter?.let { " | $it | ~" }
+                            ?: " | ${media.manga.totalChapters ?: "~"}"
                     }
                     // compact layout has no info button; skip showing MAL intro here
                     b.itemCompactProgressContainer.visibility = if (fav) View.GONE else View.VISIBLE
@@ -259,7 +262,8 @@ class MediaAdaptor(
                             R.string.chapter_singular
                         )
                         b.itemTotal.text = itemTotal
-                        b.itemCompactTotal.text = (media.manga.totalChapters ?: "??").toString()
+                        b.itemCompactTotal.text =
+                            (media.muLatestChapter ?: media.manga.totalChapters ?: "??").toString()
                     }
                     if (position == mediaList!!.size - 2 && viewPager != null) viewPager.post {
                         val start = mediaList.size

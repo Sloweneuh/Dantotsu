@@ -18,13 +18,6 @@ import ani.dantotsu.R
 import com.bumptech.glide.Glide
 import ani.dantotsu.connections.mal.MALStack
 import ani.dantotsu.connections.mal.MALQueries
-import ani.dantotsu.connections.anilist.Anilist
-import ani.dantotsu.connections.malsync.MalSyncApi
-import ani.dantotsu.connections.malsync.LanguageMapper
-import ani.dantotsu.connections.malsync.UnreadChapterInfo
-import ani.dantotsu.connections.malsync.UnreleasedEpisodeInfo
-import ani.dantotsu.settings.saving.PrefManager
-import ani.dantotsu.settings.saving.PrefName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -106,80 +99,7 @@ class StackAdapter(private val items: List<MALStack>, private val isAnime: Boole
                 val entries = withContext(Dispatchers.IO) {
                     MALQueries().getStackEntries(item.url)
                 }
-                val malIds = entries.map { it.id }
-                if (malIds.isEmpty()) {
-                    Toast.makeText(ctx, "No entries found", Toast.LENGTH_SHORT).show()
-                    return@launch
-                }
-                val fetched = withContext(Dispatchers.IO) {
-                    try {
-                        Anilist.query.getMediaBatch(malIds, mal = true, mediaType = if (isAnime) "ANIME" else "MANGA")
-                    } catch (e: Exception) {
-                        emptyList()
-                    }
-                }
-                if (fetched.isEmpty()) {
-                    Toast.makeText(ctx, "No AniList matches found", Toast.LENGTH_SHORT).show()
-                    return@launch
-                }
-                // attach MAL intro text to matched Media objects when available
-                try {
-                    for (m in fetched) {
-                        val malId = m.idMAL
-                        val entry = entries.find { it.id == malId }
-                        if (entry != null) m.malIntro = entry.intro
-                    }
-                } catch (e: Exception) {
-                    // ignore mapping errors
-                }
-
-                // Fetch MALSync progress/source data if enabled
-                if (PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled)) {
-                    val mediaIds = fetched.map { Pair(it.id, it.idMAL) }
-                    if (isAnime) {
-                        val batchResults = withContext(Dispatchers.IO) {
-                            try { MalSyncApi.getBatchAnimeEpisodes(mediaIds, respectExcludeList = false) } catch (e: Exception) { emptyMap() }
-                        }
-                        val infoMap = mutableMapOf<Int, UnreleasedEpisodeInfo>()
-                        for (m in fetched) {
-                            val result = batchResults[m.id] ?: continue
-                            val lastEp = result.lastEp ?: continue
-                            val langOption = LanguageMapper.mapLanguage(result.id)
-                            infoMap[m.id] = UnreleasedEpisodeInfo(
-                                mediaId = m.id,
-                                lastEpisode = lastEp.total,
-                                languageId = result.id,
-                                languageDisplay = langOption.displayName,
-                                userProgress = m.userProgress ?: 0
-                            )
-                        }
-                        if (infoMap.isNotEmpty()) MediaListViewActivity.passedUnreleasedInfo = infoMap
-                    } else {
-                        val batchResults = withContext(Dispatchers.IO) {
-                            try { MalSyncApi.getBatchProgressByMedia(mediaIds, respectExcludeList = false) } catch (e: Exception) { emptyMap() }
-                        }
-                        val infoMap = mutableMapOf<Int, UnreadChapterInfo>()
-                        for (m in fetched) {
-                            val result = batchResults[m.id] ?: continue
-                            val lastEp = result.lastEp ?: continue
-                            infoMap[m.id] = UnreadChapterInfo(
-                                mediaId = m.id,
-                                lastChapter = lastEp.total,
-                                source = result.source,
-                                userProgress = m.userProgress ?: 0
-                            )
-                        }
-                        if (infoMap.isNotEmpty()) MediaListViewActivity.passedUnreadInfo = infoMap
-                    }
-                }
-
-                // Start MediaListViewActivity with AniList media
-                MediaListViewActivity.passedMedia = ArrayList(fetched)
-                MediaListViewActivity.passedDescription = item.description
-                val i = Intent(ctx, MediaListViewActivity::class.java)
-                i.putExtra("title", item.name)
-                i.putExtra("isAnime", isAnime)
-                ctx.startActivity(i)
+                StackResolver.resolveAndOpen(ctx, entries, isAnime, item.name, item.description)
             }
         }
 

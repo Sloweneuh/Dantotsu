@@ -97,7 +97,12 @@ data class Media(
 
     /** Set only for MangaUpdates-sourced media; triggers MU progress update instead of Anilist. */
     var muSeriesId: Long? = null,
-    var muListId: Int? = null
+    var muListId: Int? = null,
+    /**
+     * Newest known MangaUpdates chapter. Kept separate from [Manga.totalChapters] because
+     * MangaUpdates has no reliable total — the total renders as "~" while this shows as the latest.
+     */
+    var muLatestChapter: Int? = null
 ) : Serializable {
 
     constructor(apiMedia: ApiMedia) : this(

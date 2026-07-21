@@ -19,6 +19,7 @@ import ani.dantotsu.connections.mangaupdates.MUListEditorFragment
 import ani.dantotsu.connections.mangaupdates.MUMedia
 import ani.dantotsu.connections.mangaupdates.MUMediaDetailsActivity
 import ani.dantotsu.connections.mangaupdates.MUDetailsCache
+import ani.dantotsu.connections.mangaupdates.toMUMedia
 import ani.dantotsu.databinding.ItemMediaLargeBinding
 import ani.dantotsu.databinding.ItemUnreadChapterBinding
 import ani.dantotsu.loadImage
@@ -85,7 +86,11 @@ class UnreadChaptersAdapter(
     }
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
-        when (val item = items[position]) {
+        // MangaUpdates entries reach this adapter either as a MUMedia or as a Media carrying
+        // muSeriesId (the marker MediaAdaptor uses, e.g. MAL-stack entries with no AniList match).
+        // Normalize so both render as MangaUpdates items rather than falling through as AniList.
+        val raw = items[position]
+        when (val item = if (raw is Media) raw.toMUMedia() ?: raw else raw) {
             is MUMedia -> when (holder) {
                 is CompactViewHolder -> bindMuCompactView(holder.binding, item)
                 is LargeViewHolder -> bindMuLargeView(holder.binding, item)

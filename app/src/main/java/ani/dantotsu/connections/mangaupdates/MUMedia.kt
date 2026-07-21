@@ -44,7 +44,31 @@ fun MUMedia.toMedia(): Media = Media(
     userProgress = userChapter,
     muSeriesId = id,
     muListId = listId,
+    muLatestChapter = latestChapter,
 )
+
+/**
+ * Rebuilds a [MUMedia] from a MangaUpdates-backed [Media] — one carrying a non-null
+ * [Media.muSeriesId], which is how the media lists mark a MangaUpdates entry. Returns null for
+ * ordinary AniList media. Inverse of [toMedia].
+ */
+fun Media.toMUMedia(): MUMedia? {
+    val seriesId = muSeriesId ?: return null
+    return MUMedia(
+        id = seriesId,
+        title = name ?: userPreferredName,
+        url = shareLink ?: "https://www.mangaupdates.com/series/${seriesId.toString(36)}",
+        coverUrl = cover,
+        // -1 is the "not in the user's list" sentinel MUMediaDetailsActivity expects.
+        listId = muListId ?: -1,
+        userChapter = userProgress,
+        userVolume = null,
+        latestChapter = muLatestChapter,
+        bayesianRating = null,
+        priority = null,
+        format = format,
+    )
+}
 
 const val PREF_MU_LAST_READ_PREFIX = "mu_last_read_"
 
