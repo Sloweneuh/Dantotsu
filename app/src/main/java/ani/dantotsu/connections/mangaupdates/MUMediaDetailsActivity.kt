@@ -447,6 +447,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
                     anilistId = anilistId,
                     chapter = muMedia.userChapter ?: currentChapter,
                     volume = muMedia.userVolume,
+                    addedAt = muMedia.addedAt,
                 )
             }
             if (ok) {

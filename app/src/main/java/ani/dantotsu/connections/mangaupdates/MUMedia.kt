@@ -23,7 +23,9 @@ data class MUMedia(
     val priority: Int?,
     val format: String? = null,
     /** Local timestamp (ms) of the last time the user updated progress for this series. */
-    val updatedAt: Long? = null
+    val updatedAt: Long? = null,
+    /** MangaUpdates "time added to list" (Unix seconds); maps to the AniList start date on convert. */
+    val addedAt: Long? = null
 ) : Serializable
 
 /** Converts a [MUMedia] into a minimal [Media] suitable for display and random-pick. */
@@ -69,6 +71,7 @@ fun MUListEntry.toMUMedia(listId: Int): MUMedia? {
         latestChapter = metadata?.series?.latestChapter,
         bayesianRating = metadata?.series?.bayesianRating,
         priority = record.priority,
-        updatedAt = updatedAt
+        updatedAt = updatedAt,
+        addedAt = record.timeAdded?.timestamp
     )
 }

@@ -402,6 +402,7 @@ class MediaEquivalentsActivity : AppCompatActivity() {
                             anilistId = aniId,
                             chapter = item.mu.userChapter,
                             volume = item.mu.userVolume,
+                            addedAt = item.mu.addedAt,
                         )
                     }
                     if (ok) {
