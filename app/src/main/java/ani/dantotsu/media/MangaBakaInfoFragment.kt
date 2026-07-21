@@ -270,6 +270,16 @@ class MangaBakaInfoFragment : Fragment() {
             binding.mediaInfoSourceContainer.visibility = View.GONE
         }
 
+        // Content Rating (safe / suggestive / erotica / pornographic)
+        val contentRating = series.contentRating?.takeIf { it.isNotBlank() }
+        if (contentRating != null) {
+            binding.mediaInfoContentRatingContainer.visibility = View.VISIBLE
+            binding.mediaInfoContentRating.text =
+                contentRating.replaceFirstChar { it.uppercase() }
+        } else {
+            binding.mediaInfoContentRatingContainer.visibility = View.GONE
+        }
+
         // Author
         val author = series.authors?.firstOrNull { it.isNotBlank() }
         if (author != null) {

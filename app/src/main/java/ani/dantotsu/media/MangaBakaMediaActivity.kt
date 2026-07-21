@@ -197,6 +197,14 @@ class MangaBakaMediaActivity : AppCompatActivity() {
             info.mediaInfoSourceContainer.visibility = View.GONE
         }
 
+        val contentRating = series.contentRating?.takeIf { it.isNotBlank() }
+        if (contentRating != null) {
+            info.mediaInfoContentRatingContainer.visibility = View.VISIBLE
+            info.mediaInfoContentRating.text = contentRating.replaceFirstChar { it.uppercase() }
+        } else {
+            info.mediaInfoContentRatingContainer.visibility = View.GONE
+        }
+
         val author = series.authors?.firstOrNull { it.isNotBlank() }
         if (author != null) {
             info.mediaInfoAuthorContainer.visibility = View.VISIBLE

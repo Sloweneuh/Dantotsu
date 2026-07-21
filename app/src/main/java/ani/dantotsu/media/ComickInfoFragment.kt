@@ -830,6 +830,16 @@ class ComickInfoFragment : Fragment() {
                     else -> comic.country?.uppercase() ?: getString(R.string.unknown)
                 }
 
+        // Content Rating (safe / suggestive / erotica / pornographic)
+        val contentRating = comic.content_rating?.takeIf { it.isNotBlank() }
+        if (contentRating != null) {
+            binding.mediaInfoContentRatingContainer.visibility = View.VISIBLE
+            binding.mediaInfoContentRating.text =
+                    contentRating.replaceFirstChar { it.uppercase() }
+        } else {
+            binding.mediaInfoContentRatingContainer.visibility = View.GONE
+        }
+
         // Change Start Date label to Published
         binding.mediaInfoStart.parent?.let { tableRow ->
             if (tableRow is ViewGroup && tableRow.childCount > 0) {

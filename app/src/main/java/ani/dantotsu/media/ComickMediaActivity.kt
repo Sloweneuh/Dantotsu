@@ -814,6 +814,14 @@ class ComickMediaActivity : AppCompatActivity() {
             else -> comic.country?.uppercase() ?: getString(R.string.unknown)
         }
 
+        val contentRating = comic.content_rating?.takeIf { it.isNotBlank() }
+        if (contentRating != null) {
+            b.mediaInfoContentRatingContainer.visibility = View.VISIBLE
+            b.mediaInfoContentRating.text = contentRating.replaceFirstChar { it.uppercase() }
+        } else {
+            b.mediaInfoContentRatingContainer.visibility = View.GONE
+        }
+
         b.mediaInfoStart.parent?.let { row ->
             if (row is ViewGroup) (row.getChildAt(0) as? TextView)?.text = getString(R.string.published)
         }

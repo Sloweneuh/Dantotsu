@@ -1581,6 +1581,7 @@
     <string name="comick_advanced">Avancé</string>
     <string name="comick_minimums">Minimums</string>
     <string name="comick_content_rating">Classification du contenu</string>
+    <string name="content_rating">Classification du contenu</string>
     <string name="comick_type_label">Type</string>
     <string name="comick_time_days_label">Date de creation</string>
     <string name="comick_time_days">%1$d jours</string>

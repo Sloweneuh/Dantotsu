@@ -1739,6 +1739,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="comick_advanced">Advanced</string>
     <string name="comick_minimums">Minimums</string>
     <string name="comick_content_rating">Content Rating</string>
+    <string name="content_rating">Content Rating</string>
     <string name="comick_type_label">Type</string>
     <string name="comick_time_days_label">Created at</string>
     <string name="comick_time_days">%1$d days</string>
