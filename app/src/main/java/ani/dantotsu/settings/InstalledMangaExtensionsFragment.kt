@@ -1,8 +1,6 @@
 package ani.dantotsu.settings
 
 
-import android.app.NotificationManager
-import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -12,7 +10,6 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
-import androidx.core.app.NotificationCompat
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
@@ -37,7 +34,6 @@ import ani.dantotsu.util.Logger
 import ani.dantotsu.util.customAlertDialog
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.textfield.TextInputLayout
-import eu.kanade.tachiyomi.data.notification.Notifications
 import eu.kanade.tachiyomi.extension.manga.MangaExtensionManager
 import eu.kanade.tachiyomi.extension.manga.model.MangaExtension
 import eu.kanade.tachiyomi.source.ConfigurableSource
@@ -82,49 +78,17 @@ class InstalledMangaExtensionsFragment : Fragment(), SearchQueryHandler {
             }
         }, { pkg ->
             if (isAdded) {
-                val context = requireContext()
-                val notificationManager =
-                    context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
                 if (pkg.hasUpdate) {
                     mangaExtensionManager.updateExtension(pkg)
                         .observeOn(AndroidSchedulers.mainThread())
                         .subscribe(
-                            { installStep ->
-                                val builder = NotificationCompat.Builder(
-                                    context,
-                                    Notifications.CHANNEL_DOWNLOADER_PROGRESS
-                                )
-                                    .setSmallIcon(R.drawable.ic_round_sync_24)
-                                    .setContentTitle(getString(R.string.updating_extension))
-                                    .setContentText(getString(R.string.install_step, installStep))
-                                    .setPriority(NotificationCompat.PRIORITY_LOW)
-                                notificationManager.notify(1, builder.build())
-                            },
+                            { },
                             { error ->
                                 Injekt.get<CrashlyticsInterface>().logException(error)
                                 Logger.log(error)
-                                val builder = NotificationCompat.Builder(
-                                    context,
-                                    Notifications.CHANNEL_DOWNLOADER_ERROR
-                                )
-                                    .setSmallIcon(R.drawable.ic_round_info_24)
-                                    .setContentTitle(getString(R.string.update_failed, error.message))
-                                    .setContentText(getString(R.string.error_message, error.message))
-                                    .setPriority(NotificationCompat.PRIORITY_HIGH)
-                                notificationManager.notify(1, builder.build())
                                 snackString(getString(R.string.update_failed, error.message))
                             },
                             {
-                                val builder = NotificationCompat.Builder(
-                                    context,
-                                    Notifications.CHANNEL_DOWNLOADER_PROGRESS
-                                )
-                                    .setSmallIcon(R.drawable.ic_circle_check)
-                                    .setContentTitle(getString(R.string.update_complete))
-                                    .setContentText(getString(R.string.extension_has_been_updated))
-                                    .setPriority(NotificationCompat.PRIORITY_LOW)
-                                notificationManager.notify(1, builder.build())
                                 snackString(getString(R.string.extension_updated))
                             }
                         )

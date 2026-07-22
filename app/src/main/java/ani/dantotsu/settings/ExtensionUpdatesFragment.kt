@@ -1,7 +1,5 @@
 package ani.dantotsu.settings
 
-import android.app.NotificationManager
-import android.content.Context
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -9,7 +7,6 @@ import android.view.ViewGroup
 import android.view.animation.AnimationUtils
 import android.widget.ImageView
 import android.widget.TextView
-import androidx.core.app.NotificationCompat
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
@@ -24,7 +21,6 @@ import ani.dantotsu.parsers.novel.NovelExtensionManager
 import ani.dantotsu.snackString
 import ani.dantotsu.util.Logger
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import eu.kanade.tachiyomi.data.notification.Notifications
 import eu.kanade.tachiyomi.extension.anime.AnimeExtensionManager
 import eu.kanade.tachiyomi.extension.anime.model.AnimeExtension
 import eu.kanade.tachiyomi.extension.manga.MangaExtensionManager
@@ -111,22 +107,17 @@ class ExtensionUpdatesFragment : Fragment() {
     }
 
     private fun updateExtension(item: UpdateItem) {
-        val context = requireContext()
-        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
         when (item) {
             is UpdateItem.AnimeUpdate -> {
                 animeExtensionManager.updateExtension(item.extension)
                     .observeOn(AndroidSchedulers.mainThread())
                     .subscribe(
-                        { showUpdateNotification(notificationManager, context, "Updating extension", "$it") },
+                        { },
                         { error ->
                             Logger.log(error)
-                            showErrorNotification(notificationManager, context, error.message)
                             snackString("Update failed: ${error.message}")
                         },
                         {
-                            showCompleteNotification(notificationManager, context)
                             snackString("Extension updated")
                             loadUpdates() // Refresh the list
                         }
@@ -136,14 +127,12 @@ class ExtensionUpdatesFragment : Fragment() {
                 mangaExtensionManager.updateExtension(item.extension)
                     .observeOn(AndroidSchedulers.mainThread())
                     .subscribe(
-                        { showUpdateNotification(notificationManager, context, "Updating extension", "$it") },
+                        { },
                         { error ->
                             Logger.log(error)
-                            showErrorNotification(notificationManager, context, error.message)
                             snackString("Update failed: ${error.message}")
                         },
                         {
-                            showCompleteNotification(notificationManager, context)
                             snackString("Extension updated")
                             loadUpdates() // Refresh the list
                         }
@@ -153,14 +142,12 @@ class ExtensionUpdatesFragment : Fragment() {
                 novelExtensionManager.updateExtension(item.extension)
                     .observeOn(AndroidSchedulers.mainThread())
                     .subscribe(
-                        { showUpdateNotification(notificationManager, context, "Updating extension", "$it") },
+                        { },
                         { error ->
                             Logger.log(error)
-                            showErrorNotification(notificationManager, context, error.message)
                             snackString("Update failed: ${error.message}")
                         },
                         {
-                            showCompleteNotification(notificationManager, context)
                             snackString("Extension updated")
                             loadUpdates() // Refresh the list
                         }
@@ -189,8 +176,6 @@ class ExtensionUpdatesFragment : Fragment() {
         }
 
         val item = items.removeAt(0)
-        val context = requireContext()
-        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         adapter.setUpdating(item, true)
 
@@ -199,18 +184,16 @@ class ExtensionUpdatesFragment : Fragment() {
                 animeExtensionManager.updateExtension(item.extension)
                     .observeOn(AndroidSchedulers.mainThread())
                     .subscribe(
-                        { showUpdateNotification(notificationManager, context, "Updating extension", "$it") },
+                        { },
                         { error ->
                             Logger.log(error)
                             adapter.setUpdating(item, false)
-                            showErrorNotification(notificationManager, context, error.message)
                             snackString("Update failed: ${item.name} - ${error.message}")
                             // Continue with next extension even if one fails
                             updateExtensionsSequentially(items)
                         },
                         {
                             adapter.setUpdating(item, false)
-                            showCompleteNotification(notificationManager, context)
                             snackString("Updated: ${item.name}")
                             loadUpdates() // Refresh list after each update
                             // Continue with next extension
@@ -222,18 +205,16 @@ class ExtensionUpdatesFragment : Fragment() {
                 mangaExtensionManager.updateExtension(item.extension)
                     .observeOn(AndroidSchedulers.mainThread())
                     .subscribe(
-                        { showUpdateNotification(notificationManager, context, "Updating extension", "$it") },
+                        { },
                         { error ->
                             Logger.log(error)
                             adapter.setUpdating(item, false)
-                            showErrorNotification(notificationManager, context, error.message)
                             snackString("Update failed: ${item.name} - ${error.message}")
                             // Continue with next extension even if one fails
                             updateExtensionsSequentially(items)
                         },
                         {
                             adapter.setUpdating(item, false)
-                            showCompleteNotification(notificationManager, context)
                             snackString("Updated: ${item.name}")
                             loadUpdates() // Refresh list after each update
                             // Continue with next extension
@@ -245,18 +226,16 @@ class ExtensionUpdatesFragment : Fragment() {
                 novelExtensionManager.updateExtension(item.extension)
                     .observeOn(AndroidSchedulers.mainThread())
                     .subscribe(
-                        { showUpdateNotification(notificationManager, context, "Updating extension", "$it") },
+                        { },
                         { error ->
                             Logger.log(error)
                             adapter.setUpdating(item, false)
-                            showErrorNotification(notificationManager, context, error.message)
                             snackString("Update failed: ${item.name} - ${error.message}")
                             // Continue with next extension even if one fails
                             updateExtensionsSequentially(items)
                         },
                         {
                             adapter.setUpdating(item, false)
-                            showCompleteNotification(notificationManager, context)
                             snackString("Updated: ${item.name}")
                             loadUpdates() // Refresh list after each update
                             // Continue with next extension
@@ -268,33 +247,6 @@ class ExtensionUpdatesFragment : Fragment() {
 
         // Add subscription to composite to prevent it from being garbage collected
         compositeSubscription.add(subscription)
-    }
-
-    private fun showUpdateNotification(manager: NotificationManager, context: Context, title: String, text: String) {
-        val builder = NotificationCompat.Builder(context, Notifications.CHANNEL_DOWNLOADER_PROGRESS)
-            .setSmallIcon(R.drawable.ic_round_sync_24)
-            .setContentTitle(title)
-            .setContentText(text)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-        manager.notify(1, builder.build())
-    }
-
-    private fun showErrorNotification(manager: NotificationManager, context: Context, message: String?) {
-        val builder = NotificationCompat.Builder(context, Notifications.CHANNEL_DOWNLOADER_ERROR)
-            .setSmallIcon(R.drawable.ic_round_info_24)
-            .setContentTitle("Update failed")
-            .setContentText("Error: $message")
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-        manager.notify(1, builder.build())
-    }
-
-    private fun showCompleteNotification(manager: NotificationManager, context: Context) {
-        val builder = NotificationCompat.Builder(context, Notifications.CHANNEL_DOWNLOADER_PROGRESS)
-            .setSmallIcon(R.drawable.ic_circle_check)
-            .setContentTitle("Update complete")
-            .setContentText("The extension has been successfully updated.")
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-        manager.notify(1, builder.build())
     }
 
     override fun onDestroyView() {
