@@ -21,7 +21,7 @@ android {
         // so the Nearby/Firebase features this app relies on no longer work below 23 anyway.
         minSdk = 23
         targetSdk = 36
-        versionName "4.7.2"
+        versionName "4.7.3"
         def (major, minor, patch) = versionName.split("\\.").collect { it.toInteger() }
         versionCode = major * 1_000_000 + minor * 1_000 + patch
         signingConfig signingConfigs.debug

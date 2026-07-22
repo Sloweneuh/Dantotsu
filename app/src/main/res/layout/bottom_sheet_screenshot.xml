@@ -43,6 +43,20 @@
                 android:orientation="vertical"
                 android:padding="16dp">
 
+                <!-- Crop-mode hint. Outside the card, so it never lands in the saved image. -->
+                <TextView
+                    android:id="@+id/screenshotCropHint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="12dp"
+                    android:fontFamily="@font/poppins"
+                    android:gravity="center_horizontal"
+                    android:text="@string/screenshot_crop_hint"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:textSize="13sp"
+                    android:visibility="gone"
+                    tools:visibility="visible" />
+
                 <!-- The share card. This whole container is what gets rendered to the saved image. -->
                 <LinearLayout
                     android:id="@+id/screenshotCard"
@@ -52,14 +66,29 @@
                     android:orientation="vertical"
                     android:padding="12dp">
 
-                    <ImageView
-                        android:id="@+id/screenshotImage"
+                    <!-- The crop overlay sits exactly on top of the preview; the ImageView uses
+                         adjustViewBounds so its drawable fills its bounds edge to edge. -->
+                    <FrameLayout
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:adjustViewBounds="true"
-                        android:contentDescription="@string/screenshot_preview"
-                        android:scaleType="fitCenter"
-                        tools:src="@tools:sample/backgrounds/scenic[0]" />
+                        android:layout_height="wrap_content">
+
+                        <ImageView
+                            android:id="@+id/screenshotImage"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:adjustViewBounds="true"
+                            android:contentDescription="@string/screenshot_preview"
+                            android:scaleType="fitCenter"
+                            tools:src="@tools:sample/backgrounds/scenic[0]" />
+
+                        <ani.dantotsu.media.screenshot.CropOverlayView
+                            android:id="@+id/screenshotCropOverlay"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:visibility="gone"
+                            tools:visibility="visible" />
+
+                    </FrameLayout>
 
                   <LinearLayout
                       android:id="@+id/screenshotDecorContainer"
@@ -247,6 +276,21 @@
 
                 </LinearLayout>
 
+                <!-- Enters crop mode: the overlay above becomes interactive and the bottom bar
+                     swaps to the crop actions. -->
+                <Button
+                    android:id="@+id/screenshotCropStart"
+                    style="@style/Widget.Material3.Button.OutlinedButton.Icon"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="end"
+                    android:layout_marginTop="12dp"
+                    android:fontFamily="@font/poppins_bold"
+                    android:text="@string/screenshot_crop"
+                    app:cornerRadius="16dp"
+                    app:icon="@drawable/ic_crop_24"
+                    app:strokeColor="?attr/colorPrimaryContainer" />
+
                 <!-- Title selector (which of the media's titles/synonyms to show on the card).
                      Only made visible when there's more than one option. -->
                 <com.google.android.material.textfield.TextInputLayout
@@ -383,6 +427,7 @@
     </LinearLayout>
 
     <LinearLayout
+        android:id="@+id/screenshotActions"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
@@ -419,6 +464,71 @@
             android:insetBottom="0dp"
             android:padding="8dp"
             android:text="@string/share"
+            android:textSize="16sp"
+            app:cornerRadius="16dp"
+            app:strokeColor="?attr/colorPrimaryContainer"
+            tools:ignore="SpeakableTextPresentCheck" />
+
+    </LinearLayout>
+
+    <!-- Replaces the Save/Share row while cropping. -->
+    <LinearLayout
+        android:id="@+id/screenshotCropActions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:background="@drawable/linear_gradient_bg"
+        android:orientation="horizontal"
+        android:padding="8dp"
+        android:visibility="gone"
+        tools:visibility="visible">
+
+        <Button
+            android:id="@+id/screenshotCropCancel"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_margin="8dp"
+            android:layout_weight="1"
+            android:fontFamily="@font/poppins_bold"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:padding="8dp"
+            android:text="@string/cancel"
+            android:textSize="16sp"
+            app:cornerRadius="16dp"
+            app:strokeColor="?attr/colorPrimaryContainer"
+            tools:ignore="SpeakableTextPresentCheck" />
+
+        <Button
+            android:id="@+id/screenshotCropReset"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_margin="8dp"
+            android:layout_weight="1"
+            android:fontFamily="@font/poppins_bold"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:padding="8dp"
+            android:text="@string/reset"
+            android:textSize="16sp"
+            app:cornerRadius="16dp"
+            app:strokeColor="?attr/colorPrimaryContainer"
+            tools:ignore="SpeakableTextPresentCheck" />
+
+        <Button
+            android:id="@+id/screenshotCropApply"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_margin="8dp"
+            android:layout_weight="1"
+            android:fontFamily="@font/poppins_bold"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:padding="8dp"
+            android:text="@string/apply"
             android:textSize="16sp"
             app:cornerRadius="16dp"
             app:strokeColor="?attr/colorPrimaryContainer"

@@ -1663,6 +1663,8 @@
     <string name="screenshot_show_source">Afficher la source</string>
     <string name="screenshot_caption_hint">Ajouter une légende…</string>
     <string name="screenshot_title_label">Titre</string>
+    <string name="screenshot_crop">Recadrer</string>
+    <string name="screenshot_crop_hint">Faites glisser les coins pour recadrer</string>
     <string name="screenshot_defaults">Réglages par défaut des captures</string>
     <string name="screenshot_defaults_desc">Choisissez les sections affichées par défaut lors de la composition d\'une capture</string>
     <string name="mangaupdates_account_help">Comment fonctionne MangaUpdates \?</string>

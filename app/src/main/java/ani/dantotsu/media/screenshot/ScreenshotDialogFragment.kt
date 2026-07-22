@@ -51,6 +51,9 @@ class ScreenshotDialogFragment : BottomSheetDialogFragment() {
 
     private var screenshot: Bitmap? = null
 
+    /** The untouched capture, kept so a crop can be undone. */
+    private var originalScreenshot: Bitmap? = null
+
     /** Invoked when the sheet is dismissed (e.g. the anime player resumes playback here). */
     var onDismissed: (() -> Unit)? = null
 
@@ -67,6 +70,7 @@ class ScreenshotDialogFragment : BottomSheetDialogFragment() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         screenshot = pending
+        originalScreenshot = pending
         pending = null
         selectedTitle = title
     }
@@ -124,6 +128,16 @@ class ScreenshotDialogFragment : BottomSheetDialogFragment() {
         )
         toggles.forEach { it.setOnCheckedChangeListener { _, _ -> applyLayout() } }
         binding.screenshotCaptionInput.doOnTextChanged { _, _, _, _ -> applyLayout() }
+
+        binding.screenshotCropStart.setOnClickListener { setCropMode(true) }
+        binding.screenshotCropCancel.setOnClickListener { setCropMode(false) }
+        binding.screenshotCropApply.setOnClickListener { applyCrop() }
+        binding.screenshotCropReset.setOnClickListener {
+            // Undo any crop already applied, then re-open the selection on the full capture.
+            screenshot = originalScreenshot
+            renderPreviewImage()
+            binding.screenshotCropOverlay.reset()
+        }
 
         binding.screenshotSave.setOnClickListener {
             val out = buildOutputBitmap()
@@ -187,11 +201,68 @@ class ScreenshotDialogFragment : BottomSheetDialogFragment() {
         }
     }
 
+    /**
+     * Enters/leaves crop mode: the overlay on the preview becomes interactive and the bottom bar
+     * swaps from Save/Share to the crop actions. The card decorations stay hidden meanwhile so the
+     * screenshot is all the user has to aim at.
+     */
+    private fun setCropMode(cropping: Boolean) {
+        binding.screenshotCropOverlay.isVisible = cropping
+        binding.screenshotActions.isVisible = !cropping
+        binding.screenshotCropActions.isVisible = cropping
+        binding.screenshotCropStart.isVisible = !cropping
+        binding.screenshotCropHint.isVisible = cropping
+        binding.screenshotDecorContainer.isVisible = !cropping && hasDecor()
+        if (cropping) binding.screenshotCropOverlay.reset() else applyLayout()
+    }
+
+    /** Crops [screenshot] down to the current selection and returns to the compose view. */
+    private fun applyCrop() {
+        val shot = screenshot
+        val overlay = binding.screenshotCropOverlay
+        if (shot == null) {
+            fail(); return
+        }
+        if (!overlay.isFullFrame()) {
+            val rect = overlay.cropRect(shot.width, shot.height)
+            val cropped = runCatching {
+                Bitmap.createBitmap(shot, rect.left, rect.top, rect.width(), rect.height())
+            }.getOrNull()
+            if (cropped == null) {
+                fail(); return
+            }
+            screenshot = cropped
+        }
+        setCropMode(false)
+    }
+
+    /**
+     * Puts the current (possibly cropped) capture in the preview. The screenshot itself gets
+     * rounded corners independently of the card frame/background.
+     */
+    private fun renderPreviewImage() {
+        val shot = screenshot ?: return
+        if (binding.switchRounded.isChecked) {
+            binding.screenshotImage.setImageDrawable(
+                RoundedBitmapDrawableFactory.create(resources, shot).apply {
+                    cornerRadius = dp(12).toFloat()
+                }
+            )
+        } else {
+            binding.screenshotImage.setImageBitmap(shot)
+        }
+    }
+
+    /** Whether anything is rendered below the screenshot itself. */
+    private fun hasDecor(): Boolean {
+        val mediaInfo = binding.switchMediaInfo.isChecked
+        val userInfo = binding.switchUserInfo.isChecked && !Anilist.username.isNullOrEmpty()
+        return captionText().isNotEmpty() || mediaInfo || userInfo || binding.switchAppIcon.isChecked
+    }
+
     /** Applies the current toggle state to the live preview card. */
     private fun applyLayout() {
-        val shot = screenshot ?: return
         val frame = binding.switchFrame.isChecked
-        val rounded = binding.switchRounded.isChecked
         val mediaInfo = binding.switchMediaInfo.isChecked
         val userInfo = binding.switchUserInfo.isChecked && !Anilist.username.isNullOrEmpty()
         val appIcon = binding.switchAppIcon.isChecked
@@ -227,19 +298,10 @@ class ScreenshotDialogFragment : BottomSheetDialogFragment() {
         binding.screenshotLogoFooter.isVisible = onFooter
         binding.screenshotFooter.isVisible = userInfo || onFooter
 
-        val hasDecor = caption.isNotEmpty() || mediaInfo || userInfo || appIcon
-        binding.screenshotDecorContainer.isVisible = hasDecor
+        val decor = hasDecor()
+        binding.screenshotDecorContainer.isVisible = decor
 
-        // The screenshot itself gets rounded corners independently of the card frame/background.
-        if (rounded) {
-            binding.screenshotImage.setImageDrawable(
-                RoundedBitmapDrawableFactory.create(resources, shot).apply {
-                    cornerRadius = dp(12).toFloat()
-                }
-            )
-        } else {
-            binding.screenshotImage.setImageBitmap(shot)
-        }
+        renderPreviewImage()
 
         val pad = dp(12)
         when {
@@ -249,7 +311,7 @@ class ScreenshotDialogFragment : BottomSheetDialogFragment() {
                 binding.screenshotDecorContainer.setPadding(0, 0, 0, 0)
             }
             // Frameless but with info below: keep a surface strip so the text stays readable.
-            hasDecor -> {
+            decor -> {
                 binding.screenshotCard.setBackgroundResource(R.drawable.bg_screenshot_card)
                 binding.screenshotCard.setPadding(0, 0, 0, 0)
                 binding.screenshotDecorContainer.setPadding(pad, 0, pad, pad)

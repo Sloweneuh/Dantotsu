@@ -874,6 +874,8 @@
     <string name="screenshot_show_source">Show source</string>
     <string name="screenshot_caption_hint">Add a caption…</string>
     <string name="screenshot_title_label">Title</string>
+    <string name="screenshot_crop">Crop</string>
+    <string name="screenshot_crop_hint">Drag the corners to crop</string>
     <string name="screenshot_defaults">Screenshot defaults</string>
     <string name="screenshot_defaults_desc">Choose which sections are shown by default when composing a screenshot</string>
     <string name="error_update_progress">Failed to update progress</string>
