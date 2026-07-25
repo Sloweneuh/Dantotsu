@@ -2,6 +2,8 @@ package ani.dantotsu.media.savedfilters
 
 import android.app.Dialog
 import android.content.Context
+import android.content.res.ColorStateList
+import android.graphics.drawable.Drawable
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -9,12 +11,14 @@ import android.widget.ImageButton
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
+import ani.dantotsu.getThemeColor
 import ani.dantotsu.snackString
+import ani.dantotsu.util.customAlertDialog
 import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 
@@ -38,6 +42,9 @@ object SavedFiltersDialog {
         onApply: (name: String) -> Unit,
         onDelete: (name: String) -> Unit,
         onRename: (oldName: String, newName: String) -> Unit,
+        // Optional per-chip source icon (e.g. AniList/MU logo), decoupled from any
+        // specific preset shape — most callers have no such concept and leave this null.
+        resolveChipIcon: ((label: String) -> Pair<Drawable, ColorStateList?>?)? = null,
     ): Dialog {
         val view = LayoutInflater.from(context)
             .inflate(R.layout.dialog_saved_filters, null)
@@ -45,16 +52,12 @@ object SavedFiltersDialog {
         val emptyText = view.findViewById<TextView>(R.id.savedFiltersEmpty)
         val saveCurrentRow = view.findViewById<View>(R.id.savedFiltersSaveCurrent)
 
-        val dialog = MaterialAlertDialogBuilder(context, R.style.MyPopup)
-            .setTitle(R.string.saved_filters_title)
-            .setView(view)
-            .setNegativeButton(R.string.close, null)
-            .create()
+        var dialog: android.app.AlertDialog? = null
 
         val adapter = SavedFiltersAdapter(
             onApply = { name ->
                 onApply(name)
-                dialog.dismiss()
+                dialog?.dismiss()
             },
             onDelete = { name ->
                 confirmDelete(context, name) {
@@ -75,6 +78,7 @@ object SavedFiltersDialog {
                     refreshList(recycler, emptyText, loadPresets())
                 }
             },
+            resolveChipIcon = resolveChipIcon,
         )
         recycler.adapter = adapter
         refreshList(recycler, emptyText, loadPresets())
@@ -104,8 +108,14 @@ object SavedFiltersDialog {
             }
         }
 
-        dialog.show()
-        return dialog
+        context.customAlertDialog().apply {
+            setTitle(context.getString(R.string.saved_filters_title))
+            setCustomView(view)
+            setNegButton(context.getString(R.string.close))
+            attach { dialog = it }
+        }.show()
+
+        return dialog!!
     }
 
     private fun refreshList(
@@ -120,21 +130,21 @@ object SavedFiltersDialog {
     }
 
     private fun confirmOverwrite(context: Context, name: String, onConfirm: () -> Unit) {
-        MaterialAlertDialogBuilder(context, R.style.MyPopup)
-            .setTitle(R.string.saved_filters_overwrite_title)
-            .setMessage(context.getString(R.string.saved_filters_overwrite_message, name))
-            .setPositiveButton(R.string.saved_filters_overwrite) { _, _ -> onConfirm() }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
+        context.customAlertDialog().apply {
+            setTitle(context.getString(R.string.saved_filters_overwrite_title))
+            setMessage(context.getString(R.string.saved_filters_overwrite_message, name))
+            setPosButton(context.getString(R.string.saved_filters_overwrite)) { onConfirm() }
+            setNegButton(context.getString(R.string.cancel))
+        }.show()
     }
 
     private fun confirmDelete(context: Context, name: String, onConfirm: () -> Unit) {
-        MaterialAlertDialogBuilder(context, R.style.MyPopup)
-            .setTitle(R.string.saved_filters_delete_title)
-            .setMessage(context.getString(R.string.saved_filters_delete_message, name))
-            .setPositiveButton(R.string.delete) { _, _ -> onConfirm() }
-            .setNegativeButton(R.string.cancel, null)
-            .show()
+        context.customAlertDialog().apply {
+            setTitle(context.getString(R.string.saved_filters_delete_title))
+            setMessage(context.getString(R.string.saved_filters_delete_message, name))
+            setPosButton(context.getString(R.string.delete)) { onConfirm() }
+            setNegButton(context.getString(R.string.cancel))
+        }.show()
     }
 
     private fun promptForName(
@@ -174,7 +184,7 @@ object SavedFiltersDialog {
             )
         )
 
-        val dlg = MaterialAlertDialogBuilder(context, R.style.MyPopup)
+        val dlg = AlertDialog.Builder(context, R.style.MyPopup)
             .setTitle(titleRes)
             .setView(container)
             .setPositiveButton(R.string.save, null)
@@ -206,6 +216,7 @@ object SavedFiltersDialog {
         val onApply: (String) -> Unit,
         val onDelete: (String) -> Unit,
         val onRename: (String) -> Unit,
+        val resolveChipIcon: ((label: String) -> Pair<Drawable, ColorStateList?>?)?,
     ) : RecyclerView.Adapter<SavedFiltersAdapter.VH>() {
 
         private val items = mutableListOf<SavedFilterEntry>()
@@ -238,7 +249,7 @@ object SavedFiltersDialog {
             val isExpanded = expanded.contains(entry.name)
             holder.expanded.visibility = if (isExpanded) View.VISIBLE else View.GONE
             holder.chevron.rotation = if (isExpanded) 180f else 0f
-            if (isExpanded) populateChips(holder.chipGroup, entry.chips)
+            if (isExpanded) populateChips(holder.chipGroup, entry.chips, resolveChipIcon)
             // Tap on the row body applies; chevron is the only expand affordance
             // so users who memorise their preset names keep one-tap apply.
             holder.header.setOnClickListener { onApply(entry.name) }
@@ -253,7 +264,11 @@ object SavedFiltersDialog {
 
         override fun getItemCount() = items.size
 
-        private fun populateChips(group: ChipGroup, chips: List<String>) {
+        private fun populateChips(
+            group: ChipGroup,
+            chips: List<String>,
+            resolveChipIcon: ((label: String) -> Pair<Drawable, ColorStateList?>?)?,
+        ) {
             group.removeAllViews()
             val ctx = group.context
             chips.forEach { label ->
@@ -266,6 +281,17 @@ object SavedFiltersDialog {
                     minHeight = 0
                     chipMinHeight = (ctx.resources.displayMetrics.density * 28)
                     setEnsureMinTouchTargetSize(false)
+                    chipBackgroundColor = ContextCompat.getColorStateList(ctx, R.color.chip_background_color)
+                    chipStrokeColor = ColorStateList.valueOf(
+                        ctx.getThemeColor(com.google.android.material.R.attr.colorPrimaryContainer)
+                    )
+                    setTextAppearance(R.style.Suffix)
+                    textSize = 14f
+                    resolveChipIcon?.invoke(label)?.let { (icon, tint) ->
+                        isChipIconVisible = true
+                        this.chipIcon = icon
+                        chipIconTint = tint
+                    }
                 }
                 group.addView(chip)
             }

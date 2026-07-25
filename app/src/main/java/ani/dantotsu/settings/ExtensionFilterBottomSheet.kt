@@ -101,6 +101,15 @@ class ExtensionFilterBottomSheet : BottomSheetDialogFragment() {
             resetAndRender(fl)
         }
         binding.savedFiltersButton.setOnClickListener { showSavedFiltersDialog(fl) }
+
+        val browseActivity = requireActivity() as ExtensionBrowseActivity
+        val activeFilterCount = browseActivity.activeFilterCount()
+        binding.manageFiltersButton.visibility = if (activeFilterCount == 0) View.GONE else View.VISIBLE
+        binding.manageFiltersCount.visibility = if (activeFilterCount == 0) View.GONE else View.VISIBLE
+        binding.manageFiltersCount.text = activeFilterCount.toString()
+        binding.manageFiltersButton.setOnClickListener {
+            browseActivity.openManageFilters()
+        }
     }
 
     private fun showSavedFiltersDialog(fl: Any) {

@@ -533,6 +533,9 @@
     <string name="total_repeats">TOTAL REPEATS</string>
     <string name="custom_lists">Custom Lists</string>
     <string name="filter">Filter</string>
+    <string name="manage_filters">Manage Filters</string>
+    <string name="clear_all">Clear All</string>
+    <string name="no_active_filters">No active filters</string>
     <string name="saved_filters">Saved filters</string>
     <string name="saved_filters_title">Quick filters</string>
     <string name="saved_filters_save_current">Save current filters…</string>

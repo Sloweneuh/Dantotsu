@@ -95,12 +95,12 @@ class SupportingSearchAdapter(private val activity: SearchActivity, private val 
                     binding.searchChipRecycler.adapter = muChipAdapter
                 }
                 SearchType.COMICK -> {
-                    comickChipAdapter = ComickChipAdapter(activity)
+                    comickChipAdapter = ComickChipAdapter(activity, this)
                     activity.updateComickChips = { comickChipAdapter?.update() }
                     binding.searchChipRecycler.adapter = comickChipAdapter
                 }
                 else -> {
-                    mangaBakaChipAdapter = MangaBakaChipAdapter(activity)
+                    mangaBakaChipAdapter = MangaBakaChipAdapter(activity, this)
                     activity.updateMangaBakaChips = { mangaBakaChipAdapter?.update() }
                     binding.searchChipRecycler.adapter = mangaBakaChipAdapter
                 }
@@ -367,6 +367,7 @@ class SupportingSearchAdapter(private val activity: SearchActivity, private val 
 
     class ComickChipAdapter(
         private val activity: SearchActivity,
+        private val adapter: SupportingSearchAdapter,
     ) : RecyclerView.Adapter<ComickChipAdapter.ComickChipViewHolder>() {
 
         private var chips = activity.comickSearchResult.toChipList()
@@ -409,6 +410,7 @@ class SupportingSearchAdapter(private val activity: SearchActivity, private val 
 
     class MangaBakaChipAdapter(
         private val activity: SearchActivity,
+        private val adapter: SupportingSearchAdapter,
     ) : RecyclerView.Adapter<MangaBakaChipAdapter.MangaBakaChipViewHolder>() {
 
         private var chips = activity.mangaBakaSearchResult.toChipList()

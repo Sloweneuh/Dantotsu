@@ -117,6 +117,33 @@ class MangaBakaSearchFilterBottomSheet : BottomSheetDialogFragment() {
         binding.mbFilterCancel.setOnClickListener { dismiss() }
         binding.mbFilterApply.setOnClickListener { applyFilters(); dismiss() }
         binding.mbSavedFiltersButton.setOnClickListener { showSavedFiltersDialog() }
+
+        fun refreshManageFiltersButton() {
+            val count = activity.mangaBakaSearchResult.toChipList().size
+            binding.manageFiltersButton.visibility = if (count == 0) View.GONE else View.VISIBLE
+            binding.manageFiltersCount.visibility = if (count == 0) View.GONE else View.VISIBLE
+            binding.manageFiltersCount.text = count.toString()
+        }
+        refreshManageFiltersButton()
+        binding.manageFiltersButton.setOnClickListener {
+            ManageFiltersDialog.show(
+                activity,
+                activity.mangaBakaSearchResult.toChipList().map { chip ->
+                    ActiveFilterChip(chip.text.replace("_", " ")) {
+                        activity.mangaBakaSearchResult.removeChip(chip)
+                        activity.updateMangaBakaChips?.invoke()
+                        activity.search()
+                        refreshManageFiltersButton()
+                    }
+                }
+            ) {
+                activity.mangaBakaSearchResult.toChipList()
+                    .forEach { activity.mangaBakaSearchResult.removeChip(it) }
+                activity.updateMangaBakaChips?.invoke()
+                activity.search()
+                refreshManageFiltersButton()
+            }
+        }
     }
 
     // --- format / status / content rating (include-exclude chips) ---

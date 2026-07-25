@@ -92,6 +92,14 @@ class ComickListFilterBottomSheet : BottomSheetDialogFragment() {
         }
         binding.comickListFilterSavedFilters.setOnClickListener { showSavedFiltersDialog() }
 
+        val activeFilterCount = state.activeChips().size
+        binding.manageFiltersButton.visibility = if (activeFilterCount == 0) View.GONE else View.VISIBLE
+        binding.manageFiltersCount.visibility = if (activeFilterCount == 0) View.GONE else View.VISIBLE
+        binding.manageFiltersCount.text = activeFilterCount.toString()
+        binding.manageFiltersButton.setOnClickListener {
+            activity.openManageFilters()
+        }
+
         binding.comickListFilterGenresGrid.setOnCheckedChangeListener { _, isChecked ->
             binding.comickListFilterGenresRecycler.layoutManager =
                 if (!isChecked) LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)

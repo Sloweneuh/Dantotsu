@@ -51,12 +51,14 @@ import java.util.Calendar
 class ListFilterBottomDialog(
     private val isAnime: Boolean,
     currentFilters: ListFilters,
-    private val onApply: (ListFilters) -> Unit
+    private val onApply: (ListFilters) -> Unit,
+    private val onManageFilters: () -> Unit
 ) : BottomSheetDialogFragment() {
 
     private var _binding: BottomSheetListFilterBinding? = null
     private val binding get() = _binding!!
 
+    private val activeFilterCount = currentFilters.activeChipCount()
     private var selectedGenres = currentFilters.genres.toMutableList()
     private var selectedExcludedGenres = currentFilters.excludedGenres.toMutableList()
     private var selectedTags = currentFilters.tags.toMutableList()
@@ -159,9 +161,24 @@ class ListFilterBottomDialog(
         setupMuFilters()
 
         binding.savedFiltersButton.setOnClickListener { showSavedFiltersDialog() }
+
+        binding.manageFiltersButton.visibility = if (activeFilterCount == 0) View.GONE else View.VISIBLE
+        binding.manageFiltersCount.visibility = if (activeFilterCount == 0) View.GONE else View.VISIBLE
+        binding.manageFiltersCount.text = activeFilterCount.toString()
+        binding.manageFiltersButton.setOnClickListener {
+            onManageFilters()
+        }
     }
 
     private fun showSavedFiltersDialog() {
+        // Same source-icon rule as addFilterChip(): MU-prefixed chips always get the MU
+        // logo; plain AniList chips only get their logo when the MU tab is also visible
+        // (otherwise every chip would be AniList and the icon is just clutter).
+        val showMuTab = !isAnime &&
+            MangaUpdates.token != null &&
+            ani.dantotsu.settings.saving.PrefManager.getVal<Boolean>(
+                ani.dantotsu.settings.saving.PrefName.MangaUpdatesListEnabled
+            )
         SavedFiltersDialog.show(
             context = requireContext(),
             loadPresets = {
@@ -180,6 +197,17 @@ class ListFilterBottomDialog(
             onDelete = { name -> SavedFiltersStore.deleteList(isAnime, name) },
             onRename = { oldName, newName ->
                 SavedFiltersStore.renameList(isAnime, oldName, newName)
+            },
+            resolveChipIcon = { label ->
+                when {
+                    label.startsWith("MU ") -> ContextCompat.getDrawable(
+                        requireContext(), R.drawable.ic_round_mangaupdates_24
+                    )!! to ColorStateList.valueOf(
+                        requireContext().getResourceColor(com.google.android.material.R.attr.colorOnSurface)
+                    )
+                    showMuTab -> ContextCompat.getDrawable(requireContext(), R.drawable.ic_anilist)!! to null
+                    else -> null
+                }
             },
         )
     }
@@ -960,6 +988,23 @@ data class ListFilters(
                 muGenres.isEmpty() && muExcludedGenres.isEmpty() &&
                 muCategories.isEmpty() && muExcludedCategories.isEmpty() &&
                 muStatusFilters.isEmpty()
+    }
+
+    /** Number of chips [ListActivity.updateFilterChips] would render for this state. */
+    fun activeChipCount(): Int {
+        return genres.size + excludedGenres.size + tags.size + excludedTags.size +
+            formats.size + statuses.size + sources.size +
+            (if (season != null) 1 else 0) +
+            (if (countryOfOrigin != null) 1 else 0) +
+            (if (scoreRange != Pair(0.0f, 10.0f)) 1 else 0) +
+            (if (yearRange != Pair(1970, 2028)) 1 else 0) +
+            (if (englishLicenced) 1 else 0) +
+            (if (muFormat != null) 1 else 0) +
+            (if (muYear != null) 1 else 0) +
+            (if (muLicensed != null) 1 else 0) +
+            muGenres.size + muExcludedGenres.size +
+            muCategories.size + muExcludedCategories.size +
+            muStatusFilters.size
     }
 
     /** True when any filter that cannot be applied to MU entries is active. */

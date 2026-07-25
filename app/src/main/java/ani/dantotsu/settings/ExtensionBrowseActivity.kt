@@ -22,6 +22,8 @@ import ani.dantotsu.R
 import ani.dantotsu.databinding.ActivityExtensionBrowseBinding
 import ani.dantotsu.databinding.ItemChipBinding
 import ani.dantotsu.initActivity
+import ani.dantotsu.media.ActiveFilterChip
+import ani.dantotsu.media.ManageFiltersDialog
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.others.LanguageMapper.Companion.getLanguageName
 import ani.dantotsu.snackString
@@ -86,8 +88,6 @@ class ExtensionBrowseActivity : AppCompatActivity() {
     private var suppressQueryChange = false // True while we clear the box's text ourselves
 
     private enum class Mode { POPULAR, LATEST, FILTER, SEARCH }
-
-    private data class ActiveFilterChip(val label: String, val onRemove: () -> Unit)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -353,7 +353,9 @@ class ExtensionBrowseActivity : AppCompatActivity() {
         else -> Mode.POPULAR
     }
 
-    private fun hasActiveFilterChips(): Boolean = buildActiveFilterChips().isNotEmpty()
+    fun hasActiveFilterChips(): Boolean = buildActiveFilterChips().isNotEmpty()
+
+    fun activeFilterCount(): Int = buildActiveFilterChips().size
 
     private fun reload() = load(modeForState(), currentFilters)
 
@@ -851,6 +853,17 @@ class ExtensionBrowseActivity : AppCompatActivity() {
         }
 
         override fun getItemCount(): Int = items.size
+    }
+
+    fun openManageFilters() {
+        val chips = buildActiveFilterChips()
+        ManageFiltersDialog.show(
+            this,
+            chips.map { chip -> ActiveFilterChip(chip.label) { chip.onRemove(); reload() } }
+        ) {
+            chips.forEach { it.onRemove() }
+            reload()
+        }
     }
 
     private fun loadPage(page: Int) {

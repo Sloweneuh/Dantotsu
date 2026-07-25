@@ -58,6 +58,20 @@ class ComickListFilter {
             toYear == null &&
             minChapters == null
 
+    fun reset() {
+        sort = "created_at"
+        selectedStatus.clear()
+        selectedCountry.clear()
+        selectedContentRating.clear()
+        selectedDemographic.clear()
+        translationCompleted = null
+        selectedGenres.clear()
+        excludedGenres.clear()
+        fromYear = null
+        toYear = null
+        minChapters = null
+    }
+
     fun activeChips(): List<String> {
         val out = mutableListOf<String>()
         if (sort != "created_at") {
@@ -297,6 +311,7 @@ class ComickListActivity : AppCompatActivity() {
 
         binding.mediaFilterChipsScroll.visibility = View.VISIBLE
         binding.mediaFilterChipGroup.removeAllViews()
+
         chips.forEach { label ->
             val chip = Chip(this)
             chip.text = label
@@ -310,6 +325,14 @@ class ComickListActivity : AppCompatActivity() {
             chip.setOnClickListener { removeChip(label) }
             chip.setOnCloseIconClickListener { removeChip(label) }
             binding.mediaFilterChipGroup.addView(chip)
+        }
+    }
+
+    fun openManageFilters(chips: List<String> = filterState.activeChips()) {
+        val items = chips.map { label -> ActiveFilterChip(label) { removeChip(label) } }
+        ManageFiltersDialog.show(this, items) {
+            filterState.reset()
+            applyFilterAndDisplay()
         }
     }
 

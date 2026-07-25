@@ -124,6 +124,33 @@ class ComickSearchFilterBottomSheet : BottomSheetDialogFragment() {
         }
         binding.savedFiltersButton.setOnClickListener { showSavedFiltersDialog() }
 
+        fun refreshManageFiltersButton() {
+            val count = activity.comickSearchResult.toChipList().size
+            binding.manageFiltersButton.visibility = if (count == 0) View.GONE else View.VISIBLE
+            binding.manageFiltersCount.visibility = if (count == 0) View.GONE else View.VISIBLE
+            binding.manageFiltersCount.text = count.toString()
+        }
+        refreshManageFiltersButton()
+        binding.manageFiltersButton.setOnClickListener {
+            ManageFiltersDialog.show(
+                activity,
+                activity.comickSearchResult.toChipList().map { chip ->
+                    ActiveFilterChip(chip.text.replace("_", " ")) {
+                        activity.comickSearchResult.removeChip(chip)
+                        activity.updateComickChips?.invoke()
+                        activity.search()
+                        refreshManageFiltersButton()
+                    }
+                }
+            ) {
+                activity.comickSearchResult.toChipList()
+                    .forEach { activity.comickSearchResult.removeChip(it) }
+                activity.updateComickChips?.invoke()
+                activity.search()
+                refreshManageFiltersButton()
+            }
+        }
+
         binding.comickFilterGenresGrid.setOnCheckedChangeListener { _, isChecked ->
             binding.comickFilterGenresRecycler.layoutManager =
                 if (!isChecked) LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)

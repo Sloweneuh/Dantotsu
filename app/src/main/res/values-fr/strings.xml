@@ -400,6 +400,7 @@
     <string name="total_repeats">TOTAL RÉPÉTITIONS</string>
     <string name="custom_lists">Listes personnalisées</string>
     <string name="filter">Filtrer</string>
+    <string name="no_active_filters">Aucun filtres actifs</string>
     <string name="saved_filters">Filtres enregistrés</string>
     <string name="saved_filters_title">Filtres rapides</string>
     <string name="saved_filters_save_current">Enregistrer les filtres actuels…</string>
@@ -1940,4 +1941,6 @@
     <string name="downloaded_anime">Anime Téléchargés</string>
     <string name="cancel_all_downloads">Tout annuler</string>
     <string name="open_folder">Ouvrir le dossier</string>
+    <string name="manage_filters">Gérer les filtres</string>
+    <string name="clear_all">Tout supprimer</string>
 </resources>

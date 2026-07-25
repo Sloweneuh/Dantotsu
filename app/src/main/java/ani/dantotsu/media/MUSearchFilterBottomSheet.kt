@@ -151,6 +151,32 @@ class MUSearchFilterBottomSheet : BottomSheetDialogFragment() {
             dismiss()
         }
         binding.savedFiltersButton.setOnClickListener { showSavedFiltersDialog() }
+
+        fun refreshManageFiltersButton() {
+            val count = activity.muSearchResult.toChipList().size
+            binding.manageFiltersButton.visibility = if (count == 0) View.GONE else View.VISIBLE
+            binding.manageFiltersCount.visibility = if (count == 0) View.GONE else View.VISIBLE
+            binding.manageFiltersCount.text = count.toString()
+        }
+        refreshManageFiltersButton()
+        binding.manageFiltersButton.setOnClickListener {
+            ManageFiltersDialog.show(
+                activity,
+                activity.muSearchResult.toChipList().map { chip ->
+                    ActiveFilterChip(chip.text.replace("_", " ")) {
+                        activity.muSearchResult.removeChip(chip)
+                        activity.updateMuChips?.invoke()
+                        activity.search()
+                        refreshManageFiltersButton()
+                    }
+                }
+            ) {
+                activity.muSearchResult.toChipList().forEach { activity.muSearchResult.removeChip(it) }
+                activity.updateMuChips?.invoke()
+                activity.search()
+                refreshManageFiltersButton()
+            }
+        }
     }
 
     private fun showSavedFiltersDialog() {

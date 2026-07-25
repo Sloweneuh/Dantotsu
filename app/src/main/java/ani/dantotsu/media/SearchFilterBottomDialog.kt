@@ -346,6 +346,32 @@ class SearchFilterBottomDialog : BottomSheetDialogFragment() {
             true
         }
 
+        fun refreshManageFiltersButton() {
+            val count = activity.aniMangaResult.toChipList().size
+            binding.manageFiltersButton.visibility = if (count == 0) View.GONE else View.VISIBLE
+            binding.manageFiltersCount.visibility = if (count == 0) View.GONE else View.VISIBLE
+            binding.manageFiltersCount.text = count.toString()
+        }
+        refreshManageFiltersButton()
+        binding.manageFiltersButton.setOnClickListener {
+            ManageFiltersDialog.show(
+                activity,
+                activity.aniMangaResult.toChipList().map { chip ->
+                    ActiveFilterChip(chip.text.replace("_", " ")) {
+                        activity.aniMangaResult.removeChip(chip)
+                        activity.updateChips.invoke()
+                        activity.search()
+                        refreshManageFiltersButton()
+                    }
+                }
+            ) {
+                activity.aniMangaResult.toChipList().forEach { activity.aniMangaResult.removeChip(it) }
+                activity.updateChips.invoke()
+                activity.search()
+                refreshManageFiltersButton()
+            }
+        }
+
         binding.sortByFilter.setOnClickListener {
             val popupMenu = PopupMenu(requireContext(), it)
             popupMenu.menuInflater.inflate(R.menu.sortby_filter_menu, popupMenu.menu)

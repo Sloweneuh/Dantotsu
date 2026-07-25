@@ -25,6 +25,8 @@ import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.databinding.ActivityListBinding
 import ani.dantotsu.getThemeColor
 import ani.dantotsu.hideSystemBarsExtendView
+import ani.dantotsu.media.ActiveFilterChip
+import ani.dantotsu.media.ManageFiltersDialog
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.statusBarHeight
@@ -361,10 +363,15 @@ class ListActivity : AppCompatActivity() {
         binding.filter.setOnClickListener {
             val currentFilters = model.currentFilters.value ?: ListFilters()
 
-            val dialog = ListFilterBottomDialog(anime, currentFilters) { filters ->
-                model.applyFilters(filters)
-                updateFilterChips(filters)
-            }
+            val dialog = ListFilterBottomDialog(
+                anime,
+                currentFilters,
+                onApply = { filters ->
+                    model.applyFilters(filters)
+                    updateFilterChips(filters)
+                },
+                onManageFilters = { openManageFilters() }
+            )
             dialog.show(supportFragmentManager, "list_filter")
         }
 
@@ -611,6 +618,23 @@ class ListActivity : AppCompatActivity() {
                 model.applyFilters(newFilters)
                 updateFilterChips(newFilters)
             }
+        }
+
+    }
+
+    private fun openManageFilters() {
+        val chips = (0 until binding.genreChipsGroup.childCount)
+            .mapNotNull { binding.genreChipsGroup.getChildAt(it) as? com.google.android.material.chip.Chip }
+            .map { chip ->
+                // Reuse the AniList/MU source icon addFilterChip() already set on the
+                // rendered chip, rather than re-deriving it from the filter type.
+                ActiveFilterChip(chip.text.toString(), chip.chipIcon, chip.chipIconTint) {
+                    chip.performClick()
+                }
+            }
+        ManageFiltersDialog.show(this, chips) {
+            model.applyFilters(ListFilters())
+            updateFilterChips(ListFilters())
         }
     }
 
