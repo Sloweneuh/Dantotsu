@@ -325,6 +325,11 @@ class SearchActivity : AppCompatActivity() {
         }
         headerAdaptor.attach(binding.searchHeader)
 
+        binding.searchHeader.searchResultsLabel.setOnClickListener {
+            binding.searchRecyclerView.scrollToPosition(10)
+            binding.searchRecyclerView.smoothScrollToPosition(0)
+        }
+
         val gridSize = (screenWidth / 120f).toInt()
         val gridLayoutManager = GridLayoutManager(this, gridSize)
         gridLayoutManager.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {

@@ -27,6 +27,7 @@ import ani.dantotsu.databinding.ItemChapterGapBinding
 import ani.dantotsu.databinding.ItemChapterListBinding
 import ani.dantotsu.databinding.ItemChipBinding
 import ani.dantotsu.databinding.ItemEpisodeListBinding
+import ani.dantotsu.bindScrollToTop
 import ani.dantotsu.buildMarkwon
 import ani.dantotsu.initActivity
 import ani.dantotsu.loadImage
@@ -147,6 +148,7 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
         // Info is visible by default; chapters hidden
         binding.extensionInfoScroll.visibility = View.VISIBLE
         binding.extensionChaptersScroll.visibility = View.GONE
+        binding.extensionChaptersScrollTop.bindScrollToTop(binding.extensionChaptersScroll)
 
         navBar.setOnTabSelectListener(object : AnimatedBottomBar.OnTabSelectListener {
             override fun onTabSelected(lastIndex: Int, lastTab: AnimatedBottomBar.Tab?, newIndex: Int, newTab: AnimatedBottomBar.Tab) {
@@ -168,6 +170,9 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
         outView.animate().translationX(if (goRight) -width else width).setDuration(280)
             .withEndAction { outView.visibility = View.GONE; outView.translationX = 0f }.start()
         inView.animate().translationX(0f).setDuration(280).start()
+        // Scroll-to-top only applies to the chapters tab; hide it immediately when
+        // navigating away so it doesn't linger over the info tab.
+        if (to != 1) binding.extensionChaptersScrollTop.visibility = View.GONE
         // If switching to the chapters tab and data is already loaded, re-populate
         // using post{} so the view is measured at its final width first.
         if (to == 1 && chaptersDataLoaded) {

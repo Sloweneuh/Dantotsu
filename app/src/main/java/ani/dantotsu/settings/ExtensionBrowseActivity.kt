@@ -178,9 +178,17 @@ class ExtensionBrowseActivity : AppCompatActivity() {
         binding.extensionBrowseBack.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
 
         val spanCount = resources.configuration.screenWidthDp / 120
-        binding.extensionBrowseRecycler.layoutManager =
-            GridLayoutManager(this, spanCount.coerceAtLeast(2))
+        val browseLayoutManager = GridLayoutManager(this, spanCount.coerceAtLeast(2))
+        binding.extensionBrowseRecycler.layoutManager = browseLayoutManager
         binding.extensionBrowseRecycler.adapter = adapter
+
+        // Tapping the extension name/icon scrolls the results back to the top.
+        val scrollResultsToTop = View.OnClickListener {
+            binding.extensionBrowseRecycler.scrollToPosition(10)
+            binding.extensionBrowseRecycler.smoothScrollToPosition(0)
+        }
+        binding.extensionBrowseIcon.setOnClickListener(scrollResultsToTop)
+        binding.extensionBrowseTitle.setOnClickListener(scrollResultsToTop)
 
         binding.extensionBrowseActiveFilterChips.layoutManager =
             LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)

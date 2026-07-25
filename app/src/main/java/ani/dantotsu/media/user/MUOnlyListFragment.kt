@@ -88,6 +88,12 @@ class MUOnlyListFragment : Fragment() {
         _binding = null
     }
 
+    fun scrollToTop() {
+        if (_binding == null) return
+        binding.listRecyclerView.scrollToPosition(10)
+        binding.listRecyclerView.smoothScrollToPosition(0)
+    }
+
     fun randomOptionClick() {
         val combined = ArrayList(currentItems.map { it.toMedia() })
         if (combined.isNotEmpty()) {

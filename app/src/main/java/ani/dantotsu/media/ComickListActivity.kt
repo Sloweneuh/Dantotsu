@@ -166,8 +166,15 @@ class ComickListActivity : AppCompatActivity() {
         binding.listTitle.isSelected = true
         binding.listBack.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
 
+        // Tapping the list name scrolls the results back to the top.
+        binding.listTitle.setOnClickListener {
+            binding.mediaRecyclerView.scrollToPosition(10)
+            binding.mediaRecyclerView.smoothScrollToPosition(0)
+        }
+
         val screenWidth = resources.displayMetrics.run { widthPixels / density }
-        binding.mediaRecyclerView.layoutManager = GridLayoutManager(this, maxOf(1, (screenWidth / 120f).toInt()))
+        val mediaListLayoutManager = GridLayoutManager(this, maxOf(1, (screenWidth / 120f).toInt()))
+        binding.mediaRecyclerView.layoutManager = mediaListLayoutManager
 
         lifecycleScope.launch {
             // Preload genres so chips and filtering work immediately after load

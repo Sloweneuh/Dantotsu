@@ -185,7 +185,17 @@ class ListActivity : AppCompatActivity() {
             }
 
             override fun onTabUnselected(tab: TabLayout.Tab?) {}
-            override fun onTabReselected(tab: TabLayout.Tab?) {}
+
+            // Tapping the already-selected tab scrolls its list back to the top.
+            override fun onTabReselected(tab: TabLayout.Tab?) {
+                val adapter = binding.listViewPager.adapter as? ListViewPagerAdapter ?: return
+                val position = binding.listViewPager.currentItem
+                val itemId = adapter.getItemId(position)
+                when (val fragment = supportFragmentManager.findFragmentByTag("f$itemId")) {
+                    is ListFragment -> fragment.scrollToTop()
+                    is MUOnlyListFragment -> fragment.scrollToTop()
+                }
+            }
         })
 
         model.getLists().observe(this) {

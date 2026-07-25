@@ -171,6 +171,12 @@ class ListFragment : Fragment() {
         }
     }
 
+    fun scrollToTop() {
+        if (_binding == null) return
+        binding.listRecyclerView.scrollToPosition(10)
+        binding.listRecyclerView.smoothScrollToPosition(0)
+    }
+
     fun randomOptionClick() {
         val aniItems: List<Media> = list ?: emptyList()
         val muItems: List<Media> = (muList ?: emptyList()).map { it.toMedia() }
