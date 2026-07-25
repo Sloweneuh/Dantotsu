@@ -42,6 +42,7 @@ fun MUMedia.toMedia(): Media = Media(
     manga = Manga(totalChapters = null),
     format = if (format?.contains("novel", ignoreCase = true) == true) "NOVEL" else "MANGA",
     userProgress = userChapter,
+    userVolume = userVolume,
     muSeriesId = id,
     muListId = listId,
     muLatestChapter = latestChapter,

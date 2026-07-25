@@ -570,6 +570,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
             manga = Manga(),
             format = if (useNovelReader) "NOVEL" else "MANGA",
             userProgress = muMedia.userChapter,
+            userVolume = muMedia.userVolume,
             muSeriesId = muMedia.id,
             muListId = muMedia.listId,
         )

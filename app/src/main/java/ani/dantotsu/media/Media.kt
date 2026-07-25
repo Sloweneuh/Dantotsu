@@ -119,6 +119,7 @@ data class Media(
         isAdult = apiMedia.isAdult ?: false,
         isListPrivate = apiMedia.mediaListEntry?.private ?: false,
         userProgress = apiMedia.mediaListEntry?.progress,
+        userVolume = apiMedia.mediaListEntry?.progressVolumes,
         userScore = apiMedia.mediaListEntry?.score?.toInt() ?: 0,
         userStatus = apiMedia.mediaListEntry?.status?.toString(),
         meanScore = apiMedia.meanScore,
@@ -142,6 +143,7 @@ data class Media(
 
     constructor(mediaList: MediaList) : this(mediaList.media!!) {
         this.userProgress = mediaList.progress
+        this.userVolume = mediaList.progressVolumes
         this.isListPrivate = mediaList.private ?: false
         this.userScore = mediaList.score?.toInt() ?: 0
         this.userStatus = mediaList.status?.toString()
