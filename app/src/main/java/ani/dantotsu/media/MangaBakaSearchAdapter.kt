@@ -60,7 +60,7 @@ class MangaBakaSearchAdapter(
     }
 
     private fun openInBrowser(series: MangaBakaApi.Series, view: View) {
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://mangabaka.org/series/${series.id}"))
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://mangabaka.org/${series.id}"))
         view.context.startActivity(intent)
     }
 
