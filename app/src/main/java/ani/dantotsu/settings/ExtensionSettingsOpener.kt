@@ -58,7 +58,7 @@ object ExtensionSettingsOpener {
                         }
                         changeUIVisibility(false)
                         activity.supportFragmentManager.beginTransaction()
-                            .setCustomAnimations(R.anim.slide_up, R.anim.slide_down)
+                            .setCustomAnimations(R.anim.slide_up, R.anim.slide_down, R.anim.slide_up, R.anim.slide_down)
                             .replace(R.id.fragmentExtensionsContainer, fragment)
                             .addToBackStack(null)
                             .commit()
@@ -79,7 +79,7 @@ object ExtensionSettingsOpener {
                         }
                         changeUIVisibility(false)
                         activity.supportFragmentManager.beginTransaction()
-                            .setCustomAnimations(R.anim.slide_up, R.anim.slide_down)
+                            .setCustomAnimations(R.anim.slide_up, R.anim.slide_down, R.anim.slide_up, R.anim.slide_down)
                             .replace(R.id.fragmentExtensionsContainer, fragment)
                             .addToBackStack(null)
                             .commit()
@@ -107,7 +107,7 @@ object ExtensionSettingsOpener {
                         }
                         changeUIVisibility(false)
                         activity.supportFragmentManager.beginTransaction()
-                            .setCustomAnimations(R.anim.slide_up, R.anim.slide_down)
+                            .setCustomAnimations(R.anim.slide_up, R.anim.slide_down, R.anim.slide_up, R.anim.slide_down)
                             .replace(R.id.fragmentExtensionsContainer, fragment)
                             .addToBackStack(null)
                             .commit()
@@ -128,7 +128,7 @@ object ExtensionSettingsOpener {
                         }
                         changeUIVisibility(false)
                         activity.supportFragmentManager.beginTransaction()
-                            .setCustomAnimations(R.anim.slide_up, R.anim.slide_down)
+                            .setCustomAnimations(R.anim.slide_up, R.anim.slide_down, R.anim.slide_up, R.anim.slide_down)
                             .replace(R.id.fragmentExtensionsContainer, fragment)
                             .addToBackStack(null)
                             .commit()
