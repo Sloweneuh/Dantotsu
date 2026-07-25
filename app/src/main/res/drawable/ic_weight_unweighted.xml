@@ -1,8 +1,9 @@
 <!--
   MangaBaka's "unweighted" indicator: a chevron drawn with a dashed round-capped stroke
   (their SVG uses stroke-dasharray="1.6 1.6", stroke-linecap="round"). VectorDrawable has no
-  dash-array, so the chevron is split into round-capped dashes. The pattern is centred on the
-  peak so the mark is symmetric, aligned with the other weight chevrons at viewport y=11.
+  dash-array, so the chevron is split into round-capped dashes. Gaps are sized ~2x the dashes
+  (rather than a literal 1:1 dasharray) so the dashing still reads clearly at small on-screen
+  icon sizes on mobile. The pattern is centred on the peak so the mark stays symmetric.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
@@ -14,17 +15,17 @@
         android:strokeWidth="2"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
-        android:pathData="M6.34,12.77 L8.61,11.26" />
+        android:pathData="M6,13 L7.71,11.86" />
     <path
         android:strokeColor="#FFFFFFFF"
         android:strokeWidth="2"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
-        android:pathData="M10.87,9.75 L12,9 L13.13,9.75" />
+        android:pathData="M11.14,9.57 L12,9 L12.86,9.57" />
     <path
         android:strokeColor="#FFFFFFFF"
         android:strokeWidth="2"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
-        android:pathData="M15.39,11.26 L17.66,12.77" />
+        android:pathData="M16.29,11.86 L18,13" />
 </vector>
