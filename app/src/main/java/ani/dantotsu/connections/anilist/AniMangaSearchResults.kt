@@ -107,6 +107,12 @@ data class AniMangaSearchResults(
                 )
             )
         }
+        if (isAdult) list.add(SearchChip("ADULT", "18+"))
+        when (onList) {
+            true -> list.add(SearchChip("ON_LIST", "On list"))
+            false -> list.add(SearchChip("ON_LIST", "Not on list"))
+            null -> Unit
+        }
         return list
     }
 
@@ -138,6 +144,8 @@ data class AniMangaSearchResults(
                 } ?: chip.text
                 excludedTags?.remove(value)
             }
+            "ADULT" -> isAdult = false
+            "ON_LIST" -> onList = null
         }
     }
 

@@ -1472,6 +1472,9 @@ Page(page:$page,perPage:50) {
         airingAt
         media {
             ${standardMediaInformation()}
+            tags { name }
+            source
+            startDate { year month day }
         }
     }
 }

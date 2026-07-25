@@ -36,9 +36,9 @@ data class SavedAniMangaFilter(
     companion object {
         private const val serialVersionUID: Long = 1L
 
-        fun from(name: String, r: AniMangaSearchResults) = SavedAniMangaFilter(
+        fun from(name: String, r: AniMangaSearchResults, type: String = r.type) = SavedAniMangaFilter(
             name = name,
-            type = r.type,
+            type = type,
             isAdult = r.isAdult,
             onList = r.onList,
             countryOfOrigin = r.countryOfOrigin,

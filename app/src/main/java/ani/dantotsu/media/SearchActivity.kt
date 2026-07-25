@@ -46,7 +46,7 @@ import kotlinx.coroutines.launch
 import java.util.Timer
 import java.util.TimerTask
 
-class SearchActivity : AppCompatActivity() {
+class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
     private lateinit var binding: ActivitySearchBinding
     private val scope = lifecycleScope
     val model: AnilistSearch by viewModels()
@@ -69,7 +69,7 @@ class SearchActivity : AppCompatActivity() {
     private lateinit var concatAdapter: ConcatAdapter
     private lateinit var headerAdaptor: HeaderInterface
 
-    lateinit var aniMangaResult: AniMangaSearchResults
+    override lateinit var aniMangaResult: AniMangaSearchResults
     lateinit var characterResult: CharacterSearchResults
     lateinit var studioResult: StudioSearchResults
     lateinit var staffResult: StaffSearchResults
@@ -78,7 +78,7 @@ class SearchActivity : AppCompatActivity() {
     lateinit var comickSearchResult: ComickSearchResults
     lateinit var mangaBakaSearchResult: MangaBakaSearchResults
 
-    lateinit var updateChips: (() -> Unit)
+    override lateinit var updateChips: (() -> Unit)
     var updateMuChips: (() -> Unit)? = null
     var updateComickChips: (() -> Unit)? = null
     var updateMangaBakaChips: (() -> Unit)? = null
@@ -682,7 +682,7 @@ class SearchActivity : AppCompatActivity() {
 
     private var searchTimer = Timer()
     private var loading = false
-    fun search() {
+    override fun search() {
         if (Looper.myLooper() != Looper.getMainLooper()) {
             runOnUiThread { search() }
             return

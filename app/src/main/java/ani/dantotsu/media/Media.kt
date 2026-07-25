@@ -134,11 +134,18 @@ data class Media(
         manga = if (apiMedia.type == MediaType.MANGA) Manga(totalChapters = apiMedia.chapters) else null,
         format = apiMedia.format?.toString(),
         description = apiMedia.description?.toString(),
+        source = apiMedia.source?.toString(),
+        countryOfOrigin = apiMedia.countryOfOrigin,
     ) {
         // Ensure synonyms from Anilist ApiMedia are copied so local searches (e.g. in lists) can match them
         apiMedia.synonyms?.let { list ->
             synonyms = ArrayList(list)
         }
+        // Genres/tags aren't part of the primary constructor signature (they default to
+        // empty); copy them over when the query actually fetched them so filtering by
+        // genre/tag works for every screen built on this constructor, not just search.
+        apiMedia.genres?.let { genres = ArrayList(it) }
+        apiMedia.tags?.let { list -> tags = ArrayList(list.mapNotNull { it.name }) }
     }
 
     constructor(mediaList: MediaList) : this(mediaList.media!!) {

@@ -46,7 +46,7 @@ class SearchFilterBottomDialog : BottomSheetDialogFragment() {
     private var _binding: BottomSheetSearchFilterBinding? = null
     private val binding get() = _binding!!
 
-    private lateinit var activity: SearchActivity
+    private lateinit var activity: AniMangaFilterHost
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -278,7 +278,7 @@ class SearchFilterBottomDialog : BottomSheetDialogFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
 
-        activity = requireActivity() as SearchActivity
+        activity = requireActivity() as AniMangaFilterHost
 
         selectedGenres = activity.aniMangaResult.genres ?: mutableListOf()
         exGenres = activity.aniMangaResult.excludedGenres ?: mutableListOf()
@@ -355,7 +355,7 @@ class SearchFilterBottomDialog : BottomSheetDialogFragment() {
         refreshManageFiltersButton()
         binding.manageFiltersButton.setOnClickListener {
             ManageFiltersDialog.show(
-                activity,
+                requireContext(),
                 activity.aniMangaResult.toChipList().map { chip ->
                     ActiveFilterChip(chip.text.replace("_", " ")) {
                         activity.aniMangaResult.removeChip(chip)
@@ -561,6 +561,14 @@ class SearchFilterBottomDialog : BottomSheetDialogFragment() {
             )
         }
 
+        // Hosts like the airing calendar don't need status/season/year-range — everything
+        // shown is already recent/airing, so these fields would just be redundant clutter.
+        if (!activity.supportsStatusSeasonYear) {
+            binding.searchStatusCont.visibility = GONE
+            binding.searchSeasonCont.visibility = GONE
+            binding.searchYearRangeCont.visibility = GONE
+        }
+
         binding.searchFilterGenres.adapter = FilterChipAdapter(Anilist.genres ?: listOf()) { chip ->
             val genre = chip.text.toString()
             var internalChange = false
@@ -663,7 +671,7 @@ class SearchFilterBottomDialog : BottomSheetDialogFragment() {
     }
 
     private fun showSavedFiltersDialog() {
-        val type = activity.aniMangaResult.type
+        val type = activity.presetsType
         SavedFiltersDialog.show(
             context = requireContext(),
             loadPresets = {
@@ -673,7 +681,7 @@ class SearchFilterBottomDialog : BottomSheetDialogFragment() {
             onSaveCurrent = { name ->
                 writeUiStateToResult()
                 SavedFiltersStore.saveAniManga(
-                    SavedAniMangaFilter.from(name, activity.aniMangaResult)
+                    SavedAniMangaFilter.from(name, activity.aniMangaResult, type)
                 )
             },
             onApply = { name ->
