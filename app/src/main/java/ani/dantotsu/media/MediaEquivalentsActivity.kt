@@ -31,7 +31,6 @@ import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
-import ani.dantotsu.others.CustomBottomDialog
 import ani.dantotsu.toast
 import ani.dantotsu.util.Logger
 import kotlinx.coroutines.Dispatchers
@@ -99,7 +98,7 @@ class MediaEquivalentsActivity : AppCompatActivity() {
         recycler.layoutManager = LinearLayoutManager(this)
         recycler.adapter = adapter
 
-        binding.quickSearchNoResults.visibility = View.GONE
+        binding.equivalentsSearchProgress.visibility = if (items.isEmpty()) View.GONE else View.VISIBLE
 
         // Prefetch MU details (covers) for items that lack a coverUrl
         val idsToFetch = items.mapNotNull { item -> item.mu.id.takeIf { item.mu.coverUrl.isNullOrBlank() } }
@@ -115,7 +114,10 @@ class MediaEquivalentsActivity : AppCompatActivity() {
         items.forEachIndexed { idx, it ->
             lifecycleScope.launch {
                 try {
-                    val title = it.mu.title ?: return@launch
+                    val title = it.mu.title
+                    if (title == null) {
+                        it.matchedTitle = getString(R.string.no_anilist_id_found)
+                    } else {
                     // Check for a user-saved Comick slug for this MU series.
                     // Different parts of the app may store the key as the masked int id or the raw MU id,
                     // so try a few variants to be resilient.
@@ -178,10 +180,16 @@ class MediaEquivalentsActivity : AppCompatActivity() {
                         it.matchedAniId = null
                         it.matchedAniType = null
                     }
-                } catch (_: Exception) {}
+                    }
+                } catch (_: Exception) {
+                    if (it.matchedTitle == null) it.matchedTitle = getString(R.string.no_anilist_id_found)
+                }
                 // Float entries with a found equivalent to the top as they resolve (even late ones).
                 val from = items.indexOf(it)
-                if (from < 0) return@launch
+                if (from < 0) {
+                    checkAllSearchesComplete()
+                    return@launch
+                }
                 if (it.matchedAniId != null && from > 0) {
                     items.removeAt(from)
                     items.add(0, it)
@@ -196,8 +204,15 @@ class MediaEquivalentsActivity : AppCompatActivity() {
                 } else {
                     adapter.notifyItemChanged(from)
                 }
+                checkAllSearchesComplete()
             }
         }
+    }
+
+    /** Hides the searching indicator once every entry has resolved. */
+    private fun checkAllSearchesComplete() {
+        if (items.any { it.matchedTitle == null }) return
+        binding.equivalentsSearchProgress.visibility = View.GONE
     }
 
     private fun buildQuickCandidates(mu: MUMedia): List<String> {
@@ -210,48 +225,6 @@ class MediaEquivalentsActivity : AppCompatActivity() {
         add(mu.title)
         MangaUpdates.synonymsCache[mu.id].orEmpty().forEach { add(it) }
         return list.distinctBy { it.lowercase(Locale.ROOT) }
-    }
-
-    private fun openQuickSearchPickerForUnmatched() {
-        val noAnilistText = getString(R.string.no_anilist_id_found)
-
-        val unmatchedIndexes = items.mapIndexedNotNull { idx, item ->
-            val unresolved = item.matchedAniId == null && item.matchedTitle == noAnilistText
-            if (unresolved) idx else null
-        }
-
-        if (unmatchedIndexes.isEmpty()) {
-            toast(getString(R.string.no_results_found))
-            return
-        }
-
-        val picker = CustomBottomDialog.newInstance().apply {
-            setTitleText(getString(R.string.quick_search))
-        }
-
-        unmatchedIndexes.forEach { idx ->
-            val item = items[idx]
-            val row = android.widget.Button(this).apply {
-                text = item.mu.title ?: "MU #${item.mu.id}"
-                textSize = 16f
-                isAllCaps = false
-                setPadding(32, 20, 32, 20)
-                setTextColor(getThemeColor(com.google.android.material.R.attr.colorOnSurface))
-                setOnClickListener {
-                    picker.dismiss()
-                    val candidates = buildQuickCandidates(item.mu)
-                    AniListQuickSearchDialogFragment
-                        .newInstance(ArrayList(candidates))
-                        .show(supportFragmentManager, "equiv_quick_sheet_$idx")
-                }
-            }
-            picker.addView(row)
-        }
-
-        picker.setNegativeButton(getString(R.string.cancel)) {
-            picker.dismiss()
-        }
-        picker.show(supportFragmentManager, "equiv_quick_picker")
     }
 
     private inner class EquivalentAdapter(private val list: List<EquivalentItem>) : RecyclerView.Adapter<EquivalentAdapter.VH>() {
