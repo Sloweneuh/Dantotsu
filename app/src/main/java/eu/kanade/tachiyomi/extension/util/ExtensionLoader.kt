@@ -273,6 +273,8 @@ internal object ExtensionLoader {
                     }
                 } catch (e: Throwable) {
                     Logger.log("Extension load error: $extName ($it)")
+                    Logger.log(e)
+                    Injekt.get<CrashlyticsInterface>().logException(e)
                     return AnimeLoadResult.Error
                 }
             }
@@ -377,6 +379,8 @@ internal object ExtensionLoader {
                     }
                 } catch (e: Throwable) {
                     Logger.log("Extension load error: $extName ($it)")
+                    Logger.log(e)
+                    Injekt.get<CrashlyticsInterface>().logException(e)
                     return MangaLoadResult.Error
                 }
             }

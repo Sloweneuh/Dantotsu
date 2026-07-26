@@ -315,10 +315,31 @@ abstract class AnimeHttpSource : AnimeCatalogueSource {
      * Get the list of hosters for an episode (extensions-lib v16+ API).
      * Backed by [hosterListRequest] + [hosterListParse]; extensions on the new API
      * implement [hosterListParse] instead of [videoListParse].
+     *
+     * Extensions that don't implement the v16+ API never override [hosterListParse],
+     * so we must not build/fire [hosterListRequest] for them: its default just GETs
+     * `baseUrl + episode.url`, but older extensions are free to stuff non-URL data
+     * (e.g. JSON metadata) into [SEpisode.url] since only their own [videoListRequest]
+     * override ever reads it. Firing the request anyway can throw while building it
+     * (malformed URL) before we ever get the chance to fall back.
      */
     override suspend fun getHosterList(episode: SEpisode): List<Hoster> {
+        if (!supportsHosterApi) throw IllegalStateException("Not used")
         val response = client.newCall(hosterListRequest(episode)).awaitSuccess()
         return hosterListParse(response)
+    }
+
+    private val supportsHosterApi: Boolean by lazy {
+        generateSequence(javaClass as Class<*>) { it.superclass }
+            .takeWhile { it != AnimeHttpSource::class.java }
+            .any { cls ->
+                try {
+                    cls.getDeclaredMethod("hosterListParse", Response::class.java)
+                    true
+                } catch (_: NoSuchMethodException) {
+                    false
+                }
+            }
     }
 
     /**
