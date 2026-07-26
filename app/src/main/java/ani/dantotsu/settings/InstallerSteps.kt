@@ -45,15 +45,7 @@ class InstallerSteps(
     }
 
     fun onComplete(extra: () -> Unit) {
-        val builder = NotificationCompat.Builder(
-            context,
-            Notifications.CHANNEL_DOWNLOADER_PROGRESS
-        )
-            .setSmallIcon(R.drawable.ic_download_24)
-            .setContentTitle(context.getString(R.string.installation_complete))
-            .setContentText(context.getString(R.string.extension_has_been_installed))
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-        notificationManager.notify(1, builder.build())
+        notificationManager.cancel(1)
         snackString(context.getString(R.string.extension_installed))
     }
 }
