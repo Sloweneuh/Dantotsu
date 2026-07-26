@@ -356,7 +356,11 @@ class AnimeWatchFragment : Fragment() {
                     if (total > limit) {
                         val arr = media.anime!!.episodes!!.keys.toTypedArray()
                         val stored = ceil((total).toDouble() / limit).toInt()
-                        val position = MathUtils.clamp(media.selected!!.chip, 0, stored - 1)
+                        val position = if (!model.isChipUserSet(media.id) && media.userProgress != null) {
+                            MathUtils.clamp(media.userProgress!! / limit, 0, stored - 1)
+                        } else {
+                            MathUtils.clamp(media.selected!!.chip, 0, stored - 1)
+                        }
                         val last = if (position + 1 == stored) total else (limit * (position + 1))
                         start = limit * (position)
                         end = last - 1
@@ -532,6 +536,7 @@ class AnimeWatchFragment : Fragment() {
         start = s
         end = e
         model.saveSelected(media.id, media.selected!!)
+        model.markChipUserSet(media.id)
         reload()
     }
 

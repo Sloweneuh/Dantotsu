@@ -376,6 +376,17 @@ class MediaDetailsViewModel : ViewModel() {
         PrefManager.setCustomVal("Selected-$id", data)
     }
 
+    // Whether the user has ever explicitly picked an episode/chapter range chip for this media.
+    // Kept as its own flat pref (rather than a field on Selected) so the chip default logic
+    // doesn't require changing Selected's serialized layout. While this is false, the range
+    // chip defaults to whichever page contains the user's next episode/chapter instead of
+    // always reopening on the first page.
+    fun isChipUserSet(id: Int): Boolean = PrefManager.getCustomVal("Selected-$id-chipUserSet", false)
+
+    fun markChipUserSet(id: Int) {
+        PrefManager.setCustomVal("Selected-$id-chipUserSet", true)
+    }
+
     // The selected source's name is persisted separately (as a plain string) and is the
     // source of truth: Selected.sourceIndex is only a cache that is valid for one particular
     // ordering of the installed extensions. Keeping the name in its own pref also avoids

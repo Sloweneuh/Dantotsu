@@ -486,7 +486,11 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
                 if (total > limit) {
                     val arr = filteredChapters.keys.toTypedArray()
                     val stored = ceil((total).toDouble() / limit).toInt()
-                    val position = clamp(media.selected!!.chip, 0, stored - 1)
+                    val position = if (!model.isChipUserSet(media.id) && media.userProgress != null) {
+                        clamp(media.userProgress!! / limit, 0, stored - 1)
+                    } else {
+                        clamp(media.selected!!.chip, 0, stored - 1)
+                    }
                     val last = if (position + 1 == stored) total else (limit * (position + 1))
                     start = limit * (position)
                     end = last - 1
@@ -591,6 +595,7 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
         start = s
         end = e
         model.saveSelected(media.id, media.selected!!)
+        model.markChipUserSet(media.id)
         reload()
     }
 
