@@ -71,6 +71,12 @@ class MediaEquivalentsActivity : AppCompatActivity() {
         // back button
         binding.root.findViewById<View?>(R.id.back)?.setOnClickListener { finish() }
 
+        // Tapping the title scrolls the results back to the top.
+        binding.listTitle.setOnClickListener {
+            binding.equivalentsRecyclerView.scrollToPosition(10)
+            binding.equivalentsRecyclerView.smoothScrollToPosition(0)
+        }
+
         // If immersive mode is enabled, ensure appbar isn't under the status bar
         if (!PrefManager.getVal<Boolean>(PrefName.ImmersiveMode)) {
             this.window.statusBarColor =
