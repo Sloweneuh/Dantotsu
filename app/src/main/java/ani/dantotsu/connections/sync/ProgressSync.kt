@@ -91,8 +91,18 @@ object ProgressSync {
      *   the cloud copy doesn't have was deleted on the other device (e.g. "delete stored progress
      *   for all episodes"); without removing it here the deletion never propagates and our next
      *   push would resurrect it over there.
+     *
+     * Mutations are collected into [sets]/[removes] rather than written immediately — a pull can
+     * touch hundreds of media, and writing each key through its own `apply()` flooded Android's
+     * QueuedWork queue, which every Activity/Service stop then blocks on (background ANRs). The
+     * caller flushes everything through one [PrefManager.applyCustomVals] call instead.
      */
-    private fun applyMedia(data: Map<String, Map<String, Any?>>, localKeys: Set<String>) {
+    private fun applyMedia(
+        data: Map<String, Map<String, Any?>>,
+        localKeys: Set<String>,
+        sets: MutableMap<String, Any>,
+        removes: MutableSet<String>,
+    ) {
         // Prune per category, and only when the cloud copy actually carries that category. A node
         // last written by a build that synced progress but not selections holds progress keys only
         // — pruning against it wholesale would delete the very selections we're here to sync.
@@ -105,17 +115,20 @@ object ProgressSync {
                 SELECTION_RE.matches(key) -> remoteHasSelection
                 else -> false
             }
-            if (prunable) PrefManager.removeCustomVal(key)
+            if (prunable) removes += key
         }
         data.forEach { (key, tv) ->
             val type = tv["type"] as? String
             val value = tv["value"]
             when (type) {  // gson numbers arrive as Double
-                "kotlin.Int" -> (value as? Double)?.let { PrefManager.setCustomVal(key, it.toInt()) }
-                "kotlin.Long" -> (value as? Double)?.let { PrefManager.setCustomVal(key, it.toLong()) }
-                "kotlin.Float" -> value?.toString()?.toFloatOrNull()?.let { PrefManager.setCustomVal(key, it) }
-                "kotlin.String" -> PrefManager.setCustomVal(key, value?.toString())
-                "kotlin.Boolean" -> (value as? Boolean)?.let { PrefManager.setCustomVal(key, it) }
+                "kotlin.Int" -> (value as? Double)?.let { sets[key] = it.toInt() }
+                "kotlin.Long" -> (value as? Double)?.let { sets[key] = it.toLong() }
+                "kotlin.Float" -> value?.toString()?.toFloatOrNull()?.let { sets[key] = it }
+                "kotlin.String" -> {
+                    val s = value?.toString()
+                    if (s == null) removes += key else sets[key] = s
+                }
+                "kotlin.Boolean" -> (value as? Boolean)?.let { sets[key] = it }
                 else -> {}
             }
         }
@@ -198,6 +211,8 @@ object ProgressSync {
                     val state = loadState()
                     val local = collect()
                     val applied = mutableMapOf<String, Long>()
+                    val sets = mutableMapOf<String, Any>()
+                    val removes = mutableSetOf<String>()
                     remote.forEach { (id, payload, ts) ->
                         if (ts <= (state[id]?.ts ?: 0L)) return@forEach
                         // Don't clobber local progress that changed since we last synced this media.
@@ -207,9 +222,11 @@ object ProgressSync {
                         }
                         val data = runCatching { gson.fromJson<Map<String, Map<String, Any?>>>(payload, dataType) }
                             .getOrNull() ?: return@forEach
-                        applyMedia(data, local[id]?.keys.orEmpty())
+                        applyMedia(data, local[id]?.keys.orEmpty(), sets, removes)
                         applied[id] = ts
                     }
+                    // One flush for the whole pull instead of one apply() per key (see [applyMedia]).
+                    PrefManager.applyCustomVals(sets, removes)
                     if (applied.isNotEmpty()) {
                         // Re-hash from what's now stored locally so the next push doesn't echo it back.
                         val fresh = collect()

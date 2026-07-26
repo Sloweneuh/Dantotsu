@@ -238,6 +238,35 @@ object PrefManager {
     }
 
     /**
+     * Batched form of [setCustomVal]/[removeCustomVal]: writes every entry through a single
+     * [SharedPreferences.Editor] and one `apply()` call.
+     *
+     * Each `apply()` queues a task in Android's `QueuedWork`, and *any* Activity/Service stop
+     * across the whole process blocks the main thread until that queue drains. A caller writing
+     * many keys in a loop (e.g. a sync pull touching hundreds of per-media entries) via the
+     * single-key setters was firing hundreds of separate `apply()`s and caused background ANRs
+     * when a service happened to stop mid-flush. Batching collapses that to one flush.
+     */
+    @Suppress("UNCHECKED_CAST")
+    fun applyCustomVals(sets: Map<String, Any> = emptyMap(), removes: Set<String> = emptySet()) {
+        if (sets.isEmpty() && removes.isEmpty()) return
+        with(irrelevantPreferences!!.edit()) {
+            removes.forEach { remove(it) }
+            sets.forEach { (key, value) ->
+                when (value) {
+                    is Boolean -> putBoolean(key, value)
+                    is Int -> putInt(key, value)
+                    is Float -> putFloat(key, value)
+                    is Long -> putLong(key, value)
+                    is String -> putString(key, value)
+                    is Set<*> -> putStringSet(key, value as Set<String>)
+                }
+            }
+            apply()
+        }
+    }
+
+    /**
      * Retrieves all SharedPreferences entries with keys starting with the specified prefix.
      *
      * @param prefix The prefix to filter keys.
