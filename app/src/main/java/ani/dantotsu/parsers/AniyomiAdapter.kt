@@ -206,7 +206,7 @@ class DynamicAnimeParser(extension: AnimeExtension.Installed) : AnimeParser() {
                     }
             }
             return sortedEpisodes.map { sEpisodeToEpisode(it) }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Logger.log("Exception: $e")
         }
         return emptyList()
@@ -267,7 +267,7 @@ class DynamicAnimeParser(extension: AnimeExtension.Installed) : AnimeParser() {
                 httpSource.getVideoList(sEpisode)
             }
             allVideos.map { videoToVideoServer(it) }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Logger.log("Exception occurred: ${e.message}")
             emptyList()
         }
@@ -299,7 +299,7 @@ class DynamicAnimeParser(extension: AnimeExtension.Installed) : AnimeParser() {
                 snackString("Failed to bypass Cloudflare")
             }
             emptyList()
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Logger.log("General exception in search: $e")
             Logger.log(e)
             emptyList()
@@ -390,7 +390,7 @@ class DynamicMangaParser(extension: MangaExtension.Installed) : MangaParser() {
             val reversedRes = res.reversed()
             val chapterList = reversedRes.map { sChapterToMangaChapter(it) }
             chapterList
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Logger.log("loadChapters Exception: $e")
             emptyList()
         }
@@ -428,7 +428,7 @@ class DynamicMangaParser(extension: MangaExtension.Installed) : MangaParser() {
 
             } catch (e: CancellationException) {
                 throw e
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 Logger.log("loadImages Exception: $e")
                 snackString("Failed to load images: $e")
                 emptyList()
@@ -464,7 +464,7 @@ class DynamicMangaParser(extension: MangaExtension.Installed) : MangaParser() {
                 deferreds.awaitAll()
             } catch (e: CancellationException) {
                 throw e
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 Logger.log("loadImages Exception: $e")
                 snackString("Failed to load images: $e")
                 emptyList()
@@ -490,7 +490,7 @@ class DynamicMangaParser(extension: MangaExtension.Installed) : MangaParser() {
                 snackString("Failed to bypass Cloudflare")
             }
             emptyList()
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             Logger.log("General exception in search: $e")
             emptyList()
         }
@@ -570,7 +570,7 @@ class VideoServerPassthrough(
         val resolved = videoServer.video?.let { original ->
             try {
                 source?.resolveVideo(original) ?: original
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 Logger.log("resolveVideo failed: ${e.message}")
                 original
             }
