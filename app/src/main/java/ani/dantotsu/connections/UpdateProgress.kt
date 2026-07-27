@@ -55,15 +55,20 @@ fun updateProgress(media: Media, number: String) {
                         "${ani.dantotsu.connections.mangaupdates.PREF_MU_LAST_READ_PREFIX}$muSeriesId",
                         System.currentTimeMillis()
                     )
-                    MangaBakaSync.syncFromMangaUpdates(
-                        muSeriesId = muSeriesId,
-                        muListId = media.muListId,
-                        progressChapter = a,
-                        progressVolume = media.userVolume,
-                    )
                     toast(currContext()?.getString(R.string.setting_progress, a))
                     media.userProgress = a
                     Refresh.all()
+                    // Mirror to MangaBaka afterwards: it costs an id lookup plus a PATCH (and a
+                    // POST when the entry is new), and the update is already committed by then, so
+                    // making the confirmation wait on it only makes the app feel slow.
+                    launch {
+                        MangaBakaSync.syncFromMangaUpdates(
+                            muSeriesId = muSeriesId,
+                            muListId = media.muListId,
+                            progressChapter = a,
+                            progressVolume = media.userVolume,
+                        )
+                    }
                 }
             }
         }
@@ -87,30 +92,44 @@ fun updateProgress(media: Media, number: String) {
                     status = status,
                     startedAt = startDate
                 )
-                MAL.query.editList(
-                    media.idMAL,
-                    media.anime != null,
-                    a,
-                    null,
-                    if (media.userStatus == "REPEATING") media.userStatus!! else "CURRENT",
-                    null,
-                    media.userVolume
-                )
-                if (media.manga != null) {
-                    MangaBakaSync.syncFromAnilist(
-                        anilistId = media.id,
-                        malId = media.idMAL,
-                        status = if (media.userStatus == "REPEATING") media.userStatus else "CURRENT",
-                        progressChapter = a,
-                        progressVolume = media.userVolume,
-                        score = media.userScore.takeIf { it > 0 },
-                        rereads = null,
-                        isPrivate = media.isListPrivate,
-                        startDate = null,
-                        finishDate = null,
+                toast(currContext()?.getString(R.string.setting_progress, a))
+
+                // AniList is the source of truth and has already accepted the update; MAL and
+                // MangaBaka are mirrors. Fire them off together instead of chaining them ahead of
+                // the toast, or the confirmation waits on up to four extra round trips (MangaBaka
+                // needs an id lookup, then a PATCH, then a POST if the entry doesn't exist yet).
+                val volume = media.userVolume
+                val mirroredStatus =
+                    if (media.userStatus == "REPEATING") media.userStatus!! else "CURRENT"
+                launch {
+                    MAL.query.editList(
+                        media.idMAL,
+                        media.anime != null,
+                        a,
+                        null,
+                        mirroredStatus,
+                        null,
+                        volume
                     )
                 }
-                toast(currContext()?.getString(R.string.setting_progress, a))
+                if (media.manga != null) {
+                    val score = media.userScore.takeIf { it > 0 }
+                    val isPrivate = media.isListPrivate
+                    launch {
+                        MangaBakaSync.syncFromAnilist(
+                            anilistId = media.id,
+                            malId = media.idMAL,
+                            status = mirroredStatus,
+                            progressChapter = a,
+                            progressVolume = volume,
+                            score = score,
+                            rereads = null,
+                            isPrivate = isPrivate,
+                            startDate = null,
+                            finishDate = null,
+                        )
+                    }
+                }
             }
             media.userProgress = a
             Refresh.all()
