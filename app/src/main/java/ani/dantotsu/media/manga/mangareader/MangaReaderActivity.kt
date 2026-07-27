@@ -1350,6 +1350,16 @@ class MangaReaderActivity : AppCompatActivity() {
     private var multiChapterLoading = false
     private var lastTrackedChapterIndex = -1
 
+    /**
+     * Chapter indices whose progress has already been pushed during this reader session.
+     * Resting on a transition leaves the tracked chapter oscillating across the divider — the
+     * item below is only borderline visible, so it drops in and out of the visible range as the
+     * images under it settle from their placeholder height into their real one. Each forward flip
+     * looks like a fresh chapter boundary, so without this the same update (and its toast) fires
+     * over and over while the reader sits still.
+     */
+    private val progressedChapterIndices = mutableSetOf<Int>()
+
     private fun handleContinuousMultiChapterScroll(
         v: RecyclerView,
         manager: PreloadLinearLayoutManager
@@ -1404,7 +1414,7 @@ class MangaReaderActivity : AppCompatActivity() {
                 val prevKey = chaptersArr.getOrNull(lastTrackedChapterIndex)
                 val prevChap = if (prevKey != null) chapters[prevKey] else null
                 if (prevChap != null) {
-                    updateMultiChapterProgressSilently(prevChap)
+                    updateMultiChapterProgressSilently(prevChap, lastTrackedChapterIndex)
                 }
             }
             lastTrackedChapterIndex = visibleChapterIdx
@@ -1488,7 +1498,7 @@ class MangaReaderActivity : AppCompatActivity() {
                 val prevKey = chaptersArr.getOrNull(lastTrackedChapterIndex)
                 val prevChap = if (prevKey != null) chapters[prevKey] else null
                 if (prevChap != null) {
-                    updateMultiChapterProgressSilently(prevChap)
+                    updateMultiChapterProgressSilently(prevChap, lastTrackedChapterIndex)
                 }
             }
             lastTrackedChapterIndex = visibleChapterIdx
@@ -1777,11 +1787,13 @@ class MangaReaderActivity : AppCompatActivity() {
      * Silently updates progress when crossing a chapter boundary in continuous multi-chapter
      * mode. The user's choice is collected once up front by
      * [ChapterLoaderDialog.showProgressPopupIfNecessary] when a chapter is tapped in the list,
-     * so each transition only consults the stored `_save_progress` decision.
+     * so each transition only consults the stored `_save_progress` decision. Fires at most once per
+     * chapter per session — see [progressedChapterIndices].
      */
-    private fun updateMultiChapterProgressSilently(completedChapter: MangaChapter) {
+    private fun updateMultiChapterProgressSilently(completedChapter: MangaChapter, chapterIndex: Int) {
         if (media.id < 0) return
         if (Anilist.userid == null) return
+        if (!progressedChapterIndices.add(chapterIndex)) return
         val incognito: Boolean = PrefManager.getVal(PrefName.Incognito)
         if (incognito) return
         if (media.isAdult && !PrefManager.getVal<Boolean>(PrefName.UpdateForHReader)) return
