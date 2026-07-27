@@ -868,7 +868,10 @@ class AnimeWatchFragment : Fragment() {
     }
 
     override fun onDestroy() {
-        model.watchSources?.flushText()
+        // Parsers are global singletons, so the "Found : x" text has to be cleared when leaving the
+        // media, or the next one would open showing it. A rotation isn't leaving: the ViewModel keeps
+        // the loaded episodes, so nothing re-runs the search that would set the text again.
+        if (activity?.isChangingConfigurations != true) model.watchSources?.flushText()
         super.onDestroy()
         try {
             requireContext().unregisterReceiver(downloadStatusReceiver)
