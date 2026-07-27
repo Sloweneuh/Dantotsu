@@ -22,6 +22,8 @@ data class MUMedia(
     val bayesianRating: Double?,
     val priority: Int?,
     val format: String? = null,
+    /** AniList-canonical status token ("RELEASING", "HIATUS", "FINISHED", ...), when known. */
+    val status: String? = null,
     /** Local timestamp (ms) of the last time the user updated progress for this series. */
     val updatedAt: Long? = null,
     /** MangaUpdates "time added to list" (Unix seconds); maps to the AniList start date on convert. */
@@ -41,6 +43,7 @@ fun MUMedia.toMedia(): Media = Media(
     // just the newest known release), so leave this null to display "~" like AniList.
     manga = Manga(totalChapters = null),
     format = if (format?.contains("novel", ignoreCase = true) == true) "NOVEL" else "MANGA",
+    status = status,
     userProgress = userChapter,
     userVolume = userVolume,
     muSeriesId = id,

@@ -147,12 +147,14 @@ class UnreadChaptersAdapter(
                     itemCompactSource.visibility = View.GONE
                 } else {
                     itemCompactLanguageBG.visibility = View.GONE
-                    itemCompactSource.visibility = View.VISIBLE
+                    // itemCompactSource's text is never populated for this adapter; showing it
+                    // empty just reserves a blank line above the novel badge below.
+                    itemCompactSource.visibility = View.GONE
                 }
 
             // Show 'Novel' label when this stack item is a novel (only relevant for MAL stacks)
             itemCompactNovel.text = "Novel"
-            itemCompactNovel.visibility =
+            itemCompactNovelContainer.visibility =
                 if (fromMalStack && media.format != null && media.format.equals("NOVEL", true)) {
                     View.VISIBLE
                 } else {

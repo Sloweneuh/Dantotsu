@@ -102,6 +102,22 @@ class MediaListViewActivity : AppCompatActivity() {
                 .map { (item, _) -> item }
         } else null
 
+        // Session-only toggle (no saved pref) to hide novels from a MAL interest stack's list.
+        // Only relevant when there's actually a novel in the list to hide.
+        var showNovels = true
+        val hasNovels = fromMalStack && combinedItems == null &&
+            mediaList.any { it.format?.equals("NOVEL", ignoreCase = true) == true }
+
+        fun filteredMediaList(): MutableList<Media> =
+            if (showNovels) mediaList
+            else mediaList.filterNot { it.format?.equals("NOVEL", ignoreCase = true) == true }
+                .toMutableList()
+
+        fun updateTitle() {
+            val totalCount = combinedItems?.count() ?: filteredMediaList().count()
+            binding.listTitle.text = "${intent.getStringExtra("title")} ($totalCount)"
+        }
+
         val view = PrefManager.getCustomVal("mediaView", 0)
         var mediaView: android.widget.ImageView = when (view) {
             1 -> binding.mediaList
@@ -121,12 +137,7 @@ class MediaListViewActivity : AppCompatActivity() {
             }
         }
 
-        fun changeView(mode: Int, current: android.widget.ImageView) {
-            mediaView.imageAlpha = 84
-            mediaView = current
-            current.imageAlpha = 255
-            PrefManager.setCustomVal("mediaView", mode)
-
+        fun buildAdapter(mode: Int) {
             if (combinedItems != null) {
                 binding.mediaRecyclerView.adapter = MergedReadingAdapter(combinedItems, mode)
                 binding.mediaRecyclerView.layoutManager = GridLayoutManager(
@@ -136,19 +147,20 @@ class MediaListViewActivity : AppCompatActivity() {
                 return
             }
 
+            val list = filteredMediaList()
             // Use custom adapter based on what info we have
             when {
                 localUnreadInfo != null -> {
                     // Manga with unread chapters
-                    binding.mediaRecyclerView.adapter = ani.dantotsu.home.UnreadChaptersAdapter(mediaList, localUnreadInfo, mode, fromMalStack)
+                    binding.mediaRecyclerView.adapter = ani.dantotsu.home.UnreadChaptersAdapter(list, localUnreadInfo, mode, fromMalStack)
                 }
                 localUnreleasedInfo != null -> {
                     // Anime with unreleased episodes
-                    binding.mediaRecyclerView.adapter = ani.dantotsu.home.UnreleasedEpisodesAdapter(mediaList, localUnreleasedInfo, mode)
+                    binding.mediaRecyclerView.adapter = ani.dantotsu.home.UnreleasedEpisodesAdapter(list, localUnreleasedInfo, mode)
                 }
                     else -> {
                     // Standard adapter
-                    binding.mediaRecyclerView.adapter = MediaAdaptor(mode, mediaList, this, fromMalStack = fromMalStack)
+                    binding.mediaRecyclerView.adapter = MediaAdaptor(mode, list, this, fromMalStack = fromMalStack)
                     }
             }
             binding.mediaRecyclerView.layoutManager = GridLayoutManager(
@@ -156,41 +168,42 @@ class MediaListViewActivity : AppCompatActivity() {
                 if (mode == 1) 1 else (screenWidth / 120f).toInt()
             )
         }
+
+        var currentMode = view
+        fun changeView(mode: Int, current: android.widget.ImageView) {
+            mediaView.imageAlpha = 84
+            mediaView = current
+            current.imageAlpha = 255
+            currentMode = mode
+            PrefManager.setCustomVal("mediaView", mode)
+            buildAdapter(mode)
+        }
         binding.mediaList.setOnClickListener {
             changeView(1, binding.mediaList)
         }
         binding.mediaGrid.setOnClickListener {
             changeView(0, binding.mediaGrid)
         }
-        val totalCount = combinedItems?.count() ?: mediaList.count()
-        val text = "${intent.getStringExtra("title")} ($totalCount)"
-        binding.listTitle.text = text
+
+        updateTitle()
 
         binding.listBack.setOnClickListener {
             finish()
         }
 
-        // Initial adapter setup
-        if (combinedItems != null) {
-            binding.mediaRecyclerView.adapter = MergedReadingAdapter(combinedItems, view)
-        } else when {
-            localUnreadInfo != null -> {
-                // Use custom adapter for unread chapters (manga)
-                binding.mediaRecyclerView.adapter = ani.dantotsu.home.UnreadChaptersAdapter(mediaList, localUnreadInfo, view, fromMalStack)
-            }
-            localUnreleasedInfo != null -> {
-                // Use custom adapter for unreleased episodes (anime)
-                binding.mediaRecyclerView.adapter = ani.dantotsu.home.UnreleasedEpisodesAdapter(mediaList, localUnreleasedInfo, view)
-            }
-            else -> {
-                // Use standard adapter
-                binding.mediaRecyclerView.adapter = MediaAdaptor(view, mediaList, this, fromMalStack = fromMalStack)
+        if (hasNovels) {
+            binding.listNovelToggle.visibility = View.VISIBLE
+            binding.listNovelToggle.imageAlpha = 255
+            binding.listNovelToggle.setOnClickListener {
+                showNovels = !showNovels
+                binding.listNovelToggle.imageAlpha = if (showNovels) 255 else 84
+                updateTitle()
+                buildAdapter(currentMode)
             }
         }
-        binding.mediaRecyclerView.layoutManager = GridLayoutManager(
-            this,
-            if (view == 1) 1 else (screenWidth / 120f).toInt()
-        )
+
+        // Initial adapter setup
+        buildAdapter(currentMode)
     }
 
     override fun onDestroy() {

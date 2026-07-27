@@ -86,6 +86,19 @@ object StackResolver {
                                 val latest = muDetails?.latest_chapter?.toInt()
                                     ?: series.totalChapters
                                         ?.trim()?.takeWhile { it.isDigit() }?.toIntOrNull()
+                                // MangaUpdates' status is free text like "132 Chapters (Ongoing)";
+                                // pull the parenthetical and map it onto the AniList status tokens
+                                // MediaAdaptor's ongoing/hiatus dot indicator already recognizes.
+                                val status = muDetails?.status?.let { full ->
+                                    val paren = Regex("""\(([^)]+)\)""").find(full)
+                                        ?.groupValues?.getOrNull(1) ?: full
+                                    when {
+                                        paren.contains("ongoing", ignoreCase = true) -> "RELEASING"
+                                        paren.contains("hiatus", ignoreCase = true) -> "HIATUS"
+                                        paren.contains("complete", ignoreCase = true) -> "FINISHED"
+                                        else -> null
+                                    }
+                                }
                                 val media = MUMedia(
                                     id = muId,
                                     title = series.title ?: series.romanizedTitle,
@@ -98,6 +111,7 @@ object StackResolver {
                                     bayesianRating = null,
                                     priority = null,
                                     format = series.type,
+                                    status = status,
                                 ).toMedia()
                                 media.malIntro = entry.intro
                                 entry.id to media
