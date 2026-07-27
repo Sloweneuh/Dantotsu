@@ -222,6 +222,7 @@ siteUrl
 isAdult
 status(version: 2)
 chapters
+volumes
 episodes
 nextAiringEpisode {
   episode

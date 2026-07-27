@@ -131,7 +131,10 @@ data class Media(
             totalEpisodes = apiMedia.episodes,
             nextAiringEpisode = apiMedia.nextAiringEpisode?.episode?.minus(1)
         ) else null,
-        manga = if (apiMedia.type == MediaType.MANGA) Manga(totalChapters = apiMedia.chapters) else null,
+        manga = if (apiMedia.type == MediaType.MANGA) Manga(
+            totalChapters = apiMedia.chapters,
+            totalVolumes = apiMedia.volumes
+        ) else null,
         format = apiMedia.format?.toString(),
         description = apiMedia.description?.toString(),
         source = apiMedia.source?.toString(),

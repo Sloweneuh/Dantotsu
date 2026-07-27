@@ -126,9 +126,25 @@ class MUListEditorFragment : BottomSheetDialogFragment() {
             val selectedName = binding.mediaListStatus.text.toString()
             val selectedIndex = allStatusNames.indexOf(selectedName).takeIf { it >= 0 } ?: initialStatusIndex
             // Planning → Reading when progress starts
-            if (selectedIndex == 1) binding.mediaListStatus.setText(allStatusNames[0], false)
+            if (selectedIndex == 1) {
+                binding.mediaListStatus.setText(allStatusNames[0], false)
+                // Reading the first chapter puts you in the first volume, not volume zero.
+                if ((binding.mediaListVolume.text.toString().toIntOrNull() ?: 0) == 0) {
+                    binding.mediaListVolume.setText("1")
+                }
+            }
             val current = binding.mediaListProgress.text.toString().toIntOrNull() ?: 0
             binding.mediaListProgress.setText("${current + 1}")
+        }
+
+        // Volume +1. MangaUpdates exposes no volume total, so there's nothing to cap against and
+        // nothing to fill in on completion — this only ever bumps the count.
+        binding.mediaListVolumeIncrement.setOnClickListener {
+            val selectedName = binding.mediaListStatus.text.toString()
+            val selectedIndex = allStatusNames.indexOf(selectedName).takeIf { it >= 0 } ?: initialStatusIndex
+            if (selectedIndex == 1) binding.mediaListStatus.setText(allStatusNames[0], false)
+            val current = binding.mediaListVolume.text.toString().toIntOrNull() ?: 0
+            binding.mediaListVolume.setText("${current + 1}")
         }
 
         // Save

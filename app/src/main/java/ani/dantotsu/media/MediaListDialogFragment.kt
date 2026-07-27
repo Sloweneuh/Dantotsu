@@ -79,8 +79,9 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                 )
 
                 var total: Int? = null
+                var totalVolumes: Int? = null
                 binding.mediaListProgress.setText(if (media!!.userProgress != null) media!!.userProgress.toString() else "")
-                binding.mediaListVolumeLayout.visibility =
+                binding.mediaListVolumeCont.visibility =
                     if (media!!.manga != null) View.VISIBLE else View.GONE
                 if (media!!.anime != null) {
                     if (media!!.anime!!.totalEpisodes != null) {
@@ -150,6 +151,19 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                             )
                     }
 
+                    // AniList only fills in `volumes` once the manga is finished, so this stays
+                    // null (and the field uncapped) while it's still running. No status view is
+                    // passed: reaching the last volume shouldn't mark the entry completed, since
+                    // volume counts lag and a reader can be on the final volume mid-read.
+                    totalVolumes = media!!.manga!!.totalVolumes
+                    if (totalVolumes != null) {
+                        binding.mediaListVolume.filters =
+                            arrayOf(
+                                InputFilterMinMax(0.0, totalVolumes.toDouble()),
+                                LengthFilter(totalVolumes.toString().length)
+                            )
+                    }
+
                     // Always fetch MALSync data for manga to get the latest chapter info
                     // This helps when AniList doesn't have totalChapters even for finished manga
                     val malMode2 = PrefManager.getVal<String>(PrefName.MalSyncCheckMode) ?: "both"
@@ -187,6 +201,12 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                     height = ViewGroup.LayoutParams.MATCH_PARENT
                 }
                 binding.mediaListProgressLayout.suffixTextView.gravity = Gravity.CENTER
+
+                binding.mediaListVolumeLayout.suffixText = " / ${totalVolumes ?: '?'}"
+                binding.mediaListVolumeLayout.suffixTextView.updateLayoutParams {
+                    height = ViewGroup.LayoutParams.MATCH_PARENT
+                }
+                binding.mediaListVolumeLayout.suffixTextView.gravity = Gravity.CENTER
 
                 binding.mediaListScore.setText(
                     if (media!!.userScore != 0) media!!.userScore.div(
@@ -238,6 +258,9 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                     if (total != null) {
                         binding.mediaListProgress.setText(total.toString())
                     }
+                    if (totalVolumes != null) {
+                        binding.mediaListVolume.setText(totalVolumes.toString())
+                    }
                     fillStartDateIfNeeded()
                     end.date = FuzzyDate().getToday()
                     binding.mediaListEnd.setText(end.date.toString())
@@ -246,14 +269,19 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                 var startBackupDate: FuzzyDate? = null
                 var endBackupDate: FuzzyDate? = null
                 var progressBackup: String? = null
+                var volumeBackup: String? = null
                 binding.mediaListStatus.setOnItemClickListener { _, _, i, _ ->
-                    if (i == 2 && total != null) {
+                    // A volume count alone is enough to fill in on completion — AniList has manga
+                    // with `volumes` but no `chapters`.
+                    if (i == 2 && (total != null || totalVolumes != null)) {
                         startBackupDate = start.date
                         endBackupDate = end.date
                         progressBackup = binding.mediaListProgress.text.toString()
+                        volumeBackup = binding.mediaListVolume.text.toString()
                         onComplete()
                     } else {
                         if (progressBackup != null) binding.mediaListProgress.setText(progressBackup)
+                        if (volumeBackup != null) binding.mediaListVolume.setText(volumeBackup)
                         if (startBackupDate != null) {
                             binding.mediaListStart.setText(startBackupDate.toString())
                             start.date = startBackupDate
@@ -273,6 +301,12 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                             false
                         )
                         fillStartDateIfNeeded()
+                        // Reading the first chapter puts you in the first volume, not volume zero.
+                        if (media?.manga != null &&
+                            (binding.mediaListVolume.text.toString().toIntOrNull() ?: 0) == 0
+                        ) {
+                            binding.mediaListVolume.setText("1")
+                        }
                     }
                     val init =
                         if (binding.mediaListProgress.text.toString() != "") binding.mediaListProgress.text.toString()
@@ -284,6 +318,22 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                     if (init + 1 == (total ?: 5000)) {
                         binding.mediaListStatus.setText(statusStrings[2], false)
                         onComplete()
+                    }
+                }
+
+                binding.mediaListVolumeIncrement.setOnClickListener {
+                    if (binding.mediaListStatus.text.toString() == statusStrings[0]) {
+                        binding.mediaListStatus.setText(statusStrings[1], false)
+                        fillStartDateIfNeeded()
+                    }
+                    val init =
+                        if (binding.mediaListVolume.text.toString() != "") binding.mediaListVolume.text.toString()
+                            .toInt() else 0
+                    // Unlike chapters, hitting the last volume doesn't mark the entry completed —
+                    // it only bumps the count.
+                    if (init < (totalVolumes ?: 5000)) {
+                        val volumeText = "${init + 1}"
+                        binding.mediaListVolume.setText(volumeText)
                     }
                 }
 

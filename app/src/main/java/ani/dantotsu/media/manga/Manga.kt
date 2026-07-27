@@ -5,6 +5,8 @@ import java.io.Serializable
 
 data class Manga(
     var totalChapters: Int? = null,
+    /** AniList's volume count. Only meaningful once the manga is finished — null while ongoing. */
+    var totalVolumes: Int? = null,
     var selectedChapter: MangaChapter? = null,
     var chapters: MutableMap<String, MangaChapter>? = null,
     var slug: String? = null,

@@ -191,7 +191,7 @@ class AnilistQueries {
     suspend fun getMedia(id: Int, mal: Boolean = false, type: String? = null): Media? {
 	    val typeArg = if (type != null) "type: $type," else ""
         val response = executeQuery<Query.Media>(
-            """{Media($typeArg${if (!mal) "id:" else "idMal:"}$id){id idMal status chapters episodes nextAiringEpisode{episode}type meanScore isAdult isFavourite format bannerImage coverImage{large}title{english romaji userPreferred}mediaListEntry{progress progressVolumes private score(format:POINT_100)status}}}""",
+            """{Media($typeArg${if (!mal) "id:" else "idMal:"}$id){id idMal status chapters volumes episodes nextAiringEpisode{episode}type meanScore isAdult isFavourite format bannerImage coverImage{large}title{english romaji userPreferred}mediaListEntry{progress progressVolumes private score(format:POINT_100)status}}}""",
             force = true
         )
         val fetchedMedia = response?.data?.media ?: return null
@@ -216,6 +216,10 @@ class AnilistQueries {
                         media.startDate = fetchedMedia.startDate
                         media.endDate = fetchedMedia.endDate
                         media.streamingEpisodes = fetchedMedia.streamingEpisodes
+                        // Backfill the volume count here too: the Media handed to this screen was
+                        // built by whichever list/search query the user arrived from, and not all
+                        // of those ask for `volumes`.
+                        media.manga?.totalVolumes = fetchedMedia.volumes
                         if (fetchedMedia.genres != null) {
                             media.genres = arrayListOf()
                             fetchedMedia.genres?.forEach { i ->
@@ -845,7 +849,7 @@ class AnilistQueries {
         sortOrder: String? = null
     ): MutableMap<String, ArrayList<Media>> {
         val response =
-            executeQuery<Query.MediaListCollection>("""{ MediaListCollection(userId: $userId, type: ${if (anime) "ANIME" else "MANGA"}) { lists { name isCustomList entries { status progress progressVolumes private score(format:POINT_100) updatedAt startedAt{year month day} completedAt{year month day} media { id idMal isAdult type status chapters episodes nextAiringEpisode {episode} bannerImage genres meanScore isFavourite format coverImage{large} description startDate{year month day} title {english romaji userPreferred } synonyms tags { name } countryOfOrigin source } } } user { id mediaListOptions { rowOrder animeList { sectionOrder } mangaList { sectionOrder } } } } }""")
+            executeQuery<Query.MediaListCollection>("""{ MediaListCollection(userId: $userId, type: ${if (anime) "ANIME" else "MANGA"}) { lists { name isCustomList entries { status progress progressVolumes private score(format:POINT_100) updatedAt startedAt{year month day} completedAt{year month day} media { id idMal isAdult type status chapters volumes episodes nextAiringEpisode {episode} bannerImage genres meanScore isFavourite format coverImage{large} description startDate{year month day} title {english romaji userPreferred } synonyms tags { name } countryOfOrigin source } } } user { id mediaListOptions { rowOrder animeList { sectionOrder } mangaList { sectionOrder } } } } }""")
         val sorted = mutableMapOf<String, ArrayList<Media>>()
         val unsorted = mutableMapOf<String, ArrayList<Media>>()
         val all = arrayListOf<Media>()
