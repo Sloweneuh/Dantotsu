@@ -803,6 +803,21 @@
     <string name="dont_show_again">Don\'t show again for version %1$s</string>
     <string name="no_update_found">No Update Found</string>
     <string name="downloading_update">Downloading Update %1$s</string>
+    <!-- App update activity -->
+    <string name="app_update">App Update</string>
+    <string name="update_version_change">%1$s → %2$s</string>
+    <string name="update_sheet_message">You\'re on version %1$s — version %2$s is available.\n\nContinue to read the patch notes and download the update.</string>
+    <string name="download_update">Download</string>
+    <string name="install_update">Install</string>
+    <string name="update_download_failed">Download failed</string>
+    <string name="update_apk_not_found">Couldn\'t find the APK for this release</string>
+    <string name="update_download_size">Download size: %1$s</string>
+    <string name="update_downloading">Downloading</string>
+    <string name="update_percent">· %1$d%%</string>
+    <string name="update_ready_to_install">Downloaded · %1$s</string>
+    <string name="update_ready_title">Update ready to install</string>
+    <string name="update_ready_text">Dantotsu %1$s · %2$s</string>
+    <string name="update_version_name">Dantotsu %1$s</string>
     <string name="permission_required">Please give permission to access Files &amp; Folders from Settings, &amp; Try again.</string>
     <string name="started_downloading">Started Downloading\n%1$s</string>
     <string name="install_1dm">Please install 1DM</string>

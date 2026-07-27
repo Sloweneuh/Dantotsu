@@ -277,17 +277,19 @@ class AnilistHomeViewModel : ViewModel() {
     }
 
     suspend fun loadMain(context: FragmentActivity) {
-        Anilist.getSavedToken()
-        MAL.getSavedToken()
-        Discord.getSavedToken()
-        ani.dantotsu.connections.mangaupdates.MangaUpdates.getSavedToken()
-        ani.dantotsu.connections.mangabaka.MangaBaka.getSavedToken()
+        // Fired before the token restores below: each of those can hit the network to refresh, and
+        // the update check needs nothing from them, so it shouldn't queue behind them.
         if (!BuildConfig.FLAVOR.contains("fdroid")) {
             if (PrefManager.getVal(PrefName.CheckUpdate))
                 context.lifecycleScope.launch(Dispatchers.IO) {
                     AppUpdater.check(context, false)
                 }
         }
+        Anilist.getSavedToken()
+        MAL.getSavedToken()
+        Discord.getSavedToken()
+        ani.dantotsu.connections.mangaupdates.MangaUpdates.getSavedToken()
+        ani.dantotsu.connections.mangabaka.MangaBaka.getSavedToken()
         val ret = Anilist.query.getGenresAndTags()
         withContext(Dispatchers.Main) {
             genres.value = ret

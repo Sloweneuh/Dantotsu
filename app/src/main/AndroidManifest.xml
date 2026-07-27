@@ -281,6 +281,11 @@
         <activity
             android:name=".others.imagesearch.ImageSearchActivity"
             android:parentActivityName=".MainActivity" />
+        <!-- configChanges so a rotation doesn't kill an in-flight update download -->
+        <activity
+            android:name=".others.AppUpdateActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"
+            android:parentActivityName=".MainActivity" />
         <activity
             android:name=".util.ActivityMarkdownCreator"
             android:windowSoftInputMode="adjustResize|stateVisible" />
@@ -605,6 +610,10 @@
             android:foregroundServiceType="dataSync" />
         <service
             android:name=".download.anime.AnimeDownloaderService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+        <service
+            android:name=".others.AppUpdateService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
         <service

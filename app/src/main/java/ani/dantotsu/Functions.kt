@@ -132,6 +132,7 @@ import eu.kanade.tachiyomi.data.notification.Notifications
 import io.noties.markwon.AbstractMarkwonPlugin
 import io.noties.markwon.Markwon
 import io.noties.markwon.MarkwonConfiguration
+import io.noties.markwon.MarkwonPlugin
 import io.noties.markwon.SoftBreakAddsNewLinePlugin
 import io.noties.markwon.ext.strikethrough.StrikethroughPlugin
 import io.noties.markwon.ext.tables.TablePlugin
@@ -1613,6 +1614,7 @@ fun openOrCopyAnilistLink(link: String) {
 
 /**
  * Builds the markwon instance with all the plugins
+ * @param plugins extra plugins appended last, so they can override the theme set above
  * @return the markwon instance
  */
 fun buildMarkwon(
@@ -1620,6 +1622,7 @@ fun buildMarkwon(
     userInputContent: Boolean = true,
     fragment: Fragment? = null,
     anilist: Boolean = false,
+    plugins: List<MarkwonPlugin> = emptyList(),
     linkResolver: ((link: String) -> Unit)? = null
 ): Markwon {
     val glideContext = fragment?.let { Glide.with(it) } ?: Glide.with(activity)
@@ -1687,6 +1690,7 @@ fun buildMarkwon(
                 requestManager.clear(target)
             }
         }))
+        .usePlugins(plugins)
         .build()
     return markwon
 }
