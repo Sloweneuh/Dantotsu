@@ -16,6 +16,7 @@ import ani.dantotsu.Refresh
 import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.anilist.api.FuzzyDate
 import ani.dantotsu.connections.mal.MAL
+import ani.dantotsu.connections.mangabaka.MangaBakaSync
 import ani.dantotsu.databinding.BottomSheetMediaListSmallBinding
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.others.getSerialized
@@ -25,6 +26,7 @@ import ani.dantotsu.settings.saving.containsMediaId
 import ani.dantotsu.settings.saving.removeMediaId
 import ani.dantotsu.snackString
 import ani.dantotsu.util.Logger
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -352,15 +354,48 @@ class MediaListDialogSmallFragment : BottomSheetDialogFragment() {
                                     media.isListPrivate,
                                     startDate
                                 )
-                                MAL.query.editList(
-                                    media.idMAL,
-                                    media.anime != null,
-                                    progress,
-                                    score,
-                                    status,
-                                    null,
-                                    volume
-                                )
+                                // Mirror what AniList now holds, dates included — otherwise the
+                                // trackers keep their own (or no) start date and show up as diffs
+                                // on the compare screen forever.
+                                val mirroredStart = startDate ?: media.userStartedAt.takeIf { !it.isEmpty() }
+                                val mirroredEnd = media.userCompletedAt.takeIf { !it.isEmpty() }
+                                val idMAL = media.idMAL
+                                val isAnime = media.anime != null
+                                val isManga = media.manga != null
+                                val id = media.id
+                                val isPrivate = media.isListPrivate
+                                // AniList has taken the edit; the trackers are best-effort mirrors
+                                // whose results are discarded either way, so run them on a scope
+                                // that outlives this sheet instead of making the save wait.
+                                CoroutineScope(Dispatchers.IO).launch {
+                                    launch {
+                                        MAL.query.editList(
+                                            idMAL,
+                                            isAnime,
+                                            progress,
+                                            score,
+                                            status,
+                                            null,
+                                            volume,
+                                            mirroredStart,
+                                            mirroredEnd
+                                        )
+                                    }
+                                    if (isManga) launch {
+                                        MangaBakaSync.syncFromAnilist(
+                                            anilistId = id,
+                                            malId = idMAL,
+                                            status = status,
+                                            progressChapter = progress,
+                                            progressVolume = volume,
+                                            score = score,
+                                            rereads = null,
+                                            isPrivate = isPrivate,
+                                            startDate = mirroredStart,
+                                            finishDate = mirroredEnd,
+                                        )
+                                    }
+                                }
                                 media.userVolume = volume
                             }
                         }

@@ -101,6 +101,11 @@ fun updateProgress(media: Media, number: String) {
                 val volume = media.userVolume
                 val mirroredStatus =
                     if (media.userStatus == "REPEATING") media.userStatus!! else "CURRENT"
+                // The dates AniList now holds: the one we just backfilled, or the one it already had.
+                // Mirroring them keeps MAL/MangaBaka from inventing their own start date on first
+                // write, which is what leaves the lists permanently out of sync otherwise.
+                val mirroredStart = startDate ?: media.userStartedAt.takeIf { !it.isEmpty() }
+                val mirroredEnd = media.userCompletedAt.takeIf { !it.isEmpty() }
                 launch {
                     MAL.query.editList(
                         media.idMAL,
@@ -109,7 +114,9 @@ fun updateProgress(media: Media, number: String) {
                         null,
                         mirroredStatus,
                         null,
-                        volume
+                        volume,
+                        mirroredStart,
+                        mirroredEnd
                     )
                 }
                 if (media.manga != null) {
@@ -125,8 +132,8 @@ fun updateProgress(media: Media, number: String) {
                             score = score,
                             rereads = null,
                             isPrivate = isPrivate,
-                            startDate = null,
-                            finishDate = null,
+                            startDate = mirroredStart,
+                            finishDate = mirroredEnd,
                         )
                     }
                 }

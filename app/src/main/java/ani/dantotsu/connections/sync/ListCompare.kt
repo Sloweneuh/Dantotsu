@@ -224,7 +224,10 @@ object ListCompare {
             // Push the clamped/repaired value when a cap or the completed-zero repair applies;
             // otherwise mirror AniList's own count as-is.
             progress = if (malTotal != null || repairCompletedZero) expectedProgress else media.userProgress,
-            volume = if (malVolTotal != null) expectedVolume else media.userVolume,
+            // Never push a 0 volume. A VOLUME diff is only ever raised for a non-zero source count
+            // (see above), so a 0 here means AniList simply doesn't track volumes for this entry —
+            // pushing it would silently wipe a count MAL has without the diff list ever showing it.
+            volume = expectedVolume.takeIf { it > 0 },
             score = media.userScore.takeIf { it > 0 },
             startDate = media.userStartedAt.takeIf { !it.isEmpty() },
             endDate = media.userCompletedAt.takeIf { !it.isEmpty() },
@@ -368,7 +371,7 @@ object ListCompare {
             mangaBakaSeriesId = seriesId,
             status = media.userStatus,
             progress = media.userProgress,
-            volume = media.userVolume,
+            volume = media.userVolume?.takeIf { it > 0 },   // same reasoning as the MAL side
             score = media.userScore.takeIf { it > 0 },
             startDate = media.userStartedAt.takeIf { !it.isEmpty() },
             endDate = media.userCompletedAt.takeIf { !it.isEmpty() },
@@ -408,7 +411,7 @@ object ListCompare {
             mangaBakaSeriesId = seriesId,
             status = null,
             progress = mu.userChapter,
-            volume = mu.userVolume,
+            volume = mu.userVolume?.takeIf { it > 0 },      // same reasoning as the MAL side
             score = null,
             detail = detail,
             fromStatusCanon = current?.let { mbToCanon(it.state) },
