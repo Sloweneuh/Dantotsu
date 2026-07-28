@@ -50,6 +50,25 @@ object BackupTree {
                     )
                 ),
                 BackupSubCategory(
+                    "general_capture", R.string.backup_sub_capture,
+                    R.string.backup_sub_capture_desc,
+                    listOf(
+                        // The card toggles are shared by the screenshot and clip composers.
+                        BackupItem(PrefName.ScreenshotShowMediaInfo, R.string.screenshot_show_media_info),
+                        BackupItem(PrefName.ScreenshotShowDate, R.string.screenshot_show_date),
+                        BackupItem(PrefName.ScreenshotShowSource, R.string.screenshot_show_source),
+                        BackupItem(PrefName.ScreenshotShowUserInfo, R.string.screenshot_show_user_info),
+                        BackupItem(PrefName.ScreenshotShowAppLogo, R.string.screenshot_show_app_icon),
+                        BackupItem(PrefName.ScreenshotShowFrame, R.string.screenshot_show_frame),
+                        BackupItem(PrefName.ScreenshotShowRoundedCorners, R.string.screenshot_show_rounded_corners),
+                        BackupItem(PrefName.ClipDurationSeconds, R.string.clip_duration),
+                        BackupItem(PrefName.ClipBurnSubtitles, R.string.clip_burn_subtitles),
+                        BackupItem(PrefName.ClipExportAsGif, R.string.clip_default_gif),
+                        BackupItem(PrefName.ClipGifFps, R.string.clip_gif_fps),
+                        BackupItem(PrefName.ClipGifWidth, R.string.clip_gif_width),
+                    )
+                ),
+                BackupSubCategory(
                     "general_downloads", R.string.backup_sub_downloads,
                     R.string.backup_sub_downloads_desc,
                     listOf(

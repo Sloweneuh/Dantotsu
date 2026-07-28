@@ -93,6 +93,13 @@ enum class PrefName(val data: Pref) {
     ScreenshotShowAppLogo(Pref(Location.General, Boolean::class, true)),
     ScreenshotShowFrame(Pref(Location.General, Boolean::class, true)),
     ScreenshotShowRoundedCorners(Pref(Location.General, Boolean::class, true)),
+    // Anime clip capture: how far back from the current position the clip starts, and what it
+    // exports as. The trim range in the review sheet always starts at this full duration.
+    ClipDurationSeconds(Pref(Location.General, Int::class, 30)),
+    ClipExportAsGif(Pref(Location.General, Boolean::class, false)),
+    ClipBurnSubtitles(Pref(Location.General, Boolean::class, true)),
+    ClipGifFps(Pref(Location.General, Int::class, 15)),
+    ClipGifWidth(Pref(Location.General, Int::class, 480)),
     // Master switch for syncing settings across devices via the Anilist account (Firebase RTDB).
     CloudSyncEnabled(Pref(Location.General, Boolean::class, true)),
     // Opt-in: also publish/reconcile the set of installed extensions across devices.

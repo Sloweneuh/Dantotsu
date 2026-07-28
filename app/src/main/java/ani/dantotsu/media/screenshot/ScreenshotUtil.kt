@@ -113,6 +113,10 @@ object ScreenshotUtil {
         }
     }
 
+    /** Formats a clip's span as `12:04 – 12:34`, for the media info row on a clip card. */
+    fun formatInterval(startMs: Long, endMs: Long): String =
+        "${formatTimestamp(startMs)} – ${formatTimestamp(endMs)}"
+
     /** Formats a playback position (ms) as `h:mm:ss` or `m:ss`. */
     fun formatTimestamp(positionMs: Long): String {
         val totalSeconds = (positionMs / 1000).coerceAtLeast(0)

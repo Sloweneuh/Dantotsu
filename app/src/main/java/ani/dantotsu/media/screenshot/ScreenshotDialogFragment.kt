@@ -15,9 +15,9 @@ import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
 import androidx.core.widget.doOnTextChanged
 import androidx.lifecycle.lifecycleScope
-import ani.dantotsu.BottomSheetDialogFragment
 import ani.dantotsu.R
 import ani.dantotsu.connections.anilist.Anilist
+import ani.dantotsu.media.anime.ExoplayerView
 import ani.dantotsu.databinding.BottomSheetScreenshotBinding
 import ani.dantotsu.saveImageToDownloads
 import ani.dantotsu.settings.saving.PrefManager
@@ -44,7 +44,7 @@ import java.util.Locale
  * The capture bitmap is passed through [pending] rather than the argument bundle to avoid a
  * TransactionTooLarge; the small text metadata rides in the arguments as usual.
  */
-class ScreenshotDialogFragment : BottomSheetDialogFragment() {
+class ScreenshotDialogFragment : CaptureSheetFragment() {
 
     private var _binding: BottomSheetScreenshotBinding? = null
     private val binding get() = _binding!!
@@ -108,54 +108,54 @@ class ScreenshotDialogFragment : BottomSheetDialogFragment() {
         }
 
         // Static metadata
-        binding.screenshotTitle.text = selectedTitle
-        binding.screenshotSubtitle.text =
+        binding.screenshotStage.screenshotTitle.text = selectedTitle
+        binding.screenshotStage.screenshotSubtitle.text =
             listOf(displayNumberLabel(), progressLabel).filter { it.isNotBlank() }
                 .joinToString("  •  ")
-        binding.screenshotSubtitle.isVisible = binding.screenshotSubtitle.text.isNotBlank()
-        binding.screenshotDate.text =
+        binding.screenshotStage.screenshotSubtitle.isVisible = binding.screenshotStage.screenshotSubtitle.text.isNotBlank()
+        binding.screenshotStage.screenshotDate.text =
             SimpleDateFormat("MMM d, yyyy · HH:mm", Locale.getDefault()).format(Date())
-        binding.screenshotSource.text = sourceLabel.orEmpty()
-        binding.screenshotUsername.text = Anilist.username.orEmpty()
+        binding.screenshotStage.screenshotSource.text = sourceLabel.orEmpty()
+        binding.screenshotStage.screenshotUsername.text = Anilist.username.orEmpty()
 
         // Seed the toggles from the saved defaults (Settings › Common › Screenshot defaults).
         // Must happen before the listeners are attached so it doesn't trigger an early re-render.
-        binding.switchMediaInfo.isChecked = PrefManager.getVal(PrefName.ScreenshotShowMediaInfo)
-        binding.switchDate.isChecked = PrefManager.getVal(PrefName.ScreenshotShowDate)
-        binding.switchSource.isChecked = PrefManager.getVal(PrefName.ScreenshotShowSource)
-        binding.switchUserInfo.isChecked = PrefManager.getVal(PrefName.ScreenshotShowUserInfo)
-        binding.switchAppIcon.isChecked = PrefManager.getVal(PrefName.ScreenshotShowAppLogo)
-        binding.switchFrame.isChecked = PrefManager.getVal(PrefName.ScreenshotShowFrame)
-        binding.switchRounded.isChecked = PrefManager.getVal(PrefName.ScreenshotShowRoundedCorners)
+        binding.screenshotOptions.chipMediaInfo.isChecked = PrefManager.getVal(PrefName.ScreenshotShowMediaInfo)
+        binding.screenshotOptions.chipDate.isChecked = PrefManager.getVal(PrefName.ScreenshotShowDate)
+        binding.screenshotOptions.chipSource.isChecked = PrefManager.getVal(PrefName.ScreenshotShowSource)
+        binding.screenshotOptions.chipUserInfo.isChecked = PrefManager.getVal(PrefName.ScreenshotShowUserInfo)
+        binding.screenshotOptions.chipAppIcon.isChecked = PrefManager.getVal(PrefName.ScreenshotShowAppLogo)
+        binding.screenshotOptions.chipFrame.isChecked = PrefManager.getVal(PrefName.ScreenshotShowFrame)
+        binding.screenshotOptions.chipRounded.isChecked = PrefManager.getVal(PrefName.ScreenshotShowRoundedCorners)
 
         // User info is only meaningful when signed in to AniList.
         val loggedIn = !Anilist.username.isNullOrEmpty()
-        binding.switchUserInfo.isEnabled = loggedIn
-        if (!loggedIn) binding.switchUserInfo.isChecked = false
+        binding.screenshotOptions.chipUserInfo.isEnabled = loggedIn
+        if (!loggedIn) binding.screenshotOptions.chipUserInfo.isChecked = false
 
         loadRemoteImages()
         setupTitleSelector()
 
         // Re-render the card whenever anything changes.
         val toggles = listOf(
-            binding.switchMediaInfo, binding.switchDate, binding.switchSource,
-            binding.switchUserInfo, binding.switchAppIcon, binding.switchFrame,
-            binding.switchRounded
+            binding.screenshotOptions.chipMediaInfo, binding.screenshotOptions.chipDate, binding.screenshotOptions.chipSource,
+            binding.screenshotOptions.chipUserInfo, binding.screenshotOptions.chipAppIcon, binding.screenshotOptions.chipFrame,
+            binding.screenshotOptions.chipRounded
         )
         toggles.forEach { it.setOnCheckedChangeListener { _, _ -> applyLayout() } }
-        binding.screenshotCaptionInput.doOnTextChanged { _, _, _, _ -> applyLayout() }
+        binding.screenshotOptions.screenshotCaptionInput.doOnTextChanged { _, _, _, _ -> applyLayout() }
 
-        binding.screenshotCropStart.setOnClickListener { setCropMode(true) }
-        binding.screenshotCropCancel.setOnClickListener { setCropMode(false) }
-        binding.screenshotCropApply.setOnClickListener { applyCrop() }
-        binding.screenshotCropReset.setOnClickListener {
+        binding.screenshotStage.screenshotCropStart.setOnClickListener { setCropMode(true) }
+        binding.screenshotBar.screenshotCropCancel.setOnClickListener { setCropMode(false) }
+        binding.screenshotBar.screenshotCropApply.setOnClickListener { applyCrop() }
+        binding.screenshotBar.screenshotCropReset.setOnClickListener {
             // Undo any crop already applied, then re-open the selection on the full capture.
             screenshot = originalScreenshot
             renderPreviewImage()
-            binding.screenshotCropOverlay.reset()
+            binding.screenshotStage.screenshotCropOverlay.reset()
         }
 
-        binding.screenshotSave.setOnClickListener {
+        binding.screenshotBar.screenshotSave.setOnClickListener {
             val out = buildOutputBitmap()
             if (out == null) {
                 fail(); return@setOnClickListener
@@ -163,11 +163,14 @@ class ScreenshotDialogFragment : BottomSheetDialogFragment() {
             if (downloadsPermission(requireActivity() as AppCompatActivity))
                 saveImageToDownloads(fileName(), out, requireActivity())
         }
-        binding.screenshotShare.setOnClickListener {
+        binding.screenshotBar.screenshotShare.setOnClickListener {
             val out = buildOutputBitmap()
             if (out == null) {
                 fail(); return@setOnClickListener
             }
+            // Raising the chooser isn't the user leaving the player, but some platforms report it
+            // as such and the video would drop into picture-in-picture behind it.
+            (activity as? ExoplayerView)?.suppressPipForChooser()
             shareImage(fileName(), out, requireContext())
         }
 
@@ -188,13 +191,13 @@ class ScreenshotDialogFragment : BottomSheetDialogFragment() {
                     .transform(CenterCrop(), RoundedCorners(dp(8)))
                     .override(dp(72), dp(108))
                 val cover = withContext(Dispatchers.IO) { runCatching { request.submit().get() }.getOrNull() }
-                _binding?.screenshotCover?.setImageBitmap(cover)
+                _binding?.screenshotStage?.screenshotCover?.setImageBitmap(cover)
             }
             Anilist.avatar?.let { url ->
                 val request = Glide.with(this@ScreenshotDialogFragment).asBitmap().load(url)
                     .transform(CircleCrop())
                 val avatar = withContext(Dispatchers.IO) { runCatching { request.submit().get() }.getOrNull() }
-                _binding?.screenshotAvatar?.setImageBitmap(avatar)
+                _binding?.screenshotStage?.screenshotAvatar?.setImageBitmap(avatar)
             }
         }
     }
@@ -203,17 +206,17 @@ class ScreenshotDialogFragment : BottomSheetDialogFragment() {
     private fun setupTitleSelector() {
         val options = titleOptions
         if (options.size <= 1) {
-            binding.screenshotTitleSelectLayout.isVisible = false
+            binding.screenshotOptions.screenshotTitleSelectLayout.isVisible = false
             return
         }
-        binding.screenshotTitleSelectLayout.isVisible = true
-        binding.screenshotTitleSelect.setAdapter(
+        binding.screenshotOptions.screenshotTitleSelectLayout.isVisible = true
+        binding.screenshotOptions.screenshotTitleSelect.setAdapter(
             ArrayAdapter(requireContext(), R.layout.item_titles_dropdown, options)
         )
-        binding.screenshotTitleSelect.setText(selectedTitle, false)
-        binding.screenshotTitleSelect.setOnItemClickListener { _, _, position, _ ->
+        binding.screenshotOptions.screenshotTitleSelect.setText(selectedTitle, false)
+        binding.screenshotOptions.screenshotTitleSelect.setOnItemClickListener { _, _, position, _ ->
             selectedTitle = options[position]
-            binding.screenshotTitle.text = selectedTitle
+            binding.screenshotStage.screenshotTitle.text = selectedTitle
         }
     }
 
@@ -223,19 +226,19 @@ class ScreenshotDialogFragment : BottomSheetDialogFragment() {
      * screenshot is all the user has to aim at.
      */
     private fun setCropMode(cropping: Boolean) {
-        binding.screenshotCropOverlay.isVisible = cropping
-        binding.screenshotActions.isVisible = !cropping
-        binding.screenshotCropActions.isVisible = cropping
-        binding.screenshotCropStart.isVisible = !cropping
-        binding.screenshotCropHint.isVisible = cropping
-        binding.screenshotDecorContainer.isVisible = !cropping && hasDecor()
-        if (cropping) binding.screenshotCropOverlay.reset() else applyLayout()
+        binding.screenshotStage.screenshotCropOverlay.isVisible = cropping
+        binding.screenshotBar.screenshotActions.isVisible = !cropping
+        binding.screenshotBar.screenshotCropActions.isVisible = cropping
+        binding.screenshotStage.screenshotCropStart.isVisible = !cropping
+        binding.screenshotStage.screenshotCropHint.isVisible = cropping
+        binding.screenshotStage.screenshotDecorContainer.isVisible = !cropping && hasDecor()
+        if (cropping) binding.screenshotStage.screenshotCropOverlay.reset() else applyLayout()
     }
 
     /** Crops [screenshot] down to the current selection and returns to the compose view. */
     private fun applyCrop() {
         val shot = screenshot
-        val overlay = binding.screenshotCropOverlay
+        val overlay = binding.screenshotStage.screenshotCropOverlay
         if (shot == null) {
             fail(); return
         }
@@ -258,85 +261,85 @@ class ScreenshotDialogFragment : BottomSheetDialogFragment() {
      */
     private fun renderPreviewImage() {
         val shot = screenshot ?: return
-        if (binding.switchRounded.isChecked) {
-            binding.screenshotImage.setImageDrawable(
+        if (binding.screenshotOptions.chipRounded.isChecked) {
+            binding.screenshotStage.screenshotImage.setImageDrawable(
                 RoundedBitmapDrawableFactory.create(resources, shot).apply {
                     cornerRadius = dp(12).toFloat()
                 }
             )
         } else {
-            binding.screenshotImage.setImageBitmap(shot)
+            binding.screenshotStage.screenshotImage.setImageBitmap(shot)
         }
     }
 
     /** Whether anything is rendered below the screenshot itself. */
     private fun hasDecor(): Boolean {
-        val mediaInfo = binding.switchMediaInfo.isChecked
-        val userInfo = binding.switchUserInfo.isChecked && !Anilist.username.isNullOrEmpty()
-        return captionText().isNotEmpty() || mediaInfo || userInfo || binding.switchAppIcon.isChecked
+        val mediaInfo = binding.screenshotOptions.chipMediaInfo.isChecked
+        val userInfo = binding.screenshotOptions.chipUserInfo.isChecked && !Anilist.username.isNullOrEmpty()
+        return captionText().isNotEmpty() || mediaInfo || userInfo || binding.screenshotOptions.chipAppIcon.isChecked
     }
 
     /** Applies the current toggle state to the live preview card. */
     private fun applyLayout() {
-        val frame = binding.switchFrame.isChecked
-        val mediaInfo = binding.switchMediaInfo.isChecked
-        val userInfo = binding.switchUserInfo.isChecked && !Anilist.username.isNullOrEmpty()
-        val appIcon = binding.switchAppIcon.isChecked
+        val frame = binding.screenshotOptions.chipFrame.isChecked
+        val mediaInfo = binding.screenshotOptions.chipMediaInfo.isChecked
+        val userInfo = binding.screenshotOptions.chipUserInfo.isChecked && !Anilist.username.isNullOrEmpty()
+        val appIcon = binding.screenshotOptions.chipAppIcon.isChecked
         val caption = captionText()
 
-        binding.screenshotCaption.text = caption
-        binding.screenshotCaptionRow.isVisible = caption.isNotEmpty()
+        binding.screenshotStage.screenshotCaption.text = caption
+        binding.screenshotStage.screenshotCaptionRow.isVisible = caption.isNotEmpty()
 
-        binding.screenshotMediaInfo.isVisible = mediaInfo
-        binding.switchDate.isEnabled = mediaInfo
-        binding.switchSource.isEnabled = mediaInfo
-        val dateVisible = mediaInfo && binding.switchDate.isChecked
-        val sourceVisible = mediaInfo && binding.switchSource.isChecked && !sourceLabel.isNullOrBlank()
-        binding.screenshotDate.isVisible = dateVisible
-        binding.screenshotSource.isVisible = sourceVisible
+        binding.screenshotStage.screenshotMediaInfo.isVisible = mediaInfo
+        binding.screenshotOptions.chipDate.isEnabled = mediaInfo
+        binding.screenshotOptions.chipSource.isEnabled = mediaInfo
+        val dateVisible = mediaInfo && binding.screenshotOptions.chipDate.isChecked
+        val sourceVisible = mediaInfo && binding.screenshotOptions.chipSource.isChecked && !sourceLabel.isNullOrBlank()
+        binding.screenshotStage.screenshotDate.isVisible = dateVisible
+        binding.screenshotStage.screenshotSource.isVisible = sourceVisible
 
         // Grow the cover with the amount of text beside it (title/subtitle, plus date and source).
         val extraRows = (if (dateVisible) 1 else 0) + (if (sourceVisible) 1 else 0)
-        binding.screenshotCover.updateLayoutParams {
+        binding.screenshotStage.screenshotCover.updateLayoutParams {
             width = dp(48 + extraRows * 8)
             height = dp(72 + extraRows * 12)
         }
 
-        binding.screenshotUserInfo.isVisible = userInfo
+        binding.screenshotStage.screenshotUserInfo.isVisible = userInfo
         // Logo placement, in order of preference so it never sits alone on a row while another
         // section could share with it: user-info row (footer) → media-info row → caption row →
         // otherwise the footer on its own.
         val onMedia = appIcon && mediaInfo && !userInfo
         val onCaption = appIcon && caption.isNotEmpty() && !mediaInfo && !userInfo
         val onFooter = appIcon && !onMedia && !onCaption
-        binding.screenshotLogoInline.isVisible = onMedia
-        binding.screenshotLogoCaption.isVisible = onCaption
-        binding.screenshotLogoFooter.isVisible = onFooter
-        binding.screenshotFooter.isVisible = userInfo || onFooter
+        binding.screenshotStage.screenshotLogoInline.isVisible = onMedia
+        binding.screenshotStage.screenshotLogoCaption.isVisible = onCaption
+        binding.screenshotStage.screenshotLogoFooter.isVisible = onFooter
+        binding.screenshotStage.screenshotFooter.isVisible = userInfo || onFooter
 
         val decor = hasDecor()
-        binding.screenshotDecorContainer.isVisible = decor
+        binding.screenshotStage.screenshotDecorContainer.isVisible = decor
 
         renderPreviewImage()
 
         val pad = dp(12)
         when {
             frame -> {
-                binding.screenshotCard.setBackgroundResource(R.drawable.bg_screenshot_card)
-                binding.screenshotCard.setPadding(pad, pad, pad, pad)
-                binding.screenshotDecorContainer.setPadding(0, 0, 0, 0)
+                binding.screenshotStage.screenshotCard.setBackgroundResource(R.drawable.bg_screenshot_card)
+                binding.screenshotStage.screenshotCard.setPadding(pad, pad, pad, pad)
+                binding.screenshotStage.screenshotDecorContainer.setPadding(0, 0, 0, 0)
             }
             // Frameless but with info below: keep a surface strip so the text stays readable.
             decor -> {
-                binding.screenshotCard.setBackgroundResource(R.drawable.bg_screenshot_card)
-                binding.screenshotCard.setPadding(0, 0, 0, 0)
-                binding.screenshotDecorContainer.setPadding(pad, 0, pad, pad)
+                binding.screenshotStage.screenshotCard.setBackgroundResource(R.drawable.bg_screenshot_card)
+                binding.screenshotStage.screenshotCard.setPadding(0, 0, 0, 0)
+                binding.screenshotStage.screenshotDecorContainer.setPadding(pad, 0, pad, pad)
             }
             // Bare screenshot.
             else -> {
-                binding.screenshotCard.background = null
-                binding.screenshotCard.setPadding(0, 0, 0, 0)
-                binding.screenshotDecorContainer.setPadding(0, 0, 0, 0)
+                binding.screenshotStage.screenshotCard.background = null
+                binding.screenshotStage.screenshotCard.setPadding(0, 0, 0, 0)
+                binding.screenshotStage.screenshotDecorContainer.setPadding(0, 0, 0, 0)
             }
         }
     }
@@ -349,10 +352,10 @@ class ScreenshotDialogFragment : BottomSheetDialogFragment() {
      */
     private fun buildOutputBitmap(): Bitmap? {
         val shot = screenshot ?: return null
-        val bare = !binding.switchFrame.isChecked && !binding.switchRounded.isChecked &&
-            !binding.screenshotDecorContainer.isVisible
+        val bare = !binding.screenshotOptions.chipFrame.isChecked && !binding.screenshotOptions.chipRounded.isChecked &&
+            !binding.screenshotStage.screenshotDecorContainer.isVisible
         if (bare) return shot
-        val card = binding.screenshotCard
+        val card = binding.screenshotStage.screenshotCard
         if (card.width <= 0 || card.height <= 0) return null
         return runCatching {
             val width = (card.width * CARD_EXPORT_SCALE).toInt()
@@ -365,7 +368,7 @@ class ScreenshotDialogFragment : BottomSheetDialogFragment() {
         }.getOrNull()
     }
 
-    private fun captionText() = binding.screenshotCaptionInput.text?.toString()?.trim().orEmpty()
+    private fun captionText() = binding.screenshotOptions.screenshotCaptionInput.text?.toString()?.trim().orEmpty()
 
     private fun fail() {
         snackString(getString(R.string.screenshot_failed))

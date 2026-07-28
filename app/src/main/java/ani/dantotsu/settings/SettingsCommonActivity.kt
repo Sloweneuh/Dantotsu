@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.biometric.BiometricManager
 import androidx.core.view.isVisible
@@ -15,7 +16,7 @@ import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.handoff.GlobalHandoffReceiver
 import ani.dantotsu.connections.handoff.HandoffManager
 import ani.dantotsu.databinding.ActivitySettingsCommonBinding
-import ani.dantotsu.databinding.DialogScreenshotDefaultsBinding
+import ani.dantotsu.databinding.DialogCaptureDefaultsBinding
 import ani.dantotsu.databinding.DialogSetPasswordBinding
 import ani.dantotsu.initActivity
 import ani.dantotsu.navBarHeight
@@ -245,10 +246,10 @@ class SettingsCommonActivity : AppCompatActivity() {
                         ),
                         Settings(
                             type = 1,
-                            name = getString(R.string.screenshot_defaults),
-                            desc = getString(R.string.screenshot_defaults_desc),
+                            name = getString(R.string.capture_defaults),
+                            desc = getString(R.string.capture_defaults_desc),
                             icon = R.drawable.ic_round_screenshot_frame_24,
-                            onClick = { showScreenshotDefaultsDialog() },
+                            onClick = { showCaptureDefaultsDialog() },
                         ),
                         Settings(
                             type = 2,
@@ -353,8 +354,16 @@ class SettingsCommonActivity : AppCompatActivity() {
         }
     }
 
-    private fun showScreenshotDefaultsDialog() {
-        val view = DialogScreenshotDefaultsBinding.inflate(layoutInflater)
+    /**
+     * Defaults for both capture composers.
+     *
+     * Screenshots and clips compose the same card, so the card toggles below are one set of
+     * preferences read by both sheets rather than two that could drift apart; the clip-only
+     * settings (how far back a clip reaches, and how its GIF is encoded) follow underneath.
+     */
+    private fun showCaptureDefaultsDialog() {
+        val view = DialogCaptureDefaultsBinding.inflate(layoutInflater)
+
         view.dsMediaInfo.isChecked = PrefManager.getVal(PrefName.ScreenshotShowMediaInfo)
         view.dsDate.isChecked = PrefManager.getVal(PrefName.ScreenshotShowDate)
         view.dsSource.isChecked = PrefManager.getVal(PrefName.ScreenshotShowSource)
@@ -369,8 +378,59 @@ class SettingsCommonActivity : AppCompatActivity() {
         view.dsAppLogo.setOnCheckedChangeListener { _, c -> PrefManager.setVal(PrefName.ScreenshotShowAppLogo, c) }
         view.dsFrame.setOnCheckedChangeListener { _, c -> PrefManager.setVal(PrefName.ScreenshotShowFrame, c) }
         view.dsRounded.setOnCheckedChangeListener { _, c -> PrefManager.setVal(PrefName.ScreenshotShowRoundedCorners, c) }
+
+        fun label(text: TextView, stringRes: Int, valueRes: Int, value: Int) {
+            text.text = "${getString(stringRes)}: ${getString(valueRes, value)}"
+        }
+
+        val duration: Int = PrefManager.getVal(PrefName.ClipDurationSeconds)
+        val fps: Int = PrefManager.getVal(PrefName.ClipGifFps)
+        val width: Int = PrefManager.getVal(PrefName.ClipGifWidth)
+
+        // Values are clamped into the slider's range: a pref restored from another device (or an
+        // older default) outside valueFrom..valueTo would otherwise throw.
+        view.dcDuration.value =
+            duration.toFloat().coerceIn(view.dcDuration.valueFrom, view.dcDuration.valueTo)
+        view.dcGifFps.value = fps.toFloat().coerceIn(view.dcGifFps.valueFrom, view.dcGifFps.valueTo)
+        view.dcGifWidth.value =
+            width.toFloat().coerceIn(view.dcGifWidth.valueFrom, view.dcGifWidth.valueTo)
+        view.dcDefaultGif.isChecked = PrefManager.getVal(PrefName.ClipExportAsGif)
+        view.dcBurnSubtitles.isChecked = PrefManager.getVal(PrefName.ClipBurnSubtitles)
+
+        label(view.dcDurationLabel, R.string.clip_duration, R.string.clip_duration_value, duration)
+        label(view.dcGifFpsLabel, R.string.clip_gif_fps, R.string.clip_gif_fps_value, fps)
+        label(view.dcGifWidthLabel, R.string.clip_gif_width, R.string.clip_gif_width_value, width)
+
+        view.dcDuration.addOnChangeListener { _, value, _ ->
+            PrefManager.setVal(PrefName.ClipDurationSeconds, value.toInt())
+            label(
+                view.dcDurationLabel, R.string.clip_duration, R.string.clip_duration_value,
+                value.toInt()
+            )
+        }
+        view.dcGifFps.addOnChangeListener { _, value, _ ->
+            PrefManager.setVal(PrefName.ClipGifFps, value.toInt())
+            label(
+                view.dcGifFpsLabel, R.string.clip_gif_fps, R.string.clip_gif_fps_value,
+                value.toInt()
+            )
+        }
+        view.dcGifWidth.addOnChangeListener { _, value, _ ->
+            PrefManager.setVal(PrefName.ClipGifWidth, value.toInt())
+            label(
+                view.dcGifWidthLabel, R.string.clip_gif_width, R.string.clip_gif_width_value,
+                value.toInt()
+            )
+        }
+        view.dcDefaultGif.setOnCheckedChangeListener { _, c ->
+            PrefManager.setVal(PrefName.ClipExportAsGif, c)
+        }
+        view.dcBurnSubtitles.setOnCheckedChangeListener { _, c ->
+            PrefManager.setVal(PrefName.ClipBurnSubtitles, c)
+        }
+
         customAlertDialog().apply {
-            setTitle(getString(R.string.screenshot_defaults))
+            setTitle(getString(R.string.capture_defaults))
             setCustomView(view.root)
             setPosButton(R.string.ok) {}
             show()

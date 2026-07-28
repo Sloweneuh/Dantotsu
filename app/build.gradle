@@ -146,6 +146,8 @@ dependencies {
     implementation "io.github.peerless2012:ass-media:0.4.0-beta01"
     implementation "io.github.peerless2012:ass-kt:0.4.0-beta01"
     implementation "androidx.media3:media3-effect:$exo_version"
+// Clip export (trims the played stream back into an mp4 / GIF)
+    implementation "androidx.media3:media3-transformer:$exo_version"
 //  UI
     implementation 'com.google.android.material:material:1.12.0'
     implementation files('libs/AnimatedBottomBar-7fcb9af.aar')

@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?><!--
-    Portrait screenshot composer. The card is pinned above a scrolling column of options, so the
-    thing being edited never leaves the screen while the options are adjusted. See layout-land for
-    the side-by-side arrangement used when there isn't the height to stack them.
+    Portrait clip composer. The preview and trim controls are pinned above a scrolling column of
+    options, so the thing being edited never leaves the screen while the options are adjusted.
+    See layout-land for the side-by-side arrangement the player's own orientation gets.
 -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/bottom_sheet_background">
@@ -29,7 +30,7 @@
             android:layout_marginTop="12dp"
             android:fontFamily="@font/poppins"
             android:gravity="center_horizontal"
-            android:text="@string/screenshot"
+            android:text="@string/clip"
             android:textSize="20sp"
             android:textStyle="bold" />
 
@@ -49,14 +50,14 @@
                 android:orientation="vertical">
 
                 <include
-                    android:id="@+id/screenshotStage"
-                    layout="@layout/view_screenshot_stage"
+                    android:id="@+id/clipStage"
+                    layout="@layout/view_clip_stage"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content" />
 
                 <include
-                    android:id="@+id/screenshotOptions"
-                    layout="@layout/view_screenshot_options"
+                    android:id="@+id/clipOptions"
+                    layout="@layout/view_clip_options"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content" />
 
@@ -72,10 +73,53 @@
     </LinearLayout>
 
     <include
-        android:id="@+id/screenshotBar"
-        layout="@layout/view_screenshot_actions"
+        android:id="@+id/clipBar"
+        layout="@layout/view_clip_actions"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom" />
 
+    <!-- Export progress. Covers the sheet so the card can't be edited mid-render. -->
+    <LinearLayout
+        android:id="@+id/clipProgressOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#CC000000"
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:visibility="gone"
+        tools:visibility="gone">
+
+        <com.google.android.material.progressindicator.CircularProgressIndicator
+            android:id="@+id/clipProgressBar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:indeterminate="false"
+            app:indicatorSize="64dp"
+            app:trackThickness="6dp" />
+
+        <TextView
+            android:id="@+id/clipProgressLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:fontFamily="@font/poppins_bold"
+            android:textColor="@android:color/white"
+            android:textSize="15sp"
+            tools:text="Rendering clip… 42%" />
+
+        <Button
+            android:id="@+id/clipProgressCancel"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:fontFamily="@font/poppins_bold"
+            android:text="@string/cancel"
+            app:cornerRadius="16dp"
+            app:strokeColor="?attr/colorPrimaryContainer" />
+
+    </LinearLayout>
 </FrameLayout>

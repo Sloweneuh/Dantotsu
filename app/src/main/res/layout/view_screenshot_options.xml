@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+    Everything that isn't the card. Filter chips rather than a column of switches: seven toggles as
+    full-width rows ran to nearly 400dp, which is what pushed the preview off screen.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingStart="16dp"
+    android:paddingTop="4dp"
+    android:paddingEnd="16dp">
+
+    <!-- Caption input -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/screenshotCaptionLayout"
+        style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:boxCornerRadiusBottomEnd="12dp"
+        app:boxCornerRadiusBottomStart="12dp"
+        app:boxCornerRadiusTopEnd="12dp"
+        app:boxCornerRadiusTopStart="12dp">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/screenshotCaptionInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/poppins"
+            android:hint="@string/screenshot_caption_hint"
+            android:imeOptions="actionDone"
+            android:inputType="textCapSentences"
+            android:maxLength="120"
+            android:maxLines="2" />
+
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- Title selector (which of the media's titles/synonyms to show on the card).
+         Only made visible when there's more than one option. -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/screenshotTitleSelectLayout"
+        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:hint="@string/screenshot_title_label"
+        android:visibility="gone"
+        app:boxCornerRadiusBottomEnd="12dp"
+        app:boxCornerRadiusBottomStart="12dp"
+        app:boxCornerRadiusTopEnd="12dp"
+        app:boxCornerRadiusTopStart="12dp"
+        tools:visibility="visible">
+
+        <AutoCompleteTextView
+            android:id="@+id/screenshotTitleSelect"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/poppins"
+            android:inputType="none"
+            tools:ignore="LabelFor"
+            tools:text="One Piece" />
+
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <com.google.android.material.chip.ChipGroup
+        android:id="@+id/screenshotChips"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        app:chipSpacingVertical="0dp"
+        app:singleSelection="false">
+
+        <com.google.android.material.chip.Chip
+            android:id="@+id/chipMediaInfo"
+            style="@style/Widget.Material3.Chip.Filter"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:checked="true"
+            android:text="@string/screenshot_show_media_info" />
+
+        <com.google.android.material.chip.Chip
+            android:id="@+id/chipDate"
+            style="@style/Widget.Material3.Chip.Filter"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:checked="true"
+            android:text="@string/screenshot_show_date" />
+
+        <com.google.android.material.chip.Chip
+            android:id="@+id/chipSource"
+            style="@style/Widget.Material3.Chip.Filter"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:checked="true"
+            android:text="@string/screenshot_show_source" />
+
+        <com.google.android.material.chip.Chip
+            android:id="@+id/chipUserInfo"
+            style="@style/Widget.Material3.Chip.Filter"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/screenshot_show_user_info" />
+
+        <com.google.android.material.chip.Chip
+            android:id="@+id/chipAppIcon"
+            style="@style/Widget.Material3.Chip.Filter"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:checked="true"
+            android:text="@string/screenshot_show_app_icon" />
+
+        <com.google.android.material.chip.Chip
+            android:id="@+id/chipFrame"
+            style="@style/Widget.Material3.Chip.Filter"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:checked="true"
+            android:text="@string/screenshot_show_frame" />
+
+        <com.google.android.material.chip.Chip
+            android:id="@+id/chipRounded"
+            style="@style/Widget.Material3.Chip.Filter"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:checked="true"
+            android:text="@string/screenshot_show_rounded_corners" />
+
+    </com.google.android.material.chip.ChipGroup>
+
+</LinearLayout>

@@ -5,6 +5,7 @@ import android.app.Dialog
 import android.content.ActivityNotFoundException
 import android.content.ComponentName
 import android.content.DialogInterface
+import android.content.pm.ActivityInfo
 import android.content.Intent
 import android.graphics.Color
 import android.net.Uri
@@ -131,8 +132,31 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
         }
     }
 
+    /**
+     * Pins the screen's orientation for as long as this dialog is up.
+     *
+     * Extracting a server's video runs on [scope], which is this fragment's own lifecycle scope,
+     * and the details screen declares no `configChanges` — so rotating destroys the activity,
+     * cancels the extraction mid-flight and discards the transient extractor data the player is
+     * about to be handed through `ExoplayerView.media`. The result is a player that opens with
+     * nothing to play.
+     *
+     * The dialog is only up for a few seconds, so holding the orientation for its lifetime removes
+     * the whole class of problem. Surviving the rotation properly would mean hoisting the
+     * extraction into the view model and re-driving the launch after recreation, which is a much
+     * larger change to this flow.
+     */
+    private fun lockOrientation(lock: Boolean) {
+        activity?.requestedOrientation = if (lock) {
+            ActivityInfo.SCREEN_ORIENTATION_LOCKED
+        } else {
+            ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        }
+    }
+
     @SuppressLint("SetTextI18n")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        lockOrientation(true)
         var loaded = false
         model.getMedia().observe(viewLifecycleOwner) { m ->
             media = m
@@ -905,6 +929,8 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
     override fun onSaveInstanceState(outState: Bundle) {}
 
     override fun onDismiss(dialog: DialogInterface) {
+        // The launched player manages its own orientation, so hand control back either way.
+        lockOrientation(false)
         if (launch == false) {
             activity?.hideSystemBars()
             model.epChanged.postValue(true)

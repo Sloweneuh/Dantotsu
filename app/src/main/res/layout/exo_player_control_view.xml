@@ -188,6 +188,15 @@
                         tools:ignore="ContentDescription,SpeakableTextPresentCheck" />
 
                     <ImageButton
+                        android:id="@+id/exo_clip"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:backgroundTint="#00FFFFFF"
+                        android:src="@drawable/ic_round_movie_edit_24"
+                        app:tint="#fff"
+                        tools:ignore="ContentDescription,SpeakableTextPresentCheck" />
+
+                    <ImageButton
                         android:id="@+id/exo_source"
                         android:layout_width="48dp"
                         android:layout_height="48dp"

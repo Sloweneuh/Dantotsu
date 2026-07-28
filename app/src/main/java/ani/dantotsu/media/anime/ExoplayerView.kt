@@ -101,9 +101,14 @@ import ani.dantotsu.NoPaddingArrayAdapter
 import ani.dantotsu.R
 import ani.dantotsu.addons.download.DownloadAddonManager
 import ani.dantotsu.connections.handoff.HandoffBottomSheet
+import ani.dantotsu.connections.handoff.HandoffManager
 import ani.dantotsu.connections.handoff.HandoffPayload
+import ani.dantotsu.media.screenshot.ClipDialogFragment
+import ani.dantotsu.media.screenshot.ClipOutput
+import ani.dantotsu.media.screenshot.ClipSubtitleOverlay
 import ani.dantotsu.media.screenshot.ScreenshotDialogFragment
 import ani.dantotsu.media.screenshot.ScreenshotUtil
+import ani.dantotsu.media.screenshot.SubtitleCueBuffer
 import ani.dantotsu.brightnessConverter
 import ani.dantotsu.circularReveal
 import ani.dantotsu.connections.anilist.Anilist
@@ -174,8 +179,12 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import android.graphics.Bitmap
+import android.os.SystemClock
+import okhttp3.Dns
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
+import java.net.InetAddress
 import java.util.Calendar
 import java.util.Locale
 import java.util.Timer
@@ -244,6 +253,12 @@ class ExoplayerView :
     private var assSubtitleView: io.github.peerless2012.ass.media.widget.AssSubtitleView? = null
     private lateinit var assMediaSourceFactory: DefaultMediaSourceFactory
 
+    /**
+     * Text subtitles seen recently, so a clip taken after the fact can still burn them in. libass
+     * tracks don't need this — they can be re-rendered at any timestamp. See [SubtitleCueBuffer].
+     */
+    private val subtitleCues = SubtitleCueBuffer(CLIP_CUE_WINDOW_MS)
+
     private var orientationListener: OrientationEventListener? = null
 
     private var downloadId: String? = null
@@ -258,6 +273,34 @@ class ExoplayerView :
         private const val DEFAULT_MAX_BUFFER_MS = 600000
         private const val BUFFER_FOR_PLAYBACK_MS = 2500
         private const val BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS = 5000
+
+        /** How far back the subtitle cue buffer keeps history — the longest clip anyone can ask for. */
+        private const val CLIP_CUE_WINDOW_MS = 5 * 60 * 1000L
+
+        /** Width the clip sheet's end thumbnail is scaled down to before being handed over. */
+        private const val CLIP_THUMBNAIL_WIDTH = 320
+
+        /** How long a chooser hand-off keeps picture-in-picture suppressed. */
+        private const val PIP_SUPPRESS_MS = 2000L
+
+        /**
+         * Resolves `localhost` to both loopback addresses instead of whichever one the system
+         * happens to prefer.
+         *
+         * Some extensions don't hand back a remote URL at all — they stream through a proxy they
+         * run on the device and point the player at `http://localhost:<port>/…`. Android resolves
+         * that name to `127.0.0.1` alone, so when such a server binds the IPv6 wildcard (which is
+         * the default for a Java `ServerSocket` on a v6-capable device) the player is refused by a
+         * server that is up and answering. Offering both addresses lets OkHttp's happy-eyeballs
+         * connect over whichever stack is actually listening, rather than us guessing which.
+         */
+        private val LoopbackAwareDns = Dns { hostname ->
+            if (hostname.equals("localhost", ignoreCase = true)) {
+                listOf(InetAddress.getByName("::1"), InetAddress.getByName("127.0.0.1"))
+            } else {
+                Dns.SYSTEM.lookup(hostname)
+            }
+        }
     }
 
     private lateinit var episode: Episode
@@ -282,6 +325,9 @@ class ExoplayerView :
     private var interacted = false
 
     private var pipEnabled = false
+
+    /** Deadline until which [onUserLeaveHint] won't start PiP; see [suppressPipForChooser]. */
+    private var suppressPipUntil = 0L
     private var isEnteringPip = false
     private var aspectRatio = Rational(16, 9)
     private var pipExitTimestamp: Long = 0
@@ -409,17 +455,7 @@ class ExoplayerView :
 
         val fontSize = PrefManager.getVal<Int>(PrefName.FontSize).toFloat()
 
-        val font =
-            when (PrefManager.getVal<Int>(PrefName.Font)) {
-                0 -> ResourcesCompat.getFont(this, R.font.poppins_semi_bold)
-                1 -> ResourcesCompat.getFont(this, R.font.poppins_bold)
-                2 -> ResourcesCompat.getFont(this, R.font.poppins)
-                3 -> ResourcesCompat.getFont(this, R.font.poppins_thin)
-                4 -> ResourcesCompat.getFont(this, R.font.century_gothic_regular)
-                5 -> ResourcesCompat.getFont(this, R.font.levenim_mt_bold)
-                6 -> ResourcesCompat.getFont(this, R.font.blocky)
-                else -> ResourcesCompat.getFont(this, R.font.poppins_semi_bold)
-            }
+        val font = subtitleTypeface()
 
         textView.setBackgroundColor(subBackground)
         textView.setTextColor(primaryColor)
@@ -447,12 +483,96 @@ class ExoplayerView :
         textView.translationY = -textElevation
     }
 
+    /** The user's chosen subtitle font, shared by the on-screen view and burned-in clip text. */
+    private fun subtitleTypeface() = when (PrefManager.getVal<Int>(PrefName.Font)) {
+        0 -> ResourcesCompat.getFont(this, R.font.poppins_semi_bold)
+        1 -> ResourcesCompat.getFont(this, R.font.poppins_bold)
+        2 -> ResourcesCompat.getFont(this, R.font.poppins)
+        3 -> ResourcesCompat.getFont(this, R.font.poppins_thin)
+        4 -> ResourcesCompat.getFont(this, R.font.century_gothic_regular)
+        5 -> ResourcesCompat.getFont(this, R.font.levenim_mt_bold)
+        6 -> ResourcesCompat.getFont(this, R.font.blocky)
+        else -> ResourcesCompat.getFont(this, R.font.poppins_semi_bold)
+    }
+
+    /**
+     * Bundles up what a clip export needs from the live player: the stream itself, the data source
+     * that can re-read it (headers and warm cache included), and whichever subtitle track is on.
+     */
+    /** Shrinks a captured frame to thumbnail size; a full 1080p bitmap is a lot to hand around. */
+    private fun clipThumbnail(frame: Bitmap?): Bitmap? {
+        if (frame == null || frame.width <= 0) return null
+        if (frame.width <= CLIP_THUMBNAIL_WIDTH) return frame
+        val height = (frame.height.toLong() * CLIP_THUMBNAIL_WIDTH / frame.width)
+            .toInt().coerceAtLeast(1)
+        return runCatching {
+            Bitmap.createScaledBitmap(frame, CLIP_THUMBNAIL_WIDTH, height, true)
+                .also { if (it !== frame) frame.recycle() }
+        }.getOrDefault(frame)
+    }
+
+    private fun buildClipPayload(endFrame: Bitmap?): ClipDialogFragment.Payload? {
+        // Both are set up together with the player; if the episode hasn't loaded there is nothing
+        // to re-cut, so the caller reports the failure rather than crashing on the lateinit.
+        if (!::mediaItem.isInitialized || !::cacheFactory.isInitialized) return null
+        val handler = assHandler
+        val subtitles = when {
+            handler?.hasTracks() == true && handler.track != null ->
+                ClipDialogFragment.Subtitles.Ass {
+                    // A renderer of its own: the player's is sized for the screen, and an export
+                    // would have to fight it over the frame size for every frame.
+                    runCatching {
+                        handler.ass.createRender().apply {
+                            setCacheLimit(2048, 256)
+                            setTrack(handler.track)
+                        }
+                    }.getOrNull()
+                }
+
+            !subtitleCues.isEmpty() ->
+                ClipDialogFragment.Subtitles.Text(subtitleCues, clipSubtitleStyle())
+
+            else -> null
+        }
+        return ClipDialogFragment.Payload(
+            mediaItem = mediaItem,
+            dataSourceFactory = cacheFactory,
+            subtitles = subtitles,
+            endFrame = endFrame,
+        )
+    }
+
+    /** The on-screen text subtitle styling, described so an export can reproduce it. */
+    private fun clipSubtitleStyle(): ClipSubtitleOverlay.TextStyle {
+        val density = resources.displayMetrics.density
+        val screenHeight = resources.displayMetrics.heightPixels
+        return ClipSubtitleOverlay.TextStyle(
+            typeface = subtitleTypeface(),
+            textColor = PrefManager.getVal(PrefName.PrimaryColor),
+            outlineColor = PrefManager.getVal(PrefName.SecondaryColor),
+            backgroundColor = PrefManager.getVal(PrefName.SubBackground),
+            textSizePx = PrefManager.getVal<Int>(PrefName.FontSize) * density,
+            strokeWidthPx = PrefManager.getVal<Float>(PrefName.SubStroke),
+            alpha = if (PrefManager.getVal<Boolean>(PrefName.Subtitles))
+                PrefManager.getVal(PrefName.SubAlpha) else 0f,
+            bottomMarginPx =
+                PrefManager.getVal<Float>(PrefName.SubBottomMargin) / 50 * screenHeight,
+            // "None" is the only outline mode with nothing drawn behind the glyphs.
+            outlined = PrefManager.getVal<Int>(PrefName.Outline) != 3,
+            referenceHeight = screenHeight,
+        )
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         ThemeManager(this).applyTheme()
         binding = ActivityExoplayerBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        // Renders from a previous session are done being shared by now; a new playback session is
+        // the safe point to drop them, rather than on dismiss while a share may still be reading.
+        ClipOutput.clearWorkDir(this)
 
         // Initialize
         isCastApiAvailable = GoogleApiAvailability
@@ -1373,6 +1493,53 @@ class ExoplayerView :
             }
         }
 
+        // Clip the seconds leading up to now. Unlike the screenshot button this doesn't capture the
+        // screen at all — the range is re-cut from the source stream, which is what keeps the
+        // original resolution and frame rate. See ClipExporter.
+        playerView.findViewById<ImageButton>(R.id.exo_clip).setOnClickListener {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
+                snackString(getString(R.string.clip_unsupported))
+                return@setOnClickListener
+            }
+            val position = exoPlayer.currentPosition
+            val window = PrefManager.getVal<Int>(PrefName.ClipDurationSeconds) * 1000L
+            val start = (position - window).coerceAtLeast(0L)
+            if (position - start < 1000L) {
+                snackString(getString(R.string.clip_too_short))
+                return@setOnClickListener
+            }
+
+            val wasPlaying = exoPlayer.isPlaying
+            if (wasPlaying) exoPlayer.pause()
+            playerView.hideController()
+
+            // The clip's window ends here, on this frame, so grab it now: it's the sheet's end
+            // thumbnail, exact and immediate, where making the preview seek forward to find it
+            // again is neither.
+            ScreenshotUtil.captureVideoFrame(playerView.videoSurfaceView, emptyList()) { frame ->
+                val payload = buildClipPayload(clipThumbnail(frame))
+                if (payload == null) {
+                    if (wasPlaying) exoPlayer.play()
+                    snackString(getString(R.string.clip_failed))
+                    return@captureVideoFrame
+                }
+                ClipDialogFragment.newInstance(
+                    payload = payload,
+                    title = media.userPreferredName,
+                    titleOptions = media.mainTitleOptions(),
+                    coverUrl = media.cover,
+                    numberLabel = media.anime?.selectedEpisode ?: "",
+                    sourceLabel = model.watchSources?.names?.getOrNull(media.selected!!.sourceIndex),
+                    windowStartMs = start,
+                    windowEndMs = position,
+                ).apply {
+                    onDismissed = {
+                        if (wasPlaying && !isDestroyed && !isFinishing) exoPlayer.play()
+                    }
+                }.show(supportFragmentManager, "clip")
+            }
+        }
+
         // Speed
         val speeds =
             if (PrefManager.getVal(PrefName.CursedSpeeds)) {
@@ -1724,6 +1891,7 @@ class ExoplayerView :
                     ignoreAllSSLErrors()
                     followRedirects(true)
                     followSslRedirects(true)
+                    dns(LoopbackAwareDns)
                 }.build()
         val httpDataSourceFactory =
             OkHttpDataSource.Factory(httpClient).apply {
@@ -2046,6 +2214,15 @@ class ExoplayerView :
                         return
                     }
 
+                    // Text cues exist only while they play, so remember them for a while: a clip
+                    // is always taken after the moment it wants, and burning subtitles back in is
+                    // the only way to get them into the export. libass tracks returned above are
+                    // exempt — those can be re-rendered from the track at any timestamp.
+                    subtitleCues.record(
+                        exoPlayer.currentPosition,
+                        cueGroup.cues.mapNotNull { it.text?.toString() }
+                    )
+
                     if (PrefManager.getVal<Boolean>(PrefName.TextviewSubtitles)) {
                         exoSubtitleView.visibility = View.GONE
                         customSubtitleView.visibility = View.VISIBLE
@@ -2186,9 +2363,37 @@ class ExoplayerView :
         }
     }
 
+    /**
+     * Keeps the next [onUserLeaveHint] from starting picture-in-picture.
+     *
+     * Opening a share sheet is not the user leaving the player, but some platforms deliver
+     * `onUserLeaveHint` when the chooser appears, so the player would shrink into PiP behind it.
+     * Handing off to a chooser is always something this activity initiated, so it says so
+     * beforehand and the hint is ignored for a moment.
+     *
+     * Emulated devices are exempt. On WSA the chooser is only surfaced by the window state
+     * actually changing — suppressing PiP there stops the share sheet appearing at all, which is a
+     * far worse outcome than the player briefly shrinking behind it.
+     */
+    fun suppressPipForChooser() {
+        if (HandoffManager.isVirtualDevice(this)) return
+        suppressPipUntil = SystemClock.elapsedRealtime() + PIP_SUPPRESS_MS
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        // The activity handles rotation itself (see configChanges in the manifest), so nothing is
+        // re-inflated and anything orientation-dependent has to be refreshed by hand. The
+        // screenshot glyph is a portrait or landscape frame, so it would otherwise keep showing
+        // the shape of whichever way up the player happened to start.
+        if (!::playerView.isInitialized) return
+        playerView.findViewById<ImageButton>(R.id.exo_screenshot)
+            ?.setImageResource(ScreenshotUtil.screenshotIcon(this))
+    }
+
     override fun onUserLeaveHint() {
         // If PiP is enabled in settings and supported, enter PiP when user leaves (home button)
-        if (pipEnabled) {
+        if (pipEnabled && SystemClock.elapsedRealtime() >= suppressPipUntil) {
             enterPipMode()
         } else {
             super.onUserLeaveHint()

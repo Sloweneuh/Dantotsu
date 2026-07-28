@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+    Defaults for both capture composers. The card toggles are deliberately shared: a clip card and
+    a screenshot card are the same card, so keeping separate copies of these would only let the two
+    drift apart.
+
+    Laid out with the same filter chips the composer sheets use, so a setting looks the same here as
+    it does where it takes effect — and so the list doesn't run to a screen and a half of switches.
+-->
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:fontFamily="@font/poppins_bold"
+            android:text="@string/capture_defaults_card"
+            android:textColor="?attr/colorPrimary"
+            android:textSize="13sp" />
+
+        <com.google.android.material.chip.ChipGroup
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            app:chipSpacingVertical="0dp"
+            app:singleSelection="false">
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/dsMediaInfo"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/screenshot_show_media_info" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/dsDate"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/screenshot_show_date" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/dsSource"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/screenshot_show_source" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/dsUserInfo"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/screenshot_show_user_info" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/dsAppLogo"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/screenshot_show_app_icon" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/dsFrame"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/screenshot_show_frame" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/dsRounded"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/screenshot_show_rounded_corners" />
+
+        </com.google.android.material.chip.ChipGroup>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:fontFamily="@font/poppins_bold"
+            android:text="@string/capture_defaults_clips"
+            android:textColor="?attr/colorPrimary"
+            android:textSize="13sp" />
+
+        <com.google.android.material.chip.ChipGroup
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            app:chipSpacingVertical="0dp"
+            app:singleSelection="false">
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/dcBurnSubtitles"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/clip_burn_subtitles" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/dcDefaultGif"
+                style="@style/Widget.Material3.Chip.Filter"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/clip_default_gif" />
+
+        </com.google.android.material.chip.ChipGroup>
+
+        <TextView
+            android:id="@+id/dcDurationLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:fontFamily="@font/poppins_bold"
+            android:textColor="?attr/colorOnBackground"
+            android:textSize="13sp"
+            tools:text="Clip length: 30 seconds" />
+
+        <com.google.android.material.slider.Slider
+            android:id="@+id/dcDuration"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:stepSize="5"
+            android:valueFrom="5"
+            android:valueTo="120" />
+
+        <TextView
+            android:id="@+id/dcGifFpsLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/poppins_bold"
+            android:textColor="?attr/colorOnBackground"
+            android:textSize="13sp"
+            tools:text="GIF frame rate: 15 fps" />
+
+        <com.google.android.material.slider.Slider
+            android:id="@+id/dcGifFps"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:stepSize="5"
+            android:valueFrom="5"
+            android:valueTo="30" />
+
+        <TextView
+            android:id="@+id/dcGifWidthLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/poppins_bold"
+            android:textColor="?attr/colorOnBackground"
+            android:textSize="13sp"
+            tools:text="GIF width: 480 px" />
+
+        <com.google.android.material.slider.Slider
+            android:id="@+id/dcGifWidth"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:stepSize="80"
+            android:valueFrom="240"
+            android:valueTo="720" />
+
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

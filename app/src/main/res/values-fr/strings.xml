@@ -1667,8 +1667,8 @@
     <string name="screenshot_title_label">Titre</string>
     <string name="screenshot_crop">Recadrer</string>
     <string name="screenshot_crop_hint">Faites glisser les coins pour recadrer</string>
-    <string name="screenshot_defaults">Réglages par défaut des captures</string>
-    <string name="screenshot_defaults_desc">Choisissez les sections affichées par défaut lors de la composition d\'une capture</string>
+    <string name="capture_defaults">Réglages par défaut des captures et clips</string>
+    <string name="capture_defaults_desc">Ce que les captures et les clips affichent par défaut, et comment les clips sont capturés</string>
     <string name="mangaupdates_account_help">Comment fonctionne MangaUpdates \?</string>
     <string name="switch_to_anilist_title">Média Anilist trouvé</string>
     <string name="convert_to_anilist">Convertir</string>
@@ -1955,4 +1955,38 @@
     <string name="update_ready_title">Mise à jour prête à installer</string>
     <string name="update_downloading">Téléchargement</string>
     <string name="update_sheet_message">Vous utilisez la version %1$s — la version %2$s est disponible.\n\nContinuez pour consulter les notes de version et télécharger la mise à jour.</string>
+
+    <!-- Captures : clips vidéo/GIF et réglages partagés avec les captures d'écran -->
+    <string name="capture_defaults_card">Affiché sur la carte</string>
+    <string name="capture_defaults_clips">Clips</string>
+    <string name="clip">Clip</string>
+    <string name="take_clip">Créer un clip</string>
+    <string name="clip_failed">Impossible de générer le clip</string>
+    <string name="clip_save_failed">Impossible d\'enregistrer le clip</string>
+    <string name="clip_unsupported">Les clips nécessitent Android 7.0 ou une version ultérieure</string>
+    <string name="clip_too_short">Sélectionnez une portion plus longue pour créer un clip</string>
+    <string name="clip_trim">Rogner le clip</string>
+    <string name="clip_sound">Son de l\'aperçu</string>
+    <string name="clip_thumb_start">Image de début du clip</string>
+    <string name="clip_thumb_end">Image de fin du clip</string>
+    <string name="clip_seek">Position de l\'aperçu</string>
+    <string name="clip_gif_preview">Aperçu du GIF</string>
+    <string name="clip_gif_preview_building">Création de l\'aperçu GIF…</string>
+    <string name="clip_gif_preview_failed">Impossible de créer l\'aperçu GIF</string>
+    <string name="clip_format">Format</string>
+    <string name="clip_format_video">Vidéo</string>
+    <string name="clip_format_gif">GIF</string>
+    <string name="clip_burn_subtitles">Incruster les sous-titres</string>
+    <string name="clip_range_label">%1$s  (%2$.1f s)</string>
+    <string name="clip_rendering">Génération du clip…</string>
+    <string name="clip_encoding_gif">Encodage du GIF…</string>
+    <string name="clip_duration">Durée du clip</string>
+    <string name="clip_duration_value">%1$d secondes</string>
+    <string name="clip_gif_fps">Fréquence d\'images du GIF</string>
+    <string name="clip_gif_fps_value">%1$d i/s</string>
+    <string name="clip_gif_width">Largeur du GIF</string>
+    <string name="clip_gif_width_value">%1$d px</string>
+    <string name="clip_default_gif">Exporter en GIF par défaut</string>
+    <string name="backup_sub_capture">Captures d\'écran et clips</string>
+    <string name="backup_sub_capture_desc">Ce que les captures affichent par défaut, et comment les clips sont enregistrés</string>
 </resources>

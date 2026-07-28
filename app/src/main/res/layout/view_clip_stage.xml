@@ -1,0 +1,374 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+    The clip "stage": the share card being composed, plus the trim controls that drive it. Shared
+    verbatim by the portrait and landscape sheets, which only differ in where they put this block.
+
+    Everything drawn over the video (seek bar, mute, position) lives *inside* the preview's bounds
+    on purpose — that whole rectangle is cleared out of the exported card by punchHole(), so these
+    controls physically cannot end up in the saved file.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingStart="16dp"
+    android:paddingTop="8dp"
+    android:paddingEnd="16dp">
+
+    <!-- Width is narrowed at runtime when a full-width preview would be taller than the sheet has
+         room for (landscape, mostly) — see capCardWidthToPreviewHeight(). Centring it means that
+         narrowing reads as a correctly proportioned preview rather than a misaligned one. -->
+    <LinearLayout
+        android:id="@+id/clipCard"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:background="@drawable/bg_screenshot_card"
+        android:orientation="vertical"
+        android:padding="12dp">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <!-- texture_view rather than the default surface_view: a SurfaceView inside a bottom
+                 sheet punches through the dialog window instead of composing with it, and it's
+                 also what lets frames be read back for the trim thumbnails. -->
+            <androidx.media3.ui.PlayerView
+                android:id="@+id/clipPreview"
+                android:layout_width="match_parent"
+                android:layout_height="200dp"
+                android:background="@android:color/black"
+                app:resize_mode="fit"
+                app:surface_type="texture_view"
+                app:use_controller="false" />
+
+            <!-- Replaces the video once the format is switched to GIF, so what's on screen is the
+                 actual encoded result rather than an approximation of it. -->
+            <ImageView
+                android:id="@+id/clipGifPreview"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@android:color/black"
+                android:contentDescription="@string/clip_gif_preview"
+                android:scaleType="fitCenter"
+                android:visibility="gone"
+                tools:visibility="gone" />
+
+            <LinearLayout
+                android:id="@+id/clipPreviewBusy"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="#99000000"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:visibility="gone"
+                tools:visibility="gone">
+
+                <com.google.android.material.progressindicator.CircularProgressIndicator
+                    android:id="@+id/clipPreviewBusyBar"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:indeterminate="false"
+                    app:indicatorSize="36dp"
+                    app:trackThickness="4dp" />
+
+                <TextView
+                    android:id="@+id/clipPreviewBusyLabel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:fontFamily="@font/poppins"
+                    android:textColor="@android:color/white"
+                    android:textSize="12sp"
+                    tools:text="Building GIF preview… 40%" />
+
+            </LinearLayout>
+
+            <!-- Playback controls, overlaid on the video (and therefore never exported). -->
+            <LinearLayout
+                android:id="@+id/clipPreviewControls"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="8dp"
+                android:paddingEnd="4dp">
+
+                <TextView
+                    android:id="@+id/clipPreviewPosition"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/poppins"
+                    android:shadowColor="@android:color/black"
+                    android:shadowRadius="4"
+                    android:textColor="@android:color/white"
+                    android:textSize="11sp"
+                    tools:text="0:04" />
+
+                <!-- A hairline track with a dot on it, not a control bar. minTouchTargetSize is
+                     what actually collapses the height: without it the slider reserves a 48dp
+                     touch target regardless of how small the thumb and track are drawn. -->
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/clipSeek"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:contentDescription="@string/clip_seek"
+                    android:paddingTop="0dp"
+                    android:paddingBottom="0dp"
+                    android:stepSize="0"
+                    android:valueFrom="0"
+                    android:valueTo="100"
+                    app:haloRadius="8dp"
+                    app:labelBehavior="gone"
+                    app:minTouchTargetSize="0dp"
+                    app:thumbRadius="5dp"
+                    app:trackHeight="2dp"
+                    app:trackInsideCornerSize="0dp"
+                    app:thumbTrackGapSize="0dp" />
+
+                <ImageButton
+                    android:id="@+id/clipMute"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:background="@android:color/transparent"
+                    android:contentDescription="@string/clip_sound"
+                    android:src="@drawable/ic_round_volume_off_24"
+                    app:tint="#fff" />
+
+            </LinearLayout>
+
+        </FrameLayout>
+
+        <LinearLayout
+            android:id="@+id/clipDecorContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:id="@+id/clipCaptionRow"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:gravity="bottom"
+                android:orientation="horizontal"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <TextView
+                    android:id="@+id/clipCaption"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:fontFamily="@font/poppins_bold"
+                    android:lineSpacingMultiplier="1.05"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textSize="18sp"
+                    tools:text="What a moment!" />
+
+                <ImageView
+                    android:id="@+id/clipLogoCaption"
+                    android:layout_width="wrap_content"
+                    android:layout_height="22dp"
+                    android:layout_gravity="bottom"
+                    android:layout_marginStart="8dp"
+                    android:adjustViewBounds="true"
+                    android:contentDescription="@string/app_name"
+                    android:src="@drawable/ic_dantotsu_logo"
+                    android:visibility="gone"
+                    tools:visibility="visible" />
+
+            </LinearLayout>
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/clipMediaInfo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp">
+
+                <ImageView
+                    android:id="@+id/clipCover"
+                    android:layout_width="48dp"
+                    android:layout_height="72dp"
+                    android:contentDescription="@string/cover"
+                    android:scaleType="centerCrop"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    tools:src="@tools:sample/backgrounds/scenic[1]" />
+
+                <TextView
+                    android:id="@+id/clipTitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:ellipsize="end"
+                    android:fontFamily="@font/poppins_bold"
+                    android:maxLines="2"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textSize="15sp"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toEndOf="@id/clipCover"
+                    app:layout_constraintTop_toTopOf="@id/clipCover"
+                    tools:text="One Piece" />
+
+                <LinearLayout
+                    android:id="@+id/clipTitleBelow"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:orientation="vertical"
+                    app:layout_constraintEnd_toStartOf="@id/clipLogoInline"
+                    app:layout_constraintStart_toEndOf="@id/clipCover"
+                    app:layout_constraintTop_toBottomOf="@id/clipTitle">
+
+                    <TextView
+                        android:id="@+id/clipSubtitle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/poppins"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="13sp"
+                        tools:text="Episode 5 • 12:04 – 12:34" />
+
+                    <TextView
+                        android:id="@+id/clipDate"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/poppins"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="12sp"
+                        tools:text="Jul 11, 2026 · 14:30" />
+
+                    <TextView
+                        android:id="@+id/clipSource"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/poppins"
+                        android:textColor="?attr/colorOnSurfaceVariant"
+                        android:textSize="12sp"
+                        tools:text="AllAnime" />
+
+                </LinearLayout>
+
+                <ImageView
+                    android:id="@+id/clipLogoInline"
+                    android:layout_width="wrap_content"
+                    android:layout_height="22dp"
+                    android:layout_marginStart="8dp"
+                    android:adjustViewBounds="true"
+                    android:contentDescription="@string/app_name"
+                    android:src="@drawable/ic_dantotsu_logo"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent" />
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+
+            <LinearLayout
+                android:id="@+id/clipFooter"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:gravity="bottom"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:id="@+id/clipUserInfo"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="bottom"
+                    android:orientation="horizontal"
+                    android:visibility="gone"
+                    tools:visibility="visible">
+
+                    <ImageView
+                        android:id="@+id/clipAvatar"
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:contentDescription="@string/avatar"
+                        android:scaleType="centerCrop"
+                        tools:src="@tools:sample/avatars" />
+
+                    <TextView
+                        android:id="@+id/clipUsername"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:fontFamily="@font/poppins_bold"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="13sp"
+                        tools:text="Username" />
+
+                </LinearLayout>
+
+                <Space
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1" />
+
+                <ImageView
+                    android:id="@+id/clipLogoFooter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="22dp"
+                    android:layout_gravity="bottom"
+                    android:adjustViewBounds="true"
+                    android:contentDescription="@string/app_name"
+                    android:src="@drawable/ic_dantotsu_logo" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- Trim. Each handle's thumbnail shows the frame it has landed on. -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:id="@+id/clipThumbStart"
+            android:layout_width="84dp"
+            android:layout_height="48dp"
+            android:background="@android:color/black"
+            android:contentDescription="@string/clip_thumb_start"
+            android:scaleType="centerCrop" />
+
+        <TextView
+            android:id="@+id/clipRangeLabel"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:fontFamily="@font/poppins_bold"
+            android:gravity="center_horizontal"
+            android:textColor="?attr/colorOnBackground"
+            android:textSize="14sp"
+            tools:text="12:04 – 12:34  (30.0s)" />
+
+        <ImageView
+            android:id="@+id/clipThumbEnd"
+            android:layout_width="84dp"
+            android:layout_height="48dp"
+            android:background="@android:color/black"
+            android:contentDescription="@string/clip_thumb_end"
+            android:scaleType="centerCrop" />
+
+    </LinearLayout>
+
+    <com.google.android.material.slider.RangeSlider
+        android:id="@+id/clipRange"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:contentDescription="@string/clip_trim"
+        android:stepSize="0"
+        android:valueFrom="0"
+        android:valueTo="100" />
+
+</LinearLayout>
