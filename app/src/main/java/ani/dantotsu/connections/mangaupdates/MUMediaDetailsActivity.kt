@@ -18,6 +18,7 @@ import androidx.core.text.color
 import androidx.core.view.marginBottom
 import androidx.core.view.updateLayoutParams
 import androidx.core.view.updateMargins
+import androidx.core.view.updatePadding
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
@@ -492,9 +493,31 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
 
         screenWidth = resources.displayMetrics.widthPixels.toFloat()
         navBar = binding.mediaBottomBar
+
+        // Capture the height actually used so the insets listener can apply corrections if
+        // the real status bar height arrives later (e.g. cold-start directly into this activity).
+        var appliedStatusBarHeight = statusBarHeight
+
         // Ensure the side rail is offset from system navigation insets and brought to front
         val rootViewForInsets = window.decorView.findViewById(android.R.id.content) as View
         ViewCompat.setOnApplyWindowInsetsListener(rootViewForInsets) { _, insets ->
+            val statusInsets = insets.getInsets(WindowInsetsCompat.Type.statusBars())
+            val realStatusBarHeight = statusInsets.top
+            if (realStatusBarHeight > 0 && realStatusBarHeight != appliedStatusBarHeight) {
+                val delta = realStatusBarHeight - appliedStatusBarHeight
+                appliedStatusBarHeight = realStatusBarHeight
+                statusBarHeight = realStatusBarHeight
+                binding.fragmentExtensionsContainer.updatePadding(top = realStatusBarHeight)
+                binding.mediaBanner.updateLayoutParams { height += delta }
+                binding.mediaBannerNoKen.updateLayoutParams { height += delta }
+                binding.mediaClose.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+                    topMargin += delta
+                }
+                binding.incognito.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+                    topMargin += delta
+                }
+                binding.mediaCollapsing.minimumHeight = realStatusBarHeight
+            }
             val navInsets = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
             val isLandscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
             val rightInset = if (isLandscape) navInsets.right else 0
@@ -664,13 +687,11 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
                     bottomMargin = 0
                 }
                 navBar.visibility = View.GONE
-                binding.mediaBottomInset.visibility = View.GONE
             } else {
                 binding.mediaViewPager.updateLayoutParams<ViewGroup.MarginLayoutParams> {
                     bottomMargin = oldMargin
                 }
                 navBar.visibility = View.VISIBLE
-                binding.mediaBottomInset.visibility = if (showBottomInset) View.VISIBLE else View.GONE
             }
         }
 
@@ -684,11 +705,19 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
             bottomMargin = 0
         }
         val rootInsetsNow = ViewCompat.getRootWindowInsets(rootViewForInsets)
-        val bottomNow = rootInsetsNow?.getInsets(WindowInsetsCompat.Type.navigationBars())?.bottom ?: navBarHeight
-        binding.mediaBottomInset.updateLayoutParams<ViewGroup.LayoutParams> {
-            height = if (showBottomInset && bottomNow == 0) navBarHeight else 0
+        val bottomNow = rootInsetsNow?.getInsets(WindowInsetsCompat.Type.navigationBars())?.bottom ?: 0
+        if (showBottomInset) {
+            if (bottomNow > 0) {
+                binding.mediaBottomInset.updateLayoutParams<ViewGroup.LayoutParams> { height = 0 }
+                binding.mediaBottomInset.visibility = View.GONE
+            } else {
+                binding.mediaBottomInset.updateLayoutParams<ViewGroup.LayoutParams> { height = navBarHeight }
+                binding.mediaBottomInset.visibility = View.VISIBLE
+            }
+        } else {
+            binding.mediaBottomInset.updateLayoutParams<ViewGroup.LayoutParams> { height = 0 }
+            binding.mediaBottomInset.visibility = View.GONE
         }
-        binding.mediaBottomInset.visibility = if (showBottomInset && bottomNow == 0) View.VISIBLE else View.GONE
 
         // System bar insets
         binding.mediaBanner.updateLayoutParams { height += statusBarHeight }
@@ -696,6 +725,9 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         binding.mediaClose.updateLayoutParams<ViewGroup.MarginLayoutParams> { topMargin += statusBarHeight }
         binding.incognito.updateLayoutParams<ViewGroup.MarginLayoutParams> { topMargin += statusBarHeight }
         binding.mediaCollapsing.minimumHeight = statusBarHeight
+        // Source preference fragments (opened from item_media_source) fill this container over the
+        // whole activity, so it has to clear the status bar itself.
+        binding.fragmentExtensionsContainer.updatePadding(top = statusBarHeight)
 
         mMaxScrollSize = binding.mediaAppBar.totalScrollRange
         binding.mediaAppBar.addOnOffsetChangedListener(this)
@@ -1004,11 +1036,19 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
             ?: navBarHeight
         params.updateMargins(right = if (showBottomInset) 0 else navRightInset, bottom = 0)
         val rootInsetsNow = ViewCompat.getRootWindowInsets(rootViewForInsets)
-        val bottomNow = rootInsetsNow?.getInsets(WindowInsetsCompat.Type.navigationBars())?.bottom ?: navBarHeight
-        binding.mediaBottomInset.updateLayoutParams<ViewGroup.LayoutParams> {
-            height = if (showBottomInset && bottomNow == 0) navBarHeight else 0
+        val bottomNow = rootInsetsNow?.getInsets(WindowInsetsCompat.Type.navigationBars())?.bottom ?: 0
+        if (showBottomInset) {
+            if (bottomNow > 0) {
+                binding.mediaBottomInset.updateLayoutParams<ViewGroup.LayoutParams> { height = 0 }
+                binding.mediaBottomInset.visibility = View.GONE
+            } else {
+                binding.mediaBottomInset.updateLayoutParams<ViewGroup.LayoutParams> { height = navBarHeight }
+                binding.mediaBottomInset.visibility = View.VISIBLE
+            }
+        } else {
+            binding.mediaBottomInset.updateLayoutParams<ViewGroup.LayoutParams> { height = 0 }
+            binding.mediaBottomInset.visibility = View.GONE
         }
-        binding.mediaBottomInset.visibility = if (showBottomInset && bottomNow == 0) View.VISIBLE else View.GONE
     }
 
     private class ViewPagerAdapter(
