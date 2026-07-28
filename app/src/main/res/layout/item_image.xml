@@ -69,6 +69,17 @@
                 android:fontFamily="@font/poppins_semi_bold"
                 android:text="@string/retry"
                 app:icon="@drawable/ic_round_refresh_24" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/imgProgRetryAll"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:fontFamily="@font/poppins_semi_bold"
+                android:visibility="gone"
+                tools:text="@string/retry_all_failed"
+                tools:visibility="visible" />
         </LinearLayout>
 
         <View

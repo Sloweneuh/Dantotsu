@@ -42,6 +42,11 @@ open class ImageAdapter(
 
     inner class ImageViewHolder(binding: ItemImageBinding) : RecyclerView.ViewHolder(binding.root)
 
+    private val failedPages = FailedPageTracker()
+    private val retryPage: (Int, View) -> Unit = { position, view ->
+        activity.lifecycleScope.launch { loadImage(position, view) }
+    }
+
     open suspend fun loadBitmap(position: Int, parent: View): Bitmap? {
         val link = images.getOrNull(position)?.url ?: return null
         if (link.url.isEmpty()) return null
@@ -63,7 +68,6 @@ open class ImageAdapter(
             ?: return false
         val progress = parent.findViewById<View>(R.id.imgProgProgress) ?: return false
         val errorLayout = parent.findViewById<View>(R.id.imgProgError) ?: return false
-        val retryButton = parent.findViewById<View>(R.id.imgProgRetry)
 
         imageView.recycle()
         imageView.visibility = View.GONE
@@ -72,18 +76,14 @@ open class ImageAdapter(
 
         val bitmap = loadBitmap(position, parent)
 
-        if (bitmap == null) {
-            // Show error layout with retry button
-            progress.visibility = View.GONE
-            errorLayout.visibility = View.VISIBLE
+        // The holder may have been recycled onto another page while this was loading.
+        if (!FailedPageTracker.isStillBoundTo(parent, position)) return false
 
-            retryButton?.setOnClickListener {
-                activity.lifecycleScope.launch {
-                    loadImage(position, parent)
-                }
-            }
+        if (bitmap == null) {
+            failedPages.showError(parent, position, retryPage)
             return false
         }
+        failedPages.clearError(parent, position)
 
         var sWidth = getSystem().displayMetrics.widthPixels
         var sHeight = getSystem().displayMetrics.heightPixels

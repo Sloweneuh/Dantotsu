@@ -69,6 +69,11 @@ class ContinuousChapterAdapter(
     val items = mutableListOf<ReaderItem>()
     val settings get() = activity.defaultSettings
 
+    private val failedPages = FailedPageTracker()
+    private val retryPage: (Int, View) -> Unit = { position, view ->
+        activity.lifecycleScope.launch { loadImage(position, view) }
+    }
+
     /** Tracks which chapter unique numbers have been loaded so we don't duplicate */
     private val loadedChapterUniqueNumbers = mutableSetOf<String>()
     private val loadedChapterIndices = mutableSetOf<Int>()
@@ -149,6 +154,8 @@ class ContinuousChapterAdapter(
         ))
 
         items.addAll(0, newItems)
+        // Everything already in the list shifted down, so the failed pages must follow.
+        failedPages.shiftPositions(0, newItems.size)
         notifyItemRangeInserted(0, newItems.size)
         firstLoadedChapterIdx = chapterIndex
     }
@@ -217,6 +224,7 @@ class ContinuousChapterAdapter(
         if (hasStartBoundary) return
         hasStartBoundary = true
         items.add(0, ReaderItem.Boundary(message))
+        failedPages.shiftPositions(0, 1)
         notifyItemInserted(0)
     }
 
@@ -436,7 +444,6 @@ class ContinuousChapterAdapter(
         val imageView = parent.findViewById<SubsamplingScaleImageView>(R.id.imgProgImageNoGestures) ?: return false
         val progress = parent.findViewById<View>(R.id.imgProgProgress) ?: return false
         val errorLayout = parent.findViewById<View>(R.id.imgProgError) ?: return false
-        val retryButton = parent.findViewById<View>(R.id.imgProgRetry)
 
         imageView.recycle()
         imageView.visibility = View.GONE
@@ -453,16 +460,14 @@ class ContinuousChapterAdapter(
 
         val bitmap: Bitmap? = with(activity) { loadBitmap(link, transforms, Int.MAX_VALUE / 4) }
 
+        // The holder may have been recycled onto another page while this was loading.
+        if (!FailedPageTracker.isStillBoundTo(parent, position)) return false
+
         if (bitmap == null) {
-            progress.visibility = View.GONE
-            errorLayout.visibility = View.VISIBLE
-            retryButton?.setOnClickListener {
-                activity.lifecycleScope.launch {
-                    loadImage(position, parent)
-                }
-            }
+            failedPages.showError(parent, position, retryPage)
             return false
         }
+        failedPages.clearError(parent, position)
 
         val bitmapW = bitmap.width
         val bitmapH = bitmap.height

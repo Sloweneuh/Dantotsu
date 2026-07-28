@@ -1010,6 +1010,7 @@
     <string name="failed_to_load">Échec du chargement</string>
     <string name="failed_to_load_image">Échec du chargement de l\'image</string>
     <string name="retry">Réessayer</string>
+    <string name="retry_all_failed">Tout réessayer (%d)</string>
     <string name="studios">Studios</string>
     <string name="mu_series_search">MangaUpdates</string>
     <string name="external_links">Liens externes</string>
