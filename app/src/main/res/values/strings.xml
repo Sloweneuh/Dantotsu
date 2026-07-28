@@ -876,6 +876,8 @@
     <string name="episode_num">"Episode %1$s"</string>
     <string name="chapter">"Chapter "</string>
     <string name="chapter_num">"Chapter %1$s"</string>
+    <string name="episode_num_short" translatable="false">"Ep. %1$s"</string>
+    <string name="chapter_num_short" translatable="false">"Ch. %1$s"</string>
     <string name="volume">Volume</string>
     <string name="more_options">More</string>
     <string name="screenshot">Screenshot</string>

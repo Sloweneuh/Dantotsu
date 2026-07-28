@@ -5,22 +5,25 @@ import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
-import android.graphics.Rect
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.view.PixelCopy
+import android.view.SurfaceView
+import android.view.TextureView
 import android.view.View
-import android.view.Window
 import androidx.annotation.RequiresApi
 import ani.dantotsu.R
 
 /**
  * Screen capture helpers shared by the anime and manga readers.
  *
- * Manga pages are plain views ([captureView] draws them straight to a bitmap), while the anime
- * frame lives on a [android.view.SurfaceView] that a normal [View.draw] can't reach, so it needs
- * [PixelCopy] (API 24+) to pull the composited pixels — subtitles included — out of the window.
+ * Manga pages are plain views ([captureView] draws them straight to a bitmap). The anime frame
+ * lives on a [SurfaceView], which a normal [View.draw] can't reach and which a window-level
+ * [PixelCopy] doesn't see either: the SurfaceView is composited as its own layer *behind* the
+ * window, and the window's own buffer just holds a transparent punch-out hole where the video
+ * shows through. Capturing the window therefore yields the letterbox bars and an empty middle,
+ * so [captureVideoFrame] reads the video surface directly and composites the overlays itself.
  */
 object ScreenshotUtil {
 
@@ -47,28 +50,66 @@ object ScreenshotUtil {
     }
 
     /**
-     * Copies the region occupied by [view] out of [window]'s rendered surface. Unlike [captureView]
-     * this includes SurfaceView content (the video frame), so it's used for the anime player.
+     * Grabs the current video frame off [videoSurface] and draws [overlays] (libass, subtitles)
+     * on top of it. The result is cropped to the video itself, so there are no letterbox bars.
      * Callers should hide the controls before invoking. Result is delivered on the main thread.
      */
     @RequiresApi(Build.VERSION_CODES.N)
-    fun captureFromWindow(window: Window, view: View, onResult: (Bitmap?) -> Unit) {
-        if (view.width <= 0 || view.height <= 0) {
+    fun captureVideoFrame(
+        videoSurface: View?,
+        overlays: List<View>,
+        onResult: (Bitmap?) -> Unit,
+    ) {
+        if (videoSurface == null || videoSurface.width <= 0 || videoSurface.height <= 0) {
             onResult(null); return
         }
+        when (videoSurface) {
+            // A TextureView is part of the view hierarchy, so its content is readable directly.
+            is TextureView -> {
+                val frame = runCatching { videoSurface.bitmap }.getOrNull()
+                onResult(frame?.also { drawOverlays(videoSurface, overlays, it) })
+            }
+
+            is SurfaceView -> {
+                val bitmap = Bitmap.createBitmap(
+                    videoSurface.width, videoSurface.height, Bitmap.Config.ARGB_8888
+                )
+                try {
+                    PixelCopy.request(videoSurface, bitmap, { result ->
+                        if (result != PixelCopy.SUCCESS) {
+                            onResult(null); return@request
+                        }
+                        drawOverlays(videoSurface, overlays, bitmap)
+                        onResult(bitmap)
+                    }, Handler(Looper.getMainLooper()))
+                } catch (e: Exception) {
+                    onResult(null)
+                }
+            }
+
+            else -> onResult(null)
+        }
+    }
+
+    /**
+     * Composites [overlays] onto [dest], positioned relative to [videoSurface]. Overlays that sit
+     * outside the video area (subtitles rendered over the letterbox) are simply clipped away.
+     */
+    private fun drawOverlays(videoSurface: View, overlays: List<View>, dest: Bitmap) {
+        if (overlays.isEmpty()) return
+        val canvas = Canvas(dest)
+        val base = IntArray(2).also { videoSurface.getLocationInWindow(it) }
         val location = IntArray(2)
-        view.getLocationInWindow(location)
-        val rect = Rect(
-            location[0], location[1],
-            location[0] + view.width, location[1] + view.height
-        )
-        val bitmap = Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888)
-        try {
-            PixelCopy.request(window, rect, bitmap, { result ->
-                onResult(if (result == PixelCopy.SUCCESS) bitmap else null)
-            }, Handler(Looper.getMainLooper()))
-        } catch (e: Exception) {
-            onResult(null)
+        overlays.forEach { overlay ->
+            if (!overlay.isShown || overlay.width <= 0 || overlay.height <= 0) return@forEach
+            overlay.getLocationInWindow(location)
+            val save = canvas.save()
+            canvas.translate((location[0] - base[0]).toFloat(), (location[1] - base[1]).toFloat())
+            // The libass overlay is a TextureView, whose content draw() can't reach either.
+            val texture = (overlay as? TextureView)?.let { runCatching { it.bitmap }.getOrNull() }
+            if (texture != null) canvas.drawBitmap(texture, 0f, 0f, null)
+            else runCatching { overlay.draw(canvas) }
+            canvas.restoreToCount(save)
         }
     }
 

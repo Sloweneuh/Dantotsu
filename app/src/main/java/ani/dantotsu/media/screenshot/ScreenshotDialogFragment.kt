@@ -63,6 +63,21 @@ class ScreenshotDialogFragment : BottomSheetDialogFragment() {
     private val numberLabel get() = arguments?.getString(ARG_NUMBER).orEmpty()
     private val progressLabel get() = arguments?.getString(ARG_PROGRESS).orEmpty()
     private val sourceLabel get() = arguments?.getString(ARG_SOURCE)
+    private val isAnime get() = arguments?.getBoolean(ARG_IS_ANIME) ?: false
+
+    /**
+     * Sources usually label the number themselves ("Vol. 4 Ch. 20", "Episode 5"), so it's shown
+     * verbatim. When a source hands over a bare number there's nothing to say what it counts, so
+     * add the prefix ourselves rather than let a lone "2" sit in the card.
+     */
+    private fun displayNumberLabel(): String {
+        val label = numberLabel.trim()
+        if (!label.matches(BARE_NUMBER)) return label
+        return getString(
+            if (isAnime) R.string.episode_num_short else R.string.chapter_num_short,
+            label
+        )
+    }
 
     /** Currently displayed title, switchable via the title dropdown when there's more than one option. */
     private var selectedTitle: String = ""
@@ -95,7 +110,8 @@ class ScreenshotDialogFragment : BottomSheetDialogFragment() {
         // Static metadata
         binding.screenshotTitle.text = selectedTitle
         binding.screenshotSubtitle.text =
-            listOf(numberLabel, progressLabel).filter { it.isNotBlank() }.joinToString("  •  ")
+            listOf(displayNumberLabel(), progressLabel).filter { it.isNotBlank() }
+                .joinToString("  •  ")
         binding.screenshotSubtitle.isVisible = binding.screenshotSubtitle.text.isNotBlank()
         binding.screenshotDate.text =
             SimpleDateFormat("MMM d, yyyy · HH:mm", Locale.getDefault()).format(Date())
@@ -356,7 +372,7 @@ class ScreenshotDialogFragment : BottomSheetDialogFragment() {
     }
 
     private fun fileName(): String {
-        val raw = listOf(selectedTitle, numberLabel, progressLabel)
+        val raw = listOf(selectedTitle, displayNumberLabel(), progressLabel)
             .filter { it.isNotBlank() }.joinToString(" - ")
             .ifBlank { getString(R.string.screenshot) }
         return raw.replace(Regex("[\\\\/:*?\"<>|]"), "").take(120)
@@ -382,12 +398,17 @@ class ScreenshotDialogFragment : BottomSheetDialogFragment() {
         private const val ARG_NUMBER = "number"
         private const val ARG_PROGRESS = "progress"
         private const val ARG_SOURCE = "source"
+        private const val ARG_IS_ANIME = "isAnime"
+
+        /** A number and nothing else — no "Ch."/"Episode"/title to say what it's counting. */
+        private val BARE_NUMBER = Regex("""\d+([.,]\d+)?""")
 
         /** Transient hand-off of the (large) capture bitmap; read and cleared in [onCreate]. */
         private var pending: Bitmap? = null
 
         /**
-         * @param numberLabel  e.g. "Chapter 1050" or "Episode 5"
+         * @param numberLabel  e.g. "Chapter 1050" or "Episode 5"; a bare number gets an
+         *   "Ep."/"Ch." prefix added for display, per [isAnime]
          * @param progressLabel e.g. "8/24" (manga page) or "12:34" (anime timestamp)
          * @param sourceLabel  extension/source name, or null to hide the row
          * @param titleOptions alternate titles/synonyms offered in the title dropdown (e.g. via
@@ -401,6 +422,7 @@ class ScreenshotDialogFragment : BottomSheetDialogFragment() {
             numberLabel: String,
             progressLabel: String,
             sourceLabel: String?,
+            isAnime: Boolean,
         ): ScreenshotDialogFragment {
             pending = screenshot
             return ScreenshotDialogFragment().apply {
@@ -411,6 +433,7 @@ class ScreenshotDialogFragment : BottomSheetDialogFragment() {
                     ARG_NUMBER to numberLabel,
                     ARG_PROGRESS to progressLabel,
                     ARG_SOURCE to sourceLabel,
+                    ARG_IS_ANIME to isAnime,
                 )
             }
         }

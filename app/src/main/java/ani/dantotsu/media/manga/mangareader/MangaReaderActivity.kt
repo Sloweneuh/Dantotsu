@@ -548,6 +548,7 @@ class MangaReaderActivity : AppCompatActivity() {
                 numberLabel = chapter.number,
                 progressLabel = getString(R.string.handoff_page_label, "$currentChapterPage/$maxChapterPage"),
                 sourceLabel = sourceLabel,
+                isAnime = false,
             ).show(supportFragmentManager, "screenshot")
         }
 

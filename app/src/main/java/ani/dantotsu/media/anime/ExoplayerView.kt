@@ -1343,11 +1343,14 @@ class ExoplayerView :
                 playerView.hideController()
                 playerView.postDelayed({
                     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return@postDelayed
-                    ScreenshotUtil.captureFromWindow(window, playerView) { bitmap ->
+                    ScreenshotUtil.captureVideoFrame(
+                        playerView.videoSurfaceView,
+                        listOfNotNull(assSubtitleView, exoSubtitleView, customSubtitleView),
+                    ) { bitmap ->
                         if (bitmap == null) {
                             if (wasPlaying) exoPlayer.play()
                             snackString(getString(R.string.screenshot_failed))
-                            return@captureFromWindow
+                            return@captureVideoFrame
                         }
                         ScreenshotDialogFragment.newInstance(
                             screenshot = bitmap,
@@ -1358,6 +1361,7 @@ class ExoplayerView :
                             progressLabel = ScreenshotUtil.formatTimestamp(position),
                             sourceLabel = model.watchSources?.names
                                 ?.getOrNull(media.selected!!.sourceIndex),
+                            isAnime = true,
                         ).apply {
                             // Resume where we left off once the user closes the review sheet.
                             onDismissed = {
@@ -1984,32 +1988,11 @@ class ExoplayerView :
             } else {
                 DefaultRenderersFactory.EXTENSION_RENDERER_MODE_OFF
             }
-        val activityContext: android.content.Context = this
         // We use NextRenderersFactory to provide FFmpeg video/audio rendering when
         // Additional Codec Support is enabled. Since we now use OVERLAY_OPEN_GL,
         // it doesn't matter that FfmpegVideoRenderer bypasses the video effects pipeline.
         val baseRenderersFactory =
-            object : NextRenderersFactory(activityContext) {
-                @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
-                override fun buildTextRenderers(
-                    context: android.content.Context,
-                    output: androidx.media3.exoplayer.text.TextOutput,
-                    outputLooper: android.os.Looper,
-                    extensionRendererMode: Int,
-                    out: java.util.ArrayList<androidx.media3.exoplayer.Renderer>
-                ) {
-                    out.add(androidx.media3.exoplayer.text.TextRenderer(output, outputLooper))
-                    try {
-                        val clazz = Class.forName("io.github.anilbeesetti.nextlib.media3ext.renderer.NextTextRenderer")
-                        val ctor = clazz.getConstructor(
-                            androidx.media3.exoplayer.text.TextOutput::class.java,
-                            android.os.Looper::class.java
-                        )
-                        out.add(ctor.newInstance(output, outputLooper) as androidx.media3.exoplayer.Renderer)
-                    } catch (e: Exception) {
-                    }
-                }
-            }.apply {
+            NextRenderersFactory(this).apply {
                 setEnableDecoderFallback(true)
                 setExtensionRendererMode(decoder)
             }

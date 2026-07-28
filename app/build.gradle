@@ -21,7 +21,7 @@ android {
         // so the Nearby/Firebase features this app relies on no longer work below 23 anyway.
         minSdk = 23
         targetSdk = 36
-        versionName "4.7.6"
+        versionName "4.7.7"
         def (major, minor, patch) = versionName.split("\\.").collect { it.toInteger() }
         versionCode = major * 1_000_000 + minor * 1_000 + patch
         signingConfig signingConfigs.debug
@@ -130,7 +130,7 @@ dependencies {
     implementation 'jp.wasabeef:glide-transformations:4.3.0'
 
 //  Exoplayer
-    ext.exo_version = '1.6.1'
+    ext.exo_version = '1.8.0'
     implementation "androidx.media3:media3-exoplayer:$exo_version"
     implementation "androidx.media3:media3-ui:$exo_version"
     implementation "androidx.media3:media3-exoplayer-hls:$exo_version"
@@ -141,7 +141,7 @@ dependencies {
     implementation "androidx.media3:media3-cast:$exo_version"
     implementation "androidx.mediarouter:mediarouter:1.7.0"
 // Media3 extension
-    implementation "com.github.anilbeesetti.nextlib:nextlib-media3ext:0.8.4"
+    implementation "io.github.anilbeesetti:nextlib-media3ext:1.8.0-0.9.0"
 // Libass for ASS/SSA subtitle rendering
     implementation "io.github.peerless2012:ass-media:0.4.0-beta01"
     implementation "io.github.peerless2012:ass-kt:0.4.0-beta01"
