@@ -37,6 +37,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import okhttp3.Headers.Companion.toHeaders
 import okhttp3.Request
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
@@ -555,6 +556,9 @@ class DynamicMangaParser(extension: MangaExtension.Installed) : MangaParser() {
     }
 }
 
+// Enough of the stream to cover a playlist header or a container's magic bytes.
+private const val PROBE_BYTES = 1024L
+
 class VideoServerPassthrough(
     private val videoServer: VideoServer,
     @Transient private val source: AnimeHttpSource? = null,
@@ -586,39 +590,27 @@ class VideoServerPassthrough(
         }
     }
 
-    private fun aniVideoToSaiVideo(aniVideo: Video): ani.dantotsu.parsers.Video {
+    private suspend fun aniVideoToSaiVideo(aniVideo: Video): ani.dantotsu.parsers.Video {
         // Find the number value from the .quality string
         val number = Regex("""\d+""").find(aniVideo.quality)?.value?.toInt() ?: 0
 
         // Check for null video URL
         val videoUrl = aniVideo.videoUrl ?: throw Exception("Video URL is null")
 
+        val headersMap: Map<String, String> =
+            aniVideo.headers?.toMultimap()?.mapValues { it.value.joinToString() } ?: mapOf()
+
         var format: VideoType?
 
         try {
-            val urlObj = URL(videoUrl)
-            val path = urlObj.path
-            val query = urlObj.query
+            format = getVideoType(URL(videoUrl).path)
 
-            format = getVideoType(path)
-
-            if (format == null && query != null) {
-                val queryPairs: List<Pair<String, String>> = query.split("&").map {
-                    val idx = it.indexOf("=")
-                    val key = URLDecoder.decode(it.substring(0, idx), "UTF-8")
-                    val value = URLDecoder.decode(it.substring(idx + 1), "UTF-8")
-                    Pair(key, value)
-                }
-
-                // Assume the file is named under the "file" query parameter
-                val fileName = queryPairs.find { it.first == "file" }?.second ?: ""
-
-                format = getVideoType(fileName)
-                // this solves a problem no one has, so I'm commenting it out for now
-                //if (format == null) {
-                //    val networkHelper = Injekt.get<NetworkHelper>()
-                //    format = headRequest(videoUrl, networkHelper)
-                //}
+            // Aniyomi stops guessing here: it hands the URL straight to mpv, which probes the
+            // container with ffmpeg. ExoPlayer has to commit to a media source before it reads
+            // a byte, so when the URL tells us nothing we probe the stream ourselves rather
+            // than assert a container the extension never promised.
+            if (format == null) {
+                format = probeVideoType(videoUrl, headersMap)
             }
 
             // If the format is still undetermined, log an error
@@ -632,9 +624,6 @@ class VideoServerPassthrough(
             else
                 throw malformed
         }
-        val headersMap: Map<String, String> =
-            aniVideo.headers?.toMultimap()?.mapValues { it.value.joinToString() } ?: mapOf()
-
 
         return Video(
             number,
@@ -644,59 +633,82 @@ class VideoServerPassthrough(
         )
     }
 
-    private fun getVideoType(fileName: String): VideoType? {
-        val type = when {
-            fileName.endsWith(".mp4", ignoreCase = true) || fileName.endsWith(
-                ".mkv",
-                ignoreCase = true
-            ) -> VideoType.CONTAINER
-
-            fileName.endsWith(".m3u8", ignoreCase = true) -> VideoType.M3U8
-            fileName.endsWith(".mpd", ignoreCase = true) -> VideoType.DASH
+    /**
+     * Mirrors Aniyomi's `ExternalIntents.getMime()`: the extension of the URL path decides the
+     * type, and nothing else about the URL is interpreted. Extensions never declare a container
+     * (Aniyomi's `Video` has no such field), so anything this doesn't recognise is genuinely
+     * unknown rather than an invitation to guess.
+     */
+    private fun getVideoType(path: String): VideoType? =
+        when (path.substringAfterLast(".").lowercase()) {
+            "mp4", "mkv" -> VideoType.CONTAINER
+            "m3u8" -> VideoType.M3U8
+            "mpd" -> VideoType.DASH
             else -> null
         }
 
-        return type
-    }
-
-    @Suppress("unused")
-    private fun headRequest(fileName: String, networkHelper: NetworkHelper): VideoType? {
-        return try {
-            Logger.log("attempting head request for $fileName")
+    /**
+     * Works out what a stream actually is by reading the start of it, the way ffmpeg does for
+     * mpv. The declared Content-Type comes first, then the leading bytes, because proxies and
+     * CDNs routinely serve playlists as text/plain or application/octet-stream.
+     *
+     * Returns null if the stream can't be reached or looks like neither a playlist nor a
+     * manifest; the caller falls back to [VideoType.CONTAINER] as before.
+     */
+    private suspend fun probeVideoType(
+        videoUrl: String,
+        headers: Map<String, String>,
+    ): VideoType? = withContext(Dispatchers.IO) {
+        try {
+            Logger.log("Probing video format for $videoUrl")
+            val client = Injekt.get<NetworkHelper>().client
             val request = Request.Builder()
-                .url(fileName)
-                .head()
+                .url(videoUrl)
+                .headers(headers.toHeaders())
                 .build()
 
-            networkHelper.client.newCall(request).execute().use { response ->
-                val contentType = response.header("Content-Type")
-                val contentDisposition = response.header("Content-Disposition")
+            // Ask for just the head of the stream, but fall back to a plain GET for the
+            // servers that reject ranged requests -- the body is abandoned after the peek
+            // either way, so the only cost is a few discarded packets.
+            var response = client.newCall(
+                request.newBuilder().header("Range", "bytes=0-$PROBE_BYTES").build(),
+            ).execute()
+            if (!response.isSuccessful) {
+                response.close()
+                response = client.newCall(request).execute()
+            }
 
-                if (contentType != null) {
-                    when {
-                        contentType.contains("mpegurl", ignoreCase = true) -> VideoType.M3U8
-                        contentType.contains("dash", ignoreCase = true) -> VideoType.DASH
-                        contentType.contains("mp4", ignoreCase = true) -> VideoType.CONTAINER
-                        else -> null
-                    }
-                } else if (contentDisposition != null) {
-                    when {
-                        contentDisposition.contains("mpegurl", ignoreCase = true) -> VideoType.M3U8
-                        contentDisposition.contains("dash", ignoreCase = true) -> VideoType.DASH
-                        contentDisposition.contains("mp4", ignoreCase = true) -> VideoType.CONTAINER
-                        else -> null
-                    }
-                } else {
-                    Logger.log("failed head request for $fileName")
-                    null
+            response.use { response ->
+                if (!response.isSuccessful) {
+                    Logger.log("Probe failed for $videoUrl: HTTP ${response.code}")
+                    return@use null
                 }
 
+                val contentType = response.header("Content-Type").orEmpty()
+                when {
+                    contentType.contains("mpegurl", ignoreCase = true) -> VideoType.M3U8
+                    contentType.contains("dash", ignoreCase = true) -> VideoType.DASH
+                    contentType.contains("mp4", ignoreCase = true) -> VideoType.CONTAINER
+                    contentType.contains("matroska", ignoreCase = true) -> VideoType.CONTAINER
+                    else -> {
+                        // Lossy decode is fine: we only look for text markers, and binary
+                        // containers simply won't match them.
+                        val head = String(response.peekBody(PROBE_BYTES).bytes())
+                            .trimStart('﻿', ' ', '\n', '\r', '\t')
+                        when {
+                            head.startsWith("#EXTM3U") -> VideoType.M3U8
+                            head.contains("<MPD") -> VideoType.DASH
+                            else -> null
+                        }
+                    }
+                }
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            Logger.log("Exception in headRequest: $e")
+            Logger.log("Exception while probing $videoUrl: $e")
             null
         }
-
     }
 
     private fun trackToSubtitle(track: Track): Subtitle {
