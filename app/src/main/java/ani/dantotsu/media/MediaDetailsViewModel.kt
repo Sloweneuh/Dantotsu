@@ -690,6 +690,14 @@ class MediaDetailsViewModel : ViewModel() {
             selected: Selected,
             post: Boolean = true
     ): Boolean {
+        // ChapterLoaderDialog already fetches this chapter's pages before launching the reader,
+        // which then fetches the same chapter again here. addImages() no-ops on the already-full
+        // list either way, but without this check the network call (and MangaCache repopulation)
+        // still runs a second time for nothing.
+        if (chapter.images().isNotEmpty()) {
+            if (post) mangaChapter.postValue(chapter)
+            return true
+        }
 
         return tryWithSuspend(true) {
             val parser = mangaReadSources?.get(selected.sourceIndex)

@@ -433,6 +433,10 @@ class ContinuousChapterAdapter(
             }
         }
 
+        // See BaseImageAdapter.onBindViewHolder: a forced relayout can rebind a view that's
+        // already showing this exact page, which would otherwise wipe and re-decode it forever
+        // until the view is genuinely recycled onto a different position.
+        if (view.tag == position) return
         activity.lifecycleScope.launch { loadImage(position, view) }
     }
 
@@ -445,6 +449,8 @@ class ContinuousChapterAdapter(
         val progress = parent.findViewById<View>(R.id.imgProgProgress) ?: return false
         val errorLayout = parent.findViewById<View>(R.id.imgProgError) ?: return false
 
+        // Cleared until the load actually succeeds below; see BaseImageAdapter for why.
+        parent.tag = null
         imageView.recycle()
         imageView.visibility = View.GONE
         errorLayout.visibility = View.GONE
@@ -520,6 +526,7 @@ class ContinuousChapterAdapter(
             .setDuration((400 * PrefManager.getVal<Float>(PrefName.AnimationSpeed)).toLong())
             .start()
         progress.visibility = View.GONE
+        parent.tag = position
         return true
     }
 

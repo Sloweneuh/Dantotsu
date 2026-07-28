@@ -69,6 +69,10 @@ open class ImageAdapter(
         val progress = parent.findViewById<View>(R.id.imgProgProgress) ?: return false
         val errorLayout = parent.findViewById<View>(R.id.imgProgError) ?: return false
 
+        // Cleared until the load actually succeeds below, so a spurious rebind of this exact
+        // position while the load is in flight (or after it fails) doesn't get mistaken for
+        // "already loaded" and skipped.
+        parent.tag = null
         imageView.recycle()
         imageView.visibility = View.GONE
         errorLayout.visibility = View.GONE
@@ -126,6 +130,7 @@ open class ImageAdapter(
             .setDuration((400 * PrefManager.getVal<Float>(PrefName.AnimationSpeed)).toLong())
             .start()
         progress.visibility = View.GONE
+        parent.tag = position
 
         return true
     }

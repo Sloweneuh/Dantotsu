@@ -131,7 +131,13 @@ abstract class BaseImageAdapter(
                 }
             }
         }
-        activity.lifecycleScope.launch { loadImage(holder.bindingAdapterPosition, view) }
+        val position = holder.bindingAdapterPosition
+        // A forced relayout (e.g. the blank-screen recovery in onResume/onConfigurationChanged)
+        // can cause RecyclerView to rebind a view that's already showing this exact page. Without
+        // this guard that wipes and re-decodes the image every time, forever, until the view is
+        // genuinely recycled onto a different position.
+        if (view.tag == position) return
+        activity.lifecycleScope.launch { loadImage(position, view) }
     }
 
     abstract fun isZoomed(): Boolean
