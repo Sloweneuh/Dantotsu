@@ -2019,12 +2019,15 @@ class ExoplayerView :
             this.playbackParameters = this@ExoplayerView.playbackParameters
             setMediaSource(mediaSource)
             prepare()
+            // Back off from a position at or past the end, which would otherwise resume at EOF.
+            // Guard against junk written by older builds: a stored C.TIME_UNSET is negative and
+            // would compare as "before" every position, zeroing the resume point.
             PrefManager
                 .getCustomVal(
                     "${media.id}_${media.anime!!.selectedEpisode}_max",
                     Long.MAX_VALUE,
-                ).takeIf { it != Long.MAX_VALUE }
-                ?.let { if (it <= playbackPosition) playbackPosition = max(0, it - 5) }
+                ).takeIf { it != Long.MAX_VALUE && it > 0 }
+                ?.let { if (it <= playbackPosition) playbackPosition = max(0, it - 5000) }
             seekTo(playbackPosition)
         }
 
@@ -2266,10 +2269,16 @@ class ExoplayerView :
 
     override fun onRenderedFirstFrame() {
         super.onRenderedFirstFrame()
-        PrefManager.setCustomVal(
-            "${media.id}_${media.anime!!.selectedEpisode}_max",
-            exoPlayer.duration,
-        )
+        // An HLS playlist without #EXT-X-ENDLIST has no duration at all, so this can be
+        // C.TIME_UNSET — which is hugely *negative*. Comparing against it raw makes every check
+        // below true, which is what silently threw resumed playback back to 0.
+        val duration = exoPlayer.duration.takeIf { it != C.TIME_UNSET && it > 0 }
+        if (duration != null) {
+            PrefManager.setCustomVal(
+                "${media.id}_${media.anime!!.selectedEpisode}_max",
+                duration,
+            )
+        }
         val height = (exoPlayer.videoFormat ?: return).height
         val width = (exoPlayer.videoFormat ?: return).width
 
@@ -2277,18 +2286,19 @@ class ExoplayerView :
 
         videoInfo.text = getString(R.string.video_quality, height)
 
-        if (exoPlayer.duration < playbackPosition) {
-            exoPlayer.seekTo(0)
+        if (duration != null) {
+            if (duration < playbackPosition) {
+                exoPlayer.seekTo(0)
+            }
+
+            // if playbackPosition is within 92% of the episode length, reset it to 0
+            if (playbackPosition > duration.toFloat() * 0.92) {
+                playbackPosition = 0
+                exoPlayer.seekTo(0)
+            }
         }
 
-        // if playbackPosition is within 92% of the episode length, reset it to 0
-        if (playbackPosition > exoPlayer.duration.toFloat() * 0.92) {
-            playbackPosition = 0
-            exoPlayer.seekTo(0)
-        }
-
-        if (!isTimeStampsLoaded && PrefManager.getVal(PrefName.TimeStampsEnabled)) {
-            val dur = exoPlayer.duration
+        if (duration != null && !isTimeStampsLoaded && PrefManager.getVal(PrefName.TimeStampsEnabled)) {
             lifecycleScope.launch(Dispatchers.IO) {
                 model.loadTimeStamps(
                     media.idMAL,
@@ -2296,7 +2306,7 @@ class ExoplayerView :
                         ?.selectedEpisode
                         ?.trim()
                         ?.toIntOrNull(),
-                    dur / 1000,
+                    duration / 1000,
                     PrefManager.getVal(PrefName.UseProxyForTimeStamps),
                 )
             }
