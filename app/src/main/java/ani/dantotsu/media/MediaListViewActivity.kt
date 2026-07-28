@@ -102,9 +102,10 @@ class MediaListViewActivity : AppCompatActivity() {
                 .map { (item, _) -> item }
         } else null
 
-        // Session-only toggle (no saved pref) to hide novels from a MAL interest stack's list.
+        // Toggle to hide novels from a MAL interest stack's list. The choice is shared by every
+        // stack, so it's persisted under a single pref rather than one per stack.
         // Only relevant when there's actually a novel in the list to hide.
-        var showNovels = true
+        var showNovels = PrefManager.getCustomVal(SHOW_NOVELS, true)
         val hasNovels = fromMalStack && combinedItems == null &&
             mediaList.any { it.format?.equals("NOVEL", ignoreCase = true) == true }
 
@@ -193,9 +194,10 @@ class MediaListViewActivity : AppCompatActivity() {
 
         if (hasNovels) {
             binding.listNovelToggle.visibility = View.VISIBLE
-            binding.listNovelToggle.imageAlpha = 255
+            binding.listNovelToggle.imageAlpha = if (showNovels) 255 else 84
             binding.listNovelToggle.setOnClickListener {
                 showNovels = !showNovels
+                PrefManager.setCustomVal(SHOW_NOVELS, showNovels)
                 binding.listNovelToggle.imageAlpha = if (showNovels) 255 else 84
                 updateTitle()
                 buildAdapter(currentMode)
@@ -221,6 +223,9 @@ class MediaListViewActivity : AppCompatActivity() {
     }
 
     companion object {
+        // Shared by all interest stacks, not stored per stack.
+        const val SHOW_NOVELS = "stackShowNovels"
+
         var passedMedia: ArrayList<Media>? = null
         var passedMuMedia: ArrayList<MUMedia>? = null
         var passedUnreadInfo: Map<Int, ani.dantotsu.connections.malsync.UnreadChapterInfo>? = null
