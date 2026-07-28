@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+    The clip card's background: the screenshot card without the rounded corners.
+
+    A video frame is a rectangle and carries no transparency, so whatever sits outside a rounded
+    corner cannot be "nothing" — it encodes as black. On a still the rounding is a nicety; on a clip
+    it just trades card colour for black notches at the corners, so the clip card is square.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="?attr/colorSurfaceVariant" />
+</shape>

@@ -183,8 +183,12 @@ class ClipExporter(
         val card = request.card
 
         card?.videoRect?.let {
+            // The caller sizes the hole to the video's own aspect ratio, so cropping here trims at
+            // most the pixel or two that even-number alignment introduces. SCALE_TO_FIT would
+            // instead pad that difference out with transparency, which the encoder — having no
+            // alpha channel — turns into black edges around the picture.
             effects += Presentation.createForWidthAndHeight(
-                it.width(), it.height(), Presentation.LAYOUT_SCALE_TO_FIT
+                it.width(), it.height(), Presentation.LAYOUT_SCALE_TO_FIT_WITH_CROP
             )
         }
         request.subtitles?.let { effects += OverlayEffect(listOf(it)) }

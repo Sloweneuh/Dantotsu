@@ -24,7 +24,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="center_horizontal"
-        android:background="@drawable/bg_screenshot_card"
+        android:background="@drawable/bg_clip_card"
         android:orientation="vertical"
         android:padding="12dp">
 

@@ -172,8 +172,13 @@ class ClipDialogFragment : CaptureSheetFragment() {
         options.chipUserInfo.isChecked = PrefManager.getVal(PrefName.ScreenshotShowUserInfo)
         options.chipAppIcon.isChecked = PrefManager.getVal(PrefName.ScreenshotShowAppLogo)
         options.chipFrame.isChecked = PrefManager.getVal(PrefName.ScreenshotShowFrame)
-        options.chipRounded.isChecked = PrefManager.getVal(PrefName.ScreenshotShowRoundedCorners)
         options.chipSubtitles.isChecked = PrefManager.getVal(PrefName.ClipBurnSubtitles)
+
+        // Rounded corners are a stills-only idea: on moving footage the curve reads as the video
+        // being clipped rather than framed, so the option is hidden here rather than left to do
+        // something unwanted. The shared default still applies to screenshots.
+        options.chipRounded.isVisible = false
+        options.chipRounded.isChecked = false
 
         val loggedIn = !Anilist.username.isNullOrEmpty()
         options.chipUserInfo.isEnabled = loggedIn
@@ -205,7 +210,7 @@ class ClipDialogFragment : CaptureSheetFragment() {
 
         listOf(
             options.chipMediaInfo, options.chipDate, options.chipSource, options.chipUserInfo,
-            options.chipAppIcon, options.chipFrame, options.chipRounded
+            options.chipAppIcon, options.chipFrame
         ).forEach { it.setOnCheckedChangeListener { _, _ -> applyLayout() } }
         // Burning subtitles changes the pixels, so the GIF preview has to be rebuilt for it.
         options.chipSubtitles.setOnCheckedChangeListener { _, _ -> onOutputChanged() }
@@ -926,13 +931,13 @@ class ClipDialogFragment : CaptureSheetFragment() {
         val pad = dp(12)
         when {
             frame -> {
-                stage.clipCard.setBackgroundResource(R.drawable.bg_screenshot_card)
+                stage.clipCard.setBackgroundResource(R.drawable.bg_clip_card)
                 stage.clipCard.setPadding(pad, pad, pad, pad)
                 stage.clipDecorContainer.setPadding(0, 0, 0, 0)
             }
 
             decor -> {
-                stage.clipCard.setBackgroundResource(R.drawable.bg_screenshot_card)
+                stage.clipCard.setBackgroundResource(R.drawable.bg_clip_card)
                 stage.clipCard.setPadding(0, 0, 0, 0)
                 stage.clipDecorContainer.setPadding(pad, 0, pad, pad)
             }
@@ -947,11 +952,14 @@ class ClipDialogFragment : CaptureSheetFragment() {
 
     // region export
 
-    /** True when the card adds nothing and the clip can be exported as-is at full resolution. */
+    /**
+     * True when the card adds nothing and the clip can be exported as-is at full resolution.
+     * Rounded corners don't feature: they're not offered for clips, so a frame and the decor rows
+     * are all there is to add.
+     */
     private fun isBare(): Boolean {
         val binding = _binding ?: return true
-        return !options.chipFrame.isChecked && !options.chipRounded.isChecked &&
-            !binding.clipStage.clipDecorContainer.isVisible
+        return !options.chipFrame.isChecked && !binding.clipStage.clipDecorContainer.isVisible
     }
 
     /**
@@ -980,12 +988,33 @@ class ClipDialogFragment : CaptureSheetFragment() {
         preview.getLocationInWindow(offset)
         val cardOffset = IntArray(2)
         card.getLocationInWindow(cardOffset)
-        val left = even((offset[0] - cardOffset[0]) * scale)
-        val top = even((offset[1] - cardOffset[1]) * scale)
-        val videoRect = Rect(
-            left, top,
-            left + even(preview.width * scale), top + even(preview.height * scale)
+
+        // The hole has to carry the video's exact aspect ratio. Frames are fitted into it during
+        // export, so any disagreement between the two comes out as letterboxing — transparent in
+        // the effect chain, and black once encoded. Sizing the hole from the preview's laid-out
+        // bounds inherited every rounding along the way (integer view heights, even-number
+        // alignment, a preview still at its default height because the video size hadn't arrived),
+        // which is where the black bars came from. Deriving it from the video instead and centring
+        // it in the space the preview occupies leaves nothing to letterbox.
+        val availableWidth = even(preview.width * scale)
+        val availableHeight = even(preview.height * scale)
+        var rectWidth = availableWidth
+        var rectHeight = availableHeight
+        if (videoWidth > 0 && videoHeight > 0) {
+            val heightForWidth = even(availableWidth.toFloat() * videoHeight / videoWidth)
+            if (heightForWidth <= availableHeight) {
+                rectHeight = heightForWidth
+            } else {
+                rectWidth = even(availableHeight.toFloat() * videoWidth / videoHeight)
+            }
+        }
+        val left = even(
+            (offset[0] - cardOffset[0]) * scale + (availableWidth - rectWidth) / 2f
         )
+        val top = even(
+            (offset[1] - cardOffset[1]) * scale + (availableHeight - rectHeight) / 2f
+        )
+        val videoRect = Rect(left, top, left + rectWidth, top + rectHeight)
 
         // H.264 needs even dimensions, on the frame and on the region inside it alike. Rounding the
         // two independently can leave the region a pixel past the frame, so the frame wins.
@@ -1002,20 +1031,23 @@ class ClipDialogFragment : CaptureSheetFragment() {
             }
         }.getOrNull() ?: return null
 
-        punchHole(bitmap, videoRect, if (options.chipRounded.isChecked) dp(12) * scale else 0f)
+        punchHole(bitmap, videoRect)
         return ClipExporter.Card(bitmap, videoRect)
     }
 
     /**
-     * Clears [rect] out of [bitmap] so the video shows through. Cutting the corners here rather
-     * than masking later is what gives the clip rounded corners the encoder can't do itself.
+     * Clears [rect] out of [bitmap] so the video shows through.
+     *
+     * Square corners, deliberately. Rounding them looks fine on a still but not on moving footage,
+     * where the curve reads as the video being clipped rather than framed — which is also why the
+     * rounded-corners option isn't offered here at all.
      */
-    private fun punchHole(bitmap: Bitmap, rect: Rect, cornerRadius: Float) {
+    private fun punchHole(bitmap: Bitmap, rect: Rect) {
         val canvas = Canvas(bitmap)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
         }
-        canvas.drawRoundRect(RectF(rect), cornerRadius, cornerRadius, paint)
+        canvas.drawRect(RectF(rect), paint)
     }
 
     /** Builds the subtitle overlay for the trimmed range, or null when it's off/unavailable. */
