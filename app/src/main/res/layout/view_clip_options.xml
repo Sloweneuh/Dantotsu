@@ -146,7 +146,7 @@
 
         <com.google.android.material.chip.Chip
             android:id="@+id/chipSubtitles"
-            style="@style/Widget.Material3.Chip.Filter"
+            style="@style/CaptureFilterChip"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:checked="true"
@@ -154,7 +154,7 @@
 
         <com.google.android.material.chip.Chip
             android:id="@+id/chipMediaInfo"
-            style="@style/Widget.Material3.Chip.Filter"
+            style="@style/CaptureFilterChip"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:checked="true"
@@ -162,7 +162,7 @@
 
         <com.google.android.material.chip.Chip
             android:id="@+id/chipDate"
-            style="@style/Widget.Material3.Chip.Filter"
+            style="@style/CaptureFilterChip"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:checked="true"
@@ -170,7 +170,7 @@
 
         <com.google.android.material.chip.Chip
             android:id="@+id/chipSource"
-            style="@style/Widget.Material3.Chip.Filter"
+            style="@style/CaptureFilterChip"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:checked="true"
@@ -178,14 +178,14 @@
 
         <com.google.android.material.chip.Chip
             android:id="@+id/chipUserInfo"
-            style="@style/Widget.Material3.Chip.Filter"
+            style="@style/CaptureFilterChip"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/screenshot_show_user_info" />
 
         <com.google.android.material.chip.Chip
             android:id="@+id/chipAppIcon"
-            style="@style/Widget.Material3.Chip.Filter"
+            style="@style/CaptureFilterChip"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:checked="true"
@@ -193,7 +193,7 @@
 
         <com.google.android.material.chip.Chip
             android:id="@+id/chipFrame"
-            style="@style/Widget.Material3.Chip.Filter"
+            style="@style/CaptureFilterChip"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:checked="true"
@@ -201,7 +201,7 @@
 
         <com.google.android.material.chip.Chip
             android:id="@+id/chipRounded"
-            style="@style/Widget.Material3.Chip.Filter"
+            style="@style/CaptureFilterChip"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:checked="true"

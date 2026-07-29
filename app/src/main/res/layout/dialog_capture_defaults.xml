@@ -37,49 +37,49 @@
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/dsMediaInfo"
-                style="@style/Widget.Material3.Chip.Filter"
+                style="@style/CaptureFilterChip"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/screenshot_show_media_info" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/dsDate"
-                style="@style/Widget.Material3.Chip.Filter"
+                style="@style/CaptureFilterChip"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/screenshot_show_date" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/dsSource"
-                style="@style/Widget.Material3.Chip.Filter"
+                style="@style/CaptureFilterChip"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/screenshot_show_source" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/dsUserInfo"
-                style="@style/Widget.Material3.Chip.Filter"
+                style="@style/CaptureFilterChip"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/screenshot_show_user_info" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/dsAppLogo"
-                style="@style/Widget.Material3.Chip.Filter"
+                style="@style/CaptureFilterChip"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/screenshot_show_app_icon" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/dsFrame"
-                style="@style/Widget.Material3.Chip.Filter"
+                style="@style/CaptureFilterChip"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/screenshot_show_frame" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/dsRounded"
-                style="@style/Widget.Material3.Chip.Filter"
+                style="@style/CaptureFilterChip"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/screenshot_show_rounded_corners" />
@@ -104,14 +104,14 @@
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/dcBurnSubtitles"
-                style="@style/Widget.Material3.Chip.Filter"
+                style="@style/CaptureFilterChip"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/clip_burn_subtitles" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/dcDefaultGif"
-                style="@style/Widget.Material3.Chip.Filter"
+                style="@style/CaptureFilterChip"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/clip_default_gif" />

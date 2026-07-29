@@ -28,6 +28,14 @@
         <item name="fontFamily">@font/poppins_family</item>
     </style>
 
+    <!-- Filter chip for the capture composers and their defaults dialog. The check icon is off on
+         purpose: it adds ~24dp when a chip is ticked, so with it on the chips change width as you
+         toggle them and the whole group re-wraps under you. Selection still reads from the filled
+         container. -->
+    <style name="CaptureFilterChip" parent="Widget.Material3.Chip.Filter">
+        <item name="checkedIconVisible">false</item>
+    </style>
+
     <style name="ModalBottomSheetDialog" parent="Widget.MaterialComponents.BottomSheet.Modal">
         <item name="backgroundTint">?android:colorBackground</item>
         <item name="shapeAppearance">@style/ShapeAppearanceOverlay.Demo</item>
