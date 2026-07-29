@@ -7,8 +7,8 @@ buildscript {
         maven { url 'https://jitpack.io' }
     }
     ext {
-        kotlin_version = '2.1.0'
-        ksp_version = '2.1.0-1.0.29'
+        kotlin_version = '2.2.20'
+        ksp_version = '2.2.20-2.0.4'
     }
 
     dependencies {
@@ -17,8 +17,8 @@ buildscript {
         classpath "org.jetbrains.kotlin:kotlin-serialization:$kotlin_version"
         classpath "com.google.devtools.ksp:symbol-processing-api:$ksp_version"
         classpath "com.google.devtools.ksp:symbol-processing-gradle-plugin:$ksp_version"
-        classpath 'com.google.gms:google-services:4.4.1'
-        classpath 'com.google.firebase:firebase-crashlytics-gradle:2.9.9'
+        classpath 'com.google.gms:google-services:4.5.0'
+        classpath 'com.google.firebase:firebase-crashlytics-gradle:3.0.7'
     }
 }
 

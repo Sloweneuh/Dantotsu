@@ -3,8 +3,8 @@ package ani.dantotsu.connections.crashlytics
 import android.content.Context
 import com.google.firebase.FirebaseApp
 import com.google.firebase.crashlytics.FirebaseCrashlytics
-import com.google.firebase.crashlytics.ktx.crashlytics
-import com.google.firebase.ktx.Firebase
+import com.google.firebase.crashlytics.crashlytics
+import com.google.firebase.Firebase
 
 class FirebaseCrashlytics : CrashlyticsInterface {
     override fun initialize(context: Context) {
