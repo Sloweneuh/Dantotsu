@@ -2,6 +2,7 @@ package ani.dantotsu.media.manga.mangareader
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.content.res.Resources.getSystem
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.net.Uri
@@ -53,6 +54,9 @@ abstract class BaseImageAdapter(
         super.onAttachedToRecyclerView(recyclerView)
     }
 
+    /** The page shown at [position], used to tie loads to pages rather than to positions. */
+    open fun pageKey(position: Int): Any? = images.getOrNull(position)
+
     @SuppressLint("ClickableViewAccessibility")
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         val view = holder.itemView as GestureFrameLayout
@@ -62,7 +66,14 @@ abstract class BaseImageAdapter(
             }
             it.settings.isRotationEnabled = settings.rotation
         }
-        if (settings.layout != CurrentReaderSettings.Layouts.PAGED) {
+        // A forced relayout (e.g. the blank-screen recovery in onResume/onConfigurationChanged)
+        // can make RecyclerView rebind a view that is already showing this exact page. Binding it
+        // again would shrink it back to the placeholder size and re-decode the image, so a page
+        // that is already on screen is left alone until the view is genuinely recycled.
+        val boundPosition = holder.bindingAdapterPosition
+        val page = pageKey(boundPosition)
+        val alreadyShown = page != null && view.isShowingPage(page)
+        if (settings.layout != CurrentReaderSettings.Layouts.PAGED && !alreadyShown) {
             if (settings.padding) {
                 when (settings.direction) {
                     CurrentReaderSettings.Directions.TOP_TO_BOTTOM -> view.setPadding(
@@ -131,13 +142,8 @@ abstract class BaseImageAdapter(
                 }
             }
         }
-        val position = holder.bindingAdapterPosition
-        // A forced relayout (e.g. the blank-screen recovery in onResume/onConfigurationChanged)
-        // can cause RecyclerView to rebind a view that's already showing this exact page. Without
-        // this guard that wipes and re-decodes the image every time, forever, until the view is
-        // genuinely recycled onto a different position.
-        if (view.tag == position) return
-        activity.lifecycleScope.launch { loadImage(position, view) }
+        if (alreadyShown) return
+        activity.lifecycleScope.launch { loadImage(boundPosition, view) }
     }
 
     abstract fun isZoomed(): Boolean
@@ -146,6 +152,24 @@ abstract class BaseImageAdapter(
     abstract suspend fun loadImage(position: Int, parent: View): Boolean
 
     companion object {
+        /**
+         * The space actually available to a page: the RecyclerView the item sits in, minus every
+         * padding between that and the image. The display metrics are only a fallback for a
+         * viewport that isn't measured yet — they cover the whole screen, including the system
+         * bars and the display cutout, and fitting a page to the screen rather than to the
+         * viewport is what leaves it cropped at the top or the bottom.
+         */
+        fun pageViewport(parent: View): Pair<Int, Int> {
+            val host = parent.parent as? View
+            val metrics = getSystem().displayMetrics
+            val hostWidth = host?.run { width - paddingLeft - paddingRight }?.takeIf { it > 0 }
+                ?: metrics.widthPixels
+            val hostHeight = host?.run { height - paddingTop - paddingBottom }?.takeIf { it > 0 }
+                ?: metrics.heightPixels
+            return (hostWidth - parent.paddingLeft - parent.paddingRight) to
+                    (hostHeight - parent.paddingTop - parent.paddingBottom)
+        }
+
         suspend fun Context.loadBitmapOld(
             link: FileUrl,
             transforms: List<BitmapTransformation>

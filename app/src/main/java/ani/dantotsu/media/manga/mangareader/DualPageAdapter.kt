@@ -13,6 +13,9 @@ class DualPageAdapter(
 
     private val pages = chapter.dualPages()
 
+    /** A position holds a pair of pages here, not a single one of [images]. */
+    override fun pageKey(position: Int): Any? = pages.getOrNull(position)
+
     override suspend fun loadBitmap(position: Int, parent: View): Bitmap? {
         val img1 = pages[position].first
         val link1 = img1.url

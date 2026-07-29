@@ -1,7 +1,6 @@
 package ani.dantotsu.media.manga.mangareader
 
 import android.animation.ObjectAnimator
-import android.content.res.Resources.getSystem
 import android.graphics.Bitmap
 import android.graphics.PointF
 import android.view.LayoutInflater
@@ -42,7 +41,7 @@ open class ImageAdapter(
 
     inner class ImageViewHolder(binding: ItemImageBinding) : RecyclerView.ViewHolder(binding.root)
 
-    private val failedPages = FailedPageTracker()
+    private val failedPages = FailedPageTracker { position -> pageKey(position) }
     private val retryPage: (Int, View) -> Unit = { position, view ->
         activity.lifecycleScope.launch { loadImage(position, view) }
     }
@@ -64,15 +63,14 @@ open class ImageAdapter(
     }
 
     override suspend fun loadImage(position: Int, parent: View): Boolean {
+        val page = pageKey(position) ?: return false
         val imageView = parent.findViewById<SubsamplingScaleImageView>(R.id.imgProgImageNoGestures)
             ?: return false
         val progress = parent.findViewById<View>(R.id.imgProgProgress) ?: return false
         val errorLayout = parent.findViewById<View>(R.id.imgProgError) ?: return false
 
-        // Cleared until the load actually succeeds below, so a spurious rebind of this exact
-        // position while the load is in flight (or after it fails) doesn't get mistaken for
-        // "already loaded" and skipped.
-        parent.tag = null
+        // Claim the view for this page; whatever starts later on the same view supersedes it.
+        val load = parent.beginPageLoad(page)
         imageView.recycle()
         imageView.visibility = View.GONE
         errorLayout.visibility = View.GONE
@@ -80,27 +78,27 @@ open class ImageAdapter(
 
         val bitmap = loadBitmap(position, parent)
 
-        // The holder may have been recycled onto another page while this was loading.
-        if (!FailedPageTracker.isStillBoundTo(parent, position)) return false
+        // A newer load owns the view now — it was recycled onto another page, or reloaded — so
+        // this result is stale and the newer one is the image that belongs on screen.
+        if (!load.stillOwns(parent)) return false
 
         if (bitmap == null) {
-            failedPages.showError(parent, position, retryPage)
+            failedPages.showError(parent, page, retryPage)
             return false
         }
-        failedPages.clearError(parent, position)
+        failedPages.clearError(parent, page)
 
-        var sWidth = getSystem().displayMetrics.widthPixels
-        var sHeight = getSystem().displayMetrics.heightPixels
+        val (viewportWidth, viewportHeight) = pageViewport(parent)
+        var sWidth = viewportWidth
+        var sHeight = viewportHeight
 
         if (settings.layout != PAGED)
             parent.updateLayoutParams {
                 if (settings.direction != LEFT_TO_RIGHT && settings.direction != RIGHT_TO_LEFT) {
-                    sWidth -= parent.paddingLeft + parent.paddingRight
                     sHeight =
                         if (settings.wrapImages) bitmap.height else (sWidth * bitmap.height * 1f / bitmap.width).toInt()
                     height = sHeight + parent.paddingTop + parent.paddingBottom
                 } else {
-                    sHeight -= parent.paddingTop + parent.paddingBottom
                     sWidth =
                         if (settings.wrapImages) bitmap.width else (sHeight * bitmap.width * 1f / bitmap.height).toInt()
                     width = sWidth + parent.paddingLeft + parent.paddingRight
@@ -130,7 +128,7 @@ open class ImageAdapter(
             .setDuration((400 * PrefManager.getVal<Float>(PrefName.AnimationSpeed)).toLong())
             .start()
         progress.visibility = View.GONE
-        parent.tag = position
+        load.loaded = true
 
         return true
     }

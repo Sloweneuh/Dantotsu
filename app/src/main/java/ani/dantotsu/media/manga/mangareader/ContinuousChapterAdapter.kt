@@ -1,7 +1,6 @@
 package ani.dantotsu.media.manga.mangareader
 
 import android.animation.ObjectAnimator
-import android.content.res.Resources.getSystem
 import android.graphics.Bitmap
 import android.graphics.PointF
 import android.view.LayoutInflater
@@ -23,6 +22,7 @@ import com.davemorrissey.labs.subscaleview.ImageSource
 import com.davemorrissey.labs.subscaleview.ImageViewState
 import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
 import ani.dantotsu.media.manga.mangareader.BaseImageAdapter.Companion.loadBitmap
+import ani.dantotsu.media.manga.mangareader.BaseImageAdapter.Companion.pageViewport
 import kotlinx.coroutines.launch
 
 /**
@@ -69,10 +69,13 @@ class ContinuousChapterAdapter(
     val items = mutableListOf<ReaderItem>()
     val settings get() = activity.defaultSettings
 
-    private val failedPages = FailedPageTracker()
+    private val failedPages = FailedPageTracker { position -> imageItemAt(position) }
     private val retryPage: (Int, View) -> Unit = { position, view ->
         activity.lifecycleScope.launch { loadImage(position, view) }
     }
+
+    /** The page at [position], or null when that position holds a transition or a boundary. */
+    private fun imageItemAt(position: Int) = items.getOrNull(position) as? ReaderItem.Image
 
     /** Tracks which chapter unique numbers have been loaded so we don't duplicate */
     private val loadedChapterUniqueNumbers = mutableSetOf<String>()
@@ -154,8 +157,6 @@ class ContinuousChapterAdapter(
         ))
 
         items.addAll(0, newItems)
-        // Everything already in the list shifted down, so the failed pages must follow.
-        failedPages.shiftPositions(0, newItems.size)
         notifyItemRangeInserted(0, newItems.size)
         firstLoadedChapterIdx = chapterIndex
     }
@@ -224,7 +225,6 @@ class ContinuousChapterAdapter(
         if (hasStartBoundary) return
         hasStartBoundary = true
         items.add(0, ReaderItem.Boundary(message))
-        failedPages.shiftPositions(0, 1)
         notifyItemInserted(0)
     }
 
@@ -382,35 +382,47 @@ class ContinuousChapterAdapter(
             it.settings.isRotationEnabled = settings.rotation
         }
 
-        // Continuous layout sizing
-        if (settings.padding) {
-            // Always keep the trailing-edge spacing between consecutive pages.
-            // If this image is the first page of a chapter and the previous adapter item
-            // is a Transition or Boundary, also add leading-edge padding so there's space
-            // after the transition/boundary.
-            val prevIsDivider = position > 0 && (items.getOrNull(position - 1) is ReaderItem.Transition || items.getOrNull(position - 1) is ReaderItem.Boundary)
-            val leading = if (prevIsDivider && (items.getOrNull(position) as? ReaderItem.Image)?.pageIndex == 0) 16f.px else 0
-            when (settings.direction) {
-                CurrentReaderSettings.Directions.TOP_TO_BOTTOM -> view.setPadding(0, leading, 0, 16f.px)
-                CurrentReaderSettings.Directions.LEFT_TO_RIGHT -> view.setPadding(leading, 0, 16f.px, 0)
-                CurrentReaderSettings.Directions.BOTTOM_TO_TOP -> view.setPadding(0, 16f.px, 0, leading)
-                CurrentReaderSettings.Directions.RIGHT_TO_LEFT -> view.setPadding(16f.px, 0, leading, 0)
+        // A forced relayout (e.g. the blank-screen recovery in onResume/onConfigurationChanged)
+        // can make RecyclerView rebind a view that is already showing this exact page. Binding it
+        // again would shrink it back to the placeholder size and re-decode the image, so a page
+        // that is already on screen keeps both its size and its bitmap until the view is
+        // genuinely recycled onto another page.
+        val alreadyShown = view.isShowingPage(item)
+
+        // Continuous layout sizing. Skipped for a page that is already on screen: its padding
+        // feeds into the height loadImage gave it, so touching either without reloading would
+        // crop the bitmap that is still being displayed.
+        if (!alreadyShown) {
+            if (settings.padding) {
+                // Always keep the trailing-edge spacing between consecutive pages.
+                // If this image is the first page of a chapter and the previous adapter item
+                // is a Transition or Boundary, also add leading-edge padding so there's space
+                // after the transition/boundary.
+                val prevIsDivider = position > 0 && (items.getOrNull(position - 1) is ReaderItem.Transition || items.getOrNull(position - 1) is ReaderItem.Boundary)
+                val leading = if (prevIsDivider && (items.getOrNull(position) as? ReaderItem.Image)?.pageIndex == 0) 16f.px else 0
+                when (settings.direction) {
+                    CurrentReaderSettings.Directions.TOP_TO_BOTTOM -> view.setPadding(0, leading, 0, 16f.px)
+                    CurrentReaderSettings.Directions.LEFT_TO_RIGHT -> view.setPadding(leading, 0, 16f.px, 0)
+                    CurrentReaderSettings.Directions.BOTTOM_TO_TOP -> view.setPadding(0, 16f.px, 0, leading)
+                    CurrentReaderSettings.Directions.RIGHT_TO_LEFT -> view.setPadding(16f.px, 0, leading, 0)
+                }
+            } else {
+                view.setPadding(0, 0, 0, 0)
             }
-        } else {
-            view.setPadding(0, 0, 0, 0)
-        }
-        if (settings.layout != CurrentReaderSettings.Layouts.PAGED) {
-            view.updateLayoutParams {
-                if (settings.direction != CurrentReaderSettings.Directions.LEFT_TO_RIGHT &&
-                    settings.direction != CurrentReaderSettings.Directions.RIGHT_TO_LEFT) {
-                    width = ViewGroup.LayoutParams.MATCH_PARENT
-                    height = 480f.px
-                } else {
-                    width = 480f.px
-                    height = ViewGroup.LayoutParams.MATCH_PARENT
+            if (settings.layout != CurrentReaderSettings.Layouts.PAGED) {
+                view.updateLayoutParams {
+                    if (settings.direction != CurrentReaderSettings.Directions.LEFT_TO_RIGHT &&
+                        settings.direction != CurrentReaderSettings.Directions.RIGHT_TO_LEFT) {
+                        width = ViewGroup.LayoutParams.MATCH_PARENT
+                        height = 480f.px
+                    } else {
+                        width = 480f.px
+                        height = ViewGroup.LayoutParams.MATCH_PARENT
+                    }
                 }
             }
-        } else {
+        }
+        if (settings.layout == CurrentReaderSettings.Layouts.PAGED) {
             val detector = androidx.core.view.GestureDetectorCompat(view.context, object : ani.dantotsu.GesturesListener() {
                 override fun onSingleClick(event: android.view.MotionEvent) =
                     activity.handleController(event = event)
@@ -433,15 +445,12 @@ class ContinuousChapterAdapter(
             }
         }
 
-        // See BaseImageAdapter.onBindViewHolder: a forced relayout can rebind a view that's
-        // already showing this exact page, which would otherwise wipe and re-decode it forever
-        // until the view is genuinely recycled onto a different position.
-        if (view.tag == position) return
+        if (alreadyShown) return
         activity.lifecycleScope.launch { loadImage(position, view) }
     }
 
     suspend fun loadImage(position: Int, parent: View): Boolean {
-        val item = items.getOrNull(position) as? ReaderItem.Image ?: return false
+        val item = imageItemAt(position) ?: return false
         val link = item.image.url
         if (link.url.isEmpty()) return false
 
@@ -449,8 +458,8 @@ class ContinuousChapterAdapter(
         val progress = parent.findViewById<View>(R.id.imgProgProgress) ?: return false
         val errorLayout = parent.findViewById<View>(R.id.imgProgError) ?: return false
 
-        // Cleared until the load actually succeeds below; see BaseImageAdapter for why.
-        parent.tag = null
+        // Claim the view for this page; whatever starts later on the same view supersedes it.
+        val load = parent.beginPageLoad(item)
         imageView.recycle()
         imageView.visibility = View.GONE
         errorLayout.visibility = View.GONE
@@ -466,30 +475,30 @@ class ContinuousChapterAdapter(
 
         val bitmap: Bitmap? = with(activity) { loadBitmap(link, transforms, Int.MAX_VALUE / 4) }
 
-        // The holder may have been recycled onto another page while this was loading.
-        if (!FailedPageTracker.isStillBoundTo(parent, position)) return false
+        // A newer load owns the view now — it was recycled onto another page, or reloaded — so
+        // this result is stale and the newer one is the image that belongs on screen.
+        if (!load.stillOwns(parent)) return false
 
         if (bitmap == null) {
-            failedPages.showError(parent, position, retryPage)
+            failedPages.showError(parent, item, retryPage)
             return false
         }
-        failedPages.clearError(parent, position)
+        failedPages.clearError(parent, item)
 
         val bitmapW = bitmap.width
         val bitmapH = bitmap.height
-        var sWidth = getSystem().displayMetrics.widthPixels
-        var sHeight = getSystem().displayMetrics.heightPixels
+        val (viewportWidth, viewportHeight) = pageViewport(parent)
+        var sWidth = viewportWidth
+        var sHeight = viewportHeight
 
         if (settings.layout != CurrentReaderSettings.Layouts.PAGED) {
             parent.updateLayoutParams {
                 if (settings.direction != CurrentReaderSettings.Directions.LEFT_TO_RIGHT &&
                     settings.direction != CurrentReaderSettings.Directions.RIGHT_TO_LEFT) {
-                    sWidth -= parent.paddingLeft + parent.paddingRight
                     sHeight = if (settings.wrapImages) bitmapH
                               else (sWidth * bitmapH * 1f / bitmapW).toInt()
                     height = sHeight + parent.paddingTop + parent.paddingBottom
                 } else {
-                    sHeight -= parent.paddingTop + parent.paddingBottom
                     sWidth = if (settings.wrapImages) bitmapW
                              else (sHeight * bitmapW * 1f / bitmapH).toInt()
                     width = sWidth + parent.paddingLeft + parent.paddingRight
@@ -501,13 +510,15 @@ class ContinuousChapterAdapter(
         // visible side bars on vertical (top-to-bottom) layout.
         val scaleX = sWidth * 1f / bitmapW
         val scaleY = sHeight * 1f / bitmapH
-        val scale = if (settings.direction != CurrentReaderSettings.Directions.LEFT_TO_RIGHT &&
-            settings.direction != CurrentReaderSettings.Directions.RIGHT_TO_LEFT) {
+        val scale = when {
+            // Paged: the whole page has to fit the viewport, so the smaller axis wins.
+            // Filling one axis instead would push the other past the edge and crop it.
+            settings.layout == CurrentReaderSettings.Layouts.PAGED -> minOf(scaleX, scaleY)
             // Vertical layouts: make image fit width
-            scaleX
-        } else {
+            settings.direction != CurrentReaderSettings.Directions.LEFT_TO_RIGHT &&
+                settings.direction != CurrentReaderSettings.Directions.RIGHT_TO_LEFT -> scaleX
             // Horizontal layouts: make image fit height
-            scaleY
+            else -> scaleY
         }
 
         imageView.maxScale = scale * 1.1f
@@ -526,7 +537,7 @@ class ContinuousChapterAdapter(
             .setDuration((400 * PrefManager.getVal<Float>(PrefName.AnimationSpeed)).toLong())
             .start()
         progress.visibility = View.GONE
-        parent.tag = position
+        load.loaded = true
         return true
     }
 
