@@ -54,9 +54,10 @@ class MUMediaInfoContainerFragment : Fragment() {
 
     private fun createTabFragment(type: InfoTabType): Fragment = when (type) {
         InfoTabType.MANGAUPDATES -> MUMediaInfoFragment()
+        InfoTabType.MAL -> ani.dantotsu.media.MALInfoFragment()
         InfoTabType.COMICK -> ComickInfoFragment()
         InfoTabType.MANGABAKA -> ani.dantotsu.media.MangaBakaInfoFragment()
-        InfoTabType.ANILIST, InfoTabType.MAL -> error("$type is not a MangaUpdates info tab")
+        InfoTabType.ANILIST -> error("$type is not a MangaUpdates info tab")
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -116,6 +117,29 @@ class MUMediaInfoContainerFragment : Fragment() {
             }
         }
 
+        // MangaUpdates series have no MAL id, so the MAL tab can't load anything until one is
+        // resolved from a cross-source mapping. Kick that off as soon as the media is available so
+        // the tab is usually ready by the time it's opened, and so its icon can be dimmed while it
+        // isn't. Not needed offline — the tab list above drops everything but MangaUpdates then.
+        if (InfoTabType.MAL.fetchEnabled && !offline) {
+            var malStarted = false
+            model.getMedia().observe(viewLifecycleOwner) { media ->
+                val m = media ?: return@observe
+                val muSeriesId = m.muSeriesId ?: return@observe
+                if (!malStarted && model.muMalLoaded.value != true) {
+                    malStarted = true
+                    val titles = malSearchTitles(m)
+                    viewLifecycleOwner.lifecycleScope.launch {
+                        val malId = withContext(Dispatchers.IO) {
+                            resolveMuMalId(muSeriesId, titles, model.comickSlug.value)
+                        }
+                        model.muMalId.postValue(malId)
+                        model.muMalLoaded.postValue(true)
+                    }
+                }
+            }
+        }
+
         if (tabs.size <= 1) {
             binding.mediaInfoTabLayout.visibility = View.GONE
             return
@@ -146,6 +170,11 @@ class MUMediaInfoContainerFragment : Fragment() {
                         if (!comickSlug.isNullOrBlank()) "https://comick.dev/comic/$comickSlug"
                         else "https://comick.dev/search?q=$encoded"
                     }
+                    "mal" -> {
+                        val malId = model.muMalId.value
+                        if (malId != null) "https://myanimelist.net/manga/$malId"
+                        else "https://myanimelist.net/manga.php?q=$encoded&cat=manga"
+                    }
                     "mangabaka" -> {
                         val id = model.mangaBakaId.value
                         if (id != null && id > 0) "https://mangabaka.org/$id"
@@ -158,11 +187,22 @@ class MUMediaInfoContainerFragment : Fragment() {
             }
         }.attach()
 
-        // Dim the Comick / MangaBaka tab icons until their data is confirmed
+        // Dim the MAL / Comick / MangaBaka tab icons until their data is confirmed
         model.comickSlug.observe(viewLifecycleOwner) { applyTabAlpha(model) }
         model.comickLoaded.observe(viewLifecycleOwner) { applyTabAlpha(model) }
         model.mangaBakaId.observe(viewLifecycleOwner) { applyTabAlpha(model) }
         model.mangaBakaLoaded.observe(viewLifecycleOwner) { applyTabAlpha(model) }
+        model.muMalId.observe(viewLifecycleOwner) { applyTabAlpha(model) }
+        model.muMalLoaded.observe(viewLifecycleOwner) { applyTabAlpha(model) }
+    }
+
+    /** Titles to try when matching this series on Comick, best-known first. */
+    private fun malSearchTitles(media: ani.dantotsu.media.Media): List<String> {
+        val titles = mutableListOf<String>()
+        media.name?.let { titles.add(it) }
+        media.synonyms.forEach { if (it !in titles) titles.add(it) }
+        if (media.nameRomaji !in titles) titles.add(media.nameRomaji)
+        return titles.filter { it.isNotBlank() }
     }
 
     private fun showAnilistEquivalentDialog(anilistId: Int) {
@@ -192,6 +232,11 @@ class MUMediaInfoContainerFragment : Fragment() {
                 "mangabaka" -> when {
                     (model.mangaBakaId.value ?: 0L) > 0L -> 1.0f
                     model.mangaBakaLoaded.value == true -> 0.4f
+                    else -> 0.6f
+                }
+                "mal" -> when {
+                    model.muMalId.value != null -> 1.0f
+                    model.muMalLoaded.value == true -> 0.4f
                     else -> 0.6f
                 }
                 else -> 1.0f

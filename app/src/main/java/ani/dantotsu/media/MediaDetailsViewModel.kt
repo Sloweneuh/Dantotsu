@@ -68,6 +68,13 @@ class MediaDetailsViewModel : ViewModel() {
     // is hidden, so it's only offered once per details screen instance.
     var mangaBakaEquivalentPromptShown = false
 
+    // MAL info tab on MangaUpdates media: MangaUpdates carries no MAL id, so it's resolved through
+    // MangaBaka (Comick fallback) and published here. The "loaded" flag is what lets the tab tell
+    // "still resolving" from "this series has no MAL entry" — see
+    // [ani.dantotsu.connections.mangaupdates.resolveMuMalId].
+    val muMalId = MutableLiveData<Int?>(null)
+    val muMalLoaded = MutableLiveData(false)
+
     // Replace boolean flag with last preloaded media id to avoid cross-media cache issues
     private var lastPreloadedMediaId: Int? = null
 

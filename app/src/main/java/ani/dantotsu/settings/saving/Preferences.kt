@@ -128,8 +128,8 @@ enum class PrefName(val data: Pref) {
     InfoTabVisibilityAnilistAnime(Pref(Location.UI, List::class, listOf(true, true))),
     InfoTabOrderAnilistManga(Pref(Location.UI, List::class, listOf(0, 1, 2, 3, 4))),
     InfoTabVisibilityAnilistManga(Pref(Location.UI, List::class, listOf(true, true, true, true, true))),
-    InfoTabOrderMangaUpdates(Pref(Location.UI, List::class, listOf(0, 1, 2))),
-    InfoTabVisibilityMangaUpdates(Pref(Location.UI, List::class, listOf(true, true, true))),
+    InfoTabOrderMangaUpdates(Pref(Location.UI, List::class, listOf(0, 1, 2, 3))),
+    InfoTabVisibilityMangaUpdates(Pref(Location.UI, List::class, listOf(true, true, true, true))),
 
     //User Interface
     UseOLED(Pref(Location.UI, Boolean::class, false)),

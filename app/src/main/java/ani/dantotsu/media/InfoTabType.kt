@@ -46,7 +46,9 @@ enum class InfoTabContext(
     ),
     MANGAUPDATES_MANGA(
         PrefName.InfoTabOrderMangaUpdates, PrefName.InfoTabVisibilityMangaUpdates,
-        listOf(InfoTabType.MANGAUPDATES, InfoTabType.COMICK, InfoTabType.MANGABAKA)
+        listOf(
+            InfoTabType.MANGAUPDATES, InfoTabType.MAL, InfoTabType.COMICK, InfoTabType.MANGABAKA
+        )
     );
 
     /** User-saved tab order (indices into [tabs]), healed to the current [tabs] size if stale. */

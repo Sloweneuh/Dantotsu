@@ -27,6 +27,7 @@ object MangaBakaApi {
     const val API_URL = "https://api.mangabaka.org"
     private const val CACHE_PREFIX = "mangabaka_series_"
     private const val AL_CACHE_PREFIX = "mangabaka_al_"
+    private const val MAL_CACHE_PREFIX = "mangabaka_mal_"
     private const val MU_CACHE_PREFIX = "mangabaka_mu_"
 
     /** External source path segments understood by the `/v1/source/{source}` routes. */
@@ -104,25 +105,44 @@ object MangaBakaApi {
         return null
     }
 
+    /** The tracker ids MangaBaka has on file for a MangaUpdates series. */
+    data class MuCrossIds(val anilistId: Int? = null, val malId: Int? = null)
+
+    /**
+     * Resolves the AniList and MyAnimeList ids for a MangaUpdates series through MangaBaka's
+     * cross-source mapping. Public route — no auth required. Either id is null when MangaBaka has no
+     * matching series or the series isn't linked to that tracker.
+     *
+     * Both ids come out of a single lookup and are cached (misses included) per tracker, so the
+     * AniList-equivalent detection and the MAL info tab share one request rather than each issuing
+     * their own against the same route.
+     */
+    suspend fun getCrossIdsFromMangaUpdates(muSeriesId: Long): MuCrossIds {
+        val alKey = "$AL_CACHE_PREFIX${Source.MANGAUPDATES.path}_$muSeriesId"
+        val malKey = "$MAL_CACHE_PREFIX${Source.MANGAUPDATES.path}_$muSeriesId"
+        val cachedAl = PrefManager.getCustomVal(alKey, 0).takeIf { it > 0 }
+        val cachedMal = PrefManager.getCustomVal(malKey, 0).takeIf { it > 0 }
+        // Each id is settled once it's either cached or known to be absent; only ask MangaBaka again
+        // while something is still unknown.
+        if ((cachedAl != null || alKey in negativeCache) && (cachedMal != null || malKey in negativeCache)) {
+            return MuCrossIds(cachedAl, cachedMal)
+        }
+
+        val source = lookupSeries(Source.MANGAUPDATES, muSeriesId)?.source
+        val anilistId = source?.anilist?.id?.takeIf { it > 0 }
+        val malId = source?.myAnimeList?.id?.takeIf { it > 0 }
+        if (anilistId != null) PrefManager.setCustomVal(alKey, anilistId) else negativeCache.add(alKey)
+        if (malId != null) PrefManager.setCustomVal(malKey, malId) else negativeCache.add(malKey)
+        return MuCrossIds(anilistId, malId)
+    }
+
     /**
      * Resolves the AniList id for a MangaUpdates series through MangaBaka's cross-source mapping.
      * Public route — no auth required. Returns null when MangaBaka has no matching series or the
      * series isn't linked to AniList.
      */
-    suspend fun getAnilistIdFromMangaUpdates(muSeriesId: Long): Int? {
-        val cacheKey = "$AL_CACHE_PREFIX${Source.MANGAUPDATES.path}_$muSeriesId"
-        val cached = PrefManager.getCustomVal(cacheKey, 0)
-        if (cached > 0) return cached
-        if (cacheKey in negativeCache) return null
-
-        val anilistId = lookupSeries(Source.MANGAUPDATES, muSeriesId)?.source?.anilist?.id
-        if (anilistId != null && anilistId > 0) {
-            PrefManager.setCustomVal(cacheKey, anilistId)
-        } else {
-            negativeCache.add(cacheKey)
-        }
-        return anilistId
-    }
+    suspend fun getAnilistIdFromMangaUpdates(muSeriesId: Long): Int? =
+        getCrossIdsFromMangaUpdates(muSeriesId).anilistId
 
     /**
      * Resolves the MangaUpdates series id for an AniList id, falling back to the MyAnimeList id,

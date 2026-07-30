@@ -106,68 +106,83 @@ class MALInfoFragment : Fragment() {
                 MAL.getSavedToken()
             }
 
-            model.getMedia().observe(viewLifecycleOwner) { media ->
-                if (!isLoggedIn && !loaded) {
+            model.getMedia().observe(viewLifecycleOwner) { load(model, isLoggedIn, offline) }
+            // MangaUpdates-backed media have no MAL id of their own — it's resolved in the
+            // background from a cross-source mapping, so the first pass above usually has to wait.
+            // Re-run once that lands.
+            model.muMalLoaded.observe(viewLifecycleOwner) { load(model, isLoggedIn, offline) }
+        }
+    }
+
+    /**
+     * Renders the tab, once. The MAL id comes from the media itself for AniList entries and from
+     * [MediaDetailsViewModel.muMalId] for MangaUpdates ones.
+     */
+    private fun load(model: MediaDetailsViewModel, isLoggedIn: Boolean, offline: Boolean) {
+        if (loaded) return
+        val media = model.getMedia().value
+
+        // A MangaUpdates series whose MAL id is still being resolved: nothing can be decided yet,
+        // not even the "search on MAL" fallback — this renders once, so a premature fallback would
+        // stick around after the id arrives.
+        if (media?.muSeriesId != null && media.idMAL == null && model.muMalLoaded.value != true) return
+        val malId = media?.idMAL ?: model.muMalId.value
+
+        if (!isLoggedIn) {
+            loaded = true
+            showNotLoggedIn(media, malId)
+            return
+        }
+
+        val m = media ?: return
+        if (malId == null) {
+            // No MAL ID, show search option
+            showNoDataWithSearch(m, null)
+            loaded = true
+            return
+        }
+
+        lifecycleScope.launch {
+            try {
+                binding.mediaInfoProgressBar.visibility = View.VISIBLE
+                binding.mediaInfoContainer.visibility = View.GONE
+
+                val malData = withContext(Dispatchers.IO) {
+                    if (m.anime != null) {
+                        MAL.query.getAnimeDetails(malId)
+                    } else {
+                        MAL.query.getMangaDetails(malId)
+                    }
+                }
+
+                if (malData == null) {
+                    showNoDataWithSearch(m, malId)
                     loaded = true
-                    showNotLoggedIn(media)
-                    return@observe
+                    return@launch
                 }
 
-                if (isLoggedIn) {
-                val m = media ?: return@observe
-                if (!loaded) {
-                    if (m.idMAL == null) {
-                        // No MAL ID, show search option
-                        showNoDataWithSearch(m)
-                        loaded = true
-                        return@observe
-                    }
+                loaded = true
+                binding.mediaInfoProgressBar.visibility = View.GONE
+                binding.mediaInfoContainer.visibility = View.VISIBLE
 
-                    lifecycleScope.launch {
-                        try {
-                            binding.mediaInfoProgressBar.visibility = View.VISIBLE
-                            binding.mediaInfoContainer.visibility = View.GONE
+                val parent = _binding?.mediaInfoContainer ?: return@launch
+                val screenWidth = resources.displayMetrics.run { widthPixels / density }
 
-                            val malData = withContext(Dispatchers.IO) {
-                                if (m.anime != null) {
-                                    MAL.query.getAnimeDetails(m.idMAL!!)
-                                } else {
-                                    MAL.query.getMangaDetails(m.idMAL!!)
-                                }
-                            }
-
-                            if (malData == null) {
-                                showNoDataWithSearch(m)
-                                loaded = true
-                                return@launch
-                            }
-
-                            loaded = true
-                            binding.mediaInfoProgressBar.visibility = View.GONE
-                            binding.mediaInfoContainer.visibility = View.VISIBLE
-
-                            val parent = _binding?.mediaInfoContainer ?: return@launch
-                            val screenWidth = resources.displayMetrics.run { widthPixels / density }
-
-                            // Display MAL data
-                            if (m.anime != null) {
-                                displayAnimeInfo(malData as ani.dantotsu.connections.mal.MALAnimeResponse, parent, screenWidth, offline, m.id, m.idMAL!!)
-                            } else {
-                                displayMangaInfo(malData as ani.dantotsu.connections.mal.MALMangaResponse, parent, screenWidth, offline, m.id, m.idMAL!!)
-                            }
-
-                        } catch (e: Exception) {
-                            showNoDataWithSearch(m)
-                            loaded = true
-                        }
-                    }
+                // Display MAL data
+                if (m.anime != null) {
+                    displayAnimeInfo(malData as ani.dantotsu.connections.mal.MALAnimeResponse, parent, screenWidth, offline, m.id, malId)
+                } else {
+                    displayMangaInfo(malData as ani.dantotsu.connections.mal.MALMangaResponse, parent, screenWidth, offline, m.id, malId)
                 }
-                }
+
+            } catch (e: Exception) {
+                showNoDataWithSearch(m, malId)
+                loaded = true
             }
         }
     }
 
-    private fun showNotLoggedIn(media: ani.dantotsu.media.Media?) {
+    private fun showNotLoggedIn(media: ani.dantotsu.media.Media?, malId: Int?) {
         // Use local nullable binding to avoid NPE if view is destroyed while coroutine resumes
         val b = _binding ?: return
         b.mediaInfoProgressBar.visibility = View.GONE
@@ -175,7 +190,7 @@ class MALInfoFragment : Fragment() {
 
         if (media == null) return
 
-        val hasData = media.idMAL != null
+        val hasData = malId != null
         val frameLayout = b.mediaInfoContainer.parent as? ViewGroup
 
         frameLayout?.let { container ->
@@ -210,7 +225,7 @@ class MALInfoFragment : Fragment() {
                 notLoggedInView.findViewById<com.google.android.material.button.MaterialButton>(R.id.openButton)?.apply {
                     visibility = View.VISIBLE
                     setOnClickListener {
-                        val url = "https://myanimelist.net/${if (media.anime != null) "anime" else "manga"}/${media.idMAL}"
+                        val url = "https://myanimelist.net/${if (media.anime != null) "anime" else "manga"}/$malId"
                         startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                     }
                 }
@@ -279,13 +294,13 @@ class MALInfoFragment : Fragment() {
         Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
     }
 
-    private fun showNoDataWithSearch(media: ani.dantotsu.media.Media) {
+    private fun showNoDataWithSearch(media: ani.dantotsu.media.Media, malId: Int?) {
         // Use local nullable binding to avoid NPE if view is destroyed while coroutine resumes
         val b = _binding ?: return
         b.mediaInfoProgressBar.visibility = View.GONE
         b.mediaInfoContainer.visibility = View.GONE
 
-        val hasData = media.idMAL != null
+        val hasData = malId != null
         val frameLayout = b.mediaInfoContainer.parent as? ViewGroup
 
         frameLayout?.let { container ->
@@ -316,7 +331,7 @@ class MALInfoFragment : Fragment() {
                     text = getString(R.string.open_on_mal)
                     icon = context.getDrawable(R.drawable.ic_open_24)
                     setOnClickListener {
-                        val url = "https://myanimelist.net/${mediaType}/${media.idMAL}"
+                        val url = "https://myanimelist.net/${mediaType}/$malId"
                         startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                     }
                 } else {
