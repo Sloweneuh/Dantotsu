@@ -29,6 +29,8 @@ sealed class NovelExtension {
         var repository: String,
         val sources: List<AvailableNovelSources>,
         val iconUrl: String,
+        /** Absolute apk url advertised by v2 indexes; legacy indexes derive one from [pkgName]. */
+        val apkUrl: String? = null,
     ) : NovelExtension()
 }
 

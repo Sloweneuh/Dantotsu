@@ -4,7 +4,6 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.animation.AnimationUtils
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.core.view.isVisible
@@ -21,6 +20,7 @@ import ani.dantotsu.parsers.novel.NovelExtensionManager
 import ani.dantotsu.snackString
 import ani.dantotsu.util.Logger
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import eu.kanade.tachiyomi.extension.InstallStep
 import eu.kanade.tachiyomi.extension.anime.AnimeExtensionManager
 import eu.kanade.tachiyomi.extension.anime.model.AnimeExtension
 import eu.kanade.tachiyomi.extension.manga.MangaExtensionManager
@@ -106,54 +106,30 @@ class ExtensionUpdatesFragment : Fragment() {
         }
     }
 
+    private fun updateObservable(item: UpdateItem) = when (item) {
+        is UpdateItem.AnimeUpdate -> animeExtensionManager.updateExtension(item.extension)
+        is UpdateItem.MangaUpdate -> mangaExtensionManager.updateExtension(item.extension)
+        is UpdateItem.NovelUpdate -> novelExtensionManager.updateExtension(item.extension)
+    }
+
     private fun updateExtension(item: UpdateItem) {
-        when (item) {
-            is UpdateItem.AnimeUpdate -> {
-                animeExtensionManager.updateExtension(item.extension)
-                    .observeOn(AndroidSchedulers.mainThread())
-                    .subscribe(
-                        { },
-                        { error ->
-                            Logger.log(error)
-                            snackString("Update failed: ${error.message}")
-                        },
-                        {
-                            snackString("Extension updated")
-                            loadUpdates() // Refresh the list
-                        }
-                    )
-            }
-            is UpdateItem.MangaUpdate -> {
-                mangaExtensionManager.updateExtension(item.extension)
-                    .observeOn(AndroidSchedulers.mainThread())
-                    .subscribe(
-                        { },
-                        { error ->
-                            Logger.log(error)
-                            snackString("Update failed: ${error.message}")
-                        },
-                        {
-                            snackString("Extension updated")
-                            loadUpdates() // Refresh the list
-                        }
-                    )
-            }
-            is UpdateItem.NovelUpdate -> {
-                novelExtensionManager.updateExtension(item.extension)
-                    .observeOn(AndroidSchedulers.mainThread())
-                    .subscribe(
-                        { },
-                        { error ->
-                            Logger.log(error)
-                            snackString("Update failed: ${error.message}")
-                        },
-                        {
-                            snackString("Extension updated")
-                            loadUpdates() // Refresh the list
-                        }
-                    )
-            }
-        }
+        var lastStep: InstallStep? = null
+        adapter.setUpdating(item, true)
+        updateObservable(item)
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe(
+                { step -> lastStep = step },
+                { error ->
+                    Logger.log(error)
+                    adapter.setUpdating(item, false)
+                    snackString(getString(R.string.update_failed, error.message))
+                },
+                {
+                    adapter.setUpdating(item, false)
+                    lastStep.updateResultMessage()?.let { snackString(getString(it)) }
+                    loadUpdates() // Refresh the list
+                }
+            )
     }
 
     private fun updateAllExtensions(items: List<UpdateItem>) {
@@ -177,73 +153,30 @@ class ExtensionUpdatesFragment : Fragment() {
 
         val item = items.removeAt(0)
 
+        var lastStep: InstallStep? = null
         adapter.setUpdating(item, true)
 
-        val subscription: Subscription = when (item) {
-            is UpdateItem.AnimeUpdate -> {
-                animeExtensionManager.updateExtension(item.extension)
-                    .observeOn(AndroidSchedulers.mainThread())
-                    .subscribe(
-                        { },
-                        { error ->
-                            Logger.log(error)
-                            adapter.setUpdating(item, false)
-                            snackString("Update failed: ${item.name} - ${error.message}")
-                            // Continue with next extension even if one fails
-                            updateExtensionsSequentially(items)
-                        },
-                        {
-                            adapter.setUpdating(item, false)
-                            snackString("Updated: ${item.name}")
-                            loadUpdates() // Refresh list after each update
-                            // Continue with next extension
-                            updateExtensionsSequentially(items)
-                        }
-                    )
-            }
-            is UpdateItem.MangaUpdate -> {
-                mangaExtensionManager.updateExtension(item.extension)
-                    .observeOn(AndroidSchedulers.mainThread())
-                    .subscribe(
-                        { },
-                        { error ->
-                            Logger.log(error)
-                            adapter.setUpdating(item, false)
-                            snackString("Update failed: ${item.name} - ${error.message}")
-                            // Continue with next extension even if one fails
-                            updateExtensionsSequentially(items)
-                        },
-                        {
-                            adapter.setUpdating(item, false)
-                            snackString("Updated: ${item.name}")
-                            loadUpdates() // Refresh list after each update
-                            // Continue with next extension
-                            updateExtensionsSequentially(items)
-                        }
-                    )
-            }
-            is UpdateItem.NovelUpdate -> {
-                novelExtensionManager.updateExtension(item.extension)
-                    .observeOn(AndroidSchedulers.mainThread())
-                    .subscribe(
-                        { },
-                        { error ->
-                            Logger.log(error)
-                            adapter.setUpdating(item, false)
-                            snackString("Update failed: ${item.name} - ${error.message}")
-                            // Continue with next extension even if one fails
-                            updateExtensionsSequentially(items)
-                        },
-                        {
-                            adapter.setUpdating(item, false)
-                            snackString("Updated: ${item.name}")
-                            loadUpdates() // Refresh list after each update
-                            // Continue with next extension
-                            updateExtensionsSequentially(items)
-                        }
-                    )
-            }
-        }
+        val subscription: Subscription = updateObservable(item)
+            .observeOn(AndroidSchedulers.mainThread())
+            .subscribe(
+                { step -> lastStep = step },
+                { error ->
+                    Logger.log(error)
+                    adapter.setUpdating(item, false)
+                    snackString("${getString(R.string.update_failed_short)}: ${item.name} - ${error.message}")
+                    // Continue with next extension even if one fails
+                    updateExtensionsSequentially(items)
+                },
+                {
+                    adapter.setUpdating(item, false)
+                    lastStep.updateResultMessage()?.let {
+                        snackString("${getString(it)}: ${item.name}")
+                    }
+                    loadUpdates() // Refresh list after each update
+                    // Continue with next extension
+                    updateExtensionsSequentially(items)
+                }
+            )
 
         // Add subscription to composite to prevent it from being garbage collected
         compositeSubscription.add(subscription)
@@ -336,16 +269,7 @@ class UpdatesAdapter(
             }
 
             updateButton.isVisible = true
-            if (isUpdating) {
-                val rotate = AnimationUtils.loadAnimation(updateButton.context, R.anim.rotate_indefinite)
-                updateButton.startAnimation(rotate)
-                updateButton.isClickable = false
-                updateButton.setOnClickListener(null)
-            } else {
-                updateButton.clearAnimation()
-                updateButton.isClickable = true
-                updateButton.setOnClickListener { onUpdateClick(item) }
-            }
+            updateButton.bindUpdateButton(isUpdating) { onUpdateClick(item) }
 
             deleteButton.isVisible = false
             settingsButton.isVisible = false

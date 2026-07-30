@@ -47,7 +47,9 @@ sealed class AnimeExtension {
         val sources: List<AvailableAnimeSources>,
         val apkName: String,
         val iconUrl: String,
-        val repository: String
+        val repository: String,
+        /** Absolute apk url advertised by v2 indexes; legacy indexes build one from [apkName]. */
+        val apkUrl: String? = null,
     ) : AnimeExtension()
 
     data class Untrusted(

@@ -34,6 +34,7 @@ import ani.dantotsu.util.customAlertDialog
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.textfield.TextInputLayout
 import eu.kanade.tachiyomi.animesource.ConfigurableAnimeSource
+import eu.kanade.tachiyomi.extension.InstallStep
 import eu.kanade.tachiyomi.extension.anime.AnimeExtensionManager
 import eu.kanade.tachiyomi.extension.anime.model.AnimeExtension
 import kotlinx.coroutines.launch
@@ -49,7 +50,11 @@ class InstalledAnimeExtensionsFragment : Fragment(), SearchQueryHandler {
     private lateinit var extensionsRecyclerView: RecyclerView
     private val skipIcons: Boolean = PrefManager.getVal(PrefName.SkipExtensionIcons)
     private val animeExtensionManager: AnimeExtensionManager = Injekt.get()
-    private val extensionsAdapter = AnimeExtensionsAdapter(
+    private val uninstallConfirmation = UninstallConfirmation {
+        snackString(getString(R.string.extension_uninstalled))
+    }
+    // Explicit type: the update callback below references this property, which makes inference recurse.
+    private val extensionsAdapter: AnimeExtensionsAdapter = AnimeExtensionsAdapter(
         onItemClicked = { pkg ->
             val intent = Intent(requireContext(), ExtensionBrowseActivity::class.java)
                 .putExtra(ExtensionBrowseActivity.EXTRA_PKG, pkg.pkgName)
@@ -71,23 +76,27 @@ class InstalledAnimeExtensionsFragment : Fragment(), SearchQueryHandler {
         },
         { pkg ->
             if (isAdded) {
+                uninstallConfirmation.onUninstallRequested(pkg.pkgName)
                 animeExtensionManager.uninstallExtension(pkg.pkgName)
-                snackString(getString(R.string.extension_uninstalled))
             }
         }, { pkg ->
             if (isAdded) {
                 if (pkg.hasUpdate) {
+                    var lastStep: InstallStep? = null
+                    extensionsAdapter.setUpdating(pkg.pkgName, true)
                     animeExtensionManager.updateExtension(pkg)
                         .observeOn(AndroidSchedulers.mainThread())
                         .subscribe(
-                            { },
+                            { step -> lastStep = step },
                             { error ->
                                 Injekt.get<CrashlyticsInterface>().logException(error)
                                 Logger.log(error)
+                                extensionsAdapter.setUpdating(pkg.pkgName, false)
                                 snackString(getString(R.string.update_failed, error.message))
                             },
                             {
-                                snackString(getString(R.string.extension_updated))
+                                extensionsAdapter.setUpdating(pkg.pkgName, false)
+                                lastStep.updateResultMessage()?.let { snackString(getString(it)) }
                             }
                         )
                 } else {
@@ -151,10 +160,18 @@ class InstalledAnimeExtensionsFragment : Fragment(), SearchQueryHandler {
 
         lifecycleScope.launch {
             animeExtensionManager.installedExtensionsFlow.collect { extensions ->
+                uninstallConfirmation.onInstalledPackagesChanged(extensions.map { it.pkgName })
+                if (isResumed) uninstallConfirmation.flush()
                 extensionsAdapter.updateData(sortToAnimeSourcesList(extensions))
             }
         }
         return binding.root
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // A confirmed uninstall usually lands while the system dialog is still in front.
+        uninstallConfirmation.flush()
     }
 
 
@@ -190,8 +207,17 @@ class InstalledAnimeExtensionsFragment : Fragment(), SearchQueryHandler {
         DIFF_CALLBACK_INSTALLED
     ) {
 
+        private val updatingPkgs = mutableSetOf<String>()
+
         fun updateData(newExtensions: List<AnimeExtension.Installed>) {
             submitList(newExtensions)
+        }
+
+        /** Spins the row's update button for as long as the update is in flight. */
+        fun setUpdating(pkgName: String, updating: Boolean) {
+            if (updating) updatingPkgs += pkgName else updatingPkgs -= pkgName
+            val pos = currentList.indexOfFirst { it.pkgName == pkgName }
+            if (pos != -1) notifyItemChanged(pos)
         }
 
         fun updatePref() {
@@ -225,7 +251,7 @@ class InstalledAnimeExtensionsFragment : Fragment(), SearchQueryHandler {
             holder.deleteView.setOnClickListener {
                 onUninstallClicked(extension)
             }
-            holder.updateView.setOnClickListener {
+            holder.updateView.bindUpdateButton(extension.pkgName in updatingPkgs) {
                 onUpdateClicked(extension)
             }
             holder.settingsImageView.setOnClickListener {

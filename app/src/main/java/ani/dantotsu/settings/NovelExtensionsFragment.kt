@@ -22,6 +22,7 @@ import ani.dantotsu.settings.paging.NovelExtensionsViewModelFactory
 import ani.dantotsu.settings.paging.OnNovelInstallClickListener
 import ani.dantotsu.snackString
 import eu.kanade.tachiyomi.data.notification.Notifications
+import eu.kanade.tachiyomi.extension.InstallStep
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import rx.android.schedulers.AndroidSchedulers
@@ -78,11 +79,16 @@ class NovelExtensionsFragment : Fragment(),
             val notificationManager =
                 context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
+            // Completion alone doesn't mean success: the stream also ends on cancellation (Idle)
+            // and failure (Error), so remember the terminal step.
+            var lastStep: InstallStep? = null
+
             // Start the installation process
             novelExtensionManager.installExtension(pkg)
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(
                     { installStep ->
+                        lastStep = installStep
                         val builder = NotificationCompat.Builder(
                             context,
                             Notifications.CHANNEL_DOWNLOADER_PROGRESS
@@ -109,7 +115,18 @@ class NovelExtensionsFragment : Fragment(),
                     {
                         notificationManager.cancel(1)
                         viewModel.invalidatePager()
-                        snackString(getString(R.string.extension_installed))
+                        when (lastStep) {
+                            InstallStep.Installed ->
+                                snackString(getString(R.string.extension_installed))
+
+                            InstallStep.Idle ->
+                                snackString(getString(R.string.installation_cancelled))
+
+                            InstallStep.Error ->
+                                snackString(getString(R.string.installation_failed_short))
+
+                            else -> {}
+                        }
                     }
                 )
         }

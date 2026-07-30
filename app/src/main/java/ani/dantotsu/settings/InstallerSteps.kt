@@ -17,7 +17,14 @@ class InstallerSteps(
     private val context: Context
 ) {
 
+    /**
+     * Last step seen. The install stream also terminates on cancellation and failure, so
+     * [onComplete] needs this to tell those apart from an actual install.
+     */
+    private var lastStep: InstallStep? = null
+
     fun onInstallStep(installStep: InstallStep, extra: () -> Unit) {
+        lastStep = installStep
         val builder = NotificationCompat.Builder(
             context,
             Notifications.CHANNEL_DOWNLOADER_PROGRESS
@@ -27,6 +34,7 @@ class InstallerSteps(
             .setContentText(context.getString(R.string.install_step, installStep))
             .setPriority(NotificationCompat.PRIORITY_LOW)
         notificationManager.notify(1, builder.build())
+        extra()
     }
 
     fun onError(error: Throwable, extra: () -> Unit) {
@@ -42,10 +50,19 @@ class InstallerSteps(
             .setPriority(NotificationCompat.PRIORITY_HIGH)
         notificationManager.notify(1, builder.build())
         snackString(context.getString(R.string.installation_failed, error.message))
+        extra()
     }
 
     fun onComplete(extra: () -> Unit) {
         notificationManager.cancel(1)
-        snackString(context.getString(R.string.extension_installed))
+        // Completion on its own means nothing: the stream is taken until the first completed step,
+        // which is Installed on success, Idle when the user cancels and Error on failure.
+        when (lastStep) {
+            InstallStep.Installed -> snackString(context.getString(R.string.extension_installed))
+            InstallStep.Idle -> snackString(context.getString(R.string.installation_cancelled))
+            InstallStep.Error -> snackString(context.getString(R.string.installation_failed_short))
+            else -> {}
+        }
+        extra()
     }
 }

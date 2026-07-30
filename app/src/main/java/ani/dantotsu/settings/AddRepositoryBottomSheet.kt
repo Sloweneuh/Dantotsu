@@ -55,6 +55,8 @@ class RepoItem(
         return this
             .removePrefix("https://raw.githubusercontent.com/")
             .replace("index.min.json", "")
+            .replace("index.json", "")
+            .replace("index.pb", "")
             .removeSuffix("/")
     }
 }
@@ -138,10 +140,9 @@ class AddRepositoryBottomSheet : BottomSheetDialogFragment() {
     }
 
     private fun isValidUrl(input: String): String? {
+        // Any index file name is accepted: the repository advertises its own index through
+        // repo.json, and a bare directory url resolves through that too.
         if (input.startsWith("http://") || input.startsWith("https://")) {
-            if (!input.removeSuffix("/").endsWith("index.min.json")) {
-                return "URL must end with index.min.json"
-            }
             return null
         }
 
@@ -166,7 +167,7 @@ class AddRepositoryBottomSheet : BottomSheetDialogFragment() {
 
     private fun getRepoUrl(input: String): String {
         if (input.startsWith("http://") || input.startsWith("https://")) {
-            return input
+            return normalizeRepoUrl(input)
         }
 
         val parts = input.split("/")
@@ -174,7 +175,8 @@ class AddRepositoryBottomSheet : BottomSheetDialogFragment() {
         val repo = parts[1]
         val branch = if (parts.size == 3) parts[2] else "repo"
 
-        return "https://raw.githubusercontent.com/$username/$repo/$branch/index.min.json"
+        // No index file name: it gets resolved from the repository's repo.json.
+        return "https://raw.githubusercontent.com/$username/$repo/$branch"
     }
 
     private fun onRepositoryRemoved(url: String, mediaType: MediaType) {
@@ -200,11 +202,20 @@ class AddRepositoryBottomSheet : BottomSheetDialogFragment() {
                 .show()
         }
 
+        /**
+         * Turns a GitHub web url into its raw equivalent, covering both the `/blob/` form and
+         * the `/raw/` form that repositories publish their index url as.
+         */
+        fun normalizeRepoUrl(input: String): String {
+            if (!input.contains("github.com")) return input
+            if (!input.contains("/blob/") && !input.contains("/raw/")) return input
+            return input.replace("github.com", "raw.githubusercontent.com")
+                .replace("/blob/", "/")
+                .replace("/raw/", "/")
+        }
+
         fun addRepo(input: String, mediaType: MediaType) {
-            val validLink = if (input.contains("github.com") && input.contains("blob")) {
-                input.replace("github.com", "raw.githubusercontent.com")
-                    .replace("/blob/", "/")
-            } else input
+            val validLink = normalizeRepoUrl(input)
 
             when (mediaType) {
                 MediaType.ANIME -> {

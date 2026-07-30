@@ -26,6 +26,7 @@ import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.snackString
 import ani.dantotsu.util.Logger
+import eu.kanade.tachiyomi.extension.InstallStep
 import kotlinx.coroutines.launch
 import rx.android.schedulers.AndroidSchedulers
 import uy.kohesive.injekt.Injekt
@@ -38,32 +39,39 @@ class InstalledNovelExtensionsFragment : Fragment(), SearchQueryHandler {
     private lateinit var extensionsRecyclerView: RecyclerView
     private val skipIcons: Boolean = PrefManager.getVal(PrefName.SkipExtensionIcons)
     private val novelExtensionManager: NovelExtensionManager = Injekt.get()
-    private val extensionsAdapter = NovelExtensionsAdapter(
+    private val uninstallConfirmation = UninstallConfirmation {
+        snackString(getString(R.string.extension_uninstalled))
+    }
+    // Explicit type: the update callback below references this property, which makes inference recurse.
+    private val extensionsAdapter: NovelExtensionsAdapter = NovelExtensionsAdapter(
         { _ ->
             Toast.makeText(requireContext(), "Source is not configurable", Toast.LENGTH_SHORT)
                 .show()
         },
         { pkg ->
             if (isAdded) {
+                uninstallConfirmation.onUninstallRequested(pkg.pkgName)
                 novelExtensionManager.uninstallExtension(pkg.pkgName)
-                snackString("Extension uninstalled")
-
             }
         },
         { pkg ->
             if (isAdded) {
                 if (pkg.hasUpdate) {
+                    var lastStep: InstallStep? = null
+                    extensionsAdapter.setUpdating(pkg.pkgName, true)
                     novelExtensionManager.updateExtension(pkg)
                         .observeOn(AndroidSchedulers.mainThread())
                         .subscribe(
-                            { },
+                            { step -> lastStep = step },
                             { error ->
                                 Injekt.get<CrashlyticsInterface>().logException(error)
                                 Logger.log(error)
+                                extensionsAdapter.setUpdating(pkg.pkgName, false)
                                 snackString(getString(R.string.update_failed, error.message))
                             },
                             {
-                                snackString(getString(R.string.extension_updated))
+                                extensionsAdapter.setUpdating(pkg.pkgName, false)
+                                lastStep.updateResultMessage()?.let { snackString(getString(it)) }
                             }
                         )
                 } else {
@@ -126,10 +134,18 @@ class InstalledNovelExtensionsFragment : Fragment(), SearchQueryHandler {
 
         lifecycleScope.launch {
             novelExtensionManager.installedExtensionsFlow.collect { extensions ->
+                uninstallConfirmation.onInstalledPackagesChanged(extensions.map { it.pkgName })
+                if (isResumed) uninstallConfirmation.flush()
                 extensionsAdapter.updateData(sortToNovelSourcesList(extensions))
             }
         }
         return binding.root
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // A confirmed uninstall usually lands while the system dialog is still in front.
+        uninstallConfirmation.flush()
     }
 
     private fun sortToNovelSourcesList(inpt: List<NovelExtension.Installed>): List<NovelExtension.Installed> {
@@ -164,8 +180,17 @@ class InstalledNovelExtensionsFragment : Fragment(), SearchQueryHandler {
         DIFF_CALLBACK_INSTALLED
     ) {
 
+        private val updatingPkgs = mutableSetOf<String>()
+
         fun updateData(newExtensions: List<NovelExtension.Installed>) {
             submitList(newExtensions)
+        }
+
+        /** Spins the row's update button for as long as the update is in flight. */
+        fun setUpdating(pkgName: String, updating: Boolean) {
+            if (updating) updatingPkgs += pkgName else updatingPkgs -= pkgName
+            val pos = currentList.indexOfFirst { it.pkgName == pkgName }
+            if (pos != -1) notifyItemChanged(pos)
         }
 
         fun updatePref() {
@@ -200,7 +225,7 @@ class InstalledNovelExtensionsFragment : Fragment(), SearchQueryHandler {
             holder.deleteView.setOnClickListener {
                 onUninstallClicked(extension)
             }
-            holder.updateView.setOnClickListener {
+            holder.updateView.bindUpdateButton(extension.pkgName in updatingPkgs) {
                 onUpdateClicked(extension)
             }
             holder.settingsImageView.setOnClickListener {

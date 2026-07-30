@@ -713,6 +713,8 @@
     <string name="manage_extension_repos">Manage Extension Repos</string>
     <string name="installing_extension">Installing extension</string>
     <string name="installation_failed">Installation failed: %1$s</string>
+    <string name="installation_failed_short">Installation failed</string>
+    <string name="installation_cancelled">Installation cancelled</string>
     <string name="installation_complete">Installation complete</string>
     <string name="extension_has_been_installed">The extension has been successfully installed.</string>
     <string name="extension_installed">Extension installed</string>
@@ -1556,7 +1558,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="textview_sub_stroke">Subtitle Stroke</string>
     <string name="textview_sub_bottom_margin">Bottom Margin</string>
     <string name="add_repository">Add Repository</string>
-    <string name="add_repository_desc">A repository link should look like this: https://raw.githubusercontent.com/username/repo/branch/index.min.json\nOr: username/repo/branch</string>
+    <string name="add_repository_desc">A repository link should look like this: https://raw.githubusercontent.com/username/repo/branch/index.pb\nOr: username/repo/branch\nindex.json and index.min.json links also work.</string>
     <string name="current_repositories">Current Repositories</string>
     <string name="add_repository_warning">Warning: Extensions from the repository can run arbitrary code on your device. Only use repositories you trust. \n\nBy adding a repository, you agree to: \n\n1. Not use the app for viewing or distributing copyrighted content. \n2. Not use the app for any illegal activities. \n3. Not use the app for any activities that violate the terms of service of the content providers. \n\nThe app or it\'s maintainer are not affiliated in any way with extension providers. The developers are not responsible for any damages caused by the app. \n\nBy adding a repository, you agree to these terms.</string>
     <string name="privacy_policy">Privacy Policy</string>
@@ -1737,6 +1739,8 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="extension_uninstalled">Extension uninstalled</string>
     <string name="updating_extension">Updating extension</string>
     <string name="update_failed">Update failed: %1$s</string>
+    <string name="update_failed_short">Update failed</string>
+    <string name="update_cancelled">Update cancelled</string>
     <string name="update_complete">Update complete</string>
     <string name="extension_has_been_updated">The extension has been successfully updated.</string>
     <string name="extension_updated">Extension updated</string>

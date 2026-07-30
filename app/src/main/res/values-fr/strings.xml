@@ -555,6 +555,8 @@
     <string name="manage_extension_repos">Gérer les dépôts d\'extensions</string>
     <string name="installing_extension">Installation de l\'extension</string>
     <string name="installation_failed">Installation échouée : %1$s</string>
+    <string name="installation_failed_short">Installation échouée</string>
+    <string name="installation_cancelled">Installation annulée</string>
     <string name="installation_complete">Installation terminée</string>
     <string name="extension_has_been_installed">L\'extension a été installée avec succès.</string>
     <string name="extension_installed">Extension installée</string>
@@ -1142,6 +1144,8 @@
     <string name="extension_uninstalled">Extension désinstallée</string>
     <string name="updating_extension">Mise à jour de l\'extension</string>
     <string name="update_failed">Mise à jour échouée : %1$s</string>
+    <string name="update_failed_short">Mise à jour échouée</string>
+    <string name="update_cancelled">Mise à jour annulée</string>
     <string name="update_complete">Mise à jour terminée</string>
     <string name="extension_has_been_updated">L\'extension a été mise à jour avec succès.</string>
     <string name="extension_updated">Extension mise à jour</string>
@@ -1530,7 +1534,7 @@
     <string name="textview_sub">Sous-titres Textview (Expérimental)</string>
     <string name="textview_sub_stroke">Contour des sous-titres</string>
     <string name="textview_sub_bottom_margin">Marge inférieure</string>
-    <string name="add_repository_desc">Un lien de dépôt devrait ressembler à ceci : https://raw.githubusercontent.com/username/repo/branch/index.min.json\nOu : username/repo/branch</string>
+    <string name="add_repository_desc">Un lien de dépôt devrait ressembler à ceci : https://raw.githubusercontent.com/username/repo/branch/index.pb\nOu : username/repo/branch\nLes liens index.json et index.min.json fonctionnent également.</string>
     <string name="add_repository_warning">Avertissement : Les extensions du dépôt peuvent exécuter du code arbitraire sur votre appareil. N\'utilisez que des dépôts de confiance. \n\nEn ajoutant un dépôt, vous acceptez de : \n\n1. Ne pas utiliser l\'application pour voir ou distribuer du contenu protégé par des droits d\'auteur. \n2. Ne pas utiliser l\'application pour des activités illégales. \n3. Ne pas utiliser l\'application pour des activités qui violent les conditions d\'utilisation des fournisseurs de contenu. \n\nL\'application ou son mainteneur ne sont affiliés d\'aucune façon avec les fournisseurs d\'extensions. Les développeurs ne sont pas responsables des dommages causés par l\'application. \n\nEn ajoutant un dépôt, vous acceptez ces termes.</string>
     <string name="privacy_policy_desc">Lire notre politique de confidentialité</string>
     <string name="mu_no_data_title">Recherche sur MangaUpdates</string>
