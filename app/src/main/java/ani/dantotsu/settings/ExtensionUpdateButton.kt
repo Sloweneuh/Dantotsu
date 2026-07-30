@@ -1,8 +1,6 @@
 package ani.dantotsu.settings
 
-import android.view.animation.AnimationUtils
 import android.widget.ImageView
-import ani.dantotsu.R
 
 /**
  * Binds an extension row's update button, spinning it while that extension is being updated.
@@ -11,15 +9,11 @@ import ani.dantotsu.R
  * recycled view, so a leftover animation has to be cleared explicitly.
  */
 fun ImageView.bindUpdateButton(updating: Boolean, onClick: () -> Unit) {
+    setSpinning(updating)
     if (updating) {
         setOnClickListener(null)
         isClickable = false
-        // Rebinding an already spinning button would restart the animation and make it stutter.
-        if (animation == null) {
-            startAnimation(AnimationUtils.loadAnimation(context, R.anim.rotate_indefinite))
-        }
     } else {
-        clearAnimation()
         setOnClickListener { onClick() }
     }
 }

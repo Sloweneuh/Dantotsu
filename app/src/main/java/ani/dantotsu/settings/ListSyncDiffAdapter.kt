@@ -30,9 +30,10 @@ import java.util.IdentityHashMap
  * destination side. [onSync] is invoked with the entry and its adapter position; the caller performs
  * the sync and calls [removeAt] on success.
  *
- * MangaBaka deletion rows arrive without a title/cover (the library list endpoint doesn't embed
- * series info), so those are fetched lazily on bind via [scope] — because the list is collapsed by
- * default and RecyclerView only binds visible rows, we only hit the network for rows actually shown.
+ * Some rows arrive without a title and/or cover — MangaBaka deletions and anything sourced from
+ * MangaUpdates (see [bindTitleAndCover]) — so those are fetched lazily on bind via [scope]. Because
+ * the list is collapsed by default and RecyclerView only binds visible rows, we only hit the network
+ * for rows actually shown.
  */
 class ListSyncDiffAdapter(
     private val items: MutableList<ListCompare.DiffEntry>,
@@ -40,12 +41,24 @@ class ListSyncDiffAdapter(
     private val onSync: (ListCompare.DiffEntry, Int) -> Unit,
 ) : RecyclerView.Adapter<ListSyncDiffAdapter.Holder>() {
 
-    /** Cache of lazily-fetched (title, cover) keyed by MangaBaka series id. */
-    private val seriesInfo = HashMap<Long, Pair<String?, String?>>()
+    /** Cache of lazily-fetched (title, cover), keyed by the id it was looked up by. */
+    private val seriesInfo = HashMap<String, Pair<String?, String?>>()
 
     /** Entries whose detail panel is expanded, tracked by identity so list edits don't disturb it. */
     private val expanded: MutableSet<ListCompare.DiffEntry> =
         Collections.newSetFromMap(IdentityHashMap())
+
+    /** Entries whose sync is in flight; their button spins and can't be pressed again. */
+    private val syncing: MutableSet<ListCompare.DiffEntry> =
+        Collections.newSetFromMap(IdentityHashMap())
+
+    /** Marks an entry as syncing (or done), refreshing its row so the button reflects it. */
+    fun setSyncing(entry: ListCompare.DiffEntry, value: Boolean) {
+        val changed = if (value) syncing.add(entry) else syncing.remove(entry)
+        if (!changed) return
+        val position = items.indexOfFirst { it === entry }
+        if (position >= 0) notifyItemChanged(position)
+    }
 
     inner class Holder(val binding: ItemListSyncDiffBinding) : RecyclerView.ViewHolder(binding.root) {
         var job: Job? = null
@@ -65,6 +78,9 @@ class ListSyncDiffAdapter(
         val b = holder.binding
         val context = b.root.context
         holder.job?.cancel()
+        // Stop any spin left over from the entry this recycled holder used to show, before the icon
+        // it wraps is swapped out from under it.
+        b.diffSync.setIconSpinning(false)
 
         if (entry.delete) {
             val trackerName = context.getString(
@@ -103,6 +119,9 @@ class ListSyncDiffAdapter(
             notifyItemChanged(pos)
         }
 
+        val inFlight = entry in syncing
+        b.diffSync.isEnabled = !inFlight
+        b.diffSync.setIconSpinning(inFlight)
         b.diffSync.setOnClickListener {
             val pos = holder.bindingAdapterPosition
             if (pos != RecyclerView.NO_POSITION) onSync(items[pos], pos)
@@ -128,11 +147,9 @@ class ListSyncDiffAdapter(
         }
     }
 
-    private fun sourceIcon(entry: ListCompare.DiffEntry): Int = when {
-        entry.tracker == ListCompare.Tracker.MAL -> R.drawable.ic_anilist
-        entry.muSeriesId != null -> R.drawable.ic_round_mangaupdates_24
-        else -> R.drawable.ic_anilist
-    }
+    /** Which source this row is pushing from — MangaUpdates entries are the ones carrying a MU id. */
+    private fun sourceIcon(entry: ListCompare.DiffEntry): Int =
+        if (entry.muSeriesId != null) R.drawable.ic_round_mangaupdates_24 else R.drawable.ic_anilist
 
     private fun destIcon(entry: ListCompare.DiffEntry): Int =
         if (entry.tracker == ListCompare.Tracker.MAL) R.drawable.ic_myanimelist
@@ -170,42 +187,64 @@ class ListSyncDiffAdapter(
     private fun dp(ctx: Context, value: Int): Int =
         (value * ctx.resources.displayMetrics.density).toInt()
 
-    /** Shows the title/cover, fetching them lazily for MangaBaka deletion rows that lack them. */
+    /**
+     * Shows the title/cover, looking up whatever the row didn't arrive with. MangaBaka deletion rows
+     * have neither (the library list endpoint embeds no series info); MangaUpdates rows have a title
+     * but no cover (the MangaUpdates list API returns none, and a row being *added* to MyAnimeList
+     * has no picture there to borrow either). Both resolve through MangaBaka — by series id where we
+     * have one, by MangaUpdates id otherwise.
+     */
     private fun bindTitleAndCover(holder: Holder, entry: ListCompare.DiffEntry, position: Int) {
         val b = holder.binding
         val context = b.root.context
-        val seriesId = entry.mangaBakaSeriesId
-        if (entry.title.isNotBlank() || seriesId == null) {
-            b.diffTitle.text = entry.title
-            b.diffCover.loadImage(entry.coverUrl)
+        val mangaBakaId = entry.mangaBakaSeriesId
+        val muId = entry.muSeriesId
+
+        // The row's own values win; anything fetched only fills a gap.
+        fun show(fetched: Pair<String?, String?>?) {
+            val title = entry.title.takeIf { it.isNotBlank() } ?: fetched?.first
+            b.diffTitle.text = title
+                ?: mangaBakaId?.let { context.getString(R.string.list_diff_mangabaka_id, it) }
+                ?: ""
+            val cover = entry.coverUrl ?: fetched?.second
+            if (cover != null) b.diffCover.loadImage(cover) else b.diffCover.setImageDrawable(null)
+        }
+
+        val key = when {
+            mangaBakaId != null -> "mb:$mangaBakaId"
+            muId != null -> "mu:$muId"
+            else -> null
+        }
+        if ((entry.title.isNotBlank() && entry.coverUrl != null) || key == null) {
+            show(null)
             return
         }
-        val cached = seriesInfo[seriesId]
+        val cached = seriesInfo[key]
         if (cached != null) {
-            b.diffTitle.text = cached.first ?: context.getString(R.string.list_diff_mangabaka_id, seriesId)
-            b.diffCover.loadImage(cached.second)
+            show(cached)
             return
         }
-        b.diffTitle.text = context.getString(R.string.list_diff_mangabaka_id, seriesId)
-        b.diffCover.setImageDrawable(null)
+        show(null)
         holder.job = scope.launch {
-            val info = ListCompare.mangaBakaSeriesInfo(seriesId) ?: return@launch
-            seriesInfo[seriesId] = info
-            if (holder.bindingAdapterPosition == position) {
-                b.diffTitle.text = info.first ?: context.getString(R.string.list_diff_mangabaka_id, seriesId)
-                b.diffCover.loadImage(info.second)
-            }
+            val info = (
+                if (mangaBakaId != null) ListCompare.mangaBakaSeriesInfo(mangaBakaId)
+                else ListCompare.mangaUpdatesSeriesInfo(muId!!)
+                ) ?: return@launch
+            seriesInfo[key] = info
+            if (holder.bindingAdapterPosition == position) show(info)
         }
     }
 
     override fun onViewRecycled(holder: Holder) {
         holder.job?.cancel()
         holder.job = null
+        holder.binding.diffSync.setIconSpinning(false)
     }
 
     fun removeAt(position: Int) {
         if (position in items.indices) {
             expanded.remove(items[position])
+            syncing.remove(items[position])
             items.removeAt(position)
             notifyItemRemoved(position)
         }
@@ -217,7 +256,9 @@ class ListSyncDiffAdapter(
      */
     @SuppressLint("NotifyDataSetChanged")
     fun replaceAll(newItems: List<ListCompare.DiffEntry>) {
-        expanded.retainAll(newItems.toHashSet())
+        val kept = newItems.toHashSet()
+        expanded.retainAll(kept)
+        syncing.retainAll(kept)
         items.clear()
         items.addAll(newItems)
         notifyDataSetChanged()

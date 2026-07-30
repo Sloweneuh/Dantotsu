@@ -196,8 +196,10 @@
         <activity
             android:name=".settings.SettingsListSyncActivity"
             android:parentActivityName=".MainActivity" />
+        <!-- configChanges so a rotation doesn't throw away a comparison that took a while to build -->
         <activity
             android:name=".settings.ListSyncCompareActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"
             android:parentActivityName=".MainActivity" />
         <activity
             android:name=".settings.SettingsAnimeActivity"

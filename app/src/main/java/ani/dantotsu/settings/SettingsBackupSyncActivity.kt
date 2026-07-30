@@ -149,7 +149,7 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                 name = getString(R.string.cloud_sync_now),
                 desc = getString(R.string.cloud_sync_now_desc),
                 icon = R.drawable.ic_round_sync_24,
-                onClick = {
+                onClick = { view ->
                     when {
                         Anilist.token.isNullOrEmpty() ->
                             toast(getString(R.string.cloud_sync_no_account))
@@ -159,8 +159,13 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
 
                         else -> {
                             toast(getString(R.string.please_wait))
+                            // A manual sync is a round trip to the cloud and back with no other
+                            // progress to show, so spin the row's icon until it resolves.
+                            view.settingsIcon.setSpinning(true)
                             GlobalScope.launch(Dispatchers.IO) {
-                                when (val result = CloudSync.syncManual()) {
+                                val result = CloudSync.syncManual()
+                                runOnUiThread { view.settingsIcon.setSpinning(false) }
+                                when (result) {
                                     is CloudSync.SyncOutcome.Conflict ->
                                         runOnUiThread {
                                             showConflictDialog(

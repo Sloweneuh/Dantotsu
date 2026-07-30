@@ -416,6 +416,9 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
                 listId = userEntry.listId,
                 userChapter = userEntry.userChapter,
                 userVolume = userEntry.userVolume,
+                // Only the list API reports when the series was added, and it's the start date that
+                // converting and list sync push — so keep it rather than the null a search gave us.
+                addedAt = userEntry.addedAt,
             )
             withContext(Dispatchers.Main) {
                 muMedia = updated
@@ -423,6 +426,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
                 model.getMedia().value?.let { m ->
                     m.userProgress = updated.userChapter
                     m.muListId = updated.listId
+                    m.muAddedAt = updated.addedAt
                     model.setMedia(m)
                 }
                 progress()

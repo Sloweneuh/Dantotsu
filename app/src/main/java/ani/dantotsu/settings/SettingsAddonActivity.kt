@@ -3,7 +3,6 @@ package ani.dantotsu.settings
 import android.content.Context
 import android.os.Bundle
 import android.view.ViewGroup
-import android.view.animation.LinearInterpolator
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.lifecycleScope
@@ -23,13 +22,6 @@ import ani.dantotsu.snackString
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.util.Logger
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import tachiyomi.core.util.lang.launchIO
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
@@ -71,11 +63,7 @@ class SettingsAddonActivity : AppCompatActivity() {
                                 status = downloadAddonManager.hadError(context),
                                 hasUpdate = downloadAddonManager.hasUpdate
                             )
-                            var job = Job()
                             downloadAddonManager.addListenerAction { _ ->
-                                job.cancel()
-                                it.settingsIconRight.animate().cancel()
-                                it.settingsIconRight.rotation = 0f
                                 setStatus(
                                     view = it,
                                     context = context,
@@ -88,21 +76,8 @@ class SettingsAddonActivity : AppCompatActivity() {
                                     downloadAddonManager.uninstall()
                                     return@setOnClickListener
                                 } else {
-                                    job = Job()
-                                    val scope = CoroutineScope(Dispatchers.Main + job)
                                     it.settingsIconRight.setImageResource(R.drawable.ic_sync)
-                                    scope.launch {
-                                        while (isActive) {
-                                            withContext(Dispatchers.Main) {
-                                                it.settingsIconRight.animate()
-                                                    .rotationBy(360f)
-                                                    .setDuration(1000)
-                                                    .setInterpolator(LinearInterpolator())
-                                                    .start()
-                                            }
-                                            delay(1000)
-                                        }
-                                    }
+                                    it.settingsIconRight.setSpinning(true)
                                     snackString(getString(R.string.downloading))
                                     lifecycleScope.launchIO {
                                         AddonDownloader.update(
@@ -128,11 +103,7 @@ class SettingsAddonActivity : AppCompatActivity() {
                                 status = torrentAddonManager.hadError(context),
                                 hasUpdate = torrentAddonManager.hasUpdate
                             )
-                            var job = Job()
                             torrentAddonManager.addListenerAction { _ ->
-                                job.cancel()
-                                it.settingsIconRight.animate().cancel()
-                                it.settingsIconRight.rotation = 0f
                                 setStatus(
                                     view = it,
                                     context = context,
@@ -146,21 +117,8 @@ class SettingsAddonActivity : AppCompatActivity() {
                                     torrentAddonManager.uninstall()
                                     return@setOnClickListener
                                 } else {
-                                    job = Job()
-                                    val scope = CoroutineScope(Dispatchers.Main + job)
                                     it.settingsIconRight.setImageResource(R.drawable.ic_sync)
-                                    scope.launch {
-                                        while (isActive) {
-                                            withContext(Dispatchers.Main) {
-                                                it.settingsIconRight.animate()
-                                                    .rotationBy(360f)
-                                                    .setDuration(1000)
-                                                    .setInterpolator(LinearInterpolator())
-                                                    .start()
-                                            }
-                                            delay(1000)
-                                        }
-                                    }
+                                    it.settingsIconRight.setSpinning(true)
                                     snackString(getString(R.string.downloading))
                                     lifecycleScope.launchIO {
                                         AddonDownloader.update(
@@ -227,22 +185,22 @@ class SettingsAddonActivity : AppCompatActivity() {
         hasUpdate: Boolean
     ) {
         try {
+            // Reaching a status means the install/update is over, whatever the outcome — so this is
+            // also where the spinner an install started gets stopped.
+            view.settingsIconRight.setSpinning(false)
             when (status) {
                 context.getString(R.string.loaded_successfully) -> {
                     view.settingsIconRight.setImageResource(R.drawable.ic_round_delete_24)
-                    view.settingsIconRight.rotation = 0f
                     view.settingsDesc.text = context.getString(R.string.installed)
                 }
 
                 null -> {
                     view.settingsIconRight.setImageResource(R.drawable.ic_download_24)
-                    view.settingsIconRight.rotation = 0f
                     view.settingsDesc.text = context.getString(R.string.not_installed)
                 }
 
                 else -> {
                     view.settingsIconRight.setImageResource(R.drawable.ic_round_new_releases_24)
-                    view.settingsIconRight.rotation = 0f
                     view.settingsDesc.text = context.getString(R.string.error_msg, status)
                 }
             }

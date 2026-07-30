@@ -49,6 +49,7 @@ fun MUMedia.toMedia(): Media = Media(
     muSeriesId = id,
     muListId = listId,
     muLatestChapter = latestChapter,
+    muAddedAt = addedAt,
 )
 
 /**
@@ -71,6 +72,7 @@ fun Media.toMUMedia(): MUMedia? {
         bayesianRating = null,
         priority = null,
         format = format,
+        addedAt = muAddedAt,
     )
 }
 

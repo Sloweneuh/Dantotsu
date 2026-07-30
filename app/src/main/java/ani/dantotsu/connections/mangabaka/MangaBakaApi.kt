@@ -46,14 +46,18 @@ object MangaBakaApi {
     private val rateLimiter = Semaphore(3)
 
     /**
-     * Executes a MangaBaka request under the shared [rateLimiter] and retries on HTTP 429 with linear
-     * backoff. Every bulk caller (list-compare, sync) must funnel requests through here so we stay
-     * within the server's rate limit instead of hammering it in parallel.
+     * Executes a MangaBaka request under the shared [rateLimiter], retrying with linear backoff when
+     * the server says to come back later. Every bulk caller (list-compare, sync) must funnel requests
+     * through here so we stay within the server's rate limit instead of hammering it in parallel.
+     *
+     * Retried: 429, and 5xx — a 502/503/504 is the gateway having a moment, and one retry usually
+     * turns a failed sync into a successful one. The library writes this carries are upserts of the
+     * same state, so repeating one is harmless even if the first attempt did land.
      */
     internal suspend fun execute(request: Request): Response = rateLimiter.withPermit {
         var response = withContext(Dispatchers.IO) { okHttpClient.newCall(request).execute() }
         var attempt = 0
-        while (response.code == 429 && attempt < 4) {
+        while (response.code.isRetryable() && attempt < 4) {
             response.close()
             delay(700L * (attempt + 1))
             response = withContext(Dispatchers.IO) { okHttpClient.newCall(request).execute() }
@@ -61,6 +65,8 @@ object MangaBakaApi {
         }
         response
     }
+
+    private fun Int.isRetryable(): Boolean = this == 429 || this in 500..599
 
     /**
      * Builds the path segment for a `/v1/source/{source}/{id}` lookup. MangaUpdates is keyed by its
@@ -81,11 +87,7 @@ object MangaBakaApi {
         if (cacheKey in negativeCache) return null
 
         val match = lookupSeries(source, id)
-        val resolved = when {
-            match == null -> null
-            match.state == "merged" && match.mergedWith != null -> match.mergedWith
-            else -> match.id
-        }
+        val resolved = match.resolvedId()
 
         if (resolved != null) {
             PrefManager.setCustomVal(cacheKey, resolved)
@@ -115,7 +117,9 @@ object MangaBakaApi {
      *
      * Both ids come out of a single lookup and are cached (misses included) per tracker, so the
      * AniList-equivalent detection and the MAL info tab share one request rather than each issuing
-     * their own against the same route.
+     * their own against the same route. The same response also settles the series id, so a following
+     * [resolveSeriesId] for this series is a cache hit — that's what keeps the list-compare screen
+     * from looking every MangaUpdates entry up twice.
      */
     suspend fun getCrossIdsFromMangaUpdates(muSeriesId: Long): MuCrossIds {
         val alKey = "$AL_CACHE_PREFIX${Source.MANGAUPDATES.path}_$muSeriesId"
@@ -128,12 +132,24 @@ object MangaBakaApi {
             return MuCrossIds(cachedAl, cachedMal)
         }
 
-        val source = lookupSeries(Source.MANGAUPDATES, muSeriesId)?.source
+        val match = lookupSeries(Source.MANGAUPDATES, muSeriesId)
+        val source = match?.source
         val anilistId = source?.anilist?.id?.takeIf { it > 0 }
         val malId = source?.myAnimeList?.id?.takeIf { it > 0 }
         if (anilistId != null) PrefManager.setCustomVal(alKey, anilistId) else negativeCache.add(alKey)
         if (malId != null) PrefManager.setCustomVal(malKey, malId) else negativeCache.add(malKey)
+
+        val seriesKey = "$CACHE_PREFIX${Source.MANGAUPDATES.path}_$muSeriesId"
+        match.resolvedId()?.let { PrefManager.setCustomVal(seriesKey, it) }
+            ?: negativeCache.add(seriesKey)
         return MuCrossIds(anilistId, malId)
+    }
+
+    /** The series id a source lookup points at, following a merged record to its replacement. */
+    private fun SourceSeries?.resolvedId(): Long? = when {
+        this == null -> null
+        state == "merged" && mergedWith != null -> mergedWith
+        else -> id
     }
 
     /**
@@ -245,7 +261,9 @@ object MangaBakaApi {
             .url("$API_URL/v1/source/${source.path}/$idSegment?with_series=true")
             .get()
             .build()
-        val response = withContext(Dispatchers.IO) { okHttpClient.newCall(request).execute() }
+        // Through [execute]: the list-compare screen resolves covers with this one row at a time, so
+        // unthrottled it runs straight into HTTP 429 and most rows come back empty.
+        val response = execute(request)
         val body = response.body?.string()
         if (!response.isSuccessful || body.isNullOrBlank()) {
             Logger.log("MangaBaka source-series[${source.path}/$idSegment]: HTTP ${response.code}")

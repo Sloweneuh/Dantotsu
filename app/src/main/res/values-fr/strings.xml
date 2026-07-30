@@ -468,7 +468,7 @@
     <string name="mangabaka_list_sync">Synchronisation des listes MangaBaka</string>
     <string name="mangabaka_list_sync_desc">Envoyer les mises à jour de mangas AniList et MangaUpdates vers votre bibliothèque MangaBaka (à sens unique)</string>
     <string name="mal_list_sync">Synchronisation des listes MyAnimeList</string>
-    <string name="mal_list_sync_desc">Envoyer les mises à jour de listes AniList vers votre compte MyAnimeList (à sens unique)</string>
+    <string name="mal_list_sync_desc">Envoyer les mises à jour de listes AniList et MangaUpdates vers votre compte MyAnimeList (à sens unique)</string>
     <string name="list_sync_settings">Synchronisation des listes</string>
     <string name="list_sync_settings_desc">Choisissez vers quels trackers vos mises à jour de listes sont envoyées</string>
     <string name="compare_lists">Comparer les listes</string>

@@ -12,18 +12,31 @@ import ani.dantotsu.connections.mangabaka.MangaBakaSync
 import ani.dantotsu.connections.mangabaka.MangaBakaSync.LibraryStateEntry
 import ani.dantotsu.connections.mangaupdates.MUMedia
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
+import ani.dantotsu.connections.mangaupdates.muStandardListStatus
+import ani.dantotsu.connections.mangaupdates.muStartDate
+import ani.dantotsu.connections.mangaupdates.resolveMuMalId
 import ani.dantotsu.media.Media
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 
 /**
  * One-way list auditing for the "Compare lists" screen.
  *
  * Sync in Dantotsu is one-directional (AniList / MangaUpdates → destination), so "out of date" means
  * an entry present in the **source** that is missing or differs on the **destination**:
- * - **MAL** is compared against **AniList** (anime + manga, kept as separate subsections).
- * - **MangaBaka** is compared against **AniList manga + MangaUpdates** (MU only when actively
- *   contributing — see [muActive]).
+ * - **MAL** is compared against **AniList** (anime + manga, kept as separate subsections), with
+ *   **MangaUpdates** contributing to the manga subsection when active (see [muActive]).
+ * - **MangaBaka** is compared against **AniList manga + MangaUpdates** (same condition).
+ *
+ * Where both sources cover the same media, AniList wins: it carries scores and dates MangaUpdates has
+ * no equivalent for, so a MangaUpdates entry is only compared when nothing on AniList already maps to
+ * the same destination entry.
  *
  * Everything here is pure logic (no Android/Context). The screen resolves labels and drives sync.
  */
@@ -99,27 +112,52 @@ object ListCompare {
     /**
      * Runs all comparisons the current logins allow. Requires AniList (the source of truth); returns
      * an all-null result when AniList isn't available.
+     *
+     * The screen can't show anything until every section is built, so the whole thing is a fan-out:
+     * the source lists are fetched once each and the sections built off them concurrently, rather
+     * than each section fetching and comparing in turn. Both manga sections share the same AniList
+     * manga list and MangaUpdates snapshot — the two heaviest fetches on the screen, each of which
+     * used to be paid for twice.
      */
-    suspend fun compareAll(): CompareResult {
+    suspend fun compareAll(): CompareResult = coroutineScope {
         val muActive = MangaUpdates.token != null &&
             PrefManager.getVal(PrefName.MangaUpdatesListEnabled)
-        if (Anilist.userid == null) return CompareResult(null, null, null, muActive)
+        val userId = Anilist.userid ?: return@coroutineScope CompareResult(null, null, null, muActive)
+        val onMal = MAL.token != null
+        val onMangaBaka = MangaBaka.token != null
 
-        val malAnime = if (MAL.token != null) compareMal(true) else null
-        val malManga = if (MAL.token != null) compareMal(false) else null
-        val mangaBaka = if (MangaBaka.token != null) compareMangaBaka(muActive) else null
-        return CompareResult(malAnime, malManga, mangaBaka, muActive)
+        val anilistAnime = async { if (onMal) anilistList(true, userId) else emptyList() }
+        val anilistManga = async { if (onMal || onMangaBaka) anilistList(false, userId) else emptyList() }
+        val muMedia = async {
+            if (muActive && (onMal || onMangaBaka)) MangaUpdates.getAllUserLists().values.flatten()
+            else emptyList()
+        }
+
+        val malAnime = async { if (onMal) compareMal(true, anilistAnime.await(), emptyList()) else null }
+        val malManga = async {
+            if (onMal) compareMal(false, anilistManga.await(), muMedia.await()) else null
+        }
+        val mangaBaka = async {
+            if (onMangaBaka) compareMangaBaka(anilistManga.await(), muMedia.await()) else null
+        }
+        CompareResult(malAnime.await(), malManga.await(), mangaBaka.await(), muActive)
     }
 
-    // ---- MAL vs AniList ----
+    /** The user's whole AniList list for one media type. */
+    private suspend fun anilistList(isAnime: Boolean, userId: Int): List<Media> =
+        Anilist.query.getMediaLists(isAnime, userId)["All"] ?: arrayListOf()
 
-    private suspend fun compareMal(isAnime: Boolean): SubsectionResult {
-        val userId = Anilist.userid ?: return empty()
-        val source = Anilist.query.getMediaLists(isAnime, userId)["All"] ?: arrayListOf()
+    // ---- MAL vs AniList (+ MangaUpdates) ----
+
+    /** [muMedia] is empty for anime and whenever MangaUpdates isn't contributing. */
+    private suspend fun compareMal(
+        isAnime: Boolean,
+        source: List<Media>,
+        muMedia: List<MUMedia>,
+    ): SubsectionResult {
         val malList = MAL.query.getUserList(isAnime)
         val malById: Map<Int, MALListNode> = malList.associateBy { it.node.id }
 
-        val sourceStats = statsOf(source.map { it.userStatus ?: "CURRENT" })
         val destStats = statsOf(malList.map { malToCanon(it.listStatus?.status, it.listStatus.rereading(isAnime)) })
 
         val diffs = source.mapNotNull { media ->
@@ -127,12 +165,31 @@ object ListCompare {
             buildMalDiff(media, isAnime, malById[malId])
         }
 
-        // Deletions: on MAL but not on AniList (matched by MAL id) → offer to remove from MAL.
-        val sourceMalIds = source.mapNotNull { it.idMAL }.toHashSet()
+        // MangaUpdates-only forward diffs. Each entry needs a MAL id, which MangaUpdates doesn't
+        // carry; MangaBaka's mapping supplies it (already cached for anything opened in the app).
+        // Comick's title-search fallback is off here — one search plus a details call per candidate,
+        // per entry, is far too much for a whole-list pass.
+        val anilistMalIds = source.mapNotNull { it.idMAL }.toHashSet()
+        val muResolved = muMedia
+            .asyncMap { mu -> mu to resolveMuMalId(mu.id, listOfNotNull(mu.title), comickFallback = false) }
+            // AniList already covers this MAL entry, and it has more to say about it.
+            .filter { (_, malId) -> malId == null || malId !in anilistMalIds }
+            // Two MangaUpdates entries can map to one MAL entry; unresolved ones stay distinct.
+            .distinctBy { (mu, malId) -> malId?.toLong() ?: -mu.id }
+        val muDiffs = muResolved.mapNotNull { (mu, malId) ->
+            malId?.let { buildMuMalDiff(mu, it, malById[it]) }
+        }
+
+        // Deletions: on MAL but in neither source (matched by MAL id) → offer to remove from MAL.
+        val sourceMalIds = anilistMalIds + muResolved.mapNotNull { it.second }
         val deletions = malList.mapNotNull { node ->
             if (node.node.id in sourceMalIds) null else buildMalDeleteDiff(node, isAnime)
         }
-        return SubsectionResult(sourceStats, destStats, diffs + deletions)
+
+        val sourceStats = statsOf(
+            source.map { it.userStatus ?: "CURRENT" } + muResolved.map { muListToCanon(it.first.listId) }
+        )
+        return SubsectionResult(sourceStats, destStats, diffs + muDiffs + deletions)
     }
 
     private fun buildMalDeleteDiff(node: MALListNode, isAnime: Boolean): DiffEntry = DiffEntry(
@@ -237,14 +294,87 @@ object ListCompare {
         )
     }
 
+    /**
+     * A MangaUpdates entry against its MAL counterpart. MangaUpdates tracks status, chapter, volume
+     * and the date the series was added — which is the start date, under the rules in [muStartDate].
+     * Score and finish date have no equivalent and are never diffed; they'd read as "clear what MAL
+     * has", which one-way sync must not do.
+     */
+    private fun buildMuMalDiff(mu: MUMedia, malId: Int, node: MALListNode?): DiffEntry? {
+        val canonStatus = muStandardListStatus(mu.listId) ?: return null
+        val ls = node?.listStatus
+        val expectedStatus = MAL.query.convertStatus(false, canonStatus)
+        // Same clamping and completed-at-zero repair as the AniList side ([buildMalDiff]), except the
+        // total can only come from MAL itself — MangaUpdates has no notion of a final chapter count.
+        val malTotal = node?.node?.numChapters?.takeIf { it > 0 }
+        val malVolTotal = node?.node?.numVolumes?.takeIf { it > 0 }
+        val rawProgress = mu.userChapter ?: 0
+        val repairCompletedZero = expectedStatus == "completed" && rawProgress == 0 && malTotal != null
+        var expectedProgress = if (repairCompletedZero) malTotal!! else rawProgress
+        if (malTotal != null) expectedProgress = expectedProgress.coerceAtMost(malTotal)
+        var expectedVolume = mu.userVolume ?: 0
+        if (malVolTotal != null) expectedVolume = expectedVolume.coerceAtMost(malVolTotal)
+        val actualProgress = ls?.numChaptersRead ?: 0
+        val actualVolume = ls?.numVolumesRead ?: 0
+
+        val fieldDiffs = mutableListOf<FieldDiff>()
+        if (ls == null) {
+            fieldDiffs += FieldDiff(DiffField.STATUS, DASH, formatStatus(expectedStatus) ?: DASH)
+            if (expectedProgress > 0)
+                fieldDiffs += FieldDiff(DiffField.PROGRESS, DASH, expectedProgress.toString())
+        } else {
+            if (ls.status != expectedStatus)
+                fieldDiffs += FieldDiff(DiffField.STATUS, formatStatus(ls.status) ?: DASH, formatStatus(expectedStatus) ?: DASH)
+            if (actualProgress != expectedProgress)
+                fieldDiffs += FieldDiff(DiffField.PROGRESS, actualProgress.toString(), expectedProgress.toString())
+            if (expectedVolume > 0 && actualVolume != expectedVolume)
+                fieldDiffs += FieldDiff(DiffField.VOLUME, actualVolume.toString(), expectedVolume.toString())
+        }
+        val expectedStart = muStartDate(mu.listId, mu.addedAt)
+        expectedStart?.let { dateDiff(DiffField.START_DATE, it, ls?.startDate) }
+            ?.let { fieldDiffs += it }
+        if (fieldDiffs.isEmpty()) return null
+        val detail = buildDetail(
+            isAnime = false, fieldDiffs.mapTo(HashSet()) { it.field }, onDest = ls != null,
+            status = expectedStatus to ls?.status,
+            progress = expectedProgress to actualProgress,
+            volume = expectedVolume to actualVolume,
+            score = (null as Int?) to ls?.score?.let { it * 10 },   // MangaUpdates has no score
+            start = expectedStart to parseDestDate(ls?.startDate),
+            end = (null as FuzzyDate?) to parseDestDate(ls?.finishDate),
+        )
+        return DiffEntry(
+            // The MangaUpdates list API has no covers; MAL's own picture fills in when it has the entry.
+            title = mu.title ?: "",
+            coverUrl = mu.coverUrl ?: node?.node?.mainPicture?.large ?: node?.node?.mainPicture?.medium,
+            isAnime = false,
+            tracker = Tracker.MAL,
+            diffs = fieldDiffs,
+            anilistId = null,
+            malId = malId,
+            muSeriesId = mu.id,
+            muListId = mu.listId,
+            mangaBakaSeriesId = null,
+            status = canonStatus,
+            progress = expectedProgress,
+            volume = expectedVolume.takeIf { it > 0 },   // same reasoning as the AniList side
+            score = null,
+            startDate = expectedStart,
+            detail = detail,
+            fromStatusCanon = ls?.let { malToCanon(it.status, it.rereading(false)) },
+            toStatusCanon = muListToCanon(mu.listId),
+        )
+    }
+
     // ---- MangaBaka vs AniList (+ MangaUpdates) ----
 
     private class Processed(val status: String, val seriesId: Long?, val diff: DiffEntry?)
 
-    private suspend fun compareMangaBaka(muActive: Boolean): SubsectionResult {
-        val userId = Anilist.userid ?: return empty()
-        val anilistManga = Anilist.query.getMediaLists(false, userId)["All"] ?: arrayListOf()
-
+    /** [muMedia] is empty whenever MangaUpdates isn't contributing. */
+    private suspend fun compareMangaBaka(
+        anilistManga: List<Media>,
+        muMedia: List<MUMedia>,
+    ): SubsectionResult {
         val snapshot = MangaBakaSync.getLibrarySnapshot()
         // Destination totals come from per-state counts (exact even when a state can't be fully
         // enumerated). Several MangaBaka states fold into one canonical status, so aggregate.
@@ -292,7 +422,6 @@ object ListCompare {
 
         // MangaUpdates-only forward diffs (not already represented on AniList by MangaBaka series id).
         val alSeriesIds = alProcessed.mapNotNull { it.seriesId }.toHashSet()
-        val muMedia = if (muActive) MangaUpdates.getAllUserLists().values.flatten() else emptyList()
         val muProcessed = muMedia
             .asyncMap { mu ->
                 mu to (byMu[mu.id] ?: MangaBakaApi.resolveSeriesId(MangaBakaApi.Source.MANGAUPDATES, mu.id))
@@ -300,13 +429,9 @@ object ListCompare {
             .filter { (_, seriesId) -> seriesId == null || seriesId !in alSeriesIds }
             .distinctBy { (mu, seriesId) -> seriesId ?: -mu.id }
             .asyncMap { (mu, seriesId) ->
-                val diff = seriesId?.let { sid ->
-                    val base = buildMuMangaBakaDiff(mu, sid, currentOf(sid)) ?: return@let null
-                    // The MangaUpdates list API has no covers; borrow one from the MangaBaka series.
-                    if (base.coverUrl == null)
-                        base.copy(coverUrl = MangaBakaApi.getSeries(sid)?.cover?.thumbUrl())
-                    else base
-                }
+                // These rows carry no cover — the MangaUpdates list API has none. The adapter fills
+                // that in from MangaBaka when a row is actually shown, so nothing is fetched here.
+                val diff = seriesId?.let { buildMuMangaBakaDiff(mu, it, currentOf(it)) }
                 Processed(muListToCanon(mu.listId), seriesId, diff)
             }
 
@@ -387,7 +512,10 @@ object ListCompare {
             current, expectedState,
             expectedChapter = mu.userChapter ?: 0,
             expectedVolume = mu.userVolume ?: 0,
-        )
+        ).toMutableList()
+        val expectedStart = muStartDate(mu.listId, mu.addedAt)
+        expectedStart?.let { dateDiff(DiffField.START_DATE, it, current?.startDate) }
+            ?.let { fieldDiffs += it }
         if (fieldDiffs.isEmpty()) return null
         val detail = buildDetail(
             isAnime = false, fieldDiffs.mapTo(HashSet()) { it.field }, onDest = current != null,
@@ -395,7 +523,7 @@ object ListCompare {
             progress = (mu.userChapter ?: 0) to (current?.progressChapter ?: 0),
             volume = (mu.userVolume ?: 0) to (current?.progressVolume ?: 0),
             score = (null as Int?) to current?.rating,           // MangaUpdates has no score
-            start = (null as FuzzyDate?) to parseDestDate(current?.startDate),
+            start = expectedStart to parseDestDate(current?.startDate),
             end = (null as FuzzyDate?) to parseDestDate(current?.finishDate),
         )
         return DiffEntry(
@@ -413,6 +541,7 @@ object ListCompare {
             progress = mu.userChapter,
             volume = mu.userVolume?.takeIf { it > 0 },      // same reasoning as the MAL side
             score = null,
+            startDate = expectedStart,
             detail = detail,
             fromStatusCanon = current?.let { mbToCanon(it.state) },
             toStatusCanon = muListToCanon(mu.listId),
@@ -466,7 +595,37 @@ object ListCompare {
     suspend fun mangaBakaSeriesInfo(seriesId: Long): Pair<String?, String?>? =
         MangaBakaApi.getSeries(seriesId)?.let { it.title to it.cover?.thumbUrl() }
 
+    /**
+     * Title + cover for a MangaUpdates series, borrowed from MangaBaka: the MangaUpdates list API
+     * returns no covers, so rows sourced from it have none of their own. Used to fill rows in lazily.
+     */
+    suspend fun mangaUpdatesSeriesInfo(muSeriesId: Long): Pair<String?, String?>? =
+        MangaBakaApi.getSeriesFromSource(MangaBakaApi.Source.MANGAUPDATES, muSeriesId)
+            ?.let { it.title to it.cover?.thumbUrl() }
+
     // ---- Sync (explicit user action → force past the on/off toggle) ----
+
+    /**
+     * How many destination writes to keep in flight during a bulk sync. Modest on purpose: one entry
+     * can already be several requests (MangaBaka PATCHes, then POSTs when the entry is new) and MAL
+     * has no rate limiter of its own, so the gap between this and "all at once" isn't worth risking a
+     * 429. MangaBaka requests throttle themselves further inside [MangaBakaApi.execute].
+     */
+    private const val SYNC_CONCURRENCY = 4
+
+    /**
+     * Reconciles many entries, a few at a time, returning each with its result in the order given.
+     *
+     * Neither MyAnimeList nor MangaBaka exposes a bulk list-write route — MAL edits are a PUT per
+     * `/manga/{id}/my_list_status` and MangaBaka a PATCH/POST per `/my/library/{series_id}` — so every
+     * entry is its own round trip and overlapping them is the only thing that makes "sync all" quick.
+     */
+    suspend fun syncAll(entries: List<DiffEntry>): List<Pair<DiffEntry, Boolean>> = coroutineScope {
+        val limiter = Semaphore(SYNC_CONCURRENCY)
+        entries
+            .map { entry -> async(Dispatchers.IO) { entry to limiter.withPermit { sync(entry) } } }
+            .awaitAll()
+    }
 
     /** Reconciles a single diff entry with its destination (push, or remove when [DiffEntry.delete]). */
     suspend fun sync(entry: DiffEntry): Boolean {
@@ -486,17 +645,22 @@ object ListCompare {
                 )
                 true
             }
+            // No status on the destination means the entry isn't in the library, so create it
+            // outright instead of paying for a PATCH that can only 404 first.
             Tracker.MANGABAKA -> if (entry.anilistId != null || entry.malId != null) {
                 MangaBakaSync.syncFromAnilist(
                     anilistId = entry.anilistId, malId = entry.malId, status = entry.status,
                     progressChapter = entry.progress, progressVolume = entry.volume,
                     score = entry.score, rereads = null, isPrivate = null,
-                    startDate = entry.startDate, finishDate = entry.endDate, force = true,
+                    startDate = entry.startDate, finishDate = entry.endDate,
+                    preferCreate = entry.fromStatusCanon == null, force = true,
                 )
             } else {
                 MangaBakaSync.syncFromMangaUpdates(
                     muSeriesId = entry.muSeriesId, muListId = entry.muListId,
-                    progressChapter = entry.progress, progressVolume = entry.volume, force = true,
+                    progressChapter = entry.progress, progressVolume = entry.volume,
+                    startDate = entry.startDate,
+                    preferCreate = entry.fromStatusCanon == null, force = true,
                 )
             }
         }
@@ -581,8 +745,6 @@ object ListCompare {
             add(DetailRow(DiffField.END_DATE, end.first.display(), dst(end.second.display()), DiffField.END_DATE in diffs))
         }
     }
-
-    private fun empty() = SubsectionResult(SideStats(0, emptyMap()), SideStats(0, emptyMap()), emptyList())
 
     private fun statsOf(statuses: List<String>): SideStats =
         SideStats(statuses.size, statuses.groupingBy { it }.eachCount())

@@ -102,7 +102,12 @@ data class Media(
      * Newest known MangaUpdates chapter. Kept separate from [Manga.totalChapters] because
      * MangaUpdates has no reliable total — the total renders as "~" while this shows as the latest.
      */
-    var muLatestChapter: Int? = null
+    var muLatestChapter: Int? = null,
+    /**
+     * MangaUpdates "time added to list" (Unix seconds). Carried so list sync can push it as the start
+     * date — see [ani.dantotsu.connections.mangaupdates.muStartDate].
+     */
+    var muAddedAt: Long? = null
 ) : Serializable {
 
     constructor(apiMedia: ApiMedia) : this(

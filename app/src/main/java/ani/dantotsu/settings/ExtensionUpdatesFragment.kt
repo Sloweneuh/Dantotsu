@@ -137,6 +137,9 @@ class ExtensionUpdatesFragment : Fragment() {
             .setTitle(getString(R.string.update_all_extensions))
             .setMessage(getString(R.string.update_extensions_count, items.size))
             .setPositiveButton("Update") { _, _ ->
+                // Each row spins itself as its turn comes; this shows the batch as a whole is running,
+                // and stops in the terminal branch of updateExtensionsSequentially.
+                binding.updateAllButton.setIconSpinning(true)
                 updateExtensionsSequentially(items.toMutableList())
             }
             .setNegativeButton("Cancel", null)
@@ -145,6 +148,8 @@ class ExtensionUpdatesFragment : Fragment() {
 
     private fun updateExtensionsSequentially(items: MutableList<UpdateItem>) {
         if (items.isEmpty()) {
+            // The batch is done: stop the button spinning (see updateAllExtensions).
+            _binding?.updateAllButton?.setIconSpinning(false)
             snackString("All extensions updated")
             loadUpdates() // Final refresh
             (activity as? ExtensionsActivity)?.onExtensionUpdatesFinished()

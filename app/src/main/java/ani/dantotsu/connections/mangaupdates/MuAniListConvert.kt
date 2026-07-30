@@ -19,6 +19,15 @@ fun muListIdToAnilistStatus(listId: Int): String = when (listId) {
     else -> "CURRENT"
 }
 
+/**
+ * [muListIdToAnilistStatus] restricted to the five standard MangaUpdates lists. Custom lists carry
+ * user-defined ids with no tracker equivalent, so list sync skips them rather than pushing a guess —
+ * the same call [ani.dantotsu.connections.mangabaka.MangaBakaSync.mapMangaUpdatesList] makes.
+ * Converting is different: it always has to land the entry somewhere, so it takes the default above.
+ */
+fun muStandardListStatus(listId: Int): String? =
+    if (listId in 0..4) muListIdToAnilistStatus(listId) else null
+
 /** Converts a MangaUpdates "time added" timestamp (Unix seconds) to a [FuzzyDate] in local time. */
 private fun epochSecondsToFuzzyDate(epochSeconds: Long): FuzzyDate {
     val cal = Calendar.getInstance().apply { timeInMillis = epochSeconds * 1000L }
@@ -28,6 +37,17 @@ private fun epochSecondsToFuzzyDate(epochSeconds: Long): FuzzyDate {
         day = cal.get(Calendar.DAY_OF_MONTH),
     )
 }
+
+/**
+ * The start date a MangaUpdates entry implies: its "date added to list" ([addedAt], Unix seconds).
+ *
+ * Not for the Planning list (id 1) — there the date records when the series was *bookmarked*, not
+ * when it was started, and every other tracker treats a planned entry as having no start date.
+ * Returns null when MangaUpdates gave us no timestamp, which leaves any date the destination already
+ * holds alone.
+ */
+fun muStartDate(muListId: Int, addedAt: Long?): FuzzyDate? =
+    if (muListId == 1) null else addedAt?.let { epochSecondsToFuzzyDate(it) }
 
 /**
  * Moves a MangaUpdates series over to AniList: adds/updates the AniList list entry (carrying over
@@ -40,8 +60,8 @@ private fun epochSecondsToFuzzyDate(epochSeconds: Long): FuzzyDate {
  * detached: the conversion is already committed by then and making the caller wait on an id lookup
  * plus a PUT/PATCH only makes the confirmation feel slow.
  *
- * @param addedAt MangaUpdates "time added to list" as Unix seconds; when non-null it becomes the
- *   AniList start date. Null leaves any existing start date untouched.
+ * @param addedAt MangaUpdates "time added to list" as Unix seconds; becomes the AniList start date
+ *   under the rules in [muStartDate]. Null leaves any existing start date untouched.
  * @return true if the AniList entry was written. MangaUpdates removal only runs after that succeeds,
  * so a failure never leaves the entry missing from both lists.
  */
@@ -54,7 +74,7 @@ suspend fun convertMuToAnilist(
     addedAt: Long? = null,
 ): Boolean {
     val status = muListIdToAnilistStatus(muListId)
-    val startedAt = addedAt?.let { epochSecondsToFuzzyDate(it) }
+    val startedAt = muStartDate(muListId, addedAt)
     val added = Anilist.mutation.editList(
         mediaID = anilistId,
         progress = chapter,

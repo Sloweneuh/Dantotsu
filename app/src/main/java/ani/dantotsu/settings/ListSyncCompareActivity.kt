@@ -27,8 +27,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * Audits MyAnimeList and MangaBaka against the source lists (AniList, plus MangaUpdates for
- * MangaBaka when active) and lets the user push the differences. Reachable from the List sync
+ * Audits MyAnimeList and MangaBaka against the source lists (AniList, plus MangaUpdates for the manga
+ * comparisons when active) and lets the user push the differences. Reachable from the List sync
  * settings screen. See [ListCompare] for the comparison logic.
  */
 class ListSyncCompareActivity : AppCompatActivity() {
@@ -82,19 +82,20 @@ class ListSyncCompareActivity : AppCompatActivity() {
                 listOf(R.drawable.ic_anilist), listOf(R.drawable.ic_myanimelist), it, isAnime = true,
             )
         }
+        // MangaUpdates contributes to both manga comparisons when it's active.
+        val mangaSourceIcons = if (result.muActive)
+            listOf(R.drawable.ic_anilist, R.drawable.ic_round_mangaupdates_24)
+        else listOf(R.drawable.ic_anilist)
         result.malManga?.let {
             addSection(
                 getString(R.string.manga), R.drawable.ic_myanimelist,
-                listOf(R.drawable.ic_anilist), listOf(R.drawable.ic_myanimelist), it, isAnime = false,
+                mangaSourceIcons, listOf(R.drawable.ic_myanimelist), it, isAnime = false,
             )
         }
         result.mangaBaka?.let {
-            val sourceIcons = if (result.muActive)
-                listOf(R.drawable.ic_anilist, R.drawable.ic_round_mangaupdates_24)
-            else listOf(R.drawable.ic_anilist)
             addSection(
                 getString(R.string.mangabaka), R.drawable.ic_round_mangabaka_24,
-                sourceIcons, listOf(R.drawable.ic_round_mangabaka_24), it, isAnime = false,
+                mangaSourceIcons, listOf(R.drawable.ic_round_mangabaka_24), it, isAnime = false,
             )
         }
     }
@@ -138,8 +139,10 @@ class ListSyncCompareActivity : AppCompatActivity() {
         }
 
         adapter = ListSyncDiffAdapter(items, lifecycleScope) { entry, position ->
+            adapter.setSyncing(entry, true)
             lifecycleScope.launch {
                 val ok = withContext(Dispatchers.IO) { ListCompare.sync(entry) }
+                adapter.setSyncing(entry, false)
                 if (ok) {
                     destStats = ListCompare.applied(destStats, entry)
                     refreshStats()
@@ -164,8 +167,10 @@ class ListSyncCompareActivity : AppCompatActivity() {
             val entries = items.toList()
             if (entries.isEmpty()) return@setOnClickListener
             sb.sectionSyncAll.isEnabled = false
+            sb.sectionSyncAll.setIconSpinning(true)
             lifecycleScope.launch {
-                val results = withContext(Dispatchers.IO) { entries.map { it to ListCompare.sync(it) } }
+                val results = ListCompare.syncAll(entries)
+                sb.sectionSyncAll.setIconSpinning(false)
                 // Drop the entries that synced; keep failures in the list for retry. Update the header
                 // stats from the successes instead of re-running the full (network-heavy) comparison.
                 results.forEach { (entry, ok) -> if (ok) destStats = ListCompare.applied(destStats, entry) }

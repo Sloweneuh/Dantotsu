@@ -184,11 +184,21 @@ class MUListEditorFragment : BottomSheetDialogFragment() {
                             volume = newVolume
                         )
                     }
+                    val startDate = muStartDate(newListId, muMedia.addedAt)
                     ani.dantotsu.connections.mangabaka.MangaBakaSync.syncFromMangaUpdates(
                         muSeriesId = muMedia.id,
                         muListId = newListId,
                         progressChapter = newChapter,
                         progressVolume = newVolume,
+                        startDate = startDate,
+                    )
+                    syncMuToMal(
+                        muSeriesId = muMedia.id,
+                        muListId = newListId,
+                        titles = listOfNotNull(muMedia.title),
+                        chapter = newChapter,
+                        volume = newVolume,
+                        startDate = startDate,
                     )
                     PrefManager.setCustomVal(
                         "$PREF_MU_LAST_READ_PREFIX${muMedia.id}",
@@ -214,6 +224,10 @@ class MUListEditorFragment : BottomSheetDialogFragment() {
                 withContext(Dispatchers.IO) {
                     MangaUpdates.removeFromList(muMedia.id)
                     ani.dantotsu.connections.mangabaka.MangaBakaSync.deleteFromMangaUpdates(muMedia.id)
+                    // Deliberately not removed from MAL: a MAL entry for this series may well be the
+                    // one the user's AniList list owns and keeps synced, and deleting it here would
+                    // wipe that. An entry left behind with no source shows up as removable on the
+                    // list-compare screen, where the user can decide.
                 }
                 // Clear progress in the shared Media so MangaReadFragment reflects removal
                 model.getMedia().value?.let { media ->

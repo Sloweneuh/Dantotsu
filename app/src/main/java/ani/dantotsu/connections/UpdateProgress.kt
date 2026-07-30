@@ -7,6 +7,8 @@ import ani.dantotsu.connections.anilist.api.FuzzyDate
 import ani.dantotsu.connections.mal.MAL
 import ani.dantotsu.connections.mangabaka.MangaBakaSync
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
+import ani.dantotsu.connections.mangaupdates.muStartDate
+import ani.dantotsu.connections.mangaupdates.syncMuToMal
 import ani.dantotsu.currContext
 import ani.dantotsu.media.Media
 import ani.dantotsu.settings.saving.PrefManager
@@ -58,15 +60,28 @@ fun updateProgress(media: Media, number: String) {
                     toast(currContext()?.getString(R.string.setting_progress, a))
                     media.userProgress = a
                     Refresh.all()
-                    // Mirror to MangaBaka afterwards: it costs an id lookup plus a PATCH (and a
-                    // POST when the entry is new), and the update is already committed by then, so
-                    // making the confirmation wait on it only makes the app feel slow.
+                    // Mirror to MangaBaka and MAL afterwards: each costs an id lookup plus a write,
+                    // and the update is already committed by then, so making the confirmation wait
+                    // on them only makes the app feel slow.
+                    val muListId = media.muListId
+                    val muStart = muListId?.let { muStartDate(it, media.muAddedAt) }
                     launch {
                         MangaBakaSync.syncFromMangaUpdates(
                             muSeriesId = muSeriesId,
-                            muListId = media.muListId,
+                            muListId = muListId,
                             progressChapter = a,
                             progressVolume = media.userVolume,
+                            startDate = muStart,
+                        )
+                    }
+                    if (muListId != null) launch {
+                        syncMuToMal(
+                            muSeriesId = muSeriesId,
+                            muListId = muListId,
+                            titles = listOfNotNull(media.name, media.nameRomaji).distinct(),
+                            chapter = a,
+                            volume = media.userVolume,
+                            startDate = muStart,
                         )
                     }
                 }

@@ -52,6 +52,7 @@ object MangaBakaSync {
         isPrivate: Boolean?,
         startDate: FuzzyDate?,
         finishDate: FuzzyDate?,
+        preferCreate: Boolean = false,
         force: Boolean = false,
     ): Boolean {
         if (!isEnabled(force)) return false
@@ -67,19 +68,25 @@ object MangaBakaSync {
                 isPrivate = isPrivate,
                 startDate = toIsoDate(startDate),
                 finishDate = toIsoDate(finishDate),
-            )
+            ),
+            preferCreate,
         )
     }
 
     /**
      * Pushes a MangaUpdates entry to MangaBaka, resolving the series by MangaUpdates id.
      * [muListId] is a MangaUpdates list index (0=Reading, 1=Planning, 2=Completed, 3=Dropped, 4=Paused).
+     * [startDate] is what MangaUpdates knows as the date the series was added — see
+     * [ani.dantotsu.connections.mangaupdates.muStartDate], which is what callers derive it with.
+     * MangaUpdates has no finish date or score, so those are left as MangaBaka has them.
      */
     suspend fun syncFromMangaUpdates(
         muSeriesId: Long?,
         muListId: Int?,
         progressChapter: Int?,
         progressVolume: Int?,
+        startDate: FuzzyDate? = null,
+        preferCreate: Boolean = false,
         force: Boolean = false,
     ): Boolean {
         if (!isEnabled(force)) return false
@@ -91,7 +98,9 @@ object MangaBakaSync {
                 state = mapMangaUpdatesList(muListId),
                 progressChapter = progressChapter,
                 progressVolume = progressVolume,
-            )
+                startDate = toIsoDate(startDate),
+            ),
+            preferCreate,
         )
     }
 
@@ -110,13 +119,37 @@ object MangaBakaSync {
         return delete(seriesId)
     }
 
-    /** Creates the library entry, falling back to a partial update when it already exists. */
-    private suspend fun upsert(seriesId: Long, body: LibraryEntryBody): Boolean {
+    /**
+     * Writes the library entry with whichever verb is likelier to land, falling back to the other.
+     * PATCH updates an existing entry (partial); POST creates one that isn't there yet.
+     *
+     * Callers that know the entry is missing — the list-compare screen reads it straight off the
+     * library snapshot — set [preferCreate] to skip the PATCH that would only 404. A wrong guess
+     * costs the same two requests this always used to take, so it's never worse than not guessing.
+     *
+     * Only the server's "wrong verb" answers earn the second attempt. Retrying whatever else went
+     * wrong as the opposite verb doesn't fix it and buries the real cause: a PATCH that 502s, sent
+     * again as a POST, comes back 409 "already exists" and the entry looks like a genuine conflict
+     * rather than the gateway hiccup it was.
+     */
+    private suspend fun upsert(
+        seriesId: Long,
+        body: LibraryEntryBody,
+        preferCreate: Boolean = false,
+    ): Boolean {
         val json = Mapper.json.encodeToString(body)
-        // PATCH updates an existing entry (partial); if it doesn't exist yet, POST creates it.
-        if (send(seriesId, "PATCH", json)) return true
-        return send(seriesId, "POST", json)
+        val (first, second) = if (preferCreate) "POST" to "PATCH" else "PATCH" to "POST"
+        val code = send(seriesId, first, json)
+        if (code.isSuccess()) return true
+        if (!code.meansWrongVerb(first)) return false
+        return send(seriesId, second, json).isSuccess()
     }
+
+    private fun Int?.isSuccess(): Boolean = this != null && this in 200..299
+
+    /** PATCH 404: nothing to update yet. POST 409: it's already there. Either way, try the other. */
+    private fun Int?.meansWrongVerb(method: String): Boolean =
+        if (method == "PATCH") this == 404 else this == 409
 
     private suspend fun delete(seriesId: Long): Boolean =
         tryWithSuspend {
@@ -126,17 +159,18 @@ object MangaBakaSync {
             response.isSuccessful || response.code == 404
         } ?: false
 
-    private suspend fun send(seriesId: Long, method: String, json: String): Boolean =
+    /** Sends one write; returns the HTTP status, or null when the request never completed. */
+    private suspend fun send(seriesId: Long, method: String, json: String): Int? =
         tryWithSuspend {
             val request = authedRequest(seriesId)
                 .method(method, json.toRequestBody(JSON_MEDIA))
                 .build()
             val response = MangaBakaApi.execute(request)
-            val ok = response.isSuccessful
-            if (!ok) Logger.log("MangaBaka $method[$seriesId]: HTTP ${response.code}")
+            val code = response.code
+            if (!response.isSuccessful) Logger.log("MangaBaka $method[$seriesId]: HTTP $code")
             response.close()
-            ok
-        } ?: false
+            code
+        }
 
     private fun authedRequest(seriesId: Long): Request.Builder {
         val token = MangaBaka.token ?: ""

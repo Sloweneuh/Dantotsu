@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- View tags used by MaterialButton.setIconSpinning to track a button's running spin. -->
+    <item name="spin_animator" type="id" />
+    <item name="spin_original_icon" type="id" />
+</resources>

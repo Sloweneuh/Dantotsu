@@ -609,7 +609,7 @@
     <string name="mangabaka_list_sync">MangaBaka list sync</string>
     <string name="mangabaka_list_sync_desc">Push AniList and MangaUpdates manga updates to your MangaBaka library (one way)</string>
     <string name="mal_list_sync">MyAnimeList list sync</string>
-    <string name="mal_list_sync_desc">Push AniList list updates to your MyAnimeList account (one way)</string>
+    <string name="mal_list_sync_desc">Push AniList and MangaUpdates list updates to your MyAnimeList account (one way)</string>
     <string name="list_sync_settings">List sync settings</string>
     <string name="list_sync_settings_desc">Choose which trackers your list updates are pushed to</string>
     <string name="compare_lists">Compare lists</string>
