@@ -459,12 +459,19 @@ class UnreadChaptersAdapter(
                 itemCompactScoreBG.visibility = View.GONE
             }
 
-            root.setSafeOnClickListener {
+            // Cover and title must be rebound too: this holder is shared with the AniList
+            // binder, which sets its own listeners on them, so leaving them alone would keep
+            // the recycled entry's click action and open an unrelated media.
+            val clickAction = {
                 root.context.startActivity(
                     Intent(root.context, MUMediaDetailsActivity::class.java)
                         .putExtra("muMedia", item as Serializable)
                 )
             }
+            root.setSafeOnClickListener { clickAction() }
+            itemCompactImage.setSafeOnClickListener { clickAction() }
+            itemCompactTitle.setSafeOnClickListener { clickAction() }
+
             itemCompactImage.setOnLongClickListener {
                 val fm = (it.context as? FragmentActivity)?.supportFragmentManager
                 if (fm != null && fm.findFragmentByTag("muListEditor") == null) {
