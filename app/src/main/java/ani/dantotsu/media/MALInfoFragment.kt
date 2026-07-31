@@ -142,6 +142,11 @@ class MALInfoFragment : Fragment() {
             return
         }
 
+        // Mark loaded synchronously (before the suspending fetch below) so a second observer
+        // firing on the same main-thread pass can't slip past the guard at the top of this
+        // function and start a duplicate render.
+        loaded = true
+
         lifecycleScope.launch {
             try {
                 binding.mediaInfoProgressBar.visibility = View.VISIBLE
@@ -157,11 +162,9 @@ class MALInfoFragment : Fragment() {
 
                 if (malData == null) {
                     showNoDataWithSearch(m, malId)
-                    loaded = true
                     return@launch
                 }
 
-                loaded = true
                 binding.mediaInfoProgressBar.visibility = View.GONE
                 binding.mediaInfoContainer.visibility = View.VISIBLE
 
@@ -177,7 +180,6 @@ class MALInfoFragment : Fragment() {
 
             } catch (e: Exception) {
                 showNoDataWithSearch(m, malId)
-                loaded = true
             }
         }
     }
