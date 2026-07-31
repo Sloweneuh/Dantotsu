@@ -30,6 +30,7 @@ import ani.dantotsu.connections.anilist.StaffSearchResults
 import ani.dantotsu.connections.anilist.StudioSearchResults
 import ani.dantotsu.connections.anilist.UserSearchResults
 import android.content.Intent
+import ani.dantotsu.R
 import ani.dantotsu.connections.mangaupdates.MUMediaAdapter
 import ani.dantotsu.databinding.ActivitySearchBinding
 import ani.dantotsu.initActivity
@@ -41,6 +42,9 @@ import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
+import ani.dantotsu.util.hideEmptyState
+import ani.dantotsu.util.showError
+import ani.dantotsu.util.showNoResults
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.Timer
@@ -437,6 +441,10 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
                         if (prev == 0) binding.searchRecyclerView.scrollToPosition(0)
 
                         progressAdapter.bar?.isVisible = it.hasNextPage
+                        updateSearchEmptyState(false)
+                    } else {
+                        progressAdapter.bar?.isVisible = false
+                        updateSearchEmptyState(true)
                     }
                 }
             }
@@ -456,6 +464,10 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
                         if (prev == 0) binding.searchRecyclerView.scrollToPosition(0)
 
                         progressAdapter.bar?.isVisible = it.hasNextPage
+                        updateSearchEmptyState(false)
+                    } else {
+                        progressAdapter.bar?.isVisible = false
+                        updateSearchEmptyState(true)
                     }
                 }
             }
@@ -475,6 +487,10 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
                         if (prev == 0) binding.searchRecyclerView.scrollToPosition(0)
 
                         progressAdapter.bar?.isVisible = it.hasNextPage
+                        updateSearchEmptyState(false)
+                    } else {
+                        progressAdapter.bar?.isVisible = false
+                        updateSearchEmptyState(true)
                     }
                 }
             }
@@ -494,6 +510,10 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
                         if (prev == 0) binding.searchRecyclerView.scrollToPosition(0)
 
                         progressAdapter.bar?.isVisible = it.hasNextPage
+                        updateSearchEmptyState(false)
+                    } else {
+                        progressAdapter.bar?.isVisible = false
+                        updateSearchEmptyState(true)
                     }
                 }
             }
@@ -513,6 +533,10 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
                         if (prev == 0) binding.searchRecyclerView.scrollToPosition(0)
 
                         progressAdapter.bar?.isVisible = it.hasNextPage
+                        updateSearchEmptyState(false)
+                    } else {
+                        progressAdapter.bar?.isVisible = false
+                        updateSearchEmptyState(true)
                     }
                 }
             }
@@ -539,8 +563,10 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
                         muSearchAdaptor.notifyItemRangeInserted(prev, it.results.size)
                         if (prev == 0) binding.searchRecyclerView.scrollToPosition(0)
                         progressAdapter.bar?.isVisible = it.hasNextPage
+                        updateSearchEmptyState(false)
                     } else {
                         progressAdapter.bar?.isVisible = false
+                        updateSearchEmptyState(true)
                     }
                 }
             }
@@ -561,8 +587,10 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
                         comickSearchAdaptor.notifyItemRangeInserted(prev, it.results.size)
                         if (prev == 0) binding.searchRecyclerView.scrollToPosition(0)
                         progressAdapter.bar?.isVisible = it.hasNextPage
+                        updateSearchEmptyState(false)
                     } else {
                         progressAdapter.bar?.isVisible = false
+                        updateSearchEmptyState(true)
                     }
                 }
             }
@@ -594,8 +622,10 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
                         mangaBakaSearchAdaptor.notifyItemRangeInserted(prev, it.results.size)
                         if (prev == 0) binding.searchRecyclerView.scrollToPosition(0)
                         progressAdapter.bar?.isVisible = it.hasNextPage
+                        updateSearchEmptyState(false)
                     } else {
                         progressAdapter.bar?.isVisible = false
+                        updateSearchEmptyState(true)
                     }
                 }
             }
@@ -631,11 +661,30 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
         progressAdapter.bar?.visibility = View.GONE
     }
 
+    /**
+     * Toggles the "no results"/"couldn't fetch" placeholder. [isError] distinguishes a failed
+     * request (`getSearch` LiveData emitted null) from a request that genuinely came back empty -
+     * either way the placeholder only shows once the current result set is empty, so a failed
+     * next-page load never hides results already on screen.
+     */
+    private fun updateSearchEmptyState(isError: Boolean) {
+        val isEmpty = model.size(searchType) == 0
+        if (!isEmpty) {
+            binding.searchEmptyState.hideEmptyState()
+        } else if (isError) {
+            binding.searchEmptyState.showError()
+        } else {
+            binding.searchEmptyState.showNoResults()
+        }
+    }
+
     private fun clearResultsOnMainThread() {
         if (Looper.myLooper() != Looper.getMainLooper()) {
             runOnUiThread { clearResultsOnMainThread() }
             return
         }
+
+        binding.searchEmptyState.hideEmptyState()
 
         when (searchType) {
             SearchType.ANIME, SearchType.MANGA -> {

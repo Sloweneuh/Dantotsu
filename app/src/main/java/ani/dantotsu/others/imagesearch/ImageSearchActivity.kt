@@ -21,6 +21,10 @@ import ani.dantotsu.media.MediaDetailsActivity
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.toast
+import ani.dantotsu.util.friendlyErrorReason
+import ani.dantotsu.util.hideEmptyState
+import ani.dantotsu.util.showErrorWithReason
+import ani.dantotsu.util.showNoResults
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -74,8 +78,25 @@ class ImageSearchActivity : AppCompatActivity() {
     }
 
     private fun displayResult(result: ImageSearchViewModel.SearchResult) {
-        val recyclerView: RecyclerView = findViewById(R.id.recyclerView)
+        // viewModel.clearResults() posts this all-null sentinel right before the picker opens -
+        // it isn't a search outcome, so it shouldn't toggle the placeholder either way.
+        if (result.error == null && result.result == null && result.frameCount == null) {
+            binding.imageSearchEmptyState.hideEmptyState()
+            return
+        }
+
         val searchResults: List<ImageSearchViewModel.ImageResult> = result.result.orEmpty()
+        if (result.error != null) {
+            binding.imageSearchEmptyState.showErrorWithReason(friendlyErrorReason(result.error))
+            return
+        }
+        if (searchResults.isEmpty()) {
+            binding.imageSearchEmptyState.showNoResults()
+            return
+        }
+        binding.imageSearchEmptyState.hideEmptyState()
+
+        val recyclerView: RecyclerView = findViewById(R.id.recyclerView)
         val adapter = ImageSearchResultAdapter(searchResults)
 
         adapter.setOnItemClickListener(object : ImageSearchResultAdapter.OnItemClickListener {

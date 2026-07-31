@@ -31,6 +31,9 @@ import ani.dantotsu.statusBarHeight
 import ani.dantotsu.stripSpansOnPaste
 import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.util.Logger
+import ani.dantotsu.util.hideEmptyState
+import ani.dantotsu.util.showError
+import ani.dantotsu.util.showNoResults
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.color.MaterialColors
 import com.google.android.material.radiobutton.MaterialRadioButton
@@ -574,7 +577,7 @@ class ExtensionBrowseActivity : AppCompatActivity() {
         currentPage = 1
         endReached = false
         adapter.submit(emptyList())
-        binding.extensionBrowseEmptyContainer.isVisible = false
+        binding.extensionBrowseEmptyState.hideEmptyState()
         binding.chipPopular.isChecked = mode == Mode.POPULAR
         binding.chipLatest.isChecked = mode == Mode.LATEST
         binding.chipFilter.isChecked = mode == Mode.FILTER
@@ -891,8 +894,7 @@ class ExtensionBrowseActivity : AppCompatActivity() {
                 Logger.log(result.exceptionOrNull() ?: Exception("fetch failed"))
                 snackString(getString(R.string.search_fetch_error))
                 if (adapter.itemCount == 0) {
-                    binding.extensionBrowseEmptyContainer.isVisible = true
-                    binding.extensionBrowseEmptyText.text = getString(R.string.search_fetch_error)
+                    binding.extensionBrowseEmptyState.showError(result.exceptionOrNull())
                 }
                 return@launch
             }
@@ -904,10 +906,9 @@ class ExtensionBrowseActivity : AppCompatActivity() {
                 adapter.append(entries)
             }
             if (adapter.itemCount == 0) {
-                binding.extensionBrowseEmptyContainer.isVisible = true
-                binding.extensionBrowseEmptyText.text = getString(R.string.no_results_found)
+                binding.extensionBrowseEmptyState.showNoResults(getString(R.string.no_results_found))
             } else {
-                binding.extensionBrowseEmptyContainer.isVisible = false
+                binding.extensionBrowseEmptyState.hideEmptyState()
                 currentPage = page
             }
         }

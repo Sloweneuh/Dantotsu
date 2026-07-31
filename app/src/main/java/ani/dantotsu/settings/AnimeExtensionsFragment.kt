@@ -9,12 +9,16 @@ import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
+import androidx.paging.LoadState
 import androidx.recyclerview.widget.LinearLayoutManager
 import ani.dantotsu.databinding.FragmentExtensionsBinding
 import ani.dantotsu.settings.paging.AnimeExtensionAdapter
 import ani.dantotsu.settings.paging.AnimeExtensionsViewModel
 import ani.dantotsu.settings.paging.AnimeExtensionsViewModelFactory
 import ani.dantotsu.settings.paging.OnAnimeInstallClickListener
+import ani.dantotsu.util.hideEmptyState
+import ani.dantotsu.util.showError
+import ani.dantotsu.util.showNoResults
 import eu.kanade.tachiyomi.extension.anime.AnimeExtensionManager
 import eu.kanade.tachiyomi.extension.anime.model.AnimeExtension
 import kotlinx.coroutines.flow.collectLatest
@@ -54,6 +58,18 @@ class AnimeExtensionsFragment : Fragment(),
         lifecycleScope.launch {
             viewModel.pagerFlow.collectLatest {
                 adapter.submitData(it)
+            }
+        }
+
+        lifecycleScope.launch {
+            adapter.loadStateFlow.collectLatest { loadStates ->
+                val refresh = loadStates.refresh
+                when {
+                    refresh is LoadState.Error -> binding.extensionsEmptyState.showError(refresh.error)
+                    refresh is LoadState.NotLoading && adapter.itemCount == 0 ->
+                        binding.extensionsEmptyState.showNoResults()
+                    else -> binding.extensionsEmptyState.hideEmptyState()
+                }
             }
         }
 

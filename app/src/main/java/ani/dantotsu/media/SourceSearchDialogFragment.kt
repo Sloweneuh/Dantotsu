@@ -30,10 +30,16 @@ import ani.dantotsu.stripSpansOnPaste
 import ani.dantotsu.tryWithSuspend
 import android.content.Intent
 import android.text.SpannableString
+import android.text.SpannableStringBuilder
 import android.text.Spanned
 import android.text.method.LinkMovementMethod
 import android.text.style.ClickableSpan
 import ani.dantotsu.settings.ExtensionsActivity
+import ani.dantotsu.util.friendlyErrorReason
+import ani.dantotsu.util.hideEmptyState
+import ani.dantotsu.util.showError
+import ani.dantotsu.util.showErrorWithReason
+import ani.dantotsu.util.showNoResults
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -119,7 +125,7 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
                         _binding?.searchProgressContainer?.visibility = View.VISIBLE
                         _binding?.searchRecyclerView?.visibility = View.GONE
                         // Hide any previous empty/error placeholder immediately when starting a new search
-                        _binding?.searchEmptyContainer?.visibility = View.GONE
+                        _binding?.searchEmptyState?.hideEmptyState()
 
                         // Start a UI watchdog to ensure spinner is hidden even if an extension blocks
                         searchWatchdog?.let { _binding?.searchProgress?.removeCallbacks(it) }
@@ -133,6 +139,7 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
 
                         var results: List<ani.dantotsu.parsers.ShowResponse>? = null
                         var timedOut = false
+                        var lastError: Throwable? = null
                         try {
                             results = withContext(Dispatchers.IO) {
                                 try {
@@ -141,14 +148,16 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
                                             source.search(query)
                                         }
                                     }
-                                } catch (_: Throwable) {
+                                } catch (e: Throwable) {
+                                    lastError = e
                                     null
                                 }
                             }
                                 if (results == null) {
                                     timedOut = true
                                 }
-                        } catch (_: Throwable) {
+                        } catch (e: Throwable) {
+                            lastError = e
                             results = null
                         } finally {
                             // cancel watchdog and reset job
@@ -166,17 +175,19 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
                                     clamp(requireActivity().resources.displayMetrics.widthPixels / 124f.px, 1, 4)
                                 )
                                 // Hide any empty/error placeholder
-                                _binding?.searchEmptyContainer?.visibility = View.GONE
+                                _binding?.searchEmptyState?.hideEmptyState()
                             } else {
                                 // Show empty state with different messages depending on cause
                                 _binding?.searchRecyclerView?.visibility = View.GONE
                                 _binding?.searchRecyclerView?.adapter = null
-                                _binding?.searchEmptyContainer?.visibility = View.VISIBLE
-                                val emptyTextView = _binding?.searchEmptyText
                                 withContext(Dispatchers.Main) {
+                                    val reason = friendlyErrorReason(lastError)
                                     when {
                                         timedOut -> {
-                                            emptyTextView?.text = getString(R.string.search_timeout)
+                                            val base = getString(R.string.search_timeout)
+                                            _binding?.searchEmptyState?.showError(
+                                                if (reason != null) "$base\n$reason" else base
+                                            )
                                             ani.dantotsu.snackString(getString(R.string.search_timeout))
                                         }
                                         results == null -> {
@@ -195,18 +206,21 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
                                                             } catch (_: Throwable) {}
                                                         }
                                                     }, start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-                                                    emptyTextView?.text = spannable
-                                                    emptyTextView?.movementMethod = LinkMovementMethod.getInstance()
+                                                    val finalText: CharSequence = if (reason != null) {
+                                                        SpannableStringBuilder(spannable).append("\n").append(reason)
+                                                    } else spannable
+                                                    _binding?.searchEmptyState?.showError(finalText)
+                                                    _binding?.searchEmptyState?.emptyStateText?.movementMethod = LinkMovementMethod.getInstance()
                                                 } else {
-                                                    emptyTextView?.text = msg
+                                                    _binding?.searchEmptyState?.showErrorWithReason(reason)
                                                 }
                                             } catch (_: Throwable) {
-                                                emptyTextView?.text = getString(R.string.search_fetch_error)
+                                                _binding?.searchEmptyState?.showErrorWithReason(reason)
                                             }
                                         }
                                         else -> {
                                             // No results found
-                                            emptyTextView?.text = getString(R.string.search_no_results)
+                                            _binding?.searchEmptyState?.showNoResults()
                                         }
                                     }
                                 }

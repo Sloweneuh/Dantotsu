@@ -32,6 +32,8 @@ import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.snackString
 import ani.dantotsu.util.Logger
 import ani.dantotsu.util.customAlertDialog
+import ani.dantotsu.util.hideEmptyState
+import ani.dantotsu.util.showNoResults
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.textfield.TextInputLayout
 import eu.kanade.tachiyomi.extension.InstallStep
@@ -119,6 +121,11 @@ class InstalledMangaExtensionsFragment : Fragment(), SearchQueryHandler {
         extensionsRecyclerView = binding.allExtensionsRecyclerView
         extensionsRecyclerView.layoutManager = LinearLayoutManager(requireContext())
         extensionsRecyclerView.adapter = extensionsAdapter
+        extensionsAdapter.registerAdapterDataObserver(object : RecyclerView.AdapterDataObserver() {
+            override fun onChanged() = updateEmptyState()
+            override fun onItemRangeInserted(positionStart: Int, itemCount: Int) = updateEmptyState()
+            override fun onItemRangeRemoved(positionStart: Int, itemCount: Int) = updateEmptyState()
+        })
 
         val itemTouchHelperCallback = object : ItemTouchHelper.SimpleCallback(
             ItemTouchHelper.UP or ItemTouchHelper.DOWN, 0
@@ -174,6 +181,12 @@ class InstalledMangaExtensionsFragment : Fragment(), SearchQueryHandler {
         super.onResume()
         // A confirmed uninstall usually lands while the system dialog is still in front.
         uninstallConfirmation.flush()
+    }
+
+    private fun updateEmptyState() {
+        val b = _binding ?: return
+        if (extensionsAdapter.itemCount == 0) b.extensionsEmptyState.showNoResults()
+        else b.extensionsEmptyState.hideEmptyState()
     }
 
     private fun sortToMangaSourcesList(inpt: List<MangaExtension.Installed>): List<MangaExtension.Installed> {

@@ -10,6 +10,7 @@ import androidx.core.app.NotificationCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
+import androidx.paging.LoadState
 import androidx.recyclerview.widget.LinearLayoutManager
 import ani.dantotsu.R
 import ani.dantotsu.connections.crashlytics.CrashlyticsInterface
@@ -21,6 +22,9 @@ import ani.dantotsu.settings.paging.NovelExtensionsViewModel
 import ani.dantotsu.settings.paging.NovelExtensionsViewModelFactory
 import ani.dantotsu.settings.paging.OnNovelInstallClickListener
 import ani.dantotsu.snackString
+import ani.dantotsu.util.hideEmptyState
+import ani.dantotsu.util.showError
+import ani.dantotsu.util.showNoResults
 import eu.kanade.tachiyomi.data.notification.Notifications
 import eu.kanade.tachiyomi.extension.InstallStep
 import kotlinx.coroutines.flow.collectLatest
@@ -60,6 +64,18 @@ class NovelExtensionsFragment : Fragment(),
         lifecycleScope.launch {
             viewModel.pagerFlow.collectLatest { pagingData ->
                 adapter.submitData(pagingData)
+            }
+        }
+
+        lifecycleScope.launch {
+            adapter.loadStateFlow.collectLatest { loadStates ->
+                val refresh = loadStates.refresh
+                when {
+                    refresh is LoadState.Error -> binding.extensionsEmptyState.showError(refresh.error)
+                    refresh is LoadState.NotLoading && adapter.itemCount == 0 ->
+                        binding.extensionsEmptyState.showNoResults()
+                    else -> binding.extensionsEmptyState.hideEmptyState()
+                }
             }
         }
         return binding.root

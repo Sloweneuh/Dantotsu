@@ -39,6 +39,14 @@
 
     </LinearLayout>
 
+    <include
+        android:id="@+id/imageSearchEmptyState"
+        layout="@layout/layout_search_empty_state"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_marginTop="32dp" />
+
     <Button
         android:id="@+id/uploadImage"
         android:layout_width="wrap_content"

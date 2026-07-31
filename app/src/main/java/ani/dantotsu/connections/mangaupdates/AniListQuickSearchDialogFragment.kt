@@ -26,6 +26,9 @@ import ani.dantotsu.navBarHeight
 import ani.dantotsu.px
 import ani.dantotsu.settings.ExtensionMediaLinker
 import ani.dantotsu.stripSpansOnPaste
+import ani.dantotsu.util.hideEmptyState
+import ani.dantotsu.util.showError
+import ani.dantotsu.util.showNoResults
 import eu.kanade.tachiyomi.animesource.model.SAnime
 import eu.kanade.tachiyomi.source.model.SManga
 import kotlinx.coroutines.Dispatchers
@@ -127,7 +130,7 @@ class AniListQuickSearchDialogFragment : BottomSheetDialogFragment() {
 
                 binding.searchProgressContainer.visibility = View.VISIBLE
                 binding.searchRecyclerView.visibility = View.GONE
-                binding.searchEmptyContainer.visibility = View.GONE
+                binding.searchEmptyState.hideEmptyState()
 
                 searchWatchdog?.let { _binding?.searchProgress?.removeCallbacks(it) }
                 searchWatchdog = Runnable {
@@ -141,6 +144,7 @@ class AniListQuickSearchDialogFragment : BottomSheetDialogFragment() {
 
                 var results: List<Media>? = null
                 var timedOut = false
+                var lastError: Throwable? = null
                 try {
                     results = withContext(Dispatchers.IO) {
                         val response = kotlinx.coroutines.withTimeoutOrNull(10_000L) {
@@ -169,7 +173,8 @@ class AniListQuickSearchDialogFragment : BottomSheetDialogFragment() {
                             }
                         }
                     }
-                } catch (_: Throwable) {
+                } catch (e: Throwable) {
+                    lastError = e
                     results = null
                 } finally {
                     val b = _binding
@@ -205,15 +210,14 @@ class AniListQuickSearchDialogFragment : BottomSheetDialogFragment() {
                                 requireActivity(),
                                 clamp(requireActivity().resources.displayMetrics.widthPixels / 124f.px, 1, 4)
                             )
-                            b.searchEmptyContainer.visibility = View.GONE
+                            b.searchEmptyState.hideEmptyState()
                         } else {
                             b.searchRecyclerView.visibility = View.GONE
                             b.searchRecyclerView.adapter = null
-                            b.searchEmptyContainer.visibility = View.VISIBLE
-                            b.searchEmptyText.text = when {
-                                timedOut -> getString(R.string.search_timeout)
-                                results == null -> getString(R.string.search_fetch_error)
-                                else -> getString(R.string.search_no_results)
+                            when {
+                                timedOut -> b.searchEmptyState.showError(getString(R.string.search_timeout))
+                                results == null -> b.searchEmptyState.showError(lastError)
+                                else -> b.searchEmptyState.showNoResults()
                             }
                         }
                     }
