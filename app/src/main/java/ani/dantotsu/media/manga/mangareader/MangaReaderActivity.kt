@@ -107,6 +107,7 @@ import java.io.ObjectOutputStream
 import java.util.Timer
 import java.util.TimerTask
 import kotlin.math.abs
+import kotlin.math.max
 import kotlin.math.min
 import kotlin.properties.Delegates
 
@@ -1019,7 +1020,7 @@ class MangaReaderActivity : AppCompatActivity() {
                                 } else if (!autoscrollOn) handleController(false)
                             }
                             updatePageNumber(
-                                manager.findLastVisibleItemPosition().toLong() * (dualPage { 2 }
+                                mostVisibleItemPosition(v, manager).toLong() * (dualPage { 2 }
                                     ?: 1) + 1)
                         }
                         super.onScrolled(v, dx, dy)
@@ -1318,6 +1319,42 @@ class MangaReaderActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * The item occupying the largest visible span along the scroll axis — a better proxy for
+     * "the page being read" than [PreloadLinearLayoutManager.findLastVisibleItemPosition], which
+     * returns whichever item has even a single pixel peeking in at the trailing edge.
+     */
+    private fun mostVisibleItemPosition(
+        recyclerView: RecyclerView,
+        manager: PreloadLinearLayoutManager
+    ): Int {
+        val first = manager.findFirstVisibleItemPosition()
+        val last = manager.findLastVisibleItemPosition()
+        if (first < 0 || last < 0) return last
+        if (first == last) return first
+
+        val vertical = manager.orientation == RecyclerView.VERTICAL
+        val viewportStart = if (vertical) recyclerView.paddingTop else recyclerView.paddingLeft
+        val viewportEnd = if (vertical)
+            recyclerView.height - recyclerView.paddingBottom
+        else
+            recyclerView.width - recyclerView.paddingRight
+
+        var bestPosition = first
+        var bestVisibleSpan = -1
+        for (pos in first..last) {
+            val child = manager.findViewByPosition(pos) ?: continue
+            val childStart = if (vertical) child.top else child.left
+            val childEnd = if (vertical) child.bottom else child.right
+            val visibleSpan = min(childEnd, viewportEnd) - max(childStart, viewportStart)
+            if (visibleSpan > bestVisibleSpan) {
+                bestVisibleSpan = visibleSpan
+                bestPosition = pos
+            }
+        }
+        return bestPosition
+    }
+
     private var loading = false
     fun updatePageNumber(pageNumber: Long) {
         var page = pageNumber
@@ -1405,9 +1442,13 @@ class MangaReaderActivity : AppCompatActivity() {
             } else if (!autoscrollOn) handleController(false)
         }
 
-        // Track current chapter based on the last visible Image (skip Transition/Boundary
-        // so progress keeps tracking the chapter when those non-image items are on screen).
-        val refPos = adapter.lastImagePositionAtOrBefore(lastVisible)
+        // Track current chapter/page based on whichever Image occupies the most of the screen
+        // (skip Transition/Boundary so progress keeps tracking the chapter when those non-image
+        // items are on screen). Using the most-visible item rather than the last-visible one
+        // avoids flipping the indicator onto the next page/chapter while it's still just a sliver
+        // peeking in at the trailing edge.
+        val mostVisible = mostVisibleItemPosition(v, manager)
+        val refPos = adapter.lastImagePositionAtOrBefore(mostVisible)
         val visibleChapterIdx = if (refPos >= 0) adapter.getChapterIndexAt(refPos) else null
         if (visibleChapterIdx != null && visibleChapterIdx != lastTrackedChapterIndex) {
             // Chapter changed — update progress for the previous chapter only when moving forward
