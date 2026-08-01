@@ -12,6 +12,7 @@ import ani.dantotsu.addons.torrent.TorrentAddonManager
 import ani.dantotsu.connections.handoff.GlobalHandoffReceiver
 import ani.dantotsu.aniyomi.anime.custom.AppModule
 import ani.dantotsu.aniyomi.anime.custom.PreferenceModule
+import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.comments.CommentsAPI
 import ani.dantotsu.connections.crashlytics.CrashlyticsInterface
 import ani.dantotsu.notifications.TaskScheduler
@@ -72,6 +73,11 @@ class App : MultiDexApplication() {
     override fun onCreate() {
         super.onCreate()
         PrefManager.init(this)
+        // Before anything can query AniList. Entry points other than MainActivity (a notification
+        // tap, a media deep link, a widget) go straight to a details screen and skip the session
+        // restore that lives on the home path, which left those queries unauthenticated and so
+        // without the user's list entry. Prefs-only, no network.
+        Anilist.restoreSession()
         AppUpdater.cleanupDownloadedApkFiles(this)
 
         val crashlytics =

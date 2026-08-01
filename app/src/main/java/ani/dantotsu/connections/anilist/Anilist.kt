@@ -270,6 +270,27 @@ object Anilist {
         return !token.isNullOrEmpty()
     }
 
+    /**
+     * Restores the saved session into memory, without any network call.
+     *
+     * The normal restore happens on the way through MainActivity, but a cold start doesn't always
+     * go that way: tapping a notification or a media link opens a details activity directly. Those
+     * screens then query AniList with no token, so the response carries no `mediaListEntry` and the
+     * user's progress comes back empty; [userid] being null also hides the fav button and turns
+     * "Add to list" into a login prompt. Both are read back from prefs here so the very first query
+     * of the process is already authenticated.
+     *
+     * [initialized] is deliberately left alone: this is the cached identity, and `getUserId` still
+     * needs to fetch the full viewer data (score format, title language, custom lists) once.
+     */
+    fun restoreSession() {
+        if (!getSavedToken()) return
+        if (userid == null) userid =
+            PrefManager.getVal(PrefName.AnilistUserId, null as String?)?.toIntOrNull()
+        if (username == null) username =
+            PrefManager.getVal(PrefName.AnilistUserName, null as String?)?.takeIf { it.isNotBlank() }
+    }
+
     fun removeSavedToken() {
         token = null
         username = null
