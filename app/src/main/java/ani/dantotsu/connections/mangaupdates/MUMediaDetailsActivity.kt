@@ -35,6 +35,7 @@ import ani.dantotsu.connections.handoff.HandoffPayload
 import ani.dantotsu.Refresh
 import ani.dantotsu.ZoomOutPageTransformer
 import ani.dantotsu.blurImage
+import ani.dantotsu.copyToClipboard
 import ani.dantotsu.connections.anilist.api.FuzzyDate
 import ani.dantotsu.getThemeColor
 import ani.dantotsu.media.Author
@@ -51,6 +52,7 @@ import ani.dantotsu.media.manga.MangaReadFragment
 import ani.dantotsu.media.novel.NovelReadFragment
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.others.AndroidBug5497Workaround
+import ani.dantotsu.others.ImageViewDialog
 import ani.dantotsu.others.getSerialized
 import ani.dantotsu.Mapper
 import ani.dantotsu.settings.saving.PrefManager
@@ -747,11 +749,27 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         }
         blurImage(banner, muMedia.coverUrl)
         binding.mediaCoverImage.loadImage(muMedia.coverUrl)
+        binding.mediaCoverImage.setOnLongClickListener {
+            // Resolved at click time: the cover is often only filled in once the series details
+            // come back and land in the shared Media.
+            val cover = model.getMedia().value?.cover ?: muMedia.coverUrl
+            ImageViewDialog.newInstance(
+                this, getString(R.string.cover, muMedia.title ?: ""), cover
+            )
+        }
 
         // Title
         binding.mediaTitle.translationX = -screenWidth
         binding.mediaTitle.text = muMedia.title ?: ""
         binding.mediaTitleCollapse.text = muMedia.title ?: ""
+        binding.mediaTitle.setOnLongClickListener {
+            copyToClipboard(muMedia.title ?: "")
+            true
+        }
+        binding.mediaTitleCollapse.setOnLongClickListener {
+            copyToClipboard(muMedia.title ?: "")
+            true
+        }
         binding.mediaStatus.text = ""
 
         // Progress state tracked locally so we can optimistically update UI

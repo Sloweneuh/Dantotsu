@@ -41,6 +41,7 @@ import ani.dantotsu.navBarHeight
 import ani.dantotsu.openLinkInBrowser
 import ani.dantotsu.openMangaUpdatesSeriesInApp
 import ani.dantotsu.openOrCopyAnilistLink
+import ani.dantotsu.others.ImageViewDialog
 import ani.dantotsu.media.manga.Manga
 import ani.dantotsu.px
 import ani.dantotsu.setSafeOnClickListener
@@ -110,7 +111,15 @@ class MangaBakaMediaActivity : AppCompatActivity() {
             binding.mangaBakaMediaCover.loadImage(coverUrl)
             blurImage(binding.mangaBakaMediaBanner, coverUrl)
         }
-        binding.mangaBakaMediaTitle.text = series.title ?: getString(R.string.unknown)
+        val displayTitle = series.title ?: getString(R.string.unknown)
+        binding.mangaBakaMediaTitle.text = displayTitle
+        binding.mangaBakaMediaTitle.setOnLongClickListener {
+            copyToClipboard(displayTitle)
+            true
+        }
+        binding.mangaBakaMediaCover.setOnLongClickListener {
+            ImageViewDialog.newInstance(this, getString(R.string.cover, displayTitle), coverUrl)
+        }
         binding.mangaBakaMediaScore.text = series.rating?.let { "★ " + String.format(Locale.US, "%.1f", it / 10.0) } ?: ""
     }
 

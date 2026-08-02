@@ -29,6 +29,7 @@ import ani.dantotsu.databinding.ItemChipBinding
 import ani.dantotsu.databinding.ItemEpisodeListBinding
 import ani.dantotsu.bindScrollToTop
 import ani.dantotsu.buildMarkwon
+import ani.dantotsu.copyToClipboard
 import ani.dantotsu.initActivity
 import ani.dantotsu.loadImage
 import ani.dantotsu.media.Media
@@ -40,6 +41,7 @@ import ani.dantotsu.media.manga.MangaChapter as MediaMangaChapter
 import ani.dantotsu.media.manga.mangareader.MangaReaderActivity
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.openLinkInBrowser
+import ani.dantotsu.others.ImageViewDialog
 import nl.joery.animatedbottombar.AnimatedBottomBar
 import ani.dantotsu.parsers.DynamicMangaParser
 import ani.dantotsu.settings.saving.PrefManager
@@ -198,11 +200,24 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
     private fun bindInitial() {
         val title = manga?.title ?: anime?.title ?: ""
         binding.extensionInfoTitle.text = title
+        binding.extensionInfoTitle.setOnLongClickListener {
+            copyToClipboard(title)
+            true
+        }
         val cover = manga?.thumbnail_url ?: anime?.thumbnail_url
         if (!cover.isNullOrBlank() && sourceHeaders.isNotEmpty() && (cover.startsWith("http://") || cover.startsWith("https://"))) {
             binding.extensionInfoCover.loadImage(FileUrl(cover, sourceHeaders))
         } else {
             binding.extensionInfoCover.loadImage(cover)
+        }
+        binding.extensionInfoCover.setOnLongClickListener {
+            if (cover.isNullOrBlank()) return@setOnLongClickListener false
+            // The FileUrl overload so the source's headers ride along — plenty of extension
+            // CDNs 403 a bare request.
+            ImageViewDialog.newInstance(
+                getString(R.string.cover, title), FileUrl(cover, sourceHeaders), false, null
+            ).show(supportFragmentManager, "image")
+            true
         }
         blurImage(binding.extensionInfoBanner, cover, sourceHeaders)
         renderDetails()

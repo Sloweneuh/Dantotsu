@@ -43,6 +43,7 @@ import ani.dantotsu.navBarHeight
 import ani.dantotsu.openLinkInBrowser
 import ani.dantotsu.openMangaUpdatesSeriesInApp
 import ani.dantotsu.openOrCopyAnilistLink
+import ani.dantotsu.others.ImageViewDialog
 import ani.dantotsu.px
 import ani.dantotsu.setSafeOnClickListener
 import ani.dantotsu.statusBarHeight
@@ -380,7 +381,15 @@ class ComickMediaActivity : AppCompatActivity() {
             ?.filter { it.lang?.equals("en", ignoreCase = true) == true }
             ?.mapNotNull { it.title?.takeIf { t -> t.isNotBlank() && !hasCJK(t) } }
             ?.firstOrNull()
-        binding.comickMediaTitle.text = englishTitle ?: comic.title ?: getString(R.string.unknown)
+        val displayTitle = englishTitle ?: comic.title ?: getString(R.string.unknown)
+        binding.comickMediaTitle.text = displayTitle
+        binding.comickMediaTitle.setOnLongClickListener {
+            copyToClipboard(displayTitle)
+            true
+        }
+        binding.comickMediaCover.setOnLongClickListener {
+            ImageViewDialog.newInstance(this, getString(R.string.cover, displayTitle), coverUrl)
+        }
         binding.comickMediaScore.text = comic.bayesian_rating?.let { "★ $it" } ?: ""
     }
 
