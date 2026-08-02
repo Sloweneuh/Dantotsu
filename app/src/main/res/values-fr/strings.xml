@@ -484,6 +484,7 @@
     <string name="list_sync_failed">Échec de la synchronisation</string>
     <string name="list_sync_total">Total %1$d</string>
     <string name="list_sync_up_to_date">La liste est à jour</string>
+    <string name="list_compare_failed">Impossible de charger cette comparaison</string>
     <string name="list_compare_login_anilist">Connectez-vous à AniList pour comparer vos listes</string>
     <string name="list_compare_login_trackers">Connectez-vous à MyAnimeList ou MangaBaka pour comparer les listes</string>
     <string name="mal_section_anime">MyAnimeList · Animés</string>

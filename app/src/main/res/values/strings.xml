@@ -625,6 +625,7 @@
     <string name="list_sync_failed">Sync failed</string>
     <string name="list_sync_total">Total %1$d</string>
     <string name="list_sync_up_to_date">List is up to date</string>
+    <string name="list_compare_failed">Couldn\'t load this comparison</string>
     <string name="list_compare_login_anilist">Log in to AniList to compare your lists</string>
     <string name="list_compare_login_trackers">Log in to MyAnimeList or MangaBaka to compare lists</string>
     <string name="mal_section_anime">MyAnimeList · Anime</string>

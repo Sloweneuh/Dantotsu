@@ -18,10 +18,13 @@ import ani.dantotsu.connections.mangaupdates.resolveMuMalId
 import ani.dantotsu.media.Media
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 
@@ -34,9 +37,10 @@ import kotlinx.coroutines.sync.withPermit
  *   **MangaUpdates** contributing to the manga subsection when active (see [muActive]).
  * - **MangaBaka** is compared against **AniList manga + MangaUpdates** (same condition).
  *
- * Where both sources cover the same media, AniList wins: it carries scores and dates MangaUpdates has
- * no equivalent for, so a MangaUpdates entry is only compared when nothing on AniList already maps to
- * the same destination entry.
+ * The two sources aren't supposed to hold the same media: MangaUpdates support is built so an entry
+ * lives on one side or the other. Should one ever turn up on both, AniList wins — it carries scores
+ * and dates MangaUpdates has no equivalent for — and the MangaUpdates row is dropped rather than
+ * offered as a second push at the same destination entry.
  *
  * Everything here is pure logic (no Android/Context). The screen resolves labels and drives sync.
  */
@@ -98,49 +102,90 @@ object ListCompare {
         val diffs: List<DiffEntry>,
     )
 
-    /** Full screen state. A null subsection means that tracker isn't logged in. */
-    data class CompareResult(
-        val malAnime: SubsectionResult?,
-        val malManga: SubsectionResult?,
-        val mangaBaka: SubsectionResult?,
-        val muActive: Boolean,
-    )
+    /** One comparison the screen can show, in display order. */
+    enum class Section { MAL_ANIME, MAL_MANGA, MANGABAKA }
+
+    /** Both sides' totals for one section, published ahead of its (much slower) diff pass. */
+    data class SectionStats(val source: SideStats, val dest: SideStats)
 
     /** Canonical status display order (AniList vocabulary). */
     val STATUS_ORDER = listOf("CURRENT", "PLANNING", "COMPLETED", "PAUSED", "DROPPED", "REPEATING")
 
+    /** Whether MangaUpdates contributes to the manga comparisons. */
+    fun muActive(): Boolean =
+        MangaUpdates.token != null && PrefManager.getVal(PrefName.MangaUpdatesListEnabled)
+
     /**
-     * Runs all comparisons the current logins allow. Requires AniList (the source of truth); returns
-     * an all-null result when AniList isn't available.
-     *
-     * The screen can't show anything until every section is built, so the whole thing is a fan-out:
-     * the source lists are fetched once each and the sections built off them concurrently, rather
-     * than each section fetching and comparing in turn. Both manga sections share the same AniList
-     * manga list and MangaUpdates snapshot — the two heaviest fetches on the screen, each of which
-     * used to be paid for twice.
+     * Which sections the current logins allow. AniList is the source of truth, so nothing is
+     * comparable without it. Cheap (token checks only): the screen builds its section cards from
+     * this before any network work starts.
      */
-    suspend fun compareAll(): CompareResult = coroutineScope {
-        val muActive = MangaUpdates.token != null &&
-            PrefManager.getVal(PrefName.MangaUpdatesListEnabled)
-        val userId = Anilist.userid ?: return@coroutineScope CompareResult(null, null, null, muActive)
+    fun availableSections(): List<Section> {
+        if (Anilist.userid == null) return emptyList()
+        return buildList {
+            if (MAL.token != null) {
+                add(Section.MAL_ANIME)
+                add(Section.MAL_MANGA)
+            }
+            if (MangaBaka.token != null) add(Section.MANGABAKA)
+        }
+    }
+
+    /**
+     * Runs every available comparison, reporting each section as it gets there rather than holding
+     * everything back until the slowest one finishes: [onStats] fires once that section's lists are
+     * in (with its final totals), [onSection] when its per-entry pass has produced the diffs.
+     * Sections are independent — a slow tracker never blocks another one from filling in.
+     *
+     * The source lists are still fetched once each and shared: both manga sections read the same
+     * AniList manga list and MangaUpdates snapshot, the two heaviest fetches on the screen. They're
+     * handed over as [Result]s so a failed fetch surfaces on the sections that need it ([onError])
+     * instead of cancelling the whole screen.
+     *
+     * Callbacks run on whatever dispatcher this was called on; the caller marshals to the UI.
+     */
+    suspend fun compareStreaming(
+        onStats: suspend (Section, SectionStats) -> Unit,
+        onSection: suspend (Section, SubsectionResult) -> Unit,
+        onError: suspend (Section, Throwable) -> Unit,
+    ): Unit = coroutineScope {
+        val userId = Anilist.userid ?: return@coroutineScope
         val onMal = MAL.token != null
         val onMangaBaka = MangaBaka.token != null
+        val muActive = muActive()
 
-        val anilistAnime = async { if (onMal) anilistList(true, userId) else emptyList() }
-        val anilistManga = async { if (onMal || onMangaBaka) anilistList(false, userId) else emptyList() }
+        val anilistAnime = async { runCatching { if (onMal) anilistList(true, userId) else emptyList() } }
+        val anilistManga =
+            async { runCatching { if (onMal || onMangaBaka) anilistList(false, userId) else emptyList() } }
         val muMedia = async {
-            if (muActive && (onMal || onMangaBaka)) MangaUpdates.getAllUserLists().values.flatten()
-            else emptyList()
+            runCatching {
+                if (muActive && (onMal || onMangaBaka)) MangaUpdates.getAllUserLists().values.flatten()
+                else emptyList()
+            }
         }
 
-        val malAnime = async { if (onMal) compareMal(true, anilistAnime.await(), emptyList()) else null }
-        val malManga = async {
-            if (onMal) compareMal(false, anilistManga.await(), muMedia.await()) else null
+        /** Runs one section, keeping its failure to itself. */
+        fun section(id: Section, block: suspend () -> SubsectionResult) = launch {
+            try {
+                onSection(id, block())
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                onError(id, e)
+            }
         }
-        val mangaBaka = async {
-            if (onMangaBaka) compareMangaBaka(anilistManga.await(), muMedia.await()) else null
+
+        if (onMal) {
+            section(Section.MAL_ANIME) {
+                compareMal(true, anilistAnime, null) { onStats(Section.MAL_ANIME, it) }
+            }
+            section(Section.MAL_MANGA) {
+                compareMal(false, anilistManga, muMedia) { onStats(Section.MAL_MANGA, it) }
+            }
         }
-        CompareResult(malAnime.await(), malManga.await(), mangaBaka.await(), muActive)
+        if (onMangaBaka) section(Section.MANGABAKA) {
+            compareMangaBaka(anilistManga, muMedia) { onStats(Section.MANGABAKA, it) }
+        }
     }
 
     /** The user's whole AniList list for one media type. */
@@ -149,30 +194,45 @@ object ListCompare {
 
     // ---- MAL vs AniList (+ MangaUpdates) ----
 
-    /** [muMedia] is empty for anime and whenever MangaUpdates isn't contributing. */
+    /** [muList] is null for anime and whenever MangaUpdates isn't contributing. */
     private suspend fun compareMal(
         isAnime: Boolean,
-        source: List<Media>,
-        muMedia: List<MUMedia>,
-    ): SubsectionResult {
-        val malList = MAL.query.getUserList(isAnime)
+        sourceList: Deferred<Result<List<Media>>>,
+        muList: Deferred<Result<List<MUMedia>>>?,
+        onStats: suspend (SectionStats) -> Unit,
+    ): SubsectionResult = coroutineScope {
+        // The destination list is fetched alongside the source rather than after it, so the header
+        // stats can be published as soon as the lists are in — everything below is per-entry work.
+        val malListAsync = async { MAL.query.getUserList(isAnime) }
+        val source = sourceList.await().getOrThrow()
+        val malList = malListAsync.await()
+        val muMedia = muList?.await()?.getOrThrow().orEmpty()
         val malById: Map<Int, MALListNode> = malList.associateBy { it.node.id }
 
         val destStats = statsOf(malList.map { malToCanon(it.listStatus?.status, it.listStatus.rereading(isAnime)) })
+        // Final totals, not a first approximation: the sources aren't supposed to overlap, so every
+        // entry on either side counts and no per-entry resolution is needed to tell them apart. (An
+        // overlap that slipped through would be counted on both sides here, while the diff pass
+        // below keeps only the AniList row for it.)
+        val sourceStats = statsOf(
+            source.map { it.userStatus ?: "CURRENT" } + muMedia.map { muListToCanon(it.listId) }
+        )
+        onStats(SectionStats(sourceStats, destStats))
 
         val diffs = source.mapNotNull { media ->
             val malId = media.idMAL ?: return@mapNotNull null
             buildMalDiff(media, isAnime, malById[malId])
         }
 
-        // MangaUpdates-only forward diffs. Each entry needs a MAL id, which MangaUpdates doesn't
-        // carry; MangaBaka's mapping supplies it (already cached for anything opened in the app).
-        // Comick's title-search fallback is off here — one search plus a details call per candidate,
-        // per entry, is far too much for a whole-list pass.
+        // MangaUpdates forward diffs. Each entry needs a MAL id, which MangaUpdates doesn't carry;
+        // MangaBaka's mapping supplies it (already cached for anything opened in the app). Comick's
+        // title-search fallback is off here — one search plus a details call per candidate, per
+        // entry, is far too much for a whole-list pass.
         val anilistMalIds = source.mapNotNull { it.idMAL }.toHashSet()
         val muResolved = muMedia
             .asyncMap { mu -> mu to resolveMuMalId(mu.id, listOfNotNull(mu.title), comickFallback = false) }
-            // AniList already covers this MAL entry, and it has more to say about it.
+            // Defensive: the sources aren't supposed to overlap, but if AniList does already cover
+            // this MAL entry it wins, rather than both offering to push to it.
             .filter { (_, malId) -> malId == null || malId !in anilistMalIds }
             // Two MangaUpdates entries can map to one MAL entry; unresolved ones stay distinct.
             .distinctBy { (mu, malId) -> malId?.toLong() ?: -mu.id }
@@ -186,10 +246,7 @@ object ListCompare {
             if (node.node.id in sourceMalIds) null else buildMalDeleteDiff(node, isAnime)
         }
 
-        val sourceStats = statsOf(
-            source.map { it.userStatus ?: "CURRENT" } + muResolved.map { muListToCanon(it.first.listId) }
-        )
-        return SubsectionResult(sourceStats, destStats, diffs + muDiffs + deletions)
+        SubsectionResult(sourceStats, destStats, diffs + muDiffs + deletions)
     }
 
     private fun buildMalDeleteDiff(node: MALListNode, isAnime: Boolean): DiffEntry = DiffEntry(
@@ -368,14 +425,19 @@ object ListCompare {
 
     // ---- MangaBaka vs AniList (+ MangaUpdates) ----
 
-    private class Processed(val status: String, val seriesId: Long?, val diff: DiffEntry?)
+    private class Processed(val seriesId: Long?, val diff: DiffEntry?)
 
-    /** [muMedia] is empty whenever MangaUpdates isn't contributing. */
+    /** [muList] is null whenever MangaUpdates isn't contributing. */
     private suspend fun compareMangaBaka(
-        anilistManga: List<Media>,
-        muMedia: List<MUMedia>,
-    ): SubsectionResult {
-        val snapshot = MangaBakaSync.getLibrarySnapshot()
+        sourceList: Deferred<Result<List<Media>>>,
+        muList: Deferred<Result<List<MUMedia>>>?,
+        onStats: suspend (SectionStats) -> Unit,
+    ): SubsectionResult = coroutineScope {
+        // Fetched alongside the source list so the header stats land before the per-entry pass.
+        val snapshotAsync = async { MangaBakaSync.getLibrarySnapshot() }
+        val anilistManga = sourceList.await().getOrThrow()
+        val snapshot = snapshotAsync.await()
+        val muMedia = muList?.await()?.getOrThrow().orEmpty()
         // Destination totals come from per-state counts (exact even when a state can't be fully
         // enumerated). Several MangaBaka states fold into one canonical status, so aggregate.
         val destPerStatus = LinkedHashMap<String, Int>()
@@ -386,6 +448,14 @@ object ListCompare {
             destTotal += count
         }
         val destStats = SideStats(destTotal, destPerStatus)
+        // Final totals, not a first approximation: the sources aren't supposed to overlap, so every
+        // entry on either side counts and no per-entry resolution is needed to tell them apart. (An
+        // overlap that slipped through would be counted on both sides here, while the diff pass
+        // below keeps only the AniList row for it.)
+        val sourceStats = statsOf(
+            anilistManga.map { it.userStatus ?: "CURRENT" } + muMedia.map { muListToCanon(it.listId) }
+        )
+        onStats(SectionStats(sourceStats, destStats))
 
         // Prefer matching against the enumerated library (one pass gives each entry's state, cover and,
         // via the embedded series, its cross-source ids). Fall back to per-series lookups only if the
@@ -417,22 +487,25 @@ object ListCompare {
                 ?: media.idMAL?.let { byMal[it] }
                 ?: MangaBakaApi.resolveFromAnilist(media.id, media.idMAL)
             val diff = seriesId?.let { buildMangaBakaDiff(media, it, currentOf(it)) }
-            Processed(media.userStatus ?: "CURRENT", seriesId, diff)
+            Processed(seriesId, diff)
         }
 
-        // MangaUpdates-only forward diffs (not already represented on AniList by MangaBaka series id).
+        // MangaUpdates forward diffs.
         val alSeriesIds = alProcessed.mapNotNull { it.seriesId }.toHashSet()
         val muProcessed = muMedia
             .asyncMap { mu ->
                 mu to (byMu[mu.id] ?: MangaBakaApi.resolveSeriesId(MangaBakaApi.Source.MANGAUPDATES, mu.id))
             }
+            // Defensive: the sources aren't supposed to overlap, but if AniList already reached this
+            // MangaBaka series it wins, rather than both offering to push to it.
             .filter { (_, seriesId) -> seriesId == null || seriesId !in alSeriesIds }
+            // Two MangaUpdates entries can map to one MangaBaka series; unresolved ones stay distinct.
             .distinctBy { (mu, seriesId) -> seriesId ?: -mu.id }
             .asyncMap { (mu, seriesId) ->
                 // These rows carry no cover — the MangaUpdates list API has none. The adapter fills
                 // that in from MangaBaka when a row is actually shown, so nothing is fetched here.
                 val diff = seriesId?.let { buildMuMangaBakaDiff(mu, it, currentOf(it)) }
-                Processed(muListToCanon(mu.listId), seriesId, diff)
+                Processed(seriesId, diff)
             }
 
         // Deletions: library entries not represented in the source (only when we could enumerate).
@@ -455,9 +528,8 @@ object ListCompare {
             }
         } else emptyList()
 
-        val sourceStats = statsOf(alProcessed.map { it.status } + muProcessed.map { it.status })
         val diffs = alProcessed.mapNotNull { it.diff } + muProcessed.mapNotNull { it.diff } + deletions
-        return SubsectionResult(sourceStats, destStats, diffs)
+        SubsectionResult(sourceStats, destStats, diffs)
     }
 
     private fun buildMangaBakaDiff(media: Media, seriesId: Long, current: LibraryStateEntry?): DiffEntry? {

@@ -6,7 +6,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.LinearLayout
-import androidx.annotation.DrawableRes
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.updateLayoutParams
 import androidx.core.widget.ImageViewCompat
@@ -22,6 +21,7 @@ import ani.dantotsu.initActivity
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.snackString
 import ani.dantotsu.themes.ThemeManager
+import ani.dantotsu.util.Logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -49,6 +49,13 @@ class ListSyncCompareActivity : AppCompatActivity() {
         load()
     }
 
+    /** A section card that's already on screen, filled in as its comparison reports back. */
+    private class SectionHandle(
+        val onStats: (ListCompare.SectionStats) -> Unit,
+        val onResult: (ListCompare.SubsectionResult) -> Unit,
+        val onError: () -> Unit,
+    )
+
     private fun load() {
         binding.compareSections.removeAllViews()
         binding.compareMessage.visibility = View.GONE
@@ -56,11 +63,29 @@ class ListSyncCompareActivity : AppCompatActivity() {
             showMessage(getString(R.string.list_compare_login_anilist))
             return
         }
-        binding.compareProgress.visibility = View.VISIBLE
-        lifecycleScope.launch {
-            val result = withContext(Dispatchers.IO) { ListCompare.compareAll() }
-            binding.compareProgress.visibility = View.GONE
-            render(result)
+        val sections = ListCompare.availableSections()
+        if (sections.isEmpty()) {
+            showMessage(getString(R.string.list_compare_login_trackers))
+            return
+        }
+        // Every card goes up straight away with its own spinner, so there's no screen-wide
+        // loading state and no section waiting on another one's network work.
+        binding.compareProgress.visibility = View.GONE
+        val muActive = ListCompare.muActive()
+        val handles = sections.associateWith { addSection(it, muActive) }
+        lifecycleScope.launch(Dispatchers.IO) {
+            ListCompare.compareStreaming(
+                onStats = { section, stats ->
+                    withContext(Dispatchers.Main) { handles[section]?.onStats?.invoke(stats) }
+                },
+                onSection = { section, result ->
+                    withContext(Dispatchers.Main) { handles[section]?.onResult?.invoke(result) }
+                },
+                onError = { section, e ->
+                    Logger.log(e)
+                    withContext(Dispatchers.Main) { handles[section]?.onError?.invoke() }
+                },
+            )
         }
     }
 
@@ -70,72 +95,51 @@ class ListSyncCompareActivity : AppCompatActivity() {
         binding.compareMessage.visibility = View.VISIBLE
     }
 
-    private fun render(result: ListCompare.CompareResult) {
-        binding.compareSections.removeAllViews()
-        if (result.malAnime == null && result.malManga == null && result.mangaBaka == null) {
-            showMessage(getString(R.string.list_compare_login_trackers))
-            return
-        }
-        result.malAnime?.let {
-            addSection(
-                getString(R.string.anime), R.drawable.ic_myanimelist,
-                listOf(R.drawable.ic_anilist), listOf(R.drawable.ic_myanimelist), it, isAnime = true,
-            )
+    /** Adds an empty, spinning card for [section] and returns the handle that fills it in. */
+    private fun addSection(section: ListCompare.Section, muActive: Boolean): SectionHandle {
+        val (sectionTitle, headerIcon) = when (section) {
+            ListCompare.Section.MAL_ANIME -> getString(R.string.anime) to R.drawable.ic_myanimelist
+            ListCompare.Section.MAL_MANGA -> getString(R.string.manga) to R.drawable.ic_myanimelist
+            ListCompare.Section.MANGABAKA ->
+                getString(R.string.mangabaka) to R.drawable.ic_round_mangabaka_24
         }
         // MangaUpdates contributes to both manga comparisons when it's active.
-        val mangaSourceIcons = if (result.muActive)
-            listOf(R.drawable.ic_anilist, R.drawable.ic_round_mangaupdates_24)
-        else listOf(R.drawable.ic_anilist)
-        result.malManga?.let {
-            addSection(
-                getString(R.string.manga), R.drawable.ic_myanimelist,
-                mangaSourceIcons, listOf(R.drawable.ic_myanimelist), it, isAnime = false,
-            )
-        }
-        result.mangaBaka?.let {
-            addSection(
-                getString(R.string.mangabaka), R.drawable.ic_round_mangabaka_24,
-                mangaSourceIcons, listOf(R.drawable.ic_round_mangabaka_24), it, isAnime = false,
-            )
-        }
-    }
+        val sourceIcons = if (section == ListCompare.Section.MAL_ANIME || !muActive)
+            listOf(R.drawable.ic_anilist)
+        else listOf(R.drawable.ic_anilist, R.drawable.ic_round_mangaupdates_24)
 
-    private fun addSection(
-        sectionTitle: String,
-        @DrawableRes headerIcon: Int,
-        sourceIcons: List<Int>,
-        destIcons: List<Int>,
-        sub: ListCompare.SubsectionResult,
-        isAnime: Boolean,
-    ) {
         val sb = ItemListSyncSectionBinding.inflate(layoutInflater, binding.compareSections, false)
         sb.sectionLabel.text = sectionTitle
         sb.sectionIcon.setImageResource(headerIcon)
         setStatsIcons(sb.statsSourceIcons, sourceIcons)
-        setStatsIcons(sb.statsDestIcons, destIcons)
-        sb.statsSource.text = statsText(sub.source)
+        setStatsIcons(sb.statsDestIcons, listOf(headerIcon))
         // Dest totals are updated in place as entries sync (see [ListCompare.applied]), so the header
-        // stays accurate without re-running the comparison.
-        var destStats = sub.dest
-        fun refreshStats() { sb.statsDest.text = statsText(destStats) }
+        // stays accurate without re-running the comparison. Null until the lists have been fetched.
+        var destStats: ListCompare.SideStats? = null
+        fun refreshStats() { sb.statsDest.text = destStats?.let { statsText(it) } ?: "" }
         refreshStats()
 
-        val items = sub.diffs.toMutableList()
+        val items = mutableListOf<ListCompare.DiffEntry>()
         lateinit var adapter: ListSyncDiffAdapter
         // The changes list is collapsed by default; the count sits in the header.
         var expanded = false
+        // Until the diffs land there's no count, nothing to expand and nothing to sync — just the
+        // spinner in their place.
+        var loading = true
 
         fun applyState() {
             val count = adapter.itemCount
             val empty = count == 0
+            sb.sectionProgress.visibility = if (loading) View.VISIBLE else View.GONE
             sb.sectionCount.text = count.toString()
-            sb.sectionCount.visibility = if (empty) View.GONE else View.VISIBLE
-            sb.sectionChevron.visibility = if (empty) View.INVISIBLE else View.VISIBLE
-            sb.sectionSyncAll.visibility = if (empty) View.GONE else View.VISIBLE
-            sb.sectionEmpty.visibility = if (empty) View.VISIBLE else View.GONE
-            sb.sectionDiffList.visibility = if (!empty && expanded) View.VISIBLE else View.GONE
+            sb.sectionCount.visibility = if (loading || empty) View.GONE else View.VISIBLE
+            sb.sectionChevron.visibility = if (loading || empty) View.INVISIBLE else View.VISIBLE
+            sb.sectionSyncAll.visibility = if (loading || empty) View.GONE else View.VISIBLE
+            sb.sectionEmpty.visibility = if (!loading && empty) View.VISIBLE else View.GONE
+            sb.sectionDiffList.visibility =
+                if (!loading && !empty && expanded) View.VISIBLE else View.GONE
             sb.sectionChevron.rotation = if (expanded) 180f else 0f
-            sb.sectionHeader.isClickable = !empty
+            sb.sectionHeader.isClickable = !loading && !empty
         }
 
         adapter = ListSyncDiffAdapter(items, lifecycleScope) { entry, position ->
@@ -144,7 +148,7 @@ class ListSyncCompareActivity : AppCompatActivity() {
                 val ok = withContext(Dispatchers.IO) { ListCompare.sync(entry) }
                 adapter.setSyncing(entry, false)
                 if (ok) {
-                    destStats = ListCompare.applied(destStats, entry)
+                    destStats = destStats?.let { ListCompare.applied(it, entry) }
                     refreshStats()
                     adapter.removeAt(position)
                     applyState()
@@ -173,7 +177,9 @@ class ListSyncCompareActivity : AppCompatActivity() {
                 sb.sectionSyncAll.setIconSpinning(false)
                 // Drop the entries that synced; keep failures in the list for retry. Update the header
                 // stats from the successes instead of re-running the full (network-heavy) comparison.
-                results.forEach { (entry, ok) -> if (ok) destStats = ListCompare.applied(destStats, entry) }
+                results.forEach { (entry, ok) ->
+                    if (ok) destStats = destStats?.let { ListCompare.applied(it, entry) }
+                }
                 refreshStats()
                 val failed = results.filterNot { it.second }.map { it.first }
                 adapter.replaceAll(failed)
@@ -187,6 +193,31 @@ class ListSyncCompareActivity : AppCompatActivity() {
 
         applyState()
         binding.compareSections.addView(sb.root)
+
+        return SectionHandle(
+            onStats = { stats ->
+                sb.statsSource.text = statsText(stats.source)
+                destStats = stats.dest
+                refreshStats()
+            },
+            onResult = { result ->
+                // Same totals onStats already published; re-applied so the finished result is the
+                // one the header reflects.
+                sb.statsSource.text = statsText(result.source)
+                destStats = result.dest
+                refreshStats()
+                adapter.replaceAll(result.diffs)
+                loading = false
+                applyState()
+            },
+            onError = {
+                // Stop this card spinning and say so; the other sections carry on.
+                loading = false
+                applyState()
+                sb.sectionEmpty.text = getString(R.string.list_compare_failed)
+                sb.sectionEmpty.visibility = View.VISIBLE
+            },
+        )
     }
 
     /** Populates a stats column's icon row with the given service icons, tinted to the theme accent. */
