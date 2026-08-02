@@ -975,6 +975,7 @@
     <string name="chapters_total_of">"Total of "</string>
     <string name="no_description_available">No Description Available</string>
     <string name="stack_entries_suffix"> entries</string>
+    <string name="stack_empty">Couldn\'t load this stack</string>
 
     <string-array name="manga_directions">
         <item>Top to Bottom</item>

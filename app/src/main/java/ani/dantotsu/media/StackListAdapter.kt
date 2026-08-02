@@ -4,15 +4,10 @@ import android.content.Intent
 import android.net.Uri
 import android.view.LayoutInflater
 import android.view.ViewGroup
-import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
 import ani.dantotsu.connections.mal.MALStack
-import ani.dantotsu.connections.mal.MALQueries
 import ani.dantotsu.databinding.ItemStackLargeBinding
-import ani.dantotsu.getAppString
 import ani.dantotsu.loadImage
 import android.text.method.LinkMovementMethod
 import android.text.util.Linkify
@@ -32,9 +27,6 @@ import android.widget.FrameLayout
 import android.widget.TextView
 import ani.dantotsu.media.MediaDetailsActivity
 import com.bumptech.glide.Glide
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class StackListAdapter(private val items: List<MALStack>, private val isAnime: Boolean) : RecyclerView.Adapter<StackListAdapter.VH>() {
 
@@ -44,19 +36,9 @@ class StackListAdapter(private val items: List<MALStack>, private val isAnime: B
                 val pos = bindingAdapterPosition
                 if (pos in items.indices) {
                     val item = items[pos]
-                    val ctx = binding.root.context
-                    val activity = ctx as? AppCompatActivity
-                    if (activity == null) {
-                        Toast.makeText(ctx, getAppString(R.string.anilist_down), Toast.LENGTH_SHORT).show()
-                        return@setOnClickListener
-                    }
-                    activity.lifecycleScope.launch {
-                        Toast.makeText(ctx, "Loading stack...", Toast.LENGTH_SHORT).show()
-                        val entries = withContext(Dispatchers.IO) {
-                            MALQueries().getStackEntries(item.url)
-                        }
-                        StackResolver.resolveAndOpen(ctx, entries, isAnime, item.name, item.description)
-                    }
+                    StackResolver.open(
+                        binding.root.context, item.url, isAnime, item.name, item.description
+                    )
                 }
             }
 
@@ -224,27 +206,11 @@ class StackListAdapter(private val items: List<MALStack>, private val isAnime: B
                     return
                 }
             }
-            // MAL interest stack page — fetch entries and open in-app
-            val stackMatch = malStackRegex.find(url)
-            if (stackMatch != null) {
-                val activity = context as? AppCompatActivity
-                if (activity != null) {
-                    activity.lifecycleScope.launch {
-                        Toast.makeText(context, "Loading stack...", Toast.LENGTH_SHORT).show()
-                        val queries = MALQueries()
-                        val (entries, stackInfo) = withContext(Dispatchers.IO) {
-                            Pair(
-                                try { queries.getStackEntries(url) } catch (e: Exception) { emptyList() },
-                                try { queries.getStackNameAndDescription(url) } catch (e: Exception) { Pair(null, null) }
-                            )
-                        }
-                        val (stackName, stackDescription) = stackInfo
-                        StackResolver.resolveAndOpen(
-                            context, entries, isAnime, stackName ?: "Stack", stackDescription
-                        )
-                    }
-                    return
-                }
+            // MAL interest stack page — open in-app; the list screen scrapes the stack's name,
+            // description and entries itself.
+            if (malStackRegex.containsMatchIn(url)) {
+                StackResolver.open(context, url, isAnime, title = null, description = null)
+                return
             }
             try {
                 context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))

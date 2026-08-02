@@ -10,17 +10,10 @@ import android.widget.FrameLayout
 import android.util.TypedValue
 import android.view.Gravity
 import android.widget.TextView
-import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
 import com.bumptech.glide.Glide
 import ani.dantotsu.connections.mal.MALStack
-import ani.dantotsu.connections.mal.MALQueries
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class StackAdapter(private val items: List<MALStack>, private val isAnime: Boolean) : RecyclerView.Adapter<StackAdapter.VH>() {
 
@@ -87,20 +80,9 @@ class StackAdapter(private val items: List<MALStack>, private val isAnime: Boole
         holder.userProgress.text = item.entries.toString()
         holder.total?.text = ctx.getString(R.string.stack_entries_suffix)
 
-        // Click: open an internal list view with AniList matches for the stack entries
+        // Click: open the internal list view, which resolves the stack's entries itself
         holder.itemView.setOnClickListener {
-            val activity = ctx as? AppCompatActivity
-            if (activity == null) {
-                Toast.makeText(ctx, R.string.anilist_down, Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-                activity.lifecycleScope.launch {
-                Toast.makeText(ctx, "Loading stack...", Toast.LENGTH_SHORT).show()
-                val entries = withContext(Dispatchers.IO) {
-                    MALQueries().getStackEntries(item.url)
-                }
-                StackResolver.resolveAndOpen(ctx, entries, isAnime, item.name, item.description)
-            }
+            StackResolver.open(ctx, item.url, isAnime, item.name, item.description)
         }
 
         // Long click: open stack in browser

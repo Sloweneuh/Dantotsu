@@ -2,7 +2,6 @@ package ani.dantotsu.media
 
 import android.content.Context
 import android.content.Intent
-import android.widget.Toast
 import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.mal.MALStackEntry
 import ani.dantotsu.connections.malsync.LanguageMapper
@@ -25,7 +24,7 @@ import kotlinx.coroutines.withContext
 
 /**
  * Shared resolution for MAL interest stacks: turns a stack's scraped MAL entries into displayable
- * media and opens [MediaListViewActivity].
+ * media for [MediaListViewActivity].
  *
  * AniList matches are resolved in a single batch. Manga entries with no AniList equivalent fall back
  * to their MangaUpdates counterpart, resolved through MangaBaka's cross-source mapping, so the stack
@@ -33,21 +32,55 @@ import kotlinx.coroutines.withContext
  *
  * MALSync progress/source data is fetched and displayed for AniList media only — MangaUpdates
  * fallback entries are never sent to MALSync.
+ *
+ * Resolving a stack is many round trips (a scrape, an AniList batch, then a MangaBaka + MangaUpdates
+ * pair per unmatched manga), so callers [open] the list screen straight away and it does the work
+ * behind its own spinner — see [MediaListViewActivity].
  */
 object StackResolver {
 
-    suspend fun resolveAndOpen(
+    /** Everything the list screen needs to show a resolved stack. */
+    data class Resolved(
+        val media: List<Media>,
+        val unread: Map<Int, UnreadChapterInfo>?,
+        val unreleased: Map<Int, UnreleasedEpisodeInfo>?,
+    )
+
+    /**
+     * Opens the list screen for a MAL stack. Callers showing a stack list already have [title] and
+     * [description] from the row and pass them straight through; only a caller with no [title] at
+     * all (a stack link inside another stack's description) makes the screen scrape them.
+     */
+    fun open(
         context: Context,
-        entries: List<MALStackEntry>,
+        stackUrl: String,
         isAnime: Boolean,
-        title: String,
+        title: String?,
         description: String?,
     ) {
+        // The screen treats a non-null passedMedia as "already resolved" (that's how it survives a
+        // rotation), so clear what a still-live stack screen left behind — opening a stack from a
+        // link inside another stack's description would otherwise re-show the first one's list.
+        MediaListViewActivity.passedMedia = null
+        MediaListViewActivity.passedMuMedia = null
+        MediaListViewActivity.passedUnreadInfo = null
+        MediaListViewActivity.passedUnreleasedInfo = null
+        MediaListViewActivity.passedDescription = description
+        context.startActivity(
+            Intent(context, MediaListViewActivity::class.java)
+                .putExtra("stackUrl", stackUrl)
+                .putExtra("title", title)
+                .putExtra("isAnime", isAnime)
+        )
+    }
+
+    /** Resolves a stack's scraped entries into media, in the stack's own order. */
+    suspend fun resolve(
+        entries: List<MALStackEntry>,
+        isAnime: Boolean,
+    ): Resolved {
         val malIds = entries.map { it.id }
-        if (malIds.isEmpty()) {
-            Toast.makeText(context, "No entries found", Toast.LENGTH_SHORT).show()
-            return
-        }
+        if (malIds.isEmpty()) return Resolved(emptyList(), null, null)
 
         // AniList matches (one batch call, keyed by MAL id).
         val anilistMedia = withContext(Dispatchers.IO) {
@@ -126,10 +159,10 @@ object StackResolver {
 
         // Preserve the stack's ordering; prefer the AniList match, else the MangaUpdates fallback.
         val ordered = entries.mapNotNull { anilistByMal[it.id] ?: muByMal[it.id] }
-        if (ordered.isEmpty()) {
-            Toast.makeText(context, "No matches found", Toast.LENGTH_SHORT).show()
-            return
-        }
+        if (ordered.isEmpty()) return Resolved(emptyList(), null, null)
+
+        var unread: Map<Int, UnreadChapterInfo>? = null
+        var unreleased: Map<Int, UnreleasedEpisodeInfo>? = null
 
         // MALSync progress/source data — AniList media only.
         if (PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled) && anilistMedia.isNotEmpty()) {
@@ -151,7 +184,7 @@ object StackResolver {
                         userProgress = m.userProgress ?: 0
                     )
                 }
-                if (infoMap.isNotEmpty()) MediaListViewActivity.passedUnreleasedInfo = infoMap
+                if (infoMap.isNotEmpty()) unreleased = infoMap
             } else {
                 val batchResults = withContext(Dispatchers.IO) {
                     try { MalSyncApi.getBatchProgressByMedia(mediaIds, respectExcludeList = false) } catch (e: Exception) { emptyMap() }
@@ -167,16 +200,10 @@ object StackResolver {
                         userProgress = m.userProgress ?: 0
                     )
                 }
-                if (infoMap.isNotEmpty()) MediaListViewActivity.passedUnreadInfo = infoMap
+                if (infoMap.isNotEmpty()) unread = infoMap
             }
         }
 
-        MediaListViewActivity.passedMedia = ArrayList(ordered)
-        MediaListViewActivity.passedDescription = description
-        context.startActivity(
-            Intent(context, MediaListViewActivity::class.java)
-                .putExtra("title", title)
-                .putExtra("isAnime", isAnime)
-        )
+        return Resolved(ordered, unread, unreleased)
     }
 }
