@@ -16,6 +16,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
+import ani.dantotsu.Refresh
 import ani.dantotsu.connections.comick.ComickApi
 import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.mangaupdates.AniListQuickSearchDialogFragment
@@ -58,6 +59,9 @@ class MediaEquivalentsActivity : AppCompatActivity() {
 
     private lateinit var recycler: RecyclerView
     private val items = mutableListOf<EquivalentItem>()
+
+    /** Set once any row has been converted, so the list behind this screen is refreshed on exit. */
+    private var converted = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -213,6 +217,14 @@ class MediaEquivalentsActivity : AppCompatActivity() {
                 checkAllSearchesComplete()
             }
         }
+    }
+
+    override fun finish() {
+        // A conversion moves the entry off MangaUpdates and onto AniList, so the list screen that
+        // opened this one is stale. Refresh on the way out rather than after every row, so a run
+        // of conversions costs one reload instead of one each.
+        if (converted) Refresh.all()
+        super.finish()
     }
 
     /** Hides the searching indicator once every entry has resolved. */
@@ -386,6 +398,7 @@ class MediaEquivalentsActivity : AppCompatActivity() {
                     }
                     if (ok) {
                         toast(getString(R.string.converted_to_anilist))
+                        converted = true
                         val pos = holder.bindingAdapterPosition
                         if (pos != RecyclerView.NO_POSITION) {
                             items.removeAt(pos)
