@@ -69,25 +69,34 @@ class MediaListDialogSmallFragment : BottomSheetDialogFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         binding.mediaListContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin += navBarHeight }
         val scope = viewLifecycleOwner.lifecycleScope
-        binding.mediaListDelete.setOnClickListener {
-            viewLifecycleOwner.lifecycleScope.launch {
-                scope.launch {
-                    media.deleteFromList(scope, onSuccess = {
-                        Refresh.all()
-                        snackString(getString(R.string.deleted_from_list))
-                        dismissAllowingStateLoss()
-                    }, onError = { e ->
-                        withContext(Dispatchers.Main) {
-                            snackString(
-                                getString(
-                                    R.string.delete_fail_reason, e.message
+        // Nothing to delete when the media isn't on the list yet, so the button just backs out
+        // of the sheet instead.
+        if (media.userStatus == null) {
+            binding.mediaListDelete.setText(R.string.cancel)
+            binding.mediaListDelete.setOnClickListener {
+                dismissAllowingStateLoss()
+            }
+        } else {
+            binding.mediaListDelete.setOnClickListener {
+                viewLifecycleOwner.lifecycleScope.launch {
+                    scope.launch {
+                        media.deleteFromList(scope, onSuccess = {
+                            Refresh.all()
+                            snackString(getString(R.string.deleted_from_list))
+                            dismissAllowingStateLoss()
+                        }, onError = { e ->
+                            withContext(Dispatchers.Main) {
+                                snackString(
+                                    getString(
+                                        R.string.delete_fail_reason, e.message
+                                    )
                                 )
-                            )
-                        }
-                    }, onNotFound = {
-                        snackString(getString(R.string.no_list_id))
-                    })
+                            }
+                        }, onNotFound = {
+                            snackString(getString(R.string.no_list_id))
+                        })
 
+                    }
                 }
             }
         }

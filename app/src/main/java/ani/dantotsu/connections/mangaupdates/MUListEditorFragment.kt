@@ -218,8 +218,14 @@ class MUListEditorFragment : BottomSheetDialogFragment() {
             }
         }
 
-        // Delete (remove from all lists)
-        binding.mediaListDelete.setOnClickListener {
+        // Delete (remove from all lists). Nothing to delete for an entry that isn't on a list
+        // yet, so the button just backs out of the sheet instead.
+        if (muMedia.listId == -1) {
+            binding.mediaListDelete.setText(R.string.cancel)
+            binding.mediaListDelete.setOnClickListener {
+                dismissAllowingStateLoss()
+            }
+        } else binding.mediaListDelete.setOnClickListener {
             scope.launch {
                 withContext(Dispatchers.IO) {
                     MangaUpdates.removeFromList(muMedia.id)
