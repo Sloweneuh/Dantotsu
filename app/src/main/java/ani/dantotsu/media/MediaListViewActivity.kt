@@ -129,41 +129,78 @@ class MediaListViewActivity : AppCompatActivity() {
     /**
      * Scrapes and resolves a MAL interest stack in place. It's a page scrape, an AniList batch and
      * then a lookup per unmatched manga, so the list stays behind a spinner until it's done rather
-     * than the caller holding a toast up for the whole trip.
+     * than the caller holding a toast up for the whole trip. Title and description, on the other
+     * hand, are usually already known before this is even called — the caller's row already
+     * scraped and passed them through (see [StackResolver.open]) — so they're shown immediately
+     * below rather than waiting on the slow entry scrape + AniList resolve too.
      */
     private fun loadStack(stackUrl: String) {
         fromMalStack = true
         description = passedDescription
         binding.mediaListProgress.visibility = View.VISIBLE
+
+        // Show whatever's already known (usually both) right away; only a stack opened with no
+        // title at all (a link inside another stack's description) has nothing to show yet.
+        binding.listTitle.text = screenTitle
+        showDescriptionButton()
+
         lifecycleScope.launch {
             val isAnime = intent.getBooleanExtra("isAnime", false)
             val queries = MALQueries()
-            val entries = withContext(Dispatchers.IO) {
-                runCatching { queries.getStackEntries(stackUrl) }.getOrDefault(emptyList())
-            }
-            // Opened from a stack list, the name and description came with the row — a blank name
-            // means the caller had neither (a stack link inside another stack's description), so
-            // that's the only case worth a second scrape. A stack with no description is normal.
-            if (screenTitle.isBlank()) {
+
+            // The caller's row usually has both by now, but a stack opened from a bare link only
+            // has the URL — fetch whichever of title/description is still missing.
+            if (screenTitle.isBlank() || description.isNullOrBlank()) {
                 val info = withContext(Dispatchers.IO) {
                     runCatching { queries.getStackNameAndDescription(stackUrl) }.getOrNull()
                 }
-                screenTitle = info?.first.orEmpty()
-                description = info?.second
+                if (screenTitle.isBlank()) screenTitle = info?.first.orEmpty()
+                if (description.isNullOrBlank()) description = info?.second
+                // Republish for a possible recreation (see onCreate); the intent keeps whatever
+                // we had to scrape, so a rotation doesn't lose the stack's name either.
+                intent.putExtra("title", screenTitle)
+                passedDescription = description
+                binding.listTitle.text = screenTitle
+                showDescriptionButton()
+            }
+
+            val entries = withContext(Dispatchers.IO) {
+                runCatching { queries.getStackEntries(stackUrl) }.getOrDefault(emptyList())
             }
             val resolved = StackResolver.resolve(entries, isAnime)
             mediaList = resolved.media.toMutableList()
             unreadInfo = resolved.unread
             unreleasedInfo = resolved.unreleased
-            // Republish for a possible recreation (see onCreate); the intent keeps whatever we
-            // had to scrape, so a rotation doesn't lose the stack's name either.
-            intent.putExtra("title", screenTitle)
             passedMedia = ArrayList(resolved.media)
             passedUnreadInfo = resolved.unread
             passedUnreleasedInfo = resolved.unreleased
-            passedDescription = description
             binding.mediaListProgress.visibility = View.GONE
             showContent()
+        }
+    }
+
+    /** Shows the info button and wires it to open [description] in a bottom dialog, if there is one. */
+    private fun showDescriptionButton() {
+        val description = description
+        if (description.isNullOrBlank()) return
+        binding.listDescription.visibility = View.VISIBLE
+        binding.listDescription.setOnClickListener {
+            val descView = TextView(this).apply {
+                setPadding(32, 16, 32, 16)
+                text = HtmlCompat.fromHtml(description, HtmlCompat.FROM_HTML_MODE_LEGACY)
+                textSize = 14f
+                movementMethod = android.text.method.LinkMovementMethod.getInstance()
+            }
+            Linkify.addLinks(descView, Linkify.WEB_URLS)
+            StackListAdapter.interceptLinks(
+                descView,
+                getThemeColor(com.google.android.material.R.attr.colorPrimary),
+                intent.getBooleanExtra("isAnime", false)
+            )
+            CustomBottomDialog.newInstance().apply {
+                setTitleText(screenTitle)
+                addView(descView)
+            }.show(supportFragmentManager, "stackDesc")
         }
     }
 
@@ -177,28 +214,7 @@ class MediaListViewActivity : AppCompatActivity() {
                 .map { (item, _) -> item }
         } else null
 
-        val description = description
-        if (!description.isNullOrBlank()) {
-            binding.listDescription.visibility = View.VISIBLE
-            binding.listDescription.setOnClickListener {
-                val descView = TextView(this).apply {
-                    setPadding(32, 16, 32, 16)
-                    text = HtmlCompat.fromHtml(description, HtmlCompat.FROM_HTML_MODE_LEGACY)
-                    textSize = 14f
-                    movementMethod = android.text.method.LinkMovementMethod.getInstance()
-                }
-                Linkify.addLinks(descView, Linkify.WEB_URLS)
-                StackListAdapter.interceptLinks(
-                    descView,
-                    getThemeColor(com.google.android.material.R.attr.colorPrimary),
-                    intent.getBooleanExtra("isAnime", false)
-                )
-                CustomBottomDialog.newInstance().apply {
-                    setTitleText(screenTitle)
-                    addView(descView)
-                }.show(supportFragmentManager, "stackDesc")
-            }
-        }
+        showDescriptionButton()
 
         // Toggle to hide novels from a MAL interest stack's list. The choice is shared by every
         // stack, so it's persisted under a single pref rather than one per stack.
