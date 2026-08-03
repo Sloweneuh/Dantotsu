@@ -592,11 +592,26 @@ class MangaReaderActivity : AppCompatActivity() {
             popup.menu.findItem(R.id.action_screenshot)
                 .setIcon(ScreenshotUtil.screenshotIcon(this))
             popup.menu.findItem(R.id.action_handoff).isVisible = media.id >= 0
+            val trackProgressItem = popup.menu.findItem(R.id.action_track_progress)
+            trackProgressItem.isVisible = media.id >= 0
+            trackProgressItem.isChecked =
+                PrefManager.getCustomVal("${media.id}_save_progress", true)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) popup.setForceShowIcon(true)
             popup.setOnMenuItemClickListener { item ->
                 when (item.itemId) {
                     R.id.action_screenshot -> { takeScreenshot(); true }
                     R.id.action_handoff -> { sendHandoff(); true }
+                    R.id.action_track_progress -> {
+                        val enabled = !PrefManager.getCustomVal("${media.id}_save_progress", true)
+                        PrefManager.setCustomVal("${media.id}_save_progress", enabled)
+                        snackString(
+                            getString(
+                                if (enabled) R.string.track_progress_enabled
+                                else R.string.track_progress_disabled
+                            )
+                        )
+                        true
+                    }
                     else -> false
                 }
             }

@@ -315,6 +315,9 @@
     <string name="ask_update_progress_chapter_zero">Mettre à jour la progression pour le chapitre 0</string>
     <string name="ask_update_progress_hentai">Mettre à jour la progression pour les Hentai</string>
     <string name="ask_update_progress_doujin">Mettre à jour la progression pour les Doujins</string>
+    <string name="track_progress">Suivre la progression</string>
+    <string name="track_progress_enabled">Suivi de la progression activé pour ce manga</string>
+    <string name="track_progress_disabled">Suivi de la progression désactivé pour ce manga</string>
     <string name="watch_complete_percentage">Pourcentage de mise à jour du visionnage</string>
 
     <string name="behaviour">Comportement</string>

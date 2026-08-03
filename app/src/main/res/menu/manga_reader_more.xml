@@ -14,4 +14,11 @@
         android:title="@string/continue_on_another_device"
         app:showAsAction="never" />
 
+    <item
+        android:id="@+id/action_track_progress"
+        android:icon="@drawable/ic_round_sync_24"
+        android:title="@string/track_progress"
+        android:checkable="true"
+        app:showAsAction="never" />
+
 </menu>
