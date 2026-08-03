@@ -26,6 +26,7 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
 import ani.dantotsu.R
 import ani.dantotsu.blurImage
+import ani.dantotsu.connections.mangaupdates.isMuNovelType
 import ani.dantotsu.currActivity
 import ani.dantotsu.isOnline
 import ani.dantotsu.databinding.ItemMediaCompactBinding
@@ -49,7 +50,34 @@ class MediaAdaptor(
     private val viewPager: ViewPager2? = null,
     private val fav: Boolean = false,
     private val fromMalStack: Boolean = false,
+    private val currentMedia: Media? = null,
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+
+    private enum class MediaKind { ANIME, MANGA, NOVEL }
+
+    private fun mediaKind(media: Media): MediaKind? = when {
+        media.anime != null -> MediaKind.ANIME
+        media.manga != null && isMuNovelType(media.format) -> MediaKind.NOVEL
+        media.manga != null -> MediaKind.MANGA
+        else -> null
+    }
+
+    /**
+     * When [currentMedia] is set (i.e. this adapter renders a "Recommended" carousel), recommended
+     * items can cross media type (an anime's recommendation can be a manga/novel, and vice versa),
+     * which the compact card otherwise gives no indication of. Returns the label/icon to badge the
+     * item with, mirroring the existing Novel badge, or null if the type matches or is unknown.
+     */
+    private fun differingTypeBadge(media: Media): Pair<Int, Int>? {
+        val current = currentMedia?.let { mediaKind(it) } ?: return null
+        val item = mediaKind(media) ?: return null
+        if (current == item) return null
+        return when (item) {
+            MediaKind.ANIME -> R.string.anime to R.drawable.ic_round_movie_filter_24
+            MediaKind.MANGA -> R.string.manga to R.drawable.ic_round_import_contacts_24
+            MediaKind.NOVEL -> R.string.novel to R.drawable.ic_round_import_contacts_24
+        }
+    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         return when (type) {
@@ -129,6 +157,21 @@ class MediaAdaptor(
                     if (media.relation != null) {
                         b.itemCompactRelation.text = "${media.relation}  "
                         b.itemCompactType.visibility = View.VISIBLE
+                    } else if (currentMedia != null) {
+                        // Recommendation context: badge only when the item's type actually
+                        // differs from the media the recommendations came from, in both the
+                        // carousel and the fullscreen "see more" list.
+                        val typeBadge = differingTypeBadge(media)
+                        if (typeBadge != null) {
+                            val (labelRes, iconRes) = typeBadge
+                            b.itemCompactRelation.text = activity.getString(labelRes)
+                            b.itemCompactTypeImage.setImageDrawable(
+                                AppCompatResources.getDrawable(activity, iconRes)
+                            )
+                            b.itemCompactType.visibility = View.VISIBLE
+                        } else {
+                            b.itemCompactType.visibility = View.GONE
+                        }
                     } else if (fromMalStack && media.format != null && media.format.equals("NOVEL", true)) {
                         // Only show Novel label when adapter was created for a MAL stack
                         b.itemCompactRelation.text = "Novel"
@@ -230,6 +273,21 @@ class MediaAdaptor(
                         if (media.relation != null) {
                             b.itemCompactRelation.text = "${media.relation}  "
                             b.itemCompactType.visibility = View.VISIBLE
+                        } else if (currentMedia != null) {
+                            // Recommendation context: badge only when the item's type actually
+                            // differs from the media the recommendations came from, in both the
+                            // carousel and the fullscreen "see more" list.
+                            val typeBadge = differingTypeBadge(media)
+                            if (typeBadge != null) {
+                                val (labelRes, iconRes) = typeBadge
+                                b.itemCompactRelation.text = activity.getString(labelRes)
+                                b.itemCompactTypeImage.setImageDrawable(
+                                    AppCompatResources.getDrawable(activity, iconRes)
+                                )
+                                b.itemCompactType.visibility = View.VISIBLE
+                            } else {
+                                b.itemCompactType.visibility = View.GONE
+                            }
                         } else if (fromMalStack && media.format != null && media.format.equals("NOVEL", true)) {
                             // Only show Novel label when adapter was created for a MAL stack
                             b.itemCompactRelation.text = "Novel"

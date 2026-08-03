@@ -26,6 +26,8 @@ import ani.dantotsu.connections.anilist.AnilistSearch.SearchType
 import ani.dantotsu.connections.anilist.AnilistSearch.SearchType.Companion.toAnilistString
 import ani.dantotsu.connections.anilist.api.FuzzyDate
 import ani.dantotsu.connections.mangabaka.MangaBakaApi
+import ani.dantotsu.connections.mangaupdates.MangaUpdates
+import ani.dantotsu.connections.mangaupdates.isMuNovelType
 import ani.dantotsu.copyToClipboard
 import ani.dantotsu.databinding.ActivityMangabakaMediaBinding
 import ani.dantotsu.databinding.FragmentMediaInfoBinding
@@ -496,6 +498,33 @@ class MangaBakaMediaActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Builds the placeholder [Media] for a "similar" entry that only has a MangaUpdates link,
+     * looking up the series' real MangaUpdates type so it isn't always guessed as "MANGA" (which
+     * would hide a Novel recommendation behind the wrong type badge).
+     */
+    private suspend fun muFallbackMedia(muId: Long, name: String, cover: String?): Media {
+        val muType = withContext(Dispatchers.IO) {
+            try {
+                MangaUpdates.getSeriesDetails(muId)?.type
+            } catch (e: Exception) {
+                null
+            }
+        }
+        return Media(
+            id = (muId and 0x7FFFFFFF).toInt(),
+            name = name,
+            nameRomaji = name,
+            userPreferredName = name,
+            cover = cover,
+            banner = cover,
+            isAdult = false,
+            manga = Manga(),
+            format = if (isMuNovelType(muType)) "NOVEL" else "MANGA",
+            muSeriesId = muId,
+        )
+    }
+
     private fun addRecommendations(parent: ViewGroup, seriesId: Long) {
         val placeholder = android.widget.FrameLayout(this).apply {
             layoutParams = android.widget.LinearLayout.LayoutParams(
@@ -521,18 +550,7 @@ class MangaBakaMediaActivity : AppCompatActivity() {
                     muId != null && muId > 0 -> {
                         val cover = s.cover?.thumbUrl()
                         val name = s.title ?: return@forEachIndexed
-                        indexToMedia[index] = Media(
-                            id = (muId and 0x7FFFFFFF).toInt(),
-                            name = name,
-                            nameRomaji = name,
-                            userPreferredName = name,
-                            cover = cover,
-                            banner = cover,
-                            isAdult = false,
-                            manga = Manga(),
-                            format = "MANGA",
-                            muSeriesId = muId,
-                        )
+                        indexToMedia[index] = muFallbackMedia(muId, name, cover)
                     }
                 }
             }

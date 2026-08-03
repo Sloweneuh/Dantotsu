@@ -549,7 +549,10 @@ class MALInfoFragment : Fragment() {
                         false
                     )
                     bind.itemTitle.setText(R.string.recommended)
-                    bind.itemRecycler.adapter = MediaAdaptor(0, recommendations, requireActivity())
+                    bind.itemRecycler.adapter = MediaAdaptor(
+                        0, recommendations, requireActivity(),
+                        currentMedia = model.getMedia().value
+                    )
                     bind.itemRecycler.layoutManager = LinearLayoutManager(
                         requireContext(),
                         LinearLayoutManager.HORIZONTAL,
@@ -558,6 +561,7 @@ class MALInfoFragment : Fragment() {
                     bind.itemMore.visibility = View.VISIBLE
                     bind.itemMore.setSafeOnClickListener {
                         MediaListViewActivity.passedMedia = ArrayList(recommendations)
+                        MediaListViewActivity.passedRecommendationSource = model.getMedia().value
                         startActivity(
                             Intent(requireContext(), MediaListViewActivity::class.java)
                                 .putExtra("title", getString(R.string.recommended))
@@ -830,7 +834,10 @@ class MALInfoFragment : Fragment() {
                         false
                     )
                     bind.itemTitle.setText(R.string.recommended)
-                    bind.itemRecycler.adapter = MediaAdaptor(0, recommendations, requireActivity())
+                    bind.itemRecycler.adapter = MediaAdaptor(
+                        0, recommendations, requireActivity(),
+                        currentMedia = model.getMedia().value
+                    )
                     bind.itemRecycler.layoutManager = LinearLayoutManager(
                         requireContext(),
                         LinearLayoutManager.HORIZONTAL,
@@ -839,6 +846,7 @@ class MALInfoFragment : Fragment() {
                     bind.itemMore.visibility = View.VISIBLE
                     bind.itemMore.setSafeOnClickListener {
                         MediaListViewActivity.passedMedia = ArrayList(recommendations)
+                        MediaListViewActivity.passedRecommendationSource = model.getMedia().value
                         startActivity(
                             Intent(requireContext(), MediaListViewActivity::class.java)
                                 .putExtra("title", getString(R.string.recommended))

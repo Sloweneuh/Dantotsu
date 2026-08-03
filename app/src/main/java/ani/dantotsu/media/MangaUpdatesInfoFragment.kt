@@ -18,6 +18,7 @@ import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.comick.ComickApi
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.connections.mangaupdates.MangaUpdatesLoginDialog
+import ani.dantotsu.connections.mangaupdates.isMuNovelType
 import ani.dantotsu.media.manga.Manga
 import ani.dantotsu.setSafeOnClickListener
 import ani.dantotsu.copyToClipboard
@@ -708,6 +709,33 @@ class MangaUpdatesInfoFragment : Fragment() {
         }
     }
 
+    /**
+     * Builds the placeholder [Media] for a recommendation that has no AniList/Comick/MangaBaka
+     * link, looking up the series' real MangaUpdates type so it isn't always guessed as "MANGA"
+     * (which would hide a Novel recommendation behind the wrong type badge).
+     */
+    private suspend fun muFallbackMedia(recSeriesId: Long, recName: String, coverUrl: String?): Media {
+        val muType = withContext(Dispatchers.IO) {
+            try {
+                MangaUpdates.getSeriesDetails(recSeriesId)?.type
+            } catch (e: Exception) {
+                null
+            }
+        }
+        return Media(
+            id = (recSeriesId and 0x7FFFFFFF).toInt(),
+            name = recName,
+            nameRomaji = recName,
+            userPreferredName = recName,
+            cover = coverUrl,
+            banner = coverUrl,
+            isAdult = false,
+            manga = Manga(),
+            format = if (isMuNovelType(muType)) "NOVEL" else "MANGA",
+            muSeriesId = recSeriesId,
+        )
+    }
+
     @SuppressLint("SetTextI18n")
     private fun displaySeriesDetails(
             series: ani.dantotsu.connections.mangaupdates.MUSeriesRecord,
@@ -1158,18 +1186,7 @@ class MangaUpdatesInfoFragment : Fragment() {
                     val recName = rec.seriesName ?: continue
                     val coverUrl = rec.seriesImage?.url?.original ?: rec.seriesImage?.url?.thumb
                     if (!comickEnabled) {
-                        recMuMedia[index] = Media(
-                            id = (recSeriesId and 0x7FFFFFFF).toInt(),
-                            name = recName,
-                            nameRomaji = recName,
-                            userPreferredName = recName,
-                            cover = coverUrl,
-                            banner = coverUrl,
-                            isAdult = false,
-                            manga = Manga(),
-                            format = "MANGA",
-                            muSeriesId = recSeriesId,
-                        )
+                        recMuMedia[index] = muFallbackMedia(recSeriesId, recName, coverUrl)
                         continue
                     }
                     try {
@@ -1181,18 +1198,7 @@ class MangaUpdatesInfoFragment : Fragment() {
                             if (mbAniId != currentAnilistId) {
                                 recAnilistPairs.add(Pair(index, mbAniId))
                             } else {
-                                recMuMedia[index] = Media(
-                                    id = (recSeriesId and 0x7FFFFFFF).toInt(),
-                                    name = recName,
-                                    nameRomaji = recName,
-                                    userPreferredName = recName,
-                                    cover = coverUrl,
-                                    banner = coverUrl,
-                                    isAdult = false,
-                                    manga = Manga(),
-                                    format = "MANGA",
-                                    muSeriesId = recSeriesId,
-                                )
+                                recMuMedia[index] = muFallbackMedia(recSeriesId, recName, coverUrl)
                             }
                             continue
                         }
@@ -1205,32 +1211,10 @@ class MangaUpdatesInfoFragment : Fragment() {
                             if (anilistId != null && anilistId != currentAnilistId) {
                                 recAnilistPairs.add(Pair(index, anilistId))
                             } else {
-                                recMuMedia[index] = Media(
-                                    id = (recSeriesId and 0x7FFFFFFF).toInt(),
-                                    name = recName,
-                                    nameRomaji = recName,
-                                    userPreferredName = recName,
-                                    cover = coverUrl,
-                                    banner = coverUrl,
-                                    isAdult = false,
-                                    manga = Manga(),
-                                    format = "MANGA",
-                                    muSeriesId = recSeriesId,
-                                )
+                                recMuMedia[index] = muFallbackMedia(recSeriesId, recName, coverUrl)
                             }
                         } else {
-                            recMuMedia[index] = Media(
-                                id = (recSeriesId and 0x7FFFFFFF).toInt(),
-                                name = recName,
-                                nameRomaji = recName,
-                                userPreferredName = recName,
-                                cover = coverUrl,
-                                banner = coverUrl,
-                                isAdult = false,
-                                manga = Manga(),
-                                format = "MANGA",
-                                muSeriesId = recSeriesId,
-                            )
+                            recMuMedia[index] = muFallbackMedia(recSeriesId, recName, coverUrl)
                         }
                     } catch (e: Exception) {
                         continue
@@ -1279,7 +1263,10 @@ class MangaUpdatesInfoFragment : Fragment() {
                                     false
                             ).apply {
                                 itemTitle.setText(ani.dantotsu.R.string.recommended)
-                                itemRecycler.adapter = MediaAdaptor(0, directMedia, requireActivity())
+                                itemRecycler.adapter = MediaAdaptor(
+                                    0, directMedia, requireActivity(),
+                                    currentMedia = media
+                                )
                                 itemRecycler.layoutManager =
                                     androidx.recyclerview.widget.LinearLayoutManager(
                                         requireContext(),
@@ -1289,6 +1276,7 @@ class MangaUpdatesInfoFragment : Fragment() {
                                 itemMore.visibility = View.VISIBLE
                                 itemMore.setSafeOnClickListener {
                                     MediaListViewActivity.passedMedia = ArrayList(directMedia)
+                                    MediaListViewActivity.passedRecommendationSource = media
                                     startActivity(
                                         Intent(requireContext(), MediaListViewActivity::class.java)
                                             .putExtra("title", getString(ani.dantotsu.R.string.recommended))
@@ -1305,7 +1293,10 @@ class MangaUpdatesInfoFragment : Fragment() {
                                     false
                             ).apply {
                                 itemTitle.setText(ani.dantotsu.R.string.category_recommendations)
-                                itemRecycler.adapter = MediaAdaptor(0, categoryMedia, requireActivity())
+                                itemRecycler.adapter = MediaAdaptor(
+                                    0, categoryMedia, requireActivity(),
+                                    currentMedia = media
+                                )
                                 itemRecycler.layoutManager =
                                     androidx.recyclerview.widget.LinearLayoutManager(
                                         requireContext(),
@@ -1315,6 +1306,7 @@ class MangaUpdatesInfoFragment : Fragment() {
                                 itemMore.visibility = View.VISIBLE
                                 itemMore.setSafeOnClickListener {
                                     MediaListViewActivity.passedMedia = ArrayList(categoryMedia)
+                                    MediaListViewActivity.passedRecommendationSource = media
                                     startActivity(
                                         Intent(requireContext(), MediaListViewActivity::class.java)
                                             .putExtra("title", getString(ani.dantotsu.R.string.category_recommendations))

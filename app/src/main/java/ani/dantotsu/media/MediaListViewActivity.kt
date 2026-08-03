@@ -59,6 +59,10 @@ class MediaListViewActivity : AppCompatActivity() {
     private var screenWidth = 0f
     private lateinit var mediaViewButton: ImageView
 
+    // Set only when this list is a "Recommended" carousel's full list, so cards can badge
+    // entries whose type differs from the media the recommendations came from.
+    private var recommendationSource: Media? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMediaListViewBinding.inflate(layoutInflater)
@@ -117,6 +121,7 @@ class MediaListViewActivity : AppCompatActivity() {
             unreadInfo = passedUnreadInfo
             unreleasedInfo = passedUnreleasedInfo
             description = passedDescription
+            recommendationSource = passedRecommendationSource
             showContent()
         }
     }
@@ -266,7 +271,11 @@ class MediaListViewActivity : AppCompatActivity() {
             else -> {
                 // Standard adapter
                 binding.mediaRecyclerView.adapter =
-                    MediaAdaptor(mode, list, this, fromMalStack = fromMalStack)
+                    MediaAdaptor(
+                        mode, list, this,
+                        fromMalStack = fromMalStack,
+                        currentMedia = recommendationSource
+                    )
             }
         }
         binding.mediaRecyclerView.layoutManager = GridLayoutManager(
@@ -295,6 +304,7 @@ class MediaListViewActivity : AppCompatActivity() {
             passedUnreadInfo = null
             passedUnreleasedInfo = null
             passedDescription = null
+            passedRecommendationSource = null
         }
     }
 
@@ -307,5 +317,6 @@ class MediaListViewActivity : AppCompatActivity() {
         var passedUnreadInfo: Map<Int, UnreadChapterInfo>? = null
         var passedUnreleasedInfo: Map<Int, UnreleasedEpisodeInfo>? = null
         var passedDescription: String? = null
+        var passedRecommendationSource: Media? = null
     }
 }

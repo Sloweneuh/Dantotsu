@@ -26,6 +26,8 @@ import ani.dantotsu.connections.anilist.AnilistSearch.SearchType
 import ani.dantotsu.connections.anilist.AnilistSearch.SearchType.Companion.toAnilistString
 import ani.dantotsu.connections.anilist.api.FuzzyDate
 import ani.dantotsu.connections.mangabaka.MangaBakaApi
+import ani.dantotsu.connections.mangaupdates.MangaUpdates
+import ani.dantotsu.connections.mangaupdates.isMuNovelType
 import ani.dantotsu.copyToClipboard
 import ani.dantotsu.databinding.FragmentMediaInfoBinding
 import ani.dantotsu.databinding.ItemChipBinding
@@ -594,6 +596,33 @@ class MangaBakaInfoFragment : Fragment() {
     }
 
     /**
+     * Builds the placeholder [Media] for a "similar" entry that only has a MangaUpdates link,
+     * looking up the series' real MangaUpdates type so it isn't always guessed as "MANGA" (which
+     * would hide a Novel recommendation behind the wrong type badge).
+     */
+    private suspend fun muFallbackMedia(muId: Long, name: String, cover: String?): Media {
+        val muType = withContext(Dispatchers.IO) {
+            try {
+                MangaUpdates.getSeriesDetails(muId)?.type
+            } catch (e: Exception) {
+                null
+            }
+        }
+        return Media(
+            id = (muId and 0x7FFFFFFF).toInt(),
+            name = name,
+            nameRomaji = name,
+            userPreferredName = name,
+            cover = cover,
+            banner = cover,
+            isAdult = false,
+            manga = Manga(),
+            format = if (isMuNovelType(muType)) "NOVEL" else "MANGA",
+            muSeriesId = muId,
+        )
+    }
+
+    /**
      * Recommendations from the `similar` route: prefer the linked AniList media, fall back to a
      * MangaUpdates entry when no AniList link exists, and skip similars that have neither.
      */
@@ -629,18 +658,7 @@ class MangaBakaInfoFragment : Fragment() {
                     muId != null && muId > 0 && muId != currentMuId -> {
                         val cover = s.cover?.thumbUrl()
                         val name = s.title ?: return@forEachIndexed
-                        indexToMedia[index] = Media(
-                            id = (muId and 0x7FFFFFFF).toInt(),
-                            name = name,
-                            nameRomaji = name,
-                            userPreferredName = name,
-                            cover = cover,
-                            banner = cover,
-                            isAdult = false,
-                            manga = Manga(),
-                            format = "MANGA",
-                            muSeriesId = muId,
-                        )
+                        indexToMedia[index] = muFallbackMedia(muId, name, cover)
                     }
                 }
             }
@@ -664,13 +682,17 @@ class MangaBakaInfoFragment : Fragment() {
                 if (_binding == null || placeholder.childCount > 0) return@withContext
                 ItemTitleRecyclerBinding.inflate(LayoutInflater.from(context), placeholder, false).apply {
                     itemTitle.setText(R.string.recommended)
-                    itemRecycler.adapter = MediaAdaptor(0, ArrayList(recommended), requireActivity())
+                    itemRecycler.adapter = MediaAdaptor(
+                        0, ArrayList(recommended), requireActivity(),
+                        currentMedia = media
+                    )
                     itemRecycler.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(
                         requireContext(), androidx.recyclerview.widget.LinearLayoutManager.HORIZONTAL, false
                     )
                     itemMore.visibility = View.VISIBLE
                     itemMore.setSafeOnClickListener {
                         MediaListViewActivity.passedMedia = ArrayList(recommended)
+                        MediaListViewActivity.passedRecommendationSource = media
                         startActivity(
                             Intent(requireContext(), MediaListViewActivity::class.java)
                                 .putExtra("title", getString(R.string.recommended))

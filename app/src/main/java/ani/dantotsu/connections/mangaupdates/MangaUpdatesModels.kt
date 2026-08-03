@@ -114,6 +114,14 @@ data class MUSearchResultUserList(
     val status: MUProgressUpdateStatus? = null
 )
 
+/**
+ * MangaUpdates' `type` field is free-form (see the format dropdown in [ani.dantotsu.media.MUSearchFilterBottomSheet]:
+ * Manga, Manhwa, Manhua, OEL, Artbook, Doujinshi, Drama CD, plus several translation-language
+ * groups, alongside Novel) rather than the fixed AniList format enum, so novel detection has to
+ * match on substring instead of an exact "NOVEL" comparison.
+ */
+fun isMuNovelType(type: String?): Boolean = type?.contains("novel", ignoreCase = true) == true
+
 fun MUSearchResult.toMUMedia(): MUMedia? {
     val r = record ?: return null
     return MUMedia(

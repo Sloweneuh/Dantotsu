@@ -965,7 +965,7 @@ class AniListInfoFragment : Fragment() {
                     ).apply {
                         itemTitle.setText(R.string.recommended)
                         itemRecycler.adapter =
-                            MediaAdaptor(0, media.recommendations!!, requireActivity())
+                            MediaAdaptor(0, media.recommendations!!, requireActivity(), currentMedia = media)
                         itemRecycler.layoutManager = LinearLayoutManager(
                             requireContext(),
                             LinearLayoutManager.HORIZONTAL,
@@ -974,6 +974,7 @@ class AniListInfoFragment : Fragment() {
                         itemMore.visibility = View.VISIBLE
                         itemMore.setSafeOnClickListener {
                             MediaListViewActivity.passedMedia = ArrayList(media.recommendations!!)
+                            MediaListViewActivity.passedRecommendationSource = media
                             startActivity(
                                 Intent(requireContext(), MediaListViewActivity::class.java)
                                     .putExtra("title", getString(R.string.recommended))

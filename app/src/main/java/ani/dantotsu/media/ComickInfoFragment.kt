@@ -1499,7 +1499,8 @@ class ComickInfoFragment : Fragment() {
                                             ani.dantotsu.media.MediaAdaptor(
                                                     0,
                                                     recommendedMedia,
-                                                    requireActivity()
+                                                    requireActivity(),
+                                                    currentMedia = model.getMedia().value
                                             )
                                         itemRecycler.layoutManager =
                                             androidx.recyclerview.widget.LinearLayoutManager(
@@ -1511,6 +1512,7 @@ class ComickInfoFragment : Fragment() {
                                         itemMore.visibility = View.VISIBLE
                                         itemMore.setSafeOnClickListener {
                                         MediaListViewActivity.passedMedia = ArrayList(recommendedMedia)
+                                        MediaListViewActivity.passedRecommendationSource = model.getMedia().value
                                         startActivity(
                                             Intent(requireContext(), MediaListViewActivity::class.java)
                                             .putExtra("title", getString(ani.dantotsu.R.string.recommended))
