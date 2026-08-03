@@ -135,6 +135,7 @@
             android:layout_height="wrap_content"
             android:layout_gravity="center"
             android:indeterminate="true"
+            android:indeterminateTint="?attr/colorPrimary"
             android:visibility="gone"
             tools:visibility="visible" />
 
