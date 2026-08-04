@@ -16,6 +16,8 @@ import eu.kanade.tachiyomi.source.online.HttpSource
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import tachiyomi.decoder.ImageDecoder
+import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.FileOutputStream
@@ -32,10 +34,8 @@ data class ImageData(
             try {
                 val response = httpSource.getImage(page)
                 Logger.log("Response: ${response.code} - ${response.message}")
-                val inputStream = response.body.byteStream()
-                val bitmap = BitmapFactory.decodeStream(inputStream)
-                inputStream.close()
-                return@withContext bitmap
+                val bytes = response.body.bytes()
+                return@withContext decodeImage(bytes)
             } catch (e: CancellationException) {
                 // Must propagate, not be treated as a failed page fetch — swallowing this here
                 // breaks structured concurrency: the retry loop below would keep retrying (and
@@ -47,6 +47,20 @@ data class ImageData(
                 snackString("An error occurred: ${e.message}")
                 return@withContext null
             }
+        }
+    }
+
+    // Some devices (e.g. WSA) ship an incomplete HEIF codec that can't decode AVIF/HEIF stills via BitmapFactory, so fall back to Mihon's native decoder.
+    private fun decodeImage(bytes: ByteArray): Bitmap? {
+        BitmapFactory.decodeStream(ByteArrayInputStream(bytes))?.let { return it }
+        return try {
+            val decoder = ImageDecoder.newInstance(ByteArrayInputStream(bytes)) ?: return null
+            val bitmap = decoder.decode()
+            decoder.recycle()
+            bitmap
+        } catch (e: Throwable) {
+            Logger.log("Fallback image decode failed: ${e.message}")
+            null
         }
     }
 }
