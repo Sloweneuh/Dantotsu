@@ -27,7 +27,6 @@ import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.stripSpansOnPaste
 import ani.dantotsu.themes.ThemeManager
-import ani.dantotsu.util.customAlertDialog
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.textfield.TextInputLayout
 import android.widget.ImageView
@@ -226,12 +225,64 @@ class ExtensionsActivity : AppCompatActivity() {
             val listOrder: String = PrefManager.getVal(PrefName.LangSort)
             val index = LanguageMapper.Companion.Language.entries.toTypedArray()
                 .indexOfFirst { it.code == listOrder }
-            customAlertDialog().apply {
-                setTitle(getString(R.string.language))
-                singleChoiceItems(languageOptions, index) { selected ->
+
+            val sheet = com.google.android.material.bottomsheet.BottomSheetDialog(this)
+            val dp = resources.displayMetrics.density
+            val onBgColor = com.google.android.material.color.MaterialColors.getColor(
+                binding.root, com.google.android.material.R.attr.colorOnBackground
+            )
+
+            val scrollView = androidx.core.widget.NestedScrollView(this)
+            val container = android.widget.LinearLayout(this).apply {
+                orientation = android.widget.LinearLayout.VERTICAL
+                setBackgroundResource(R.drawable.bottom_sheet_background)
+                val h = (24 * dp).toInt()
+                setPadding(h, (20 * dp).toInt(), h, navBarHeight + (16 * dp).toInt())
+            }
+
+            container.addView(androidx.appcompat.widget.AppCompatTextView(this).apply {
+                text = getString(R.string.language)
+                textSize = 18f
+                typeface = androidx.core.content.res.ResourcesCompat.getFont(this@ExtensionsActivity, R.font.poppins_bold)
+                setTextColor(onBgColor)
+                setPadding(0, 0, 0, (12 * dp).toInt())
+            })
+
+            container.addView(View(this).apply {
+                layoutParams = android.widget.LinearLayout.LayoutParams(
+                    android.widget.LinearLayout.LayoutParams.MATCH_PARENT, 1
+                ).also { it.bottomMargin = (12 * dp).toInt() }
+                alpha = 0.12f
+                setBackgroundColor(onBgColor)
+            })
+
+            val radioGroup = android.widget.RadioGroup(this).apply {
+                orientation = android.widget.RadioGroup.VERTICAL
+                layoutParams = android.widget.LinearLayout.LayoutParams(
+                    android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+            }
+            languageOptions.forEachIndexed { i, name ->
+                com.google.android.material.radiobutton.MaterialRadioButton(this@ExtensionsActivity).apply {
+                    id = i
+                    text = name
+                    textSize = 15f
+                    typeface = androidx.core.content.res.ResourcesCompat.getFont(this@ExtensionsActivity, R.font.poppins_semi_bold)
+                    isChecked = i == index
+                    minHeight = (48 * dp).toInt()
+                    layoutParams = android.widget.RadioGroup.LayoutParams(
+                        android.widget.RadioGroup.LayoutParams.MATCH_PARENT,
+                        android.widget.RadioGroup.LayoutParams.WRAP_CONTENT
+                    )
+                    radioGroup.addView(this)
+                }
+            }
+            radioGroup.setOnCheckedChangeListener { _, which ->
+                if (which >= 0 && which != index) {
                     PrefManager.setVal(
                         PrefName.LangSort,
-                        LanguageMapper.Companion.Language.entries[selected].code
+                        LanguageMapper.Companion.Language.entries[which].code
                     )
                     val currentFragment =
                         supportFragmentManager.findFragmentByTag("f${viewPager.currentItem}")
@@ -239,8 +290,13 @@ class ExtensionsActivity : AppCompatActivity() {
                         currentFragment.notifyDataChanged()
                     }
                 }
-                show()
+                sheet.dismiss()
             }
+
+            container.addView(radioGroup)
+            scrollView.addView(container)
+            sheet.setContentView(scrollView)
+            sheet.show()
         }
         binding.settingsContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> {
             topMargin = statusBarHeight
