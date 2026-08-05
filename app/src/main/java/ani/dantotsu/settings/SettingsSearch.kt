@@ -72,6 +72,8 @@ object SettingsSearch {
     private val IC_UI = R.drawable.ic_round_auto_awesome_24
     private val IC_BACKUP = R.drawable.backup_restore
     private val IC_DOWNLOAD = R.drawable.ic_download_24
+    private val IC_LOCK = R.drawable.ic_round_lock_24
+    private val IC_DELETE = R.drawable.ic_round_delete_24
 
     val index: List<SearchableSetting> by lazy { buildIndex() }
 
@@ -157,12 +159,16 @@ object SettingsSearch {
         // ---- Backup & sync ----
         l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.backup_restore, R.string.backup_sync, IC_BACKUP, R.string.backup_restore_desc, keywords = "export import")
         l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.cloud_sync, R.string.backup_sync, IC_BACKUP, R.string.cloud_sync_desc, keywords = "anilist cloud sync devices firebase")
-        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.cloud_sync_now, R.string.backup_sync, IC_BACKUP, R.string.cloud_sync_now_desc, keywords = "cloud sync upload download")
+        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.sync_code_title, R.string.backup_sync, IC_LOCK, R.string.sync_code_desc, keywords = "sync code key passphrase link pair connect add device qr scan encrypt encryption secure private")
+        // Described by what it does rather than by the row's live subtitle ("Last synced 3 minutes
+        // ago"), which tells someone searching nothing about what they'd be tapping.
+        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.cloud_sync_now, R.string.backup_sync, IC_BACKUP, R.string.cloud_sync_now_desc, keywords = "cloud sync upload download last synced")
         l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.sync_extensions, R.string.backup_sync, IC_EXTENSION, R.string.sync_extensions_desc, keywords = "extensions sources sync devices")
         l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.sync_extensions_now, R.string.backup_sync, IC_EXTENSION, R.string.sync_extensions_now_desc, keywords = "extensions sources install uninstall reconcile")
         l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.sync_extension_settings, R.string.backup_sync, IC_EXTENSION, R.string.sync_extension_settings_desc, keywords = "extension settings source preferences login credentials sync")
         l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.force_upload, R.string.backup_sync, IC_BACKUP, R.string.force_upload_desc, keywords = "force overwrite upload push cloud replace")
         l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.force_download, R.string.backup_sync, IC_BACKUP, R.string.force_download_desc, keywords = "force overwrite download pull cloud replace restore")
+        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.cloud_wipe, R.string.backup_sync, IC_DELETE, R.string.cloud_wipe_desc, keywords = "delete wipe erase remove clear cloud data privacy account reset")
 
         // ---- User Interface ----
         l += SearchableSetting(UserInterfaceSettingsActivity::class.java, R.string.immersive_mode, R.string.ui_settings, IC_UI, anchorViewId = R.id.uiSettingsImmersive, keywords = "fullscreen")

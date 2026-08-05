@@ -15,4 +15,12 @@ data class UnreadChapterStore(
     val banner: String?, // Banner image URL
     val time: Long,      // Timestamp in milliseconds
     val type: String = "UnreadChapter"
-) : Serializable
+) : Serializable {
+    companion object {
+        // Pinned, like every other stored class. Java derives this from the class shape when it
+        // isn't declared, so adding or removing a single field makes every previously stored value
+        // unreadable — which PrefManager then reports as a deserialization failure and falls back
+        // to the default, losing the stored notifications on upgrade.
+        private const val serialVersionUID = 1L
+    }
+}

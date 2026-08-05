@@ -22,6 +22,28 @@ object ExtensionSettingsStore {
     private const val PREFIX = "source_"
     private val gson = Gson()
 
+    /**
+     * Key fragments that mark a value as a credential rather than a setting.
+     *
+     * Sources choose their own preference keys, so this can only ever be a heuristic — but it costs
+     * nothing and covers the conventional names. It applies to the *cloud* path only: a local
+     * backup is as private as the device it's written from and should stay complete, whereas the
+     * cloud copy is the one whose whole justification is that it doesn't need to be trusted.
+     *
+     * A source using an unconventional key still syncs its credential, which is why the toggle
+     * keeps its warning. This narrows the exposure; it doesn't remove it.
+     */
+    private val CREDENTIAL_HINTS = listOf(
+        "password", "passwd", "token", "secret", "apikey", "api_key",
+        "auth", "session", "cookie", "credential", "bearer", "refresh",
+    )
+
+    private fun looksLikeCredential(key: String): Boolean {
+        val lower = key.lowercase()
+        return CREDENTIAL_HINTS.any { it in lower }
+    }
+
+
     private fun sharedPrefsDir(context: Context) =
         File(context.applicationInfo.dataDir, "shared_prefs")
 
@@ -31,13 +53,22 @@ object ExtensionSettingsStore {
             ?.map { it.name.removeSuffix(".xml") }
             ?: emptyList()
 
-    /** @return JSON of `{ "source_<id>": { key: { type, value } } }`, empty object when none. */
-    fun export(context: Context): String {
+    /**
+     * @param excludeCredentials drops keys that look like logins (see [CREDENTIAL_HINTS]). Set for
+     *   the cloud path; left off for local backups, which are expected to restore a device whole.
+     * @return JSON of `{ "source_<id>": { key: { type, value } } }`, empty object when none.
+     */
+    fun export(context: Context, excludeCredentials: Boolean = false): String {
         val out = mutableMapOf<String, Map<String, Map<String, Any?>>>()
+        var dropped = 0
         sourcePrefNames(context).forEach { name ->
             val prefs = context.getSharedPreferences(name, Context.MODE_PRIVATE)
             val entries = mutableMapOf<String, Map<String, Any?>>()
             prefs.all.forEach { (key, value) ->
+                if (excludeCredentials && looksLikeCredential(key)) {
+                    dropped++
+                    return@forEach
+                }
                 entries[key] = mapOf(
                     "type" to value?.javaClass?.kotlin?.qualifiedName,
                     "value" to value,
@@ -45,6 +76,7 @@ object ExtensionSettingsStore {
             }
             if (entries.isNotEmpty()) out[name] = entries
         }
+        if (dropped > 0) Logger.log("ExtensionSettingsStore: kept $dropped credential(s) off the cloud")
         return gson.toJson(out)
     }
 

@@ -37,8 +37,12 @@ class NetworkHelper(
 
 private fun setupSocks5Proxy() {
         val proxyEnabled = PrefManager.getVal<Boolean>(PrefName.EnableSocks5Proxy)
-        if (proxyEnabled) {
-            val proxyHost = PrefManager.getVal<String>(PrefName.Socks5ProxyHost)
+        val proxyHost = PrefManager.getVal<String>(PrefName.Socks5ProxyHost)
+        // An enabled proxy with no host set every request through a proxy at "", which fails all
+        // networking with nothing on screen to explain it. The toggle and the host live in
+        // different preference locations (the host is Protected), so they can get out of step —
+        // treat a hostless proxy as off rather than as broken.
+        if (proxyEnabled && proxyHost.isNotBlank()) {
             val proxyPort = PrefManager.getVal<String>(PrefName.Socks5ProxyPort)
 
             System.setProperty("socksProxyHost", proxyHost)

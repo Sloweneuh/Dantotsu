@@ -1424,6 +1424,17 @@
     <string name="cloud_sync_failed">Échec de la synchro cloud</string>
     <string name="cloud_sync_conflict_title">Conflit de synchronisation</string>
     <string name="cloud_sync_conflict_msg">Les paramètres de cet appareil et ceux du cloud ont tous deux changé depuis la dernière synchronisation. Quelle copie souhaitez-vous conserver ?</string>
+    <string name="cloud_sync_conflict_this_device">Cet appareil</string>
+    <string name="cloud_sync_conflict_cloud">Cloud</string>
+    <string name="cloud_sync_conflict_not_set">Non défini</string>
+    <string name="cloud_sync_conflict_on">Activé</string>
+    <string name="cloud_sync_conflict_off">Désactivé</string>
+    <string name="cloud_sync_conflict_changed">Modifié</string>
+    <string name="cloud_sync_merged">Paramètres fusionnés depuis les deux appareils</string>
+    <string name="cloud_sync_reload_hint">Rechargez pour les voir sur cet écran</string>
+    <string name="cloud_sync_conflict_banner">Cet appareil et un autre ont tous deux modifié des paramètres</string>
+    <string name="cloud_sync_last_synced">Dernière synchro %1$s</string>
+    <string name="cloud_sync_never_synced">Pas encore synchronisé</string>
     <string name="cloud_sync_conflict_saved">Version du cloud enregistrée %1$s</string>
     <string name="cloud_sync_conflict_saved_device">Version du cloud enregistrée %1$s depuis %2$s</string>
     <string name="cloud_sync_keep_local">Garder cet appareil</string>
@@ -1439,6 +1450,43 @@
     <string name="force_download_confirm_msg">Cela remplace les paramètres de cet appareil par la copie stockée dans le cloud. Les changements locaux non synchronisés seront perdus. Continuer ?</string>
     <string name="force_download_done">Paramètres remplacés par la copie du cloud</string>
     <string name="novel">Roman</string>
+    <string name="sync_code_title">Code de synchro</string>
+    <string name="sync_code_desc">Vos appareils partagent un code qui chiffre vos données synchronisées. Affichez-le ici pour ajouter un autre appareil.</string>
+    <string name="sync_code_desc_unlinked">Configurez un code de synchro pour commencer à synchroniser. Vos données sont chiffrées avec, et il ne quitte jamais vos appareils.</string>
+    <string name="sync_code_show_hint">Scannez ceci sur votre autre appareil, ou saisissez le code ci-dessous.</string>
+    <string name="sync_code_qr_description">QR code contenant votre code de synchro</string>
+    <string name="sync_code_secrecy_warning">Toute personne disposant de ce code peut lire vos données synchronisées. Ne le partagez qu\'avec vos propres appareils.</string>
+    <string name="sync_code_copy">Copier</string>
+    <string name="sync_code_copied">Code de synchro copié</string>
+    <string name="sync_code_hint">Code de synchro</string>
+    <string name="sync_code_enter_hint">Saisissez le code affiché sur votre autre appareil.</string>
+    <string name="sync_code_scan">Scanner</string>
+    <string name="sync_code_invalid">Ce code semble incorrect — vérifiez-le et réessayez</string>
+    <string name="sync_code_passphrase_mode">Cet appareil est lié par phrase secrète. Saisissez la même phrase secrète sur vos autres appareils pour les lier.</string>
+    <string name="sync_setup_title">Configurer la synchro</string>
+    <string name="sync_setup_message">Créez un code sur votre premier appareil, puis saisissez-le sur les autres. Si vous préférez ne pas taper un code aléatoire, vous pouvez utiliser une phrase secrète à la place.</string>
+    <string name="sync_setup_create">Créer un code</string>
+    <string name="sync_setup_enter">Saisir un code</string>
+    <string name="sync_setup_passphrase">Utiliser une phrase secrète</string>
+    <string name="sync_passphrase_hint">Phrase secrète</string>
+    <string name="sync_passphrase_message">Choisissez une phrase secrète et saisissez la même sur chaque appareil. Si vous l\'oubliez, les données stockées dans le cloud seront irrécupérables.</string>
+    <string name="sync_passphrase_too_short">Utilisez au moins %1$d caractères</string>
+    <string name="sync_linked">Appareil lié</string>
+    <string name="sync_unlink">Dissocier cet appareil</string>
+    <string name="sync_unlinked">Appareil délié</string>
+    <string name="sync_unlink_confirm">Cet appareil cessera de se synchroniser tant que vous ne l\'aurez pas lié de nouveau. Vos paramètres et la copie du cloud sont tous deux conservés.</string>
+    <string name="sync_not_linked">Configurez d\'abord un code de synchro</string>
+    <string name="sync_relink_title">La synchro cloud doit être configurée</string>
+    <string name="sync_relink_banner_desc">Configurez un code de synchro pour reprendre la synchronisation</string>
+    <string name="ext_reconcile_banner_title">Vos appareils n\'ont pas les mêmes extensions</string>
+    <string name="ext_reconcile_banner_desc">Choisissez ici quoi installer ou supprimer</string>
+    <string name="cloud_wipe">Supprimer les données du cloud</string>
+    <string name="cloud_wipe_desc">Supprimer tout ce que ce compte stocke dans le cloud</string>
+    <string name="cloud_wipe_confirm_title">Supprimer les données du cloud ?</string>
+    <string name="cloud_wipe_confirm_msg">Cela supprime les paramètres, la progression, la liste d\'extensions et les paramètres d\'extensions stockés dans le cloud pour ce compte. Rien n\'est supprimé sur cet appareil, et vos autres appareils conservent leurs propres copies. Continuer ?</string>
+    <string name="cloud_wipe_done">Données du cloud supprimées</string>
+    <string name="cloud_wipe_partial">Certaines données du cloud n\'ont pas pu être supprimées — réessayez</string>
+
     <string name="sync_extensions">Synchroniser les extensions</string>
     <string name="sync_extensions_desc">Synchroniser aussi la liste de vos extensions installées entre vos appareils</string>
     <string name="sync_extensions_now">Synchroniser les extensions maintenant</string>
@@ -1737,6 +1785,21 @@
         <item quantity="other">%d paramètres sélectionnés</item>
     </plurals>
 
+    <plurals name="extension_updates_count">
+        <item quantity="one">%d extension a une mise à jour</item>
+        <item quantity="other">%d extensions ont des mises à jour</item>
+    </plurals>
+
+    <plurals name="cloud_sync_conflict_items">
+        <item quantity="one">%d élément</item>
+        <item quantity="other">%d éléments</item>
+    </plurals>
+
+    <plurals name="cloud_sync_conflict_count">
+        <item quantity="one">%d paramètre a été modifié à la fois sur cet appareil et sur un autre. Tout le reste a été fusionné — ce choix ne concerne que celui-ci.</item>
+        <item quantity="other">%d paramètres ont été modifiés à la fois sur cet appareil et sur un autre. Tout le reste a été fusionné — ce choix ne concerne que ceux-ci.</item>
+    </plurals>
+
     <string name="backup_cat_general">Général</string>
     <string name="backup_cat_general_desc">Préférences et comportement de l\'application</string>
     <string name="backup_cat_ui">Apparence et interface</string>
@@ -1811,6 +1874,12 @@
     <string name="backup_sub_novel_ui">Interface</string>
     <string name="backup_sub_novel_ui_desc">Barre de défilement, écran allumé, touches volume</string>
 
+    <string name="backup_sub_extension_settings">Paramètres des extensions</string>
+    <string name="backup_sub_extension_settings_desc">Les préférences propres à chaque source, qui peuvent inclure des identifiants</string>
+    <string name="backup_extension_settings">Inclure les paramètres des extensions</string>
+    <string name="backup_sub_cloud_sync">Synchro cloud</string>
+    <string name="backup_sub_cloud_sync_desc">Le code qui relie cet appareil aux autres</string>
+    <string name="backup_cloud_sync_key">Code de synchro</string>
     <string name="backup_sub_anilist">AniList</string>
     <string name="backup_sub_anilist_desc">Jeton et infos du compte AniList</string>
     <string name="backup_sub_mal">MyAnimeList</string>

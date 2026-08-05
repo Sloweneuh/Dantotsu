@@ -82,6 +82,10 @@ object GlobalHandoffReceiver {
     }
 
     private fun onHandoff(payload: HandoffPayload) {
+        // Receiving one is proof another device is in play — the strongest such signal the app
+        // has, and an entirely local one. Worth offering cloud sync to someone demonstrably using
+        // two devices; the offer declines itself if they're already linked or have said no.
+        runCatching { ani.dantotsu.connections.sync.SyncLinkNotice.offer() }
         val activity = App.currentActivity()
         if (activity != null && !activity.isFinishing) {
             // Self-dismissing banner on the current screen (doesn't block the rest of the UI).

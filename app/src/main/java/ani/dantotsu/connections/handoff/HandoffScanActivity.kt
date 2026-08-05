@@ -41,6 +41,14 @@ import java.util.concurrent.Executors
  */
 class HandoffScanActivity : AppCompatActivity() {
 
+    companion object {
+        /**
+         * Set on the launching intent to get the decoded string back via `setResult` instead of
+         * the media-handoff flow, and read back off the result intent under the same name.
+         */
+        const val EXTRA_RAW_RESULT = "raw_result"
+    }
+
     private lateinit var binding: ActivityHandoffScanBinding
     private val analysisExecutor = Executors.newSingleThreadExecutor()
     private var cameraProvider: ProcessCameraProvider? = null
@@ -98,6 +106,14 @@ class HandoffScanActivity : AppCompatActivity() {
     /** Called on the analysis thread for every decoded QR; ignores non-handoff codes. */
     private fun onScanned(text: String) {
         if (handled) return
+        if (intent.getBooleanExtra(EXTRA_RAW_RESULT, false)) {
+            // Raw mode: the caller wants the scanned string itself, not a media handoff. Used by
+            // cloud sync, whose QR carries the sync code rather than a deep link.
+            handled = true
+            setResult(RESULT_OK, android.content.Intent().putExtra(EXTRA_RAW_RESULT, text))
+            runOnUiThread { finish() }
+            return
+        }
         val uri = Uri.parse(text)
         val payload = HandoffPayload.fromDeepLink(uri) ?: return
         handled = true

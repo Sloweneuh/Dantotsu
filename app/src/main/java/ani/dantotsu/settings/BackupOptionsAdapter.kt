@@ -8,6 +8,7 @@ import ani.dantotsu.databinding.ItemBackupPrefBinding
 import ani.dantotsu.databinding.ItemBackupSubcategoryBinding
 import ani.dantotsu.settings.saving.BackupCategory
 import ani.dantotsu.settings.saving.BackupItem
+import ani.dantotsu.settings.saving.BackupSection
 import ani.dantotsu.settings.saving.BackupSubCategory
 import ani.dantotsu.settings.saving.BackupTree
 import ani.dantotsu.settings.saving.PrefName
@@ -32,26 +33,38 @@ class BackupOptionsAdapter(
 
     private val expandedCategories = mutableSetOf<String>()
     private val expandedSubCategories = mutableSetOf<String>()
-    private val selected: MutableSet<PrefName> = mutableSetOf()
+    /**
+     * Held as [BackupItem.id] rather than [PrefName], because not everything a backup carries is a
+     * preference — see [BackupSection].
+     */
+    private val selected: MutableSet<String> = mutableSetOf()
     private var rows: List<Row> = emptyList()
 
     init {
         rebuildRows()
     }
 
-    fun selectedPrefs(): Set<PrefName> = selected.toSet()
+    /** Only the preference-backed selections; sections are asked for separately. */
+    fun selectedPrefs(): Set<PrefName> =
+        BackupTree.categories
+            .flatMap { it.subCategories }
+            .flatMap { it.items }
+            .mapNotNull { item -> item.pref?.takeIf { item.id in selected } }
+            .toSet()
+
+    fun isSelected(section: BackupSection): Boolean = section.name in selected
 
     fun hasProtectedSelected(): Boolean =
         BackupTree.categories.any { cat ->
             cat.containsProtected && cat.subCategories.any { sub ->
-                sub.items.any { it.pref in selected }
+                sub.items.any { it.id in selected }
             }
         }
 
     fun selectAll() {
         BackupTree.categories.forEach { cat ->
             cat.subCategories.forEach { sub ->
-                sub.items.forEach { selected.add(it.pref) }
+                sub.items.forEach { selected.add(it.id) }
             }
         }
         notifyDataSetChanged()
@@ -101,7 +114,7 @@ class BackupOptionsAdapter(
 
     private fun categoryState(cat: BackupCategory): Int {
         val items = categoryItems(cat)
-        val checkedCount = items.count { it.pref in selected }
+        val checkedCount = items.count { it.id in selected }
         return when {
             checkedCount == 0 -> MaterialCheckBox.STATE_UNCHECKED
             checkedCount == items.size -> MaterialCheckBox.STATE_CHECKED
@@ -110,7 +123,7 @@ class BackupOptionsAdapter(
     }
 
     private fun subCategoryState(sub: BackupSubCategory): Int {
-        val checkedCount = sub.items.count { it.pref in selected }
+        val checkedCount = sub.items.count { it.id in selected }
         return when {
             checkedCount == 0 -> MaterialCheckBox.STATE_UNCHECKED
             checkedCount == sub.items.size -> MaterialCheckBox.STATE_CHECKED
@@ -120,24 +133,24 @@ class BackupOptionsAdapter(
 
     private fun toggleCategory(cat: BackupCategory) {
         val items = categoryItems(cat)
-        val allSelected = items.all { it.pref in selected }
-        if (allSelected) items.forEach { selected.remove(it.pref) }
-        else items.forEach { selected.add(it.pref) }
+        val allSelected = items.all { it.id in selected }
+        if (allSelected) items.forEach { selected.remove(it.id) }
+        else items.forEach { selected.add(it.id) }
         notifyDataSetChanged()
         onSelectionChanged()
     }
 
     private fun toggleSubCategory(sub: BackupSubCategory) {
-        val allSelected = sub.items.all { it.pref in selected }
-        if (allSelected) sub.items.forEach { selected.remove(it.pref) }
-        else sub.items.forEach { selected.add(it.pref) }
+        val allSelected = sub.items.all { it.id in selected }
+        if (allSelected) sub.items.forEach { selected.remove(it.id) }
+        else sub.items.forEach { selected.add(it.id) }
         notifyDataSetChanged()
         onSelectionChanged()
     }
 
     private fun toggleItem(item: BackupItem) {
-        if (item.pref in selected) selected.remove(item.pref)
-        else selected.add(item.pref)
+        if (item.id in selected) selected.remove(item.id)
+        else selected.add(item.id)
         notifyDataSetChanged()
         onSelectionChanged()
     }
@@ -228,8 +241,8 @@ class BackupOptionsAdapter(
         fun bind(item: BackupItem) {
             val ctx = b.root.context
             b.backupItemTitle.text = item.titleRes?.let { ctx.getString(it) }
-                ?: prettifyName(item.pref.name)
-            b.backupItemCheckbox.isChecked = item.pref in selected
+                ?: prettifyName(item.id)
+            b.backupItemCheckbox.isChecked = item.id in selected
             b.backupItemRow.setOnClickListener { toggleItem(item) }
             b.backupItemCheckbox.setOnTouchListener { _, event ->
                 if (event.actionMasked == android.view.MotionEvent.ACTION_UP) {

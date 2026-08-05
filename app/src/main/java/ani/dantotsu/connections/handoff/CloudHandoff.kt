@@ -30,6 +30,10 @@ object CloudHandoff {
     private fun newCode(): String =
         (1..CODE_LENGTH).map { CODE_ALPHABET[Random.nextInt(CODE_ALPHABET.length)] }.joinToString("")
 
+    /** Whether a code could have come from [newCode] — same shape the database rules enforce. */
+    private fun isWellFormed(code: String): Boolean =
+        code.length == CODE_LENGTH && code.all { it in CODE_ALPHABET }
+
     /** Uploads [payload] and returns the generated sharing code via [onResult] (null on failure). */
     fun upload(payload: HandoffPayload, onResult: (String?) -> Unit) {
         val code = newCode()
@@ -50,7 +54,12 @@ object CloudHandoff {
      * it expires via [TTL_MS] anyway).
      */
     fun fetch(code: String, consume: Boolean = true, onResult: (HandoffPayload?) -> Unit) {
-        val node = runCatching { root().child(code.trim().uppercase()) }.getOrNull()
+        val normalised = code.trim().uppercase()
+        // The database only accepts well-formed codes, so a typo would come back as a permission
+        // denial. That already resolves to null below, but there is no reason to spend a request
+        // discovering that a code can't exist.
+        if (!isWellFormed(normalised)) return onResult(null)
+        val node = runCatching { root().child(normalised) }.getOrNull()
             ?: return onResult(null)
         node.get()
             .addOnSuccessListener { snapshot ->

@@ -38,8 +38,6 @@ import ani.dantotsu.addons.torrent.TorrentAddonManager
 import ani.dantotsu.addons.torrent.TorrentServerService
 import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.anilist.AnilistHomeViewModel
-import ani.dantotsu.connections.sync.CloudSync
-import ani.dantotsu.connections.sync.showCloudSyncConflictDialog
 import ani.dantotsu.databinding.ActivityMainBinding
 import ani.dantotsu.databinding.DialogUserAgentBinding
 import ani.dantotsu.databinding.SplashScreenBinding
@@ -56,7 +54,6 @@ import ani.dantotsu.profile.ProfileActivity
 import ani.dantotsu.profile.activity.FeedActivity
 import ani.dantotsu.profile.notification.NotificationActivity
 import ani.dantotsu.settings.AddRepositoryBottomSheet
-import ani.dantotsu.settings.ExtensionsActivity
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefManager.asLiveBool
 import ani.dantotsu.settings.saving.PrefName
@@ -69,7 +66,6 @@ import ani.dantotsu.util.Logger
 import ani.dantotsu.util.customAlertDialog
 import com.google.android.material.snackbar.BaseTransientBottomBar
 import com.google.android.material.snackbar.Snackbar
-import eu.kanade.domain.source.service.SourcePreferences
 import io.noties.markwon.Markwon
 import io.noties.markwon.SoftBreakAddsNewLinePlugin
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -91,7 +87,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var incognitoLiveData: SharedPreferenceBooleanLiveData
     private val scope = lifecycleScope
     private var load = false
-    private var cloudSyncConflictShown = false
 
     override fun attachBaseContext(newBase: android.content.Context?) {
         super.attachBaseContext(newBase?.let { ani.dantotsu.util.LanguageHelper.applyLanguageToContext(it) })
@@ -261,19 +256,8 @@ class MainActivity : AppCompatActivity() {
                 windowInsets
             }
 
-            val preferences: SourcePreferences = Injekt.get()
-            if (preferences.animeExtensionUpdatesCount()
-                    .get() > 0 || preferences.mangaExtensionUpdatesCount().get() > 0
-            ) {
-                snackString(R.string.extension_updates_available)
-                    ?.setDuration(Snackbar.LENGTH_SHORT)
-                    ?.setAction(R.string.review) {
-                        startActivity(
-                            Intent(this, ExtensionsActivity::class.java)
-                                .putExtra("tab", 0) // Open the Updates tab (position 0)
-                        )
-                    }
-            }
+            // Extension updates are surfaced by AppNotices on resume, as a banner that doesn't
+            // expire out from under the action attached to it.
             window.navigationBarColor = ContextCompat.getColor(this, android.R.color.transparent)
             val showAnime = PrefManager.getVal<Boolean>(PrefName.ShowAnimeTab)
             val showManga = PrefManager.getVal<Boolean>(PrefName.ShowMangaTab)
@@ -593,48 +577,6 @@ class MainActivity : AppCompatActivity() {
         // Request a layout pass to ensure window insets are recalculated
         // This fixes layout issues after screen turns off and back on
         binding.root.requestApplyInsets()
-        maybeShowCloudSyncConflict()
-        // A pull that lands while we're on screen changes prefs the live UI already read, so it's
-        // otherwise invisible. Offer a reload instead of silently recreating under the user.
-        CloudSync.onBackgroundApply = {
-            runOnUiThread {
-                if (!isFinishing && !isDestroyed) {
-                    snackString(getString(R.string.cloud_sync_done_updated))?.setAction(R.string.reload) {
-                        PrefManager.setCustomVal("reload", true)
-                        recreate()
-                    }
-                }
-            }
-        }
-    }
-
-    override fun onPause() {
-        super.onPause()
-        CloudSync.onBackgroundApply = null // holds a reference to this activity
-    }
-
-    /**
-     * A background pull can find cloud settings it isn't allowed to adopt silently (this device has
-     * settings of its own and no sync baseline). It has no UI, so it leaves a flag; this raises the
-     * prompt at the first opportunity. Once per process — onResume fires on every return to the
-     * app, and re-asking every time would be nagging rather than helpful.
-     */
-    private fun maybeShowCloudSyncConflict() {
-        if (cloudSyncConflictShown || !CloudSync.bootstrapPromptPending()) return
-        cloudSyncConflictShown = true
-        lifecycleScope.launch(Dispatchers.IO) {
-            val result = CloudSync.syncManual()
-            if (result !is CloudSync.SyncOutcome.Conflict) return@launch
-            withContext(Dispatchers.Main) {
-                if (isFinishing || isDestroyed) return@withContext
-                showCloudSyncConflictDialog(
-                    result.remotePayload, result.remoteTs, result.remoteDevice
-                ) {
-                    PrefManager.setCustomVal("reload", true)
-                    recreate()
-                }
-            }
-        }
     }
 
     //ViewPager

@@ -18,11 +18,19 @@ import androidx.documentfile.provider.DocumentFile
 import androidx.recyclerview.widget.LinearLayoutManager
 import ani.dantotsu.R
 import ani.dantotsu.connections.anilist.Anilist
+import android.content.Intent
+import ani.dantotsu.connections.handoff.HandoffScanActivity
 import ani.dantotsu.connections.sync.CloudSync
+import ani.dantotsu.connections.sync.CloudWipe
+import ani.dantotsu.connections.sync.applyScannedSyncCode
 import ani.dantotsu.connections.sync.ExtensionSettingsStore
 import ani.dantotsu.connections.sync.ExtensionSettingsSync
 import ani.dantotsu.connections.sync.ExtensionSync
+import ani.dantotsu.connections.sync.SyncClock
+import ani.dantotsu.connections.sync.SyncIdentity
 import ani.dantotsu.connections.sync.showCloudSyncConflictDialog
+import ani.dantotsu.connections.sync.showSyncCodeDialog
+import ani.dantotsu.connections.sync.showSyncSetupDialog
 import ani.dantotsu.databinding.ActivitySettingsBackupSyncBinding
 import ani.dantotsu.databinding.DialogUserAgentBinding
 import ani.dantotsu.initActivity
@@ -32,6 +40,7 @@ import ani.dantotsu.parsers.MangaSources
 import ani.dantotsu.parsers.NovelSources
 import ani.dantotsu.savePrefsToDownloads
 import ani.dantotsu.settings.saving.BackupArchive
+import ani.dantotsu.settings.saving.BackupSection
 import ani.dantotsu.settings.saving.BackupTree
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
@@ -39,6 +48,7 @@ import ani.dantotsu.settings.saving.internal.PreferenceKeystore
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.toast
+import ani.dantotsu.util.AppNotices
 import ani.dantotsu.util.StoragePermissions
 import ani.dantotsu.util.customAlertDialog
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -54,6 +64,25 @@ import kotlinx.coroutines.launch
  */
 class SettingsBackupSyncActivity : AppCompatActivity() {
     private lateinit var binding: ActivitySettingsBackupSyncBinding
+
+    /**
+     * Scanning another device's sync-code QR. Registered here rather than in the dialog that offers
+     * it: an activity result contract has to exist before the screen starts, which a dialog raised
+     * from a click handler is far too late to do.
+     */
+    private val scanSyncCode =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode != RESULT_OK) return@registerForActivityResult
+            val scanned = result.data?.getStringExtra(HandoffScanActivity.EXTRA_RAW_RESULT)
+            if (applyScannedSyncCode(scanned) { }) recreate()
+        }
+
+    private fun launchSyncCodeScan() {
+        scanSyncCode.launch(
+            Intent(this, HandoffScanActivity::class.java)
+                .putExtra(HandoffScanActivity.EXTRA_RAW_RESULT, true)
+        )
+    }
 
     override fun attachBaseContext(newBase: Context?) {
         super.attachBaseContext(newBase?.let { ani.dantotsu.util.LanguageHelper.applyLanguageToContext(it) })
@@ -142,12 +171,35 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                 isChecked = PrefManager.getVal(PrefName.CloudSyncEnabled),
                 switch = { isChecked, _ ->
                     PrefManager.setVal(PrefName.CloudSyncEnabled, isChecked)
+                    // Turning it off here can strand a sync banner on this very screen, where no
+                    // resume will come along to re-evaluate it.
+                    AppNotices.dismissStale()
+                },
+            ),
+            Settings(
+                type = 1,
+                name = getString(R.string.sync_code_title),
+                desc = getString(
+                    if (SyncIdentity.isLinked()) R.string.sync_code_desc
+                    else R.string.sync_code_desc_unlinked
+                ),
+                icon = R.drawable.ic_round_lock_24,
+                onClick = {
+                    if (Anilist.token.isNullOrEmpty()) {
+                        toast(getString(R.string.cloud_sync_no_account))
+                    } else if (SyncIdentity.isLinked()) {
+                        showSyncCodeDialog { recreate() }
+                    } else {
+                        showSyncSetupDialog(onScan = { launchSyncCodeScan() }) { recreate() }
+                    }
                 },
             ),
             Settings(
                 type = 1,
                 name = getString(R.string.cloud_sync_now),
-                desc = getString(R.string.cloud_sync_now_desc),
+                // The row doubles as the status line. A sync that works is invisible by design, so
+                // without this there was nothing anywhere saying whether it ever had.
+                desc = lastSyncedLine(),
                 icon = R.drawable.ic_round_sync_24,
                 onClick = { view ->
                     when {
@@ -156,6 +208,9 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
 
                         !PrefManager.getVal<Boolean>(PrefName.CloudSyncEnabled) ->
                             toast(getString(R.string.cloud_sync_is_disabled))
+
+                        !SyncIdentity.isLinked() ->
+                            toast(getString(R.string.sync_not_linked))
 
                         else -> {
                             toast(getString(R.string.please_wait))
@@ -167,10 +222,12 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                                 runOnUiThread { view.settingsIcon.setSpinning(false) }
                                 when (result) {
                                     is CloudSync.SyncOutcome.Conflict ->
+                                        runOnUiThread { showConflictDialog(result) }
+
+                                    is CloudSync.SyncOutcome.Merged ->
                                         runOnUiThread {
-                                            showConflictDialog(
-                                                result.remotePayload, result.remoteTs, result.remoteDevice
-                                            )
+                                            toast(getString(R.string.cloud_sync_merged))
+                                            applyRestore()
                                         }
 
                                     is CloudSync.SyncOutcome.Pulled ->
@@ -203,6 +260,7 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                 isChecked = PrefManager.getVal(PrefName.SyncExtensionsEnabled),
                 switch = { isChecked, _ ->
                     PrefManager.setVal(PrefName.SyncExtensionsEnabled, isChecked)
+                    AppNotices.dismissStale()
                 },
             ),
             Settings(
@@ -217,6 +275,9 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
 
                         !PrefManager.getVal<Boolean>(PrefName.SyncExtensionsEnabled) ->
                             toast(getString(R.string.sync_extensions_is_disabled))
+
+                        !SyncIdentity.isLinked() ->
+                            toast(getString(R.string.sync_not_linked))
 
                         else -> {
                             toast(getString(R.string.please_wait))
@@ -256,6 +317,8 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                 onClick = {
                     if (Anilist.token.isNullOrEmpty()) {
                         toast(getString(R.string.cloud_sync_no_account))
+                    } else if (!SyncIdentity.isLinked()) {
+                        toast(getString(R.string.sync_not_linked))
                     } else {
                         customAlertDialog().apply {
                             setTitle(R.string.force_upload_confirm_title)
@@ -293,6 +356,8 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                 onClick = {
                     if (Anilist.token.isNullOrEmpty()) {
                         toast(getString(R.string.cloud_sync_no_account))
+                    } else if (!SyncIdentity.isLinked()) {
+                        toast(getString(R.string.sync_not_linked))
                     } else {
                         customAlertDialog().apply {
                             setTitle(R.string.force_download_confirm_title)
@@ -300,9 +365,13 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                             setPosButton(R.string.force_download) {
                                 toast(getString(R.string.please_wait))
                                 GlobalScope.launch(Dispatchers.IO) {
-                                    val ok = CloudSync.forcePull()
-                                    if (PrefManager.getVal<Boolean>(PrefName.SyncExtensionSettingsEnabled))
-                                        ExtensionSettingsSync.forcePull()
+                                    val settingsOk = CloudSync.forcePull()
+                                    // Was reported as success on the settings pull alone, so a
+                                    // failed extension-settings pull looked like it had worked.
+                                    val extOk =
+                                        if (PrefManager.getVal<Boolean>(PrefName.SyncExtensionSettingsEnabled))
+                                            ExtensionSettingsSync.forcePull() else true
+                                    val ok = settingsOk && extOk
                                     runOnUiThread {
                                         if (ok) {
                                             toast(getString(R.string.force_download_done))
@@ -319,6 +388,41 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                     }
                 },
             ),
+            Settings(
+                type = 1,
+                name = getString(R.string.cloud_wipe),
+                desc = getString(R.string.cloud_wipe_desc),
+                icon = R.drawable.ic_round_delete_24,
+                onClick = {
+                    if (Anilist.token.isNullOrEmpty()) {
+                        toast(getString(R.string.cloud_sync_no_account))
+                    } else {
+                        customAlertDialog().apply {
+                            setTitle(R.string.cloud_wipe_confirm_title)
+                            setMessage(R.string.cloud_wipe_confirm_msg)
+                            setPosButton(R.string.cloud_wipe) {
+                                toast(getString(R.string.please_wait))
+                                GlobalScope.launch(Dispatchers.IO) {
+                                    val ok = CloudWipe.run()
+                                    runOnUiThread {
+                                        // The wipe cleared the notices' state on a background
+                                        // thread; the cards themselves have to come down here.
+                                        AppNotices.dismissStale()
+                                        toast(
+                                            getString(
+                                                if (ok) R.string.cloud_wipe_done
+                                                else R.string.cloud_wipe_partial
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+                            setNegButton(R.string.cancel) {}
+                            show()
+                        }
+                    }
+                },
+            ),
         )
 
         binding.backupSyncRecyclerView.adapter = SettingsAdapter(settingsList)
@@ -326,50 +430,17 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
     }
 
     @OptIn(DelicateCoroutinesApi::class)
-    private fun showConflictDialog(remotePayload: String, remoteTs: Long, remoteDevice: String?) =
-        showCloudSyncConflictDialog(remotePayload, remoteTs, remoteDevice) { applyRestore() }
+    private fun showConflictDialog(conflict: CloudSync.SyncOutcome.Conflict) =
+        showCloudSyncConflictDialog(conflict) { applyRestore() }
 
-    @OptIn(DelicateCoroutinesApi::class)
-    private fun showExtensionReconcileDialog(diff: ExtensionSync.Diff) {
-        // One flat, user-driven list: installs first, then removals. Installs that can still be
-        // found in the repos are pre-checked (additive, safe); removals are unchecked so deleting
-        // an extension is always a deliberate opt-in.
-        val items = diff.toInstall + diff.toRemove
-        val checked = items.map { it.isInstall && it.available }.toBooleanArray()
-
-        val pad = (8 * resources.displayMetrics.density).toInt()
-        val recycler = androidx.recyclerview.widget.RecyclerView(this).apply {
-            layoutManager = LinearLayoutManager(this@SettingsBackupSyncActivity)
-            adapter = ExtensionReconcileAdapter(items, checked)
-            setPadding(0, pad, 0, pad)
-        }
-
-        AlertDialog.Builder(this, R.style.MyPopup)
-            .setTitle(R.string.sync_extensions)
-            .setView(recycler)
-            .setPositiveButton(R.string.ext_reconcile_apply) { _, _ ->
-                var installed = 0
-                var removed = 0
-                items.forEachIndexed { i, item ->
-                    if (!checked[i]) return@forEachIndexed
-                    if (item.isInstall) {
-                        if (item.available) {
-                            ExtensionSync.install(item)
-                            installed++
-                        }
-                    } else {
-                        ExtensionSync.uninstall(item)
-                        removed++
-                    }
-                }
-                // Do NOT push here: install/uninstall are async and localPayload() would still
-                // reflect the pre-reconcile state. The SyncPushWorker enqueued from App.kt fires
-                // once the installs have completed and the extension flow has settled.
-                toast(getString(R.string.ext_reconcile_summary, installed, removed))
-            }
-            .setNegativeButton(R.string.cancel, null)
-            .create()
-            .show()
+    /** "Last synced 3 minutes ago", or an invitation when it never has. */
+    private fun lastSyncedLine(): String {
+        val ts = CloudSync.lastSyncedAt()
+        if (ts <= 0L) return getString(R.string.cloud_sync_never_synced)
+        val relative = android.text.format.DateUtils.getRelativeTimeSpanString(
+            ts, SyncClock.nowCached(), android.text.format.DateUtils.MINUTE_IN_MILLIS
+        )
+        return getString(R.string.cloud_sync_last_synced, relative)
     }
 
     private fun passwordAlertDialog(
@@ -487,40 +558,34 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
 
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
             val selected = adapter.selectedPrefs()
-            if (selected.isEmpty()) {
+            val withExtensionSettings = adapter.isSelected(BackupSection.ExtensionSettings)
+            if (selected.isEmpty() && !withExtensionSettings) {
                 toast(R.string.no_settings_selected)
                 return@setOnClickListener
             }
             val keys = selected.map { it.name }.toSet()
             val involvedLocations = BackupTree.involvedLocations
+            // Extension settings are now a row of their own, in a category flagged as holding
+            // credentials, so ticking them asks for a password like everything else there — and
+            // leaving them out keeps them out of the file entirely.
             val needsPassword = adapter.hasProtectedSelected()
+
+            fun archive() = BackupArchive.pack(
+                PrefManager.exportSelectedPrefs(involvedLocations, keys),
+                if (withExtensionSettings) ExtensionSettingsStore.export(context) else null,
+            )
+
             if (needsPassword) {
                 passwordAlertDialog(true) { password ->
                     if (password != null) {
-                        savePrefsToDownloads(
-                            "DantotsuSettings",
-                            BackupArchive.pack(
-                                PrefManager.exportSelectedPrefs(involvedLocations, keys),
-                                ExtensionSettingsStore.export(context),
-                            ),
-                            context,
-                            password,
-                        )
+                        savePrefsToDownloads("DantotsuSettings", archive(), context, password)
                         dialog.dismiss()
                     } else {
                         toast(R.string.password_cannot_be_empty)
                     }
                 }
             } else {
-                savePrefsToDownloads(
-                    "DantotsuSettings",
-                    BackupArchive.pack(
-                        PrefManager.exportSelectedPrefs(involvedLocations, keys),
-                        ExtensionSettingsStore.export(context),
-                    ),
-                    context,
-                    null,
-                )
+                savePrefsToDownloads("DantotsuSettings", archive(), context, null)
                 dialog.dismiss()
             }
         }

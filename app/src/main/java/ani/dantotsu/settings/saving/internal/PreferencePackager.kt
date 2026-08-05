@@ -1,7 +1,10 @@
 package ani.dantotsu.settings.saving.internal
 
 import android.content.SharedPreferences
+import ani.dantotsu.R
 import ani.dantotsu.settings.saving.PrefManager
+import ani.dantotsu.snackString
+import ani.dantotsu.util.Logger
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 
@@ -28,21 +31,36 @@ class PreferencePackager {
         /**
          * @param silent suppresses the user-facing import snackbars — cloud sync applies payloads
          *   in the background, where a toast per location is noise, not feedback.
-         * @param prune when set, keys this predicate accepts that are *absent* from the payload are
-         *   deleted locally, making deletions propagate. Only for full payloads (cloud sync) —
-         *   never pass it for a partial restore, which would delete everything left out.
+         * @param filter when set, defines the key set this import is allowed to touch: keys it
+         *   rejects are never written, and keys it accepts that are *absent* from the payload are
+         *   deleted locally so deletions propagate. Pass the same predicate used to build the
+         *   payload (cloud sync). Never pass one for a partial restore — the pruning half would
+         *   delete everything left out.
          * @return true if successful, false if error
          */
         fun unpack(
             decryptedJson: String,
             silent: Boolean = false,
-            prune: ((Location, String) -> Boolean)? = null,
+            filter: ((Location, String) -> Boolean)? = null,
         ): Boolean {
             val gson = Gson()
             val type = object :
                 TypeToken<Map<String, Map<String, Map<String, Any>>>>() {}.type  //oh god...
-            val rawPrefsMap: Map<String, Map<String, Map<String, Any>>> =
+            // A payload can be truncated, corrupt, or — on the cloud path — written by anyone who
+            // can reach the node. gson throws on malformed input and returns null for a literal
+            // "null", and this runs inside a GlobalScope launch on the manual sync path, where an
+            // escaping exception takes the process with it.
+            val rawPrefsMap: Map<String, Map<String, Map<String, Any>>> = try {
                 gson.fromJson(decryptedJson, type)
+            } catch (e: Exception) {
+                Logger.log("PreferencePackager: malformed payload: ${e.message}")
+                null
+            } ?: run {
+                // Restores reach here through a dialog callback, outside the caller's try/catch, so
+                // the throw this replaces took the process with it rather than reporting anything.
+                if (!silent) snackString(R.string.error_importing_preferences)
+                return false
+            }
 
 
             val deserializedMap = mutableMapOf<String, Map<String, Any?>>()
@@ -68,7 +86,15 @@ class PreferencePackager {
                 }
                 deserializedMap[prefName] = innerMap
             }
-            return unpackagePreferences(deserializedMap, silent, prune)
+            val success = unpackagePreferences(deserializedMap, silent, filter)
+            // A restore is strong evidence of a second device — nobody restores a backup onto the
+            // only phone they own. `silent` is exactly the right discriminator: cloud sync applies
+            // payloads silently, a person restoring a file does not. If the backup carried a sync
+            // code this device is already linked and the offer declines itself.
+            if (success && !silent) {
+                runCatching { ani.dantotsu.connections.sync.SyncLinkNotice.offer() }
+            }
+            return success
         }
 
         /**
@@ -102,22 +128,29 @@ class PreferencePackager {
         private fun unpackagePreferences(
             map: Map<String, Map<String, *>>,
             silent: Boolean,
-            prune: ((Location, String) -> Boolean)?,
+            filter: ((Location, String) -> Boolean)?,
         ): Boolean {
             var success = true
             // Only locations actually present in the payload are touched, so an older peer that
             // didn't sync a location yet can't cause that location to be wiped here.
             map.forEach { (location, prefMap) ->
                 val locationEnum = locationFromString(location)
-                if (!PrefManager.importAllPrefs(prefMap, locationEnum, silent, prune))
+                if (locationEnum == null) {
+                    // A filtered import is scoped to a known set of locations by construction, so
+                    // one it doesn't recognise is simply out of scope — a peer on a newer build
+                    // syncing something this one has no concept of. An unfiltered restore has no
+                    // such scope, so there it means the payload is corrupt or from a newer app.
+                    Logger.log("PreferencePackager: unknown location '$location' in payload")
+                    if (filter == null) success = false
+                    return@forEach
+                }
+                if (!PrefManager.importAllPrefs(prefMap, locationEnum, silent, filter))
                     success = false
             }
             return success
         }
 
-        private fun locationFromString(location: String): Location {
-            val loc = Location.entries.find { it.name == location }
-            return loc ?: throw IllegalArgumentException("Location not found")
-        }
+        private fun locationFromString(location: String): Location? =
+            Location.entries.find { it.name == location }
     }
 }

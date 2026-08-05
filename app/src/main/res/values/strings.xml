@@ -1367,6 +1367,17 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="cloud_sync_failed">Cloud sync failed</string>
     <string name="cloud_sync_conflict_title">Sync conflict</string>
     <string name="cloud_sync_conflict_msg">The settings on this device and in the cloud have both changed since the last sync. Which copy do you want to keep?</string>
+    <string name="cloud_sync_conflict_this_device">This device</string>
+    <string name="cloud_sync_conflict_cloud">Cloud</string>
+    <string name="cloud_sync_conflict_not_set">Not set</string>
+    <string name="cloud_sync_conflict_on">On</string>
+    <string name="cloud_sync_conflict_off">Off</string>
+    <string name="cloud_sync_conflict_changed">Changed</string>
+    <string name="cloud_sync_merged">Settings merged from both devices</string>
+    <string name="cloud_sync_reload_hint">Reload to see them on this screen</string>
+    <string name="cloud_sync_conflict_banner">This device and another one both changed settings</string>
+    <string name="cloud_sync_last_synced">Last synced %1$s</string>
+    <string name="cloud_sync_never_synced">Not synced yet</string>
     <string name="cloud_sync_conflict_saved">Cloud version saved %1$s</string>
     <string name="cloud_sync_conflict_saved_device">Cloud version saved %1$s from %2$s</string>
     <string name="cloud_sync_keep_local">Keep this device</string>
@@ -1382,6 +1393,42 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="force_download_confirm_msg">This replaces this device\'s settings with the copy stored in the cloud. Local changes that haven\'t been synced will be lost. Continue?</string>
     <string name="force_download_done">Settings replaced with the cloud copy</string>
     <string name="novel">Novel</string>
+    <string name="sync_code_title">Sync code</string>
+    <string name="sync_code_desc">Your devices share a code that encrypts your synced data. Show it here to add another device.</string>
+    <string name="sync_code_desc_unlinked">Set up a sync code to start syncing. Your data is encrypted with it, and it never leaves your devices.</string>
+    <string name="sync_code_show_hint">Scan this on your other device, or type the code below.</string>
+    <string name="sync_code_qr_description">QR code containing your sync code</string>
+    <string name="sync_code_secrecy_warning">Anyone with this code can read your synced data. Share it only with your own devices.</string>
+    <string name="sync_code_copy">Copy</string>
+    <string name="sync_code_copied">Sync code copied</string>
+    <string name="sync_code_hint">Sync code</string>
+    <string name="sync_code_enter_hint">Enter the code shown on your other device.</string>
+    <string name="sync_code_scan">Scan</string>
+    <string name="sync_code_invalid">That code doesn\'t look right — check it and try again</string>
+    <string name="sync_code_passphrase_mode">This device is linked with a passphrase. Enter the same passphrase on your other devices to link them.</string>
+    <string name="sync_setup_title">Set up sync</string>
+    <string name="sync_setup_message">Create a code on your first device, then enter it on the others. If you\'d rather not type a random code, you can use a passphrase instead.</string>
+    <string name="sync_setup_create">Create a code</string>
+    <string name="sync_setup_enter">Enter a code</string>
+    <string name="sync_setup_passphrase">Use a passphrase</string>
+    <string name="sync_passphrase_hint">Passphrase</string>
+    <string name="sync_passphrase_message">Choose a passphrase and enter the same one on every device. If you forget it, the data in the cloud can\'t be recovered.</string>
+    <string name="sync_passphrase_too_short">Use at least %1$d characters</string>
+    <string name="sync_linked">Device linked</string>
+    <string name="sync_unlink">Unlink this device</string>
+    <string name="sync_unlinked">Device unlinked</string>
+    <string name="sync_unlink_confirm">This device will stop syncing until you link it again. Your settings and the copy in the cloud are both kept.</string>
+    <string name="sync_not_linked">Set up a sync code first</string>
+    <string name="sync_relink_title">Cloud sync needs setting up</string>
+    <string name="sync_relink_banner_desc">Set up a sync code to start syncing again</string>
+    <string name="ext_reconcile_banner_title">Extensions differ across your devices</string>
+    <string name="ext_reconcile_banner_desc">Choose what to install or remove here</string>
+    <string name="cloud_wipe">Delete cloud data</string>
+    <string name="cloud_wipe_desc">Remove everything this account has stored in the cloud</string>
+    <string name="cloud_wipe_confirm_title">Delete cloud data?</string>
+    <string name="cloud_wipe_confirm_msg">This deletes the settings, progress, extension list and extension settings stored in the cloud for this account. Nothing on this device is removed, and your other devices keep their own copies. Continue?</string>
+    <string name="cloud_wipe_done">Cloud data deleted</string>
+    <string name="cloud_wipe_partial">Some cloud data could not be deleted — try again</string>
     <string name="sync_extensions">Sync extensions</string>
     <string name="sync_extensions_desc">Also sync your list of installed extensions across devices</string>
     <string name="sync_extensions_now">Sync extensions now</string>
@@ -1869,6 +1916,21 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
         <item quantity="other">%d settings selected</item>
     </plurals>
 
+    <plurals name="extension_updates_count">
+        <item quantity="one">%d extension has an update</item>
+        <item quantity="other">%d extensions have updates</item>
+    </plurals>
+
+    <plurals name="cloud_sync_conflict_items">
+        <item quantity="one">%d item</item>
+        <item quantity="other">%d items</item>
+    </plurals>
+
+    <plurals name="cloud_sync_conflict_count">
+        <item quantity="one">%d setting was changed on both this device and another. Everything else has been merged — this choice only decides that one.</item>
+        <item quantity="other">%d settings were changed on both this device and another. Everything else has been merged — this choice only decides those.</item>
+    </plurals>
+
     <string name="backup_cat_general">General</string>
     <string name="backup_cat_general_desc">App-wide preferences and behavior</string>
     <string name="backup_cat_ui">Appearance &amp; UI</string>
@@ -1945,6 +2007,12 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="backup_sub_novel_ui">Interface</string>
     <string name="backup_sub_novel_ui_desc">Scroll bar, screen on, volume keys</string>
 
+    <string name="backup_sub_extension_settings">Extension settings</string>
+    <string name="backup_sub_extension_settings_desc">Each source\'s own preferences, which may include logins</string>
+    <string name="backup_extension_settings">Include extension settings</string>
+    <string name="backup_sub_cloud_sync">Cloud sync</string>
+    <string name="backup_sub_cloud_sync_desc">The code that links this device to your others</string>
+    <string name="backup_cloud_sync_key">Sync code</string>
     <string name="backup_sub_anilist">AniList</string>
     <string name="backup_sub_anilist_desc">AniList account token and user info</string>
     <string name="backup_sub_mal">MyAnimeList</string>

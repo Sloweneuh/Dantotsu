@@ -365,9 +365,6 @@ object PrefManager {
     fun getAnimeDownloadPreferences(): SharedPreferences =
         animeDownloadsPreferences!!  //needs to be used externally
 
-    /** Raw key→value snapshot of a location, for callers that need to inspect what's actually set. */
-    fun rawPrefs(location: Location): Map<String, *> = getPrefLocation(location).all
-
     /**
      * [Location.Reader] and [Location.NovelReader] share one [SharedPreferences] file, so naively
      * mapping every location would pack that file twice — doubling the payload and importing it
@@ -404,23 +401,30 @@ object PrefManager {
      * Applies a packed-prefs JSON string produced by [exportSyncablePrefs]/[exportAllPrefs].
      * Silent: this runs on the cloud-sync background path, where import toasts are just noise.
      *
-     * @param prune see [importAllPrefs]; pass the same filter used to build the payload.
+     * @param filter see [importAllPrefs]; pass the same filter used to build the payload.
      */
     fun importPackedPrefs(
         json: String,
-        prune: ((Location, String) -> Boolean)? = null,
-    ): Boolean = PreferencePackager.unpack(json, silent = true, prune = prune)
+        filter: ((Location, String) -> Boolean)? = null,
+    ): Boolean = PreferencePackager.unpack(json, silent = true, filter = filter)
 
 
     /**
      * @param prefs Map of preferences to import
      * @param prefLocation Location to import to
      * @param silent skips the result snackbars (background cloud sync)
-     * @param prune when set, local keys this predicate accepts that are absent from [prefs] are
-     *   deleted. Import is otherwise purely additive, so a pref deleted on another device would
-     *   linger here forever — and this device's next push would resurrect it there. Pass the same
-     *   filter used to build the payload, so only keys we would have uploaded are ever eligible:
-     *   secrets, caches and the sync's own bookkeeping are outside it and never touched.
+     * @param filter when set, the key set this import may touch, in both directions:
+     *   - keys it *rejects* are never written. The payload decides which keys it contains, and on
+     *     the cloud path that payload is whatever was in the database — so without this, a node
+     *     naming [Location.Protected] would write straight into the secrets store, and a key this
+     *     build has since reclassified as device-local would still arrive from an older peer.
+     *   - keys it *accepts* that are absent from [prefs] are deleted. Import is otherwise purely
+     *     additive, so a pref deleted on another device would linger here forever — and this
+     *     device's next push would resurrect it there.
+     *
+     *   Pass the same predicate used to build the payload, so the set that can be written is
+     *   exactly the set that would have been uploaded: secrets, caches and the sync's own
+     *   bookkeeping are outside it and never touched.
      * @return true if successful, false if error
      */
 
@@ -429,21 +433,25 @@ object PrefManager {
         prefs: Map<String, *>,
         prefLocation: Location,
         silent: Boolean = false,
-        prune: ((Location, String) -> Boolean)? = null,
+        filter: ((Location, String) -> Boolean)? = null,
     ): Boolean {
         if (prefs.isEmpty()) return true
         val pref = getPrefLocation(prefLocation)
         var hadError = false
         with(pref.edit()) {
-            if (prune != null) {
+            if (filter != null) {
                 pref.all.keys.forEach { key ->
-                    if (key !in prefs && prune(prefLocation, key)) {
+                    if (key !in prefs && filter(prefLocation, key)) {
                         remove(key)
                         Logger.log("importAllPrefs: pruned $key from $prefLocation")
                     }
                 }
             }
             prefs.forEach { (key, value) ->
+                if (filter != null && !filter(prefLocation, key)) {
+                    Logger.log("importAllPrefs: rejected $key in $prefLocation")
+                    return@forEach
+                }
                 when (value) {
                     is Boolean -> putBoolean(key, value)
                     is Int -> putInt(key, value)
@@ -518,14 +526,14 @@ object PrefManager {
                 default
             }
         } catch (e: java.io.InvalidClassException) {
+            // The stored blob was written by a build whose version of this class doesn't match
+            // ours. Fall back to the default for now, but *keep* what's stored: this used to
+            // delete it, which turned a mismatch that another build (or a later one, once the
+            // class settles) can still read into permanent loss of the user's saved filters,
+            // search history or home layout. A subsequent write replaces it normally.
+            Logger.log("deserializeClass: $key was written by an incompatible build; keeping it")
             Logger.log(e)
-            try {
-                getPrefLocation(location).edit().remove(key).apply()
-                default
-            } catch (e: Exception) {
-                Logger.log(e)
-                default
-            }
+            default
         } catch (e: Exception) {
             Logger.log(e)
             default

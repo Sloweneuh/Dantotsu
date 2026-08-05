@@ -101,7 +101,10 @@ enum class PrefName(val data: Pref) {
     ClipGifFps(Pref(Location.General, Int::class, 15)),
     ClipGifWidth(Pref(Location.General, Int::class, 480)),
     // Master switch for syncing settings across devices via the Anilist account (Firebase RTDB).
-    CloudSyncEnabled(Pref(Location.General, Boolean::class, true)),
+    // Off until the user links a device. It used to default on, which read as "your data is
+    // syncing" on a screen where nothing was — sync does nothing without a sync code, so the
+    // toggle claimed a state the app was not in. Linking switches it on; see SyncIdentity.
+    CloudSyncEnabled(Pref(Location.General, Boolean::class, false)),
     // Opt-in: also publish/reconcile the set of installed extensions across devices.
     SyncExtensionsEnabled(Pref(Location.General, Boolean::class, false)),
     // Opt-in: sync per-extension settings (may include source logins) across devices.
@@ -337,6 +340,10 @@ enum class PrefName(val data: Pref) {
     AppPassword(Pref(Location.Protected, String::class, "")),
     BiometricToken(Pref(Location.Protected, String::class, "")),
     OverridePassword(Pref(Location.Protected, Boolean::class, false)),
+    // The cloud-sync secret. Protected, so cloud sync never uploads it — a key that syncs itself
+    // to the cloud it protects would be no key at all. Not listed in BackupTree either, so a local
+    // backup doesn't carry it and a restored device has to be linked by hand.
+    CloudSyncKey(Pref(Location.Protected, String::class, "")),
     Socks5ProxyHost(Pref(Location.Protected, String::class, "")),
     Socks5ProxyPort(Pref(Location.Protected, String::class, "")),
     Socks5ProxyUsername(Pref(Location.Protected, String::class, "")),

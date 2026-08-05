@@ -34,6 +34,7 @@ suspend fun getUserId(context: Context, block: () -> Unit) {
             ani.dantotsu.connections.sync.CloudSync.pullInBackground()
             ani.dantotsu.connections.sync.ExtensionSettingsSync.pullInBackground()
             ani.dantotsu.connections.sync.ProgressSync.pullInBackground()
+            ani.dantotsu.connections.sync.ExtensionSync.checkInBackground()
             tryWithSuspend {
                 if (MAL.token != null && !MAL.query.getUserData())
                     snackString(context.getString(R.string.error_loading_mal_user_data))

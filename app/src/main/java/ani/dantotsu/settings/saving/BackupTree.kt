@@ -3,10 +3,20 @@ package ani.dantotsu.settings.saving
 import ani.dantotsu.R
 import ani.dantotsu.settings.saving.internal.Location
 
+/**
+ * Something a backup can carry that isn't a [PrefName] — it lives outside the preference files and
+ * so can't be named by one, but still deserves a row the user can untick.
+ */
+enum class BackupSection { ExtensionSettings }
+
 data class BackupItem(
-    val pref: PrefName,
+    val pref: PrefName? = null,
     val titleRes: Int? = null,
-)
+    val section: BackupSection? = null,
+) {
+    /** Stable identity for selection, whichever kind of thing this row stands for. */
+    val id: String get() = pref?.name ?: section!!.name
+}
 
 data class BackupSubCategory(
     val id: String,
@@ -502,6 +512,30 @@ object BackupTree {
                         BackupItem(PrefName.Socks5ProxyPassword, R.string.backup_proxy_password),
                     )
                 ),
+                // Carried so restoring a backup onto a new device leaves it already linked, which
+                // is the second-device case this whole flow exists for. It belongs here rather
+                // than with the sync settings because it is a credential, and this section is the
+                // one already marked as holding them.
+                BackupSubCategory(
+                    "accounts_cloud_sync", R.string.backup_sub_cloud_sync,
+                    R.string.backup_sub_cloud_sync_desc,
+                    listOf(
+                        BackupItem(PrefName.CloudSyncKey, R.string.backup_cloud_sync_key),
+                    )
+                ),
+                // Each source's own preferences, which the archive used to carry whether or not
+                // the user wanted them — and some sources keep logins in there, so it sits in this
+                // category and exporting it asks for a password like everything else here.
+                BackupSubCategory(
+                    "accounts_extension_settings", R.string.backup_sub_extension_settings,
+                    R.string.backup_sub_extension_settings_desc,
+                    listOf(
+                        BackupItem(
+                            titleRes = R.string.backup_extension_settings,
+                            section = BackupSection.ExtensionSettings,
+                        ),
+                    )
+                ),
             )
         ),
     )
@@ -510,9 +544,26 @@ object BackupTree {
         categories.flatMap { it.subCategories.flatMap { sub -> sub.items } }
     }
 
+    /** Preference files the tree draws from. Section rows have no preference and no location. */
     val involvedLocations: List<Location> by lazy {
-        allItems.map { it.pref.data.prefLocation }.distinct()
+        allItems.mapNotNull { it.pref?.data?.prefLocation }.distinct()
     }
 
     fun keysFor(prefs: Collection<PrefName>): Set<String> = prefs.map { it.name }.toSet()
+
+    /**
+     * The human label this tree already carries for a preference, by its stored name.
+     *
+     * The backup screen has spent the effort of naming most settings the way the user sees them, so
+     * anything else that has to show a raw preference name — the sync conflict prompt, currently —
+     * can borrow it rather than inventing a second set or falling back to camel case.
+     */
+    private val titlesByPrefName: Map<String, Int> by lazy {
+        allItems.mapNotNull { item ->
+            val pref = item.pref ?: return@mapNotNull null
+            item.titleRes?.let { pref.name to it }
+        }.toMap()
+    }
+
+    fun titleResFor(prefName: String): Int? = titlesByPrefName[prefName]
 }

@@ -4,16 +4,15 @@ import ani.dantotsu.parsers.novel.NovelExtensionManager
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.util.Logger
-import com.google.firebase.database.FirebaseDatabase
 import com.google.gson.Gson
 import eu.kanade.tachiyomi.extension.anime.AnimeExtensionManager
 import eu.kanade.tachiyomi.extension.manga.MangaExtensionManager
-import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import rx.android.schedulers.AndroidSchedulers
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 
 /**
  * Syncs the *list* of installed extensions across a user's devices (keyed by the Anilist account),
@@ -31,12 +30,15 @@ import kotlin.coroutines.resumeWithException
  */
 object ExtensionSync {
 
-    private const val ROOT = "users"
     private const val NODE = "extensions"
-    private const val TS_KEY = "ext_sync_ts"
+    // Divergence here is detected by comparing the cloud's payload hash against ours, not by
+    // timestamp, so there is no local ts to keep — the node's own is only for display elsewhere.
     private const val HASH_KEY = "ext_sync_hash"
 
     private val gson = Gson()
+
+    private val scope = CoroutineScope(Dispatchers.IO)
+    @Volatile private var checkInFlight = false
 
     enum class ExtType { ANIME, MANGA, NOVEL }
 
@@ -67,13 +69,13 @@ object ExtensionSync {
         val novel: List<ExtRef> = emptyList(),
     )
 
-    private fun enabled(): Boolean = PrefManager.getVal(PrefName.SyncExtensionsEnabled)
+    private fun enabled(): Boolean =
+        PrefManager.getVal<Boolean>(PrefName.SyncExtensionsEnabled) && SyncIdentity.isLinked()
 
     private fun userId(): String? =
         PrefManager.getVal<String>(PrefName.AnilistUserId).takeIf { it.isNotBlank() }
 
-    private fun node(uid: String) =
-        FirebaseDatabase.getInstance().reference.child(ROOT).child(uid).child(NODE)
+    private fun node() = SyncIdentity.node(NODE)
 
     private fun anime() = Injekt.get<AnimeExtensionManager>()
     private fun manga() = Injekt.get<MangaExtensionManager>()
@@ -94,39 +96,35 @@ object ExtensionSync {
     private fun lastHash(): Int = PrefManager.getCustomVal(HASH_KEY, 0)
 
     private suspend fun fetchRemote(uid: String): Result<RemoteData?> = runCatching {
-        suspendCancellableCoroutine { cont ->
-            node(uid).get()
-                .addOnSuccessListener { snap ->
-                    val json = snap.child("payload").getValue(String::class.java)
-                    val data = json?.let { raw ->
-                        runCatching { gson.fromJson(raw, Payload::class.java) }.getOrNull()
-                            ?.let { RemoteData(it, raw.hashCode()) }
-                    }
-                    cont.resume(data)
-                }
-                .addOnFailureListener { cont.resumeWithException(it) }
+        val snap = node()?.getSnapshot() ?: return@runCatching null
+        if (!snap.schemaIsReadable("ExtensionSync")) return@runCatching null
+        val sealed = snap.child("payload").getValue(String::class.java)
+        // The hash is taken over the plaintext, matching what doUpload records: sealing uses a
+        // fresh IV each time, so the ciphertext of an unchanged set differs on every write.
+        SyncIdentity.open(sealed ?: return@runCatching null)?.let { raw ->
+            runCatching { gson.fromJson(raw, Payload::class.java) }.getOrNull()
+                ?.let { RemoteData(it, raw.hashCode()) }
         }
     }
 
     private suspend fun doUpload(uid: String, json: String): Boolean {
-        val ts = System.currentTimeMillis()
+        val ts = SyncClock.now()
         val ok = upload(uid, json, ts)
         if (ok) {
-            PrefManager.setCustomVal(TS_KEY, ts)
             PrefManager.setCustomVal(HASH_KEY, json.hashCode())
             Logger.log("ExtensionSync: pushed installed set (ts=$ts)")
         }
         return ok
     }
 
-    private suspend fun upload(uid: String, payloadJson: String, ts: Long): Boolean = runCatching {
-        suspendCancellableCoroutine { cont ->
-            node(uid)
-                .setValue(mapOf("payload" to payloadJson, "ts" to ts))
-                .addOnSuccessListener { cont.resume(true) }
-                .addOnFailureListener { cont.resume(false) }
-        }
-    }.getOrDefault(false)
+    private suspend fun upload(uid: String, payloadJson: String, ts: Long): Boolean {
+        val node = node() ?: return false
+        if (!fitsInNode(payloadJson, NodeLimits.EXTENSIONS, "ExtensionSync")) return false
+        val sealed = SyncIdentity.seal(payloadJson) ?: return false
+        return node
+            .setValue(mapOf("payload" to sealed, "ts" to ts, "v" to SYNC_SCHEMA_VERSION))
+            .awaitOk()
+    }
 
     // ---- publish ----
 
@@ -154,22 +152,57 @@ object ExtensionSync {
      * was changed elsewhere (e.g. a force upload from another device), it's left untouched for the
      * manual reconcile to pick up. No-op when disabled or signed out.
      */
-    suspend fun pushNow() {
-        if (!enabled() || userId() == null) return
-        runCatching {
-            val uid = userId() ?: return
+    suspend fun pushNow(): PushResult {
+        if (!enabled() || userId() == null) return PushResult.NothingToDo
+        return runCatching {
+            val uid = userId() ?: return PushResult.NothingToDo
             val json = gson.toJson(localPayload())
-            if (json.hashCode() == lastHash()) return // nothing changed locally
+            if (json.hashCode() == lastHash()) return PushResult.NothingToDo // nothing changed
             // On fetch failure, skip rather than risk clobbering a cloud we couldn't read.
             val remote = fetchRemote(uid).getOrElse {
                 Logger.log("ExtensionSync: push skipped, cloud unreadable: ${it.message}")
-                return
+                return PushResult.Failed
             }
             if (remote != null && remote.rawHash != lastHash()) {
                 Logger.log("ExtensionSync: cloud changed elsewhere; leaving for manual reconcile")
-                return
+                return PushResult.NothingToDo
             }
-            doUpload(uid, json)
+            if (doUpload(uid, json)) PushResult.Pushed else PushResult.Failed
+        }.getOrElse {
+            Logger.log("ExtensionSync: push threw: ${it.message}")
+            PushResult.Failed
+        }
+    }
+
+    /**
+     * Notices when another device has published a different set of extensions, so the user can be
+     * told instead of having to go looking.
+     *
+     * Extensions are the one thing sync can never settle on its own — installing and removing go
+     * through the system installer and always need a person — so the reconcile screen only ever
+     * opened if somebody thought to open it. A device could sit for weeks missing sources another
+     * device had, with nothing anywhere saying so.
+     *
+     * Only fires when the cloud was changed *elsewhere* and still doesn't match this device.
+     * Publishing our own set doesn't count, and neither does a difference we are about to resolve
+     * ourselves by pushing.
+     */
+    fun checkInBackground() {
+        if (!enabled() || userId() == null || checkInFlight) return
+        checkInFlight = true
+        scope.launch {
+            try {
+                runCatching {
+                    val uid = userId() ?: return@runCatching
+                    val remote = fetchRemote(uid).getOrNull() ?: return@runCatching
+                    if (remote.rawHash == lastHash()) return@runCatching // we published this
+                    val local = gson.toJson(localPayload())
+                    if (local.hashCode() == remote.rawHash) return@runCatching // already agree
+                    ExtensionSyncNotice.raise(remote.rawHash)
+                }
+            } finally {
+                checkInFlight = false
+            }
         }
     }
 

@@ -1,0 +1,176 @@
+package ani.dantotsu.util
+
+import android.annotation.SuppressLint
+import android.app.Activity
+import android.view.Gravity
+import android.view.LayoutInflater
+import android.view.MotionEvent
+import android.view.View
+import android.view.ViewConfiguration
+import android.view.ViewGroup
+import android.widget.FrameLayout
+import androidx.core.view.isVisible
+import ani.dantotsu.databinding.ViewTopBannerBinding
+import ani.dantotsu.statusBarHeight
+import java.lang.ref.WeakReference
+import kotlin.math.abs
+import kotlin.math.min
+
+/**
+ * A persistent notice that slides down over whatever screen the user is on.
+ *
+ * The app kept telling people things with snackbars that they had no realistic chance of reading: a
+ * few seconds, at the bottom, on one screen, in the same shape for every unrelated message — and
+ * with an action attached, so missing it meant missing the only way to act. Anything the user is
+ * genuinely expected to *do* something about belongs here instead: distinct, wherever they are, and
+ * gone only when they say so.
+ *
+ * Not a replacement for snackbars in general. A snackbar is right for "saved", "copied", "no
+ * internet" — outcomes that need no response. This is for the ones that do.
+ */
+object TopBanner {
+
+    private const val TAG = "app_top_banner"
+    private const val ANIM_MS = 280L
+
+    /**
+     * @param id distinguishes what a banner is *about*, so a second showing of the same notice
+     *   replaces it rather than stacking, and a different one can tell it isn't its own.
+     * @param onAction invoked on the UI thread after the banner animates away; null shows no button.
+     * @param onDismiss invoked when the user closes it without acting.
+     */
+    data class Spec(
+        val id: String,
+        val iconRes: Int,
+        val title: String,
+        val subtitle: String? = null,
+        val actionLabel: String? = null,
+        val onAction: (Activity) -> Unit = {},
+        val onDismiss: () -> Unit = {},
+    )
+
+    /** The banner currently on screen, so a lower-priority notice doesn't displace a live one. */
+    @Volatile
+    private var showingId: String? = null
+
+    /**
+     * Weakly held so a banner left on a finished activity can't keep it alive; [dismiss] treats a
+     * collected reference the same as nothing being shown.
+     */
+    private var shownCard: WeakReference<View>? = null
+    private var shownParent: WeakReference<ViewGroup>? = null
+
+    fun isShowing(id: String): Boolean = showingId == id
+
+    /**
+     * Takes down a banner whose subject has stopped being true — sync switched off underneath a
+     * conflict notice, say. Without this the card stays on screen offering an action that can no
+     * longer do anything, which reads as the feature being broken rather than off.
+     */
+    fun dismiss(id: String) {
+        if (showingId != id) return
+        val card = shownCard?.get()
+        val parent = shownParent?.get()
+        if (card == null || parent == null) {
+            showingId = null
+            return
+        }
+        hide(parent, card) {}
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    fun show(activity: Activity, spec: Spec) {
+        val content = activity.findViewById<ViewGroup>(android.R.id.content) ?: return
+        // An activity change leaves the old view behind with its own content root; clear any
+        // stale copy from this one before adding.
+        content.findViewWithTag<View>(TAG)?.let { content.removeView(it) }
+
+        val binding = ViewTopBannerBinding.inflate(LayoutInflater.from(activity))
+        val card = binding.root.apply { tag = TAG }
+        binding.topBannerIcon.setImageResource(spec.iconRes)
+        binding.topBannerTitle.text = spec.title
+        binding.topBannerInfo.isVisible = !spec.subtitle.isNullOrBlank()
+        binding.topBannerInfo.text = spec.subtitle
+        binding.topBannerAction.isVisible = !spec.actionLabel.isNullOrBlank()
+        binding.topBannerAction.text = spec.actionLabel
+
+        val side = (12 * activity.resources.displayMetrics.density).toInt()
+        card.layoutParams = FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP
+        ).apply { setMargins(side, statusBarHeight + side, side, 0) }
+        content.addView(card)
+        showingId = spec.id
+        shownCard = WeakReference(card)
+        shownParent = WeakReference(content)
+
+        card.alpha = 0f
+        card.post {
+            card.translationY = -(card.height + side).toFloat()
+            card.animate().translationY(0f).alpha(1f).setDuration(ANIM_MS).start()
+        }
+
+        binding.topBannerAction.setOnClickListener {
+            hide(content, card) { spec.onAction(activity) }
+        }
+        binding.topBannerClose.setOnClickListener {
+            hide(content, card) { spec.onDismiss() }
+        }
+
+        // Flick up to dismiss. Deliberately no timeout — being missable is the failure this exists
+        // to correct.
+        val slop = ViewConfiguration.get(activity).scaledTouchSlop
+        card.setOnTouchListener(object : View.OnTouchListener {
+            private var downY = 0f
+            private var startY = 0f
+            private var dragging = false
+
+            override fun onTouch(v: View, e: MotionEvent): Boolean {
+                when (e.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> {
+                        downY = e.rawY
+                        startY = v.translationY
+                        dragging = false
+                        // Don't claim the gesture yet, or the buttons never see their taps.
+                        return false
+                    }
+
+                    MotionEvent.ACTION_MOVE -> {
+                        val dy = e.rawY - downY
+                        if (!dragging && abs(dy) > slop) dragging = true
+                        if (!dragging) return false
+                        v.translationY = startY + min(0f, dy)
+                        v.alpha = (1f + v.translationY / v.height).coerceIn(0f, 1f)
+                        return true
+                    }
+
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                        if (!dragging) return false
+                        if (v.translationY < -v.height * 0.3f) {
+                            hide(content, v) { spec.onDismiss() }
+                        } else {
+                            v.animate().translationY(0f).alpha(1f).setDuration(ANIM_MS).start()
+                        }
+                        return true
+                    }
+                }
+                return false
+            }
+        })
+    }
+
+    private fun hide(content: ViewGroup, card: View, onEnd: () -> Unit) {
+        showingId = null
+        shownCard = null
+        shownParent = null
+        val margin = (card.layoutParams as? ViewGroup.MarginLayoutParams)?.topMargin ?: 0
+        card.animate()
+            .translationY(-(card.height + margin).toFloat())
+            .alpha(0f)
+            .setDuration(ANIM_MS)
+            .withEndAction {
+                content.removeView(card)
+                onEnd()
+            }
+            .start()
+    }
+}

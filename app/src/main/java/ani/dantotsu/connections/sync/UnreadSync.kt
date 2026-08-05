@@ -4,11 +4,8 @@ import ani.dantotsu.connections.malsync.UnreadChapterInfo
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.util.Logger
-import com.google.firebase.database.FirebaseDatabase
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlin.coroutines.resume
 
 /**
  * Shares the result of the unread-chapter check across a user's devices, keyed by the Anilist
@@ -23,18 +20,17 @@ import kotlin.coroutines.resume
  */
 object UnreadSync {
 
-    private const val ROOT = "users"
     private const val NODE = "unread"
     private val gson = Gson()
     private val mapType = object : TypeToken<Map<Int, UnreadChapterInfo>>() {}.type
 
-    private fun enabled(): Boolean = PrefManager.getVal(PrefName.CloudSyncEnabled)
+    private fun enabled(): Boolean =
+        PrefManager.getVal<Boolean>(PrefName.CloudSyncEnabled) && SyncIdentity.isLinked()
 
     private fun userId(): String? =
         PrefManager.getVal<String>(PrefName.AnilistUserId).takeIf { it.isNotBlank() }
 
-    private fun node(uid: String) =
-        FirebaseDatabase.getInstance().reference.child(ROOT).child(uid).child(NODE)
+    private fun node() = SyncIdentity.node(NODE)
 
     /**
      * @return the shared result if one exists and was saved within [maxAgeMs], else null — in which
@@ -44,23 +40,22 @@ object UnreadSync {
         if (!enabled()) return null
         val uid = userId() ?: return null
         return runCatching {
-            suspendCancellableCoroutine<Map<Int, UnreadChapterInfo>?> { cont ->
-                node(uid).get()
-                    .addOnSuccessListener { snap ->
-                        val json = snap.child("payload").getValue(String::class.java)
-                        val ts = snap.child("ts").getValue(Long::class.java)
-                        val fresh = ts != null && System.currentTimeMillis() - ts <= maxAgeMs
-                        val result = if (json != null && fresh) {
-                            runCatching { gson.fromJson<Map<Int, UnreadChapterInfo>>(json, mapType) }
-                                .getOrNull()
-                        } else null
-                        if (result != null) {
-                            Logger.log("UnreadSync: serving shared result (${result.size}, age ${ts?.let { System.currentTimeMillis() - it }}ms)")
-                        }
-                        cont.resume(result)
-                    }
-                    .addOnFailureListener { cont.resume(null) }
+            val snap = node()?.getSnapshot() ?: return@runCatching null
+            if (!snap.schemaIsReadable("UnreadSync")) return@runCatching null
+            val json = snap.child("payload").getValue(String::class.java)
+                ?.let { SyncIdentity.open(it) }
+            val ts = snap.child("ts").getValue(Long::class.java)
+            // Server-relative on both sides: the publishing device stamped ts with the same
+            // corrected clock, so freshness doesn't depend on the two devices agreeing.
+            val age = ts?.let { SyncClock.now() - it }
+            val result = if (json != null && age != null && age <= maxAgeMs) {
+                runCatching { gson.fromJson<Map<Int, UnreadChapterInfo>>(json, mapType) }
+                    .getOrNull()
+            } else null
+            if (result != null) {
+                Logger.log("UnreadSync: serving shared result (${result.size}, age ${age}ms)")
             }
+            result
         }.getOrNull()
     }
 
@@ -69,14 +64,16 @@ object UnreadSync {
         if (!enabled()) return false
         val uid = userId() ?: return false
         val json = runCatching { gson.toJson(result) }.getOrNull() ?: return false
-        val ts = System.currentTimeMillis()
-        return runCatching {
-            suspendCancellableCoroutine<Boolean> { cont ->
-                node(uid).setValue(mapOf("payload" to json, "ts" to ts))
-                    .addOnSuccessListener { cont.resume(true) }
-                    .addOnFailureListener { cont.resume(false) }
-            }
-        }.getOrDefault(false).also {
+        val node = node() ?: return false
+        // This is a shared cache, not the user's data — a library large enough to overflow the node
+        // just means every device computes the check itself, which is what happened before this
+        // existed. Far better than a rejected write on every cycle.
+        if (!fitsInNode(json, NodeLimits.UNREAD, "UnreadSync")) return false
+        val sealed = SyncIdentity.seal(json) ?: return false
+        val ts = SyncClock.now()
+        return node
+            .setValue(mapOf("payload" to sealed, "ts" to ts, "v" to SYNC_SCHEMA_VERSION))
+            .awaitOk().also {
             if (it) Logger.log("UnreadSync: published result (${result.size}, ts=$ts)")
         }
     }

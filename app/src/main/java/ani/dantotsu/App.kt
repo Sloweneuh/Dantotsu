@@ -242,6 +242,9 @@ class App : MultiDexApplication() {
             currentActivity = p0
             resumeCount++
             if (isSettingsScreen(p0)) ani.dantotsu.connections.sync.CloudSync.settingsUiOpen = true
+            // In-app notices are raised by background work with no screen of its own, so they're
+            // shown here: wherever the user actually is, rather than only on the home screen.
+            runCatching { ani.dantotsu.util.AppNotices.showPending(p0) }
             val now = System.currentTimeMillis()
 
             // Pull cloud settings when returning to the app, not just on cold start: the pull in
@@ -255,6 +258,9 @@ class App : MultiDexApplication() {
                     ani.dantotsu.connections.sync.CloudSync.pullInBackground()
                     ani.dantotsu.connections.sync.ProgressSync.pullInBackground()
                     ani.dantotsu.connections.sync.ExtensionSettingsSync.pullInBackground()
+                    // Can't apply anything itself — installing needs the user — so all it does is
+                    // notice a difference and raise the banner that offers to sort it out.
+                    ani.dantotsu.connections.sync.ExtensionSync.checkInBackground()
                 }
             }
 
