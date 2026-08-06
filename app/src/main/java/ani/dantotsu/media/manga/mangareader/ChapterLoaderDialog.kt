@@ -153,7 +153,10 @@ class ChapterLoaderDialog : BottomSheetDialogFragment() {
                 activity.customAlertDialog().apply {
                     setTitle(R.string.title_update_progress)
                     setCustomView(dialogView)
-                    setCancelable(false)
+                    // Tapping outside (or backing out) means the same as Cancel: neither answers
+                    // the question, so neither records one and neither continues. Cancel already
+                    // does nothing but dismiss, so there is nothing to hook it up to.
+                    setCancelable(true)
                     setPosButton(R.string.yes) {
                         PrefManager.setCustomVal("${media.id}_progressDialog", !isCheckedNow)
                         PrefManager.setCustomVal("${media.id}_save_progress", true)

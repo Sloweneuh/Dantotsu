@@ -1803,6 +1803,12 @@ class MangaReaderActivity : AppCompatActivity() {
                 customAlertDialog().apply {
                     setTitle(R.string.title_update_progress)
                     setCustomView(dialogView)
+                    // Not dismissable, deliberately: the two buttons are the only answers and one
+                    // of them is needed. The checkbox beside them writes "don't ask again" the
+                    // moment it's ticked, so a dismissal would suppress the dialog for good while
+                    // leaving the answer it suppresses unset — which then falls back to the
+                    // default, silently auto-updating progress from then on. That is the opposite
+                    // of what walking away from the question implies.
                     setCancelable(false)
                     setPosButton(R.string.yes) {
                         PrefManager.setCustomVal("${media.id}_save_progress", true)
@@ -1817,7 +1823,6 @@ class MangaReaderActivity : AppCompatActivity() {
                         PrefManager.setCustomVal("${media.id}_save_progress", false)
                         runnable.run()
                     }
-                    setOnCancelListener { hideSystemBars() }
                     show()
 
                 }
