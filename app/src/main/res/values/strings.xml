@@ -498,6 +498,7 @@
     <string name="selected_row_order">Default List Order</string>
     <string name="reroll">Reroll</string>
     <string name="cover_image_description">Cover image</string>
+    <string name="avatar_image_description">User avatar</string>
     <string name="custom_anime_list">Custom Anime Lists</string>
     <string name="custom_manga_list">Custom Manga Lists</string>
     <string name="delete_custom_list">Delete Custom List</string>

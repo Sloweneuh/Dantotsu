@@ -83,7 +83,11 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode != RESULT_OK) return@registerForActivityResult
             val scanned = result.data?.getStringExtra(HandoffScanActivity.EXTRA_RAW_RESULT)
-            if (applyScannedSyncCode(scanned) { }) recreate()
+            // recreate() belongs inside the callback, not after the call: applyScannedSyncCode
+            // returns as soon as linking succeeds, well before the async migration and the
+            // linked-confirmation dialog it shows — recreating right after that return raced the
+            // dialog and tore the activity down before it could appear.
+            applyScannedSyncCode(scanned) { recreate() }
         }
 
     private fun launchSyncCodeScan() {

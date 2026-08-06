@@ -4,10 +4,14 @@ import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.text.format.DateUtils
 import ani.dantotsu.R
+import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.handoff.HandoffQr
 import ani.dantotsu.databinding.DialogSyncCodeBinding
+import ani.dantotsu.databinding.DialogSyncLinkedBinding
 import ani.dantotsu.databinding.DialogUserAgentBinding
+import ani.dantotsu.loadImage
 import ani.dantotsu.toast
 import ani.dantotsu.util.Logger
 import ani.dantotsu.util.customAlertDialog
@@ -48,10 +52,11 @@ fun Activity.showSyncCodeDialog(onChanged: () -> Unit, onClosed: (() -> Unit)? =
         setTitle(R.string.sync_code_title)
         setCustomView(binding.root)
         // A dialog's default width can't fit the grouped code on one line, and the QR wants the
-        // room too. Captured before show, resized after it — the window has no decor view until
-        // then, and the builder replaces any show listener set earlier.
+        // room too. Captured before show, resized right after it — the window has no decor view
+        // until then. Done synchronously rather than from a show listener: that callback is a
+        // posted Handler message, dispatched after the first frame has already gone out, so the
+        // dialog would flash at its default width before snapping to this one.
         attach { dialogRef = it }
-        setOnShowListener { dialogRef?.widenToScreen() }
         setPosButton(R.string.sync_code_copy) {
             copyToClipboard(code)
             toast(getString(R.string.sync_code_copied))
@@ -61,6 +66,7 @@ fun Activity.showSyncCodeDialog(onChanged: () -> Unit, onClosed: (() -> Unit)? =
         onClosed?.let { onDismiss(it) }
         show()
     }
+    dialogRef?.widenToScreen()
 }
 
 /** Takes the width a dialog is normally capped at and gives it nearly the whole screen. */
@@ -96,7 +102,7 @@ fun Activity.applyScannedSyncCode(scanned: String?, onChanged: () -> Unit): Bool
         toast(getString(R.string.sync_code_invalid))
         return false
     }
-    migrateThen(onChanged) { toast(getString(R.string.sync_linked)) }
+    migrateThen { showSyncLinkedDialog(onClosed = onChanged) }
     return true
 }
 
@@ -158,7 +164,7 @@ private fun Activity.promptForCode(onScan: (() -> Unit)?, onChanged: () -> Unit)
         setPosButton(R.string.ok) {
             val entered = binding.userAgentTextBox.text?.toString().orEmpty()
             if (SyncIdentity.linkWithCode(entered)) {
-                migrateThen(onChanged) { toast(getString(R.string.sync_linked)) }
+                migrateThen { showSyncLinkedDialog(onClosed = onChanged) }
             } else {
                 // The checksum caught it. Without that check this would have silently linked to an
                 // empty corner of the database and looked like "sync just stopped working".
@@ -220,9 +226,13 @@ private fun Activity.wipeThenUnlink(onChanged: () -> Unit) {
  * A failure isn't surfaced as an error: the user asked to link, and linking worked. The old data is
  * simply left where it is and the next link attempt tries again — which is the safe direction,
  * since the alternative to a failed copy is a successful delete.
+ *
+ * Deliberately doesn't refresh the caller's screen itself — [then] is responsible for that, once
+ * whatever it shows (the linked-confirmation dialog) has been seen. Refreshing here used to race
+ * it: a caller-supplied `recreate()` tore the activity down before the dialog could appear, so the
+ * feedback silently never showed.
  */
-private fun Activity.migrateThen(onChanged: () -> Unit, then: () -> Unit) {
-    onChanged()
+private fun Activity.migrateThen(then: () -> Unit) {
     CoroutineScope(Dispatchers.IO).launch {
         val moved = runCatching { SyncMigration.run() }.getOrElse {
             Logger.log("SyncLink: migration threw: ${it.message}")
@@ -235,6 +245,60 @@ private fun Activity.migrateThen(onChanged: () -> Unit, then: () -> Unit) {
         }
     }
 }
+
+/**
+ * Feedback after a code is accepted: which account it's now scoped to, and what the cloud already
+ * holds — so linking isn't just a toast the user has to take on faith, the same way scanning a
+ * handoff QR shows what was received before anything happens with it.
+ *
+ * The avatar/name are this device's own signed-in Anilist identity, not anything carried by the
+ * code itself — the code only proves which cloud node to talk to, and that node is scoped by
+ * whichever account reads it (see [SyncIdentity]). Showing it here is a sanity check: if it's not
+ * the account you meant to sync, the code was for a different one.
+ *
+ * @param onClosed run once the dialog is dismissed — this is where the caller's screen refresh
+ *   belongs, so it can't tear the dialog down before the user has seen it.
+ */
+private fun Activity.showSyncLinkedDialog(onClosed: () -> Unit) {
+    val binding = DialogSyncLinkedBinding.inflate(layoutInflater)
+    binding.syncLinkedAvatar.loadImage(Anilist.avatar)
+    binding.syncLinkedName.text = Anilist.username ?: getString(R.string.unknown)
+    binding.syncLinkedInfo.text = getString(R.string.please_wait)
+
+    // The default dialog width is narrow enough that the device-info line wraps awkwardly and the
+    // whole card reads as cramped; widen it the same way the sync-code dialog does. Resized
+    // synchronously right after show(), not from a show listener — see the comment in
+    // showSyncCodeDialog for why the listener causes a visible flash at the default width.
+    var dialogRef: android.app.AlertDialog? = null
+    customAlertDialog().apply {
+        setTitle(R.string.sync_linked)
+        setCustomView(binding.root)
+        attach { dialogRef = it }
+        setPosButton(R.string.ok) {}
+        onDismiss(onClosed)
+        show()
+    }
+    dialogRef?.widenToScreen()
+
+    CoroutineScope(Dispatchers.IO).launch {
+        val info = runCatching { CloudSync.cloudInfo() }.getOrNull()
+        withContext(Dispatchers.Main) {
+            if (isFinishing || isDestroyed) return@withContext
+            binding.syncLinkedInfo.text = when {
+                info == null -> getString(R.string.cloud_sync_never_synced)
+                info.device.isNullOrBlank() ->
+                    getString(R.string.cloud_sync_cloud_copy, relativeTime(info.ts))
+
+                else -> getString(
+                    R.string.cloud_sync_cloud_copy_device, relativeTime(info.ts), info.device
+                )
+            }
+        }
+    }
+}
+
+private fun relativeTime(ts: Long): CharSequence =
+    DateUtils.getRelativeTimeSpanString(ts, SyncClock.nowCached(), DateUtils.MINUTE_IN_MILLIS)
 
 private fun Context.copyToClipboard(text: String) {
     runCatching {
