@@ -104,29 +104,48 @@ object SyncMigration {
         return Outcome.Moved
     }
 
-    /** @return the sealed form to write, or null if anything couldn't be sealed. */
-    private fun seal(child: String, from: DataSnapshot): Map<String, Any>? = when (child) {
-        // Per-media state is a node of nodes; each media's payload is sealed on its own.
-        "progress" -> from.children.mapNotNull { media ->
-            val id = media.key ?: return@mapNotNull null
-            val payload = media.child("payload").getValue(String::class.java)
-                ?: return@mapNotNull null
-            val ts = media.child("ts").getValue(Long::class.java) ?: return@mapNotNull null
-            val sealed = SyncIdentity.seal(payload) ?: return null
-            id to mapOf("payload" to sealed, "ts" to ts)
-        }.toMap()
+    /**
+     * @return the sealed form to write, or null if anything couldn't be sealed.
+     *
+     * The legacy copy was stored as plaintext, so sealing it inflates it by a third — a payload that
+     * fitted the rule where it is can fail to fit where it's going. [storedEnvelope] compresses the
+     * ones that would, which is the difference between the copy landing and the account being stuck
+     * with a plaintext node no retry can ever move.
+     */
+    private fun seal(child: String, from: DataSnapshot): Map<String, Any?>? {
+        return when (child) {
+            // Per-media state is a node of nodes; each media's payload is sealed on its own.
+            "progress" -> from.children.mapNotNull { media ->
+                val id = media.key ?: return@mapNotNull null
+                val payload = media.child("payload").getValue(String::class.java)
+                    ?: return@mapNotNull null
+                val ts = media.child("ts").getValue(Long::class.java) ?: return@mapNotNull null
+                val sealed = storedEnvelope(
+                    payload, NodeLimits.PROGRESS_MEDIA, "SyncMigration[progress/$id]", ts
+                ) ?: return null
+                id to sealed
+            }.toMap()
 
-        else -> {
-            val payload = from.child("payload").getValue(String::class.java)
-            val ts = from.child("ts").getValue(Long::class.java)
-            if (payload == null || ts == null) emptyMap()
-            else buildMap<String, Any> {
-                put("payload", SyncIdentity.seal(payload) ?: return null)
-                put("ts", ts)
-                from.child("device").getValue(String::class.java)
-                    ?.let { device -> SyncIdentity.seal(device)?.let { put("device", it) } }
+            else -> {
+                val payload = from.child("payload").getValue(String::class.java)
+                val ts = from.child("ts").getValue(Long::class.java)
+                if (payload == null || ts == null) emptyMap()
+                else storedEnvelope(payload, limitFor(child), "SyncMigration[$child]", ts)
+                    ?.apply {
+                        from.child("device").getValue(String::class.java)
+                            ?.let { device -> SyncIdentity.seal(device)?.let { put("device", it) } }
+                    }
+                    ?: return null
             }
         }
+    }
+
+    /** The ceiling the destination node is held to, so an oversized copy is caught before the write. */
+    private fun limitFor(child: String): Int = when (child) {
+        "extensions" -> NodeLimits.EXTENSIONS
+        "extension_settings" -> NodeLimits.EXTENSION_SETTINGS
+        "unread" -> NodeLimits.UNREAD
+        else -> NodeLimits.SETTINGS
     }
 
     /**

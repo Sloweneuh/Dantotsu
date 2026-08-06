@@ -237,11 +237,16 @@ object SyncIdentity {
     }
 
     /**
-     * Decrypts a stored payload. @return null when this device isn't linked, or when the payload
-     * wasn't written by a device holding the same secret.
+     * Decrypts a stored payload, decompressing it when the writer compressed it. @return null when
+     * this device isn't linked, or when the payload wasn't written by a device holding the same
+     * secret.
+     *
+     * Unsealing is where decoding belongs rather than at each call site: the encoded form says what
+     * it is, so nothing that reads a payload has to know or remember. Writing is the asymmetric
+     * half — see [storedEnvelope] — because only the writer can report which format it produced.
      */
     fun open(sealed: String): String? {
         val keys = keys() ?: return null
-        return SyncCrypto.open(keys.data, sealed)
+        return SyncCrypto.open(keys.data, sealed)?.let { SyncCodec.decode(it) }
     }
 }

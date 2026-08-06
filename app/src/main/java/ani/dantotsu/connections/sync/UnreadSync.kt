@@ -65,14 +65,12 @@ object UnreadSync {
         val uid = userId() ?: return false
         val json = runCatching { gson.toJson(result) }.getOrNull() ?: return false
         val node = node() ?: return false
+        val ts = SyncClock.now()
         // This is a shared cache, not the user's data — a library large enough to overflow the node
         // just means every device computes the check itself, which is what happened before this
         // existed. Far better than a rejected write on every cycle.
-        if (!fitsInNode(json, NodeLimits.UNREAD, "UnreadSync")) return false
-        val sealed = SyncIdentity.seal(json) ?: return false
-        val ts = SyncClock.now()
-        return node
-            .setValue(mapOf("payload" to sealed, "ts" to ts, "v" to SYNC_SCHEMA_VERSION))
+        val body = storedEnvelope(json, NodeLimits.UNREAD, "UnreadSync", ts) ?: return false
+        return node.setValue(body)
             .awaitOk().also {
             if (it) Logger.log("UnreadSync: published result (${result.size}, ts=$ts)")
         }

@@ -197,16 +197,20 @@ object ProgressSync {
                 val json = gson.toJson(data)
                 val hash = json.hashCode()
                 if (state[id]?.hash != hash) {
-                    // Skip rather than fail the whole push: one oversized media shouldn't stop the
-                    // rest, and retrying it would be rejected identically every time.
-                    if (!fitsInNode(json, NodeLimits.PROGRESS_MEDIA, "ProgressSync[$id]")) {
-                        return@forEach
-                    }
+                    // Spelled out rather than going through storedEnvelope so the two failures stay
+                    // apart: an oversized media is skipped, because one of them shouldn't stop the
+                    // rest and retrying it would be rejected identically every time, whereas a
+                    // payload that won't seal means this device can't write anything at all.
+                    val encoded = SyncCodec.encode(json, NodeLimits.PROGRESS_MEDIA)
+                    if (!fitsInNode(
+                            encoded.text, NodeLimits.PROGRESS_MEDIA, "ProgressSync[$id]", json.length
+                        )
+                    ) return@forEach
                     // Hash the plaintext, upload the ciphertext: sealing is randomised, so hashing
                     // the sealed form would make every media look changed on every push.
-                    val sealed = SyncIdentity.seal(json) ?: return PushResult.Failed
+                    val sealed = SyncIdentity.seal(encoded.text) ?: return PushResult.Failed
                     updates[id] =
-                        mapOf("payload" to sealed, "ts" to now, "v" to SYNC_SCHEMA_VERSION)
+                        mapOf("payload" to sealed, "ts" to now, "v" to encoded.version)
                     pending[id] = MediaState(hash, now)
                 }
             }

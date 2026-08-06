@@ -318,16 +318,10 @@ object CloudSync {
     }
 
     /** The stored form of a payload: sealed contents plus the plaintext bookkeeping around them. */
-    private fun envelope(payload: String, ts: Long): Map<String, Any?>? {
-        if (!fitsInNode(payload, NodeLimits.SETTINGS, "CloudSync")) return null
-        val sealed = SyncIdentity.seal(payload) ?: return null
-        return mapOf(
-            "payload" to sealed,
-            "ts" to ts,
-            "device" to SyncIdentity.seal(deviceName()),
-            "v" to SYNC_SCHEMA_VERSION,
-        )
-    }
+    private fun envelope(payload: String, ts: Long): Map<String, Any?>? =
+        storedEnvelope(payload, NodeLimits.SETTINGS, "CloudSync", ts)?.apply {
+            put("device", SyncIdentity.seal(deviceName()))
+        }
 
     /** Unconditional overwrite, for the paths where replacing the cloud is the user's decision. */
     private suspend fun upload(uid: String, payload: String, ts: Long): Boolean {

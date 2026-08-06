@@ -1,5 +1,6 @@
 package ani.dantotsu.connections.sync
 
+import android.util.Base64
 import ani.dantotsu.util.Logger
 import com.google.android.gms.tasks.Task
 import com.google.firebase.database.DataSnapshot
@@ -12,6 +13,11 @@ import com.google.firebase.database.Transaction
 import com.google.firebase.database.ValueEventListener
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeout
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.nio.charset.StandardCharsets
+import java.util.zip.GZIPInputStream
+import java.util.zip.GZIPOutputStream
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
@@ -57,27 +63,119 @@ internal suspend fun Query.getSnapshot(
  * user is told only that sync failed. Catching it here turns that into one explanatory log line and
  * leaves the rest of the sync working.
  *
- * @param limit the plaintext ceiling for this node, i.e. the rule's cap with the base64 growth
- *   already taken out. Deliberately below the true bound: the point is to notice before the server
- *   does, and the sizes involved are nowhere near it in normal use.
+ * @param stored what will actually be sealed, i.e. the payload as [SyncCodec] encoded it.
+ * @param limit the ceiling for this node, i.e. the rule's cap with the base64 growth already taken
+ *   out. Deliberately below the true bound: the point is to notice before the server does, and the
+ *   sizes involved are nowhere near it in normal use.
+ * @param plaintextLength the size before encoding, reported alongside so an over-limit log says
+ *   whether compression was already working on it.
  */
-internal fun fitsInNode(plaintext: String, limit: Int, what: String): Boolean {
-    if (plaintext.length <= limit) return true
-    Logger.log("$what: payload is ${plaintext.length} chars, over the $limit limit; not uploading")
+internal fun fitsInNode(
+    stored: String,
+    limit: Int,
+    what: String,
+    plaintextLength: Int = stored.length,
+): Boolean {
+    if (stored.length <= limit) return true
+    val raw = if (plaintextLength != stored.length) " (${plaintextLength} uncompressed)" else ""
+    Logger.log("$what: payload is ${stored.length} chars$raw, over the $limit limit; not uploading")
     return false
 }
 
 /**
- * Schema version written alongside every payload.
+ * The highest payload format this build can read, and what [schemaIsReadable] measures a node
+ * against. Absent on nodes written before this existed, which reads as version 1.
  *
- * Nothing reads it yet — that is the point of adding it now. The envelope has no way to describe
- * itself, so a future change to the payload format would be applied by older builds as though it
- * were the current one, and the damage would be silent. A version costs one field and is the only
- * thing that makes such a change safe to make later.
- *
- * Absent on nodes written before this existed, which reads as version 1.
+ * - **1** — the payload is the plaintext JSON.
+ * - **2** — the payload is [SyncCodec]-compressed.
  */
-internal const val SYNC_SCHEMA_VERSION = 1
+internal const val SYNC_SCHEMA_VERSION = 2
+
+/**
+ * Compresses a payload that would otherwise be too big to store.
+ *
+ * Extension settings are the case that needed this: sources keep their own `SharedPreferences`, some
+ * of them cache a great deal there, and a real install produced a 1.9 MB export — twice what the node
+ * can hold, so the push was refused on every cycle and that account's extension settings simply never
+ * synced. It is also JSON full of repeated keys, which is to say roughly a tenth of that once
+ * deflated.
+ *
+ * Only oversized payloads are compressed, never as a general saving. Compressing is what makes a
+ * node v2, and a v2 node is one older builds decline to read — so restricting it to payloads that
+ * were being rejected anyway means the change can only add nodes those builds can sync, never take
+ * one away. A device on an older release keeps reading everything it read before.
+ *
+ * The encoded form is self-describing on top of that: [decode] recognises the marker, so nodes
+ * written before this existed read back unchanged and nothing needs migrating.
+ */
+internal object SyncCodec {
+
+    /** Prefixes a compressed payload. Not valid JSON, so it can't be mistaken for a plain one. */
+    private const val MARKER = "gz1:"
+
+    /** A payload in its stored form, with the schema version that form makes the node. */
+    data class Encoded(val text: String, val version: Int)
+
+    /**
+     * @param limit the node's ceiling — a payload already under it is left exactly as it is.
+     * @return what to seal, and the version it makes the node.
+     */
+    fun encode(plaintext: String, limit: Int): Encoded {
+        val plain = Encoded(plaintext, 1)
+        if (plaintext.length <= limit) return plain
+        val packed = runCatching {
+            val deflated = ByteArrayOutputStream().also { out ->
+                GZIPOutputStream(out).use { it.write(plaintext.toByteArray(StandardCharsets.UTF_8)) }
+            }.toByteArray()
+            MARKER + Base64.encodeToString(deflated, Base64.NO_WRAP)
+        }.getOrElse {
+            Logger.log("SyncCodec: compression failed, storing as-is: ${it.message}")
+            return plain
+        }
+        // Already-compressed contents (a source caching an image, say) can come out bigger. Nothing
+        // is gained by storing those deflated, and the size check downstream refuses them either way.
+        if (packed.length >= plaintext.length) return plain
+        Logger.log("SyncCodec: compressed ${plaintext.length} chars to ${packed.length}")
+        return Encoded(packed, 2)
+    }
+
+    /**
+     * Reverses [encode]. @return null when a payload claims to be compressed but can't be
+     * decompressed — the same answer as a payload that wouldn't decrypt, and treated the same way.
+     */
+    fun decode(stored: String): String? {
+        if (!stored.startsWith(MARKER)) return stored
+        return runCatching {
+            val raw = Base64.decode(stored.removePrefix(MARKER), Base64.NO_WRAP)
+            GZIPInputStream(ByteArrayInputStream(raw)).use {
+                it.readBytes().toString(StandardCharsets.UTF_8)
+            }
+        }.getOrElse {
+            Logger.log("SyncCodec: could not decompress payload: ${it.message}")
+            null
+        }
+    }
+}
+
+/**
+ * Prepares [plaintext] for storage: compressed if it has to be, size-checked against this node's
+ * rule, then sealed — and tagged with the schema version the result actually is.
+ *
+ * Returns the fields every node shares; callers holding extra ones (CloudSync's device label) add
+ * them to what comes back. @return null when the payload can't be stored, which callers treat as
+ * "skip this push" rather than as an error worth retrying.
+ */
+internal fun storedEnvelope(
+    plaintext: String,
+    limit: Int,
+    what: String,
+    ts: Long,
+): MutableMap<String, Any?>? {
+    val encoded = SyncCodec.encode(plaintext, limit)
+    if (!fitsInNode(encoded.text, limit, what, plaintext.length)) return null
+    val sealed = SyncIdentity.seal(encoded.text) ?: return null
+    return mutableMapOf("payload" to sealed, "ts" to ts, "v" to encoded.version)
+}
 
 /** The version a node claims, defaulting to the pre-versioning format. */
 internal fun DataSnapshot.schemaVersion(): Int =

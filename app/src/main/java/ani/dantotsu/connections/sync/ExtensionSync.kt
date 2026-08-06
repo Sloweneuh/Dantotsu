@@ -119,11 +119,9 @@ object ExtensionSync {
 
     private suspend fun upload(uid: String, payloadJson: String, ts: Long): Boolean {
         val node = node() ?: return false
-        if (!fitsInNode(payloadJson, NodeLimits.EXTENSIONS, "ExtensionSync")) return false
-        val sealed = SyncIdentity.seal(payloadJson) ?: return false
-        return node
-            .setValue(mapOf("payload" to sealed, "ts" to ts, "v" to SYNC_SCHEMA_VERSION))
-            .awaitOk()
+        val body = storedEnvelope(payloadJson, NodeLimits.EXTENSIONS, "ExtensionSync", ts)
+            ?: return false
+        return node.setValue(body).awaitOk()
     }
 
     // ---- publish ----

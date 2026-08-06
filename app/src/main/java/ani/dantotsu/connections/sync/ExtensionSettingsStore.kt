@@ -20,6 +20,10 @@ import java.io.File
 object ExtensionSettingsStore {
 
     private const val PREFIX = "source_"
+
+    /** An export past this is worth attributing in the log; a normal one is a few dozen KB. */
+    private const val LARGE_EXPORT_BYTES = 256 * 1024
+
     private val gson = Gson()
 
     /**
@@ -77,7 +81,27 @@ object ExtensionSettingsStore {
             if (entries.isNotEmpty()) out[name] = entries
         }
         if (dropped > 0) Logger.log("ExtensionSettingsStore: kept $dropped credential(s) off the cloud")
-        return gson.toJson(out)
+        return gson.toJson(out).also { logIfLarge(context, it.length) }
+    }
+
+    /**
+     * Names the sources behind an unusually big export.
+     *
+     * Nothing here caps or prunes what a source stores — that's the source's business, and guessing
+     * which of its keys are disposable is exactly the kind of Dantotsu-only heuristic that goes
+     * wrong. But an export in the megabytes is worth being able to attribute, because it is one
+     * misbehaving source rather than the other forty, and without this the only visible symptom is
+     * a size that a log line reports and no one can explain.
+     */
+    private fun logIfLarge(context: Context, size: Int) {
+        if (size < LARGE_EXPORT_BYTES) return
+        val worst = sharedPrefsDir(context).listFiles()
+            ?.filter { it.name.startsWith(PREFIX) && it.name.endsWith(".xml") }
+            ?.sortedByDescending { it.length() }
+            ?.take(5)
+            ?.joinToString { "${it.name.removeSuffix(".xml")} ${it.length() / 1024}KB" }
+            ?: return
+        Logger.log("ExtensionSettingsStore: export is ${size / 1024}KB; largest sources: $worst")
     }
 
     /** Restores prefs produced by [export]. @return true on success (including an empty payload). */

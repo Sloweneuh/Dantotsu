@@ -67,11 +67,8 @@ object ExtensionSettingsSync {
         if (json != null && ts != null) Remote(json, ts) else null
     }
 
-    private fun envelope(payload: String, ts: Long): Map<String, Any?>? {
-        if (!fitsInNode(payload, NodeLimits.EXTENSION_SETTINGS, "ExtensionSettingsSync")) return null
-        val sealed = SyncIdentity.seal(payload) ?: return null
-        return mapOf("payload" to sealed, "ts" to ts, "v" to SYNC_SCHEMA_VERSION)
-    }
+    private fun envelope(payload: String, ts: Long): Map<String, Any?>? =
+        storedEnvelope(payload, NodeLimits.EXTENSION_SETTINGS, "ExtensionSettingsSync", ts)
 
     /** Unconditional overwrite, for the force actions. */
     private suspend fun upload(uid: String, payload: String, ts: Long): Boolean {
