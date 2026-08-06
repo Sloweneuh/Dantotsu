@@ -260,10 +260,17 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
                             ?: return@withContext LoadedDetails(null, null)
                         val source = ext.sources.getOrNull(langIndex) as? MangaSource
                             ?: return@withContext LoadedDetails(null, null)
-                        val details = manga?.let { source.getMangaDetails(it) }
-                        val list = manga?.let { m ->
-                            runCatching { source.getChapterList(m) }.getOrElse { emptyList() }
-                        }.orEmpty()
+                        // One combined call: sources on lib 1.6 answer only this, and for
+                        // API-backed sites details and chapters come from the same response
+                        // anyway. Older sources get a default that makes the two calls the app
+                        // used to make itself.
+                        val update = manga?.let { m ->
+                            runCatching {
+                                source.getMangaUpdate(m, emptyList(), true, true)
+                            }.getOrNull()
+                        }
+                        val details = update?.manga
+                        val list = update?.chapters.orEmpty()
                         val latest = list.maxByOrNull { it.chapter_number }
                             ?.takeIf { it.chapter_number >= 0f }
                             ?: list.firstOrNull()

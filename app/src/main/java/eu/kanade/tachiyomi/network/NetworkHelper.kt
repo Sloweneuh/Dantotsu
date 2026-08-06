@@ -9,7 +9,6 @@ import ani.dantotsu.util.Logger
 import com.lagradost.nicehttp.Requests
 import eu.kanade.tachiyomi.network.interceptor.CloudflareInterceptor
 import eu.kanade.tachiyomi.network.interceptor.DohErrorInterceptor
-import eu.kanade.tachiyomi.network.interceptor.IgnoreGzipInterceptor
 import eu.kanade.tachiyomi.network.interceptor.UncaughtExceptionInterceptor
 import eu.kanade.tachiyomi.network.interceptor.UserAgentInterceptor
 import okhttp3.Cache
@@ -83,8 +82,18 @@ private fun setupSocks5Proxy() {
             .addInterceptor(UncaughtExceptionInterceptor())
             .addInterceptor(DohErrorInterceptor())
             .addInterceptor(UserAgentInterceptor(::defaultUserAgentProvider))
-            .addNetworkInterceptor(IgnoreGzipInterceptor())
-            .addNetworkInterceptor(BrotliInterceptor)
+            // Brotli belongs at the application layer, which is what OkHttp's interceptor is built
+            // for: it sets `Accept-Encoding: br,gzip` itself, so the built-in BridgeInterceptor
+            // leaves the header alone and stops transparently un-gzipping, and this decodes both on
+            // the way back.
+            //
+            // It used to sit at the network layer instead, which meant Bridge had already added its
+            // own `Accept-Encoding: gzip` — so IgnoreGzipInterceptor had to run alongside to strip
+            // that header back off. Extensions built against lib 1.6 refuse to run against a client
+            // carrying that workaround (`IgnoreGzipInterceptor must not be present in default
+            // client`), and they're right to: it exists only to undo a problem this ordering
+            // doesn't create.
+            .addInterceptor(BrotliInterceptor)
 
         class ConsoleLogger : HttpLoggingInterceptor.Logger {
             override fun log(message: String) {

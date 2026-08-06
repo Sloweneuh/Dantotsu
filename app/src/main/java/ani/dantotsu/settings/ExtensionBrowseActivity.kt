@@ -934,16 +934,19 @@ class ExtensionBrowseActivity : AppCompatActivity() {
         } else if (mangaExtension != null) {
             val source = mangaExtension!!.sources.getOrNull(sourceIndex) as? CatalogueSource
                 ?: return emptyList<BrowseItem>() to false
+            // The suspend API, not the Observable one: extensions on lib 1.6 implement only these
+            // and leave `popularMangaRequest` and friends as throwing stubs, while older ones
+            // inherit a bridge that forwards to their Observable implementations.
             val res: MangasPage = when (currentMode) {
-                Mode.POPULAR -> source.fetchPopularManga(page).awaitSingle()
-                Mode.LATEST -> source.fetchLatestUpdates(page).awaitSingle()
+                Mode.POPULAR -> source.getPopularManga(page)
+                Mode.LATEST -> source.getLatestUpdates(page)
                 Mode.FILTER -> {
                     val fl = currentFilters as? FilterList ?: source.getFilterList()
-                    source.fetchSearchManga(page, "", fl).awaitSingle()
+                    source.getSearchManga(page, "", fl)
                 }
                 Mode.SEARCH -> {
                     val fl = currentFilters as? FilterList ?: source.getFilterList()
-                    source.fetchSearchManga(page, currentQuery, fl).awaitSingle()
+                    source.getSearchManga(page, currentQuery, fl)
                 }
             }
             res.mangas.map { BrowseItem.fromManga(it) } to res.hasNextPage

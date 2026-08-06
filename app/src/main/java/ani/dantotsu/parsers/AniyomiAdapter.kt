@@ -387,7 +387,9 @@ class DynamicMangaParser(extension: MangaExtension.Installed) : MangaParser() {
         } as? HttpSource ?: return emptyList()
 
         return try {
-            val res = source.getChapterList(sManga)
+            // Chapters only — details are already known here, so the source is told not to spend a
+            // request on them. Sources on lib 1.6 implement nothing but this combined call.
+            val res = source.getMangaUpdate(sManga, emptyList(), false, true).chapters
             val reversedRes = res.reversed()
             val chapterList = reversedRes.map { sChapterToMangaChapter(it) }
             chapterList
@@ -482,7 +484,8 @@ class DynamicMangaParser(extension: MangaExtension.Installed) : MangaParser() {
         } as? HttpSource ?: return emptyList()
 
         return try {
-            val res = source.fetchSearchManga(1, query, source.getFilterList()).awaitSingle()
+            // Suspend API — see CatalogueSource; lib 1.6 sources have no Observable implementation.
+            val res = source.getSearchManga(1, query, source.getFilterList())
             Logger.log("res observable: $res")
             convertMangasPageToShowResponse(res)
         } catch (e: CloudflareBypassException) {

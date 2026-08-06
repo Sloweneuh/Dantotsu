@@ -65,7 +65,21 @@ internal object ExtensionLoader {
     const val ANIME_LIB_VERSION_MAX = 16
 
     const val MANGA_LIB_VERSION_MIN = 1.4
-    const val MANGA_LIB_VERSION_MAX = 1.5
+
+    /**
+     * Extensions declaring a newer lib version than this are hidden from the repo listings and
+     * refused at load.
+     *
+     * 1.6 is supported by matching `com.github.keiyoushi:extensions-lib` at the commit the
+     * extensions build against: the suspend catalogue calls on [CatalogueSource], the combined
+     * `getMangaUpdate` returning [SMangaUpdate], and `memo` on both models. That library is only a
+     * set of stubs — every method throws — so the signatures are the whole contract and this app
+     * supplies the behaviour behind them.
+     *
+     * The `keiyoushi.*` classes those sources also import need nothing here: they live in the
+     * extensions' own `core` module and are compiled into each APK.
+     */
+    const val MANGA_LIB_VERSION_MAX = 1.6
 
     val PACKAGE_FLAGS = PackageManager.GET_CONFIGURATIONS or
             PackageManager.GET_META_DATA or

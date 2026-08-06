@@ -52,8 +52,18 @@
             style="@style/Widget.Material3.Button.TextButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:insetLeft="0dp"
+            android:insetRight="0dp"
+            android:maxLines="1"
             android:minWidth="0dp"
-            tools:text="Reload" />
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            tools:text="Reload"
+            android:letterSpacing="0" /><!--
+            letterSpacing is zeroed because the Material3 text-button appearance applies some, and
+            the trailing space it adds after the last glyph isn't counted when the button measures
+            itself — with minWidth at 0 there is no slack left to absorb it, so the final letter
+            gets clipped. Explicit horizontal padding replaces the room the default insets gave. -->
 
         <ImageButton
             android:id="@+id/topBannerClose"

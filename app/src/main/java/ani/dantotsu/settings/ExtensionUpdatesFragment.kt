@@ -84,17 +84,26 @@ class ExtensionUpdatesFragment : Fragment() {
     private fun loadUpdates() {
         lifecycleScope.launch {
             val updates = withContext(Dispatchers.Default) {
+                // What each update would install, looked up from the repo listing by package. The
+                // installed entry only knows that an update exists, not what version it is.
+                val animeVersions = animeExtensionManager.availableExtensionsFlow.value
+                    .associate { it.pkgName to it.versionName }
+                val mangaVersions = mangaExtensionManager.availableExtensionsFlow.value
+                    .associate { it.pkgName to it.versionName }
+                val novelVersions = novelExtensionManager.availableExtensionsFlow.value
+                    .associate { it.pkgName to it.versionName }
+
                 val animeUpdates = animeExtensionManager.installedExtensionsFlow.value
                     .filter { it.hasUpdate }
-                    .map { UpdateItem.AnimeUpdate(it) }
+                    .map { UpdateItem.AnimeUpdate(it, animeVersions[it.pkgName]) }
 
                 val mangaUpdates = mangaExtensionManager.installedExtensionsFlow.value
                     .filter { it.hasUpdate }
-                    .map { UpdateItem.MangaUpdate(it) }
+                    .map { UpdateItem.MangaUpdate(it, mangaVersions[it.pkgName]) }
 
                 val novelUpdates = novelExtensionManager.installedExtensionsFlow.value
                     .filter { it.hasUpdate }
-                    .map { UpdateItem.NovelUpdate(it) }
+                    .map { UpdateItem.NovelUpdate(it, novelVersions[it.pkgName]) }
 
                 animeUpdates + mangaUpdates + novelUpdates
             }
@@ -196,29 +205,57 @@ class ExtensionUpdatesFragment : Fragment() {
 
 sealed class UpdateItem {
     abstract val name: String
+
+    /** The version installed right now. */
     abstract val versionName: String
+
+    /**
+     * The version this update would install, or null when the repo entry can't be matched.
+     *
+     * Nullable rather than defaulted because "we don't know yet" and "it's the same version" are
+     * different things, and only the first should make the row fall back to showing one version.
+     * The available list is fetched separately from the installed one, so a refresh that hasn't
+     * landed — or an extension whose repo was removed — genuinely has no answer here.
+     */
+    abstract val newVersionName: String?
+
     abstract val type: String
     abstract val icon: android.graphics.drawable.Drawable?
 
-    data class AnimeUpdate(val extension: AnimeExtension.Installed) : UpdateItem() {
+    /** Where to look the new version up. */
+    abstract val pkgName: String
+
+    data class AnimeUpdate(
+        val extension: AnimeExtension.Installed,
+        override val newVersionName: String? = null,
+    ) : UpdateItem() {
         override val name: String get() = extension.name
         override val versionName: String get() = extension.versionName
         override val type: String get() = "Anime"
         override val icon: android.graphics.drawable.Drawable? get() = extension.icon
+        override val pkgName: String get() = extension.pkgName
     }
 
-    data class MangaUpdate(val extension: MangaExtension.Installed) : UpdateItem() {
+    data class MangaUpdate(
+        val extension: MangaExtension.Installed,
+        override val newVersionName: String? = null,
+    ) : UpdateItem() {
         override val name: String get() = extension.name
         override val versionName: String get() = extension.versionName
         override val type: String get() = "Manga"
         override val icon: android.graphics.drawable.Drawable? get() = extension.icon
+        override val pkgName: String get() = extension.pkgName
     }
 
-    data class NovelUpdate(val extension: NovelExtension.Installed) : UpdateItem() {
+    data class NovelUpdate(
+        val extension: NovelExtension.Installed,
+        override val newVersionName: String? = null,
+    ) : UpdateItem() {
         override val name: String get() = extension.name
         override val versionName: String get() = extension.versionName
         override val type: String get() = "Novel"
         override val icon: android.graphics.drawable.Drawable? get() = extension.icon
+        override val pkgName: String get() = extension.pkgName
     }
 }
 
@@ -263,6 +300,12 @@ class UpdatesAdapter(
                 append(item.type)
                 append(" • ")
                 append(item.versionName)
+                // Only when it's actually different: a repo that re-published the same version
+                // number would otherwise render "1.4.5 → 1.4.5", which reads as a display bug.
+                item.newVersionName?.takeIf { it != item.versionName }?.let {
+                    append(" → ")
+                    append(it)
+                }
             }
 
             // Set extension icon if available and not skipped
