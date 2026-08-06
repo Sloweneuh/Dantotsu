@@ -43,6 +43,12 @@ import com.google.android.material.color.MaterialColors
  *                     setting itself lives inside a Fragment-hosted list there, not a plain
  *                     Activity RecyclerView, so it can't be scroll-highlighted like the rest of
  *                     the registry — landing on the right tab is the best this can do.
+ * @param requiresOnline excluded from search results while offline, same as the row itself would
+ *                     be if the destination screen hides it there. Only needed for entries whose
+ *                     section mixes online and offline rows (Backup & sync does: local
+ *                     backup/restore stays usable, the cloud rows don't) — a section that's
+ *                     entirely one or the other, like Accounts, is filtered by [sectionRes]
+ *                     instead, in [query].
  */
 data class SearchableSetting(
     val dest: Class<out Activity>,
@@ -53,6 +59,7 @@ data class SearchableSetting(
     val anchorViewId: Int = 0,
     val keywords: String = "",
     val intentTab: Int = -1,
+    val requiresOnline: Boolean = false,
 )
 
 object SettingsSearch {
@@ -81,7 +88,7 @@ object SettingsSearch {
         val l = ArrayList<SearchableSetting>()
 
         // ---- Top level sections ----
-        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.accounts, R.string.settings, IC_ACCOUNT, R.string.accounts_desc, keywords = "login profile anilist myanimelist mangaupdates mangabaka connections")
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.accounts, R.string.settings, IC_ACCOUNT, R.string.accounts_desc, keywords = "login profile anilist myanimelist mangaupdates mangabaka connections", requiresOnline = true)
         l += SearchableSetting(SettingsThemeActivity::class.java, R.string.theme, R.string.settings, IC_THEME, R.string.theme_desc, keywords = "appearance color dark light")
         l += SearchableSetting(SettingsCommonActivity::class.java, R.string.common, R.string.settings, IC_COMMON, R.string.common_desc, keywords = "general preferences")
         l += SearchableSetting(SettingsAnimeActivity::class.java, R.string.anime, R.string.settings, IC_ANIME, R.string.anime_desc, keywords = "video watch streaming episode")
@@ -158,17 +165,17 @@ object SettingsSearch {
 
         // ---- Backup & sync ----
         l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.backup_restore, R.string.backup_sync, IC_BACKUP, R.string.backup_restore_desc, keywords = "export import")
-        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.cloud_sync, R.string.backup_sync, IC_BACKUP, R.string.cloud_sync_desc, keywords = "anilist cloud sync devices firebase")
-        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.sync_code_title, R.string.backup_sync, IC_LOCK, R.string.sync_code_desc, keywords = "sync code key link pair connect add device qr scan encrypt encryption secure private")
+        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.cloud_sync, R.string.backup_sync, IC_BACKUP, R.string.cloud_sync_desc, keywords = "anilist cloud sync devices firebase", requiresOnline = true)
+        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.sync_code_title, R.string.backup_sync, IC_LOCK, R.string.sync_code_desc, keywords = "sync code key link pair connect add device qr scan encrypt encryption secure private", requiresOnline = true)
         // Described by what it does rather than by the row's live subtitle ("Last synced 3 minutes
         // ago"), which tells someone searching nothing about what they'd be tapping.
-        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.cloud_sync_now, R.string.backup_sync, IC_BACKUP, R.string.cloud_sync_now_desc, keywords = "cloud sync upload download last synced")
-        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.sync_extensions, R.string.backup_sync, IC_EXTENSION, R.string.sync_extensions_desc, keywords = "extensions sources sync devices")
-        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.sync_extensions_now, R.string.backup_sync, IC_EXTENSION, R.string.sync_extensions_now_desc, keywords = "extensions sources install uninstall reconcile")
-        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.sync_extension_settings, R.string.backup_sync, IC_EXTENSION, R.string.sync_extension_settings_desc, keywords = "extension settings source preferences login credentials sync")
-        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.force_upload, R.string.backup_sync, IC_BACKUP, R.string.force_upload_desc, keywords = "force overwrite upload push cloud replace")
-        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.force_download, R.string.backup_sync, IC_BACKUP, R.string.force_download_desc, keywords = "force overwrite download pull cloud replace restore")
-        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.cloud_wipe, R.string.backup_sync, IC_DELETE, R.string.cloud_wipe_desc, keywords = "delete wipe erase remove clear cloud data privacy account reset")
+        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.cloud_sync_now, R.string.backup_sync, IC_BACKUP, R.string.cloud_sync_now_desc, keywords = "cloud sync upload download last synced", requiresOnline = true)
+        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.sync_extensions, R.string.backup_sync, IC_EXTENSION, R.string.sync_extensions_desc, keywords = "extensions sources sync devices", requiresOnline = true)
+        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.sync_extensions_now, R.string.backup_sync, IC_EXTENSION, R.string.sync_extensions_now_desc, keywords = "extensions sources install uninstall reconcile", requiresOnline = true)
+        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.sync_extension_settings, R.string.backup_sync, IC_EXTENSION, R.string.sync_extension_settings_desc, keywords = "extension settings source preferences login credentials sync", requiresOnline = true)
+        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.force_upload, R.string.backup_sync, IC_BACKUP, R.string.force_upload_desc, keywords = "force overwrite upload push cloud replace", requiresOnline = true)
+        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.force_download, R.string.backup_sync, IC_BACKUP, R.string.force_download_desc, keywords = "force overwrite download pull cloud replace restore", requiresOnline = true)
+        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.cloud_wipe, R.string.backup_sync, IC_DELETE, R.string.cloud_wipe_desc, keywords = "delete wipe erase remove clear cloud data privacy account reset", requiresOnline = true)
 
         // ---- User Interface ----
         l += SearchableSetting(UserInterfaceSettingsActivity::class.java, R.string.immersive_mode, R.string.ui_settings, IC_UI, anchorViewId = R.id.uiSettingsImmersive, keywords = "fullscreen")
@@ -325,7 +332,7 @@ object SettingsSearch {
         val offline = !ani.dantotsu.isOnline(context) ||
                 ani.dantotsu.settings.saving.PrefManager.getVal<Boolean>(ani.dantotsu.settings.saving.PrefName.OfflineMode)
         return index.mapNotNull { e ->
-            if (offline && e.sectionRes == R.string.accounts) return@mapNotNull null
+            if (offline && (e.sectionRes == R.string.accounts || e.requiresOnline)) return@mapNotNull null
             val title = context.getString(e.titleRes).lowercase()
             val desc = if (e.descRes != 0) context.getString(e.descRes).lowercase() else ""
             val section = context.getString(e.sectionRes).lowercase()

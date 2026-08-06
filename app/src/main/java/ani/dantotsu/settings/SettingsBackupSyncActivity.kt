@@ -38,6 +38,7 @@ import ani.dantotsu.connections.sync.showSyncSetupDialog
 import ani.dantotsu.databinding.ActivitySettingsBackupSyncBinding
 import ani.dantotsu.databinding.DialogUserAgentBinding
 import ani.dantotsu.initActivity
+import ani.dantotsu.isOnline
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.parsers.AnimeSources
 import ani.dantotsu.parsers.MangaSources
@@ -171,6 +172,12 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
         // once because every path that changes it recreates this screen.
         val linked = SyncIdentity.isLinked()
 
+        // Cloud sync is AniList + Firebase end to end, so every row below "Backup & Restore" is
+        // meaningless (and non-functional) offline — the same reasoning SettingsActivity already
+        // applies to hide "Accounts" there. Local backup/restore stays: it never touches the
+        // network.
+        val offline = !isOnline(this) || PrefManager.getVal<Boolean>(PrefName.OfflineMode)
+
         val settingsList = arrayListOf(
             Settings(
                 type = 1,
@@ -181,6 +188,7 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                     showBackupRestoreChooser(openDocumentLauncher)
                 },
             ),
+            *(if (offline) emptyList() else listOf(
             Settings(
                 type = 2,
                 name = getString(R.string.cloud_sync),
@@ -472,6 +480,7 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                     }
                 },
             ),
+            )).toTypedArray(),
         )
 
         val adapter = SettingsAdapter(settingsList)

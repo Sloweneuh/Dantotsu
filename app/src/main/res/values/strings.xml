@@ -1357,7 +1357,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="backup_sync">Backup &amp; sync</string>
     <string name="backup_sync_desc">Back up, restore and sync your settings across devices</string>
     <string name="cloud_sync">Cloud sync</string>
-    <string name="cloud_sync_desc">Sync your settings across devices via your AniList account</string>
+    <string name="cloud_sync_desc">Sync your settings across devices linked with the same code</string>
     <string name="cloud_sync_now">Sync now</string>
     <string name="cloud_sync_now_desc">Upload local changes and pull anything newer from the cloud</string>
     <string name="cloud_sync_no_account">Log in to AniList to use cloud sync</string>
@@ -1435,7 +1435,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="sync_extensions_now_desc">Compare installed extensions with your other devices and choose what to install or remove</string>
     <string name="sync_extensions_is_disabled">Extension sync is turned off</string>
     <string name="sync_extension_settings">Sync extension settings</string>
-    <string name="sync_extension_settings_desc">Also sync each extension\'s own settings across devices. Warning: some sources keep login details in their settings — turning this on uploads them to the cloud. Always included in local backups.</string>
+    <string name="sync_extension_settings_desc">Also sync each extension\'s own settings across devices. Warning: some sources keep login details in their settings — turning this on uploads them to the cloud.</string>
     <string name="ext_reconcile_install">Install %1$s</string>
     <string name="ext_reconcile_remove">Remove %1$s</string>
     <string name="ext_reconcile_unavailable">%1$s (unavailable)</string>

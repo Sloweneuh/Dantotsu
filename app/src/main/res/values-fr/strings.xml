@@ -1414,7 +1414,7 @@
     <string name="backup_sync">Sauvegarde &amp; synchro</string>
     <string name="backup_sync_desc">Sauvegardez, restaurez et synchronisez vos paramètres entre vos appareils</string>
     <string name="cloud_sync">Synchro cloud</string>
-    <string name="cloud_sync_desc">Synchronisez vos paramètres entre vos appareils via votre compte AniList</string>
+    <string name="cloud_sync_desc">Synchronisez vos paramètres entre les appareils liés avec le même code</string>
     <string name="cloud_sync_now">Synchroniser maintenant</string>
     <string name="cloud_sync_now_desc">Envoyer les changements locaux et récupérer les plus récents du cloud</string>
     <string name="cloud_sync_no_account">Connectez-vous à AniList pour utiliser la synchro cloud</string>
@@ -1493,7 +1493,7 @@
     <string name="sync_extensions_now_desc">Comparer les extensions installées avec vos autres appareils et choisir quoi installer ou supprimer</string>
     <string name="sync_extensions_is_disabled">La synchro des extensions est désactivée</string>
     <string name="sync_extension_settings">Synchroniser les paramètres des extensions</string>
-    <string name="sync_extension_settings_desc">Synchroniser aussi les paramètres propres à chaque extension entre vos appareils. Attention : certaines sources conservent des identifiants de connexion dans leurs paramètres — activer ceci les envoie dans le cloud. Toujours inclus dans les sauvegardes locales.</string>
+    <string name="sync_extension_settings_desc">Synchroniser aussi les paramètres propres à chaque extension entre vos appareils. Attention : certaines sources conservent des identifiants de connexion dans leurs paramètres — activer ceci les envoie dans le cloud.</string>
     <string name="ext_reconcile_install">Installer %1$s</string>
     <string name="ext_reconcile_remove">Supprimer %1$s</string>
     <string name="ext_reconcile_unavailable">%1$s (indisponible)</string>
