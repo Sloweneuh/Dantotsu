@@ -438,8 +438,14 @@ object PrefManager {
         if (prefs.isEmpty()) return true
         val pref = getPrefLocation(prefLocation)
         var hadError = false
+        // What little of the credential store syncs is identity hints — the display names of
+        // accounts signed in elsewhere — and those follow a different rule from settings. A device
+        // that isn't signed in to a tracker has *nothing to say* about it, rather than an
+        // instruction to forget it, so its payload must not clear a name the receiving device knows
+        // from its own login. Hence: never pruned here, and never overwritten with a blank.
+        val hintsOnly = prefLocation == Location.Protected
         with(pref.edit()) {
-            if (filter != null) {
+            if (filter != null && !hintsOnly) {
                 pref.all.keys.forEach { key ->
                     if (key !in prefs && filter(prefLocation, key)) {
                         remove(key)
@@ -452,6 +458,7 @@ object PrefManager {
                     Logger.log("importAllPrefs: rejected $key in $prefLocation")
                     return@forEach
                 }
+                if (hintsOnly && (value as? String).isNullOrBlank()) return@forEach
                 when (value) {
                     is Boolean -> putBoolean(key, value)
                     is Int -> putInt(key, value)

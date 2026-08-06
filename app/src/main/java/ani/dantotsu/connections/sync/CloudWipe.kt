@@ -62,6 +62,14 @@ object CloudWipe {
     suspend fun run(): Boolean {
         var ok = true
 
+        // Without the secret the sealed nodes can't even be named, let alone deleted — their path
+        // is derived from it. Saying so matters: the loop below would skip them in silence and
+        // report a clean sweep, while the encrypted copy stayed exactly where it was.
+        if (!SyncIdentity.isLinked()) {
+            Logger.log("CloudWipe: not linked; the encrypted copy can't be addressed from here")
+            ok = false
+        }
+
         for (child in SyncIdentity.CHILDREN) {
             SyncIdentity.node(child)?.let { node ->
                 if (!node.removeValue().awaitOk()) {

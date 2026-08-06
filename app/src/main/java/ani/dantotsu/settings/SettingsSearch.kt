@@ -159,7 +159,7 @@ object SettingsSearch {
         // ---- Backup & sync ----
         l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.backup_restore, R.string.backup_sync, IC_BACKUP, R.string.backup_restore_desc, keywords = "export import")
         l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.cloud_sync, R.string.backup_sync, IC_BACKUP, R.string.cloud_sync_desc, keywords = "anilist cloud sync devices firebase")
-        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.sync_code_title, R.string.backup_sync, IC_LOCK, R.string.sync_code_desc, keywords = "sync code key passphrase link pair connect add device qr scan encrypt encryption secure private")
+        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.sync_code_title, R.string.backup_sync, IC_LOCK, R.string.sync_code_desc, keywords = "sync code key link pair connect add device qr scan encrypt encryption secure private")
         // Described by what it does rather than by the row's live subtitle ("Last synced 3 minutes
         // ago"), which tells someone searching nothing about what they'd be tapping.
         l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.cloud_sync_now, R.string.backup_sync, IC_BACKUP, R.string.cloud_sync_now_desc, keywords = "cloud sync upload download last synced")

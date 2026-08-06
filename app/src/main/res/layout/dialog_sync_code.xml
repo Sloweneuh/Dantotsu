@@ -1,16 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?><!--
-  Scrollable because this dialog carries a title, three buttons and four stacked blocks of content.
-  Together they sit right at the height a dialog is allowed, so a short screen or a large system
-  font scale pushed the code and its warning off the bottom — where a plain custom view clips them
-  rather than letting the user reach them. The QR is sized to fit without scrolling in the ordinary
-  case; the scroll view is what guarantees the code is always readable in the rest.
+  The dialog widens its own window (see showSyncCodeDialog) because the default dialog width can't
+  fit the formatted code on one line, which wrapped it mid-group and made it painful to read off.
+  The scroll view is only a backstop for very short screens or large font scales — at ordinary sizes
+  everything here is meant to be visible at once.
 -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:scrollbarStyle="outsideOverlay"><!-- scrollbar left visible: it is the only hint that
-    there is more below when the content does overflow -->
+    android:scrollbarStyle="outsideOverlay">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -18,9 +17,9 @@
         android:gravity="center_horizontal"
         android:orientation="vertical"
         android:paddingStart="16dp"
-        android:paddingTop="8dp"
+        android:paddingTop="4dp"
         android:paddingEnd="16dp"
-        android:paddingBottom="8dp">
+        android:paddingBottom="4dp">
 
         <TextView
             android:id="@+id/syncCodeHint"
@@ -28,40 +27,47 @@
             android:layout_height="wrap_content"
             android:fontFamily="@font/poppins"
             android:text="@string/sync_code_show_hint"
-            android:textSize="14sp" />
+            android:textSize="13sp" />
 
         <!-- Scanning is the shortcut, not the mechanism: the code below is the secret itself, so a
              device with no camera (a desktop-class install, an emulator) is fully served by typing
              it. That is also why the code, not the QR, is what gets the room when space is short. -->
         <ImageView
             android:id="@+id/syncCodeQr"
-            android:layout_width="180dp"
-            android:layout_height="180dp"
-            android:layout_marginTop="12dp"
+            android:layout_width="210dp"
+            android:layout_height="210dp"
+            android:layout_marginTop="10dp"
             android:adjustViewBounds="true"
             android:contentDescription="@string/sync_code_qr_description"
             android:scaleType="fitCenter" />
 
+        <!-- One line, always: the groups are what make it readable, so it shrinks to fit rather
+             than wrapping between them. -->
         <TextView
             android:id="@+id/syncCodeText"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="10dp"
             android:fontFamily="@font/poppins_bold"
             android:gravity="center"
-            android:letterSpacing="0.1"
+            android:letterSpacing="0.08"
+            android:maxLines="1"
             android:textIsSelectable="true"
-            android:textSize="18sp"
+            android:textSize="19sp"
+            app:autoSizeMaxTextSize="19sp"
+            app:autoSizeMinTextSize="12sp"
+            app:autoSizeStepGranularity="1sp"
+            app:autoSizeTextType="uniform"
             tools:text="ABCD-EFGH-JKLM-NPQR" />
 
         <TextView
             android:id="@+id/syncCodeWarning"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="10dp"
             android:fontFamily="@font/poppins"
             android:text="@string/sync_code_secrecy_warning"
-            android:textSize="12sp" />
+            android:textSize="11sp" />
 
     </LinearLayout>
 

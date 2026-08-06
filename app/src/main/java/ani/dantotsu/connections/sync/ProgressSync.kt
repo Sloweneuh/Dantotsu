@@ -184,9 +184,9 @@ object ProgressSync {
     // ---- triggers ----
 
     /** Push on app background: upload media whose progress changed since the last sync. */
-    suspend fun pushNow(): PushResult {
-        if (!enabled() || userId() == null) return PushResult.NothingToDo
-        return runCatching {
+    suspend fun pushNow(): PushResult = SyncStatus.uploading {
+        if (!enabled() || userId() == null) return@uploading PushResult.NothingToDo
+        runCatching {
             val uid = userId() ?: return PushResult.NothingToDo
             val grouped = collect()
             val state = loadState()
@@ -227,7 +227,8 @@ object ProgressSync {
         if (!enabled() || userId() == null || pullInFlight) return
         pullInFlight = true
         scope.launch {
-            try {
+            SyncStatus.downloading {
+              try {
                 runCatching {
                     userId() ?: return@runCatching
                     SyncIdentity.reconcileIdentity()
@@ -276,8 +277,9 @@ object ProgressSync {
                     val floor = if (deferredFrom == Long.MAX_VALUE) highest else deferredFrom - 1
                     if (floor > since) PrefManager.setCustomVal(FLOOR_KEY, floor)
                 }
-            } finally {
+              } finally {
                 pullInFlight = false
+              }
             }
         }
     }

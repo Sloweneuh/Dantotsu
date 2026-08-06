@@ -68,6 +68,14 @@ class MALQueries {
         if (idMAL == null) return
         // `force` bypasses the toggle for explicit user actions (e.g. the list-compare screen).
         if (!force && !PrefManager.getVal<Boolean>(PrefName.MalListSyncEnabled)) return
+        // Checked here rather than only at the request, the way MangaBaka and MangaUpdates do it.
+        // The toggle syncs between devices but the login doesn't, so "on but signed out" is an
+        // ordinary state — it used to build the whole payload and then vanish into a null header,
+        // leaving nothing in the log to say why nothing happened.
+        if (authHeader == null) {
+            Logger.log("MAL: list sync is on but this device isn't signed in; skipping")
+            return
+        }
         val data = mutableMapOf("status" to convertStatus(isAnime, status))
         if (progress != null)
             data[if (isAnime) "num_watched_episodes" else "num_chapters_read"] = progress.toString()
@@ -94,6 +102,10 @@ class MALQueries {
     suspend fun deleteList(isAnime: Boolean, idMAL: Int?, force: Boolean = false) {
         if (idMAL == null) return
         if (!force && !PrefManager.getVal<Boolean>(PrefName.MalListSyncEnabled)) return
+        if (authHeader == null) {
+            Logger.log("MAL: list sync is on but this device isn't signed in; skipping delete")
+            return
+        }
         tryWithSuspend {
             client.delete(
                 "$apiUrl/${if (isAnime) "anime" else "manga"}/$idMAL/my_list_status",

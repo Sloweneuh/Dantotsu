@@ -152,9 +152,9 @@ object ExtensionSync {
      * was changed elsewhere (e.g. a force upload from another device), it's left untouched for the
      * manual reconcile to pick up. No-op when disabled or signed out.
      */
-    suspend fun pushNow(): PushResult {
-        if (!enabled() || userId() == null) return PushResult.NothingToDo
-        return runCatching {
+    suspend fun pushNow(): PushResult = SyncStatus.uploading {
+        if (!enabled() || userId() == null) return@uploading PushResult.NothingToDo
+        runCatching {
             val uid = userId() ?: return PushResult.NothingToDo
             val json = gson.toJson(localPayload())
             if (json.hashCode() == lastHash()) return PushResult.NothingToDo // nothing changed

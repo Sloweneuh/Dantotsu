@@ -40,7 +40,7 @@ object CloudSync {
     // NovelReader shares a file with Reader; PrefManager dedupes that.
     private val SYNC_LOCATIONS = listOf(
         Location.General, Location.UI, Location.Player, Location.Reader, Location.NovelReader,
-        Location.Irrelevant,
+        Location.Irrelevant, Location.Protected,
     )
 
     // Keys that live inside the synced locations but are device-specific and must not propagate.
@@ -98,9 +98,31 @@ object CloudSync {
      * [SYNC_LOCATIONS] on export — but a payload names its own locations, so on import that
      * accepted a `Protected` block and let it overwrite the token store.
      */
+    /**
+     * The only things from the credential store that ever leave the device: the display names of
+     * the accounts signed in elsewhere. Never a token, never a password — those are what
+     * [Location.Protected] exists to hold, and none of them is here.
+     *
+     * They earn their place by fixing a toggle that lies. The tracker preferences
+     * (`MalListSyncEnabled` and friends) live in [Location.General] and have always synced, so a
+     * second device shows "MyAnimeList list sync: on" while having no MyAnimeList login and doing
+     * nothing at all. Carrying the name across is what lets that screen say *which* account it
+     * means and offer to reconnect, instead of an unexplained switch.
+     *
+     * AniList is deliberately absent: it keys the sync itself, so both devices are the same account
+     * by construction and there is nothing to tell them.
+     */
+    private val SYNCABLE_PROTECTED_KEYS = setOf(
+        PrefName.MALUserName.name,
+        PrefName.MangaUpdatesUsername.name,
+        PrefName.MangaBakaUserName.name,
+        PrefName.DiscordUserName.name,
+    )
+
     private fun isSyncable(location: Location, key: String): Boolean = when {
         location !in SYNC_LOCATIONS -> false
         location == Location.Irrelevant -> key in SYNCABLE_IRRELEVANT_KEYS
+        location == Location.Protected -> key in SYNCABLE_PROTECTED_KEYS
         else -> key !in DEVICE_LOCAL_KEYS
     }
 
@@ -130,7 +152,7 @@ object CloudSync {
      * On a bump, re-baseline the hash instead: the settings didn't change, only which of them we
      * share. See [rebaselineForFilterChange].
      */
-    private const val FILTER_VERSION = 2
+    private const val FILTER_VERSION = 3
 
     private val scope = CoroutineScope(Dispatchers.IO)
 
@@ -249,6 +271,25 @@ object CloudSync {
 
     /** When this device last agreed with the cloud, or 0 if it never has. For display. */
     fun lastSyncedAt(): Long = lastTs()
+
+    /** What the cloud currently holds, as far as anyone needs to display it. */
+    data class CloudInfo(val ts: Long, val device: String?)
+
+    /**
+     * Reads just the metadata of the stored copy — when it was written, and by which device.
+     *
+     * Deliberately reads the two small children rather than the node, because the payload beside
+     * them can run to a megabyte and none of it is wanted here. @return null when nothing is stored,
+     * when this device can't read it, or when it isn't linked — the caller can't tell those apart
+     * and shouldn't claim to.
+     */
+    suspend fun cloudInfo(): CloudInfo? = runCatching {
+        val node = settingsNode() ?: return null
+        val ts = node.child("ts").getSnapshot().getValue(Long::class.java) ?: return null
+        val device = node.child("device").getSnapshot().getValue(String::class.java)
+            ?.let { SyncIdentity.open(it) }
+        CloudInfo(ts, device)
+    }.getOrNull()
 
     private fun clearBootstrapPrompt() = PrefManager.setCustomVal(BOOTSTRAP_PROMPT_KEY, false)
 
@@ -538,11 +579,11 @@ object CloudSync {
      *
      * @return whether anything was uploaded, and whether a failure is worth another attempt.
      */
-    suspend fun pushNow(): PushResult {
-        if (!isEnabled() || userId() == null || applyingRemote) return PushResult.NothingToDo
+    suspend fun pushNow(): PushResult = SyncStatus.uploading {
+        if (!isEnabled() || userId() == null || applyingRemote) return@uploading PushResult.NothingToDo
         SyncIdentity.reconcileIdentity()
         rebaselineForFilterChange()
-        return runCatching {
+        runCatching {
             userId() ?: return PushResult.NothingToDo
             val local = packLocal()
             if (local.hashCode() == lastHash()) return PushResult.NothingToDo // nothing changed
@@ -572,7 +613,8 @@ object CloudSync {
         }
         bgInFlight = true
         scope.launch {
-            try {
+            SyncStatus.downloading {
+              try {
                 SyncIdentity.reconcileIdentity()
         rebaselineForFilterChange()
                 runCatching {
@@ -601,8 +643,9 @@ object CloudSync {
                     // otherwise invisible; the notice follows the user to whatever is on screen.
                     if (doApply(remote.payload, remote.ts)) SyncReloadNotice.raise()
                 }
-            } finally {
+              } finally {
                 bgInFlight = false
+              }
             }
         }
     }

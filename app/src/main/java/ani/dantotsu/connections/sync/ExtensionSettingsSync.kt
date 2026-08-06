@@ -153,9 +153,9 @@ object ExtensionSettingsSync {
     // ---- background triggers (never clobber the other side) ----
 
     /** Push on app background; uploads only local-only changes. No-op when disabled/divergent. */
-    suspend fun pushNow(): PushResult {
-        if (!enabled() || userId() == null || applyingRemote) return PushResult.NothingToDo
-        return runCatching {
+    suspend fun pushNow(): PushResult = SyncStatus.uploading {
+        if (!enabled() || userId() == null || applyingRemote) return@uploading PushResult.NothingToDo
+        runCatching {
             userId() ?: return PushResult.NothingToDo
             val local = packLocal() ?: return PushResult.NothingToDo
             if (local.hashCode() == lastHash()) return PushResult.NothingToDo
@@ -177,7 +177,8 @@ object ExtensionSettingsSync {
         if (!enabled() || userId() == null || pullInFlight) return
         pullInFlight = true
         scope.launch {
-            try {
+            SyncStatus.downloading {
+              try {
                 runCatching {
                     val uid = userId() ?: return@runCatching
                     SyncIdentity.reconcileIdentity()
@@ -202,8 +203,9 @@ object ExtensionSettingsSync {
                     }
                     doApply(remote.payload, remote.ts)
                 }
-            } finally {
+              } finally {
                 pullInFlight = false
+              }
             }
         }
     }

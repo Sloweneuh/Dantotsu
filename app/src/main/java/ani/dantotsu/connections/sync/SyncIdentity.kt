@@ -1,6 +1,5 @@
 package ani.dantotsu.connections.sync
 
-import android.util.Base64
 import ani.dantotsu.BuildConfig
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
@@ -12,8 +11,8 @@ import com.google.firebase.database.FirebaseDatabase
  * Who this device is to the cloud, and the only way the sync modules reach it.
  *
  * A device is *linked* when it holds the sync secret. That secret is created on one device and
- * carried to the others by the user (a code they type, a QR they scan, or a passphrase they both
- * know) — it is never uploaded, never derived from anything public, and never leaves
+ * carried to the others by the user — a code they type, or the same code scanned from a QR — so it
+ * is never uploaded, never derived from anything public, and never leaves
  * [ani.dantotsu.settings.saving.internal.Location.Protected], which cloud sync itself excludes.
  *
  * Everything the modules used to compute for themselves now comes from here: the node to talk to
@@ -30,7 +29,6 @@ object SyncIdentity {
 
     /** Tags which kind of secret [PrefName.CloudSyncKey] holds; see [store]. */
     private const val CODE_PREFIX = "c:"
-    private const val DERIVED_PREFIX = "d:"
 
     /** Which node the local baselines were built against; see [reconcileIdentity]. */
     private const val IDENTITY_KEY = "cloud_sync_identity"
@@ -51,10 +49,7 @@ object SyncIdentity {
     /** True when this device holds the secret and can therefore sync. */
     fun isLinked(): Boolean = stored().isNotBlank()
 
-    /**
-     * The code to show for linking another device, or null when this device was linked by
-     * passphrase — there is no code to display in that case, the user re-enters the passphrase.
-     */
+    /** The code to show for linking another device, or null when there is no secret stored. */
     fun displayCode(): String? =
         stored().takeIf { it.startsWith(CODE_PREFIX) }
             ?.removePrefix(CODE_PREFIX)
@@ -73,6 +68,7 @@ object SyncIdentity {
         // nothing changed and the incremental progress pull skips what it never actually read.
         CloudWipe.resetLocalBaselines()
         rememberIdentity()
+        SyncStatus.refresh() // linking and unlinking are what flip sync on and off
     }
 
     // ---- identity changes ----
@@ -137,27 +133,6 @@ object SyncIdentity {
         return true
     }
 
-    /**
-     * Links this device with a passphrase. Both devices must enter the same one *and* be on the
-     * same AniList account, which salts the derivation.
-     *
-     * The passphrase itself is not kept — only the key stretched from it — so it can't be read back
-     * off the device, and the caller is expected to clear its own copy.
-     */
-    fun linkWithPassphrase(passphrase: CharArray): Boolean = runCatching {
-        // Salted by the account alone, so the same passphrase produces the same secret on a beta
-        // install as on a release one. They still sync separately — that is the path's job, not
-        // the key's — but the user isn't asked to remember which build a passphrase belonged to.
-        val scope = accountId() ?: return false
-        val secret = SyncCrypto.secretFromPassphrase(passphrase, scope)
-        store(DERIVED_PREFIX + Base64.encodeToString(secret, Base64.NO_WRAP))
-        Logger.log("SyncIdentity: linked with a passphrase")
-        true
-    }.getOrElse {
-        Logger.log("SyncIdentity: passphrase link failed: ${it.message}")
-        false
-    }
-
     /** Forgets the secret. The cloud copy is left alone; see [CloudWipe] to remove that too. */
     fun unlink() {
         store("")
@@ -171,12 +146,10 @@ object SyncIdentity {
         if (tag.isBlank()) return null
         cached?.let { if (it.secretTag == tag) return it }
         return runCatching {
-            val secret = when {
-                tag.startsWith(CODE_PREFIX) -> SyncCrypto.secretFromCode(tag.removePrefix(CODE_PREFIX))
-                tag.startsWith(DERIVED_PREFIX) ->
-                    Base64.decode(tag.removePrefix(DERIVED_PREFIX), Base64.NO_WRAP)
-                else -> return null
-            }
+            // The prefix is kept even with only one kind of secret left, so a future format has
+            // somewhere to announce itself rather than being mistaken for a code.
+            if (!tag.startsWith(CODE_PREFIX)) return null
+            val secret = SyncCrypto.secretFromCode(tag.removePrefix(CODE_PREFIX))
             Keys(
                 secretTag = tag,
                 path = SyncCrypto.derive(secret, INFO_PATH),
@@ -207,8 +180,8 @@ object SyncIdentity {
      * by side), so switching between them keeps a device's sync continuous, while `release` carries
      * no suffix and is therefore always separate.
      *
-     * Deliberately not part of the passphrase salt — see [linkWithPassphrase]. The build is a
-     * storage namespace, not an identity: the same passphrase should still mean the same user.
+     * Scoped here rather than mixed into the secret itself, because the build is a storage
+     * namespace and not an identity: the same code stays the same code across both.
      */
     private fun pathScope(): String? = accountId()?.let { "$it|${BuildConfig.APPLICATION_ID}" }
 

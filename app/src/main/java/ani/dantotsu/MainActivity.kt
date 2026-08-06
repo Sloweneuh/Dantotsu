@@ -588,6 +588,23 @@ class MainActivity : AppCompatActivity() {
 
         override fun getItemCount(): Int = visibleTabs.size
 
+        /**
+         * Identify pages by which tab they are, not by where they sit.
+         *
+         * The default is the position, which is only stable while the set of tabs is. Recreating
+         * the activity — what applying synced settings does — restores the previous run's fragments
+         * by that id, so turning the Anime tab off shifted Home from position 1 to position 0 and
+         * the restored *Anime* fragment was handed back for it. The screen then showed Anime with
+         * no way to leave, until a full restart dropped the saved state.
+         *
+         * Keying on the canonical tab instead means a restored fragment can only ever be reused for
+         * the tab it belongs to, and [containsItem] lets the adapter discard the ones whose tab has
+         * gone away.
+         */
+        override fun getItemId(position: Int): Long = visibleTabs[position].toLong()
+
+        override fun containsItem(itemId: Long): Boolean = visibleTabs.contains(itemId.toInt())
+
         override fun createFragment(position: Int): Fragment {
             return when (visibleTabs[position]) {
                 0 -> AnimeFragment()

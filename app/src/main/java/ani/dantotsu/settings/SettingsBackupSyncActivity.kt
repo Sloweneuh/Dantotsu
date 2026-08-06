@@ -11,6 +11,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.lifecycle.lifecycleScope
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.updateLayoutParams
@@ -26,6 +27,9 @@ import ani.dantotsu.connections.sync.applyScannedSyncCode
 import ani.dantotsu.connections.sync.ExtensionSettingsStore
 import ani.dantotsu.connections.sync.ExtensionSettingsSync
 import ani.dantotsu.connections.sync.ExtensionSync
+import ani.dantotsu.connections.sync.ExtensionSyncNotice
+import ani.dantotsu.connections.sync.SyncConflictNotice
+import ani.dantotsu.connections.sync.SyncStatus
 import ani.dantotsu.connections.sync.SyncClock
 import ani.dantotsu.connections.sync.SyncIdentity
 import ani.dantotsu.connections.sync.showCloudSyncConflictDialog
@@ -55,6 +59,7 @@ import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Sub-screen of the Common settings grouping everything related to moving settings off the device:
@@ -64,6 +69,10 @@ import kotlinx.coroutines.launch
  */
 class SettingsBackupSyncActivity : AppCompatActivity() {
     private lateinit var binding: ActivitySettingsBackupSyncBinding
+
+    /** Held so the "Sync now" row can be re-described after something changes the cloud. */
+    private var settingsItems: MutableList<Settings>? = null
+    private var settingsAdapter: SettingsAdapter? = null
 
     /**
      * Scanning another device's sync-code QR. Registered here rather than in the dialog that offers
@@ -153,6 +162,11 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
             onBackPressedDispatcher.onBackPressed()
         }
 
+        // Nothing below the sync-code row can do anything without the secret — the nodes are named
+        // from it — so they're greyed out rather than left tappable and silently inert. Captured
+        // once because every path that changes it recreates this screen.
+        val linked = SyncIdentity.isLinked()
+
         val settingsList = arrayListOf(
             Settings(
                 type = 1,
@@ -168,6 +182,7 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                 name = getString(R.string.cloud_sync),
                 desc = getString(R.string.cloud_sync_desc),
                 icon = R.drawable.ic_round_sync_24,
+                isEnabled = linked,
                 isChecked = PrefManager.getVal(PrefName.CloudSyncEnabled),
                 switch = { isChecked, _ ->
                     PrefManager.setVal(PrefName.CloudSyncEnabled, isChecked)
@@ -178,17 +193,20 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
             ),
             Settings(
                 type = 1,
-                name = getString(R.string.sync_code_title),
+                // The only row that stays live when unlinked, because it is the way out of that
+                // state. It names the action available rather than the thing it manages: there is
+                // no code to show yet, so "Sync code" would be describing something that doesn't
+                // exist.
+                name = getString(if (linked) R.string.sync_code_title else R.string.sync_setup_title),
                 desc = getString(
-                    if (SyncIdentity.isLinked()) R.string.sync_code_desc
-                    else R.string.sync_code_desc_unlinked
+                    if (linked) R.string.sync_code_desc else R.string.sync_code_desc_unlinked
                 ),
                 icon = R.drawable.ic_round_lock_24,
                 onClick = {
                     if (Anilist.token.isNullOrEmpty()) {
                         toast(getString(R.string.cloud_sync_no_account))
-                    } else if (SyncIdentity.isLinked()) {
-                        showSyncCodeDialog { recreate() }
+                    } else if (linked) {
+                        showSyncCodeDialog(onChanged = { recreate() })
                     } else {
                         showSyncSetupDialog(onScan = { launchSyncCodeScan() }) { recreate() }
                     }
@@ -201,6 +219,7 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                 // without this there was nothing anywhere saying whether it ever had.
                 desc = lastSyncedLine(),
                 icon = R.drawable.ic_round_sync_24,
+                isEnabled = linked,
                 onClick = { view ->
                     when {
                         Anilist.token.isNullOrEmpty() ->
@@ -236,11 +255,19 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                                             applyRestore()
                                         }
 
+                                    // These two don't recreate the screen the way the others do, so
+                                    // the row would keep showing the timestamps from before.
                                     is CloudSync.SyncOutcome.Pushed ->
-                                        toast(getString(R.string.cloud_sync_done))
+                                        runOnUiThread {
+                                            afterForcedSync(overwroteCloud = false)
+                                            toast(getString(R.string.cloud_sync_done))
+                                        }
 
                                     is CloudSync.SyncOutcome.UpToDate ->
-                                        toast(getString(R.string.cloud_sync_up_to_date))
+                                        runOnUiThread {
+                                            afterForcedSync(overwroteCloud = false)
+                                            toast(getString(R.string.cloud_sync_up_to_date))
+                                        }
 
                                     is CloudSync.SyncOutcome.Failed ->
                                         toast(getString(R.string.cloud_sync_failed))
@@ -257,6 +284,7 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                 name = getString(R.string.sync_extensions),
                 desc = getString(R.string.sync_extensions_desc),
                 icon = R.drawable.ic_extension,
+                isEnabled = linked,
                 isChecked = PrefManager.getVal(PrefName.SyncExtensionsEnabled),
                 switch = { isChecked, _ ->
                     PrefManager.setVal(PrefName.SyncExtensionsEnabled, isChecked)
@@ -268,6 +296,7 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                 name = getString(R.string.sync_extensions_now),
                 desc = getString(R.string.sync_extensions_now_desc),
                 icon = R.drawable.ic_extension,
+                isEnabled = linked,
                 onClick = {
                     when {
                         Anilist.token.isNullOrEmpty() ->
@@ -304,6 +333,7 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                 name = getString(R.string.sync_extension_settings),
                 desc = getString(R.string.sync_extension_settings_desc),
                 icon = R.drawable.ic_extension,
+                isEnabled = linked,
                 isChecked = PrefManager.getVal(PrefName.SyncExtensionSettingsEnabled),
                 switch = { isChecked, _ ->
                     PrefManager.setVal(PrefName.SyncExtensionSettingsEnabled, isChecked)
@@ -314,6 +344,7 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                 name = getString(R.string.force_upload),
                 desc = getString(R.string.force_upload_desc),
                 icon = R.drawable.ic_round_cloud_upload_24,
+                isEnabled = linked,
                 onClick = {
                     if (Anilist.token.isNullOrEmpty()) {
                         toast(getString(R.string.cloud_sync_no_account))
@@ -332,10 +363,12 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                                     val extSettingsOk =
                                         if (PrefManager.getVal<Boolean>(PrefName.SyncExtensionSettingsEnabled))
                                             ExtensionSettingsSync.forcePush() else true
+                                    val ok = settingsOk && extOk && extSettingsOk
                                     runOnUiThread {
+                                        if (ok) afterForcedSync(overwroteCloud = true)
                                         toast(
                                             getString(
-                                                if (settingsOk && extOk && extSettingsOk) R.string.force_upload_done
+                                                if (ok) R.string.force_upload_done
                                                 else R.string.cloud_sync_failed
                                             )
                                         )
@@ -353,6 +386,7 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                 name = getString(R.string.force_download),
                 desc = getString(R.string.force_download_desc),
                 icon = R.drawable.ic_round_cloud_download_24,
+                isEnabled = linked,
                 onClick = {
                     if (Anilist.token.isNullOrEmpty()) {
                         toast(getString(R.string.cloud_sync_no_account))
@@ -374,6 +408,10 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                                     val ok = settingsOk && extOk
                                     runOnUiThread {
                                         if (ok) {
+                                            // Before applyRestore, which recreates this screen —
+                                            // the notices outlive it and would otherwise come
+                                            // straight back on the rebuilt one.
+                                            afterForcedSync(overwroteCloud = false)
                                             toast(getString(R.string.force_download_done))
                                             applyRestore()
                                         } else {
@@ -393,10 +431,14 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                 name = getString(R.string.cloud_wipe),
                 desc = getString(R.string.cloud_wipe_desc),
                 icon = R.drawable.ic_round_delete_24,
+                isEnabled = linked,
                 onClick = {
                     if (Anilist.token.isNullOrEmpty()) {
                         toast(getString(R.string.cloud_sync_no_account))
                     } else {
+                        // Only reachable while linked — the row is disabled otherwise, because
+                        // without the code the encrypted copy can't even be named. Unlinking
+                        // offers the wipe itself, which is the last moment it's possible.
                         customAlertDialog().apply {
                             setTitle(R.string.cloud_wipe_confirm_title)
                             setMessage(R.string.cloud_wipe_confirm_msg)
@@ -405,9 +447,12 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                                 GlobalScope.launch(Dispatchers.IO) {
                                     val ok = CloudWipe.run()
                                     runOnUiThread {
-                                        // The wipe cleared the notices' state on a background
-                                        // thread; the cards themselves have to come down here.
-                                        AppNotices.dismissStale()
+                                        // The wipe cleared the notices' state and the local
+                                        // baselines on a background thread; the cards and the
+                                        // row still describing the deleted copy come down here.
+                                        // Runs whether or not every node went — a partial wipe
+                                        // leaves the row more wrong than a complete one.
+                                        afterForcedSync(overwroteCloud = true)
                                         toast(
                                             getString(
                                                 if (ok) R.string.cloud_wipe_done
@@ -425,7 +470,11 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
             ),
         )
 
-        binding.backupSyncRecyclerView.adapter = SettingsAdapter(settingsList)
+        val adapter = SettingsAdapter(settingsList)
+        settingsItems = settingsList
+        settingsAdapter = adapter
+        binding.backupSyncRecyclerView.adapter = adapter
+        refreshCloudInfo()
         binding.backupSyncRecyclerView.layoutManager = LinearLayoutManager(this)
     }
 
@@ -437,10 +486,82 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
     private fun lastSyncedLine(): String {
         val ts = CloudSync.lastSyncedAt()
         if (ts <= 0L) return getString(R.string.cloud_sync_never_synced)
-        val relative = android.text.format.DateUtils.getRelativeTimeSpanString(
+        return getString(R.string.cloud_sync_last_synced, relativeTime(ts))
+    }
+
+    private fun relativeTime(ts: Long): CharSequence =
+        android.text.format.DateUtils.getRelativeTimeSpanString(
             ts, SyncClock.nowCached(), android.text.format.DateUtils.MINUTE_IN_MILLIS
         )
-        return getString(R.string.cloud_sync_last_synced, relative)
+
+    /**
+     * Adds what the *cloud* currently holds to the "Sync now" row — when it was last written and by
+     * which device — under the line saying when this device last agreed with it.
+     *
+     * Those answer different questions. The local line tells you whether this device is behind; the
+     * cloud line tells you what it would be catching up to, and from where. Seeing "saved 2 days
+     * ago from Pixel 8" is what makes an unexpected sync result explainable.
+     *
+     * Fetched after the screen is up rather than before, so it never delays drawing, and left alone
+     * entirely when it can't be read — an unreachable cloud is not an empty one, and the row must
+     * not imply otherwise.
+     */
+    /**
+     * Re-describes the "Sync now" row from scratch.
+     *
+     * Resets to the local line before re-fetching, so a failed read leaves no stale claim about the
+     * cloud on screen — the previous copy's timestamp and device would otherwise sit there looking
+     * current after the very action that replaced them.
+     */
+    private fun refreshCloudInfo() {
+        val items = settingsItems ?: return
+        val adapter = settingsAdapter ?: return
+        val index = items.indexOfFirst { it.name == getString(R.string.cloud_sync_now) }
+        if (index >= 0) {
+            items[index] = items[index].copy(desc = lastSyncedLine())
+            adapter.notifyItemChanged(index)
+        }
+        loadCloudInfoInto(items, adapter)
+    }
+
+    /**
+     * Settles the local view of the world after the user has forced the cloud one way or the other.
+     *
+     * A forced sync is an answer to whatever sync was uncertain about, so anything still asking
+     * about it is now wrong: a conflict banner has been decided by fiat, and — when this device
+     * overwrote the cloud — so has any extension difference. Left alone they'd keep offering to
+     * resolve something that no longer exists.
+     *
+     * @param overwroteCloud true for a force upload, where this device's extension list also became
+     *   the cloud's. A force download doesn't touch the extension list, so its notice stands.
+     */
+    private fun afterForcedSync(overwroteCloud: Boolean) {
+        SyncConflictNotice.clear()
+        if (overwroteCloud) ExtensionSyncNotice.clear()
+        SyncStatus.refresh()
+        AppNotices.dismissStale()
+        refreshCloudInfo()
+    }
+
+    private fun loadCloudInfoInto(items: MutableList<Settings>, adapter: SettingsAdapter) {
+        if (!SyncIdentity.isLinked()) return
+        lifecycleScope.launch(Dispatchers.IO) {
+            val info = runCatching { CloudSync.cloudInfo() }.getOrNull() ?: return@launch
+            withContext(Dispatchers.Main) {
+                if (isFinishing || isDestroyed) return@withContext
+                val index = items.indexOfFirst { it.name == getString(R.string.cloud_sync_now) }
+                if (index < 0) return@withContext
+                val cloudLine = if (info.device.isNullOrBlank()) {
+                    getString(R.string.cloud_sync_cloud_copy, relativeTime(info.ts))
+                } else {
+                    getString(
+                        R.string.cloud_sync_cloud_copy_device, relativeTime(info.ts), info.device
+                    )
+                }
+                items[index] = items[index].copy(desc = "${lastSyncedLine()}\n$cloudLine")
+                adapter.notifyItemChanged(index)
+            }
+        }
     }
 
     private fun passwordAlertDialog(

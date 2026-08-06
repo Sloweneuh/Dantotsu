@@ -8,11 +8,15 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import ani.dantotsu.BottomSheetDialogFragment
 import ani.dantotsu.MainActivity
 import ani.dantotsu.R
 import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.handoff.HandoffBottomSheet
+import ani.dantotsu.connections.sync.SyncStatus
 import ani.dantotsu.databinding.BottomSheetSettingsBinding
 import ani.dantotsu.download.DownloadActivity
 import ani.dantotsu.getThemeColor
@@ -33,6 +37,7 @@ import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.startMainActivity
 import ani.dantotsu.util.customAlertDialog
 import eu.kanade.tachiyomi.util.system.getSerializableCompat
+import kotlinx.coroutines.launch
 import java.util.Timer
 import kotlin.concurrent.schedule
 
@@ -132,6 +137,8 @@ class SettingsDialogFragment : BottomSheetDialogFragment() {
                 startActivity(Intent(activity, NotificationActivity::class.java))
                 dismiss()
             }
+
+            bindCloudStatus()
         }
 
         binding.settingsIncognito.isChecked = PrefManager.getVal(PrefName.Incognito)
@@ -205,4 +212,37 @@ class SettingsDialogFragment : BottomSheetDialogFragment() {
             return fragment
         }
     }
+
+    /**
+     * Keeps the cloud icon showing what sync is actually doing, for as long as the sheet is open.
+     *
+     * Collected rather than read once: a pull or push can start and finish while the sheet is up —
+     * returning to the app is one of the things that triggers one — so a snapshot would routinely
+     * show a transfer that had already ended, or miss one entirely.
+     */
+    private fun bindCloudStatus() {
+        SyncStatus.refresh()
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                SyncStatus.state.collect { state ->
+                    binding.settingsCloudStatus.setImageResource(
+                        when (state) {
+                            SyncStatus.State.Disabled -> R.drawable.ic_round_cloud_off_24
+                            SyncStatus.State.Synced -> R.drawable.ic_round_cloud_done_24
+                            SyncStatus.State.Downloading -> R.drawable.ic_round_cloud_download_24
+                            SyncStatus.State.Uploading -> R.drawable.ic_round_cloud_upload_24
+                            SyncStatus.State.Conflict -> R.drawable.ic_round_cloud_alert_24
+                        }
+                    )
+                }
+            }
+        }
+        binding.settingsCloudStatus.setOnClickListener {
+            // Everything the icon can be reporting is acted on from the same screen: set up a code,
+            // resolve a conflict, force either direction, or delete the cloud copy.
+            startActivity(Intent(activity, SettingsBackupSyncActivity::class.java))
+            dismiss()
+        }
+    }
+
 }

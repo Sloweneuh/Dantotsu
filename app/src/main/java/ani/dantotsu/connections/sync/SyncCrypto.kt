@@ -6,13 +6,11 @@ import java.security.MessageDigest
 import java.security.SecureRandom
 import javax.crypto.Cipher
 import javax.crypto.Mac
-import javax.crypto.SecretKeyFactory
 import javax.crypto.spec.GCMParameterSpec
-import javax.crypto.spec.PBEKeySpec
 import javax.crypto.spec.SecretKeySpec
 
 /**
- * The cryptography behind cloud sync: turning a sync code (or passphrase) into keys, deriving the
+ * The cryptography behind cloud sync: turning a sync code into keys, deriving the
  * database path from one, and sealing payloads with the other.
  *
  * The design constraint is that there is no account and no server-side component, so the database
@@ -42,8 +40,6 @@ internal object SyncCrypto {
     const val CODE_CHARS = DATA_CHARS + 1
 
     private const val HKDF_SALT = "dantotsu-cloud-sync-v1"
-    private const val PBKDF2_ITERATIONS = 210_000
-    private const val PBKDF2_BITS = 256
     private const val GCM_TAG_BITS = 128
     private const val IV_BYTES = 12
 
@@ -95,20 +91,6 @@ internal object SyncCrypto {
      */
     fun secretFromCode(code: String): ByteArray =
         code.take(DATA_CHARS).toByteArray(StandardCharsets.US_ASCII)
-
-    /**
-     * Input keying material from a user-chosen passphrase — the fallback for devices that can't
-     * scan and would rather not type a random code (a desktop-class install, typically).
-     *
-     * Stretched with PBKDF2 because, unlike a generated code, this has to survive someone choosing
-     * something guessable. [scope] salts it so the same passphrase on two different accounts
-     * doesn't produce the same keys.
-     */
-    fun secretFromPassphrase(passphrase: CharArray, scope: String): ByteArray {
-        val salt = "$HKDF_SALT|$scope".toByteArray(StandardCharsets.UTF_8)
-        val spec = PBEKeySpec(passphrase, salt, PBKDF2_ITERATIONS, PBKDF2_BITS)
-        return SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(spec).encoded
-    }
 
     /**
      * HKDF-SHA256. One [info] label per purpose, so the key that names the path can't also open the

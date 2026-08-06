@@ -48,11 +48,13 @@ object SyncConflictNotice {
     fun raiseDivergent() {
         divergent = true
         Logger.log("SyncConflictNotice: divergence needs the user")
+        SyncStatus.refresh()
     }
 
     /** Forgets a raised conflict, for when the cloud copy it referred to is gone or replaced. */
     fun clear() {
         divergent = false
+        SyncStatus.refresh()
     }
 
     /**

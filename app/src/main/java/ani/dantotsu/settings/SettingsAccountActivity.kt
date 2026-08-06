@@ -139,6 +139,7 @@ class SettingsAccountActivity : AppCompatActivity() {
                             }
                         }
                         settingsMALUsername.visibility = View.VISIBLE
+                        settingsMALUsername.alpha = 1f // may have been dimmed while signed out
                         settingsMALUsername.text = MAL.username
                         if (!MAL.avatar.isNullOrBlank()) {
                             settingsMALAvatar.loadImage(MAL.avatar)
@@ -151,7 +152,7 @@ class SettingsAccountActivity : AppCompatActivity() {
                         }
                     } else {
                         settingsMALAvatar.setImageResource(R.drawable.ic_round_person_24)
-                        settingsMALUsername.visibility = View.GONE
+                        showKnownAccount(settingsMALUsername, PrefName.MALUserName)
                         settingsMALLogin.setText(R.string.login)
                         settingsMALLogin.setOnClickListener {
                             MAL.loginIntent(context)
@@ -188,6 +189,7 @@ class SettingsAccountActivity : AppCompatActivity() {
                         settingsDiscordAvatar.setImageResource(R.drawable.ic_round_person_24)
                     }
                     settingsDiscordUsername.visibility = View.VISIBLE
+                    settingsDiscordUsername.alpha = 1f // may have been dimmed while signed out
                     settingsDiscordUsername.text =
                         username ?: Discord.token?.replace(Regex("."), "*")
                     settingsDiscordLogin.setText(R.string.logout)
@@ -247,7 +249,7 @@ class SettingsAccountActivity : AppCompatActivity() {
                 } else {
                     settingsPresenceSwitcher.visibility = View.GONE
                     settingsDiscordAvatar.setImageResource(R.drawable.ic_round_person_24)
-                    settingsDiscordUsername.visibility = View.GONE
+                    showKnownAccount(settingsDiscordUsername, PrefName.DiscordUserName)
                     settingsDiscordLogin.setText(R.string.login)
                     settingsDiscordLogin.setOnClickListener {
                         Discord.warning(context)
@@ -264,6 +266,7 @@ class SettingsAccountActivity : AppCompatActivity() {
                         reload()
                     }
                     settingsMangaUpdatesUsername.visibility = View.VISIBLE
+                    settingsMangaUpdatesUsername.alpha = 1f
                     settingsMangaUpdatesUsername.text = MangaUpdates.username ?: "Logged In"
 
                     // Load avatar if available
@@ -282,7 +285,7 @@ class SettingsAccountActivity : AppCompatActivity() {
                     }
                 } else {
                     settingsMangaUpdatesAvatar.setImageResource(R.drawable.ic_round_person_24)
-                    settingsMangaUpdatesUsername.visibility = View.GONE
+                    showKnownAccount(settingsMangaUpdatesUsername, PrefName.MangaUpdatesUsername)
                     settingsMangaUpdatesLogin.setText(R.string.login)
                     settingsMangaUpdatesLogin.setOnClickListener {
                         val loginDialog = MangaUpdatesLoginDialog()
@@ -303,6 +306,7 @@ class SettingsAccountActivity : AppCompatActivity() {
                         reload()
                     }
                     settingsMangaBakaUsername.visibility = View.VISIBLE
+                    settingsMangaBakaUsername.alpha = 1f
                     settingsMangaBakaUsername.text = MangaBaka.username ?: getString(R.string.logged_in)
                     // MangaBaka has no avatar system - use an "open" icon instead of the generic
                     // person placeholder, since tapping opens the user's MangaBaka profile page.
@@ -315,7 +319,7 @@ class SettingsAccountActivity : AppCompatActivity() {
                     }
                 } else {
                     settingsMangaBakaAvatar.setImageResource(R.drawable.ic_round_person_24)
-                    settingsMangaBakaUsername.visibility = View.GONE
+                    showKnownAccount(settingsMangaBakaUsername, PrefName.MangaBakaUserName)
                     settingsMangaBakaLogin.setText(R.string.login)
                     settingsMangaBakaLogin.setOnClickListener {
                         val loginDialog = MangaBakaLoginDialog()
@@ -423,5 +427,31 @@ class SettingsAccountActivity : AppCompatActivity() {
         //startMainActivity(this@SettingsAccountActivity)
         //} Disabled for now. Doesn't update the ADDRESS even after this
     }
+
+    /**
+     * Shows the account name this connection is known by, on a device that isn't signed in to it.
+     *
+     * The name syncs between a user's devices even though the login itself deliberately doesn't, so
+     * a second device can say *which* account it means instead of offering an unexplained "Log in".
+     * It also survives a local sign-out, where it reads as "this is the account you had".
+     *
+     * Just the name, dimmed. This line sits in a wrap_content view beside the login button, sized
+     * for a username — a sentence explaining what to do never fit and was clipped on ordinary
+     * screens. It doesn't need one: the button right next to it already reads "Log in" rather than
+     * "Log out", and the dimming is what separates a name we merely know from one that's signed in.
+     *
+     * Hidden entirely when there is no name — a connection never used.
+     */
+    private fun showKnownAccount(view: android.widget.TextView, pref: PrefName) {
+        val name = PrefManager.getVal<String>(pref)
+        if (name.isBlank()) {
+            view.visibility = View.GONE
+            return
+        }
+        view.visibility = View.VISIBLE
+        view.text = name
+        view.alpha = 0.5f
+    }
+
 }
 

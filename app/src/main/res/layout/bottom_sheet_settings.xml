@@ -77,6 +77,29 @@
                 </LinearLayout>
 
 
+                <!-- Cloud sync at a glance. Sync is silent by design, so without this there is
+                     nothing anywhere that distinguishes "off", "working" and "needs you". -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="52dp"
+                    android:layout_height="52dp"
+                    android:layout_marginTop="4dp"
+                    android:layout_marginEnd="12dp"
+                    android:backgroundTint="@color/nav_bg_inv"
+                    app:cardCornerRadius="26dp"
+                    app:strokeColor="@color/transparent">
+
+                    <com.google.android.material.imageview.ShapeableImageView
+                        android:id="@+id/settingsCloudStatus"
+                        android:layout_width="52dp"
+                        android:layout_height="52dp"
+                        android:contentDescription="@string/cloud_sync"
+                        android:scaleType="center"
+                        app:srcCompat="@drawable/ic_round_cloud_off_24"
+                        app:tint="@color/bg_opp"
+                        tools:ignore="ImageContrastCheck" />
+
+                </com.google.android.material.card.MaterialCardView>
+
                 <FrameLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
