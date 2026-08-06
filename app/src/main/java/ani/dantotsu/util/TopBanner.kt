@@ -14,6 +14,7 @@ import ani.dantotsu.databinding.ViewTopBannerBinding
 import ani.dantotsu.statusBarHeight
 import java.lang.ref.WeakReference
 import kotlin.math.abs
+import kotlin.math.max
 import kotlin.math.min
 
 /**
@@ -95,9 +96,15 @@ object TopBanner {
         binding.topBannerAction.text = spec.actionLabel
 
         val side = (12 * activity.resources.displayMetrics.density).toInt()
+        // Sitting right under the status bar put the card directly over the back/close button
+        // most screens place there (commonly a ~48dp toolbar), and on the home screen, over the
+        // settings avatar. A standard app-bar height of clearance isn't a guarantee for every
+        // screen's layout, but it clears the common case instead of the previous 12dp, which
+        // cleared none of them.
+        val topClearance = (56 * activity.resources.displayMetrics.density).toInt()
         card.layoutParams = FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP
-        ).apply { setMargins(side, statusBarHeight + side, side, 0) }
+        ).apply { setMargins(side, statusBarHeight + topClearance, side, 0) }
         content.addView(card)
         showingId = spec.id
         shownCard = WeakReference(card)
@@ -116,39 +123,67 @@ object TopBanner {
             hide(content, card) { spec.onDismiss() }
         }
 
-        // Flick up to dismiss. Deliberately no timeout — being missable is the failure this exists
-        // to correct.
+        // Flick up, or swipe right, to dismiss. Deliberately no timeout — being missable is the
+        // failure this exists to correct.
         val slop = ViewConfiguration.get(activity).scaledTouchSlop
         card.setOnTouchListener(object : View.OnTouchListener {
+            private var downX = 0f
             private var downY = 0f
+            private var startX = 0f
             private var startY = 0f
             private var dragging = false
+
+            // Which way this gesture committed to, once one axis clears the touch slop first —
+            // locked for the rest of the gesture so a slightly diagonal swipe doesn't fight itself
+            // by fighting between a vertical translation and a horizontal one.
+            private var vertical = false
 
             override fun onTouch(v: View, e: MotionEvent): Boolean {
                 when (e.actionMasked) {
                     MotionEvent.ACTION_DOWN -> {
+                        downX = e.rawX
                         downY = e.rawY
+                        startX = v.translationX
                         startY = v.translationY
                         dragging = false
-                        // Don't claim the gesture yet, or the buttons never see their taps.
-                        return false
+                        // Must return true: an OnTouchListener that returns false on ACTION_DOWN
+                        // never gets the MOVE/UP that follow, which silently killed the swipe
+                        // entirely. Safe to claim here regardless — card's own listener (as
+                        // opposed to onInterceptTouchEvent) only ever sees touches the action/close
+                        // buttons didn't already consume, so their taps are unaffected.
+                        return true
                     }
 
                     MotionEvent.ACTION_MOVE -> {
+                        val dx = e.rawX - downX
                         val dy = e.rawY - downY
-                        if (!dragging && abs(dy) > slop) dragging = true
+                        if (!dragging && (abs(dx) > slop || abs(dy) > slop)) {
+                            dragging = true
+                            vertical = abs(dy) >= abs(dx)
+                        }
                         if (!dragging) return false
-                        v.translationY = startY + min(0f, dy)
-                        v.alpha = (1f + v.translationY / v.height).coerceIn(0f, 1f)
+                        if (vertical) {
+                            v.translationY = startY + min(0f, dy)
+                            v.alpha = (1f + v.translationY / v.height).coerceIn(0f, 1f)
+                        } else {
+                            v.translationX = startX + max(0f, dx)
+                            v.alpha = (1f - v.translationX / v.width).coerceIn(0f, 1f)
+                        }
                         return true
                     }
 
                     MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                         if (!dragging) return false
-                        if (v.translationY < -v.height * 0.3f) {
+                        val past = if (vertical) {
+                            v.translationY < -v.height * 0.3f
+                        } else {
+                            v.translationX > v.width * 0.3f
+                        }
+                        if (past) {
                             hide(content, v) { spec.onDismiss() }
                         } else {
-                            v.animate().translationY(0f).alpha(1f).setDuration(ANIM_MS).start()
+                            v.animate().translationX(0f).translationY(0f).alpha(1f)
+                                .setDuration(ANIM_MS).start()
                         }
                         return true
                     }
@@ -163,10 +198,16 @@ object TopBanner {
         shownCard = null
         shownParent = null
         val margin = (card.layoutParams as? ViewGroup.MarginLayoutParams)?.topMargin ?: 0
-        card.animate()
-            .translationY(-(card.height + margin).toFloat())
-            .alpha(0f)
-            .setDuration(ANIM_MS)
+        val animator = card.animate().alpha(0f).setDuration(ANIM_MS)
+        // A swipe dismiss is already moving; finish it in the same direction rather than snapping
+        // back to the default upward exit. A tap dismiss (action/close button, or the programmatic
+        // [dismiss] above) starts centered, so it falls through to the upward exit as before.
+        if (card.translationX > card.width * 0.05f) {
+            animator.translationX((card.width + margin).toFloat())
+        } else {
+            animator.translationY(-(card.height + margin).toFloat())
+        }
+        animator
             .withEndAction {
                 content.removeView(card)
                 onEnd()
