@@ -20,6 +20,7 @@ import ani.dantotsu.notifications.Task
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.util.Logger
+import eu.kanade.tachiyomi.data.notification.Notifications
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -170,6 +171,16 @@ class CommentNotificationTask : Task {
                                     System.currentTimeMillis().toInt(),
                                     notification
                                 )
+                            if (type == CommentNotificationWorker.NotificationType.COMMENT_REPLY ||
+                                type == CommentNotificationWorker.NotificationType.COMMENT_WARNING
+                            ) {
+                                NotificationManagerCompat.from(context)
+                                    .notify(
+                                        Notifications.CHANNEL_COMMENTS,
+                                        Notifications.ID_COMMENT_REPLY,
+                                        createGroupSummary(context)
+                                    )
+                            }
                         }
                     }
                 }
@@ -233,6 +244,7 @@ class CommentNotificationTask : Task {
                     .setPriority(NotificationCompat.PRIORITY_HIGH)
                     .setContentIntent(pendingIntent)
                     .setAutoCancel(true)
+                    .setGroup(Notifications.GROUP_COMMENTS)
                 builder.build()
             }
 
@@ -256,6 +268,7 @@ class CommentNotificationTask : Task {
                     .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                     .setContentIntent(pendingIntent)
                     .setAutoCancel(true)
+                    .setGroup(Notifications.GROUP_COMMENTS)
                 if (imageUrl.isNotEmpty()) {
                     val bitmap = getBitmapFromUrl(imageUrl)
                     if (bitmap != null) {
@@ -293,6 +306,35 @@ class CommentNotificationTask : Task {
             }
         }
         return notification
+    }
+
+    /**
+     * Tapping the auto-collapsed stack of comment notifications otherwise has no target and just
+     * dismisses them; this summary gives the group header its own tap destination.
+     */
+    private fun createGroupSummary(context: Context): android.app.Notification {
+        val title = context.getString(R.string.comments)
+        val intent = Intent(context, MainActivity::class.java).apply {
+            putExtra("FRAGMENT_TO_LOAD", "NOTIFICATIONS")
+            putExtra("selectedTab", 4)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            0,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        return NotificationCompat.Builder(context, Notifications.CHANNEL_COMMENTS)
+            .setContentTitle(title)
+            .setStyle(NotificationCompat.InboxStyle().setSummaryText(title))
+            .setSmallIcon(R.drawable.notification_icon)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setGroup(Notifications.GROUP_COMMENTS)
+            .setGroupSummary(true)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .build()
     }
 
     @Suppress("unused")

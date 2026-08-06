@@ -56,6 +56,12 @@ class AnilistNotificationTask : Task {
                                             System.currentTimeMillis().toInt(),
                                             notification
                                         )
+                                    NotificationManagerCompat.from(context)
+                                        .notify(
+                                            Notifications.CHANNEL_ANILIST,
+                                            Notifications.ID_ANILIST,
+                                            createGroupSummary(context)
+                                        )
                                 }
                             }
                         }
@@ -101,6 +107,34 @@ class AnilistNotificationTask : Task {
             .setContentTitle(title)
             .setContentText(content)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .setGroup(Notifications.GROUP_ANILIST)
+            .build()
+    }
+
+    /**
+     * Tapping the auto-collapsed stack of Anilist notifications otherwise has no target and just
+     * dismisses them; this summary gives the group header its own tap destination.
+     */
+    private fun createGroupSummary(context: Context): android.app.Notification {
+        val title = context.getString(R.string.new_anilist_notification)
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            putExtra("FRAGMENT_TO_LOAD", "NOTIFICATIONS")
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            Notifications.ID_ANILIST,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        return NotificationCompat.Builder(context, Notifications.CHANNEL_ANILIST)
+            .setSmallIcon(R.drawable.notification_icon)
+            .setContentTitle(title)
+            .setStyle(NotificationCompat.InboxStyle().setSummaryText(title))
+            .setGroup(Notifications.GROUP_ANILIST)
+            .setGroupSummary(true)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .build()

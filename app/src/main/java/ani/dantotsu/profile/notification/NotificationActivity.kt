@@ -64,6 +64,9 @@ class NotificationActivity : AppCompatActivity() {
 
         tabs.forEach { (icon, title) -> navBar.addTab(navBar.createTab(icon, title)) }
 
+        val requestedTab = intent.getIntExtra("selectedTab", -1)
+        if (requestedTab in tabs.indices) selected = requestedTab
+
         binding.notificationBack.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
         
         // Settings button click listener

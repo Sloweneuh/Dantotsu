@@ -11,6 +11,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import ani.dantotsu.App
 import ani.dantotsu.FileUrl
+import ani.dantotsu.MainActivity
 import ani.dantotsu.R
 import ani.dantotsu.connections.anilist.UrlMedia
 import ani.dantotsu.hasNotificationPermission
@@ -24,6 +25,8 @@ import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.util.Logger
 import eu.kanade.tachiyomi.data.notification.Notifications.CHANNEL_SUBSCRIPTION_CHECK
 import eu.kanade.tachiyomi.data.notification.Notifications.CHANNEL_SUBSCRIPTION_CHECK_PROGRESS
+import eu.kanade.tachiyomi.data.notification.Notifications.GROUP_SUBSCRIPTION_CHECK
+import eu.kanade.tachiyomi.data.notification.Notifications.ID_SUBSCRIPTION_CHECK
 import eu.kanade.tachiyomi.data.notification.Notifications.ID_SUBSCRIPTION_CHECK_PROGRESS
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -146,6 +149,12 @@ class SubscriptionNotificationTask : Task {
                                     System.currentTimeMillis().toInt(),
                                     notification
                                 )
+                            NotificationManagerCompat.from(context)
+                                .notify(
+                                    CHANNEL_SUBSCRIPTION_CHECK,
+                                    ID_SUBSCRIPTION_CHECK,
+                                    createGroupSummary(context.applicationContext)
+                                )
                         }
                     }
 
@@ -183,6 +192,7 @@ class SubscriptionNotificationTask : Task {
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
+            .setGroup(GROUP_SUBSCRIPTION_CHECK)
 
         if (thumbnail != null) {
             val bitmap = getBitmapFromUrl(thumbnail.url)
@@ -193,6 +203,34 @@ class SubscriptionNotificationTask : Task {
 
         return builder.build()
 
+    }
+
+    /**
+     * Tapping the auto-collapsed stack of subscription notifications otherwise has no target and
+     * just dismisses them; this summary gives the group header its own tap destination.
+     */
+    private fun createGroupSummary(context: Context): android.app.Notification {
+        val title = context.getString(R.string.subscriptions)
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            putExtra("FRAGMENT_TO_LOAD", "NOTIFICATIONS")
+            putExtra("selectedTab", 2)
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            ID_SUBSCRIPTION_CHECK,
+            intent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        return NotificationCompat.Builder(context, CHANNEL_SUBSCRIPTION_CHECK)
+            .setSmallIcon(R.drawable.ic_round_notifications_active_24)
+            .setContentTitle(title)
+            .setStyle(NotificationCompat.InboxStyle().setSummaryText(title))
+            .setGroup(GROUP_SUBSCRIPTION_CHECK)
+            .setGroupSummary(true)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .build()
     }
 
     private fun getProgressNotification(

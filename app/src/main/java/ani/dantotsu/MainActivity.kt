@@ -342,10 +342,12 @@ class MainActivity : AppCompatActivity() {
                 }
                 launched = true
                 startActivity(feedIntent)
-            } else if (fragmentToLoad == "NOTIFICATIONS" && activityId != -1) {
+            } else if (fragmentToLoad == "NOTIFICATIONS") {
                 Logger.log("MainActivity, onCreate: $activityId")
+                val selectedTab = extras.getInt("selectedTab", -1)
                 val notificationIntent = Intent(this, NotificationActivity::class.java).apply {
                     putExtra("activityId", activityId)
+                    if (selectedTab != -1) putExtra("selectedTab", selectedTab)
                 }
                 launched = true
                 startActivity(notificationIntent)

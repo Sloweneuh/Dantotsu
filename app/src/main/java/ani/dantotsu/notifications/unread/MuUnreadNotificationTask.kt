@@ -8,6 +8,7 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import ani.dantotsu.App
+import ani.dantotsu.MainActivity
 import ani.dantotsu.R
 import ani.dantotsu.connections.mangaupdates.MUMedia
 import ani.dantotsu.connections.mangaupdates.MUMediaDetailsActivity
@@ -147,10 +148,45 @@ class MuUnreadNotificationTask : Task {
                 .setStyle(NotificationCompat.BigTextStyle().bigText(text))
                 .setContentIntent(pendingIntent)
                 .setAutoCancel(true)
+                .setGroup(Notifications.GROUP_NEW_CHAPTERS)
                 .build()
 
             notificationManager.notify(notifId, notification)
+            notificationManager.notify(Notifications.ID_NEW_CHAPTERS, createGroupSummary(context))
         }
+    }
+
+    /**
+     * Tapping the auto-collapsed stack of new-chapter notifications otherwise has no target and
+     * just dismisses them; this summary gives the group header its own tap destination. Shares
+     * the group key with UnreadChapterNotificationTask since both feed the same channel.
+     */
+    private fun createGroupSummary(context: Context): android.app.Notification {
+        val title = context.getString(R.string.notification_new_chapter_title)
+        val intent = Intent(context, MainActivity::class.java).apply {
+            putExtra("FRAGMENT_TO_LOAD", "NOTIFICATIONS")
+            putExtra("selectedTab", 3)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            Notifications.ID_NEW_CHAPTERS,
+            intent,
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            } else {
+                PendingIntent.FLAG_UPDATE_CURRENT
+            }
+        )
+        return NotificationCompat.Builder(context, Notifications.CHANNEL_NEW_CHAPTERS_EPISODES)
+            .setSmallIcon(R.drawable.notification_icon)
+            .setContentTitle(title)
+            .setStyle(NotificationCompat.InboxStyle().setSummaryText(title))
+            .setGroup(Notifications.GROUP_NEW_CHAPTERS)
+            .setGroupSummary(true)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .build()
     }
 
     private fun storeNotifications(items: List<MUMedia>) {

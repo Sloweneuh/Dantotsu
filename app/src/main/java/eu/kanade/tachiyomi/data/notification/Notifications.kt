@@ -54,7 +54,7 @@ object Notifications {
     /**
      * Notification channel used for comment notifications
      */
-    private const val GROUP_COMMENTS = "group_comments"
+    const val GROUP_COMMENTS = "group_comments"
     const val CHANNEL_COMMENTS = "comments_channel"
     const val CHANNEL_COMMENT_WARING = "comment_warning_channel"
     const val ID_COMMENT_REPLY = -801
