@@ -221,26 +221,31 @@ class HomeFragment : Fragment() {
             withContext(Dispatchers.Main) {
                 if (_binding == null) return@withContext
                 if (unreadInfo.isNotEmpty()) {
-                    // Show live MALSync results (do not filter — fresh data may include new
-                    // unread chapters). Ordering is [renderUnreadRow]'s job, since it is the only
-                    // place that has the MangaUpdates entries to order these against.
-                    unreadAniList = unreadList
-                    unreadInfoMap = unreadInfo
+                    // Fresh MALSync counts, still reconciled against the reading list before being
+                    // shown: the candidates they were fetched for can be an old set reloaded from
+                    // prefs, so fresh chapter numbers say nothing about whether the user has since
+                    // caught up. Cached info fills in candidates this round had no answer for, so a
+                    // partial MALSync failure doesn't drop entries that are genuinely behind.
+                    // Ordering stays [renderUnreadRow]'s job, since it is the only place that has
+                    // the MangaUpdates entries to order these against.
+                    val info = mergedCachedInfoFor(model.getMangaContinue().value) + unreadInfo
+                    val (visible, reconciled) = reconcileUnread(unreadList, info)
+                    unreadAniList = visible
+                    unreadInfoMap = reconciled
                     // Persist MALSync unread info so cached UI can show source/lastEp on next load
                     try {
-                        ani.dantotsu.settings.saving.PrefManager.setCustomVal("cached_unread_info", unreadInfo)
+                        ani.dantotsu.settings.saving.PrefManager.setCustomVal("cached_unread_info", HashMap(reconciled))
                     } catch (e: Exception) {
                         ani.dantotsu.util.Logger.log("Failed to cache unread info: ${e.message}")
                     }
                 } else {
                     // No fresh MALSync data. Prefer cached unreadInfo when available.
                     val merged = mergedCachedInfoFor(model.getMangaContinue().value)
-                    unreadAniList = if (merged.isEmpty()) emptyList() else unreadList.filter { media ->
-                        val last = getLastChapterForMedia(media, merged)
-                        val progress = merged[media.id]?.userProgress ?: media.userProgress ?: 0
-                        last != null && last > progress
-                    }
-                    unreadInfoMap = merged
+                    val (visible, reconciled) =
+                        if (merged.isEmpty()) emptyList<Media>() to emptyMap<Int, UnreadChapterInfo>()
+                        else reconcileUnread(unreadList, merged)
+                    unreadAniList = visible
+                    unreadInfoMap = reconciled
                 }
                 unreadAniListSettled = true
                 renderUnreadRow()
@@ -269,6 +274,59 @@ class HomeFragment : Fragment() {
             val updatedProgress = currentById[id]?.userProgress ?: info.userProgress
             info.copy(userProgress = updatedProgress)
         }
+    }
+
+    /**
+     * The AniList half of the row, reconciled against the reading list as it stands right now.
+     *
+     * Everything the row says about an entry comes from two sources that go stale at different
+     * rates: how many chapters exist is MALSync's answer, how far the user has read is AniList's.
+     * The candidate list itself is older still — it is persisted to prefs and reloaded at process
+     * start, and the background unread check rewrites it with the app closed — so a candidate's own
+     * `userProgress` answers "how far along was the user when this was cached". Trusting it is what
+     * kept series the user had since finished sitting in the row claiming unread chapters, and what
+     * let entries dropped from the reading list, or added to the MALSync exclude list, outlive the
+     * lists they came from.
+     *
+     * So progress is taken from the live "continue reading" list wherever it has an answer, and an
+     * entry is shown only when it is still on that list, isn't excluded, and has a chapter past
+     * that progress.
+     *
+     * @return the entries to show, and their info with progress brought up to date. The info covers
+     *   every candidate rather than only the shown ones, so a caller persisting it keeps what
+     *   MALSync said about the entries that merely happen to be caught up right now.
+     */
+    private fun reconcileUnread(
+        candidates: List<Media>,
+        info: Map<Int, UnreadChapterInfo>,
+    ): Pair<List<Media>, Map<Int, UnreadChapterInfo>> {
+        val currentById = model.getMangaContinue().value?.associateBy { it.id }
+        val excludeList = PrefManager.getVal<Set<String>>(PrefName.MalSyncExcludeList)
+
+        // The adapter falls back to the media's own progress when it has no info for it, so bring
+        // that up to date too rather than leaving the two to disagree.
+        candidates.forEach { media ->
+            currentById?.get(media.id)?.userProgress?.let { media.userProgress = it }
+        }
+        val progressOf = { media: Media ->
+            media.userProgress ?: info[media.id]?.userProgress ?: 0
+        }
+        val reconciled = candidates.mapNotNull { media ->
+            info[media.id]?.let { media.id to it.copy(userProgress = progressOf(media)) }
+        }.toMap()
+
+        val visible = candidates.filter { media ->
+            if (excludeList.containsMediaId(media.id.toString())) return@filter false
+            // Only once the reading list has loaded, though. It starts null and is filled by
+            // initHomePage, while the cached path runs off a broadcast from the background unread
+            // check that can land at any time — and treating "not on a list that hasn't loaded" as
+            // "caught up" discarded every AniList entry, leaving a row that showed the
+            // MangaUpdates ones and nothing else.
+            if (currentById != null && !currentById.containsKey(media.id)) return@filter false
+            val last = getLastChapterForMedia(media, reconciled)
+            last != null && last > progressOf(media)
+        }
+        return visible to reconciled
     }
 
     // Helper: determine last chapter number for a media, preferring MALSync info, then local chapters, then totalChapters
@@ -1375,35 +1433,14 @@ class HomeFragment : Fragment() {
             } catch (e: Exception) {
                 null
             }
-            val currentManga = model.getMangaContinue().value
             if (cached == null) return
 
-            // Refresh each cached entry's progress from the live "continue reading" list; one
-            // that has dropped off it has been finished or removed, so it goes too.
-            //
-            // Only once that list exists, though. It starts null and is filled by initHomePage,
-            // while this runs on a broadcast from the background unread check that can land at any
-            // time — and treating "not in a list that hasn't loaded" as "caught up" discarded every
-            // AniList entry, leaving a row that showed the MangaUpdates ones and nothing else.
-            val filtered = if (currentManga == null) cached else cached.mapNotNull { cachedMedia ->
-                currentManga.firstOrNull { it.id == cachedMedia.id }?.let { updated ->
-                    // If user progress changed, use the newer progress value
-                    cachedMedia.apply { userProgress = updated.userProgress }
-                }
-            }
-
-            val merged = mergedCachedInfoFor(currentManga)
-            val excludeList = ani.dantotsu.settings.saving.PrefManager.getVal<Set<String>>(
-                ani.dantotsu.settings.saving.PrefName.MalSyncExcludeList
-            )
-            // Further filter cached results to remove items the user has already caught up to or excluded
-            unreadAniList = filtered.filter { media ->
-                if (excludeList.containsMediaId(media.id.toString())) return@filter false
-                val last = getLastChapterForMedia(media, merged)
-                val progress = merged[media.id]?.userProgress ?: media.userProgress ?: 0
-                last != null && last > progress
-            }
-            unreadInfoMap = merged
+            // Cached candidates, cached chapter counts: neither knows what the user has read since,
+            // so [reconcileUnread] is what makes this list current rather than merely stored.
+            val (visible, reconciled) =
+                reconcileUnread(cached, mergedCachedInfoFor(model.getMangaContinue().value))
+            unreadAniList = visible
+            unreadInfoMap = reconciled
             unreadAniListSettled = true
             renderUnreadRow()
         } catch (e: Exception) {
