@@ -14,6 +14,8 @@ import androidx.fragment.app.FragmentActivity
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
 import ani.dantotsu.blurImage
+import ani.dantotsu.connections.anilist.api.isHiatusStatus
+import ani.dantotsu.connections.anilist.api.isReleasingStatus
 import ani.dantotsu.connections.malsync.UnreadChapterInfo
 import ani.dantotsu.connections.mangaupdates.MUListEditorFragment
 import ani.dantotsu.connections.mangaupdates.MUMedia
@@ -170,6 +172,12 @@ class UnreadChaptersAdapter(
                     itemCompactSource.visibility = View.GONE
                 }
 
+            // The dot means "still being released". This layout has it visible by default and no
+            // binder here ever turned it off, so every entry in the row wore one — finished series
+            // included, which is where it first got noticed on MangaUpdates entries.
+            itemCompactScoreContainer.visibility =
+                if (isReleasingStatus(media.status)) View.VISIBLE else View.GONE
+
             // Show 'Novel' label when this stack item is a novel (only relevant for MAL stacks)
             itemCompactNovel.text = "Novel"
             itemCompactNovelContainer.visibility =
@@ -309,11 +317,8 @@ class UnreadChaptersAdapter(
 
             // Show releasing/hiatus status dot
             run {
-                val releasingStr = root.context.getString(R.string.status_releasing)
-                val hiatusStr = root.context.getString(R.string.status_hiatus)
-                val st = media.status ?: ""
-                val isReleasing = st == releasingStr
-                val isHiatus = st.equals(hiatusStr, ignoreCase = true)
+                val isReleasing = isReleasingStatus(media.status)
+                val isHiatus = isHiatusStatus(media.status)
                 if (isReleasing || isHiatus) {
                     itemCompactOngoing.visibility = View.VISIBLE
                     try {
@@ -393,6 +398,12 @@ class UnreadChaptersAdapter(
             val latest = item.latestChapter
             val showLatest = latest != null && latest > 0 && (userChapter == null || latest > userChapter)
             itemCompactTotal.text = if (showLatest) " | $latest | ~" else " | ~"
+
+            // No dot for MangaUpdates entries, matching [bindMuLargeView]. A list entry carries a
+            // status only when something else already knew it ([MUMedia.status] is populated on the
+            // way in, not by MangaUpdates itself), so for nearly all of them the dot would be
+            // asserting a release state nobody has established.
+            itemCompactScoreContainer.visibility = View.GONE
 
             // MU logo badge
             itemCompactLanguageBG.visibility = View.GONE

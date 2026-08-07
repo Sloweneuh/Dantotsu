@@ -26,6 +26,8 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
 import ani.dantotsu.R
 import ani.dantotsu.blurImage
+import ani.dantotsu.connections.anilist.api.isHiatusStatus
+import ani.dantotsu.connections.anilist.api.isReleasingStatus
 import ani.dantotsu.connections.mangaupdates.isMuNovelType
 import ani.dantotsu.currActivity
 import ani.dantotsu.isOnline
@@ -128,11 +130,8 @@ class MediaAdaptor(
                 if (media != null) {
                     b.itemCompactImage.loadImage(media.cover)
                     run {
-                        val status = media.status ?: ""
-                        val releasingStr = currActivity()!!.getString(R.string.status_releasing)
-                        val hiatusStr = currActivity()!!.getString(R.string.status_hiatus)
-                        val isReleasing = status == releasingStr
-                        val isHiatus = status.equals(hiatusStr, ignoreCase = true)
+                        val isReleasing = isReleasingStatus(media.status)
+                        val isHiatus = isHiatusStatus(media.status)
                         if (isReleasing || isHiatus) {
                             b.itemCompactOngoing.isVisible = true
                             try {
@@ -221,11 +220,8 @@ class MediaAdaptor(
                     b.itemCompactImage.loadImage(media.cover)
                     blurImage(b.itemCompactBanner, media.banner ?: media.cover)
                     run {
-                        val status = media.status ?: ""
-                        val releasingStr = currActivity()!!.getString(R.string.status_releasing)
-                        val hiatusStr = currActivity()!!.getString(R.string.status_hiatus)
-                        val isReleasing = status == releasingStr
-                        val isHiatus = status.equals(hiatusStr, ignoreCase = true)
+                        val isReleasing = isReleasingStatus(media.status)
+                        val isHiatus = isHiatusStatus(media.status)
                         if (isReleasing || isHiatus) {
                             b.itemCompactOngoing.isVisible = true
                             try {
@@ -441,11 +437,8 @@ class MediaAdaptor(
                         media.banner ?: media.cover
                     )
                     run {
-                        val status = media.status ?: ""
-                        val releasingStr = currActivity()!!.getString(R.string.status_releasing)
-                        val hiatusStr = currActivity()!!.getString(R.string.status_hiatus)
-                        val isReleasing = status == releasingStr
-                        val isHiatus = status.equals(hiatusStr, ignoreCase = true)
+                        val isReleasing = isReleasingStatus(media.status)
+                        val isHiatus = isHiatusStatus(media.status)
                         if (isReleasing || isHiatus) {
                             b.itemCompactOngoing.isVisible = true
                             try {
@@ -509,11 +502,8 @@ class MediaAdaptor(
                         media.banner ?: media.cover
                     )
                     run {
-                        val status = media.status ?: ""
-                        val releasingStr = currActivity()!!.getString(R.string.status_releasing)
-                        val hiatusStr = currActivity()!!.getString(R.string.status_hiatus)
-                        val isReleasing = status == releasingStr
-                        val isHiatus = status.equals(hiatusStr, ignoreCase = true)
+                        val isReleasing = isReleasingStatus(media.status)
+                        val isHiatus = isHiatusStatus(media.status)
                         if (isReleasing || isHiatus) {
                             b.itemCompactOngoing.isVisible = true
                             try {

@@ -12,6 +12,8 @@ import androidx.core.text.HtmlCompat
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
 import ani.dantotsu.blurImage
+import ani.dantotsu.connections.anilist.api.isHiatusStatus
+import ani.dantotsu.connections.anilist.api.isReleasingStatus
 import ani.dantotsu.connections.mangaupdates.MUListEditorFragment
 import ani.dantotsu.connections.mangaupdates.MUMedia
 import ani.dantotsu.connections.mangaupdates.MUMediaDetailsActivity
@@ -103,12 +105,9 @@ class MergedReadingAdapter(
     private fun bindMedia(b: ItemMediaCompactBinding, media: Media) {
         b.itemCompactImage.loadImage(media.cover)
 
-        val status = media.status ?: ""
         val ctx = b.root.context
-        val releasingStr = ctx.getString(R.string.status_releasing)
-        val hiatusStr = ctx.getString(R.string.status_hiatus)
-        val isReleasing = status == releasingStr
-        val isHiatus = status.equals(hiatusStr, ignoreCase = true)
+        val isReleasing = isReleasingStatus(media.status)
+        val isHiatus = isHiatusStatus(media.status)
         b.itemCompactOngoing.visibility = if (isReleasing || isHiatus) View.VISIBLE else View.GONE
         if (isHiatus) b.itemCompactOngoing.getChildAt(0)?.setBackgroundResource(R.drawable.item_hiatus)
         else b.itemCompactOngoing.getChildAt(0)?.setBackgroundResource(R.drawable.item_ongoing)
@@ -213,12 +212,9 @@ class MergedReadingAdapter(
         b.itemCompactImage.loadImage(media.cover)
         blurImage(b.itemCompactBanner, media.banner ?: media.cover)
 
-        val status = media.status ?: ""
         val ctx = b.root.context
-        val releasingStr = ctx.getString(R.string.status_releasing)
-        val hiatusStr = ctx.getString(R.string.status_hiatus)
-        val isReleasing = status == releasingStr
-        val isHiatus = status.equals(hiatusStr, ignoreCase = true)
+        val isReleasing = isReleasingStatus(media.status)
+        val isHiatus = isHiatusStatus(media.status)
         b.itemCompactOngoing.visibility = if (isReleasing || isHiatus) View.VISIBLE else View.GONE
         if (isHiatus) b.itemCompactOngoing.getChildAt(0)?.setBackgroundResource(R.drawable.item_hiatus)
         else b.itemCompactOngoing.getChildAt(0)?.setBackgroundResource(R.drawable.item_ongoing)

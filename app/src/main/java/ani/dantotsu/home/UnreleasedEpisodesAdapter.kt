@@ -10,6 +10,8 @@ import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
 import ani.dantotsu.blurImage
+import ani.dantotsu.connections.anilist.api.isHiatusStatus
+import ani.dantotsu.connections.anilist.api.isReleasingStatus
 import ani.dantotsu.databinding.ItemMediaLargeBinding
 import ani.dantotsu.databinding.ItemUnreleasedEpisodeBinding
 import ani.dantotsu.loadImage
@@ -141,7 +143,7 @@ class UnreleasedEpisodesAdapter(
             }
 
             // Show the "currently airing" indicator only for anime with status RELEASING
-            if (media.status == root.context.getString(R.string.status_releasing)) {
+            if (isReleasingStatus(media.status)) {
                 itemCompactScoreContainer.visibility = View.VISIBLE
             } else {
                 itemCompactScoreContainer.visibility = View.GONE
@@ -261,11 +263,8 @@ class UnreleasedEpisodesAdapter(
 
             // Show releasing/hiatus status dot
             run {
-                val releasingStr = root.context.getString(R.string.status_releasing)
-                val hiatusStr = root.context.getString(R.string.status_hiatus)
-                val st = media.status ?: ""
-                val isReleasing = st == releasingStr
-                val isHiatus = st.equals(hiatusStr, ignoreCase = true)
+                val isReleasing = isReleasingStatus(media.status)
+                val isHiatus = isHiatusStatus(media.status)
                 if (isReleasing || isHiatus) {
                     itemCompactOngoing.visibility = View.VISIBLE
                     try {

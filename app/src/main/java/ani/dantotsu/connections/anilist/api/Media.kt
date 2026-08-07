@@ -219,6 +219,43 @@ enum class MediaStatus {
     }
 }
 
+/**
+ * Reads a [ani.dantotsu.media.Media.status] back into the status it means, whichever form it holds.
+ *
+ * That field is not one thing. AniList media carry the *display* string, because [MediaStatus]
+ * localizes itself in `toString`; MangaUpdates-derived media carry AniList's raw token, or
+ * MangaUpdates' own vocabulary scraped from a series page ("Ongoing", "Complete"); and media
+ * restored from a downloaded `media.json` carry whatever was written when they were saved.
+ *
+ * The UI decided the ongoing/hiatus dot by comparing against `getString(R.string.status_*)`, which
+ * only ever recognised the first of those — and outside English not even the raw token, since the
+ * resources are translated and only happen to equal the tokens in English. Everything else silently
+ * counted as "not releasing".
+ *
+ * @return null when the text is blank or means nothing recognisable, which callers should read as
+ *   "unknown" rather than as any particular status.
+ */
+fun mediaStatusOf(text: String?): MediaStatus? {
+    val raw = text?.trim()?.takeIf { it.isNotBlank() } ?: return null
+    // The display form first: it is what the field normally holds, and being translated it is the
+    // one form that can't be matched by looking at the text alone.
+    MediaStatus.entries.forEach { if (raw.equals(it.toString(), ignoreCase = true)) return it }
+    return when (raw.uppercase().replace(' ', '_')) {
+        "RELEASING", "ONGOING", "PUBLISHING" -> MediaStatus.RELEASING
+        "FINISHED", "COMPLETE", "COMPLETED" -> MediaStatus.FINISHED
+        "HIATUS", "ON_HIATUS" -> MediaStatus.HIATUS
+        "CANCELLED", "CANCELED", "DISCONTINUED" -> MediaStatus.CANCELLED
+        "NOT_YET_RELEASED", "UPCOMING" -> MediaStatus.NOT_YET_RELEASED
+        else -> null
+    }
+}
+
+/** True when a [ani.dantotsu.media.Media.status] means the series is still being released. */
+fun isReleasingStatus(text: String?): Boolean = mediaStatusOf(text) == MediaStatus.RELEASING
+
+/** True when a [ani.dantotsu.media.Media.status] means the series is on hiatus. */
+fun isHiatusStatus(text: String?): Boolean = mediaStatusOf(text) == MediaStatus.HIATUS
+
 @Serializable
 data class AiringSchedule(
     // The id of the airing schedule item
