@@ -526,6 +526,12 @@ class MediaDetailsViewModel : ViewModel() {
 
     suspend fun overrideEpisodes(i: Int, source: ShowResponse, id: Int) {
         watchSources?.saveResponse(i, id, source)
+        // Drop what this source had before fetching the replacement. The watch screen shows its
+        // loading spinner exactly while the selected source has no episode list, so leaving the
+        // previous entry's episodes in place left the old list on screen — looking loaded, and
+        // silently wrong — for as long as the new entry took to answer.
+        epsLoaded.remove(i)
+        episodes.postValue(epsLoaded)
         epsLoaded[i] =
                 watchSources?.loadEpisodes(i, source.link, source.extra, source.sAnime) ?: return
         episodes.postValue(epsLoaded)
@@ -684,6 +690,12 @@ class MediaDetailsViewModel : ViewModel() {
 
     suspend fun overrideMangaChapters(i: Int, source: ShowResponse, id: Int) {
         mangaReadSources?.saveResponse(i, id, source)
+        // Drop what this source had before fetching the replacement. The read screen shows its
+        // loading spinner exactly while the selected source has no chapter list, so leaving the
+        // previous entry's chapters in place left the old list on screen — looking loaded, and
+        // silently wrong — for as long as the new entry took to answer.
+        mangaLoaded.remove(i)
+        mangaChapters.postValue(mangaLoaded)
         tryWithSuspend {
             mangaLoaded[i] = mangaReadSources?.loadChapters(i, source) ?: return@tryWithSuspend
         }

@@ -526,6 +526,13 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
                         }
                     }
                 }
+            } else if (media.manga != null) {
+                // The selected source has no list right now — a swap to a different entry of it is
+                // refetching one. Clear what's on screen so the header puts its spinner back, the
+                // same as switching source does; otherwise the previous entry's chapters sat there
+                // looking current for as long as the new ones took to arrive.
+                media.manga?.chapters = null
+                reload()
             }
         }
     }

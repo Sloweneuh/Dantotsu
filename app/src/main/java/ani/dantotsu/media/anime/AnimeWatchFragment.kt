@@ -394,6 +394,14 @@ class AnimeWatchFragment : Fragment() {
                             onEpisodeClick(handoffNumber!!)
                         }
                     }
+                } else if (media.anime != null) {
+                    // The selected source has no list right now — a swap to a different entry of it
+                    // is refetching one. Clear what's on screen so the header puts its spinner
+                    // back, the same as switching source does; otherwise the previous entry's
+                    // episodes sat there looking current for as long as the new ones took to
+                    // arrive.
+                    media.anime?.episodes = null
+                    reload()
                 }
             }
         }
