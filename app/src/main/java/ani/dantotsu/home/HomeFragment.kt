@@ -112,41 +112,11 @@ class HomeFragment : Fragment() {
      */
     private var pendingUnread: ArrayList<Media>? = null
 
-    /** MangaUpdates entries with chapters the user hasn't reached. Ordered by [sortUnread]. */
+    /** MangaUpdates entries with chapters the user hasn't reached. Ordered by [UnreadOrder]. */
     private fun muUnread(): List<ani.dantotsu.connections.mangaupdates.MUMedia> =
         model.getMuHomeLists().value?.get("Reading")
             ?.filter { it.latestChapter != null && it.latestChapter > (it.userChapter ?: 0) }
             ?: emptyList()
-
-    /** How far behind an entry is. Unknown counts sort last, as they always have. */
-    private fun unreadCountOf(item: Any): Int = when (item) {
-        is Media -> unreadInfoMap[item.id]?.let { it.lastChapter - it.userProgress } ?: Int.MAX_VALUE
-        is ani.dantotsu.connections.mangaupdates.MUMedia ->
-            (item.latestChapter ?: 0) - (item.userChapter ?: 0)
-
-        else -> Int.MAX_VALUE
-    }
-
-    /** When an entry's newest chapter landed, epoch ms. Unknown dates sort last. */
-    private fun latestChapterAtOf(item: Any): Long = when (item) {
-        is Media -> unreadInfoMap[item.id]?.latestChapterAt ?: Long.MIN_VALUE
-        is ani.dantotsu.connections.mangaupdates.MUMedia -> item.latestChapterAt ?: Long.MIN_VALUE
-        else -> Long.MIN_VALUE
-    }
-
-    /**
-     * Orders the row per [PrefName.UnreadChaptersSort], over AniList and MangaUpdates entries
-     * together.
-     *
-     * Both halves used to be sorted separately and concatenated, which pinned every MangaUpdates
-     * series below every AniList one however far behind it was. Sorting the combined list is what
-     * puts them where they belong — [unreadCountOf] and [latestChapterAtOf] each read the
-     * equivalent field from whichever source the entry came from.
-     */
-    private fun sortUnread(items: List<Any>): List<Any> =
-        if (PrefManager.getVal<String>(PrefName.UnreadChaptersSort) == "recent")
-            items.sortedByDescending { latestChapterAtOf(it) }
-        else items.sortedBy { unreadCountOf(it) }
 
     /**
      * Draws the unread row from [unreadAniList] plus whatever MangaUpdates currently has unread.
@@ -155,9 +125,7 @@ class HomeFragment : Fragment() {
     private fun renderUnreadRow(animate: Boolean = true) {
         if (_binding == null) return
         val info = unreadInfoMap
-        val combined: List<Any> = sortUnread(unreadAniList + muUnread())
-        // "More" opens the AniList half only, in the order the row is showing it.
-        val aniItems = combined.filterIsInstance<Media>()
+        val combined: List<Any> = UnreadOrder.sort(unreadAniList + muUnread(), info)
         // Nothing to show and no answer yet: leave the section as it is, still loading.
         if (combined.isEmpty() && !unreadAniListSettled) return
 
@@ -173,10 +141,14 @@ class HomeFragment : Fragment() {
                 rv.layoutAnimation = LayoutAnimationController(setSlideIn(), 0.25f)
                 rv.post { if (_binding != null) rv.scheduleLayoutAnimation() }
             }
-            // "More" opens the AniList half; with none of it there is nothing for it to list.
-            if (aniItems.isEmpty()) binding.homeUnreadChaptersMore.setOnClickListener {}
-            else binding.homeUnreadChaptersMore.setOnClickListener { i ->
-                MediaListViewActivity.passedMedia = ArrayList(aniItems)
+            // "More" opens the same list full-screen. Both halves go across — it used to carry
+            // only the AniList media, so every MangaUpdates series on the row vanished on the way
+            // in; the screen re-applies [UnreadOrder] to put them back where the row had them.
+            binding.homeUnreadChaptersMore.setOnClickListener { i ->
+                MediaListViewActivity.passedMedia =
+                    ArrayList(combined.filterIsInstance<Media>())
+                MediaListViewActivity.passedMuMedia =
+                    ArrayList(combined.filterIsInstance<ani.dantotsu.connections.mangaupdates.MUMedia>())
                 MediaListViewActivity.passedUnreadInfo = info
                 ContextCompat.startActivity(
                     i.context, Intent(i.context, MediaListViewActivity::class.java)
@@ -1002,6 +974,9 @@ class HomeFragment : Fragment() {
                 binding.homeContinueReadMore.setOnClickListener { i ->
                     MediaListViewActivity.passedMedia = ArrayList(aniItems)
                     MediaListViewActivity.passedMuMedia = ArrayList(muItems)
+                    // Not an unread list. The screen now picks its adapter off this, so a stale
+                    // one left by the unread row would relabel these as unread chapters.
+                    MediaListViewActivity.passedUnreadInfo = null
                     ContextCompat.startActivity(
                         i.context, Intent(i.context, MediaListViewActivity::class.java)
                             .putExtra("title", getString(R.string.continue_reading)), null
@@ -1069,6 +1044,9 @@ class HomeFragment : Fragment() {
                 binding.homePlannedMangaMore.setOnClickListener { i ->
                     MediaListViewActivity.passedMedia = ArrayList(aniItems)
                     MediaListViewActivity.passedMuMedia = ArrayList(muItems)
+                    // Not an unread list. The screen now picks its adapter off this, so a stale
+                    // one left by the unread row would relabel these as unread chapters.
+                    MediaListViewActivity.passedUnreadInfo = null
                     ContextCompat.startActivity(
                         i.context, Intent(i.context, MediaListViewActivity::class.java)
                             .putExtra("title", getString(R.string.planned_manga)), null

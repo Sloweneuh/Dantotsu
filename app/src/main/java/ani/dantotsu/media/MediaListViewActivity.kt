@@ -211,13 +211,21 @@ class MediaListViewActivity : AppCompatActivity() {
 
     /** Renders whatever [mediaList] holds; called once the list is actually known. */
     private fun showContent() {
-        // Build a timestamp-sorted merged list when MU items are present
-        combinedItems = if (muMediaList.isNotEmpty()) {
-            (mediaList.map { it to (it.userUpdatedAt ?: 0L) } +
+        // Build a merged list when MU items are present. An unread list is ordered by how far
+        // behind each entry is (or how recently it updated) rather than by when the user last
+        // touched it, so it uses the same rule the home row does instead of the last-read merge
+        // that "Continue Reading" wants.
+        val localUnreadInfo = unreadInfo
+        combinedItems = when {
+            muMediaList.isEmpty() -> null
+            localUnreadInfo != null ->
+                ani.dantotsu.home.UnreadOrder.sort(mediaList + muMediaList, localUnreadInfo)
+
+            else -> (mediaList.map { it to (it.userUpdatedAt ?: 0L) } +
                 muMediaList.map { it to (it.updatedAt ?: 0L) })
                 .sortedByDescending { (_, ts) -> ts }
                 .map { (item, _) -> item }
-        } else null
+        }
 
         showDescriptionButton()
 
@@ -263,8 +271,15 @@ class MediaListViewActivity : AppCompatActivity() {
 
     private fun buildAdapter(mode: Int) {
         val combined = combinedItems
+        val localUnreadInfo = unreadInfo
+        val localUnreleasedInfo = unreleasedInfo
         if (combined != null) {
-            binding.mediaRecyclerView.adapter = MergedReadingAdapter(combined, mode)
+            // UnreadChaptersAdapter takes Media and MUMedia alike, so an unread list keeps its
+            // per-entry chapter counts and source labels here rather than being flattened into
+            // the plain reading adapter the moment a MangaUpdates series is in it.
+            binding.mediaRecyclerView.adapter = if (localUnreadInfo != null)
+                ani.dantotsu.home.UnreadChaptersAdapter(combined, localUnreadInfo, mode, fromMalStack)
+            else MergedReadingAdapter(combined, mode)
             binding.mediaRecyclerView.layoutManager = GridLayoutManager(
                 this,
                 if (mode == 1) 1 else (screenWidth / 120f).toInt()
@@ -273,8 +288,6 @@ class MediaListViewActivity : AppCompatActivity() {
         }
 
         val list = filteredMediaList()
-        val localUnreadInfo = unreadInfo
-        val localUnreleasedInfo = unreleasedInfo
         // Use custom adapter based on what info we have
         when {
             localUnreadInfo != null -> {
