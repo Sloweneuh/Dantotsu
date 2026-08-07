@@ -32,7 +32,7 @@ internal object SyncCrypto {
      * alphabet as the handoff sharing code, for the same reason — someone is going to read this
      * off one screen and type it into another.
      */
-    private const val ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    const val ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
     /** 15 random characters over a 32-symbol alphabet: 75 bits, well past brute force. */
     private const val DATA_CHARS = 15
@@ -76,21 +76,6 @@ internal object SyncCrypto {
 
     /** Groups a canonical code for display: `ABCD-EFGH-JKLM-NPQR`. */
     fun formatCode(code: String): String = code.chunked(GROUP_CHARS).joinToString("-")
-
-    /**
-     * What a code is left as once everything that can't be part of one is dropped: uppercased,
-     * outside [ALPHABET] removed, truncated to [CODE_CHARS].
-     *
-     * The entry field's counterpart to [normalizeCode], which does the same filtering before
-     * validating — so separators, spaces and lowercase are all things the user may type or paste,
-     * here as much as there, and nothing downstream has to know they ever appeared.
-     */
-    fun typedChars(input: String): String =
-        input.uppercase().filter { it in ALPHABET }.take(CODE_CHARS)
-
-    /** How many code characters — anything else excluded — precede [offset] in [text]. */
-    fun codeCharsBefore(text: CharSequence, offset: Int): Int =
-        text.take(offset.coerceIn(0, text.length)).count { it.uppercaseChar() in ALPHABET }
 
     private fun checksumChar(data: String): Char {
         val digest = MessageDigest.getInstance("SHA-256")

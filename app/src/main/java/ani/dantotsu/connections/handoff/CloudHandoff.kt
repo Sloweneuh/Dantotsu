@@ -22,8 +22,10 @@ object CloudHandoff {
     private const val ROOT = "handoffs"
     private const val TTL_MS = 10 * 60 * 1000L // 10 minutes
     // Ambiguous glyphs (0/O, 1/I) are dropped so a code that's read aloud or typed is unambiguous.
-    private const val CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-    private const val CODE_LENGTH = 6
+    // Both are visible to the entry field, which is built from them: one box per character, taking
+    // only characters that could belong to a code.
+    internal const val CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    internal const val CODE_LENGTH = 6
 
     private fun root() = FirebaseDatabase.getInstance().reference.child(ROOT)
 

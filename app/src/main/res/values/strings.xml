@@ -2158,7 +2158,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="handoff_uploading_code">Generating code…</string>
     <string name="handoff_code_upload_failed">Couldn\'t generate a sharing code. Check your connection and try again.</string>
     <string name="handoff_enter_code_message">Enter the code shown on the other device.</string>
-    <string name="handoff_enter_code_hint">Code</string>
+    <string name="handoff_code_character">Sharing code character %1$d</string>
     <string name="handoff_fetching_code">Fetching…</string>
     <string name="handoff_code_not_found">That code is invalid or has expired.</string>
     <string name="handoff_discovery_setting">Local device discovery</string>

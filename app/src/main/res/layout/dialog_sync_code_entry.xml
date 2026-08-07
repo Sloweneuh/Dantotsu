@@ -3,7 +3,7 @@
   them. A code is always the same shape — SyncCrypto.CODE_CHARS characters in groups of
   SyncCrypto.GROUP_CHARS — so the boxes can carry the format and leave the user only the characters.
 
-  The count here is not free: SyncCodeEntry fills whatever boxes it is handed, using those two
+  The count here is not free: CodeEntry fills whatever boxes it is handed, using those two
   constants for the grouping, so the row must hold CODE_CHARS / GROUP_CHARS of them.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
@@ -19,31 +19,31 @@
 
     <EditText
         android:id="@+id/syncCodeGroup1"
-        style="@style/SyncCodeGroup"
+        style="@style/CodeEntryGroup"
         android:imeOptions="actionNext" />
 
     <TextView
-        style="@style/SyncCodeGroupSeparator"
+        style="@style/CodeEntrySeparator"
         android:text="-"
         tools:ignore="HardcodedText" />
 
     <EditText
         android:id="@+id/syncCodeGroup2"
-        style="@style/SyncCodeGroup"
+        style="@style/CodeEntryGroup"
         android:imeOptions="actionNext" />
 
     <TextView
-        style="@style/SyncCodeGroupSeparator"
+        style="@style/CodeEntrySeparator"
         android:text="-"
         tools:ignore="HardcodedText" />
 
     <EditText
         android:id="@+id/syncCodeGroup3"
-        style="@style/SyncCodeGroup"
+        style="@style/CodeEntryGroup"
         android:imeOptions="actionNext" />
 
     <TextView
-        style="@style/SyncCodeGroupSeparator"
+        style="@style/CodeEntrySeparator"
         android:text="-"
         tools:ignore="HardcodedText" />
 
@@ -51,7 +51,7 @@
          finish rather than point at nothing. -->
     <EditText
         android:id="@+id/syncCodeGroup4"
-        style="@style/SyncCodeGroup"
+        style="@style/CodeEntryGroup"
         android:imeOptions="actionDone" />
 
 </LinearLayout>

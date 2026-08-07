@@ -106,11 +106,12 @@
 
 
     <!--
-      One group of the sync code entry field (see dialog_sync_code_entry.xml). Deliberately carries
-      no maxLength: a pasted code arrives in whichever box has focus and is redistributed from
-      there, and a length filter would truncate it to four characters before anything could.
+      One box of a segmented code field — the sync code's groups of four, the handoff sharing code's
+      single characters. Deliberately carries no maxLength: a pasted code arrives in whichever box
+      has focus and CodeEntry redistributes it from there, and a length filter would truncate it
+      before anything could.
     -->
-    <style name="SyncCodeGroup">
+    <style name="CodeEntryGroup">
         <item name="android:layout_width">0dp</item>
         <item name="android:layout_height">wrap_content</item>
         <item name="android:layout_weight">1</item>
@@ -123,7 +124,7 @@
         <item name="android:textSize">18sp</item>
     </style>
 
-    <style name="SyncCodeGroupSeparator">
+    <style name="CodeEntrySeparator">
         <item name="android:layout_width">wrap_content</item>
         <item name="android:layout_height">wrap_content</item>
         <item name="android:layout_marginStart">2dp</item>

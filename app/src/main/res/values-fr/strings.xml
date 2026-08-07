@@ -2012,7 +2012,7 @@
     <string name="handoff_uploading_code">Génération du code…</string>
     <string name="handoff_code_upload_failed">Impossible de générer un code de partage. Vérifiez votre connexion et réessayez.</string>
     <string name="handoff_enter_code_message">Saisissez le code affiché sur l\'autre appareil.</string>
-    <string name="handoff_enter_code_hint">Code</string>
+    <string name="handoff_code_character">Caractère %1$d du code de partage</string>
     <string name="handoff_fetching_code">Récupération…</string>
     <string name="handoff_code_not_found">Ce code est invalide ou a expiré.</string>
     <string name="handoff_discovery_setting">Découverte des appareils locaux</string>

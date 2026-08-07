@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+  One box per character of the handoff sharing code. No separators between them, unlike the sync
+  code's groups of four: this code is CloudHandoff.CODE_LENGTH characters with no grouping, and is
+  shown that way on the sending device, so drawing one here would invent a shape it doesn't have.
+
+  The count here is not free: CodeEntry fills whatever boxes it is handed, so the row must hold
+  CODE_LENGTH of them.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingStart="16dp"
+    android:paddingTop="12dp"
+    android:paddingEnd="16dp"
+    android:paddingBottom="8dp">
+
+    <EditText
+        android:id="@+id/handoffCodeChar1"
+        style="@style/CodeEntryGroup"
+        android:imeOptions="actionNext" />
+
+    <EditText
+        android:id="@+id/handoffCodeChar2"
+        style="@style/CodeEntryGroup"
+        android:imeOptions="actionNext" />
+
+    <EditText
+        android:id="@+id/handoffCodeChar3"
+        style="@style/CodeEntryGroup"
+        android:imeOptions="actionNext" />
+
+    <EditText
+        android:id="@+id/handoffCodeChar4"
+        style="@style/CodeEntryGroup"
+        android:imeOptions="actionNext" />
+
+    <EditText
+        android:id="@+id/handoffCodeChar5"
+        style="@style/CodeEntryGroup"
+        android:imeOptions="actionNext" />
+
+    <!-- Done rather than Next: the last character completes the code, so the keyboard should offer
+         to finish rather than point at nothing. -->
+    <EditText
+        android:id="@+id/handoffCodeChar6"
+        style="@style/CodeEntryGroup"
+        android:imeOptions="actionDone" />
+
+</LinearLayout>
