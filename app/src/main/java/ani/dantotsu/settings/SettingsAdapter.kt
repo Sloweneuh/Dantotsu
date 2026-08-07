@@ -68,6 +68,12 @@ class SettingsAdapter(private val settings: ArrayList<Settings>) :
                 b.settingsIconRight.visibility =
                     if (settings.isActivity) View.VISIBLE else View.GONE
                 b.attachView.visibility = if (settings.attach != null) View.VISIBLE else View.GONE
+                // Cleared before the row gets its say. This icon is opt-in per row and nothing else
+                // resets it, so a recycled holder handed to a row that doesn't want one kept the
+                // previous row's — visible, and still wired to what that row did with it.
+                b.settingsExtraIcon.visibility = View.GONE
+                b.settingsExtraIcon.setOnClickListener(null)
+                b.settingsExtraIcon.setOnLongClickListener(null)
                 settings.attach?.invoke(b)
             }
 

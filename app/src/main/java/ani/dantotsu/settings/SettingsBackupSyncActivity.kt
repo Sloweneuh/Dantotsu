@@ -227,7 +227,12 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                 icon = R.drawable.ic_round_sync_24,
                 isEnabled = linked,
                 attach = { b ->
-                    b.settingsExtraIcon.visibility = View.VISIBLE
+                    // Only while there is something to break down. `isEnabled` above doesn't reach
+                    // this: the icon is a separate view with its own click listener, so a row the
+                    // adapter had dimmed and made unclickable still opened the breakdown here — of
+                    // five modules that have never synced and, unlinked, cannot. Hidden rather than
+                    // dimmed, since a dimmed icon still invites the tap.
+                    b.settingsExtraIcon.visibility = if (linked) View.VISIBLE else View.GONE
                     b.settingsExtraIcon.setImageDrawable(
                         ContextCompat.getDrawable(this, R.drawable.ic_round_info_24)
                     )
