@@ -17,7 +17,6 @@ import ani.dantotsu.settings.CurrentReaderSettings
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import com.alexvasilkov.gestures.views.GestureFrameLayout
-import com.bumptech.glide.load.resource.bitmap.BitmapTransformation
 import com.davemorrissey.labs.subscaleview.ImageSource
 import com.davemorrissey.labs.subscaleview.ImageViewState
 import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
@@ -40,6 +39,13 @@ class ContinuousChapterAdapter(
         const val TYPE_IMAGE = 0
         const val TYPE_TRANSITION = 1
         const val TYPE_BOUNDARY = 2
+
+        /**
+         * Effectively "don't cap the height": a long-strip page is scrolled *within* its own item
+         * here, so downsampling it to the viewport would throw away the detail that is the whole
+         * point. [PagePrefetcher] has to decode with the same cap to produce the same bitmap.
+         */
+        const val MAX_PAGE_HEIGHT = Int.MAX_VALUE / 4
     }
 
     /**
@@ -465,15 +471,9 @@ class ContinuousChapterAdapter(
         errorLayout.visibility = View.GONE
         progress.visibility = View.VISIBLE
 
-        val transforms = mutableListOf<BitmapTransformation>()
-        val parserTransformation = activity.getTransformation(item.image)
-        if (parserTransformation != null) transforms.add(parserTransformation)
-        if (settings.cropBorders) {
-            transforms.add(RemoveBordersTransformation(true, settings.cropBorderThreshold))
-            transforms.add(RemoveBordersTransformation(false, settings.cropBorderThreshold))
+        val bitmap: Bitmap? = with(activity) {
+            loadBitmap(link, activity.pageTransforms(item.image), MAX_PAGE_HEIGHT)
         }
-
-        val bitmap: Bitmap? = with(activity) { loadBitmap(link, transforms, Int.MAX_VALUE / 4) }
 
         // A newer load owns the view now — it was recycled onto another page, or reloaded — so
         // this result is stale and the newer one is the image that belongs on screen.

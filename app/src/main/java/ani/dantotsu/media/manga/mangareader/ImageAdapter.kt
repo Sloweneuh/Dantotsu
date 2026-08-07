@@ -17,7 +17,6 @@ import ani.dantotsu.settings.CurrentReaderSettings.Directions.RIGHT_TO_LEFT
 import ani.dantotsu.settings.CurrentReaderSettings.Layouts.PAGED
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
-import com.bumptech.glide.load.resource.bitmap.BitmapTransformation
 import com.davemorrissey.labs.subscaleview.ImageSource
 import com.davemorrissey.labs.subscaleview.ImageViewState
 import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
@@ -50,16 +49,7 @@ open class ImageAdapter(
         val link = images.getOrNull(position)?.url ?: return null
         if (link.url.isEmpty()) return null
 
-        val transforms = mutableListOf<BitmapTransformation>()
-        val parserTransformation = activity.getTransformation(images[position])
-
-        if (parserTransformation != null) transforms.add(parserTransformation)
-        if (settings.cropBorders) {
-            transforms.add(RemoveBordersTransformation(true, settings.cropBorderThreshold))
-            transforms.add(RemoveBordersTransformation(false, settings.cropBorderThreshold))
-        }
-
-        return activity.loadBitmap(link, transforms)
+        return activity.loadBitmap(link, activity.pageTransforms(images[position]))
     }
 
     override suspend fun loadImage(position: Int, parent: View): Boolean {

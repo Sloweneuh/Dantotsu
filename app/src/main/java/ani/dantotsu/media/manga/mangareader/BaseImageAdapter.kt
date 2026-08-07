@@ -19,6 +19,7 @@ import ani.dantotsu.GesturesListener
 import ani.dantotsu.R
 import ani.dantotsu.media.manga.MangaCache
 import ani.dantotsu.media.manga.MangaChapter
+import ani.dantotsu.parsers.MangaImage
 import ani.dantotsu.px
 import ani.dantotsu.settings.CurrentReaderSettings
 import ani.dantotsu.tryWithSuspend
@@ -56,6 +57,9 @@ abstract class BaseImageAdapter(
 
     /** The page shown at [position], used to tie loads to pages rather than to positions. */
     open fun pageKey(position: Int): Any? = images.getOrNull(position)
+
+    /** Everything [position] displays — what [PagePrefetcher] must warm to make it instant. */
+    open fun pagesAt(position: Int): List<MangaImage> = listOfNotNull(images.getOrNull(position))
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {

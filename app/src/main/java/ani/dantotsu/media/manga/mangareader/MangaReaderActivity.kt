@@ -137,6 +137,12 @@ class MangaReaderActivity : AppCompatActivity() {
 
     private var imageAdapter: BaseImageAdapter? = null
     private var continuousAdapter: ContinuousChapterAdapter? = null
+
+    /**
+     * Loads pages ahead of the viewport for the scrolling reader; see [PagePrefetcher] for why the
+     * layout manager's own prefetch isn't enough. Null in paged mode, where ViewPager2 does it.
+     */
+    private var prefetcher: PagePrefetcher? = null
     private val isContinuousMultiChapter: Boolean
         get() = PrefManager.getVal(PrefName.ContinuousMultiChapter)
 
@@ -306,6 +312,8 @@ class MangaReaderActivity : AppCompatActivity() {
         // recreated); isFinishing=true => we (or back) closed it. Neither => process is going away.
         ani.dantotsu.util.Logger.log("MangaReaderActivity.onDestroy (isChangingConfigurations=$isChangingConfigurations, isFinishing=$isFinishing, cacheSize=${mangaCache.size()})")
         autoscrollTimer?.cancel()
+        prefetcher?.cancel()
+        prefetcher = null
         // Don't clear cache on destroy - let LRU manage it and preserve cache for reloads
         // mangaCache.clear()
         RPCManager.clearPresence(this)
@@ -986,7 +994,8 @@ class MangaReaderActivity : AppCompatActivity() {
                     RecyclerView.HORIZONTAL,
                 directionRLBT
             )
-            manager.preloadItemCount = defaultSettings.preloadAmount.coerceIn(4, 20)
+            val preloadAmount = defaultSettings.preloadAmount.coerceIn(4, 20)
+            manager.preloadItemCount = preloadAmount
 
             binding.mangaReaderPager.visibility = View.GONE
 
@@ -1007,6 +1016,23 @@ class MangaReaderActivity : AppCompatActivity() {
                     adapter = imageAdapter
                 }
 
+                prefetcher?.cancel()
+                prefetcher = if (isContinuousMultiChapter) {
+                    PagePrefetcher(
+                        this@MangaReaderActivity,
+                        ContinuousChapterAdapter.MAX_PAGE_HEIGHT
+                    ) { position ->
+                        listOfNotNull(
+                            (continuousAdapter?.items?.getOrNull(position)
+                                    as? ContinuousChapterAdapter.ReaderItem.Image)?.image
+                        )
+                    }
+                } else {
+                    PagePrefetcher(this@MangaReaderActivity, null) { position ->
+                        imageAdapter?.pagesAt(position).orEmpty()
+                    }
+                }
+
                 layoutManager = manager
                 setOnTouchListener { _, event ->
                     if (event != null)
@@ -1018,6 +1044,7 @@ class MangaReaderActivity : AppCompatActivity() {
 
                 addOnScrollListener(object : RecyclerView.OnScrollListener() {
                     override fun onScrolled(v: RecyclerView, dx: Int, dy: Int) {
+                        prefetcher?.warmAfter(mostVisibleItemPosition(v, manager), preloadAmount)
                         if (isContinuousMultiChapter) {
                             handleContinuousMultiChapterScroll(v, manager)
                         } else {
@@ -1065,16 +1092,24 @@ class MangaReaderActivity : AppCompatActivity() {
                         smoothScrollBy(500, 0)
                 }
 
-                if (!isContinuousMultiChapter) {
-                    scrollToPosition(currentPage / (dualPage { 2 } ?: 1) - 1)
+                val startPosition = if (!isContinuousMultiChapter) {
+                    currentPage / (dualPage { 2 } ?: 1) - 1
                 } else {
                     val startOfChapter = continuousAdapter?.getChapterStartPosition(currentChapterIndex) ?: 0
-                    val target = (startOfChapter + (currentChapterPage.toInt() - 1)).coerceAtLeast(0)
-                    scrollToPosition(target)
+                    (startOfChapter + (currentChapterPage.toInt() - 1)).coerceAtLeast(0)
                 }
+                scrollToPosition(startPosition)
+                // Nothing has scrolled yet, so this is the only thing that gets the pages below the
+                // opening one moving; from here on the scroll listener keeps the window updated.
+                prefetcher?.warmAfter(startPosition, preloadAmount)
             }
         } else {
             binding.mangaReaderRecyclerContainer.visibility = View.GONE
+            // ViewPager2 keeps its neighbours bound on its own (offscreenPageLimit below), so the
+            // prefetcher has no job here — and a leftover one would keep fetching for a recycler
+            // that is no longer on screen.
+            prefetcher?.cancel()
+            prefetcher = null
             binding.mangaReaderPager.apply {
                 binding.mangaReaderSwipy.child = this
                 visibility = View.VISIBLE
@@ -1915,6 +1950,20 @@ class MangaReaderActivity : AppCompatActivity() {
 
     fun getTransformation(mangaImage: MangaImage): BitmapTransformation? {
         return model.loadTransformation(mangaImage, media.selected!!.sourceIndex)
+    }
+
+    /**
+     * The transforms a page is decoded with. They form part of the key its bitmap is cached under,
+     * so anything hoping to find a page already decoded — [PagePrefetcher] above all — has to build
+     * the list exactly the way the on-screen load does; keeping that in one place is what stops the
+     * two drifting apart into a prefetch that warms a key nothing ever looks up.
+     */
+    fun pageTransforms(mangaImage: MangaImage): List<BitmapTransformation> = buildList {
+        getTransformation(mangaImage)?.let { add(it) }
+        if (defaultSettings.cropBorders) {
+            add(RemoveBordersTransformation(true, defaultSettings.cropBorderThreshold))
+            add(RemoveBordersTransformation(false, defaultSettings.cropBorderThreshold))
+        }
     }
 
     fun onImageLongClicked(
