@@ -164,6 +164,15 @@ object ProgressSync {
         PrefManager.setCustomVal(STATE_KEY, gson.toJson(state))
 
     /**
+     * How many media this device has synced, and when the newest of them went across. There is no
+     * single timestamp to report here — the state is per media — so [SyncOverview] shows both.
+     */
+    internal fun localSummary(): Pair<Int, Long> {
+        val state = loadState()
+        return state.size to (state.values.maxOfOrNull { it.ts } ?: 0L)
+    }
+
+    /**
      * The timestamp the next pull asks the server to start from. Everything at or below it has
      * already been seen, so there is no reason to transfer it again.
      */

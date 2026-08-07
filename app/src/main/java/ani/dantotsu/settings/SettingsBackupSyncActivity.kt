@@ -31,6 +31,7 @@ import ani.dantotsu.connections.sync.SyncClock
 import ani.dantotsu.connections.sync.SyncIdentity
 import ani.dantotsu.connections.sync.showCloudSyncConflictDialog
 import ani.dantotsu.connections.sync.showSyncCodeDialog
+import ani.dantotsu.connections.sync.showSyncOverviewDialog
 import ani.dantotsu.connections.sync.showSyncSetupDialog
 import ani.dantotsu.databinding.ActivitySettingsBackupSyncBinding
 import ani.dantotsu.databinding.DialogUserAgentBinding
@@ -217,10 +218,21 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                 type = 1,
                 name = getString(R.string.cloud_sync_now),
                 // The row doubles as the status line. A sync that works is invisible by design, so
-                // without this there was nothing anywhere saying whether it ever had.
+                // without this there was nothing anywhere saying whether it ever had. It says which
+                // module it is talking about now: this reads the settings timestamp alone, and a
+                // bare "last synced" was taken to cover all five — so a device that had been
+                // uploading progress all day looked like one that hadn't synced since morning.
+                // The icon beside it opens the per-module breakdown.
                 desc = lastSyncedLine(),
                 icon = R.drawable.ic_round_sync_24,
                 isEnabled = linked,
+                attach = { b ->
+                    b.settingsExtraIcon.visibility = View.VISIBLE
+                    b.settingsExtraIcon.setImageDrawable(
+                        ContextCompat.getDrawable(this, R.drawable.ic_round_info_24)
+                    )
+                    b.settingsExtraIcon.setOnClickListener { showSyncOverviewDialog() }
+                },
                 onClick = { view ->
                     when {
                         Anilist.token.isNullOrEmpty() ->

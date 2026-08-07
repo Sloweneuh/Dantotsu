@@ -47,6 +47,9 @@ object ExtensionSettingsSync {
     private fun lastTs(): Long = PrefManager.getCustomVal(TS_KEY, 0L)
     private fun lastHash(): Int = PrefManager.getCustomVal(HASH_KEY, 0)
 
+    /** When this device last agreed with the cloud here, for [SyncOverview]. 0 if it never has. */
+    internal fun localTs(): Long = lastTs()
+
     /** See [CloudSync.neverSynced] — no baseline means there is nothing to diff a divergence against. */
     private fun neverSynced(): Boolean = lastTs() == 0L && lastHash() == 0
 

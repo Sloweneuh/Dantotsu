@@ -56,6 +56,19 @@
             tools:ignore="RtlSymmetry" />
     </LinearLayout>
 
+    <!-- Optional secondary action, tapped independently of the row. Mirrors the switch row's
+         icon of the same name so a plain row can carry one too. -->
+    <ImageView
+        android:id="@+id/settingsExtraIcon"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_gravity="center_vertical"
+        android:layout_marginEnd="12dp"
+        android:visibility="gone"
+        app:srcCompat="@drawable/ic_circle_add"
+        app:tint="?attr/colorPrimary"
+        tools:ignore="ContentDescription" />
+
     <ImageView
         android:id="@+id/settingsIconRight"
         android:layout_width="24dp"

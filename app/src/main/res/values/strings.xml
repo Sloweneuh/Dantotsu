@@ -1382,7 +1382,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="cloud_sync_merged">Settings merged from both devices</string>
     <string name="cloud_sync_reload_hint">Reload to see them on this screen</string>
     <string name="cloud_sync_conflict_banner">This device and another one both changed settings</string>
-    <string name="cloud_sync_last_synced">Last synced %1$s</string>
+    <string name="cloud_sync_last_synced">Settings last synced %1$s</string>
     <string name="cloud_sync_cloud_copy">Cloud copy saved %1$s</string>
     <string name="cloud_sync_cloud_copy_device">Cloud copy saved %1$s from %2$s</string>
     <string name="cloud_sync_never_synced">Not synced yet</string>
@@ -2169,6 +2169,20 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="handoff_no_radios">Turn on Bluetooth or Wi-Fi to find nearby devices — or use a QR code or sharing code.</string>
     <string name="handoff_no_radios_receive">Turn on Bluetooth or Wi-Fi to be discoverable by other devices — or receive with a QR code or sharing code.</string>
 
+    <string name="cloud_sync_details">Sync details</string>
+    <string name="cloud_sync_details_failed">Couldn\'t read the cloud copy</string>
+    <string name="cloud_sync_this_device">This device: %1$s</string>
+    <string name="cloud_sync_in_cloud">Cloud: %1$s</string>
+    <string name="cloud_sync_nothing_stored">Nothing stored</string>
+    <string name="cloud_sync_count_at">%1$s items, %2$s</string>
+    <string name="cloud_sync_from_device">%1$s, from %2$s</string>
+    <string name="sync_compared_by_content">Compared by content, not by date</string>
+    <string name="sync_shared_cache">Shared cache, kept only in the cloud</string>
+    <string name="sync_module_settings">Settings</string>
+    <string name="sync_module_progress">Reading progress</string>
+    <string name="sync_module_extensions">Installed extensions</string>
+    <string name="sync_module_extension_settings">Extension settings</string>
+    <string name="sync_module_unread">Unread chapter results</string>
 </resources>
 
 

@@ -1439,7 +1439,7 @@
     <string name="cloud_sync_merged">Paramètres fusionnés depuis les deux appareils</string>
     <string name="cloud_sync_reload_hint">Rechargez pour les voir sur cet écran</string>
     <string name="cloud_sync_conflict_banner">Cet appareil et un autre ont tous deux modifié des paramètres</string>
-    <string name="cloud_sync_last_synced">Dernière synchro %1$s</string>
+    <string name="cloud_sync_last_synced">Paramètres synchronisés %1$s</string>
     <string name="cloud_sync_cloud_copy">Copie du cloud enregistrée %1$s</string>
     <string name="cloud_sync_cloud_copy_device">Copie du cloud enregistrée %1$s depuis %2$s</string>
     <string name="cloud_sync_never_synced">Pas encore synchronisé</string>
@@ -2072,4 +2072,18 @@
     <string name="clip_default_gif">Exporter en GIF par défaut</string>
     <string name="backup_sub_capture">Captures d\'écran et clips</string>
     <string name="backup_sub_capture_desc">Ce que les captures affichent par défaut, et comment les clips sont enregistrés</string>
+    <string name="cloud_sync_details">Détails de synchronisation</string>
+    <string name="cloud_sync_details_failed">Impossible de lire la copie du cloud</string>
+    <string name="cloud_sync_this_device">Cet appareil : %1$s</string>
+    <string name="cloud_sync_in_cloud">Cloud : %1$s</string>
+    <string name="cloud_sync_nothing_stored">Rien d\enregistré</string>
+    <string name="cloud_sync_count_at">%1$s éléments, %2$s</string>
+    <string name="cloud_sync_from_device">%1$s, depuis %2$s</string>
+    <string name="sync_compared_by_content">Comparé par contenu, pas par date</string>
+    <string name="sync_shared_cache">Cache partagé, conservé uniquement dans le cloud</string>
+    <string name="sync_module_settings">Paramètres</string>
+    <string name="sync_module_progress">Progression de lecture</string>
+    <string name="sync_module_extensions">Extensions installées</string>
+    <string name="sync_module_extension_settings">Paramètres des extensions</string>
+    <string name="sync_module_unread">Résultats des chapitres non lus</string>
 </resources>

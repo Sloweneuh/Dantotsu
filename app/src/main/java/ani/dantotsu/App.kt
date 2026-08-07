@@ -219,6 +219,14 @@ class App : MultiDexApplication() {
         var lastActivity: String? = null
         private var lastUnreadChapterCheck = 0L
         private var lastCloudPull = 0L
+
+        /**
+         * When the settings pull last actually started — separate from [lastCloudPull] because it
+         * is the only one that defers, and a window consumed by a deferral is a window spent on
+         * nothing. Advanced only when [ani.dantotsu.connections.sync.CloudSync.pullInBackground]
+         * says it ran.
+         */
+        private var lastSettingsPull = 0L
         private var resumeCount = 0
         private var startedActivities = 0
 
@@ -247,7 +255,7 @@ class App : MultiDexApplication() {
             runCatching { ani.dantotsu.util.AppNotices.showPending(p0) }
             val now = System.currentTimeMillis()
 
-            // Pull cloud settings when returning to the app, not just on cold start: the pull in
+            // Pull cloud data when returning to the app, not just on cold start: the pull in
             // getUserId() only runs once per process, so a change made on another device otherwise
             // didn't land until this one was fully restarted. Rate-limited because onActivityResumed
             // fires on every screen change; the in-flight flags coalesce anything that slips past.
@@ -255,13 +263,24 @@ class App : MultiDexApplication() {
             if (resumeCount > 1 && now - lastCloudPull > CLOUD_PULL_INTERVAL_MS) {
                 lastCloudPull = now
                 runCatching {
-                    ani.dantotsu.connections.sync.CloudSync.pullInBackground()
                     ani.dantotsu.connections.sync.ProgressSync.pullInBackground()
                     ani.dantotsu.connections.sync.ExtensionSettingsSync.pullInBackground()
                     // Can't apply anything itself — installing needs the user — so all it does is
                     // notice a difference and raise the banner that offers to sort it out.
                     ani.dantotsu.connections.sync.ExtensionSync.checkInBackground()
                 }
+            }
+
+            // Settings, on their own clock: this is the one pull that declines to run while a
+            // settings screen is open, and it reports that rather than pretending it ran. Sharing
+            // the clock above spent the window on those refusals, so every settings screen resumed
+            // pushed the real pull back another interval — worst of all on the sync screen itself,
+            // which is where a user goes to look at the very state being withheld.
+            if (resumeCount > 1 && now - lastSettingsPull > CLOUD_PULL_INTERVAL_MS) {
+                val started = runCatching {
+                    ani.dantotsu.connections.sync.CloudSync.pullInBackground()
+                }.getOrDefault(false)
+                if (started) lastSettingsPull = now
             }
 
             // Check for unread chapters when app comes to foreground

@@ -597,13 +597,20 @@ object CloudSync {
         }
     }
 
-    /** Pull on launch/login/foreground; applies only when local is unchanged. Coalesces callers. */
-    fun pullInBackground() {
-        if (!isEnabled() || userId() == null || bgInFlight) return
+    /**
+     * Pull on launch/login/foreground; applies only when local is unchanged. Coalesces callers.
+     *
+     * @return whether a pull actually started. A caller that rate-limits its own calls needs to
+     *   know, because every reason for returning early here is one that will still hold in a
+     *   moment — a deferral above all — and treating a call that turned straight round as a pull
+     *   spent the caller's window on nothing, postponing the real one by another full interval.
+     */
+    fun pullInBackground(): Boolean {
+        if (!isEnabled() || userId() == null || bgInFlight) return false
         if (settingsUiOpen) {
             // Checked before the fetch so a user sitting on a settings screen costs us nothing.
             Logger.log("CloudSync: settings screen open; deferring pull")
-            return
+            return false
         }
         bgInFlight = true
         scope.launch {
@@ -642,5 +649,6 @@ object CloudSync {
               }
             }
         }
+        return true
     }
 }
