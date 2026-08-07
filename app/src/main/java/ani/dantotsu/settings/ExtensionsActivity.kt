@@ -29,7 +29,6 @@ import ani.dantotsu.stripSpansOnPaste
 import ani.dantotsu.themes.ThemeManager
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.textfield.TextInputLayout
-import android.widget.ImageView
 import android.widget.FrameLayout
 import android.widget.TextView
 import androidx.core.view.isGone
@@ -107,27 +106,10 @@ class ExtensionsActivity : AppCompatActivity() {
                     searchView.clearFocus()
                     tabLayout.clearFocus()
 
-                    // Hide language select and repo button for Updates and Installed tabs
-                    if (tab.text?.contains("Updates") == true || tab.text?.contains("Installed") == true) {
-                        binding.languageselect.visibility = View.GONE
-                        binding.openSettingsButton.visibility = View.GONE
-                    } else {
-                        binding.languageselect.visibility = View.VISIBLE
-                        binding.openSettingsButton.visibility = View.VISIBLE
-                    }
+                    applyHeaderForTab(tab)
 
                     viewPager.updateLayoutParams<ViewGroup.LayoutParams> {
                         height = ViewGroup.LayoutParams.MATCH_PARENT
-                    }
-
-                    if (tab.text?.contains("Anime") == true) {
-                        generateRepositoryButton(MediaType.ANIME)
-                    }
-                    if (tab.text?.contains("Manga") == true) {
-                        generateRepositoryButton(MediaType.MANGA)
-                    }
-                    if (tab.text?.contains("Novels") == true) {
-                        generateRepositoryButton(MediaType.NOVEL)
                     }
                 }
 
@@ -157,6 +139,11 @@ class ExtensionsActivity : AppCompatActivity() {
             viewPager.setCurrentItem(0, false)
         }
 
+        // The listener above only ever hears about *changes*, and the tab this opens on was
+        // selected back in setupExtensionsPager — before there was a listener to hear it. So the
+        // landing tab is the one tab whose header never got set up: see [applyHeaderForTab].
+        syncHeaderForCurrentTab()
+
         // If requested, open a source preferences fragment directly
         val openId = intent.getLongExtra(EXTRA_OPEN_SOURCE_ID, -1L)
         val openType = intent.getStringExtra(EXTRA_OPEN_SOURCE_TYPE)
@@ -166,9 +153,12 @@ class ExtensionsActivity : AppCompatActivity() {
                 findViewById<ViewPager2>(R.id.viewPager).isVisible = show
                 findViewById<TabLayout>(R.id.tabLayout).isVisible = show
                 findViewById<TextInputLayout>(R.id.searchView).isVisible = show
-                findViewById<ImageView>(R.id.languageselect).isVisible = show
                 findViewById<TextView>(R.id.extensions).text = if (show) getString(R.string.extensions) else ""
                 findViewById<FrameLayout>(R.id.fragmentExtensionsContainer).isGone = show
+                // Coming back from source preferences restores the header the tab wants, not
+                // everything: this opens on an Installed tab, which has no language picker.
+                if (show) syncHeaderForCurrentTab()
+                else binding.languageselect.isVisible = false
             }
 
             if (openType == "manga") {
@@ -304,6 +294,31 @@ class ExtensionsActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Puts the header in the state the given tab wants: language and repository apply to browsing
+     * an available-extensions list, and mean nothing on Updates or an Installed list.
+     *
+     * A function rather than the body of the tab listener because the listener is only told about
+     * changes. Nothing had ever applied this to the tab the screen opens on, which left it showing
+     * a language picker and a repository button — the latter without even a click listener, since
+     * that is wired here too.
+     */
+    private fun applyHeaderForTab(tab: TabLayout.Tab?) {
+        val label = tab?.text ?: return
+        val browsing = !label.contains("Updates") && !label.contains("Installed")
+        binding.languageselect.isVisible = browsing
+        binding.openSettingsButton.isVisible = browsing
+        when {
+            label.contains("Anime") -> generateRepositoryButton(MediaType.ANIME)
+            label.contains("Manga") -> generateRepositoryButton(MediaType.MANGA)
+            label.contains("Novels") -> generateRepositoryButton(MediaType.NOVEL)
+        }
+    }
+
+    /** Applies [applyHeaderForTab] to whichever tab is selected right now. Idempotent. */
+    private fun syncHeaderForCurrentTab() =
+        applyHeaderForTab(tabLayout.getTabAt(tabLayout.selectedTabPosition))
+
     private fun setupExtensionsPager() {
         viewPager.adapter = object : FragmentStateAdapter(this) {
             override fun getItemCount(): Int = if (hasUpdates) 7 else 6
@@ -374,6 +389,10 @@ class ExtensionsActivity : AppCompatActivity() {
 
         val installedAnimeIndex = if (hasUpdates) 1 else 0
         viewPager.setCurrentItem(installedAnimeIndex, false)
+        // Losing the Updates tab shifts every other tab down one, so the selected *position* can
+        // stay put while the tab sitting there becomes a different one — and a position that
+        // didn't change tells the listener nothing.
+        syncHeaderForCurrentTab()
     }
 
     private fun generateRepositoryButton(type: MediaType) {
