@@ -6,6 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
 import androidx.appcompat.widget.AppCompatTextView
+import androidx.core.content.ContextCompat
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.widget.NestedScrollView
 import androidx.lifecycle.lifecycleScope
@@ -55,6 +56,17 @@ fun Activity.showSyncOverviewDialog() {
             .also { it.bottomMargin = (12 * dp).toInt() }
         alpha = 0.12f
         setBackgroundColor(onBg)
+    })
+
+    // Sync is namespaced by application id (see SyncIdentity's pathScope), so a release install
+    // and a beta install never see each other's data even on one account. Nothing else on this
+    // screen says so, and from the outside that is indistinguishable from sync being broken.
+    container.addView(AppCompatTextView(this).apply {
+        text = "⚠ ${getString(R.string.sync_variant_warning)}"
+        textSize = 12f
+        typeface = ResourcesCompat.getFont(this@showSyncOverviewDialog, R.font.poppins_semi_bold)
+        setTextColor(ContextCompat.getColor(this@showSyncOverviewDialog, R.color.warning_amber))
+        setPadding(0, 0, 0, (14 * dp).toInt())
     })
 
     val body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }

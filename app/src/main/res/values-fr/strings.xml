@@ -2086,4 +2086,5 @@
     <string name="sync_module_extensions">Extensions installées</string>
     <string name="sync_module_extension_settings">Paramètres des extensions</string>
     <string name="sync_module_unread">Résultats des chapitres non lus</string>
+    <string name="sync_variant_warning">La synchronisation ne se fait pas entre les variantes de l\'application. Une installation release et une installation beta conservent des données cloud distinctes, même liées avec le même code de synchronisation.</string>
 </resources>

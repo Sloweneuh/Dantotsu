@@ -112,6 +112,14 @@ class HomeFragment : Fragment() {
      */
     private var pendingUnread: ArrayList<Media>? = null
 
+    /**
+     * The order the row was last drawn in. The setting lives on another screen, and nothing here
+     * re-renders on the way back — so a change stuck at whatever the row happened to be showing
+     * until something unrelated redrew it, which is what made the choice look like it only
+     * sometimes applied.
+     */
+    private var renderedSort: String? = null
+
     /** MangaUpdates entries with chapters the user hasn't reached. Ordered by [UnreadOrder]. */
     private fun muUnread(): List<ani.dantotsu.connections.mangaupdates.MUMedia> =
         model.getMuHomeLists().value?.get("Reading")
@@ -125,7 +133,12 @@ class HomeFragment : Fragment() {
     private fun renderUnreadRow(animate: Boolean = true) {
         if (_binding == null) return
         val info = unreadInfoMap
-        val combined: List<Any> = UnreadOrder.sort(unreadAniList + muUnread(), info)
+        val items: List<Any> = unreadAniList + muUnread()
+        renderedSort = UnreadOrder.current()
+        // MangaUpdates entries can't be placed until their release dates are in; drawing without
+        // them and re-sorting afterwards is what made the row visibly shuffle itself.
+        if (!UnreadOrder.awaitReleaseDates(lifecycleScope, items) { renderUnreadRow(animate) }) return
+        val combined: List<Any> = UnreadOrder.sort(items, info)
         // Nothing to show and no answer yet: leave the section as it is, still loading.
         if (combined.isEmpty() && !unreadAniListSettled) return
 
@@ -1312,6 +1325,11 @@ class HomeFragment : Fragment() {
 
     override fun onResume() {
         if (!model.loaded) Refresh.activity[1]!!.postValue(true)
+        // Redraw only when the order actually changed while we were away — the row is otherwise
+        // left alone, since rebuilding it on every resume would restart its adapter for nothing.
+        if (renderedSort != null && renderedSort != UnreadOrder.current()) {
+            renderUnreadRow(animate = false)
+        }
         if (_binding != null) {
             binding.homeNotificationCount.isVisible = Anilist.unreadNotificationCount > 0
                     && PrefManager.getVal<Boolean>(PrefName.ShowNotificationRedDot) == true

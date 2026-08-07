@@ -2183,6 +2183,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="sync_module_extensions">Installed extensions</string>
     <string name="sync_module_extension_settings">Extension settings</string>
     <string name="sync_module_unread">Unread chapter results</string>
+    <string name="sync_variant_warning">Sync does not carry between app variants. A release install and a beta install keep separate cloud data, even when linked with the same sync code.</string>
 </resources>
 
 

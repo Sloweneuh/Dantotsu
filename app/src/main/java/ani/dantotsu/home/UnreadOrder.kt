@@ -6,6 +6,7 @@ import ani.dantotsu.connections.mangaupdates.MUMedia
 import ani.dantotsu.media.Media
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
+import kotlinx.coroutines.CoroutineScope
 
 /**
  * The order of the unread-chapters list, over AniList and MangaUpdates entries together.
@@ -17,9 +18,43 @@ import ani.dantotsu.settings.saving.PrefName
  */
 object UnreadOrder {
 
+    /** The order currently chosen, for callers that redraw when it changes underneath them. */
+    fun current(): String = PrefManager.getVal(PrefName.UnreadChaptersSort)
+
     /** True when the chosen order needs each entry's release date rather than its unread count. */
-    fun sortsByRecency(): Boolean =
-        PrefManager.getVal<String>(PrefName.UnreadChaptersSort) == "recent"
+    fun sortsByRecency(): Boolean = current() == "recent"
+
+    /**
+     * Makes sure every MangaUpdates entry's release date is known before the list is drawn.
+     *
+     * Those dates come from a per-series endpoint, so they arrive after the list does. Drawing
+     * first put every MangaUpdates entry at the bottom — where an unknown date sorts — and then
+     * visibly reshuffled them as the dates landed, which read as the order being wrong. Holding
+     * the section on its spinner for one round of fetches is the smaller cost.
+     *
+     * Only applies to the by-most-recent order; the unread-count order needs nothing fetched.
+     *
+     * @return true when the list can be drawn now. When false, [onReady] runs once every date has
+     *   been answered — including the ones that come back empty or fail, so this cannot hang.
+     */
+    fun awaitReleaseDates(
+        scope: CoroutineScope,
+        items: List<Any>,
+        onReady: () -> Unit,
+    ): Boolean {
+        if (!sortsByRecency()) return true
+        val pending = items.filterIsInstance<MUMedia>()
+            .map { it.id }
+            .distinct()
+            .filterNot { MUDetailsCache.hasRelease(it) }
+        if (pending.isEmpty()) return true
+        val remaining = pending.toMutableSet()
+        MUDetailsCache.prefetch(scope, pending, withReleases = true) { id ->
+            remaining -= id
+            if (remaining.isEmpty()) onReady()
+        }
+        return false
+    }
 
     /** Sorts per [PrefName.UnreadChaptersSort]. [items] are [Media] and/or [MUMedia]. */
     fun sort(items: List<Any>, info: Map<Int, UnreadChapterInfo>): List<Any> =

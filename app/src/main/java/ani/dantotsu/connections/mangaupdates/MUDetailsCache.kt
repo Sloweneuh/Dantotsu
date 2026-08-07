@@ -76,6 +76,12 @@ object MUDetailsCache {
     fun get(id: Long): Detail? = cache[id]
 
     /**
+     * Whether [id]'s release date has been looked up — true even when the answer was "no date", so
+     * a caller waiting on one isn't waiting forever for a series that has none.
+     */
+    fun hasRelease(id: Long): Boolean = id in releasesResolved
+
+    /**
      * Kick off background fetches for all [ids] not already in the cache.
      * Safe to call multiple times with overlapping id sets — duplicate fetches are suppressed,
      * but every caller is still notified.
@@ -141,15 +147,17 @@ object MUDetailsCache {
                     val newest = MangaUpdates.getSeriesGroups(id)?.releaseList?.firstOrNull()
                     val at = newest?.releaseDate?.let(::parseReleaseDate)
                     cache[id] = (cache[id] ?: Detail(null, null)).copy(latestReleaseAt = at)
-                    // Marked even when the date came back null, so an unreleased or undated series
-                    // isn't re-requested on every pass.
-                    releasesResolved += id
                 }
             }
         } catch (e: Exception) {
             // Fail silently; nothing is cached, so a later prefetch of this id tries again.
             ani.dantotsu.util.Logger.log("MUDetailsCache: Failed to fetch details for $id: ${e.message}")
         } finally {
+            // Resolved even if the request failed or the series has no dated release. Callers hold
+            // the list back until every entry is answered, so an id that could come back "not yet"
+            // for ever would keep the section on its spinner and re-request on every draw. The set
+            // is in-memory, so a restart is the retry boundary.
+            if (wantRelease) releasesResolved += id
             // Always, and always before notifying: a waiter reads the cache the moment it hears,
             // and one left in the map would block every future fetch of this id.
             val callbacks = synchronized(lock) { waiting.remove(id) }.orEmpty()

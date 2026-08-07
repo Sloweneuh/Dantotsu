@@ -211,6 +211,21 @@ class MediaListViewActivity : AppCompatActivity() {
 
     /** Renders whatever [mediaList] holds; called once the list is actually known. */
     private fun showContent() {
+        // An unread list orders MangaUpdates entries by their newest release, which is fetched per
+        // series — so hold the screen on its spinner until those are in rather than drawing them
+        // all at the bottom and reshuffling. See [ani.dantotsu.home.UnreadOrder.awaitReleaseDates].
+        unreadInfo?.takeIf { !isStack }?.let {
+            val pending: List<Any> = mediaList + muMediaList
+            if (!ani.dantotsu.home.UnreadOrder.awaitReleaseDates(lifecycleScope, pending) {
+                    showContent()
+                }
+            ) {
+                binding.mediaListProgress.visibility = View.VISIBLE
+                return
+            }
+        }
+        binding.mediaListProgress.visibility = View.GONE
+
         // Build a merged list when MU items are present. An unread list is ordered by how far
         // behind each entry is (or how recently it updated) rather than by when the user last
         // touched it, so it uses the same rule the home row does instead of the last-read merge
@@ -218,7 +233,9 @@ class MediaListViewActivity : AppCompatActivity() {
         val localUnreadInfo = unreadInfo
         combinedItems = when {
             muMediaList.isEmpty() -> null
-            localUnreadInfo != null ->
+            // [isStack], not [fromMalStack] — the latter is set for any caller that passed media
+            // in, which includes the unread list itself; only stackUrl marks an actual stack.
+            localUnreadInfo != null && !isStack ->
                 ani.dantotsu.home.UnreadOrder.sort(mediaList + muMediaList, localUnreadInfo)
 
             else -> (mediaList.map { it to (it.userUpdatedAt ?: 0L) } +
@@ -291,9 +308,14 @@ class MediaListViewActivity : AppCompatActivity() {
         // Use custom adapter based on what info we have
         when {
             localUnreadInfo != null -> {
-                // Manga with unread chapters
+                // Manga with unread chapters. Sorted here rather than trusted from the caller: the
+                // home row's copy was ordered whenever it last drew, so a sort setting changed
+                // since then would arrive stale. A stack is left alone — its order is the stack's
+                // own, and unread info riding along doesn't make it an unread list.
+                val ordered =
+                    if (isStack) list else ani.dantotsu.home.UnreadOrder.sort(list, localUnreadInfo)
                 binding.mediaRecyclerView.adapter =
-                    ani.dantotsu.home.UnreadChaptersAdapter(list, localUnreadInfo, mode, fromMalStack)
+                    ani.dantotsu.home.UnreadChaptersAdapter(ordered, localUnreadInfo, mode, fromMalStack)
             }
 
             localUnreleasedInfo != null -> {
