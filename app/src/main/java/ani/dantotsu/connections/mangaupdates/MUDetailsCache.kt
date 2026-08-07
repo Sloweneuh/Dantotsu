@@ -28,6 +28,16 @@ object MUDetailsCache {
         val categories: Set<String> = emptySet(),
         val completed: Boolean? = null,
         val latestChapter: Long? = null,
+        /**
+         * When the newest known chapter was released, epoch ms — the `release_date` of the first
+         * entry in the series' release list. Only populated for callers that asked for it (see
+         * `withReleases`), since it costs a second request per series.
+         *
+         * This is the series' own release date. The list endpoint's `last_updated` looks like the
+         * same thing and is not: it moves when the *user's* list record changes, so ordering by it
+         * sorted by when you last touched a series rather than when it last got a chapter.
+         */
+        val latestReleaseAt: Long? = null,
     )
 
     /** Concurrent requests allowed across the whole app, to avoid API throttling. */
@@ -46,6 +56,13 @@ object MUDetailsCache {
      */
     private val waiting = HashMap<Long, MutableList<(Long) -> Unit>>()
     private val lock = Any()
+
+    /**
+     * Ids whose release date has been resolved, tracked apart from [cache] because it is optional:
+     * an entry fetched for its cover alone is complete for that caller and must not stop a later
+     * caller that does need the date from going and getting it.
+     */
+    private val releasesResolved: MutableSet<Long> = ConcurrentHashMap.newKeySet()
 
     /**
      * Fetches run here rather than on the caller's scope. A caller is a screen, and screens go
@@ -68,10 +85,13 @@ object MUDetailsCache {
     fun prefetch(
         scope: CoroutineScope,
         ids: Collection<Long>,
+        withReleases: Boolean = false,
         onUpdated: ((id: Long) -> Unit)? = null
     ) {
         ids.forEach { id ->
-            if (cache.containsKey(id)) return@forEach
+            val needDetail = !cache.containsKey(id)
+            val needRelease = withReleases && id !in releasesResolved
+            if (!needDetail && !needRelease) return@forEach
             val deliver: ((Long) -> Unit)? = onUpdated?.let {
                 { finished -> scope.launch(Dispatchers.Main) { it(finished) } }
             }
@@ -85,33 +105,46 @@ object MUDetailsCache {
                     false
                 }
             }
-            if (startFetch) fetchScope.launch { fetch(id) }
+            if (startFetch) fetchScope.launch { fetch(id, needDetail, needRelease) }
         }
     }
 
-    private suspend fun fetch(id: Long) {
+    private suspend fun fetch(id: Long, wantDetail: Boolean, wantRelease: Boolean) {
         try {
             gate.withPermit {
-                val record = MangaUpdates.getSeriesDetails(id)
-                cache[id] = Detail(
-                    coverUrl = record?.image?.url?.run { original ?: thumb },
-                    description = record?.description,
-                    hasEnglishPublisher = record?.licensed,
-                    type = record?.type,
-                    year = record?.year?.toIntOrNull(),
-                    genres = record?.genres
-                        ?.mapNotNull { it.genre?.trim() }
-                        ?.filter { it.isNotEmpty() }
-                        ?.toSet()
-                        ?: emptySet(),
-                    categories = record?.categories
-                        ?.mapNotNull { it.category?.trim() }
-                        ?.filter { it.isNotEmpty() }
-                        ?.toSet()
-                        ?: emptySet(),
-                    completed = record?.completed,
-                    latestChapter = record?.latest_chapter,
-                )
+                if (wantDetail) {
+                    val record = MangaUpdates.getSeriesDetails(id)
+                    cache[id] = Detail(
+                        coverUrl = record?.image?.url?.run { original ?: thumb },
+                        description = record?.description,
+                        hasEnglishPublisher = record?.licensed,
+                        type = record?.type,
+                        year = record?.year?.toIntOrNull(),
+                        genres = record?.genres
+                            ?.mapNotNull { it.genre?.trim() }
+                            ?.filter { it.isNotEmpty() }
+                            ?.toSet()
+                            ?: emptySet(),
+                        categories = record?.categories
+                            ?.mapNotNull { it.category?.trim() }
+                            ?.filter { it.isNotEmpty() }
+                            ?.toSet()
+                            ?: emptySet(),
+                        completed = record?.completed,
+                        latestChapter = record?.latest_chapter,
+                        // Carried over so a details refetch doesn't drop a date already resolved.
+                        latestReleaseAt = cache[id]?.latestReleaseAt,
+                    )
+                }
+                if (wantRelease) {
+                    // The releases are a separate endpoint; the newest one is first in the list.
+                    val newest = MangaUpdates.getSeriesGroups(id)?.releaseList?.firstOrNull()
+                    val at = newest?.releaseDate?.let(::parseReleaseDate)
+                    cache[id] = (cache[id] ?: Detail(null, null)).copy(latestReleaseAt = at)
+                    // Marked even when the date came back null, so an unreleased or undated series
+                    // isn't re-requested on every pass.
+                    releasesResolved += id
+                }
             }
         } catch (e: Exception) {
             // Fail silently; nothing is cached, so a later prefetch of this id tries again.
@@ -123,4 +156,9 @@ object MUDetailsCache {
             callbacks.forEach { it(id) }
         }
     }
+
+    /** `release_date` is a plain `yyyy-MM-dd`; anything else is treated as no date at all. */
+    private fun parseReleaseDate(raw: String): Long? = runCatching {
+        java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).parse(raw)?.time
+    }.getOrNull()
 }

@@ -35,11 +35,18 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 
 class UnreadChaptersAdapter(
-    private val items: List<Any>,  // List<Media | MUMedia>
+    initialItems: List<Any>,  // List<Media | MUMedia>
     private val unreadInfo: Map<Int, UnreadChapterInfo>,
     private var type: Int = 0, // 0 = grid/compact, 1 = list/large
     private val fromMalStack: Boolean = false
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+
+    /**
+     * Re-ordered in place once MangaUpdates release dates arrive: under the by-most-recent order a
+     * MangaUpdates entry has no date until its series has been fetched, so it would otherwise sit
+     * at the bottom — where "unknown" sorts — for as long as the row stayed on screen.
+     */
+    private var items: List<Any> = initialItems
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
@@ -57,12 +64,21 @@ class UnreadChaptersAdapter(
 
     override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
         super.onAttachedToRecyclerView(recyclerView)
-        val muIds = items.indices.mapNotNull { muAt(it) }
-            .filter { it.coverUrl == null }
-            .map { it.id }
-        MUDetailsCache.prefetch(scope, muIds) { id ->
-            val pos = items.indices.firstOrNull { muAt(it)?.id == id }
-            if (pos != null) notifyItemChanged(pos)
+        val mu = items.indices.mapNotNull { muAt(it) }
+        // Ordering by most recent needs each series' newest release date, which costs a second
+        // request per series — so it is only asked for under that order, and every entry needs it,
+        // not just the ones still missing a cover.
+        val byRecency = UnreadOrder.sortsByRecency()
+        val ids = if (byRecency) mu.map { it.id } else mu.filter { it.coverUrl == null }.map { it.id }
+        MUDetailsCache.prefetch(scope, ids, withReleases = byRecency) { id ->
+            if (byRecency) {
+                items = UnreadOrder.sort(items, unreadInfo)
+                @Suppress("NotifyDataSetChanged") // the position of everything may have moved
+                notifyDataSetChanged()
+            } else {
+                val pos = items.indices.firstOrNull { muAt(it)?.id == id }
+                if (pos != null) notifyItemChanged(pos)
+            }
         }
     }
 
