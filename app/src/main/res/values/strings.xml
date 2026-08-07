@@ -301,6 +301,11 @@
     <string name="malsync_checks_option_anime">Anime</string>
     <string name="malsync_checks_option_both">Both</string>
     <string name="malsync_checks_desc">Checks: %1$s</string>
+    <string name="malsync_checks_label">Check for</string>
+    <string name="unread_sort_label">Unread Chapters order</string>
+    <string name="unread_sort_option_unread">Fewest unread first</string>
+    <string name="unread_sort_option_recent">Most recently updated</string>
+    <string name="unread_sort_desc">How the home Unread Chapters row is ordered</string>
     <string name="malsync_exclude_manage">Manage MALSync Exclusions</string>
     <string name="malsync_exclude_manage_desc">Media excluded from unread chapter / episode checks</string>
     <string name="customize_info_tabs">Info Tab Order</string>

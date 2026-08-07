@@ -133,6 +133,7 @@ object BackupTree {
                         BackupItem(PrefName.MalListSyncEnabled, R.string.mal_list_sync),
                         BackupItem(PrefName.MalSyncInfoEnabled, R.string.disable_malsync),
                         BackupItem(PrefName.MalSyncCheckMode, R.string.malsync_checks_dialog_title),
+                        BackupItem(PrefName.UnreadChaptersSort, R.string.unread_sort_label),
                         BackupItem(PrefName.CommentsEnabled, R.string.comments_button),
                         BackupItem(PrefName.MuCustomListMapping, R.string.mu_custom_list_mapping),
                         BackupItem(PrefName.MuCustomListTitles, R.string.backup_mu_custom_list_titles),

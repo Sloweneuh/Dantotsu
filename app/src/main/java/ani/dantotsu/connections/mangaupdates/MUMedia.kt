@@ -26,6 +26,13 @@ data class MUMedia(
     val status: String? = null,
     /** Local timestamp (ms) of the last time the user updated progress for this series. */
     val updatedAt: Long? = null,
+    /**
+     * When [latestChapter] was released, epoch ms — MangaUpdates' own `last_updated` for the
+     * series, which comes down with the list entry. The counterpart of MALSync's
+     * [ani.dantotsu.connections.malsync.LastEpisode.timestampMillis], so entries from the two
+     * sources can be ordered against each other rather than one being tacked onto the end.
+     */
+    val latestChapterAt: Long? = null,
     /** MangaUpdates "time added to list" (Unix seconds); maps to the AniList start date on convert. */
     val addedAt: Long? = null
 ) : Serializable
@@ -99,6 +106,7 @@ fun MUListEntry.toMUMedia(listId: Int): MUMedia? {
         userChapter = record.status?.chapter,
         userVolume = record.status?.volume,
         latestChapter = metadata?.series?.latestChapter,
+        latestChapterAt = metadata?.series?.lastUpdated?.timestamp?.let { it * 1000L },
         bayesianRating = metadata?.series?.bayesianRating,
         priority = record.priority,
         updatedAt = updatedAt,

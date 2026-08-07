@@ -123,6 +123,9 @@ enum class PrefName(val data: Pref) {
     MuCustomListTitles(Pref(Location.General, String::class, "")),
     MalSyncInfoEnabled(Pref(Location.General, Boolean::class, true)),
     MalSyncCheckMode(Pref(Location.General, String::class, "both")),
+
+    /** How the home Unread Chapters row is ordered: "unread" (fewest unread first) or "recent". */
+    UnreadChaptersSort(Pref(Location.General, String::class, "unread")),
     MalSyncExcludeList(Pref(Location.General, Set::class, setOf<String>())),
     HiddenFromLists(Pref(Location.General, Set::class, setOf<String>())),
 

@@ -3,6 +3,8 @@ package ani.dantotsu.settings
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ArrayAdapter
+import android.widget.AutoCompleteTextView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.updateLayoutParams
@@ -156,33 +158,66 @@ class SettingsConnectionsActivity : AppCompatActivity() {
                     b.settingsDesc.text = getString(R.string.malsync_checks_desc, modeText)
 
                     b.settingsExtraIcon.setOnClickListener {
-                        // Show a single-choice dialog to pick mode
-                        val options = arrayOf(
+                        val modeOptions = arrayOf(
                             getString(R.string.malsync_checks_option_manga),
                             getString(R.string.malsync_checks_option_anime),
                             getString(R.string.malsync_checks_option_both)
+                        )
+                        // What MALSync is asked about, and how the answers are ordered on the home
+                        // row. Two dropdowns rather than the single-choice list this used to be:
+                        // the list form has room for exactly one question.
+                        val sortOptions = arrayOf(
+                            getString(R.string.unread_sort_option_unread),
+                            getString(R.string.unread_sort_option_recent)
+                        )
+                        val dialogView = layoutInflater.inflate(R.layout.dialog_malsync_checks, null)
+                        val modeDropdown =
+                            dialogView.findViewById<AutoCompleteTextView>(R.id.malSyncModeDropdown)
+                        val sortDropdown =
+                            dialogView.findViewById<AutoCompleteTextView>(R.id.unreadSortDropdown)
+                        modeDropdown.setAdapter(
+                            ArrayAdapter(this@SettingsConnectionsActivity, R.layout.item_dropdown, modeOptions)
+                        )
+                        sortDropdown.setAdapter(
+                            ArrayAdapter(this@SettingsConnectionsActivity, R.layout.item_dropdown, sortOptions)
                         )
                         val currentIndex = when (PrefManager.getVal<String>(PrefName.MalSyncCheckMode)) {
                             "manga" -> 0
                             "anime" -> 1
                             else -> 2
                         }
-
-                        this@SettingsConnectionsActivity.customAlertDialog().apply {
-                            setTitle(R.string.malsync_checks_dialog_title)
-                            singleChoiceItems(options, currentIndex) { i ->
-                                val newVal = when (i) {
+                        modeDropdown.setText(modeOptions[currentIndex], false)
+                        sortDropdown.setText(
+                            sortOptions[
+                                if (PrefManager.getVal<String>(PrefName.UnreadChaptersSort) == "recent") 1 else 0
+                            ],
+                            false
+                        )
+                        // Applied as they are picked, so the dialog needs no confirm button and
+                        // dismissing it can't lose a choice.
+                        modeDropdown.setOnItemClickListener { _, _, i, _ ->
+                            PrefManager.setVal(
+                                PrefName.MalSyncCheckMode,
+                                when (i) {
                                     0 -> "manga"
                                     1 -> "anime"
                                     else -> "both"
                                 }
-                                PrefManager.setVal(PrefName.MalSyncCheckMode, newVal)
-                                // Update UI text
-                                b.settingsDesc.text = getString(
-                                    R.string.malsync_checks_desc,
-                                    options[i]
-                                )
-                            }
+                            )
+                            b.settingsDesc.text =
+                                getString(R.string.malsync_checks_desc, modeOptions[i])
+                        }
+                        sortDropdown.setOnItemClickListener { _, _, i, _ ->
+                            PrefManager.setVal(
+                                PrefName.UnreadChaptersSort,
+                                if (i == 1) "recent" else "unread"
+                            )
+                        }
+
+                        this@SettingsConnectionsActivity.customAlertDialog().apply {
+                            setTitle(R.string.malsync_checks_dialog_title)
+                            setCustomView(dialogView)
+                            setPosButton(R.string.close) {}
                             setNeutralButton("?") {
                                 CustomBottomDialog.newInstance().apply {
                                     setTitleText(this@SettingsConnectionsActivity.getString(R.string.malsync_connections_help))

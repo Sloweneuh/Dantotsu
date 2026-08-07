@@ -56,6 +56,11 @@
     <string name="malsync_checks_option_anime">Anime</string>
     <string name="malsync_checks_option_both">Les deux</string>
     <string name="malsync_checks_desc">Vérifications : %1$s</string>
+    <string name="malsync_checks_label">Vérifier pour</string>
+    <string name="unread_sort_label">Ordre des chapitres non lus</string>
+    <string name="unread_sort_option_unread">Le moins de non-lus d\'abord</string>
+    <string name="unread_sort_option_recent">Mis à jour le plus récemment</string>
+    <string name="unread_sort_desc">Ordre d\'affichage des chapitres non lus sur l\'accueil</string>
     <string name="malsync_exclude_manage">Gérer les exclusions MALSync</string>
     <string name="malsync_exclude_manage_desc">Médias exclus des vérifications de chapitres / épisodes non lus</string>
     <string name="customize_info_tabs">Ordre des onglets d\'infos</string>
