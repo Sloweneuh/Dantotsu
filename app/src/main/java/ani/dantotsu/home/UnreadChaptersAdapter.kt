@@ -43,12 +43,26 @@ class UnreadChaptersAdapter(
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
+    /**
+     * The MangaUpdates entry at [position], however it arrived — as a [MUMedia], or as a [Media]
+     * carrying `muSeriesId` (how a MAL stack passes one that has no AniList match). Null for an
+     * ordinary AniList entry.
+     *
+     * Shared with [onBindViewHolder] so the two agree. They didn't: covers were prefetched for
+     * [MUMedia] alone while binding rendered both forms, so a stack's MangaUpdates fallbacks asked
+     * the cache for a cover nothing had ever been told to fetch.
+     */
+    private fun muAt(position: Int): MUMedia? =
+        items.getOrNull(position)?.let { if (it is Media) it.toMUMedia() else it } as? MUMedia
+
     override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
         super.onAttachedToRecyclerView(recyclerView)
-        val muIds = items.filterIsInstance<MUMedia>().filter { it.coverUrl == null }.map { it.id }
+        val muIds = items.indices.mapNotNull { muAt(it) }
+            .filter { it.coverUrl == null }
+            .map { it.id }
         MUDetailsCache.prefetch(scope, muIds) { id ->
-            val pos = items.indexOfFirst { it is MUMedia && it.id == id }
-            if (pos != -1) notifyItemChanged(pos)
+            val pos = items.indices.firstOrNull { muAt(it)?.id == id }
+            if (pos != null) notifyItemChanged(pos)
         }
     }
 
@@ -89,8 +103,7 @@ class UnreadChaptersAdapter(
         // MangaUpdates entries reach this adapter either as a MUMedia or as a Media carrying
         // muSeriesId (the marker MediaAdaptor uses, e.g. MAL-stack entries with no AniList match).
         // Normalize so both render as MangaUpdates items rather than falling through as AniList.
-        val raw = items[position]
-        when (val item = if (raw is Media) raw.toMUMedia() ?: raw else raw) {
+        when (val item = muAt(position) ?: items[position]) {
             is MUMedia -> when (holder) {
                 is CompactViewHolder -> bindMuCompactView(holder.binding, item)
                 is LargeViewHolder -> bindMuLargeView(holder.binding, item)
