@@ -49,6 +49,10 @@ fun Activity.showSyncCodeDialog(onChanged: () -> Unit, onClosed: (() -> Unit)? =
     val binding = DialogSyncCodeBinding.inflate(layoutInflater)
     binding.syncCodeText.text = code
     binding.syncCodeQr.setImageBitmap(HandoffQr.encode(code.replace("-", "")))
+    // Said here as well as in the sync details, because this is where it gets acted on: the code
+    // is about to be carried to another device, and a mismatched variant there leaves both sides
+    // holding a valid code and seeing none of each other's data.
+    binding.syncCodeVariantWarning.text = "⚠ ${getString(R.string.sync_variant_warning)}"
 
     var dialogRef: android.app.AlertDialog? = null
     customAlertDialog().apply {

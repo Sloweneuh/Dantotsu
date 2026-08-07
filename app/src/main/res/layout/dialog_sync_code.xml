@@ -69,6 +69,19 @@
             android:text="@string/sync_code_secrecy_warning"
             android:textSize="11sp" />
 
+        <!-- The code alone doesn't decide which cloud node a device talks to; the app variant is
+             part of it too. This is the moment that matters, because the next thing the user does
+             is carry this code to another device. Text is set in code, to carry the ⚠ prefix. -->
+        <TextView
+            android:id="@+id/syncCodeVariantWarning"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:fontFamily="@font/poppins_semi_bold"
+            android:textColor="@color/warning_amber"
+            android:textSize="11sp"
+            tools:text="⚠ Sync does not carry between app variants." />
+
     </LinearLayout>
 
 </ScrollView>
