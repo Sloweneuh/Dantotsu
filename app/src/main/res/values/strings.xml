@@ -1410,7 +1410,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="sync_code_secrecy_warning">Anyone with this code can read your synced data. Share it only with your own devices.</string>
     <string name="sync_code_copy">Copy</string>
     <string name="sync_code_copied">Sync code copied</string>
-    <string name="sync_code_hint">Sync code</string>
+    <string name="sync_code_group">Sync code group %1$d</string>
     <string name="sync_code_enter_hint">Enter the code shown on your other device.</string>
     <string name="sync_code_scan">Scan</string>
     <string name="sync_code_invalid">That code doesn\'t look right — check it and try again</string>

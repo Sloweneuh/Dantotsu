@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+  One box per group of the sync code, with the separators drawn between them rather than typed into
+  them. A code is always the same shape — SyncCrypto.CODE_CHARS characters in groups of
+  SyncCrypto.GROUP_CHARS — so the boxes can carry the format and leave the user only the characters.
+
+  The count here is not free: SyncCodeEntry fills whatever boxes it is handed, using those two
+  constants for the grouping, so the row must hold CODE_CHARS / GROUP_CHARS of them.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingStart="12dp"
+    android:paddingTop="8dp"
+    android:paddingEnd="12dp"
+    android:paddingBottom="4dp">
+
+    <EditText
+        android:id="@+id/syncCodeGroup1"
+        style="@style/SyncCodeGroup"
+        android:imeOptions="actionNext" />
+
+    <TextView
+        style="@style/SyncCodeGroupSeparator"
+        android:text="-"
+        tools:ignore="HardcodedText" />
+
+    <EditText
+        android:id="@+id/syncCodeGroup2"
+        style="@style/SyncCodeGroup"
+        android:imeOptions="actionNext" />
+
+    <TextView
+        style="@style/SyncCodeGroupSeparator"
+        android:text="-"
+        tools:ignore="HardcodedText" />
+
+    <EditText
+        android:id="@+id/syncCodeGroup3"
+        style="@style/SyncCodeGroup"
+        android:imeOptions="actionNext" />
+
+    <TextView
+        style="@style/SyncCodeGroupSeparator"
+        android:text="-"
+        tools:ignore="HardcodedText" />
+
+    <!-- Done rather than Next: the last group completes the code, so the keyboard should offer to
+         finish rather than point at nothing. -->
+    <EditText
+        android:id="@+id/syncCodeGroup4"
+        style="@style/SyncCodeGroup"
+        android:imeOptions="actionDone" />
+
+</LinearLayout>

@@ -71,8 +71,26 @@ internal object SyncCrypto {
         return cleaned
     }
 
+    /** How a code is grouped wherever it's shown or typed: `ABCD-EFGH-JKLM-NPQR`. */
+    const val GROUP_CHARS = 4
+
     /** Groups a canonical code for display: `ABCD-EFGH-JKLM-NPQR`. */
-    fun formatCode(code: String): String = code.chunked(4).joinToString("-")
+    fun formatCode(code: String): String = code.chunked(GROUP_CHARS).joinToString("-")
+
+    /**
+     * What a code is left as once everything that can't be part of one is dropped: uppercased,
+     * outside [ALPHABET] removed, truncated to [CODE_CHARS].
+     *
+     * The entry field's counterpart to [normalizeCode], which does the same filtering before
+     * validating — so separators, spaces and lowercase are all things the user may type or paste,
+     * here as much as there, and nothing downstream has to know they ever appeared.
+     */
+    fun typedChars(input: String): String =
+        input.uppercase().filter { it in ALPHABET }.take(CODE_CHARS)
+
+    /** How many code characters — anything else excluded — precede [offset] in [text]. */
+    fun codeCharsBefore(text: CharSequence, offset: Int): Int =
+        text.take(offset.coerceIn(0, text.length)).count { it.uppercaseChar() in ALPHABET }
 
     private fun checksumChar(data: String): Char {
         val digest = MessageDigest.getInstance("SHA-256")

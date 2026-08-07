@@ -105,5 +105,32 @@
     </style>
 
 
+    <!--
+      One group of the sync code entry field (see dialog_sync_code_entry.xml). Deliberately carries
+      no maxLength: a pasted code arrives in whichever box has focus and is redistributed from
+      there, and a length filter would truncate it to four characters before anything could.
+    -->
+    <style name="SyncCodeGroup">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:fontFamily">@font/poppins_bold</item>
+        <item name="android:gravity">center</item>
+        <item name="android:importantForAutofill">no</item>
+        <item name="android:inputType">textCapCharacters|textNoSuggestions</item>
+        <item name="android:letterSpacing">0.05</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:textSize">18sp</item>
+    </style>
+
+    <style name="SyncCodeGroupSeparator">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginStart">2dp</item>
+        <item name="android:layout_marginEnd">2dp</item>
+        <item name="android:fontFamily">@font/poppins_bold</item>
+        <item name="android:textSize">18sp</item>
+    </style>
+
     <style name="ThemeOverlay_Dantotsu_MediaRouter" parent="ThemeOverlay.AppCompat" />
 </resources>

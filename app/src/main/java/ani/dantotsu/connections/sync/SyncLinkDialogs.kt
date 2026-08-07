@@ -12,8 +12,8 @@ import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.handoff.HandoffQr
 import ani.dantotsu.connections.handoff.HandoffScanActivity
 import ani.dantotsu.databinding.DialogSyncCodeBinding
+import ani.dantotsu.databinding.DialogSyncCodeEntryBinding
 import ani.dantotsu.databinding.DialogSyncLinkedBinding
-import ani.dantotsu.databinding.DialogUserAgentBinding
 import ani.dantotsu.loadImage
 import ani.dantotsu.toast
 import ani.dantotsu.util.Logger
@@ -171,14 +171,95 @@ private fun Activity.showSyncCodeDialogThen(onChanged: () -> Unit) {
     })
 }
 
-private fun Activity.promptForCode(onChanged: () -> Unit) {
-    val binding = DialogUserAgentBinding.inflate(layoutInflater)
-    binding.userAgentTextBox.apply {
-        hint = getString(R.string.sync_code_hint)
-        setSingleLine()
-        // The alphabet has no lowercase, and a user typing the separators shouldn't be punished.
-        filters = arrayOf(android.text.InputFilter.AllCaps())
+/**
+ * Drives the four-box code field: the boxes hold the characters, the layout draws the separators.
+ *
+ * A code is always the same shape — [SyncCrypto.CODE_CHARS] characters in groups of
+ * [SyncCrypto.GROUP_CHARS] — so the separators belong to the format rather than to the person
+ * typing it. They were never required either way ([SyncCrypto.normalizeCode] discards anything
+ * outside the alphabet), but a single free-text box made typing them look mandatory.
+ *
+ * Every edit is handled the same way, which is what keeps the odd cases from needing their own
+ * rules: the boxes are read back as one code with the edit applied, then redealt into the boxes.
+ * Typing appends, backspace shortens, an edit in the middle of a full group pushes the rest along
+ * instead of overwriting it, and a pasted code — separators or not, into whichever box happened to
+ * have focus — simply fills the row. The caret rides along as a count of code characters, since
+ * that is the one position that means the same thing before and after a redeal.
+ */
+private class SyncCodeEntry(private val groups: List<android.widget.EditText>) {
+
+    /** Guards the redeal below, whose own [android.widget.EditText.setText] calls land back here. */
+    private var dealing = false
+
+    init {
+        groups.forEachIndexed { index, box ->
+            // No length filter, deliberately: it would cut a pasted code down to one group before
+            // [redeal] ever saw the rest of it. Overflow is what drives the distribution.
+            box.filters = arrayOf(android.text.InputFilter.AllCaps())
+            // The separators are drawn, not typed, so a screen reader would otherwise announce four
+            // unlabelled fields with nothing to say which part of the code each one is.
+            box.contentDescription = box.context.getString(R.string.sync_code_group, index + 1)
+            box.addTextChangedListener(object : android.text.TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, st: Int, c: Int, a: Int) {}
+                override fun onTextChanged(s: CharSequence?, st: Int, b: Int, c: Int) {}
+                override fun afterTextChanged(s: android.text.Editable) {
+                    if (dealing) return
+                    val before = groups.take(index).joinToString("") { it.text.toString() }
+                    val after = groups.drop(index + 1).joinToString("") { it.text.toString() }
+                    val caret = before.length + SyncCrypto.codeCharsBefore(s, box.selectionStart)
+                    redeal(SyncCrypto.typedChars(before + s.toString() + after), caret)
+                }
+            })
+            box.setOnKeyListener { _, keyCode, event ->
+                // Backspace at the start of an empty box: without this it does nothing at all and
+                // the field appears stuck, since there is no text here for the watcher to react to.
+                val atStart = index > 0 && box.text.isEmpty()
+                if (keyCode == android.view.KeyEvent.KEYCODE_DEL &&
+                    event.action == android.view.KeyEvent.ACTION_DOWN && atStart
+                ) {
+                    val previous = groups[index - 1]
+                    if (previous.text.isNotEmpty()) {
+                        previous.text.delete(previous.text.length - 1, previous.text.length)
+                    }
+                    previous.requestFocus()
+                    previous.setSelection(previous.text.length)
+                    true
+                } else false
+            }
+        }
     }
+
+    /** The code as entered, in the unseparated form [SyncCrypto.normalizeCode] expects. */
+    fun code(): String = groups.joinToString("") { it.text.toString() }
+
+    private fun redeal(code: String, caret: Int) {
+        dealing = true
+        groups.forEachIndexed { index, box ->
+            val part = code.drop(index * SyncCrypto.GROUP_CHARS).take(SyncCrypto.GROUP_CHARS)
+            if (box.text.toString() != part) box.setText(part)
+        }
+        dealing = false
+        // A caret at the end of a full group belongs at the start of the next one — that is what
+        // makes the field advance on its own, rather than needing a rule of its own to do it.
+        val landed = caret.coerceIn(0, code.length)
+        val target = (landed / SyncCrypto.GROUP_CHARS).coerceAtMost(groups.lastIndex)
+        val box = groups[target]
+        if (!box.hasFocus()) box.requestFocus()
+        box.setSelection((landed - target * SyncCrypto.GROUP_CHARS).coerceIn(0, box.text.length))
+    }
+}
+
+private fun Activity.promptForCode(onChanged: () -> Unit) {
+    val binding = DialogSyncCodeEntryBinding.inflate(layoutInflater)
+    val entry = SyncCodeEntry(
+        listOf(
+            binding.syncCodeGroup1,
+            binding.syncCodeGroup2,
+            binding.syncCodeGroup3,
+            binding.syncCodeGroup4,
+        )
+    )
+    binding.syncCodeGroup1.requestFocus()
 
     customAlertDialog().apply {
         setTitle(R.string.sync_setup_enter)
@@ -186,7 +267,7 @@ private fun Activity.promptForCode(onChanged: () -> Unit) {
         setCustomView(binding.root)
         syncCodeScan()?.let { scan -> setNeutralButton(R.string.sync_code_scan) { scan() } }
         setPosButton(R.string.ok) {
-            val entered = binding.userAgentTextBox.text?.toString().orEmpty()
+            val entered = entry.code()
             if (SyncIdentity.linkWithCode(entered)) {
                 migrateThen { showSyncLinkedDialog(onClosed = onChanged) }
             } else {

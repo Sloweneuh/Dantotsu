@@ -1467,7 +1467,7 @@
     <string name="sync_code_secrecy_warning">Toute personne disposant de ce code peut lire vos données synchronisées. Ne le partagez qu\'avec vos propres appareils.</string>
     <string name="sync_code_copy">Copier</string>
     <string name="sync_code_copied">Code de synchro copié</string>
-    <string name="sync_code_hint">Code de synchro</string>
+    <string name="sync_code_group">Groupe %1$d du code de synchro</string>
     <string name="sync_code_enter_hint">Saisissez le code affiché sur votre autre appareil.</string>
     <string name="sync_code_scan">Scanner</string>
     <string name="sync_code_invalid">Ce code semble incorrect — vérifiez-le et réessayez</string>
