@@ -57,6 +57,30 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
     private var searchJob: kotlinx.coroutines.Job? = null
     private var searchWatchdog: Runnable? = null
 
+    /**
+     * Which search attempt owns the sheet. An extension does its network work in a blocking call,
+     * so neither the timeout nor [kotlinx.coroutines.Job.cancel] actually stops one — a search that
+     * was given up on stays alive and eventually reaches its `finally` with results in hand. This
+     * is what stops it repainting the sheet over whatever replaced it in the meantime.
+     */
+    private var searchGeneration = 0
+
+    /**
+     * The single place a source search that never answered is reported.
+     *
+     * Reached from two directions — the coroutine's own 10s timeout, and the watchdog for the case
+     * where a blocked extension means the coroutine never gets that far.
+     */
+    private fun showSearchTimedOut(reason: String? = null) {
+        val binding = _binding ?: return
+        binding.searchProgressContainer.visibility = View.GONE
+        binding.searchRecyclerView.visibility = View.GONE
+        binding.searchRecyclerView.adapter = null
+        val base = binding.root.context.getString(R.string.search_timeout)
+        binding.searchEmptyState.showError(if (reason != null) "$base\n$reason" else base)
+        ani.dantotsu.snackString(base)
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -120,6 +144,7 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
                     _binding?.searchBarText?.windowToken?.let { token ->
                         imm.hideSoftInputFromWindow(token, 0)
                     }
+                    val generation = ++searchGeneration
                     searchJob = scope.launch {
                         val query = queryOverride ?: _binding?.searchBarText?.text?.toString() ?: return@launch
                         _binding?.searchProgressContainer?.visibility = View.VISIBLE
@@ -130,66 +155,80 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
                         // Start a UI watchdog to ensure spinner is hidden even if an extension blocks
                         searchWatchdog?.let { _binding?.searchProgress?.removeCallbacks(it) }
                         searchWatchdog = Runnable {
-                            _binding?.searchProgressContainer?.visibility = View.GONE
-                            _binding?.searchRecyclerView?.visibility = View.VISIBLE
-                            _binding?.searchRecyclerView?.adapter = null
+                            // A blocked extension is the case this exists for: it is stuck inside
+                            // its own network call, where neither the timeout below nor cancel()
+                            // reaches it, so the coroutine never gets far enough to report
+                            // anything. This used to hide the spinner and empty the list without
+                            // saying why, which is exactly what left the sheet silently blank.
+                            searchGeneration++
                             searchJob?.cancel()
+                            searchJob = null
+                            searchWatchdog = null
+                            showSearchTimedOut()
                         }
                         _binding?.searchProgress?.postDelayed(searchWatchdog, 12_000L)
 
                         var results: List<ani.dantotsu.parsers.ShowResponse>? = null
-                        var timedOut = false
                         var lastError: Throwable? = null
+                        // Which of the two ways `results` came back null: the search answered — with
+                        // nothing, or with an error tryWithSuspend swallowed — or it never answered
+                        // at all. Both used to be reported as a timeout, so a source that simply
+                        // failed sent the user looking for a connection problem instead.
+                        var answered = false
                         try {
                             results = withContext(Dispatchers.IO) {
-                                try {
-                                    kotlinx.coroutines.withTimeoutOrNull(10_000L) {
+                                kotlinx.coroutines.withTimeoutOrNull(10_000L) {
+                                    val found = try {
                                         tryWithSuspend {
                                             source.search(query)
                                         }
+                                    } catch (e: Throwable) {
+                                        lastError = e
+                                        null
                                     }
-                                } catch (e: Throwable) {
-                                    lastError = e
-                                    null
+                                    answered = true
+                                    found
                                 }
                             }
-                                if (results == null) {
-                                    timedOut = true
-                                }
                         } catch (e: Throwable) {
                             lastError = e
                             results = null
+                            answered = true
                         } finally {
-                            // cancel watchdog and reset job
-                            searchWatchdog?.let { _binding?.searchProgress?.removeCallbacks(it) }
-                            searchWatchdog = null
-                            searchJob = null
-                            _binding?.searchProgressContainer?.visibility = View.GONE
-                            if (results != null && results.isNotEmpty()) {
-                                _binding?.searchRecyclerView?.visibility = View.VISIBLE
-                                _binding?.searchRecyclerView?.adapter =
-                                    if (anime) AnimeSourceAdapter(results, model, i!!, media!!.id, this@SourceSearchDialogFragment, requireActivity().lifecycleScope, source.hostUrl, source)
-                                    else MangaSourceAdapter(results, model, i!!, media!!.id, this@SourceSearchDialogFragment, requireActivity().lifecycleScope, source.hostUrl, source)
-                                _binding?.searchRecyclerView?.layoutManager = GridLayoutManager(
-                                    requireActivity(),
-                                    clamp(requireActivity().resources.displayMetrics.widthPixels / 124f.px, 1, 4)
-                                )
-                                // Hide any empty/error placeholder
-                                _binding?.searchEmptyState?.hideEmptyState()
-                            } else {
-                                // Show empty state with different messages depending on cause
-                                _binding?.searchRecyclerView?.visibility = View.GONE
-                                _binding?.searchRecyclerView?.adapter = null
-                                withContext(Dispatchers.Main) {
+                            // A search the watchdog has already given up on, or one the user
+                            // replaced, arrives here late — with the timeout placeholder or a newer
+                            // search's results already on screen. It owns none of that, so it
+                            // touches nothing: not the sheet, and not the job/watchdog now held by
+                            // whichever search took its place.
+                            if (generation == searchGeneration) {
+                                // cancel watchdog and reset job
+                                searchWatchdog?.let { _binding?.searchProgress?.removeCallbacks(it) }
+                                searchWatchdog = null
+                                searchJob = null
+                                _binding?.searchProgressContainer?.visibility = View.GONE
+                                if (results != null && results.isNotEmpty()) {
+                                    _binding?.searchRecyclerView?.visibility = View.VISIBLE
+                                    _binding?.searchRecyclerView?.adapter =
+                                        if (anime) AnimeSourceAdapter(results, model, i!!, media!!.id, this@SourceSearchDialogFragment, requireActivity().lifecycleScope, source.hostUrl, source)
+                                        else MangaSourceAdapter(results, model, i!!, media!!.id, this@SourceSearchDialogFragment, requireActivity().lifecycleScope, source.hostUrl, source)
+                                    _binding?.searchRecyclerView?.layoutManager = GridLayoutManager(
+                                        requireActivity(),
+                                        clamp(requireActivity().resources.displayMetrics.widthPixels / 124f.px, 1, 4)
+                                    )
+                                    // Hide any empty/error placeholder
+                                    _binding?.searchEmptyState?.hideEmptyState()
+                                } else {
+                                    // Show empty state with different messages depending on cause.
+                                    // Drawn straight from here: this coroutine already runs on the
+                                    // main dispatcher, and the withContext(Main) that used to wrap
+                                    // this suspends — which throws instantly once the job has been
+                                    // cancelled, so a search that got cut short drew no placeholder
+                                    // at all and left the sheet blank.
+                                    _binding?.searchRecyclerView?.visibility = View.GONE
+                                    _binding?.searchRecyclerView?.adapter = null
                                     val reason = friendlyErrorReason(lastError)
                                     when {
-                                        timedOut -> {
-                                            val base = getString(R.string.search_timeout)
-                                            _binding?.searchEmptyState?.showError(
-                                                if (reason != null) "$base\n$reason" else base
-                                            )
-                                            ani.dantotsu.snackString(getString(R.string.search_timeout))
-                                        }
+                                        !answered -> showSearchTimedOut(reason)
                                         results == null -> {
                                             val msg = getString(R.string.search_fetch_error)
                                             val target = getString(R.string.search_fetch_error).substringAfter("Check your connection or ").substringBefore(", then try again.")
@@ -361,13 +400,20 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
 
                 // Cancel button to stop slow searches
                 binding.searchCancelButton.setOnClickListener {
+                    // Same reason the watchdog bumps it: cancelling doesn't stop a blocked
+                    // extension, so this search can still come back and repopulate the sheet the
+                    // user just cleared.
+                    searchGeneration++
                     searchJob?.cancel()
                     searchWatchdog?.let { _binding?.searchProgress?.removeCallbacks(it) }
                     searchWatchdog = null
                     searchJob = null
                     _binding?.searchProgressContainer?.visibility = View.GONE
-                    _binding?.searchRecyclerView?.visibility = View.VISIBLE
+                    _binding?.searchRecyclerView?.visibility = View.GONE
                     _binding?.searchRecyclerView?.adapter = null
+                    _binding?.searchEmptyState?.showNoResults(
+                        getString(R.string.search_cancelled)
+                    )
                 }
                 // end icon is used as dropdown trigger; searching is done via IME or the search end icon inside TextInputLayout if desired
             }

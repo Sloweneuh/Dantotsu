@@ -581,6 +581,7 @@
     <string name="clear">Clear</string>
     <string name="searching">Searching…</string>
     <string name="search_timeout">Search timed out. This source may be slow on your network.</string>
+    <string name="search_cancelled">Search cancelled.</string>
     <string name="edit">Edit</string>
     <string name="publish">Publish</string>
     <string name="reply_hint">Write a response…</string>
