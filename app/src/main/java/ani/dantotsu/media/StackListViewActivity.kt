@@ -22,8 +22,10 @@ class StackListViewActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMediaListViewBinding
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityMediaListViewBinding.inflate(layoutInflater)
+        // Theme first — this screen shares its layout (and so its `?attr/` colours) with
+        // [MediaListViewActivity]; see the note there.
         ThemeManager(this).applyTheme()
+        binding = ActivityMediaListViewBinding.inflate(layoutInflater)
         initActivity(this)
 
         if (!PrefManager.getVal<Boolean>(PrefName.ImmersiveMode)) {

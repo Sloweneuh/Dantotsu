@@ -65,8 +65,13 @@ class MediaListViewActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityMediaListViewBinding.inflate(layoutInflater)
+        // Before inflating, not after. Every `?attr/` in the layout is resolved as the views are
+        // created, so a theme applied afterwards arrives too late for any of them: the spinner's
+        // colorPrimary tint came from the manifest's stock Theme.Dantotsu rather than whichever
+        // theme the user picked, while the title right above it — coloured in code further down,
+        // by which point setTheme has run — used the real one.
         ThemeManager(this).applyTheme()
+        binding = ActivityMediaListViewBinding.inflate(layoutInflater)
         initActivity(this)
         if (!PrefManager.getVal<Boolean>(PrefName.ImmersiveMode)) {
             this.window.statusBarColor =
