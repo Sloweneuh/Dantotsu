@@ -6,6 +6,7 @@ import ani.dantotsu.connections.sync.SyncConflictNotice
 import ani.dantotsu.connections.sync.SyncLinkNotice
 import ani.dantotsu.connections.sync.SyncReloadNotice
 import ani.dantotsu.settings.ExtensionUpdateNotice
+import ani.dantotsu.settings.SettingsBackupSyncActivity
 
 /**
  * Decides which pending [TopBanner] gets the screen.
@@ -38,6 +39,21 @@ object AppNotices {
         "ani.dantotsu.media.anime.ExoplayerView",
         "ani.dantotsu.media.manga.mangareader.MangaReaderActivity",
         "ani.dantotsu.media.novel.novelreader.NovelReaderActivity",
+    )
+
+    /**
+     * Where a notice's action would take the user, for the notices that lead somewhere.
+     *
+     * A banner offering to open the screen they are already looking at says nothing — and the sync
+     * one says less than nothing, since it lands on top of the very rows it is pointing at.
+     *
+     * Suppressed rather than dismissed: the notice is still pending and still true, so it comes back
+     * as soon as the user is somewhere the offer means something again. Held as a class rather than
+     * a class name (unlike [IMMERSIVE], which names screens this package would otherwise have no
+     * reason to know) because this one is a screen the notice itself already depends on.
+     */
+    private val REDUNDANT_ON: Map<String, Class<*>> = mapOf(
+        SyncLinkNotice.ID to SettingsBackupSyncActivity::class.java,
     )
 
     /** Every notice, paired with whether it currently has anything to say. */
@@ -93,9 +109,15 @@ object AppNotices {
         }
     }
 
-    /** Re-showing the banner already on screen would restart its entrance animation for nothing. */
+    /**
+     * Re-showing the banner already on *this* screen would restart its entrance animation for
+     * nothing. On any other screen it has to be raised again: the card belongs to the activity it
+     * was added to, so a rotation or a move to another screen leaves the notice with nowhere to be
+     * — see [TopBanner.isShowingIn], which is the difference between "raised" and "visible here".
+     */
     private inline fun show(activity: Activity, id: String, block: () -> Unit) {
-        if (TopBanner.isShowing(id)) return
+        if (REDUNDANT_ON[id] == activity.javaClass) return
+        if (TopBanner.isShowingIn(activity, id)) return
         block()
     }
 }

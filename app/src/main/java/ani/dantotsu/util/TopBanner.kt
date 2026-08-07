@@ -61,7 +61,26 @@ object TopBanner {
     private var shownCard: WeakReference<View>? = null
     private var shownParent: WeakReference<ViewGroup>? = null
 
+    /** Whether this notice has been raised and not yet taken down, wherever its card ended up. */
     fun isShowing(id: String): Boolean = showingId == id
+
+    /**
+     * Whether this notice's card is on [activity]'s screen — the question a caller deciding whether
+     * to show it has to ask.
+     *
+     * Not the same question as [isShowing], and the difference is the whole point: the card is added
+     * to one activity's content root, while this object outlives every activity. A rotation destroys
+     * the view and builds a new screen without it; moving to another screen leaves the card behind
+     * on the one before. The id stayed set through both, so the notice read as already-visible and
+     * was skipped — which is how a banner disappeared for good on a rotation, and never followed the
+     * user anywhere despite being built to.
+     */
+    fun isShowingIn(activity: Activity, id: String): Boolean {
+        if (showingId != id) return false
+        val card = shownCard?.get() ?: return false
+        return card.isAttachedToWindow &&
+            card.parent === activity.findViewById<ViewGroup>(android.R.id.content)
+    }
 
     /**
      * Takes down a banner whose subject has stopped being true — sync switched off underneath a
@@ -70,10 +89,14 @@ object TopBanner {
      */
     fun dismiss(id: String) {
         if (showingId != id) return
-        val card = shownCard?.get()
+        // A card belonging to an activity that has since gone away has nothing to animate; drop the
+        // bookkeeping instead, so the next screen isn't told a banner is up that no longer exists.
+        val card = shownCard?.get()?.takeIf { it.isAttachedToWindow }
         val parent = shownParent?.get()
         if (card == null || parent == null) {
             showingId = null
+            shownCard = null
+            shownParent = null
             return
         }
         hide(parent, card) {}
