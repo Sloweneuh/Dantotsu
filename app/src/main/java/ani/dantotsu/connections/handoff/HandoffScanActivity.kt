@@ -16,6 +16,7 @@ import androidx.core.view.isVisible
 import androidx.core.view.updatePadding
 import androidx.lifecycle.lifecycleScope
 import ani.dantotsu.R
+import ani.dantotsu.connections.sync.applyScannedSyncCode
 import ani.dantotsu.databinding.ActivityHandoffScanBinding
 import ani.dantotsu.initActivity
 import ani.dantotsu.loadImage
@@ -43,10 +44,10 @@ class HandoffScanActivity : AppCompatActivity() {
 
     companion object {
         /**
-         * Set on the launching intent to get the decoded string back via `setResult` instead of
-         * the media-handoff flow, and read back off the result intent under the same name.
+         * Set on the launching intent to scan a cloud-sync code instead of a media handoff. The
+         * link is completed here (see [onSyncCodeScanned]); nothing is handed back to the caller.
          */
-        const val EXTRA_RAW_RESULT = "raw_result"
+        const val EXTRA_SYNC_CODE = "sync_code"
     }
 
     private lateinit var binding: ActivityHandoffScanBinding
@@ -106,12 +107,9 @@ class HandoffScanActivity : AppCompatActivity() {
     /** Called on the analysis thread for every decoded QR; ignores non-handoff codes. */
     private fun onScanned(text: String) {
         if (handled) return
-        if (intent.getBooleanExtra(EXTRA_RAW_RESULT, false)) {
-            // Raw mode: the caller wants the scanned string itself, not a media handoff. Used by
-            // cloud sync, whose QR carries the sync code rather than a deep link.
+        if (intent.getBooleanExtra(EXTRA_SYNC_CODE, false)) {
             handled = true
-            setResult(RESULT_OK, android.content.Intent().putExtra(EXTRA_RAW_RESULT, text))
-            runOnUiThread { finish() }
+            runOnUiThread { onSyncCodeScanned(text) }
             return
         }
         val uri = Uri.parse(text)
@@ -123,6 +121,26 @@ class HandoffScanActivity : AppCompatActivity() {
             // QR's embedded payload if it's unavailable. CloudHandoff callbacks are on the main thread.
             CloudHandoff.fetch(code, consume = false) { full -> showResult(full ?: payload) }
         } else runOnUiThread { showResult(payload) }
+    }
+
+    /**
+     * Links this device with the scanned sync code and confirms it here, rather than handing the
+     * string back to whoever started the scan.
+     *
+     * That used to be an activity result, which quietly decided who could offer scanning at all: a
+     * result contract has to be registered before its activity starts, so only a screen built
+     * around the flow could do it. The setup dialog is also raised from a
+     * [ani.dantotsu.util.TopBanner], which follows the user onto whatever screen they happen to be
+     * on and has nowhere to register anything — so that path silently offered no scan option at
+     * all. Finishing the job in here is what lets any caller offer it with a plain `startActivity`.
+     */
+    private fun onSyncCodeScanned(text: String) {
+        runCatching { cameraProvider?.unbindAll() }
+        if (applyScannedSyncCode(text) { finish() }) return
+        // Not a sync code. The user is most likely still pointing at the wrong QR rather than
+        // finished, so say so (applyScannedSyncCode already has) and keep scanning.
+        handled = false
+        startCamera()
     }
 
     private fun showResult(payload: HandoffPayload) {

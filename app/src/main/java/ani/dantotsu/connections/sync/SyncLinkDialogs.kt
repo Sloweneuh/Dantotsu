@@ -4,10 +4,13 @@ import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.text.format.DateUtils
 import ani.dantotsu.R
 import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.handoff.HandoffQr
+import ani.dantotsu.connections.handoff.HandoffScanActivity
 import ani.dantotsu.databinding.DialogSyncCodeBinding
 import ani.dantotsu.databinding.DialogSyncLinkedBinding
 import ani.dantotsu.databinding.DialogUserAgentBinding
@@ -80,23 +83,40 @@ private fun android.app.AlertDialog.widenToScreen() {
 /**
  * Offers the ways a device with no secret can get one. Creating one makes this device the origin;
  * the other two join an existing set.
- *
- * @param onScan when provided, offered as a shortcut for entering the code by hand. Callers supply
- *   it by launching [ani.dantotsu.connections.handoff.HandoffScanActivity] in raw mode — an
- *   activity result has to be registered before the screen starts, which a dialog can't do for
- *   itself. Devices without a camera (and desktop-class installs generally) simply won't pass one.
  */
-fun Activity.showSyncSetupDialog(onScan: (() -> Unit)? = null, onChanged: () -> Unit) {
+fun Activity.showSyncSetupDialog(onChanged: () -> Unit) {
     customAlertDialog().apply {
         setTitle(R.string.sync_setup_title)
         setMessage(R.string.sync_setup_message)
         setPosButton(R.string.sync_setup_create) { createCode(onChanged) }
-        setNegButton(R.string.sync_setup_enter) { promptForCode(onScan, onChanged) }
+        setNegButton(R.string.sync_setup_enter) { promptForCode(onChanged) }
         show()
     }
 }
 
-/** Applies a code that came back from the scanner. @return whether it was accepted. */
+/**
+ * Starts the scanner as a shortcut for typing the code, or null where there is no camera to do it
+ * with — which leaves the option off the dialog rather than offering something that can only fail.
+ *
+ * The scanner links on its own, so this is a plain `startActivity`. It used to be an activity
+ * result each caller had to register before its screen started, which meant only a screen built
+ * around the flow could offer scanning at all: raised from a [ani.dantotsu.util.TopBanner], on
+ * whatever screen the user happens to be on, the option simply wasn't there.
+ */
+private fun Activity.syncCodeScan(): (() -> Unit)? {
+    if (!packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) return null
+    return {
+        startActivity(
+            Intent(this, HandoffScanActivity::class.java)
+                .putExtra(HandoffScanActivity.EXTRA_SYNC_CODE, true)
+        )
+    }
+}
+
+/**
+ * Links with a scanned code. Called by the scanner itself rather than by whoever started it — see
+ * [syncCodeScan]. @return whether the code was accepted.
+ */
 fun Activity.applyScannedSyncCode(scanned: String?, onChanged: () -> Unit): Boolean {
     if (scanned == null || !SyncIdentity.linkWithCode(scanned)) {
         toast(getString(R.string.sync_code_invalid))
@@ -147,7 +167,7 @@ private fun Activity.showSyncCodeDialogThen(onChanged: () -> Unit) {
     })
 }
 
-private fun Activity.promptForCode(onScan: (() -> Unit)?, onChanged: () -> Unit) {
+private fun Activity.promptForCode(onChanged: () -> Unit) {
     val binding = DialogUserAgentBinding.inflate(layoutInflater)
     binding.userAgentTextBox.apply {
         hint = getString(R.string.sync_code_hint)
@@ -160,7 +180,7 @@ private fun Activity.promptForCode(onScan: (() -> Unit)?, onChanged: () -> Unit)
         setTitle(R.string.sync_setup_enter)
         setMessage(R.string.sync_code_enter_hint)
         setCustomView(binding.root)
-        onScan?.let { setNeutralButton(R.string.sync_code_scan) { it() } }
+        syncCodeScan()?.let { scan -> setNeutralButton(R.string.sync_code_scan) { scan() } }
         setPosButton(R.string.ok) {
             val entered = binding.userAgentTextBox.text?.toString().orEmpty()
             if (SyncIdentity.linkWithCode(entered)) {

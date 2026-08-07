@@ -19,11 +19,8 @@ import androidx.documentfile.provider.DocumentFile
 import androidx.recyclerview.widget.LinearLayoutManager
 import ani.dantotsu.R
 import ani.dantotsu.connections.anilist.Anilist
-import android.content.Intent
-import ani.dantotsu.connections.handoff.HandoffScanActivity
 import ani.dantotsu.connections.sync.CloudSync
 import ani.dantotsu.connections.sync.CloudWipe
-import ani.dantotsu.connections.sync.applyScannedSyncCode
 import ani.dantotsu.connections.sync.ExtensionSettingsStore
 import ani.dantotsu.connections.sync.ExtensionSettingsSync
 import ani.dantotsu.connections.sync.ExtensionSync
@@ -76,26 +73,16 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
     private var settingsAdapter: SettingsAdapter? = null
 
     /**
-     * Scanning another device's sync-code QR. Registered here rather than in the dialog that offers
-     * it: an activity result contract has to exist before the screen starts, which a dialog raised
-     * from a click handler is far too late to do.
+     * The link state this screen was drawn against. Linking can now complete somewhere else —
+     * scanning a code links inside the scanner, so that it can be offered from a banner on any
+     * screen — and this one describes the state in almost every row, so coming back to a stale
+     * copy of it would show a device that is linked still being offered setup.
      */
-    private val scanSyncCode =
-        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            if (result.resultCode != RESULT_OK) return@registerForActivityResult
-            val scanned = result.data?.getStringExtra(HandoffScanActivity.EXTRA_RAW_RESULT)
-            // recreate() belongs inside the callback, not after the call: applyScannedSyncCode
-            // returns as soon as linking succeeds, well before the async migration and the
-            // linked-confirmation dialog it shows — recreating right after that return raced the
-            // dialog and tore the activity down before it could appear.
-            applyScannedSyncCode(scanned) { recreate() }
-        }
+    private var drawnAsLinked = false
 
-    private fun launchSyncCodeScan() {
-        scanSyncCode.launch(
-            Intent(this, HandoffScanActivity::class.java)
-                .putExtra(HandoffScanActivity.EXTRA_RAW_RESULT, true)
-        )
+    override fun onResume() {
+        super.onResume()
+        if (SyncIdentity.isLinked() != drawnAsLinked) recreate()
     }
 
     override fun attachBaseContext(newBase: Context?) {
@@ -169,8 +156,10 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
 
         // Nothing below the sync-code row can do anything without the secret — the nodes are named
         // from it — so they're greyed out rather than left tappable and silently inert. Captured
-        // once because every path that changes it recreates this screen.
+        // once because every path that changes it recreates this screen; [onResume] covers the one
+        // that changes it on another screen.
         val linked = SyncIdentity.isLinked()
+        drawnAsLinked = linked
 
         // Cloud sync is AniList + Firebase end to end, so every row below "Backup & Restore" is
         // meaningless (and non-functional) offline — the same reasoning SettingsActivity already
@@ -220,7 +209,7 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                     } else if (linked) {
                         showSyncCodeDialog(onChanged = { recreate() })
                     } else {
-                        showSyncSetupDialog(onScan = { launchSyncCodeScan() }) { recreate() }
+                        showSyncSetupDialog { recreate() }
                     }
                 },
             ),
