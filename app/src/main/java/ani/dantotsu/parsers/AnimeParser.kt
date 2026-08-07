@@ -6,7 +6,6 @@ import ani.dantotsu.R
 import ani.dantotsu.asyncMap
 import ani.dantotsu.currContext
 import ani.dantotsu.others.MalSyncBackup
-import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.tryWithSuspend
 import eu.kanade.tachiyomi.animesource.model.SAnime
 import eu.kanade.tachiyomi.animesource.model.SEpisode
@@ -179,11 +178,7 @@ abstract class AnimeParser : BaseParser() {
     override suspend fun loadSavedShowResponse(mediaId: Int): ShowResponse? {
         checkIfVariablesAreEmpty()
         val dub = if (isDubAvailableSeparately()) "_${if (selectDub) "dub" else "sub"}" else ""
-        var loaded = PrefManager.getNullableCustomVal(
-            "${saveName}${dub}_$mediaId",
-            null,
-            ShowResponse::class.java
-        )
+        var loaded = SavedShowResponse.load(mediaId, saveName, dub)
         if (loaded == null && malSyncBackupName.isNotEmpty())
             loaded = MalSyncBackup.get(mediaId, malSyncBackupName, selectDub)
                 ?.also { saveShowResponse(mediaId, it, true) }
@@ -201,10 +196,9 @@ abstract class AnimeParser : BaseParser() {
                 } : ${response.name}"
             )
             val dub = if (isDubAvailableSeparately()) "_${if (selectDub) "dub" else "sub"}" else ""
-            val key = "${saveName}${dub}_$mediaId"
             // Run on IO dispatcher for thread safety
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                PrefManager.setCustomVal(key, response)
+                SavedShowResponse.save(mediaId, saveName, response, dub)
             }
         }
     }

@@ -5,7 +5,6 @@ import ani.dantotsu.FileUrl
 import ani.dantotsu.R
 import ani.dantotsu.currContext
 import ani.dantotsu.media.Media
-import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.util.Logger
 import eu.kanade.tachiyomi.animesource.model.SAnime
 import eu.kanade.tachiyomi.source.model.SManga
@@ -230,12 +229,7 @@ abstract class BaseParser {
      */
     open suspend fun loadSavedShowResponse(mediaId: Int): ShowResponse? {
         checkIfVariablesAreEmpty()
-        val key = "${saveName}_$mediaId"
-        return PrefManager.getNullableCustomVal(
-            key,
-            null,
-            ShowResponse::class.java
-        )
+        return SavedShowResponse.load(mediaId, saveName)
     }
 
     /**
@@ -246,7 +240,6 @@ abstract class BaseParser {
      */
     open suspend fun saveShowResponse(mediaId: Int, response: ShowResponse?, selected: Boolean = false) {
         checkIfVariablesAreEmpty()
-        val key = "${saveName}_$mediaId"
         if (response != null) {
             setUserText(
                 "${
@@ -257,7 +250,7 @@ abstract class BaseParser {
             )
             // Run on IO dispatcher for thread safety
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                PrefManager.setCustomVal(key, response)
+                SavedShowResponse.save(mediaId, saveName, response)
             }
         }
     }

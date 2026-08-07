@@ -1,5 +1,6 @@
 package ani.dantotsu.connections.sync
 
+import ani.dantotsu.parsers.SavedShowResponse
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.util.Logger
@@ -16,6 +17,13 @@ import kotlinx.coroutines.launch
  *  - the user's per-media choices: which source is selected (`SelectedSource-<id>`, plus the
  *    `Selected-<id>` blob holding language/scanlators/dub preference), and the per-media lookups
  *    `comick_slug_<id>` / `subLang_<id>`
+ *  - which entry on that source the media was matched to (`ShowResponse-<id>-<extension>`, see
+ *    [ani.dantotsu.parsers.SavedShowResponse]) — without it the other device knows the extension
+ *    but still has to re-search and re-pick the series by hand
+ *
+ * All of it keys off the media id alone, so MangaUpdates series — which enter the reader as a
+ * synthetic [ani.dantotsu.media.Media] built from the MU id — are carried by the same code as
+ * AniList ones, under their own ids.
  *
  * These all live as custom vals (see e.g. `ExoplayerView`, `MangaReaderActivity`,
  * `MediaDetailsViewModel`), i.e. in [ani.dantotsu.settings.saving.internal.Location.Irrelevant].
@@ -44,12 +52,27 @@ object ProgressSync {
     // Per-media user choices, keyed with the id as a suffix instead of a prefix.
     private val SELECTION_RE = Regex("""^(?:Selected|SelectedSource|comick_slug|subLang)[-_](\d+)$""")
 
+    // The entry an extension was matched to, one per extension the media was searched on. The
+    // trailing part is a free-form extension name, which is exactly why the id comes first.
+    private val SHOW_RE = Regex("""^${SavedShowResponse.PREFIX}-(\d+)-.+$""")
+
+    /** The families above, kept apart so a pull only prunes within one it can see (see [applyMedia]). */
+    private enum class Kind { PROGRESS, SELECTION, SHOW }
+
+    private fun kindOf(key: String): Kind? = when {
+        PROGRESS_RE.matches(key) -> Kind.PROGRESS
+        SELECTION_RE.matches(key) -> Kind.SELECTION
+        SHOW_RE.matches(key) -> Kind.SHOW
+        else -> null
+    }
+
     /**
      * The media id a custom-val key belongs to, or null if it isn't per-media syncable state.
      * Positive ids only — extension-only media with id < 0 can't be re-resolved on another device.
      */
     private fun mediaIdOf(key: String): String? =
-        (PROGRESS_RE.matchEntire(key) ?: SELECTION_RE.matchEntire(key))?.groupValues?.get(1)
+        (PROGRESS_RE.matchEntire(key) ?: SELECTION_RE.matchEntire(key)
+            ?: SHOW_RE.matchEntire(key))?.groupValues?.get(1)
 
     private val gson = Gson()
     private val stateType = object : TypeToken<Map<String, MediaState>>() {}.type
@@ -102,17 +125,14 @@ object ProgressSync {
     ) {
         // Prune per category, and only when the cloud copy actually carries that category. A node
         // last written by a build that synced progress but not selections holds progress keys only
-        // — pruning against it wholesale would delete the very selections we're here to sync.
-        val remoteHasProgress = data.keys.any { PROGRESS_RE.matches(it) }
-        val remoteHasSelection = data.keys.any { SELECTION_RE.matches(it) }
+        // — pruning against it wholesale would delete the very selections we're here to sync. Which
+        // is also why each new family gets a [Kind] of its own rather than joining an existing one:
+        // a peer still on the older build keeps writing the categories it knows, and a payload that
+        // was never going to mention extension matches must not be read as "there are none".
+        val remoteKinds = data.keys.mapNotNullTo(mutableSetOf()) { kindOf(it) }
         localKeys.forEach { key ->
             if (key in data) return@forEach
-            val prunable = when {
-                PROGRESS_RE.matches(key) -> remoteHasProgress
-                SELECTION_RE.matches(key) -> remoteHasSelection
-                else -> false
-            }
-            if (prunable) removes += key
+            if (kindOf(key) in remoteKinds) removes += key
         }
         data.forEach { (key, tv) ->
             val type = tv["type"] as? String

@@ -5,6 +5,7 @@ import ani.dantotsu.parsers.AnimeSources
 import ani.dantotsu.parsers.DynamicAnimeParser
 import ani.dantotsu.parsers.DynamicMangaParser
 import ani.dantotsu.parsers.MangaSources
+import ani.dantotsu.parsers.SavedShowResponse
 import ani.dantotsu.parsers.ShowResponse
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
@@ -46,7 +47,7 @@ object ExtensionMediaLinker {
             coverUrl = sManga.thumbnail_url ?: "",
             sManga = sManga,
         )
-        PrefManager.setCustomVal("${ext.name}_$mediaId", response)
+        SavedShowResponse.save(mediaId, ext.name, response)
         return true
     }
 
@@ -79,7 +80,7 @@ object ExtensionMediaLinker {
             coverUrl = sAnime.thumbnail_url ?: "",
             sAnime = sAnime,
         )
-        PrefManager.setCustomVal("${ext.name}_$mediaId", response)
+        SavedShowResponse.save(mediaId, ext.name, response)
         return true
     }
 }
