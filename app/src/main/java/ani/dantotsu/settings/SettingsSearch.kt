@@ -79,7 +79,10 @@ object SettingsSearch {
     private val IC_UI = R.drawable.ic_round_auto_awesome_24
     private val IC_BACKUP = R.drawable.backup_restore
     private val IC_DOWNLOAD = R.drawable.ic_download_24
-    private val IC_LOCK = R.drawable.ic_round_lock_24
+    // Named for the one row it belongs to rather than for the padlock it used to be: a plain lock is
+    // also the player's screen lock and the private-activity marker, and this is neither.
+    private val IC_SYNC_CODE = R.drawable.ic_round_cloud_lock_24
+    private val IC_CLOUD_SYNC = R.drawable.ic_round_cloud_sync_24
     private val IC_DELETE = R.drawable.ic_round_delete_24
 
     val index: List<SearchableSetting> by lazy { buildIndex() }
@@ -166,8 +169,8 @@ object SettingsSearch {
 
         // ---- Backup & sync ----
         l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.backup_restore, R.string.backup_sync, IC_BACKUP, R.string.backup_restore_desc, keywords = "export import")
-        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.cloud_sync, R.string.backup_sync, IC_BACKUP, R.string.cloud_sync_desc, keywords = "anilist cloud sync devices firebase", requiresOnline = true)
-        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.sync_code_title, R.string.backup_sync, IC_LOCK, R.string.sync_code_desc, keywords = "sync code key link pair connect add device qr scan encrypt encryption secure private", requiresOnline = true)
+        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.cloud_sync, R.string.backup_sync, IC_CLOUD_SYNC, R.string.cloud_sync_desc, keywords = "anilist cloud sync devices firebase", requiresOnline = true)
+        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.sync_code_title, R.string.backup_sync, IC_SYNC_CODE, R.string.sync_code_desc, keywords = "sync code key link pair connect add device qr scan encrypt encryption secure private", requiresOnline = true)
         // Described by what it does rather than by the row's live subtitle ("Last synced 3 minutes
         // ago"), which tells someone searching nothing about what they'd be tapping.
         l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.cloud_sync_now, R.string.backup_sync, IC_BACKUP, R.string.cloud_sync_now_desc, keywords = "cloud sync upload download last synced", requiresOnline = true)

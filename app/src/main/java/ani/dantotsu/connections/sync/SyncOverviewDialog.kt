@@ -2,6 +2,7 @@ package ani.dantotsu.connections.sync
 
 import android.app.Activity
 import android.text.format.DateUtils
+import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.LinearLayout
@@ -13,6 +14,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.LifecycleOwner
 import ani.dantotsu.R
 import ani.dantotsu.navBarHeight
+import ani.dantotsu.util.setLeadingIcon
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.color.MaterialColors
 import kotlinx.coroutines.launch
@@ -28,6 +30,9 @@ fun Activity.showSyncOverviewDialog() {
     val dp = resources.displayMetrics.density
     val onBg = MaterialColors.getColor(
         findViewById(android.R.id.content), com.google.android.material.R.attr.colorOnBackground
+    )
+    val error = MaterialColors.getColor(
+        findViewById(android.R.id.content), com.google.android.material.R.attr.colorError
     )
 
     val container = LinearLayout(this).apply {
@@ -49,6 +54,32 @@ fun Activity.showSyncOverviewDialog() {
             this.alpha = alpha
             setPadding(0, (topGap * dp).toInt(), 0, (2 * dp).toInt())
         }
+
+    /** [setLeadingIcon], in the chaining shape the views here are built in. */
+    fun AppCompatTextView.withIcon(res: Int, size: Float, tint: Int) =
+        apply { setLeadingIcon(res, size, tint) }
+
+    /**
+     * A module's name, tagged when that module is the one waiting on the user.
+     *
+     * The tag sits on the label rather than under the two value lines because those describe what
+     * each side holds, and a stalled module's values are unremarkable — the point is which module
+     * the user has to go and settle.
+     */
+    fun moduleLabel(module: SyncOverview.Module, topGap: Int) = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        setPadding(0, (topGap * dp).toInt(), 0, 0)
+        addView(title(getString(module.nameRes), 15f, true, 1f))
+        if (module.conflict) addView(
+            title(getString(R.string.cloud_sync_conflict_label), 12f, true, 1f)
+                .withIcon(R.drawable.ic_round_cloud_alert_24, 14f, error)
+                .apply {
+                    setTextColor(error)
+                    setPadding((8 * dp).toInt(), 0, 0, (2 * dp).toInt())
+                }
+        )
+    }
 
     container.addView(title(getString(R.string.cloud_sync_details), 18f, true, 1f))
     container.addView(View(this).apply {
@@ -88,15 +119,18 @@ fun Activity.showSyncOverviewDialog() {
             return@launch
         }
         modules.forEachIndexed { i, module ->
-            body.addView(title(getString(module.nameRes), 15f, true, 1f, topGap = if (i == 0) 0 else 14))
+            body.addView(moduleLabel(module, topGap = if (i == 0) 0 else 14))
+            // Which side each line is describing was carried by the words alone, so the two read as
+            // one paragraph of timestamps; the icons make the local/cloud split scannable.
             body.addView(
                 title(
                     getString(R.string.cloud_sync_this_device, describeLocal(module)),
                     13f, false, 0.66f
-                )
+                ).withIcon(R.drawable.ic_round_devices_24, 15f, onBg)
             )
             body.addView(
                 title(getString(R.string.cloud_sync_in_cloud, describeCloud(module)), 13f, false, 0.66f)
+                    .withIcon(R.drawable.ic_round_cloud_24, 15f, onBg)
             )
         }
     }

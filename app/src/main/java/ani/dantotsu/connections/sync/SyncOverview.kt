@@ -30,6 +30,14 @@ object SyncOverview {
         /** Which device last wrote the cloud copy, where the node records it. */
         val cloudDevice: String? = null,
         val cloudDetail: String? = null,
+        /**
+         * This module is waiting on the user and has stopped syncing until it gets an answer.
+         *
+         * Worth carrying per module rather than leaving to the screens that already raise it: the
+         * two sides of a stalled module look normal on their own — a local time, a cloud time — and
+         * the panel that exists to explain a quiet sync was showing the stall as an ordinary gap.
+         */
+        val conflict: Boolean = false,
     )
 
     /**
@@ -47,6 +55,7 @@ object SyncOverview {
                 localTs = CloudSync.lastSyncedAt().takeIf { it > 0 },
                 cloudTs = settingsCloud?.ts,
                 cloudDevice = settingsCloud?.device,
+                conflict = SyncConflictNotice.isPending(),
             ),
             Module(
                 nameRes = R.string.sync_module_progress,
@@ -61,6 +70,10 @@ object SyncOverview {
                 // Not a gap in the bookkeeping — this one diverges by content, never by date.
                 localNoteRes = R.string.sync_compared_by_content,
                 cloudTs = cloudTs("extensions"),
+                // The same kind of stall as the settings one, reached differently: nothing can
+                // install or remove an extension on the user's behalf, so an unreconciled
+                // difference is a module that has stopped until they decide.
+                conflict = ExtensionSyncNotice.isPending(),
             ),
             Module(
                 nameRes = R.string.sync_module_extension_settings,

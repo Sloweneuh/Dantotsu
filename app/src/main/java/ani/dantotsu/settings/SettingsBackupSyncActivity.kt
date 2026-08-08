@@ -5,13 +5,16 @@ import android.app.AlarmManager
 import android.app.AlertDialog
 import android.content.Context
 import android.content.pm.PackageManager
+import android.content.res.ColorStateList
 import android.os.Build
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.EditorInfo
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.updateLayoutParams
@@ -35,6 +38,7 @@ import ani.dantotsu.connections.sync.showSyncOverviewDialog
 import ani.dantotsu.connections.sync.showSyncSetupDialog
 import ani.dantotsu.databinding.ActivitySettingsBackupSyncBinding
 import ani.dantotsu.databinding.DialogUserAgentBinding
+import ani.dantotsu.getThemeColor
 import ani.dantotsu.initActivity
 import ani.dantotsu.isOnline
 import ani.dantotsu.navBarHeight
@@ -80,6 +84,16 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
      * copy of it would show a device that is linked still being offered setup.
      */
     private var drawnAsLinked = false
+
+    /**
+     * What the cloud currently holds, once it has been read. Held rather than written straight into
+     * the row because the row's description is rebuilt from several sources — a conflict, the local
+     * timestamp, this — and anything not kept would be dropped by the next rebuild.
+     */
+    private var cloudLine: String? = null
+
+    /** Whether the "Sync now" row is currently drawn as conflicted, so it's only redrawn on change. */
+    private var conflictShown = false
 
     override fun onResume() {
         super.onResume()
@@ -183,7 +197,10 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                 type = 2,
                 name = getString(R.string.cloud_sync),
                 desc = getString(R.string.cloud_sync_desc),
-                icon = R.drawable.ic_round_sync_24,
+                // Not the plain sync glyph the row below it uses: the toggle is the feature and that
+                // one is a single action, and sharing an icon made two rows that mean quite
+                // different things indistinguishable at a glance.
+                icon = R.drawable.ic_round_cloud_sync_24,
                 isEnabled = linked,
                 isChecked = PrefManager.getVal(PrefName.CloudSyncEnabled),
                 switch = { isChecked, _ ->
@@ -203,7 +220,10 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                 desc = getString(
                     if (linked) R.string.sync_code_desc else R.string.sync_code_desc_unlinked
                 ),
-                icon = R.drawable.ic_round_lock_24,
+                // A plain padlock already means the player's screen lock and a private activity
+                // elsewhere in the app; this one is specifically the key the cloud nodes are named
+                // from, and says so.
+                icon = R.drawable.ic_round_cloud_lock_24,
                 onClick = {
                     if (Anilist.token.isNullOrEmpty()) {
                         toast(getString(R.string.cloud_sync_no_account))
@@ -223,10 +243,28 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                 // bare "last synced" was taken to cover all five — so a device that had been
                 // uploading progress all day looked like one that hadn't synced since morning.
                 // The icon beside it opens the per-module breakdown.
-                desc = lastSyncedLine(),
+                desc = syncNowDesc(),
                 icon = R.drawable.ic_round_sync_24,
                 isEnabled = linked,
                 attach = { b ->
+                    // A conflict is the one sync state this screen has to answer for, and until now
+                    // the screen that exists to explain sync was the only place that didn't show it:
+                    // the settings dialog's cloud dot did, the banner did, and this row went on
+                    // reporting a timestamp as though nothing were waiting. Set here rather than
+                    // through `icon` so it re-evaluates on every bind, which is what lets the row
+                    // follow a conflict raised or settled while the screen is open.
+                    val conflict = SyncConflictNotice.isPending()
+                    b.settingsIcon.setImageResource(
+                        if (conflict) R.drawable.ic_round_cloud_alert_24
+                        else R.drawable.ic_round_sync_24
+                    )
+                    b.settingsIcon.imageTintList = ColorStateList.valueOf(
+                        getThemeColor(
+                            if (conflict) com.google.android.material.R.attr.colorError
+                            else com.google.android.material.R.attr.colorPrimary
+                        )
+                    )
+
                     // Only while there is something to break down. `isEnabled` above doesn't reach
                     // this: the icon is a separate view with its own click listener, so a row the
                     // adapter had dimmed and made unclickable still opened the breakdown here — of
@@ -495,11 +533,53 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
         binding.backupSyncRecyclerView.adapter = adapter
         refreshCloudInfo()
         binding.backupSyncRecyclerView.layoutManager = LinearLayoutManager(this)
+        observeConflict()
+    }
+
+    /**
+     * Keeps the "Sync now" row honest while the screen is open.
+     *
+     * A conflict is found by a background pull, which can land at any time — including while this
+     * screen is the one on top — and can be settled from the banner sitting over it. Drawing the row
+     * once at creation meant whichever happened second was never shown.
+     *
+     * Only redrawn when the conflict itself changes: [SyncStatus] also emits for every push and pull
+     * the five modules run, and rebinding the row on each would restart its item animation, and the
+     * spinner a manual sync puts on it, for a state it doesn't display.
+     */
+    private fun observeConflict() {
+        conflictShown = SyncConflictNotice.isPending()
+        SyncStatus.refresh()
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                SyncStatus.state.collect {
+                    val conflict = SyncConflictNotice.isPending()
+                    if (conflict != conflictShown) {
+                        conflictShown = conflict
+                        refreshSyncNowRow()
+                    }
+                }
+            }
+        }
     }
 
     @OptIn(DelicateCoroutinesApi::class)
     private fun showConflictDialog(conflict: CloudSync.SyncOutcome.Conflict) =
         showCloudSyncConflictDialog(conflict) { applyRestore() }
+
+    /**
+     * The "Sync now" row's description: the conflict, if there is one, then when this device last
+     * agreed with the cloud, then what the cloud currently holds.
+     *
+     * The conflict line goes first because it is the only one that asks for something — the other
+     * two describe. A divergence hidden behind a timestamp reads as a device that simply hasn't
+     * synced in a while, which is exactly the wrong conclusion: it isn't going to.
+     */
+    private fun syncNowDesc(): String = listOfNotNull(
+        getString(R.string.cloud_sync_conflict_pending).takeIf { SyncConflictNotice.isPending() },
+        lastSyncedLine(),
+        cloudLine,
+    ).joinToString("\n")
 
     /** "Last synced 3 minutes ago", or an invitation when it never has. */
     private fun lastSyncedLine(): String {
@@ -533,14 +613,21 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
      * current after the very action that replaced them.
      */
     private fun refreshCloudInfo() {
+        cloudLine = null
+        refreshSyncNowRow()
+        loadCloudInfo()
+    }
+
+    /** Re-describes and re-draws the "Sync now" row from whatever is currently true. */
+    private fun refreshSyncNowRow() {
         val items = settingsItems ?: return
         val adapter = settingsAdapter ?: return
         val index = items.indexOfFirst { it.name == getString(R.string.cloud_sync_now) }
-        if (index >= 0) {
-            items[index] = items[index].copy(desc = lastSyncedLine())
-            adapter.notifyItemChanged(index)
-        }
-        loadCloudInfoInto(items, adapter)
+        if (index < 0) return
+        conflictShown = SyncConflictNotice.isPending()
+        items[index] = items[index].copy(desc = syncNowDesc())
+        // The row's icon is set from its `attach`, so re-binding is what re-evaluates it too.
+        adapter.notifyItemChanged(index)
     }
 
     /**
@@ -562,23 +649,20 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
         refreshCloudInfo()
     }
 
-    private fun loadCloudInfoInto(items: MutableList<Settings>, adapter: SettingsAdapter) {
+    private fun loadCloudInfo() {
         if (!SyncIdentity.isLinked()) return
         lifecycleScope.launch(Dispatchers.IO) {
             val info = runCatching { CloudSync.cloudInfo() }.getOrNull() ?: return@launch
             withContext(Dispatchers.Main) {
                 if (isFinishing || isDestroyed) return@withContext
-                val index = items.indexOfFirst { it.name == getString(R.string.cloud_sync_now) }
-                if (index < 0) return@withContext
-                val cloudLine = if (info.device.isNullOrBlank()) {
+                cloudLine = if (info.device.isNullOrBlank()) {
                     getString(R.string.cloud_sync_cloud_copy, relativeTime(info.ts))
                 } else {
                     getString(
                         R.string.cloud_sync_cloud_copy_device, relativeTime(info.ts), info.device
                     )
                 }
-                items[index] = items[index].copy(desc = "${lastSyncedLine()}\n$cloudLine")
-                adapter.notifyItemChanged(index)
+                refreshSyncNowRow()
             }
         }
     }

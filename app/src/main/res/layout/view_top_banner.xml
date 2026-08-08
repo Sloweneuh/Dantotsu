@@ -15,10 +15,13 @@
         android:orientation="horizontal"
         android:padding="12dp">
 
+        <!-- Tinted rather than left to each drawable's own fill: the notice icons are stock Material
+             vectors filled white, which is invisible on this card's surface in a light theme. -->
         <ImageView
             android:id="@+id/topBannerIcon"
             android:layout_width="32dp"
             android:layout_height="32dp"
+            app:tint="?attr/colorPrimary"
             tools:ignore="ContentDescription"
             tools:src="@drawable/ic_round_sync_24" />
 
@@ -71,7 +74,8 @@
             android:layout_height="36dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/close"
-            android:src="@drawable/ic_round_close_24" />
+            android:src="@drawable/ic_round_close_24"
+            app:tint="?attr/colorOnSurfaceVariant" />
 
     </LinearLayout>
 

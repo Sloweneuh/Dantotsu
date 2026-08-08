@@ -1383,6 +1383,33 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="cloud_sync_merged">Settings merged from both devices</string>
     <string name="cloud_sync_reload_hint">Reload to see them on this screen</string>
     <string name="cloud_sync_conflict_banner">This device and another one both changed settings</string>
+    <string name="cloud_sync_conflict_pending">Sync conflict — tap to review</string>
+    <string name="cloud_sync_conflict_label">Conflict</string>
+    <!-- Names for settings that sync but have no row on the backup screen to borrow a label from.
+         Only the sync conflict prompt shows these, and only when two devices disagree about one. -->
+    <string name="pref_allow_opening_links">Open supported links in the app</string>
+    <string name="pref_ask_download_pdf">Ask before downloading as PDF</string>
+    <string name="pref_discord_show_buttons">Discord: show buttons</string>
+    <string name="pref_discord_status">Discord: online status</string>
+    <string name="pref_hidden_from_lists">Titles hidden from lists</string>
+    <string name="pref_info_tab_order_anime">Info tab order (anime)</string>
+    <string name="pref_info_tab_order_manga">Info tab order (manga)</string>
+    <string name="pref_info_tab_order_mangaupdates">Info tab order (MangaUpdates)</string>
+    <string name="pref_info_tab_visibility_anime">Visible info tabs (anime)</string>
+    <string name="pref_info_tab_visibility_manga">Visible info tabs (manga)</string>
+    <string name="pref_info_tab_visibility_mangaupdates">Visible info tabs (MangaUpdates)</string>
+    <string name="pref_lang_sort">Extension language order</string>
+    <string name="pref_lock_rotation">Reader: lock rotation</string>
+    <string name="pref_make_default">Remember the selected source</string>
+    <string name="pref_malsync_exclude_list">MalSync exclusions</string>
+    <string name="pref_malsync_languages">MalSync language preferences</string>
+    <string name="pref_mu_notifications">MangaUpdates notifications</string>
+    <string name="pref_saved_comick_filters">Saved Comick list filters</string>
+    <string name="pref_saved_mangabaka_filters">Saved MangaBaka filters</string>
+    <string name="pref_search_style">Search results layout</string>
+    <string name="pref_search_style_supporting">Search results layout (characters and staff)</string>
+    <string name="pref_media_view">List layout</string>
+    <string name="pref_stack_show_novels">Show novels in stacks</string>
     <string name="cloud_sync_last_synced">Settings last synced %1$s</string>
     <string name="cloud_sync_cloud_copy">Cloud copy saved %1$s</string>
     <string name="cloud_sync_cloud_copy_device">Cloud copy saved %1$s from %2$s</string>

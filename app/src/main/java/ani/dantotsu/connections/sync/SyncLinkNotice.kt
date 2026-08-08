@@ -116,7 +116,7 @@ object SyncLinkNotice {
 
     fun spec(activity: Activity) = TopBanner.Spec(
         id = ID,
-        iconRes = R.drawable.ic_round_lock_24,
+        iconRes = R.drawable.ic_round_cloud_lock_24,
         title = activity.getString(R.string.sync_relink_title),
         subtitle = activity.getString(R.string.sync_relink_banner_desc),
         actionLabel = activity.getString(R.string.sync_setup_title),

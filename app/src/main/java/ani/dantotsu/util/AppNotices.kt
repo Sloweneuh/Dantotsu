@@ -54,6 +54,7 @@ object AppNotices {
      */
     private val REDUNDANT_ON: Map<String, Class<*>> = mapOf(
         SyncLinkNotice.ID to SettingsBackupSyncActivity::class.java,
+        SyncConflictNotice.ID to SettingsBackupSyncActivity::class.java,
     )
 
     /** Every notice, paired with whether it currently has anything to say. */

@@ -8,6 +8,7 @@ import ani.dantotsu.R
 import ani.dantotsu.connections.sync.SyncMerge
 import ani.dantotsu.databinding.ItemSyncConflictBinding
 import ani.dantotsu.settings.saving.BackupTree
+import ani.dantotsu.util.setLeadingIcon
 
 /**
  * Lists the settings two devices disagree about, one row each, showing what both of them say.
@@ -37,6 +38,11 @@ class SyncConflictAdapter(
         holder.binding.conflictName.text = displayName(ctx, item.key)
         holder.binding.conflictLocalValue.text = displayValue(ctx, item.local)
         holder.binding.conflictRemoteValue.text = displayValue(ctx, item.remote)
+        // The same two icons the sync details sheet uses for the same two sides. Which column is
+        // which was carried by a 10sp all-caps label alone, on a dialog whose whole job is telling
+        // them apart — and the choice underneath it is between exactly these two.
+        holder.binding.conflictLocalLabel.setLeadingIcon(R.drawable.ic_round_devices_24, 12f, gapDp = 4f)
+        holder.binding.conflictRemoteLabel.setLeadingIcon(R.drawable.ic_round_cloud_24, 12f, gapDp = 4f)
     }
 
     companion object {

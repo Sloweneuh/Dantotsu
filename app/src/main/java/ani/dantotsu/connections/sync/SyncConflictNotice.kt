@@ -70,7 +70,7 @@ object SyncConflictNotice {
 
     fun spec(activity: Activity) = TopBanner.Spec(
         id = ID,
-        iconRes = R.drawable.ic_round_sync_24,
+        iconRes = R.drawable.ic_round_cloud_alert_24,
         title = activity.getString(R.string.cloud_sync_conflict_title),
         subtitle = activity.getString(R.string.cloud_sync_conflict_banner),
         actionLabel = activity.getString(R.string.review),

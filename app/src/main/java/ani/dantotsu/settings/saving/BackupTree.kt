@@ -566,5 +566,52 @@ object BackupTree {
         }.toMap()
     }
 
-    fun titleResFor(prefName: String): Int? = titlesByPrefName[prefName]
+    /**
+     * Names for the things cloud sync carries that this tree doesn't.
+     *
+     * A row in the tree is a row on the backup screen — a promise that the setting can be ticked and
+     * included in a `.ani` file — so these can't simply be added there: they are synced but not
+     * backed up, and the two sets have never been the same. What they still need is a name, because
+     * the sync conflict prompt has to say which setting the two devices disagree about, and its
+     * fallback is the stored key with its camel case split into words. That produced rows reading
+     * "Mal Sync Exclude List", "Info Tab Visibility Anilist Anime" and "stack Show Novels", which
+     * name an internal field rather than anything the user has ever seen.
+     *
+     * Keyed by stored name rather than by [PrefName] because three of them have none: they are
+     * written through `setCustomVal`, which takes a bare string.
+     */
+    private val extraTitles: Map<String, Int> = mapOf(
+        PrefName.AllowOpeningLinks.name to R.string.pref_allow_opening_links,
+        PrefName.AskDownloadPdf.name to R.string.pref_ask_download_pdf,
+        PrefName.DiscordShowButtons.name to R.string.pref_discord_show_buttons,
+        PrefName.DiscordStatus.name to R.string.pref_discord_status,
+        PrefName.HandoffDiscoveryEnabled.name to R.string.handoff_discovery_setting,
+        PrefName.HiddenFromLists.name to R.string.pref_hidden_from_lists,
+        PrefName.InfoTabOrderAnilistAnime.name to R.string.pref_info_tab_order_anime,
+        PrefName.InfoTabOrderAnilistManga.name to R.string.pref_info_tab_order_manga,
+        PrefName.InfoTabOrderMangaUpdates.name to R.string.pref_info_tab_order_mangaupdates,
+        PrefName.InfoTabVisibilityAnilistAnime.name to R.string.pref_info_tab_visibility_anime,
+        PrefName.InfoTabVisibilityAnilistManga.name to R.string.pref_info_tab_visibility_manga,
+        PrefName.InfoTabVisibilityMangaUpdates.name to R.string.pref_info_tab_visibility_mangaupdates,
+        PrefName.LangSort.name to R.string.pref_lang_sort,
+        PrefName.LockRotation.name to R.string.pref_lock_rotation,
+        PrefName.MakeDefault.name to R.string.pref_make_default,
+        PrefName.MalSyncExcludeList.name to R.string.pref_malsync_exclude_list,
+        PrefName.MalSyncLanguagePreferences.name to R.string.pref_malsync_languages,
+        // Named "disable_mangabaka" but worded "Enable MangaBaka", which is what the pref stores.
+        PrefName.MangaBakaInfoEnabled.name to R.string.disable_mangabaka,
+        PrefName.MangaDownloadPdf.name to R.string.download_as_pdf,
+        PrefName.MangaUpdatesNotificationInterval.name to R.string.mu_notification_interval_title,
+        PrefName.MangaUpdatesNotificationsEnabled.name to R.string.pref_mu_notifications,
+        PrefName.SavedComickListFilters.name to R.string.pref_saved_comick_filters,
+        PrefName.SavedMangaBakaFilters.name to R.string.pref_saved_mangabaka_filters,
+        PrefName.SearchStyle.name to R.string.pref_search_style,
+        PrefName.SearchStyleSupporting.name to R.string.pref_search_style_supporting,
+        "subscriptions" to R.string.subscriptions,
+        "mediaView" to R.string.pref_media_view,
+        "stackShowNovels" to R.string.pref_stack_show_novels,
+    )
+
+    fun titleResFor(prefName: String): Int? =
+        titlesByPrefName[prefName] ?: extraTitles[prefName]
 }
