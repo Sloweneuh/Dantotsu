@@ -3,4 +3,17 @@
     <!-- View tags used by MaterialButton.setIconSpinning to track a button's running spin. -->
     <item name="spin_animator" type="id" />
     <item name="spin_original_icon" type="id" />
+
+    <!--
+      Stable identifiers for the media-details bottom nav tabs, passed to navBar.createTab.
+
+      These were previously declared by anime_menu_detail, manga_menu_detail and
+      novel_menu_detail — three menus nothing ever inflated, kept alive only because deleting
+      them would have taken these ids with them. Declaring the ids where they belong lets the
+      menus go.
+    -->
+    <item name="info" type="id" />
+    <item name="watch" type="id" />
+    <item name="read" type="id" />
+    <item name="comment" type="id" />
 </resources>
