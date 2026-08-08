@@ -68,15 +68,6 @@
             itself — with minWidth at 0 there is no slack left to absorb it, so the final letter
             gets clipped. Explicit horizontal padding replaces the room the default insets gave. -->
 
-        <ImageButton
-            android:id="@+id/topBannerClose"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/close"
-            android:src="@drawable/ic_round_close_24"
-            app:tint="?attr/colorOnSurfaceVariant" />
-
     </LinearLayout>
 
 </com.google.android.material.card.MaterialCardView>

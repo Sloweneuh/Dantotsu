@@ -38,7 +38,7 @@ object TopBanner {
      * @param id distinguishes what a banner is *about*, so a second showing of the same notice
      *   replaces it rather than stacking, and a different one can tell it isn't its own.
      * @param onAction invoked on the UI thread after the banner animates away; null shows no button.
-     * @param onDismiss invoked when the user closes it without acting.
+     * @param onDismiss invoked when the user swipes it away without acting.
      */
     data class Spec(
         val id: String,
@@ -105,6 +105,14 @@ object TopBanner {
     @SuppressLint("ClickableViewAccessibility")
     fun show(activity: Activity, spec: Spec) {
         val content = activity.findViewById<ViewGroup>(android.R.id.content) ?: return
+        // Whether this notice is already up and is only moving to another screen.
+        //
+        // Following the user means building a new card on every activity change and every rotation,
+        // because the card belongs to the content root it was added to. Sliding it in each time made
+        // one persistent notice look like a notice that fired again on every navigation — the same
+        // repetitive quality this was built to get away from. A carried-over banner is simply
+        // already there, which is what a banner that never left should look like.
+        val carriedOver = showingId == spec.id
         // An activity change leaves the old view behind with its own content root; clear any
         // stale copy from this one before adding.
         content.findViewWithTag<View>(TAG)?.let { content.removeView(it) }
@@ -133,21 +141,24 @@ object TopBanner {
         shownCard = WeakReference(card)
         shownParent = WeakReference(content)
 
-        card.alpha = 0f
-        card.post {
-            card.translationY = -(card.height + side).toFloat()
-            card.animate().translationY(0f).alpha(1f).setDuration(ANIM_MS).start()
+        if (carriedOver) {
+            card.alpha = 1f
+        } else {
+            card.alpha = 0f
+            // Posted because the slide starts from the card's own height, which isn't known until
+            // it has been measured.
+            card.post {
+                card.translationY = -(card.height + side).toFloat()
+                card.animate().translationY(0f).alpha(1f).setDuration(ANIM_MS).start()
+            }
         }
 
         binding.topBannerAction.setOnClickListener {
             hide(content, card) { spec.onAction(activity) }
         }
-        binding.topBannerClose.setOnClickListener {
-            hide(content, card) { spec.onDismiss() }
-        }
 
-        // Flick up, or swipe right, to dismiss. Deliberately no timeout — being missable is the
-        // failure this exists to correct.
+        // Flick up, or swipe right, to dismiss — the only way, now that the close button is gone.
+        // Deliberately no timeout: being missable is the failure this exists to correct.
         val slop = ViewConfiguration.get(activity).scaledTouchSlop
         card.setOnTouchListener(object : View.OnTouchListener {
             private var downX = 0f
@@ -222,9 +233,9 @@ object TopBanner {
         shownParent = null
         val margin = (card.layoutParams as? ViewGroup.MarginLayoutParams)?.topMargin ?: 0
         val animator = card.animate().alpha(0f).setDuration(ANIM_MS)
-        // A swipe dismiss is already moving; finish it in the same direction rather than snapping
-        // back to the default upward exit. A tap dismiss (action/close button, or the programmatic
-        // [dismiss] above) starts centered, so it falls through to the upward exit as before.
+        // A sideways swipe is already moving; finish it in the same direction rather than snapping
+        // back to the default upward exit. Everything else — the action button, an upward flick, the
+        // programmatic [dismiss] above — starts centered and leaves upward as before.
         if (card.translationX > card.width * 0.05f) {
             animator.translationX((card.width + margin).toFloat())
         } else {
