@@ -456,6 +456,14 @@
     <string name="auto_list_sync_removals">Inclure les suppressions</string>
     <string name="auto_list_sync_removals_label">Comparaison automatique : inclure les suppressions</string>
     <string name="auto_list_sync_removals_desc">Supprimer aussi les entrées du tracker absentes des deux listes source. Désactivé par défaut : les exécutions automatiques n\'envoient que les ajouts et les mises à jour</string>
+    <plurals name="interval_seconds">
+        <item quantity="one">%d seconde</item>
+        <item quantity="other">%d secondes</item>
+    </plurals>
+    <plurals name="interval_minutes">
+        <item quantity="one">%d minute</item>
+        <item quantity="other">%d minutes</item>
+    </plurals>
     <plurals name="interval_hours">
         <item quantity="one">%d heure</item>
         <item quantity="other">%d heures</item>

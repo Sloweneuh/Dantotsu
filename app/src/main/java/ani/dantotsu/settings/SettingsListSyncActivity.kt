@@ -20,6 +20,7 @@ import ani.dantotsu.notifications.TaskScheduler
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.themes.ThemeManager
+import ani.dantotsu.util.durationLabel
 import java.text.DateFormat
 import java.util.Date
 
@@ -146,18 +147,8 @@ class SettingsListSyncActivity : AppCompatActivity() {
         popup.show()
     }
 
-    private fun intervalLabel(minutes: Long): String = when {
-        minutes <= 0L -> getString(R.string.do_not_update)
-        minutes % 1440L == 0L -> {
-            val days = (minutes / 1440L).toInt()
-            resources.getQuantityString(R.plurals.interval_days, days, days)
-        }
-
-        else -> {
-            val hours = (minutes / 60L).toInt()
-            resources.getQuantityString(R.plurals.interval_hours, hours, hours)
-        }
-    }
+    private fun intervalLabel(minutes: Long): String =
+        if (minutes <= 0L) getString(R.string.do_not_update) else durationLabel(minutes)
 
     /**
      * The setting's subtitle: what it does, then — once it's on — how often it runs and what the

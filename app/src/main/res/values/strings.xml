@@ -586,6 +586,14 @@
     <!-- Same setting, named for lists that show it away from its screen (backup, sync conflicts). -->
     <string name="auto_list_sync_removals_label">Automatic compare : include removals</string>
     <string name="auto_list_sync_removals_desc">Also delete tracker entries that are in neither source list. Off by default: automatic runs push additions and updates only</string>
+    <plurals name="interval_seconds">
+        <item quantity="one">%d second</item>
+        <item quantity="other">%d seconds</item>
+    </plurals>
+    <plurals name="interval_minutes">
+        <item quantity="one">%d minute</item>
+        <item quantity="other">%d minutes</item>
+    </plurals>
     <plurals name="interval_hours">
         <item quantity="one">%d hour</item>
         <item quantity="other">%d hours</item>
