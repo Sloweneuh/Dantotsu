@@ -55,14 +55,42 @@ object TopBanner {
     private var showingId: String? = null
 
     /**
-     * Weakly held so a banner left on a finished activity can't keep it alive; [dismiss] treats a
-     * collected reference the same as nothing being shown.
+     * Every card this notice has raised, newest last — one per screen it has followed the user onto.
+     *
+     * A list, not a single reference, because a card belongs to the content root it was added to and
+     * following the user means adding another one to the next screen. Tracking only the newest left
+     * the earlier ones attached to activities that were merely paused: dismissing the banner took
+     * down the card in front of the user and none of the others, so going back a screen showed the
+     * notice again, still there and now un-dismissable — its notice was no longer pending, so nothing
+     * would ever raise, and therefore take down, a card for it again.
+     *
+     * Weakly held so a card left on a finished activity can't keep it alive; a collected reference
+     * counts the same as no card.
      */
-    private var shownCard: WeakReference<View>? = null
-    private var shownParent: WeakReference<ViewGroup>? = null
+    private val cards = mutableListOf<WeakReference<View>>()
 
     /** Whether this notice has been raised and not yet taken down, wherever its card ended up. */
     fun isShowing(id: String): Boolean = showingId == id
+
+    /** The newest card still on a screen — the one the user is looking at, the stack being what it is. */
+    private fun liveCard(): View? =
+        cards.asReversed().firstNotNullOfOrNull { it.get()?.takeIf { c -> c.isAttachedToWindow } }
+
+    /**
+     * Detaches every card but [keep] and forgets them.
+     *
+     * Called both when a banner moves to a new screen and when it goes away, so at most one card
+     * exists at a time. The ones being removed are on screens that aren't in front of the user, so
+     * they're taken out flat rather than animated — an animation nobody can see is a race to lose.
+     */
+    private fun removeCardsExcept(keep: View?) {
+        cards.forEach { ref ->
+            val card = ref.get() ?: return@forEach
+            if (card === keep) return@forEach
+            (card.parent as? ViewGroup)?.removeView(card)
+        }
+        cards.retainAll { it.get() === keep && keep != null }
+    }
 
     /**
      * Whether this notice's card is on [activity]'s screen — the question a caller deciding whether
@@ -70,16 +98,18 @@ object TopBanner {
      *
      * Not the same question as [isShowing], and the difference is the whole point: the card is added
      * to one activity's content root, while this object outlives every activity. A rotation destroys
-     * the view and builds a new screen without it; moving to another screen leaves the card behind
-     * on the one before. The id stayed set through both, so the notice read as already-visible and
-     * was skipped — which is how a banner disappeared for good on a rotation, and never followed the
-     * user anywhere despite being built to.
+     * the view and builds a new screen without it, and a move to another screen arrives before that
+     * screen has a card of its own. The id stayed set through both, so the notice read as
+     * already-visible and was skipped — which is how a banner disappeared for good on a rotation, and
+     * never followed the user anywhere despite being built to.
      */
     fun isShowingIn(activity: Activity, id: String): Boolean {
         if (showingId != id) return false
-        val card = shownCard?.get() ?: return false
-        return card.isAttachedToWindow &&
-            card.parent === activity.findViewById<ViewGroup>(android.R.id.content)
+        val content = activity.findViewById<ViewGroup>(android.R.id.content) ?: return false
+        return cards.any { ref ->
+            val card = ref.get() ?: return@any false
+            card.isAttachedToWindow && card.parent === content
+        }
     }
 
     /**
@@ -91,15 +121,13 @@ object TopBanner {
         if (showingId != id) return
         // A card belonging to an activity that has since gone away has nothing to animate; drop the
         // bookkeeping instead, so the next screen isn't told a banner is up that no longer exists.
-        val card = shownCard?.get()?.takeIf { it.isAttachedToWindow }
-        val parent = shownParent?.get()
-        if (card == null || parent == null) {
+        val card = liveCard()
+        if (card == null) {
             showingId = null
-            shownCard = null
-            shownParent = null
+            removeCardsExcept(null)
             return
         }
-        hide(parent, card) {}
+        hide(card) {}
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -138,8 +166,10 @@ object TopBanner {
         ).apply { setMargins(side, statusBarHeight + topClearance, side, 0) }
         content.addView(card)
         showingId = spec.id
-        shownCard = WeakReference(card)
-        shownParent = WeakReference(content)
+        cards.add(WeakReference(card))
+        // The card this one is replacing sits on the screen behind; taking it down here is what
+        // keeps a dismissal from being undone by walking back to where the banner was first raised.
+        removeCardsExcept(card)
 
         if (carriedOver) {
             card.alpha = 1f
@@ -154,7 +184,7 @@ object TopBanner {
         }
 
         binding.topBannerAction.setOnClickListener {
-            hide(content, card) { spec.onAction(activity) }
+            hide(card) { spec.onAction(activity) }
         }
 
         // Flick up, or swipe right, to dismiss — the only way, now that the close button is gone.
@@ -214,7 +244,7 @@ object TopBanner {
                             v.translationX > v.width * 0.3f
                         }
                         if (past) {
-                            hide(content, v) { spec.onDismiss() }
+                            hide(v) { spec.onDismiss() }
                         } else {
                             v.animate().translationX(0f).translationY(0f).alpha(1f)
                                 .setDuration(ANIM_MS).start()
@@ -227,10 +257,11 @@ object TopBanner {
         })
     }
 
-    private fun hide(content: ViewGroup, card: View, onEnd: () -> Unit) {
+    private fun hide(card: View, onEnd: () -> Unit) {
         showingId = null
-        shownCard = null
-        shownParent = null
+        // Every other screen's copy goes now; this one stays until its exit animation has run.
+        removeCardsExcept(card)
+        val parent = card.parent as? ViewGroup
         val margin = (card.layoutParams as? ViewGroup.MarginLayoutParams)?.topMargin ?: 0
         val animator = card.animate().alpha(0f).setDuration(ANIM_MS)
         // A sideways swipe is already moving; finish it in the same direction rather than snapping
@@ -243,7 +274,8 @@ object TopBanner {
         }
         animator
             .withEndAction {
-                content.removeView(card)
+                (card.parent as? ViewGroup ?: parent)?.removeView(card)
+                cards.removeAll { it.get() == null || it.get() === card }
                 onEnd()
             }
             .start()
