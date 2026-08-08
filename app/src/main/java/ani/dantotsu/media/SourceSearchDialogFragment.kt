@@ -295,6 +295,14 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
                         }
                     }
 
+                    // Keep only Latin-script titles and dedupe case-insensitively, preserving
+                    // first-seen order. [seen] is shared with the MALSync pass further down, so a
+                    // title already in the dropdown is never appended a second time.
+                    val seen = linkedSetOf<String>()
+                    fun acceptable(candidates: List<String>): List<String> =
+                        candidates.filter { isLatinOnly(it) }
+                            .filter { seen.add(it.lowercase(java.util.Locale.ROOT)) }
+
                     // Build a deterministic list of candidate titles/synonyms for the dropdown.
                     // Pull every title field available on the Media (AniList english,
                     // userPreferred, romaji and MAL/native), then synonyms, Comick and
@@ -332,11 +340,7 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
                             }
                         }
 
-                        // Keep only Latin-script titles and dedupe case-insensitively,
-                        // preserving first-seen order.
-                        val seen = linkedSetOf<String>()
-                        list.filter { isLatinOnly(it) }
-                            .filter { seen.add(it.lowercase(java.util.Locale.ROOT)) }
+                        acceptable(list)
                     }
 
                     // Auto-search with first title if needed (after titleOptions is set)
@@ -351,6 +355,22 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
                                 search(first)
                             }
                         }
+                    }
+
+                    // Titles MALSync's quicklinks carry — what each linked site itself calls the
+                    // series, which is often the only spelling a source will match. Appended after
+                    // the auto-search rather than folded into the list above, so a slow MALSync
+                    // never holds up the first search; the details preload usually has the response
+                    // cached by now anyway.
+                    val quicklinkTitles = media?.let { m ->
+                        try {
+                            model.getMalSyncQuicklinkTitles(m)
+                        } catch (_: Throwable) {
+                            emptyList<String>()
+                        }
+                    } ?: emptyList()
+                    acceptable(quicklinkTitles).takeIf { it.isNotEmpty() }?.let { extra ->
+                        titleOptions = titleOptions + extra
                     }
                 }
 

@@ -37,6 +37,7 @@ import ani.dantotsu.snackString
 import ani.dantotsu.tryWithSuspend
 import ani.dantotsu.util.Logger
 import com.bumptech.glide.load.resource.bitmap.BitmapTransformation
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.async
@@ -78,6 +79,56 @@ class MediaDetailsViewModel : ViewModel() {
     // Replace boolean flag with last preloaded media id to avoid cross-media cache issues
     private var lastPreloadedMediaId: Int? = null
 
+    // MALSync quicklinks, fetched once per media and shared by everything that wants them — the
+    // details preload (for its Comick slugs) and the source search sheet (for the titles the linked
+    // sites use). MalSyncApi does no caching of its own, so without this the sheet would repeat a
+    // request the preload already made.
+    private val quicklinksLock = Any()
+    private var quicklinksMediaId: Int? = null
+    private var quicklinksDeferred: Deferred<ani.dantotsu.connections.malsync.QuicklinksResponse?>? = null
+
+    private suspend fun getMalSyncQuicklinks(media: Media): ani.dantotsu.connections.malsync.QuicklinksResponse? {
+        val mediaType = if (media.anime != null) "anime" else "manga"
+        if (!PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled)) return null
+        val malMode = PrefManager.getVal<String>(PrefName.MalSyncCheckMode) ?: "both"
+        if (malMode != "both" && malMode != mediaType) return null
+
+        val deferred = synchronized(quicklinksLock) {
+            if (quicklinksMediaId != media.id) {
+                quicklinksMediaId = media.id
+                quicklinksDeferred = null
+            }
+            quicklinksDeferred ?: MainScope().async(Dispatchers.IO) {
+                try {
+                    ani.dantotsu.connections.malsync.MalSyncApi
+                        .getQuicklinks(media.id, media.idMAL, mediaType)
+                } catch (e: Exception) {
+                    null
+                }
+            }.also { quicklinksDeferred = it }
+        }
+        return try {
+            deferred.await()
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    /**
+     * The titles MALSync's quicklinks carry for [media] — what each linked site calls the series,
+     * which is frequently neither an AniList title nor one of its synonyms. Deduped
+     * case-insensitively, in the order MALSync lists them; empty when quicklinks are off or unknown.
+     */
+    suspend fun getMalSyncQuicklinkTitles(media: Media): List<String> {
+        val quicklinks = getMalSyncQuicklinks(media) ?: return emptyList()
+        val seen = mutableSetOf<String>()
+        return quicklinks.Sites?.values
+            ?.flatMap { entries -> entries.values }
+            ?.mapNotNull { it.title?.trim()?.takeIf { title -> title.isNotEmpty() } }
+            ?.filter { seen.add(it.lowercase(java.util.Locale.ROOT)) }
+            ?: emptyList()
+    }
+
     /**
      * Preload Comick and MangaUpdates data in the background for manga entries. This allows tab
      * states to update immediately without waiting for fragment loading.
@@ -106,7 +157,6 @@ class MediaDetailsViewModel : ViewModel() {
             try {
                 // Import required classes
                 val comickApi = ani.dantotsu.connections.comick.ComickApi
-                val malSyncApi = ani.dantotsu.connections.malsync.MalSyncApi
 
                 // Filter English titles helper
                 fun filterEnglishTitles(synonyms: List<String>): List<String> {
@@ -124,15 +174,9 @@ class MediaDetailsViewModel : ViewModel() {
                     }
                 }
 
-                // Try MalSync first (only if MALSync info enabled)
-                val malMode = ani.dantotsu.settings.saving.PrefManager.getVal<String>(ani.dantotsu.settings.saving.PrefName.MalSyncCheckMode) ?: "both"
-                val quicklinks = if (ani.dantotsu.settings.saving.PrefManager.getVal<Boolean>(ani.dantotsu.settings.saving.PrefName.MalSyncInfoEnabled) && malMode != "anime") {
-                    try {
-                        malSyncApi.getQuicklinks(media.id, media.idMAL)
-                    } catch (e: Exception) {
-                        null
-                    }
-                } else null
+                // Try MalSync first (only if MALSync info enabled) — shared with the source search
+                // sheet, so whichever asks first pays for the request.
+                val quicklinks = getMalSyncQuicklinks(media)
 
                 val malSyncSlugs =
                         quicklinks?.Sites?.entries
