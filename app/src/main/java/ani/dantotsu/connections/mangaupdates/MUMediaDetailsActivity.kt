@@ -71,6 +71,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import ani.dantotsu.connections.comick.ComickApi
 import ani.dantotsu.connections.comick.ComickComic
+import ani.dantotsu.connections.malsync.MalSyncMu
 import ani.dantotsu.media.MediaDetailsActivity
 import ani.dantotsu.settings.ExtensionMediaLinker
 import eu.kanade.tachiyomi.source.model.SManga
@@ -100,6 +101,16 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
     private var extensionSManga: SManga? = null
 
     private var currentChapter: Int? = null
+
+    /**
+     * What MALSync says about this series, once its MAL id has been resolved — the same latest
+     * chapter and source [MediaDetailsActivity] shows for AniList media. Both stay null for series
+     * with no MAL entry, which is most of what MangaUpdates carries and nothing to report on.
+     * Held as state because [progress] redraws on every list edit, long after the fetch.
+     */
+    private var malSyncChapter: Int? = null
+    private var malSyncSource: String? = null
+
     private var muUserEntryDeferred: kotlinx.coroutines.Deferred<Unit>? = null
     private var detectedAniListId: Int? = null
     private var detectedComickComic: ComickComic? = null
@@ -140,7 +151,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
             // latest_chapter from MU is the newest released chapter, not the series total.
             // Only show it when it is >= user progress (i.e. there are still chapters to read).
             val progress = currentChapter ?: 0
-            val latest = muMedia.latestChapter
+            val latest = MalSyncMu.latestChapter(muMedia.latestChapter, malSyncChapter)
             if (latest != null && latest >= progress) {
                 bold { color(white) { append("$latest") } }
                 append(" / ")
@@ -148,6 +159,41 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
             bold { color(white) { append("??") } }
         }
         binding.mediaTotal.visibility = View.VISIBLE
+
+        // The source line only earns its space while there is something unread to read there.
+        val unread = (malSyncChapter ?: 0) > (currentChapter ?: 0)
+        val source = malSyncSource?.takeIf { it.isNotBlank() && unread }
+        binding.mediaUnreadSource?.isVisible = source != null
+        if (source != null) {
+            binding.mediaUnreadSource?.text =
+                getString(R.string.notification_source_subtext, source)
+        }
+    }
+
+    /**
+     * Asks MALSync where this series can be read and how far it has got, then redraws [progress].
+     *
+     * Only series MangaUpdates can be linked to a MAL entry have anything to fetch — see
+     * [MalSyncMu] — so this quietly does nothing for the rest. Completed entries are skipped for the
+     * same reason the AniList screen skips them: there is no "latest chapter" worth chasing.
+     */
+    private fun fetchMalSyncProgress() {
+        if (!MalSyncMu.enabledForManga()) return
+        if (muMedia.listId == 2) return // Completed
+        lifecycleScope.launch(Dispatchers.IO) {
+            val result = MalSyncMu.lastChapter(
+                muSeriesId = muMedia.id,
+                titles = collectQuickSearchTitles(),
+                comickSlug = model.comickSlug.value,
+            ) ?: return@launch
+            val lastEp = result.lastEp ?: return@launch
+            withContext(Dispatchers.Main) {
+                if (isDestroyed) return@withContext
+                malSyncChapter = lastEp.total
+                malSyncSource = result.source
+                progress()
+            }
+        }
     }
 
     private fun collectQuickSearchTitles(comickComic: ComickComic? = detectedComickComic): List<String> {
@@ -809,9 +855,12 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         binding.incognito.visibility = View.GONE
         binding.commentInputLayout.visibility = View.GONE
         binding.mediaLanguageButton.visibility = View.GONE
+        // Shown again by [progress] if MALSync turns out to have a source for this series.
         binding.mediaUnreadSource?.visibility = View.GONE
 
         binding.mediaAniList?.visibility = View.GONE
+
+        if (!offline) fetchMalSyncProgress()
 
         val initialTitleCandidates = collectQuickSearchTitles().ifEmpty {
             listOfNotNull(muMedia.title).filter { it.isNotBlank() }

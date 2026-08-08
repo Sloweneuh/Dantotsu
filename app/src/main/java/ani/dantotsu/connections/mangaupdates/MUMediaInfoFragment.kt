@@ -20,6 +20,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import ani.dantotsu.R
 import ani.dantotsu.buildMarkwon
+import ani.dantotsu.connections.malsync.MalSyncMu
 import ani.dantotsu.copyToClipboard
 import ani.dantotsu.databinding.FragmentMediaInfoBinding
 import ani.dantotsu.databinding.ItemChipBinding
@@ -31,6 +32,7 @@ import ani.dantotsu.databinding.ItemTitleRecyclerBinding
 import ani.dantotsu.databinding.ItemTitleTextBinding
 import ani.dantotsu.isOnline
 import ani.dantotsu.media.MediaDetailsViewModel
+import ani.dantotsu.media.QuicklinksBottomSheetFragment
 import ani.dantotsu.media.SearchActivity
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.openLinkInBrowser
@@ -328,8 +330,9 @@ class MUMediaInfoFragment : Fragment() {
         val toRemove = mutableListOf<View>()
         for (i in 0 until parent.childCount) {
             val t = parent.getChildAt(i).tag
-            if (t == "dynamic_mu_section" || t == "latest_release_anchor_mu")
-                toRemove.add(parent.getChildAt(i))
+            if (t == "dynamic_mu_section" || t == "latest_release_anchor_mu" ||
+                t == "quicklinks_anchor_mu"
+            ) toRemove.add(parent.getChildAt(i))
         }
         toRemove.forEach { parent.removeView(it) }
 
@@ -386,7 +389,12 @@ class MUMediaInfoFragment : Fragment() {
             parent.addView(bind.root)
         }
 
-        // Invisible anchor — latest release card inserted here once the async fetch completes
+        // Invisible anchors — the latest release card and the MALSync quicklinks are inserted here
+        // once their async fetches complete.
+        View(context).also {
+            it.tag = "quicklinks_anchor_mu"
+            parent.addView(it)
+        }
         View(context).also {
             it.tag = "latest_release_anchor_mu"
             parent.addView(it)
@@ -536,6 +544,41 @@ class MUMediaInfoFragment : Fragment() {
                 bind.root.tag = "dynamic_mu_section"
                 parent.addView(bind.root)
             }
+        }
+
+        // MALSync quicklinks — where else this series can be read. Only the ones MangaUpdates can be
+        // linked to a MAL entry have any (see [MalSyncMu]); for the rest the anchor just stays an
+        // empty view, as it does while the lookup is in flight.
+        if (MalSyncMu.enabledForManga()) viewLifecycleOwner.lifecycleScope.launch {
+            val titles = listOfNotNull(series.title) +
+                    series.associated.orEmpty().mapNotNull { it.title }
+            val sites = withContext(Dispatchers.IO) {
+                MalSyncMu.quicklinks(series.seriesId, titles, model.comickSlug.value)
+            }?.Sites?.takeIf { it.isNotEmpty() } ?: return@launch
+            if (_binding == null) return@launch
+
+            val bindQuick = ItemTitleChipgroupBinding.inflate(LayoutInflater.from(context), parent, false)
+            bindQuick.itemTitle.setText(R.string.quicklinks)
+            sites.forEach { (siteName, entries) ->
+                // Comick has its own tab on this screen, same as on the AniList one.
+                if (siteName.contains("comick", ignoreCase = true)) return@forEach
+                val chip = ItemChipBinding
+                    .inflate(LayoutInflater.from(context), bindQuick.itemChipGroup, false).root
+                chip.text = if (entries.size > 1) "$siteName (${entries.size})" else siteName
+                chip.setOnClickListener {
+                    QuicklinksBottomSheetFragment
+                        .newInstance(siteName, ArrayList(entries.values))
+                        .show(childFragmentManager, "quicklinks_$siteName")
+                }
+                bindQuick.itemChipGroup.addView(chip)
+            }
+            if (bindQuick.itemChipGroup.childCount == 0) return@launch
+
+            val anchor = parent.findViewWithTag<View>("quicklinks_anchor_mu") ?: return@launch
+            val insertIndex = parent.indexOfChild(anchor)
+            bindQuick.root.tag = "dynamic_mu_section"
+            parent.removeView(anchor)
+            parent.addView(bindQuick.root, insertIndex)
         }
 
         // Latest release card — async fetch from /v1/series/{id}/groups

@@ -100,8 +100,20 @@ class MediaDetailsViewModel : ViewModel() {
             }
             quicklinksDeferred ?: MainScope().async(Dispatchers.IO) {
                 try {
-                    ani.dantotsu.connections.malsync.MalSyncApi
-                        .getQuicklinks(media.id, media.idMAL, mediaType)
+                    val muSeriesId = media.muSeriesId
+                    if (muSeriesId != null) {
+                        // A MangaUpdates media's id is a synthetic key, not an AniList id, so this
+                        // goes the MAL-id-only route — see
+                        // [ani.dantotsu.connections.malsync.MalSyncMu].
+                        ani.dantotsu.connections.malsync.MalSyncMu.quicklinks(
+                            muSeriesId,
+                            ani.dantotsu.connections.mangaupdates.muMalSearchTitles(media),
+                            comickSlug.value,
+                        )
+                    } else {
+                        ani.dantotsu.connections.malsync.MalSyncApi
+                            .getQuicklinks(media.id, media.idMAL, mediaType)
+                    }
                 } catch (e: Exception) {
                     null
                 }

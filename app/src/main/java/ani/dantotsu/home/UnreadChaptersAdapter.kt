@@ -16,11 +16,13 @@ import ani.dantotsu.R
 import ani.dantotsu.blurImage
 import ani.dantotsu.connections.anilist.api.isHiatusStatus
 import ani.dantotsu.connections.anilist.api.isReleasingStatus
+import ani.dantotsu.connections.malsync.MalSyncMu
 import ani.dantotsu.connections.malsync.UnreadChapterInfo
 import ani.dantotsu.connections.mangaupdates.MUListEditorFragment
 import ani.dantotsu.connections.mangaupdates.MUMedia
 import ani.dantotsu.connections.mangaupdates.MUMediaDetailsActivity
 import ani.dantotsu.connections.mangaupdates.MUDetailsCache
+import ani.dantotsu.connections.mangaupdates.muMediaKey
 import ani.dantotsu.connections.mangaupdates.toMUMedia
 import ani.dantotsu.databinding.ItemMediaLargeBinding
 import ani.dantotsu.databinding.ItemUnreadChapterBinding
@@ -387,15 +389,22 @@ class UnreadChaptersAdapter(
 
     override fun getItemCount(): Int = items.size
 
+    /**
+     * What MALSync says about a MangaUpdates entry, for the series that could be linked to a MAL
+     * entry. Null for the rest, which stay on MangaUpdates' own chapter count.
+     */
+    private fun malSyncInfoFor(item: MUMedia): UnreadChapterInfo? = unreadInfo[muMediaKey(item.id)]
+
     @SuppressLint("SetTextI18n")
     private fun bindMuCompactView(binding: ItemUnreadChapterBinding, item: MUMedia) {
         binding.apply {
             itemCompactImage.loadImage(item.coverUrl ?: MUDetailsCache.get(item.id)?.coverUrl)
             itemCompactTitle.text = item.title ?: ""
 
+            val malSync = malSyncInfoFor(item)
             val userChapter = item.userChapter
             itemCompactUserProgress.text = userChapter?.toString() ?: "~"
-            val latest = item.latestChapter
+            val latest = MalSyncMu.latestChapter(item.latestChapter, malSync?.lastChapter)
             val showLatest = latest != null && latest > 0 && (userChapter == null || latest > userChapter)
             itemCompactTotal.text = if (showLatest) " | $latest | ~" else " | ~"
 
@@ -405,10 +414,22 @@ class UnreadChaptersAdapter(
             // asserting a release state nobody has established.
             itemCompactScoreContainer.visibility = View.GONE
 
-            // MU logo badge
-            itemCompactLanguageBG.visibility = View.GONE
-            itemCompactSourceBadge.visibility = View.VISIBLE
+            // Badge: the MU logo on its own, or — when MALSync knows where the newest chapter is —
+            // the source name behind the same logo. The two badges share a corner, so only one can
+            // show; keeping the logo inside the wider one is what stops the entry from reading as
+            // an AniList one.
             itemCompactSource.visibility = View.GONE
+            val source = malSync?.source?.takeIf { it.isNotBlank() && showLatest }
+            if (source != null) {
+                itemCompactLanguageIcon.setImageResource(R.drawable.ic_round_mangaupdates_24)
+                itemCompactLanguageIcon.visibility = View.VISIBLE
+                itemCompactLanguageCode.text = source
+                itemCompactLanguageBG.visibility = View.VISIBLE
+                itemCompactSourceBadge.visibility = View.GONE
+            } else {
+                itemCompactLanguageBG.visibility = View.GONE
+                itemCompactSourceBadge.visibility = View.VISIBLE
+            }
 
             val rating = item.bayesianRating
             if (rating != null && rating > 0.0) {
@@ -464,16 +485,26 @@ class UnreadChaptersAdapter(
                 itemCompactSynopsis.text = ""
             }
 
+            val malSync = malSyncInfoFor(item)
             val userChapter = item.userChapter
             itemUserProgressLarge.text = userChapter?.toString() ?: "~"
             itemProgressSeparator.visibility = View.VISIBLE
-            val latest = item.latestChapter
+            val latest = MalSyncMu.latestChapter(item.latestChapter, malSync?.lastChapter)
             itemCompactTotal.text = latest?.toString() ?: "??"
             itemTotal.text = " " + root.context.getString(R.string.chapter_plural)
 
-            // MU logo badge
-            itemCompactLanguageBG.visibility = View.GONE
-            itemCompactSourceBadge.visibility = View.VISIBLE
+            // Badge: MU logo alone, or the MALSync source behind it — see [bindMuCompactView].
+            val source = malSync?.source?.takeIf { it.isNotBlank() }
+            if (source != null) {
+                itemCompactLanguageIcon.setImageResource(R.drawable.ic_round_mangaupdates_24)
+                itemCompactLanguageIcon.visibility = View.VISIBLE
+                itemCompactLanguageCode.text = source
+                itemCompactLanguageBG.visibility = View.VISIBLE
+                itemCompactSourceBadge.visibility = View.GONE
+            } else {
+                itemCompactLanguageBG.visibility = View.GONE
+                itemCompactSourceBadge.visibility = View.VISIBLE
+            }
 
             val rating = item.bayesianRating
             if (rating != null && rating > 0.0) {

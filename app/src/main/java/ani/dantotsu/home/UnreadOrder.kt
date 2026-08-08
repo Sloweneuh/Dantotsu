@@ -1,8 +1,10 @@
 package ani.dantotsu.home
 
+import ani.dantotsu.connections.malsync.MalSyncMu
 import ani.dantotsu.connections.malsync.UnreadChapterInfo
 import ani.dantotsu.connections.mangaupdates.MUDetailsCache
 import ani.dantotsu.connections.mangaupdates.MUMedia
+import ani.dantotsu.connections.mangaupdates.muMediaKey
 import ani.dantotsu.media.Media
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
@@ -64,9 +66,17 @@ object UnreadOrder {
     /** How far behind an entry is. Unknown counts sort last, as they always have. */
     private fun unreadCountOf(item: Any, info: Map<Int, UnreadChapterInfo>): Int = when (item) {
         is Media -> info[item.id]?.let { it.lastChapter - it.userProgress } ?: Int.MAX_VALUE
-        is MUMedia -> (item.latestChapter ?: 0) - (item.userChapter ?: 0)
+        is MUMedia -> (latestChapterOf(item, info) ?: 0) - (item.userChapter ?: 0)
         else -> Int.MAX_VALUE
     }
+
+    /**
+     * The newest chapter a MangaUpdates entry has, over both sources that can know: MangaUpdates'
+     * own count and — for series linked to a MAL entry — MALSync's. See
+     * [ani.dantotsu.connections.malsync.MalSyncMu.latestChapter].
+     */
+    private fun latestChapterOf(item: MUMedia, info: Map<Int, UnreadChapterInfo>): Int? =
+        MalSyncMu.latestChapter(item.latestChapter, info[muMediaKey(item.id)]?.lastChapter)
 
     /**
      * When an entry's newest chapter landed, epoch ms. Unknown dates sort last.
@@ -78,7 +88,16 @@ object UnreadOrder {
      */
     private fun latestChapterAtOf(item: Any, info: Map<Int, UnreadChapterInfo>): Long = when (item) {
         is Media -> info[item.id]?.latestChapterAt ?: Long.MIN_VALUE
-        is MUMedia -> MUDetailsCache.get(item.id)?.latestReleaseAt ?: Long.MIN_VALUE
+        // Whichever source has the newer chapter also has the date that goes with it: a MALSync
+        // entry that is ahead of MangaUpdates is ahead *because* something released there that
+        // MangaUpdates' newest release predates.
+        is MUMedia -> {
+            val malSync = info[muMediaKey(item.id)]
+            val muDate = MUDetailsCache.get(item.id)?.latestReleaseAt
+            if (malSync != null && malSync.lastChapter > (item.latestChapter ?: 0)) {
+                malSync.latestChapterAt ?: muDate ?: Long.MIN_VALUE
+            } else muDate ?: malSync?.latestChapterAt ?: Long.MIN_VALUE
+        }
         else -> Long.MIN_VALUE
     }
 }

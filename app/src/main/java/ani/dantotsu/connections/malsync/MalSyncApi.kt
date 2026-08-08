@@ -101,7 +101,13 @@ object MalSyncApi {
         Logger.log("MalSync: Network failure counter reset")
     }
 
-    suspend fun getLastChapter(anilistId: Int, malId: Int? = null): MalSyncResponse? = withContext(Dispatchers.IO) {
+    /**
+     * Latest chapter for a manga. [anilistId] may be null for media that have no AniList entry —
+     * MangaUpdates series, whose media id is a synthetic one (see
+     * [ani.dantotsu.connections.mangaupdates.muMediaKey]) that the `anilist:` route would read as an
+     * unrelated series. Those are answered from [malId] alone, or not at all.
+     */
+    suspend fun getLastChapter(anilistId: Int?, malId: Int? = null): MalSyncResponse? = withContext(Dispatchers.IO) {
         if (shouldSkipDueToNetworkFailures()) {
             return@withContext null
         }
@@ -136,6 +142,7 @@ object MalSyncApi {
             }
 
             // Fallback to Anilist ID
+            if (anilistId == null) return@withContext null
             url = "https://api.malsync.moe/nc/mal/manga/anilist:$anilistId/pr"
             request = Request.Builder()
                 .url(url)
@@ -588,12 +595,16 @@ object MalSyncApi {
     /**
      * Fetch quicklinks for a media. Try MAL endpoint first (if malId provided), then AniList endpoint as a fallback.
      * Returns a QuicklinksResponse or null on failure.
+     *
+     * [anilistId] may be null for media with no AniList entry — see [getLastChapter] — in which case
+     * a null [malId] means there is nothing to ask about and the AniList fallback is skipped.
      */
     // mediaType should be either "manga" or "anime". Defaults to "manga" to remain backward-compatible.
-    suspend fun getQuicklinks(anilistId: Int, malId: Int? = null, mediaType: String = "manga"): QuicklinksResponse? = withContext(Dispatchers.IO) {
+    suspend fun getQuicklinks(anilistId: Int?, malId: Int? = null, mediaType: String = "manga"): QuicklinksResponse? = withContext(Dispatchers.IO) {
         if (shouldSkipDueToNetworkFailures()) {
             return@withContext null
         }
+        if (malId == null && anilistId == null) return@withContext null
 
         try {
             // mediaType expected to be "manga" or "anime"; build endpoint accordingly
@@ -612,7 +623,7 @@ object MalSyncApi {
             var body = response.body?.string()
 
             // If MAL request failed or returned empty and malId was provided, fallback to AniList endpoint
-            if ((!response.isSuccessful || body == null || body.isEmpty()) && malId != null) {
+            if ((!response.isSuccessful || body == null || body.isEmpty()) && malId != null && anilistId != null) {
                 url = "https://api.malsync.moe/mal/$typeSegment/anilist:$anilistId"
                 request = Request.Builder().url(url).build()
                 response = executeRequest(request)

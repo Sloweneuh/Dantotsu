@@ -30,9 +30,19 @@ data class MUMedia(
     val addedAt: Long? = null
 ) : Serializable
 
+/**
+ * The Int media key a MangaUpdates series goes by outside MangaUpdates itself.
+ *
+ * MangaUpdates ids are Longs and every id-keyed structure in the app ([Media.id], notification ids,
+ * the unread info maps, the MALSync exclude list) is Int, so a series is identified by its id
+ * truncated to positive Int range. Truncation is what makes it a *key* and not an AniList id: it
+ * must never be handed to an API that would read it as one.
+ */
+fun muMediaKey(muSeriesId: Long): Int = (muSeriesId and 0x7FFFFFFF).toInt()
+
 /** Converts a [MUMedia] into a minimal [Media] suitable for display and random-pick. */
 fun MUMedia.toMedia(): Media = Media(
-    id = (id and 0x7FFFFFFF).toInt(),
+    id = muMediaKey(id),
     name = title,
     nameRomaji = title ?: "",
     userPreferredName = title ?: "",

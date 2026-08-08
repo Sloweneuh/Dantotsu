@@ -31,7 +31,9 @@ import ani.dantotsu.bottomBar
 import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.anilist.AnilistHomeViewModel
 import ani.dantotsu.connections.anilist.getUserId
+import ani.dantotsu.connections.malsync.MalSyncMu
 import ani.dantotsu.connections.mangaupdates.MUMedia
+import ani.dantotsu.connections.mangaupdates.muMediaKey
 import ani.dantotsu.currContext
 import ani.dantotsu.databinding.FragmentHomeBinding
 import ani.dantotsu.home.status.UserStatusAdapter
@@ -120,11 +122,62 @@ class HomeFragment : Fragment() {
      */
     private var renderedSort: String? = null
 
+    /**
+     * What MALSync knows about the MangaUpdates half of the row, keyed by
+     * [ani.dantotsu.connections.mangaupdates.muMediaKey] so it merges with the AniList half's map.
+     *
+     * Only covers the series MangaUpdates could be linked to a MAL entry — the rest keep
+     * MangaUpdates' own chapter count and no source, which is what the row showed before.
+     */
+    private var muUnreadInfo: Map<Int, UnreadChapterInfo> = emptyMap()
+
+    /** The MangaUpdates reading list [muUnreadInfo] was fetched for, so a redraw doesn't refetch. */
+    private var muUnreadInfoKey: String? = null
+    private var muUnreadInfoJob: kotlinx.coroutines.Job? = null
+
+    /** Everything the row knows about either half, as one map. */
+    private fun combinedUnreadInfo(): Map<Int, UnreadChapterInfo> = unreadInfoMap + muUnreadInfo
+
     /** MangaUpdates entries with chapters the user hasn't reached. Ordered by [UnreadOrder]. */
-    private fun muUnread(): List<ani.dantotsu.connections.mangaupdates.MUMedia> =
-        model.getMuHomeLists().value?.get("Reading")
-            ?.filter { it.latestChapter != null && it.latestChapter > (it.userChapter ?: 0) }
+    private fun muUnread(): List<ani.dantotsu.connections.mangaupdates.MUMedia> {
+        val excludeList = PrefManager.getVal<Set<String>>(PrefName.MalSyncExcludeList)
+        return model.getMuHomeLists().value?.get("Reading")
+            ?.filter { !excludeList.containsMediaId(muMediaKey(it.id).toString()) }
+            ?.filter {
+                val latest = MalSyncMu.latestChapter(
+                    it.latestChapter,
+                    muUnreadInfo[muMediaKey(it.id)]?.lastChapter,
+                )
+                latest != null && latest > (it.userChapter ?: 0)
+            }
             ?: emptyList()
+    }
+
+    /**
+     * Asks MALSync about the MangaUpdates reading list, then redraws the row with whatever came
+     * back. Cheap to call repeatedly: it skips a list it has already asked about, and the id
+     * resolution behind it is cached per series (misses included).
+     */
+    private fun fetchMuUnreadInfo(force: Boolean = false) {
+        if (!MalSyncMu.enabledForManga()) {
+            muUnreadInfo = emptyMap()
+            muUnreadInfoKey = null
+            return
+        }
+        val reading = model.getMuHomeLists().value?.get("Reading").orEmpty()
+        if (reading.isEmpty()) return
+        val key = reading.joinToString(",") { "${it.id}:${it.userChapter}" }
+        if (!force && key == muUnreadInfoKey) return
+        if (muUnreadInfoJob?.isActive == true) return
+        muUnreadInfoJob = lifecycleScope.launch {
+            val info = MalSyncMu.unreadInfo(reading)
+            if (_binding == null) return@launch
+            muUnreadInfoKey = key
+            if (info.isEmpty() && muUnreadInfo.isEmpty()) return@launch
+            muUnreadInfo = info
+            renderUnreadRow(animate = false)
+        }
+    }
 
     /**
      * Draws the unread row from [unreadAniList] plus whatever MangaUpdates currently has unread.
@@ -132,7 +185,7 @@ class HomeFragment : Fragment() {
      */
     private fun renderUnreadRow(animate: Boolean = true) {
         if (_binding == null) return
-        val info = unreadInfoMap
+        val info = combinedUnreadInfo()
         val items: List<Any> = unreadAniList + muUnread()
         renderedSort = UnreadOrder.current()
         // MangaUpdates entries can't be placed until their release dates are in; drawing without
@@ -566,6 +619,9 @@ class HomeFragment : Fragment() {
         var refreshAnimator: android.animation.ObjectAnimator? = null
         binding.homeUnreadChaptersRefresh.setOnClickListener {
             binding.homeUnreadChaptersRefresh.isEnabled = false
+            // Both halves: the button is the user saying "check again", and the MangaUpdates half
+            // would otherwise sit on the answer it cached for this list.
+            fetchMuUnreadInfo(force = true)
             scope.launch {
                 withContext(Dispatchers.IO) {
                     model.initUnreadChapters()
@@ -1147,6 +1203,9 @@ class HomeFragment : Fragment() {
             // Redraw the unread row with the latest MU items. It reads the AniList half from the
             // fragment rather than carrying its own, which is what stops this call wiping it.
             renderUnreadRow(animate = false)
+            // Draw first on MangaUpdates' own counts, then again when MALSync answers — the row
+            // shouldn't wait on a lookup that most series have nothing to gain from.
+            fetchMuUnreadInfo()
         }
         binding.homePlannedMangaBrowseButton.setOnClickListener {
             bottomBar.selectTabAt(2)

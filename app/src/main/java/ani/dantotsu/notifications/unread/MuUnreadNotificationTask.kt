@@ -10,14 +10,17 @@ import androidx.core.app.NotificationManagerCompat
 import ani.dantotsu.App
 import ani.dantotsu.MainActivity
 import ani.dantotsu.R
+import ani.dantotsu.connections.malsync.MalSyncMu
 import ani.dantotsu.connections.mangaupdates.MUMedia
 import ani.dantotsu.connections.mangaupdates.MUMediaDetailsActivity
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
+import ani.dantotsu.connections.mangaupdates.muMediaKey
 import ani.dantotsu.notifications.Task
 import ani.dantotsu.hasNotificationPermission
 import eu.kanade.tachiyomi.data.notification.Notifications
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
+import ani.dantotsu.settings.saving.containsMediaId
 import ani.dantotsu.util.Logger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -76,8 +79,30 @@ class MuUnreadNotificationTask : Task {
         }
 
         val readingList = allLists["Reading"] ?: emptyList()
-        val unreadItems = readingList.filter {
-            it.latestChapter != null && it.latestChapter > (it.userChapter ?: 0)
+
+        // What MALSync knows about the series that could be linked to a MAL entry — often a chapter
+        // ahead of MangaUpdates' own count, and with the source it landed on. The rest are unchanged.
+        val malSyncInfo = try {
+            MalSyncMu.unreadInfo(readingList)
+        } catch (e: Exception) {
+            Logger.log("MuUnreadNotificationTask: MALSync lookup failed: ${e.message}")
+            emptyMap()
+        }
+        val excludeList = PrefManager.getVal<Set<String>>(PrefName.MalSyncExcludeList)
+
+        val unreadItems = readingList.mapNotNull { muMedia ->
+            if (excludeList.containsMediaId(muMediaKey(muMedia.id).toString())) return@mapNotNull null
+            val info = malSyncInfo[muMediaKey(muMedia.id)]
+            val latest = MalSyncMu.latestChapter(muMedia.latestChapter, info?.lastChapter)
+                ?: return@mapNotNull null
+            if (latest <= (muMedia.userChapter ?: 0)) return@mapNotNull null
+            // Where to read the chapter being announced, whenever MALSync's site actually has it —
+            // which includes the common case of the two agreeing on the number, since only MALSync
+            // names a site. It's withheld only when MALSync is *behind*, where naming its source
+            // would point at a site that doesn't carry the chapter in the notification.
+            val source = info?.source
+                ?.takeIf { it.isNotBlank() && info.lastChapter >= (muMedia.latestChapter ?: 0) }
+            UnreadItem(muMedia, latest, source)
         }
 
         Logger.log("MuUnreadNotificationTask: found ${unreadItems.size} items with unread chapters")
@@ -86,12 +111,12 @@ class MuUnreadNotificationTask : Task {
 
         val notifiedKey = "notified_mu_chapters"
         val notified = getNotifiedSet(context, notifiedKey)
-        val newItems = mutableListOf<MUMedia>()
+        val newItems = mutableListOf<UnreadItem>()
 
-        unreadItems.forEach { muMedia ->
-            val key = "${muMedia.id}:${muMedia.latestChapter}"
+        unreadItems.forEach { item ->
+            val key = "${item.media.id}:${item.latestChapter}"
             if (!notified.contains(key)) {
-                newItems.add(muMedia)
+                newItems.add(item)
                 notified.add(key)
             }
         }
@@ -108,12 +133,19 @@ class MuUnreadNotificationTask : Task {
         }
     }
 
+    /** A MangaUpdates entry with unread chapters, over both sources that can know about them. */
+    private data class UnreadItem(
+        val media: MUMedia,
+        val latestChapter: Int,
+        /** MALSync's source, when MALSync is the one reporting [latestChapter]. */
+        val source: String?,
+    )
+
     @SuppressLint("MissingPermission")
-    private fun sendNotifications(context: Context, items: List<MUMedia>) {
+    private fun sendNotifications(context: Context, items: List<UnreadItem>) {
         val notificationManager = NotificationManagerCompat.from(context)
 
-        items.forEach { muMedia ->
-            val latestChapter = muMedia.latestChapter ?: return@forEach
+        items.forEach { (muMedia, latestChapter, source) ->
             val unreadCount = latestChapter - (muMedia.userChapter ?: 0)
             val title = context.getString(R.string.notification_new_chapter_title)
             val text = if (unreadCount == 1) {
@@ -121,14 +153,17 @@ class MuUnreadNotificationTask : Task {
             } else {
                 "${muMedia.title}: Chapter $latestChapter ($unreadCount unread)"
             }
-            val subText = context.getString(R.string.notification_source_subtext, "MangaUpdates")
+            val subText = context.getString(
+                R.string.notification_source_subtext,
+                source ?: "MangaUpdates"
+            )
 
             val intent = Intent(context, MUMediaDetailsActivity::class.java).apply {
                 putExtra("muMedia", muMedia)
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             }
 
-            val notifId = (muMedia.id and 0x7FFFFFFF).toInt()
+            val notifId = muMediaKey(muMedia.id)
             val pendingIntent = PendingIntent.getActivity(
                 context,
                 notifId,
@@ -189,7 +224,7 @@ class MuUnreadNotificationTask : Task {
             .build()
     }
 
-    private fun storeNotifications(items: List<MUMedia>) {
+    private fun storeNotifications(items: List<UnreadItem>) {
         val notificationStore = PrefManager.getNullableVal<List<UnreadChapterStore>>(
             PrefName.UnreadChapterNotificationStore,
             null
@@ -201,10 +236,9 @@ class MuUnreadNotificationTask : Task {
             while (newStore.size > 50) newStore.removeAt(newStore.size - 1)
         }
 
-        items.forEach { muMedia ->
-            val latestChapter = muMedia.latestChapter ?: return@forEach
+        items.forEach { (muMedia, latestChapter, source) ->
             val unreadCount = latestChapter - (muMedia.userChapter ?: 0)
-            val mediaId = (muMedia.id and 0x7FFFFFFF).toInt()
+            val mediaId = muMediaKey(muMedia.id)
 
             val exists = newStore.any { it.mediaId == mediaId && it.lastChapter == latestChapter }
             if (!exists) {
@@ -214,7 +248,7 @@ class MuUnreadNotificationTask : Task {
                         mediaName = muMedia.title ?: "",
                         lastChapter = latestChapter,
                         unreadCount = unreadCount,
-                        source = "MangaUpdates",
+                        source = source ?: "MangaUpdates",
                         image = muMedia.coverUrl,
                         banner = muMedia.coverUrl,
                         time = System.currentTimeMillis()

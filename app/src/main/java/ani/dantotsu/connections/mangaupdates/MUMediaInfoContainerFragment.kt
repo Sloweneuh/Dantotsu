@@ -128,7 +128,7 @@ class MUMediaInfoContainerFragment : Fragment() {
                 val muSeriesId = m.muSeriesId ?: return@observe
                 if (!malStarted && model.muMalLoaded.value != true) {
                     malStarted = true
-                    val titles = malSearchTitles(m)
+                    val titles = muMalSearchTitles(m)
                     viewLifecycleOwner.lifecycleScope.launch {
                         val malId = withContext(Dispatchers.IO) {
                             resolveMuMalId(muSeriesId, titles, model.comickSlug.value)
@@ -194,15 +194,6 @@ class MUMediaInfoContainerFragment : Fragment() {
         model.mangaBakaLoaded.observe(viewLifecycleOwner) { applyTabAlpha(model) }
         model.muMalId.observe(viewLifecycleOwner) { applyTabAlpha(model) }
         model.muMalLoaded.observe(viewLifecycleOwner) { applyTabAlpha(model) }
-    }
-
-    /** Titles to try when matching this series on Comick, best-known first. */
-    private fun malSearchTitles(media: ani.dantotsu.media.Media): List<String> {
-        val titles = mutableListOf<String>()
-        media.name?.let { titles.add(it) }
-        media.synonyms.forEach { if (it !in titles) titles.add(it) }
-        if (media.nameRomaji !in titles) titles.add(media.nameRomaji)
-        return titles.filter { it.isNotBlank() }
     }
 
     private fun showAnilistEquivalentDialog(anilistId: Int) {

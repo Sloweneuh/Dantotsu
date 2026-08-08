@@ -37,7 +37,7 @@ suspend fun resolveMuMalId(
     comickFallback: Boolean = true,
 ): Int? {
     val cacheKey = "$PREF_MU_MAL_ID_PREFIX$muSeriesId"
-    PrefManager.getCustomVal(cacheKey, 0).takeIf { it > 0 }?.let { return it }
+    cachedMuMalId(muSeriesId)?.let { return it }
     if (muSeriesId in unlinkable) return null
 
     val malId = MangaBakaApi.getCrossIdsFromMangaUpdates(muSeriesId).malId
@@ -48,6 +48,26 @@ suspend fun resolveMuMalId(
     // the search they're willing to pay for.
     else if (comickFallback) unlinkable.add(muSeriesId)
     return malId
+}
+
+/**
+ * The MAL id already known for a MangaUpdates series, without asking anything. Non-null once any
+ * caller has resolved one, since [resolveMuMalId] caches its answers in prefs.
+ */
+fun cachedMuMalId(muSeriesId: Long): Int? =
+    PrefManager.getCustomVal("$PREF_MU_MAL_ID_PREFIX$muSeriesId", 0).takeIf { it > 0 }
+
+/**
+ * Titles to try when matching a MangaUpdates-backed [ani.dantotsu.media.Media] on Comick,
+ * best-known first. Shared by everything that resolves a MAL id from a screen that already holds
+ * the media, so they all search on the same terms.
+ */
+fun muMalSearchTitles(media: ani.dantotsu.media.Media): List<String> {
+    val titles = mutableListOf<String>()
+    media.name?.let { titles.add(it) }
+    media.synonyms.forEach { if (it !in titles) titles.add(it) }
+    if (media.nameRomaji !in titles) titles.add(media.nameRomaji)
+    return titles.filter { it.isNotBlank() }
 }
 
 /** MAL id off the Comick entry for a MangaUpdates series, matched on `links.mu`. */

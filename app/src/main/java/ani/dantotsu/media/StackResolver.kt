@@ -30,8 +30,9 @@ import kotlinx.coroutines.withContext
  * to their MangaUpdates counterpart, resolved through MangaBaka's cross-source mapping, so the stack
  * no longer silently drops titles that don't exist on AniList.
  *
- * MALSync progress/source data is fetched and displayed for AniList media only — MangaUpdates
- * fallback entries are never sent to MALSync.
+ * MALSync progress/source data is fetched for both halves. The MangaUpdates fallbacks can be looked
+ * up like any other entry here, and without a resolution step: a stack is a list of MAL entries, so
+ * the MAL id MALSync is keyed on is the very thing they were matched by.
  *
  * Resolving a stack is many round trips (a scrape, an AniList batch, then a MangaBaka + MangaUpdates
  * pair per unmatched manga), so callers [open] the list screen straight away and it does the work
@@ -164,9 +165,17 @@ object StackResolver {
         var unread: Map<Int, UnreadChapterInfo>? = null
         var unreleased: Map<Int, UnreleasedEpisodeInfo>? = null
 
-        // MALSync progress/source data — AniList media only.
-        if (PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled) && anilistMedia.isNotEmpty()) {
-            val mediaIds = anilistMedia.map { Pair(it.id, it.idMAL) }
+        // MangaUpdates fallbacks need no id resolution here: the stack entry they were built from
+        // *is* a MAL entry, so its id is the one MALSync wants. They're keyed by their media id —
+        // [muMediaKey], the same key the fallback Media carries — and never by an AniList id.
+        val muMalIds: List<Pair<Media, Int>> = if (isAnime) emptyList()
+        else entries.mapNotNull { entry -> muByMal[entry.id]?.let { it to entry.id } }
+        val malSyncMedia = anilistMedia + muMalIds.map { it.first }
+
+        // MALSync progress/source data.
+        if (PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled) && malSyncMedia.isNotEmpty()) {
+            val mediaIds = anilistMedia.map { Pair(it.id, it.idMAL) } +
+                    muMalIds.map { (media, malId) -> Pair(media.id, malId) }
             if (isAnime) {
                 val batchResults = withContext(Dispatchers.IO) {
                     try { MalSyncApi.getBatchAnimeEpisodes(mediaIds, respectExcludeList = false) } catch (e: Exception) { emptyMap() }
@@ -190,14 +199,15 @@ object StackResolver {
                     try { MalSyncApi.getBatchProgressByMedia(mediaIds, respectExcludeList = false) } catch (e: Exception) { emptyMap() }
                 }
                 val infoMap = mutableMapOf<Int, UnreadChapterInfo>()
-                for (m in anilistMedia) {
+                for (m in malSyncMedia) {
                     val result = batchResults[m.id] ?: continue
                     val lastEp = result.lastEp ?: continue
                     infoMap[m.id] = UnreadChapterInfo(
                         mediaId = m.id,
                         lastChapter = lastEp.total,
                         source = result.source,
-                        userProgress = m.userProgress ?: 0
+                        userProgress = m.userProgress ?: 0,
+                        latestChapterAt = lastEp.timestampMillis()
                     )
                 }
                 if (infoMap.isNotEmpty()) unread = infoMap

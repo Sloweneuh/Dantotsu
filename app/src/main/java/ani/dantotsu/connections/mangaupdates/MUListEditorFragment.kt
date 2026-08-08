@@ -6,18 +6,23 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
+import androidx.core.view.children
+import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import ani.dantotsu.BottomSheetDialogFragment
 import ani.dantotsu.R
 import ani.dantotsu.Refresh
+import ani.dantotsu.connections.malsync.MalSyncMu
 import ani.dantotsu.databinding.BottomSheetMediaListBinding
 import ani.dantotsu.media.MediaDetailsViewModel
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.others.getSerialized
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
+import ani.dantotsu.settings.saving.containsMediaId
+import ani.dantotsu.settings.saving.removeMediaId
 import ani.dantotsu.snackString
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -58,13 +63,17 @@ class MUListEditorFragment : BottomSheetDialogFragment() {
         binding.mediaListScoreLayout.visibility = View.GONE
         binding.mediaListStartLayout.visibility = View.GONE
         binding.mediaListEndLayout.visibility = View.GONE
-        binding.mediaListNotes.visibility = View.GONE
-        binding.mediaListPrivate.visibility = View.GONE
-        binding.mediaListShow.visibility = View.GONE
-        binding.mediaListRewatch.visibility = View.GONE
-        binding.mediaListMalSyncExclude.visibility = View.GONE
-        binding.mediaListAddCustomList?.visibility = View.GONE
-        binding.mediaListExpandable?.visibility = View.GONE
+
+        // The "Other" section is kept only for the MALSync exclude toggle that lives in it, and only
+        // while that toggle applies. Its remaining controls are AniList-only and are *removed*, not
+        // hidden: [Xpandable] re-shows every child it still has when the section is opened, so
+        // hiding them would last exactly until the user tapped the header.
+        val showMalSyncExclude = MalSyncMu.enabledForManga()
+        binding.mediaListExpandable?.let { section ->
+            val keep = setOf(section.getChildAt(0), binding.mediaListMalSyncExclude)
+            section.children.toList().forEach { if (it !in keep) section.removeView(it) }
+            section.isVisible = showMalSyncExclude
+        }
 
         binding.mediaListProgressBar.visibility = View.GONE
         binding.mediaListLayout.visibility = View.VISIBLE
@@ -115,11 +124,59 @@ class MUListEditorFragment : BottomSheetDialogFragment() {
         val latestChapter = muMedia.latestChapter
         binding.mediaListProgress.setText(muMedia.userChapter?.toString() ?: "")
         binding.mediaListVolume.setText(muMedia.userVolume?.toString() ?: "")
-        binding.mediaListProgressLayout.suffixText = if (latestChapter != null && latestChapter > 0) " / $latestChapter / ??" else " / ??"
+        fun setProgressSuffix(latest: Int?) {
+            _binding?.mediaListProgressLayout?.suffixText =
+                if (latest != null && latest > 0) " / $latest / ??" else " / ??"
+        }
+        setProgressSuffix(latestChapter)
         binding.mediaListProgressLayout.suffixTextView.updateLayoutParams {
             height = ViewGroup.LayoutParams.MATCH_PARENT
         }
         binding.mediaListProgressLayout.suffixTextView.gravity = Gravity.CENTER
+
+        // MALSync's chapter count, for the series MangaUpdates can be linked to a MAL entry. It
+        // replaces the suffix only when it is ahead of what MangaUpdates reported — see
+        // [MalSyncMu.latestChapter].
+        if (MalSyncMu.enabledForManga()) {
+            scope.launch(Dispatchers.IO) {
+                val total = MalSyncMu.lastChapter(
+                    muSeriesId = muMedia.id,
+                    titles = listOfNotNull(muMedia.title),
+                    comickSlug = model.comickSlug.value,
+                )?.lastEp?.total ?: return@launch
+                withContext(Dispatchers.Main) {
+                    setProgressSuffix(MalSyncMu.latestChapter(latestChapter, total))
+                }
+            }
+        }
+
+        // Exclude from the unread-chapters row and its notifications. Only offered while MALSync is
+        // on for manga, since with it off a MangaUpdates entry is on the row on MangaUpdates' own
+        // count and this toggle wouldn't take it off. Keyed by [muMediaKey], the same id the unread
+        // info and the batch lookups use.
+        val excludeKey = muMediaKey(muMedia.id).toString()
+        val malSyncExcludeList = PrefManager.getVal<Set<String>>(PrefName.MalSyncExcludeList)
+        var malSyncExclude: Boolean? = null
+        binding.mediaListMalSyncExclude.setText(R.string.exclude_from_unread_chapters)
+        binding.mediaListMalSyncExclude.isChecked = malSyncExcludeList.containsMediaId(excludeKey)
+        binding.mediaListMalSyncExclude.setOnCheckedChangeListener { _, checked ->
+            malSyncExclude = checked
+        }
+
+        fun applyMalSyncExclude() {
+            val entry = "$excludeKey||${muMedia.coverUrl.orEmpty()}||${muMedia.title.orEmpty()}"
+            when (malSyncExclude) {
+                true -> PrefManager.setVal(
+                    PrefName.MalSyncExcludeList,
+                    malSyncExcludeList.removeMediaId(excludeKey).plus(entry)
+                )
+                false -> PrefManager.setVal(
+                    PrefName.MalSyncExcludeList,
+                    malSyncExcludeList.removeMediaId(excludeKey)
+                )
+                null -> Unit
+            }
+        }
 
         // +1 button
         binding.mediaListIncrement.setOnClickListener {
@@ -161,7 +218,11 @@ class MUListEditorFragment : BottomSheetDialogFragment() {
             }
             val newChapter = binding.mediaListProgress.text.toString().toIntOrNull()
             val newVolume = binding.mediaListVolume.text.toString().toIntOrNull()
+            // Saved before the "nothing changed" check below, which only looks at the MangaUpdates
+            // fields — a flipped exclude toggle on its own would otherwise be dropped on the way out.
+            applyMalSyncExclude()
             if (newListId == initialListId && newChapter == initialChapter && newVolume == initialVolume) {
+                if (malSyncExclude != null) Refresh.all()
                 dismissAllowingStateLoss()
                 return@setOnClickListener
             }
