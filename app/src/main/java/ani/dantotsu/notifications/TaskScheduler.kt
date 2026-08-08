@@ -37,6 +37,10 @@ interface TaskScheduler {
                     PrefName.UnreadChapterNotificationInterval
                 )
 
+                TaskType.AUTO_LIST_SYNC -> PrefManager.getVal(
+                    PrefName.AutoListSyncInterval
+                )
+
                 TaskType.MU_NOTIFICATION -> {
                     val unreadInterval = PrefManager.getVal<Long>(PrefName.UnreadChapterNotificationInterval)
                     if (unreadInterval > 0L) {
@@ -94,7 +98,8 @@ interface TaskScheduler {
         ANILIST_NOTIFICATION,
         SUBSCRIPTION_NOTIFICATION,
         UNREAD_CHAPTER_NOTIFICATION,
-        MU_NOTIFICATION
+        MU_NOTIFICATION,
+        AUTO_LIST_SYNC
     }
 }
 

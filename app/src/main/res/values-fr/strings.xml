@@ -446,6 +446,24 @@
     <string name="list_sync_settings_desc">Choisissez vers quels trackers vos mises à jour de listes sont envoyées</string>
     <string name="compare_lists">Comparer les listes</string>
     <string name="compare_lists_desc">Comparez MyAnimeList et MangaBaka à vos listes source et synchronisez les différences</string>
+    <string name="auto_list_sync">Comparaison automatique</string>
+    <string name="auto_list_sync_desc">Lancer la comparaison en arrière-plan et envoyer les différences automatiquement</string>
+    <string name="auto_list_sync_frequency">Fréquence de la comparaison automatique</string>
+    <string name="auto_list_sync_every">Intervalle : %1$s</string>
+    <string name="auto_list_sync_never_run">%1$s · jamais lancée</string>
+    <string name="auto_list_sync_last_run">%1$s · dernière exécution %2$s, %3$d synchronisées</string>
+    <string name="auto_list_sync_last_run_failures">%1$s · dernière exécution %2$s, %3$d synchronisées, %4$d échouées</string>
+    <string name="auto_list_sync_removals">Inclure les suppressions</string>
+    <string name="auto_list_sync_removals_label">Comparaison automatique : inclure les suppressions</string>
+    <string name="auto_list_sync_removals_desc">Supprimer aussi les entrées du tracker absentes des deux listes source. Désactivé par défaut : les exécutions automatiques n\'envoient que les ajouts et les mises à jour</string>
+    <plurals name="interval_hours">
+        <item quantity="one">%d heure</item>
+        <item quantity="other">%d heures</item>
+    </plurals>
+    <plurals name="interval_days">
+        <item quantity="one">%d jour</item>
+        <item quantity="other">%d jours</item>
+    </plurals>
     <string name="sync">Synchroniser</string>
     <string name="list_diff_only_on">Uniquement sur %1$s — absent de votre liste source</string>
     <string name="list_diff_mangabaka_id">MangaBaka #%1$d</string>

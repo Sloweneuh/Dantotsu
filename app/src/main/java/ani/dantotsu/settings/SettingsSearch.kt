@@ -120,6 +120,8 @@ object SettingsSearch {
 
         // ---- List sync ----
         l += SearchableSetting(ListSyncCompareActivity::class.java, R.string.compare_lists, R.string.list_sync_settings, R.drawable.ic_round_compare_arrows_24, R.string.compare_lists_desc, keywords = "compare audit diff differences out of date myanimelist mal mangabaka anilist mangaupdates sync")
+        l += SearchableSetting(SettingsListSyncActivity::class.java, R.string.auto_list_sync, R.string.list_sync_settings, R.drawable.ic_round_compare_schedule_24, R.string.auto_list_sync_desc, keywords = "automatic auto compare schedule interval frequency background periodic list sync push myanimelist mal mangabaka")
+        l += SearchableSetting(SettingsListSyncActivity::class.java, R.string.auto_list_sync_removals, R.string.list_sync_settings, R.drawable.ic_round_delete_sweep_24, R.string.auto_list_sync_removals_desc, keywords = "automatic auto compare remove removals delete entries tracker list sync")
         l += SearchableSetting(SettingsListSyncActivity::class.java, R.string.mal_list_sync, R.string.list_sync_settings, R.drawable.ic_round_mal_sync_24, R.string.mal_list_sync_desc, keywords = "myanimelist mal list sync tracking anilist push")
         l += SearchableSetting(SettingsListSyncActivity::class.java, R.string.mangabaka_list_sync, R.string.list_sync_settings, R.drawable.ic_round_mangabaka_sync_24, R.string.mangabaka_list_sync_desc, keywords = "mangabaka mb list sync tracking anilist mangaupdates push")
 

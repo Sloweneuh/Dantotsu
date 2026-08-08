@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import ani.dantotsu.connections.sync.AutoListSyncReceiver
 import ani.dantotsu.notifications.TaskScheduler.TaskType
 import ani.dantotsu.notifications.anilist.AnilistNotificationReceiver
 import ani.dantotsu.notifications.comment.CommentNotificationReceiver
@@ -51,6 +52,9 @@ class AlarmManagerScheduler(private val context: Context) : TaskScheduler {
 
             taskType == TaskType.MU_NOTIFICATION ->
                 Intent(context, MuUnreadNotificationReceiver::class.java)
+
+            taskType == TaskType.AUTO_LIST_SYNC ->
+                Intent(context, AutoListSyncReceiver::class.java)
 
             else -> return
         }
@@ -106,6 +110,9 @@ class AlarmManagerScheduler(private val context: Context) : TaskScheduler {
 
             taskType == TaskType.MU_NOTIFICATION ->
                 Intent(context, MuUnreadNotificationReceiver::class.java)
+
+            taskType == TaskType.AUTO_LIST_SYNC ->
+                Intent(context, AutoListSyncReceiver::class.java)
 
             else -> return
         }

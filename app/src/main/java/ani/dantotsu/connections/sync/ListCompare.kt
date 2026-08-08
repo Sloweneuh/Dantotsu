@@ -145,13 +145,17 @@ object ListCompare {
      * Callbacks run on whatever dispatcher this was called on; the caller marshals to the UI.
      */
     suspend fun compareStreaming(
+        sections: List<Section> = availableSections(),
         onStats: suspend (Section, SectionStats) -> Unit,
         onSection: suspend (Section, SubsectionResult) -> Unit,
         onError: suspend (Section, Throwable) -> Unit,
     ): Unit = coroutineScope {
         val userId = Anilist.userid ?: return@coroutineScope
-        val onMal = MAL.token != null
-        val onMangaBaka = MangaBaka.token != null
+        // Which destinations are in play is the caller's to narrow — the automatic pass leaves out
+        // trackers whose sync switch is off, and fetching their lists anyway would be paying for a
+        // comparison nobody is going to be shown or act on.
+        val onMal = Section.MAL_ANIME in sections || Section.MAL_MANGA in sections
+        val onMangaBaka = Section.MANGABAKA in sections
         val muActive = muActive()
 
         val anilistAnime = async { runCatching { if (onMal) anilistList(true, userId) else emptyList() } }
@@ -175,13 +179,11 @@ object ListCompare {
             }
         }
 
-        if (onMal) {
-            section(Section.MAL_ANIME) {
-                compareMal(true, anilistAnime, null) { onStats(Section.MAL_ANIME, it) }
-            }
-            section(Section.MAL_MANGA) {
-                compareMal(false, anilistManga, muMedia) { onStats(Section.MAL_MANGA, it) }
-            }
+        if (Section.MAL_ANIME in sections) section(Section.MAL_ANIME) {
+            compareMal(true, anilistAnime, null) { onStats(Section.MAL_ANIME, it) }
+        }
+        if (Section.MAL_MANGA in sections) section(Section.MAL_MANGA) {
+            compareMal(false, anilistManga, muMedia) { onStats(Section.MAL_MANGA, it) }
         }
         if (onMangaBaka) section(Section.MANGABAKA) {
             compareMangaBaka(anilistManga, muMedia) { onStats(Section.MANGABAKA, it) }

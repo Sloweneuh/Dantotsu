@@ -117,6 +117,25 @@ enum class PrefName(val data: Pref) {
     MangaBakaInfoEnabled(Pref(Location.General, Boolean::class, true)),
     MangaBakaListSyncEnabled(Pref(Location.General, Boolean::class, true)),
     MalListSyncEnabled(Pref(Location.General, Boolean::class, true)),
+
+    /**
+     * How often the list comparison runs by itself and pushes what it finds, in minutes. 0 is off,
+     * which is the default — this one goes out and writes to the user's tracker lists unattended, so
+     * it only ever runs because the user asked for it.
+     */
+    AutoListSyncInterval(Pref(Location.General, Long::class, 0L)),
+
+    /**
+     * Whether an automatic run also applies removals — entries on a tracker that are in neither
+     * source list. Off by default and separate from the interval: pushing an update the user can see
+     * and correct is a different proposition from deleting a list entry while they aren't looking.
+     */
+    AutoListSyncRemovals(Pref(Location.General, Boolean::class, false)),
+
+    /** When the last automatic run finished (epoch ms, 0 = never), and what it did. */
+    AutoListSyncLastRun(Pref(Location.Irrelevant, Long::class, 0L)),
+    AutoListSyncLastSynced(Pref(Location.Irrelevant, Int::class, 0)),
+    AutoListSyncLastFailed(Pref(Location.Irrelevant, Int::class, 0)),
     MangaUpdatesNotificationsEnabled(Pref(Location.General, Boolean::class, true)),
     MangaUpdatesNotificationInterval(Pref(Location.General, Long::class, 0L)),
     MuCustomListMapping(Pref(Location.General, String::class, "")),
