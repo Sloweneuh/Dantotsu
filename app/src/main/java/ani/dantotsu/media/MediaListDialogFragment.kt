@@ -254,6 +254,13 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                     }
                 }
 
+                fun fillEndDateIfNeeded() {
+                    if (end.date.year == null) {
+                        end.date = FuzzyDate().getToday()
+                        binding.mediaListEnd.setText(end.date.toString())
+                    }
+                }
+
                 fun onComplete() {
                     if (total != null) {
                         binding.mediaListProgress.setText(total.toString())
@@ -262,8 +269,7 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                         binding.mediaListVolume.setText(totalVolumes.toString())
                     }
                     fillStartDateIfNeeded()
-                    end.date = FuzzyDate().getToday()
-                    binding.mediaListEnd.setText(end.date.toString())
+                    fillEndDateIfNeeded()
                 }
 
                 var startBackupDate: FuzzyDate? = null
@@ -271,9 +277,15 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                 var progressBackup: String? = null
                 var volumeBackup: String? = null
                 binding.mediaListStatus.setOnItemClickListener { _, _, i, _ ->
-                    // A volume count alone is enough to fill in on completion — AniList has manga
-                    // with `volumes` but no `chapters`.
-                    if (i == 2 && (total != null || totalVolumes != null)) {
+                    // Completing is what fills the dates in, whether or not there is a count to fill
+                    // the progress fields from. This used to run only when a total was known, so a
+                    // series AniList hasn't finished — no episode or chapter count published yet —
+                    // could be marked completed and get no completion date at all, silently, while
+                    // every finished series got one.
+                    //
+                    // [onComplete] guards the counts individually, including the case of manga with
+                    // `volumes` but no `chapters`.
+                    if (i == 2) {
                         startBackupDate = start.date
                         endBackupDate = end.date
                         progressBackup = binding.mediaListProgress.text.toString()

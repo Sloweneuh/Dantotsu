@@ -352,6 +352,13 @@ class MediaListDialogSmallFragment : BottomSheetDialogFragment() {
                                 val startDate = if (status == "CURRENT" && media.userStartedAt.isEmpty())
                                     FuzzyDate().getToday()
                                 else null
+                                // The same for finishing it. This sheet has no date fields of its
+                                // own, so an entry completed from here kept whatever completion date
+                                // it already had — which for anything completed for the first time
+                                // is none, leaving a completed entry dated nowhere.
+                                val endDate = if (status == "COMPLETED" && media.userCompletedAt.isEmpty())
+                                    FuzzyDate().getToday()
+                                else null
                                 anilistOk = Anilist.mutation.editList(
                                     media.id,
                                     progress,
@@ -361,13 +368,14 @@ class MediaListDialogSmallFragment : BottomSheetDialogFragment() {
                                     null,
                                     status,
                                     media.isListPrivate,
-                                    startDate
+                                    startDate,
+                                    endDate
                                 )
                                 // Mirror what AniList now holds, dates included — otherwise the
                                 // trackers keep their own (or no) start date and show up as diffs
                                 // on the compare screen forever.
                                 val mirroredStart = startDate ?: media.userStartedAt.takeIf { !it.isEmpty() }
-                                val mirroredEnd = media.userCompletedAt.takeIf { !it.isEmpty() }
+                                val mirroredEnd = endDate ?: media.userCompletedAt.takeIf { !it.isEmpty() }
                                 val idMAL = media.idMAL
                                 val isAnime = media.anime != null
                                 val isManga = media.manga != null
