@@ -78,7 +78,7 @@ class SettingsSubscriptionNotificationActivity : AppCompatActivity() {
                             sItems[currentSIndex]
                         ),
                         desc = getString(R.string.subscriptions_info),
-                        icon = R.drawable.ic_round_notifications_none_24,
+                        icon = R.drawable.ic_round_notif_schedule_24,
                         onClick = {
                             context.customAlertDialog().apply {
                                 setTitle(R.string.subscriptions_checking_time)
@@ -121,7 +121,7 @@ class SettingsSubscriptionNotificationActivity : AppCompatActivity() {
                         type = 2,
                         name = getString(R.string.notification_for_checking_subscriptions),
                         desc = getString(R.string.notification_for_checking_subscriptions_desc),
-                        icon = R.drawable.ic_round_smart_button_24,
+                        icon = R.drawable.ic_round_notif_progress_24,
                         isChecked = PrefManager.getVal(PrefName.SubscriptionCheckingNotifications),
                         switch = { isChecked, _ ->
                             PrefManager.setVal(
@@ -137,7 +137,7 @@ class SettingsSubscriptionNotificationActivity : AppCompatActivity() {
                         type = 1,
                         name = getString(R.string.view_subscriptions),
                         desc = getString(R.string.view_subscriptions_desc),
-                        icon = R.drawable.ic_round_search_24,
+                        icon = R.drawable.ic_round_subscriptions_24,
                         onClick = {
                             val subscriptions = SubscriptionHelper.getSubscriptions()
                             SubscriptionsBottomDialog.newInstance(subscriptions).show(

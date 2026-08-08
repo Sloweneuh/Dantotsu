@@ -339,7 +339,7 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                 type = 2,
                 name = getString(R.string.sync_extensions),
                 desc = getString(R.string.sync_extensions_desc),
-                icon = R.drawable.ic_extension,
+                icon = R.drawable.ic_round_extension_cloud_24,
                 isEnabled = linked,
                 isChecked = PrefManager.getVal(PrefName.SyncExtensionsEnabled),
                 switch = { isChecked, _ ->
@@ -351,7 +351,7 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                 type = 1,
                 name = getString(R.string.sync_extensions_now),
                 desc = getString(R.string.sync_extensions_now_desc),
-                icon = R.drawable.ic_extension,
+                icon = R.drawable.ic_round_extension_sync_24,
                 isEnabled = linked,
                 onClick = {
                     when {
@@ -388,7 +388,7 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                 type = 2,
                 name = getString(R.string.sync_extension_settings),
                 desc = getString(R.string.sync_extension_settings_desc),
-                icon = R.drawable.ic_extension,
+                icon = R.drawable.ic_round_extension_settings_24,
                 isEnabled = linked,
                 isChecked = PrefManager.getVal(PrefName.SyncExtensionSettingsEnabled),
                 switch = { isChecked, _ ->
@@ -486,7 +486,7 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                 type = 1,
                 name = getString(R.string.cloud_wipe),
                 desc = getString(R.string.cloud_wipe_desc),
-                icon = R.drawable.ic_round_delete_24,
+                icon = R.drawable.ic_round_delete_forever_24,
                 isEnabled = linked,
                 onClick = {
                     if (Anilist.token.isNullOrEmpty()) {

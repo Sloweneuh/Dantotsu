@@ -93,7 +93,7 @@ class SettingsActivity : AppCompatActivity() {
                             type = 1,
                             name = getString(R.string.accounts),
                             desc = getString(R.string.accounts_desc),
-                            icon = R.drawable.ic_round_person_24,
+                            icon = R.drawable.ic_round_manage_accounts_24,
                             onClick = {
                                 startActivity(Intent(context, SettingsAccountActivity::class.java))
                             },
@@ -114,7 +114,7 @@ class SettingsActivity : AppCompatActivity() {
                         type = 1,
                         name = getString(R.string.common),
                         desc = getString(R.string.common_desc),
-                        icon = R.drawable.ic_lightbulb_24,
+                        icon = R.drawable.ic_round_settings_24,
                         onClick = {
                             startActivity(Intent(context, SettingsCommonActivity::class.java))
                         },
@@ -154,7 +154,7 @@ class SettingsActivity : AppCompatActivity() {
                         type = 1,
                         name = getString(R.string.addons),
                         desc = getString(R.string.addons_desc),
-                        icon = R.drawable.ic_round_restaurant_24,
+                        icon = R.drawable.ic_round_widgets_24,
                         onClick = {
                             startActivity(Intent(context, SettingsAddonActivity::class.java))
                         },

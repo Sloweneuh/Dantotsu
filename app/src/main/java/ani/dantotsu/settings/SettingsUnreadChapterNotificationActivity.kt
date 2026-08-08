@@ -104,7 +104,7 @@ class SettingsUnreadChapterNotificationActivity : AppCompatActivity() {
                             uItems[currentUIndex]
                         ),
                         desc = getString(R.string.unread_chapter_notification_checking_time_desc),
-                        icon = R.drawable.ic_round_notifications_none_24,
+                        icon = R.drawable.ic_round_notif_schedule_24,
                         onClick = {
                             context.customAlertDialog().apply {
                                 setTitle(R.string.unread_chapter_notification_frequency)
@@ -142,7 +142,7 @@ class SettingsUnreadChapterNotificationActivity : AppCompatActivity() {
                         type = 2,
                         name = getString(R.string.unread_chapter_check_progress_notification),
                         desc = getString(R.string.unread_chapter_check_progress_notification_desc),
-                        icon = R.drawable.ic_round_smart_button_24,
+                        icon = R.drawable.ic_round_notif_progress_24,
                         isChecked = PrefManager.getVal(PrefName.UnreadChapterCheckingNotifications),
                         switch = { isChecked, _ ->
                             PrefManager.setVal(
@@ -158,7 +158,7 @@ class SettingsUnreadChapterNotificationActivity : AppCompatActivity() {
                         type = 1,
                         name = getString(R.string.clear_unread_chapter_history),
                         desc = getString(R.string.clear_unread_chapter_history_desc),
-                        icon = R.drawable.ic_delete,
+                        icon = R.drawable.ic_round_delete_sweep_24,
                         onClick = {
                             context.customAlertDialog().apply {
                                 setTitle(R.string.clear_unread_chapter_history)

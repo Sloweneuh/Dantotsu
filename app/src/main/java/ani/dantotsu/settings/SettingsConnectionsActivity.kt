@@ -1,5 +1,6 @@
 package ani.dantotsu.settings
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
@@ -11,6 +12,7 @@ import androidx.core.view.updateLayoutParams
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import ani.dantotsu.R
+import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.databinding.ActivitySettingsConnectionsBinding
 import ani.dantotsu.initActivity
 import ani.dantotsu.media.InfoTabContext
@@ -45,11 +47,11 @@ class SettingsConnectionsActivity : AppCompatActivity() {
         val settingsList = arrayListOf(
             Settings(
                 type = 2,
-                name = getString(R.string.disable_comick),
-                desc = getString(R.string.disable_comick_desc),
-                icon = R.drawable.ic_round_comick_24,
-                isChecked = PrefManager.getVal<Boolean>(PrefName.ComickEnabled),
-                switch = { isChecked, _ -> PrefManager.setVal(PrefName.ComickEnabled, isChecked) },
+                name = getString(R.string.disable_mal),
+                desc = getString(R.string.disable_mal_desc),
+                icon = R.drawable.ic_myanimelist,
+                isChecked = PrefManager.getVal<Boolean>(PrefName.MalEnabled),
+                switch = { isChecked, _ -> PrefManager.setVal(PrefName.MalEnabled, isChecked) },
                 attachToSwitch = { b ->
                     b.settingsExtraIcon.visibility = View.VISIBLE
                     b.settingsExtraIcon.setImageDrawable(
@@ -57,15 +59,15 @@ class SettingsConnectionsActivity : AppCompatActivity() {
                     )
                     b.settingsExtraIcon.setOnClickListener {
                         CustomBottomDialog.newInstance().apply {
-                            setTitleText(this@SettingsConnectionsActivity.getString(R.string.comick_connections_help))
+                            setTitleText(this@SettingsConnectionsActivity.getString(R.string.mal_connections_help))
                             addView(
                                 TextView(it.context).apply {
                                     val markWon = Markwon.builder(it.context)
                                         .usePlugin(SoftBreakAddsNewLinePlugin.create()).build()
-                                    markWon.setMarkdown(this, this@SettingsConnectionsActivity.getString(R.string.full_comick_connections_help))
+                                    markWon.setMarkdown(this, this@SettingsConnectionsActivity.getString(R.string.full_mal_connections_help))
                                 }
                             )
-                        }.show(supportFragmentManager, "comick_help")
+                        }.show(supportFragmentManager, "mal_help")
                     }
                 }
             ),
@@ -97,11 +99,11 @@ class SettingsConnectionsActivity : AppCompatActivity() {
             ),
             Settings(
                 type = 2,
-                name = getString(R.string.disable_mal),
-                desc = getString(R.string.disable_mal_desc),
-                icon = R.drawable.ic_myanimelist,
-                isChecked = PrefManager.getVal<Boolean>(PrefName.MalEnabled),
-                switch = { isChecked, _ -> PrefManager.setVal(PrefName.MalEnabled, isChecked) },
+                name = getString(R.string.disable_comick),
+                desc = getString(R.string.disable_comick_desc),
+                icon = R.drawable.ic_round_comick_24,
+                isChecked = PrefManager.getVal<Boolean>(PrefName.ComickEnabled),
+                switch = { isChecked, _ -> PrefManager.setVal(PrefName.ComickEnabled, isChecked) },
                 attachToSwitch = { b ->
                     b.settingsExtraIcon.visibility = View.VISIBLE
                     b.settingsExtraIcon.setImageDrawable(
@@ -109,17 +111,32 @@ class SettingsConnectionsActivity : AppCompatActivity() {
                     )
                     b.settingsExtraIcon.setOnClickListener {
                         CustomBottomDialog.newInstance().apply {
-                            setTitleText(this@SettingsConnectionsActivity.getString(R.string.mal_connections_help))
+                            setTitleText(this@SettingsConnectionsActivity.getString(R.string.comick_connections_help))
                             addView(
                                 TextView(it.context).apply {
                                     val markWon = Markwon.builder(it.context)
                                         .usePlugin(SoftBreakAddsNewLinePlugin.create()).build()
-                                    markWon.setMarkdown(this, this@SettingsConnectionsActivity.getString(R.string.full_mal_connections_help))
+                                    markWon.setMarkdown(this, this@SettingsConnectionsActivity.getString(R.string.full_comick_connections_help))
                                 }
                             )
-                        }.show(supportFragmentManager, "mal_help")
+                        }.show(supportFragmentManager, "comick_help")
                     }
                 }
+            ),
+            // MangaUpdates used to own a settings screen of its own, holding these three rows and
+            // nothing else. Its first row wrote PrefName.MangaUpdatesEnabled — the same preference
+            // the other four services set from here — while calling itself "MangaUpdates tab", so
+            // the one switch appeared as a tab-visibility setting there and as a data-fetching one
+            // on the backup screen. Worse, that screen was only listed while signed in to
+            // MangaUpdates, which hid the master switch for info fetching, something that needs no
+            // account at all.
+            Settings(
+                type = 2,
+                name = getString(R.string.disable_mangaupdates),
+                desc = getString(R.string.disable_mangaupdates_desc),
+                icon = R.drawable.ic_round_mangaupdates_24,
+                isChecked = PrefManager.getVal<Boolean>(PrefName.MangaUpdatesEnabled),
+                switch = { isChecked, _ -> PrefManager.setVal(PrefName.MangaUpdatesEnabled, isChecked) },
             ),
             Settings(
                 type = 2,
@@ -232,20 +249,41 @@ class SettingsConnectionsActivity : AppCompatActivity() {
                         }
                     }
                 }
-            )
-            ,
+            ),
+            // The list rows do need the account, so they keep the visibility condition the old
+            // screen's entry point carried.
+            Settings(
+                type = 2,
+                name = getString(R.string.mu_list_fetch_enabled),
+                desc = getString(R.string.mu_list_fetch_enabled_desc),
+                icon = R.drawable.ic_round_mangaupdates_list_24,
+                isChecked = PrefManager.getVal<Boolean>(PrefName.MangaUpdatesListEnabled),
+                switch = { isChecked, _ -> PrefManager.setVal(PrefName.MangaUpdatesListEnabled, isChecked) },
+                isVisible = MangaUpdates.token != null,
+            ),
+            Settings(
+                type = 1,
+                name = getString(R.string.mu_custom_list_mapping),
+                desc = getString(R.string.mu_custom_list_mapping_desc),
+                icon = R.drawable.ic_round_mangaupdates_mapping_24,
+                onClick = {
+                    startActivity(Intent(this, MUCustomListMappingActivity::class.java))
+                },
+                isActivity = true,
+                isVisible = MangaUpdates.token != null,
+            ),
             Settings(
                 type = 1,
                 name = getString(R.string.malsync_exclude_manage),
                 desc = getString(R.string.malsync_exclude_manage_desc),
-                icon = R.drawable.ic_malsync,
+                icon = R.drawable.ic_round_malsync_exclude_24,
                 onClick = { showMalSyncExcludeDialog() },
             ),
             Settings(
                 type = 1,
                 name = getString(R.string.customize_info_tabs),
                 desc = getString(R.string.customize_info_tabs_desc),
-                icon = R.drawable.ic_round_equal_24,
+                icon = R.drawable.ic_round_view_array_24,
                 onClick = { openInfoTabOrderDialog() },
             ),
         )
@@ -272,8 +310,9 @@ class SettingsConnectionsActivity : AppCompatActivity() {
      *
      * The checkbox only controls whether the tab appears - it does not affect whether the
      * underlying connection's data fetching runs (see [ani.dantotsu.media.InfoTabType.fetchEnabled]).
-     * Connections disabled via their switch above are left out of the list entirely, since there's
-     * nothing to show or reorder for them.
+     * Connections switched off above are listed but inert, which is the only place the two controls
+     * meet: both have to agree before a tab shows, so a disabled connection has to explain itself
+     * here rather than leave a tick that does nothing.
      */
     private fun openInfoTabOrderDialog() {
         val dialogView = layoutInflater.inflate(R.layout.dialog_info_tab_order, null)
@@ -318,23 +357,28 @@ class SettingsConnectionsActivity : AppCompatActivity() {
     }
 
     /**
-     * Builds one [InfoTabContext]'s fetch-enabled tabs, in saved order, as an [InfoTabOrderAdapter].
-     * Tabs whose connection switch is off are left out entirely - there's nothing to show or
-     * reorder for a connection that never fetches data.
+     * Builds one [InfoTabContext]'s tabs, in saved order, as an [InfoTabOrderAdapter].
+     *
+     * Tabs whose connection switch is off are listed too, sorted to the bottom and drawn inert. They
+     * used to be dropped, which read as the list being incomplete — the one tab you came here to
+     * find simply absent, with the switch that removed it two screens away and no hint of the
+     * connection. It also lost their saved visibility: [saveInfoTabOrder] defaults anything missing
+     * from the adapter back to shown, so disabling a connection quietly un-hid its tab for whenever
+     * it was switched back on.
      */
     private fun buildInfoTabAdapter(tabContext: InfoTabContext): InfoTabOrderAdapter {
         val tabs = tabContext.tabs
-        val order = tabContext.savedOrder()
         val visibility = tabContext.savedVisibility()
 
-        val items = order
-            .filter { tabs[it].fetchEnabled }
+        val items = tabContext.savedOrder()
+            .sortedBy { !tabs[it].fetchEnabled }
             .map { originalIndex ->
                 InfoTabOrderItem(
                     originalIndex,
                     getString(tabs[originalIndex].labelRes),
                     tabs[originalIndex].iconRes,
-                    visibility.getOrNull(originalIndex) == true
+                    visibility.getOrNull(originalIndex) == true,
+                    tabs[originalIndex].fetchEnabled
                 )
             }.toMutableList()
 
@@ -350,11 +394,21 @@ class SettingsConnectionsActivity : AppCompatActivity() {
             androidx.recyclerview.widget.ItemTouchHelper.UP or androidx.recyclerview.widget.ItemTouchHelper.DOWN,
             0
         ) {
+            // Inert rows sit at the bottom and stay there: dragging one would put a tab that cannot
+            // appear ahead of tabs that can, and the order it landed in would be saved.
+            override fun getMovementFlags(
+                rv: androidx.recyclerview.widget.RecyclerView,
+                vh: androidx.recyclerview.widget.RecyclerView.ViewHolder
+            ): Int = if (adapter.isActionable(vh.bindingAdapterPosition)) {
+                super.getMovementFlags(rv, vh)
+            } else 0
+
             override fun onMove(
                 rv: androidx.recyclerview.widget.RecyclerView,
                 vh: androidx.recyclerview.widget.RecyclerView.ViewHolder,
                 target: androidx.recyclerview.widget.RecyclerView.ViewHolder
             ): Boolean {
+                if (!adapter.isActionable(target.bindingAdapterPosition)) return false
                 adapter.onItemMove(vh.bindingAdapterPosition, target.bindingAdapterPosition)
                 return true
             }

@@ -39,7 +39,7 @@ class SettingsListSyncActivity : AppCompatActivity() {
                 type = 1,
                 name = getString(R.string.compare_lists),
                 desc = getString(R.string.compare_lists_desc),
-                icon = R.drawable.ic_round_sync_24,
+                icon = R.drawable.ic_round_compare_arrows_24,
                 onClick = {
                     startActivity(Intent(this, ListSyncCompareActivity::class.java))
                 },
@@ -50,7 +50,7 @@ class SettingsListSyncActivity : AppCompatActivity() {
                 type = 2,
                 name = getString(R.string.mal_list_sync),
                 desc = getString(R.string.mal_list_sync_desc),
-                icon = R.drawable.ic_myanimelist,
+                icon = R.drawable.ic_round_mal_sync_24,
                 isChecked = PrefManager.getVal(PrefName.MalListSyncEnabled),
                 switch = { isChecked, _ ->
                     PrefManager.setVal(PrefName.MalListSyncEnabled, isChecked)
@@ -61,7 +61,7 @@ class SettingsListSyncActivity : AppCompatActivity() {
                 type = 2,
                 name = getString(R.string.mangabaka_list_sync),
                 desc = getString(R.string.mangabaka_list_sync_desc),
-                icon = R.drawable.ic_round_mangabaka_24,
+                icon = R.drawable.ic_round_mangabaka_sync_24,
                 isChecked = PrefManager.getVal(PrefName.MangaBakaListSyncEnabled),
                 switch = { isChecked, _ ->
                     PrefManager.setVal(PrefName.MangaBakaListSyncEnabled, isChecked)

@@ -47,7 +47,7 @@ class SettingsNotificationActivity : AppCompatActivity() {
                         type = 1,
                         name = getString(R.string.subscription_notifications),
                         desc = getString(R.string.subscription_notifications_desc),
-                        icon = R.drawable.ic_round_notifications_none_24,
+                        icon = R.drawable.ic_round_notif_subscriptions_24,
                         onClick = {
                             startActivity(Intent(context, SettingsSubscriptionNotificationActivity::class.java))
                         }
@@ -58,7 +58,7 @@ class SettingsNotificationActivity : AppCompatActivity() {
                         type = 1,
                         name = getString(R.string.unread_chapter_notifications),
                         desc = getString(R.string.unread_chapter_notifications_desc),
-                        icon = R.drawable.ic_round_notifications_none_24,
+                        icon = R.drawable.ic_round_notif_unread_24,
                         onClick = {
                             startActivity(Intent(context, SettingsUnreadChapterNotificationActivity::class.java))
                         }
@@ -69,7 +69,7 @@ class SettingsNotificationActivity : AppCompatActivity() {
                         type = 1,
                         name = getString(R.string.anilist_notifications),
                         desc = getString(R.string.anilist_notifications_desc),
-                        icon = R.drawable.ic_anilist,
+                        icon = R.drawable.ic_round_notif_anilist_24,
                         onClick = {
                             startActivity(Intent(context, SettingsAnilistNotificationActivity::class.java))
                         }
@@ -80,7 +80,7 @@ class SettingsNotificationActivity : AppCompatActivity() {
                         type = 1,
                         name = getString(R.string.comment_notifications),
                         desc = getString(R.string.comment_notifications_desc),
-                        icon = R.drawable.ic_round_notifications_none_24,
+                        icon = R.drawable.ic_round_notif_comments_24,
                         onClick = {
                             startActivity(Intent(context, SettingsCommentNotificationActivity::class.java))
                         }
@@ -91,7 +91,7 @@ class SettingsNotificationActivity : AppCompatActivity() {
                         type = 1,
                         name = getString(R.string.mu_notifications),
                         desc = getString(R.string.mu_notifications_desc),
-                        icon = R.drawable.ic_round_mangaupdates_24,
+                        icon = R.drawable.ic_round_notif_mangaupdates_24,
                         onClick = {
                             startActivity(Intent(context, SettingsMuNotificationActivity::class.java))
                         }
@@ -102,7 +102,7 @@ class SettingsNotificationActivity : AppCompatActivity() {
                         type = 2,
                         name = getString(R.string.use_alarm_manager_reliable),
                         desc = getString(R.string.use_alarm_manager_reliable_desc),
-                        icon = R.drawable.ic_anilist,
+                        icon = R.drawable.ic_round_alarm_24,
                         isChecked = PrefManager.getVal(PrefName.UseAlarmManager),
                         switch = { isChecked, view ->
                             if (isChecked) {

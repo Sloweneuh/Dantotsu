@@ -86,7 +86,7 @@ class SettingsExtensionsActivity : AppCompatActivity() {
                         type = 1,
                         name = getString(R.string.anime_add_repository),
                         desc = getString(R.string.anime_add_repository_desc),
-                        icon = R.drawable.ic_github,
+                        icon = R.drawable.ic_round_github_anime_24,
                         onClick = {
                             val animeRepos =
                                 PrefManager.getVal<Set<String>>(PrefName.AnimeExtensionRepos)
@@ -111,7 +111,7 @@ class SettingsExtensionsActivity : AppCompatActivity() {
                         type = 1,
                         name = getString(R.string.manga_add_repository),
                         desc = getString(R.string.manga_add_repository_desc),
-                        icon = R.drawable.ic_github,
+                        icon = R.drawable.ic_round_github_manga_24,
                         onClick = {
                             val mangaRepos =
                                 PrefManager.getVal<Set<String>>(PrefName.MangaExtensionRepos)
@@ -136,7 +136,7 @@ class SettingsExtensionsActivity : AppCompatActivity() {
                         type = 1,
                         name = getString(R.string.novel_add_repository),
                         desc = getString(R.string.novel_add_repository_desc),
-                        icon = R.drawable.ic_github,
+                        icon = R.drawable.ic_round_github_novel_24,
                         onClick = {
                             val novelRepos =
                                 PrefManager.getVal<Set<String>>(PrefName.NovelExtensionRepos)
@@ -161,7 +161,7 @@ class SettingsExtensionsActivity : AppCompatActivity() {
                         type = 1,
                         name = getString(R.string.extension_test),
                         desc = getString(R.string.extension_test_desc),
-                        icon = R.drawable.ic_round_search_sources_24,
+                        icon = R.drawable.ic_round_science_24,
                         isActivity = true,
                         onClick = {
                             ContextCompat.startActivity(
@@ -175,7 +175,7 @@ class SettingsExtensionsActivity : AppCompatActivity() {
                         type = 1,
                         name = getString(R.string.user_agent),
                         desc = getString(R.string.user_agent_desc),
-                        icon = R.drawable.ic_round_video_settings_24,
+                        icon = R.drawable.ic_globe_24,
                         onClick = {
                             val dialogView = DialogUserAgentBinding.inflate(layoutInflater)
                             val editText = dialogView.userAgentTextBox
@@ -201,7 +201,7 @@ class SettingsExtensionsActivity : AppCompatActivity() {
                         type = 2,
                         name = getString(R.string.proxy),
                         desc = getString(R.string.proxy_desc),
-                        icon = R.drawable.swap_horizontal_circle_24,
+                        icon = R.drawable.vpn_key_24,
                         isChecked = PrefManager.getVal(PrefName.EnableSocks5Proxy),
                         switch = { isChecked, _ ->
                             PrefManager.setVal(PrefName.EnableSocks5Proxy, isChecked)
@@ -221,7 +221,7 @@ class SettingsExtensionsActivity : AppCompatActivity() {
                         type = 2,
                         name = getString(R.string.force_legacy_installer),
                         desc = getString(R.string.force_legacy_installer_desc),
-                        icon = R.drawable.ic_round_new_releases_24,
+                        icon = R.drawable.ic_round_history_24,
                         isChecked = extensionInstaller.get() == BasePreferences.ExtensionInstaller.LEGACY,
                         switch = { isChecked, _ ->
                             if (isChecked) {

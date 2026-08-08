@@ -52,9 +52,11 @@ class SettingsAddonActivity : AppCompatActivity() {
                 arrayListOf(
                     Settings(
                         type = 1,
+                        // Add-on badged with what it adds: the bare download glyph is the app's
+                        // general one, on episode rows, notifications and the downloads screen.
                         name = getString(R.string.anime_downloader_addon),
                         desc = getString(R.string.not_installed),
-                        icon = R.drawable.ic_download_24,
+                        icon = R.drawable.ic_round_addon_download_24,
                         isActivity = true,
                         attach = {
                             setStatus(

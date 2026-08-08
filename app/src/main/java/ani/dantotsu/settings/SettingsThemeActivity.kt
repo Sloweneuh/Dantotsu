@@ -133,7 +133,7 @@ class SettingsThemeActivity : AppCompatActivity(), SimpleDialog.OnDialogResultLi
                         type = 2,
                         name = getString(R.string.use_material_you),
                         desc = getString(R.string.use_material_you_desc),
-                        icon = R.drawable.ic_round_new_releases_24,
+                        icon = R.drawable.ic_round_auto_awesome_24,
                         isChecked = PrefManager.getVal(PrefName.UseMaterialYou),
                         switch = { isChecked, _ ->
                             PrefManager.setVal(PrefName.UseMaterialYou, isChecked)
@@ -157,7 +157,7 @@ class SettingsThemeActivity : AppCompatActivity(), SimpleDialog.OnDialogResultLi
                         type = 2,
                         name = getString(R.string.use_custom_theme),
                         desc = getString(R.string.use_custom_theme_desc),
-                        icon = R.drawable.ic_palette,
+                        icon = R.drawable.ic_round_color_24,
                         isChecked = PrefManager.getVal(PrefName.UseCustomTheme),
                         switch = { isChecked, _ ->
                             PrefManager.setVal(PrefName.UseCustomTheme, isChecked)
@@ -170,7 +170,7 @@ class SettingsThemeActivity : AppCompatActivity(), SimpleDialog.OnDialogResultLi
                         type = 1,
                         name = getString(R.string.color_picker),
                         desc = getString(R.string.color_picker_desc),
-                        icon = R.drawable.ic_palette,
+                        icon = R.drawable.ic_round_color_picker_24,
                         onClick = {
                             val originalColor: Int = PrefManager.getVal(PrefName.CustomThemeInt)
 

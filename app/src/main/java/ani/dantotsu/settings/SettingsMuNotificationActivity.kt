@@ -45,7 +45,7 @@ class SettingsMuNotificationActivity : AppCompatActivity() {
                 type = 1,
                 name = getString(R.string.mu_notification_interval_linked, formatInterval(unreadInterval)),
                 desc = getString(R.string.mu_notification_interval_linked_desc),
-                icon = R.drawable.ic_round_notifications_none_24,
+                icon = R.drawable.ic_round_notif_schedule_24,
                 isEnabled = false,
             )
         } else {
@@ -68,7 +68,7 @@ class SettingsMuNotificationActivity : AppCompatActivity() {
                 type = 1,
                 name = getString(R.string.mu_notification_interval, items[currentIndex]),
                 desc = getString(R.string.mu_notification_interval_desc),
-                icon = R.drawable.ic_round_notifications_none_24,
+                icon = R.drawable.ic_round_notif_schedule_24,
                 onClick = {
                     context.customAlertDialog().apply {
                         setTitle(R.string.mu_notification_interval_title)

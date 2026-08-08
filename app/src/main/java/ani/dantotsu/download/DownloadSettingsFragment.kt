@@ -54,7 +54,7 @@ class DownloadSettingsFragment : Fragment() {
                     type = 1,
                     name = getString(R.string.download_manager_select),
                     desc = getString(R.string.download_manager_select_desc),
-                    icon = R.drawable.ic_download_24,
+                    icon = R.drawable.ic_round_download_manager_24,
                     onClick = {
                         val managers = arrayOf("Default", "1DM", "ADM")
                         requireContext().customAlertDialog().apply {
@@ -73,7 +73,7 @@ class DownloadSettingsFragment : Fragment() {
                     type = 2,
                     name = getString(R.string.allow_metered_downloads),
                     desc = getString(R.string.allow_metered_downloads_desc),
-                    icon = R.drawable.ic_download_24,
+                    icon = R.drawable.ic_round_download_metered_24,
                     isChecked = PrefManager.getVal(PrefName.AllowMeteredDownloads),
                     switch = { isChecked, _ ->
                         PrefManager.setVal(PrefName.AllowMeteredDownloads, isChecked)
@@ -84,33 +84,42 @@ class DownloadSettingsFragment : Fragment() {
                     R.string.purge_anime_downloads,
                     R.string.purge_anime_downloads_desc,
                     R.string.anime,
+                    R.drawable.ic_round_purge_anime_24,
                 ),
                 purgeSetting(
                     MediaType.MANGA,
                     R.string.purge_manga_downloads,
                     R.string.purge_manga_downloads_desc,
                     R.string.manga,
+                    R.drawable.ic_round_purge_manga_24,
                 ),
                 purgeSetting(
                     MediaType.NOVEL,
                     R.string.purge_novel_downloads,
                     R.string.purge_novel_downloads_desc,
                     R.string.novels,
+                    R.drawable.ic_round_purge_novel_24,
                 ),
             )
         )
     }
 
+    /**
+     * @param iconRes the media type badged with a bin. All three rows are the same irreversible
+     *   action and used to share one bin between them, which left the only thing that differs —
+     *   which library it empties — carried by the label alone.
+     */
     private fun purgeSetting(
         type: MediaType,
         titleRes: Int,
         descRes: Int,
         mediaNameRes: Int,
+        iconRes: Int,
     ) = Settings(
         type = 1,
         name = getString(titleRes),
         desc = getString(descRes),
-        icon = R.drawable.ic_round_delete_24,
+        icon = iconRes,
         onClick = {
             requireContext().customAlertDialog().apply {
                 setTitle(titleRes)

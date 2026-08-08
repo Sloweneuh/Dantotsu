@@ -246,7 +246,7 @@ class AnilistSettingsActivity : AppCompatActivity() {
                     type = 2,
                     name = getString(R.string.restrict_messages),
                     desc = getString(R.string.restrict_messages_desc),
-                    icon = R.drawable.ic_round_lock_open_24,
+                    icon = R.drawable.ic_round_comments_disabled_24,
                     isChecked = Anilist.restrictMessagesToFollowing,
                     switch = { isChecked, _ ->
                         lifecycleScope.launch {

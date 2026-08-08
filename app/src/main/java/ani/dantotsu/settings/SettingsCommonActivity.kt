@@ -127,7 +127,7 @@ class SettingsCommonActivity : AppCompatActivity() {
                             type = 1,
                             name = getString(R.string.ui_settings),
                             desc = getString(R.string.ui_settings_desc),
-                            icon = R.drawable.ic_round_auto_awesome_24,
+                            icon = R.drawable.ic_round_grid_view_24,
                             onClick = {
                                 startActivity(
                                     Intent(
@@ -142,7 +142,7 @@ class SettingsCommonActivity : AppCompatActivity() {
                             type = 1,
                             name = getString(R.string.app_lock),
                             desc = getString(R.string.app_lock_desc),
-                            icon = R.drawable.ic_round_lock_open_24,
+                            icon = R.drawable.ic_baseline_screen_lock_portrait_24,
                             onClick = {
                                 customAlertDialog().apply {
                                     val view = DialogSetPasswordBinding.inflate(layoutInflater)
@@ -224,7 +224,7 @@ class SettingsCommonActivity : AppCompatActivity() {
                             type = 2,
                             name = getString(R.string.always_continue_content),
                             desc = getString(R.string.always_continue_content_desc),
-                            icon = R.drawable.ic_round_delete_24,
+                            icon = R.drawable.ic_round_resume_24,
                             isChecked = PrefManager.getVal(PrefName.ContinueMedia),
                             switch = { isChecked, _ ->
                                 PrefManager.setVal(PrefName.ContinueMedia, isChecked)
@@ -255,7 +255,7 @@ class SettingsCommonActivity : AppCompatActivity() {
                             type = 2,
                             name = getString(R.string.hide_private),
                             desc = getString(R.string.hide_private_desc),
-                            icon = R.drawable.ic_round_remove_red_eye_24,
+                            icon = R.drawable.ic_round_visibility_off_24,
                             isChecked = PrefManager.getVal(PrefName.HidePrivate),
                             switch = { isChecked, _ ->
                                 PrefManager.setVal(PrefName.HidePrivate, isChecked)
@@ -266,7 +266,7 @@ class SettingsCommonActivity : AppCompatActivity() {
                             type = 2,
                             name = getString(R.string.search_source_list),
                             desc = getString(R.string.search_source_list_desc),
-                            icon = R.drawable.ic_round_search_sources_24,
+                            icon = R.drawable.ic_round_manage_search_24,
                             isChecked = PrefManager.getVal(PrefName.SearchSources),
                             switch = { isChecked, _ ->
                                 PrefManager.setVal(PrefName.SearchSources, isChecked)
@@ -276,7 +276,7 @@ class SettingsCommonActivity : AppCompatActivity() {
                             type = 2,
                             name = getString(R.string.recentlyListOnly),
                             desc = getString(R.string.recentlyListOnly_desc),
-                            icon = R.drawable.ic_round_new_releases_24,
+                            icon = R.drawable.ic_round_history_24,
                             isChecked = PrefManager.getVal(PrefName.RecentlyListOnly),
                             switch = { isChecked, _ ->
                                 PrefManager.setVal(PrefName.RecentlyListOnly, isChecked)
@@ -298,7 +298,7 @@ class SettingsCommonActivity : AppCompatActivity() {
                             type = 1,
                             name = getString(R.string.hidden_from_lists_manage),
                             desc = getString(R.string.hidden_from_lists_manage_desc),
-                            icon = R.drawable.ic_round_remove_red_eye_24,
+                            icon = R.drawable.ic_round_playlist_remove_24,
                             onClick = { showHiddenFromListsDialog() },
                         ),
                     ),

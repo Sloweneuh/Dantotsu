@@ -54,7 +54,7 @@ class SettingsCommentNotificationActivity : AppCompatActivity() {
                             cItems[PrefManager.getVal(PrefName.CommentNotificationInterval)]
                         ),
                         desc = getString(R.string.comment_notification_checking_time_desc),
-                        icon = R.drawable.ic_round_notifications_none_24,
+                        icon = R.drawable.ic_round_notif_schedule_24,
                         onClick = {
                             context.customAlertDialog().apply {
                                 setTitle(R.string.comment_notification_frequency)

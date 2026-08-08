@@ -52,7 +52,7 @@ class SettingsAnimeActivity : AppCompatActivity() {
                         type = 2,
                         name = getString(R.string.prefer_dub),
                         desc = getString(R.string.prefer_dub_desc),
-                        icon = R.drawable.ic_round_audiotrack_24,
+                        icon = R.drawable.ic_anime_dub_24,
                         isChecked = PrefManager.getVal(PrefName.SettingsPreferDub),
                         switch = { isChecked, _ ->
                             PrefManager.setVal(PrefName.SettingsPreferDub, isChecked)
@@ -62,7 +62,7 @@ class SettingsAnimeActivity : AppCompatActivity() {
                         type = 2,
                         name = getString(R.string.show_yt),
                         desc = getString(R.string.show_yt_desc),
-                        icon = R.drawable.ic_round_play_circle_24,
+                        icon = R.drawable.format_youtube_24,
                         isChecked = PrefManager.getVal(PrefName.ShowYtButton),
                         switch = { isChecked, _ ->
                             PrefManager.setVal(PrefName.ShowYtButton, isChecked)

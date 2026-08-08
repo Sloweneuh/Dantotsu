@@ -337,7 +337,7 @@ class SettingsAccountActivity : AppCompatActivity() {
                             type = 2,
                             name = getString(R.string.enable_rpc),
                             desc = getString(R.string.enable_rpc_desc),
-                            icon = R.drawable.interests_24,
+                            icon = R.drawable.ic_discord,
                             isChecked = PrefManager.getVal(PrefName.rpcEnabled),
                             switch = { isChecked, _ ->
                                 PrefManager.setVal(PrefName.rpcEnabled, isChecked)
@@ -366,20 +366,9 @@ class SettingsAccountActivity : AppCompatActivity() {
                         ),
                         Settings(
                             type = 1,
-                            name = getString(R.string.mangaupdates_settings),
-                            desc = getString(R.string.mangaupdates_settings_desc),
-                            icon = R.drawable.ic_round_mangaupdates_24,
-                            onClick = {
-                                startActivity(Intent(context, MangaUpdatesSettingsActivity::class.java))
-                            },
-                            isActivity = true,
-                            isVisible = MangaUpdates.token != null
-                        ),
-                        Settings(
-                            type = 1,
                             name = getString(R.string.connections_settings),
                             desc = getString(R.string.connections_desc),
-                            icon = R.drawable.ic_link_2_24,
+                            icon = R.drawable.network_node_24,
                             onClick = {
                                 startActivity(Intent(context, SettingsConnectionsActivity::class.java))
                             },

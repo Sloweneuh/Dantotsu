@@ -66,24 +66,13 @@ object SettingsSearch {
 
     // Section icons, reused from the top-level settings list.
     private val IC_ACCOUNT = R.drawable.ic_round_person_24
-    private val IC_THEME = R.drawable.ic_palette
     private val IC_COMMON = R.drawable.ic_lightbulb_24
     private val IC_ANIME = R.drawable.ic_round_movie_filter_24
     private val IC_MANGA = R.drawable.ic_round_import_contacts_24
-    private val IC_EXTENSION = R.drawable.ic_extension
-    private val IC_ADDON = R.drawable.ic_round_restaurant_24
-    private val IC_NOTIF = R.drawable.ic_round_notifications_none_24
-    private val IC_ABOUT = R.drawable.ic_round_info_24
     private val IC_PLAYER = R.drawable.ic_round_video_settings_24
     private val IC_READER = R.drawable.ic_round_import_contacts_24
     private val IC_UI = R.drawable.ic_round_auto_awesome_24
-    private val IC_BACKUP = R.drawable.backup_restore
     private val IC_DOWNLOAD = R.drawable.ic_download_24
-    // Named for the one row it belongs to rather than for the padlock it used to be: a plain lock is
-    // also the player's screen lock and the private-activity marker, and this is neither.
-    private val IC_SYNC_CODE = R.drawable.ic_round_cloud_lock_24
-    private val IC_CLOUD_SYNC = R.drawable.ic_round_cloud_sync_24
-    private val IC_DELETE = R.drawable.ic_round_delete_24
 
     val index: List<SearchableSetting> by lazy { buildIndex() }
 
@@ -91,95 +80,96 @@ object SettingsSearch {
         val l = ArrayList<SearchableSetting>()
 
         // ---- Top level sections ----
-        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.accounts, R.string.settings, IC_ACCOUNT, R.string.accounts_desc, keywords = "login profile anilist myanimelist mangaupdates mangabaka connections", requiresOnline = true)
-        l += SearchableSetting(SettingsThemeActivity::class.java, R.string.theme, R.string.settings, IC_THEME, R.string.theme_desc, keywords = "appearance color dark light")
-        l += SearchableSetting(SettingsCommonActivity::class.java, R.string.common, R.string.settings, IC_COMMON, R.string.common_desc, keywords = "general preferences")
-        l += SearchableSetting(SettingsAnimeActivity::class.java, R.string.anime, R.string.settings, IC_ANIME, R.string.anime_desc, keywords = "video watch streaming episode")
-        l += SearchableSetting(SettingsMangaActivity::class.java, R.string.manga, R.string.settings, IC_MANGA, R.string.manga_desc, keywords = "read reading chapter")
-        l += SearchableSetting(SettingsExtensionsActivity::class.java, R.string.extensions, R.string.settings, IC_EXTENSION, R.string.extensions_desc, keywords = "sources plugins parsers install")
-        l += SearchableSetting(SettingsAddonActivity::class.java, R.string.addons, R.string.settings, IC_ADDON, R.string.addons_desc, keywords = "plugins tools download torrent")
-        l += SearchableSetting(SettingsNotificationActivity::class.java, R.string.notifications, R.string.settings, IC_NOTIF, R.string.notifications_desc, keywords = "alerts push subscribe")
-        l += SearchableSetting(SettingsAboutActivity::class.java, R.string.about, R.string.settings, IC_ABOUT, R.string.about_desc, keywords = "version info app")
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.accounts, R.string.settings, R.drawable.ic_round_manage_accounts_24, R.string.accounts_desc, keywords = "login profile anilist myanimelist mangaupdates mangabaka connections", requiresOnline = true)
+        l += SearchableSetting(SettingsThemeActivity::class.java, R.string.theme, R.string.settings, R.drawable.ic_palette, R.string.theme_desc, keywords = "appearance color dark light")
+        l += SearchableSetting(SettingsCommonActivity::class.java, R.string.common, R.string.settings, R.drawable.ic_round_settings_24, R.string.common_desc, keywords = "general preferences")
+        l += SearchableSetting(SettingsAnimeActivity::class.java, R.string.anime, R.string.settings, R.drawable.ic_round_movie_filter_24, R.string.anime_desc, keywords = "video watch streaming episode")
+        l += SearchableSetting(SettingsMangaActivity::class.java, R.string.manga, R.string.settings, R.drawable.ic_round_import_contacts_24, R.string.manga_desc, keywords = "read reading chapter")
+        l += SearchableSetting(SettingsExtensionsActivity::class.java, R.string.extensions, R.string.settings, R.drawable.ic_extension, R.string.extensions_desc, keywords = "sources plugins parsers install")
+        l += SearchableSetting(SettingsAddonActivity::class.java, R.string.addons, R.string.settings, R.drawable.ic_round_widgets_24, R.string.addons_desc, keywords = "plugins tools download torrent")
+        l += SearchableSetting(SettingsNotificationActivity::class.java, R.string.notifications, R.string.settings, R.drawable.ic_round_notifications_none_24, R.string.notifications_desc, keywords = "alerts push subscribe")
+        l += SearchableSetting(SettingsAboutActivity::class.java, R.string.about, R.string.settings, R.drawable.ic_round_info_24, R.string.about_desc, keywords = "version info app")
 
         // ---- Accounts ----
-        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.enable_rpc, R.string.accounts, IC_ACCOUNT, R.string.enable_rpc_desc, keywords = "discord presence")
-        l += SearchableSetting(AnilistSettingsActivity::class.java, R.string.anilist_settings, R.string.accounts, IC_ACCOUNT, R.string.alsettings_desc, keywords = "anilist account profile activity")
-        l += SearchableSetting(MangaUpdatesSettingsActivity::class.java, R.string.mangaupdates_settings, R.string.accounts, IC_ACCOUNT, R.string.mangaupdates_settings_desc, keywords = "mangaupdates mu account")
-        l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.connections_settings, R.string.accounts, IC_ACCOUNT, R.string.connections_desc, keywords = "mal myanimelist malsync comick sync tracking")
-        l += SearchableSetting(SettingsListSyncActivity::class.java, R.string.list_sync_settings, R.string.accounts, IC_ACCOUNT, R.string.list_sync_settings_desc, keywords = "list sync tracking push myanimelist mal mangabaka anilist mangaupdates")
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.enable_rpc, R.string.accounts, R.drawable.ic_discord, R.string.enable_rpc_desc, keywords = "discord presence")
+        l += SearchableSetting(AnilistSettingsActivity::class.java, R.string.anilist_settings, R.string.accounts, R.drawable.ic_anilist, R.string.alsettings_desc, keywords = "anilist account profile activity")
+        l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.connections_settings, R.string.accounts, R.drawable.network_node_24, R.string.connections_desc, keywords = "mal myanimelist malsync comick sync tracking")
+        l += SearchableSetting(SettingsListSyncActivity::class.java, R.string.list_sync_settings, R.string.accounts, R.drawable.ic_round_sync_24, R.string.list_sync_settings_desc, keywords = "list sync tracking push myanimelist mal mangabaka anilist mangaupdates")
         l += SearchableSetting(SettingsAccountActivity::class.java, R.string.login_to_mangabaka, R.string.accounts, IC_ACCOUNT, R.string.mangabaka_login_desc, anchorViewId = R.id.settingsMangaBakaLogin, keywords = "mangabaka mb token login logout account tracking")
-        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.comments_button, R.string.accounts, IC_ACCOUNT, R.string.comments_button_desc, keywords = "comment reply social discussion")
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.comments_button, R.string.accounts, R.drawable.ic_round_comment_24, R.string.comments_button_desc, keywords = "comment reply social discussion")
 
         // ---- Anilist account settings ----
-        l += SearchableSetting(AnilistSettingsActivity::class.java, R.string.airing_notifications, R.string.anilist_settings, IC_ACCOUNT, R.string.airing_notifications_desc, keywords = "airing anime episode new release")
-        l += SearchableSetting(AnilistSettingsActivity::class.java, R.string.display_adult_content, R.string.anilist_settings, IC_ACCOUNT, R.string.display_adult_content_desc, keywords = "nsfw 18")
-        l += SearchableSetting(AnilistSettingsActivity::class.java, R.string.restrict_messages, R.string.anilist_settings, IC_ACCOUNT, R.string.restrict_messages_desc, keywords = "dm direct message inbox")
+        l += SearchableSetting(AnilistSettingsActivity::class.java, R.string.airing_notifications, R.string.anilist_settings, R.drawable.ic_round_notifications_active_24, R.string.airing_notifications_desc, keywords = "airing anime episode new release")
+        l += SearchableSetting(AnilistSettingsActivity::class.java, R.string.display_adult_content, R.string.anilist_settings, R.drawable.ic_round_nsfw_24, R.string.display_adult_content_desc, keywords = "nsfw 18")
+        l += SearchableSetting(AnilistSettingsActivity::class.java, R.string.restrict_messages, R.string.anilist_settings, R.drawable.ic_round_comments_disabled_24, R.string.restrict_messages_desc, keywords = "dm direct message inbox")
 
-        // ---- MangaUpdates ----
-        l += SearchableSetting(MangaUpdatesSettingsActivity::class.java, R.string.mu_tab_enabled, R.string.mangaupdates_settings, IC_ACCOUNT, R.string.mu_tab_enabled_desc, keywords = "mangaupdates mu tab browse")
-        l += SearchableSetting(MangaUpdatesSettingsActivity::class.java, R.string.mu_list_fetch_enabled, R.string.mangaupdates_settings, IC_ACCOUNT, R.string.mu_list_fetch_enabled_desc, keywords = "mangaupdates mu list fetch import")
-        l += SearchableSetting(MangaUpdatesSettingsActivity::class.java, R.string.mu_custom_list_mapping, R.string.mangaupdates_settings, IC_ACCOUNT, R.string.mu_custom_list_mapping_desc, keywords = "mangaupdates mu list status mapping")
+        // MangaUpdates had a screen of its own holding only these three rows; they now sit with the
+        // other services in Connections. The old "MangaUpdates tab" wording is gone with it — the
+        // row it named writes the same enable-the-service preference as its four neighbours.
+        l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.disable_mangaupdates, R.string.connections_settings, R.drawable.ic_round_mangaupdates_24, R.string.disable_mangaupdates_desc, keywords = "mangaupdates mu tab browse info source")
+        l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.mu_list_fetch_enabled, R.string.connections_settings, R.drawable.ic_round_mangaupdates_list_24, R.string.mu_list_fetch_enabled_desc, keywords = "mangaupdates mu list fetch import home")
+        l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.mu_custom_list_mapping, R.string.connections_settings, R.drawable.ic_round_mangaupdates_mapping_24, R.string.mu_custom_list_mapping_desc, keywords = "mangaupdates mu list status mapping")
 
         // ---- Connections ----
-        l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.disable_comick, R.string.connections_settings, IC_ACCOUNT, R.string.disable_comick_desc, keywords = "comick source manga")
-        l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.disable_mal, R.string.connections_settings, IC_ACCOUNT, R.string.disable_mal_desc, keywords = "myanimelist mal account tracking")
-        l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.disable_malsync, R.string.connections_settings, IC_ACCOUNT, R.string.disable_malsync_desc, keywords = "malsync sync tracking progress")
-        l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.malsync_exclude_manage, R.string.connections_settings, IC_ACCOUNT, R.string.malsync_exclude_manage_desc, keywords = "exclude filter unread chapter episode notifications malsync")
+        l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.disable_comick, R.string.connections_settings, R.drawable.ic_round_comick_24, R.string.disable_comick_desc, keywords = "comick source manga")
+        l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.disable_mal, R.string.connections_settings, R.drawable.ic_myanimelist, R.string.disable_mal_desc, keywords = "myanimelist mal account tracking")
+        l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.disable_malsync, R.string.connections_settings, R.drawable.ic_malsync, R.string.disable_malsync_desc, keywords = "malsync sync tracking progress")
+        l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.malsync_exclude_manage, R.string.connections_settings, R.drawable.ic_round_malsync_exclude_24, R.string.malsync_exclude_manage_desc, keywords = "exclude filter unread chapter episode notifications malsync")
         l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.unread_sort_label, R.string.connections_settings, IC_ACCOUNT, R.string.unread_sort_desc, keywords = "unread chapters home sort order sorting recent latest updated malsync mangaupdates")
-        l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.customize_info_tabs, R.string.connections_settings, IC_ACCOUNT, R.string.customize_info_tabs_desc, keywords = "anilist anime manga mangaupdates info tab order reorder visibility mal comick mangabaka")
+        l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.customize_info_tabs, R.string.connections_settings, R.drawable.ic_round_view_array_24, R.string.customize_info_tabs_desc, keywords = "anilist anime manga mangaupdates info tab order reorder visibility mal comick mangabaka")
 
         // ---- List sync ----
-        l += SearchableSetting(ListSyncCompareActivity::class.java, R.string.compare_lists, R.string.list_sync_settings, IC_ACCOUNT, R.string.compare_lists_desc, keywords = "compare audit diff differences out of date myanimelist mal mangabaka anilist mangaupdates sync")
-        l += SearchableSetting(SettingsListSyncActivity::class.java, R.string.mal_list_sync, R.string.list_sync_settings, IC_ACCOUNT, R.string.mal_list_sync_desc, keywords = "myanimelist mal list sync tracking anilist push")
-        l += SearchableSetting(SettingsListSyncActivity::class.java, R.string.mangabaka_list_sync, R.string.list_sync_settings, IC_ACCOUNT, R.string.mangabaka_list_sync_desc, keywords = "mangabaka mb list sync tracking anilist mangaupdates push")
+        l += SearchableSetting(ListSyncCompareActivity::class.java, R.string.compare_lists, R.string.list_sync_settings, R.drawable.ic_round_compare_arrows_24, R.string.compare_lists_desc, keywords = "compare audit diff differences out of date myanimelist mal mangabaka anilist mangaupdates sync")
+        l += SearchableSetting(SettingsListSyncActivity::class.java, R.string.mal_list_sync, R.string.list_sync_settings, R.drawable.ic_round_mal_sync_24, R.string.mal_list_sync_desc, keywords = "myanimelist mal list sync tracking anilist push")
+        l += SearchableSetting(SettingsListSyncActivity::class.java, R.string.mangabaka_list_sync, R.string.list_sync_settings, R.drawable.ic_round_mangabaka_sync_24, R.string.mangabaka_list_sync_desc, keywords = "mangabaka mb list sync tracking anilist mangaupdates push")
 
         // ---- Theme ----
-        l += SearchableSetting(SettingsThemeActivity::class.java, R.string.theme, R.string.theme, IC_THEME, anchorViewId = R.id.themeSwitcher, keywords = "color scheme palette dark light oled auto appearance")
-        l += SearchableSetting(SettingsThemeActivity::class.java, R.string.oled_theme_variant, R.string.theme, IC_THEME, R.string.oled_theme_variant_desc, keywords = "amoled black")
-        l += SearchableSetting(SettingsThemeActivity::class.java, R.string.use_material_you, R.string.theme, IC_THEME, R.string.use_material_you_desc, keywords = "monet dynamic")
-        l += SearchableSetting(SettingsThemeActivity::class.java, R.string.use_unique_theme_for_each_item, R.string.theme, IC_THEME, R.string.use_unique_theme_for_each_item_desc, keywords = "media card color individual per item")
-        l += SearchableSetting(SettingsThemeActivity::class.java, R.string.use_custom_theme, R.string.theme, IC_THEME, R.string.use_custom_theme_desc, keywords = "custom theme color accent")
-        l += SearchableSetting(SettingsThemeActivity::class.java, R.string.color_picker, R.string.theme, IC_THEME, R.string.color_picker_desc, keywords = "custom accent")
+        l += SearchableSetting(SettingsThemeActivity::class.java, R.string.theme, R.string.theme, R.drawable.ic_palette, anchorViewId = R.id.themeSwitcher, keywords = "color scheme palette dark light oled auto appearance")
+        l += SearchableSetting(SettingsThemeActivity::class.java, R.string.oled_theme_variant, R.string.theme, R.drawable.ic_round_brightness_4_24, R.string.oled_theme_variant_desc, keywords = "amoled black")
+        l += SearchableSetting(SettingsThemeActivity::class.java, R.string.use_material_you, R.string.theme, R.drawable.ic_round_auto_awesome_24, R.string.use_material_you_desc, keywords = "monet dynamic")
+        l += SearchableSetting(SettingsThemeActivity::class.java, R.string.use_unique_theme_for_each_item, R.string.theme, R.drawable.ic_palette, R.string.use_unique_theme_for_each_item_desc, keywords = "media card color individual per item")
+        l += SearchableSetting(SettingsThemeActivity::class.java, R.string.use_custom_theme, R.string.theme, R.drawable.ic_round_color_24, R.string.use_custom_theme_desc, keywords = "custom theme color accent")
+        l += SearchableSetting(SettingsThemeActivity::class.java, R.string.color_picker, R.string.theme, R.drawable.ic_round_color_picker_24, R.string.color_picker_desc, keywords = "custom accent")
 
         // ---- Common ----
-        l += SearchableSetting(SettingsCommonActivity::class.java, R.string.language_setting, R.string.common, IC_COMMON, keywords = "locale translation")
-        l += SearchableSetting(UserInterfaceSettingsActivity::class.java, R.string.ui_settings, R.string.common, IC_UI, R.string.ui_settings_desc, keywords = "interface layout display home")
-        l += SearchableSetting(SettingsCommonActivity::class.java, R.string.app_lock, R.string.common, IC_COMMON, R.string.app_lock_desc, keywords = "password biometric pin security")
-        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.backup_sync, R.string.common, IC_BACKUP, R.string.backup_sync_desc, keywords = "cloud sync export import backup restore devices")
-        l += SearchableSetting(SettingsCommonActivity::class.java, R.string.always_continue_content, R.string.common, IC_COMMON, R.string.always_continue_content_desc, keywords = "resume auto continue watching reading")
-        l += SearchableSetting(SettingsCommonActivity::class.java, R.string.handoff_discovery_setting, R.string.common, IC_COMMON, R.string.handoff_discovery_setting_desc, keywords = "cast nearby lan")
-        l += SearchableSetting(SettingsCommonActivity::class.java, R.string.capture_defaults, R.string.common, IC_COMMON, R.string.capture_defaults_desc, keywords = "screenshot clip gif video capture share card media info user logo frame rounded date source scanlator caption default reader player anime manga trim subtitles")
-        l += SearchableSetting(SettingsCommonActivity::class.java, R.string.hide_private, R.string.common, IC_COMMON, R.string.hide_private_desc, keywords = "private list entries hidden")
-        l += SearchableSetting(SettingsCommonActivity::class.java, R.string.search_source_list, R.string.common, IC_COMMON, R.string.search_source_list_desc, keywords = "search library local list source")
-        l += SearchableSetting(SettingsCommonActivity::class.java, R.string.recentlyListOnly, R.string.common, IC_COMMON, R.string.recentlyListOnly_desc, keywords = "recently watched read history list")
-        l += SearchableSetting(SettingsCommonActivity::class.java, R.string.adult_only_content, R.string.common, IC_COMMON, R.string.adult_only_content_desc, keywords = "nsfw 18")
-        l += SearchableSetting(SettingsCommonActivity::class.java, R.string.hidden_from_lists_manage, R.string.common, IC_COMMON, R.string.hidden_from_lists_manage_desc, keywords = "hide hidden remove filter continue watching reading list homepage")
+        l += SearchableSetting(SettingsCommonActivity::class.java, R.string.language_setting, R.string.common, R.drawable.ic_round_language_24, keywords = "locale translation")
+        l += SearchableSetting(UserInterfaceSettingsActivity::class.java, R.string.ui_settings, R.string.common, R.drawable.ic_round_grid_view_24, R.string.ui_settings_desc, keywords = "interface layout display home")
+        l += SearchableSetting(SettingsCommonActivity::class.java, R.string.app_lock, R.string.common, R.drawable.ic_baseline_screen_lock_portrait_24, R.string.app_lock_desc, keywords = "password biometric pin security")
+        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.backup_sync, R.string.common, R.drawable.backup_restore, R.string.backup_sync_desc, keywords = "cloud sync export import backup restore devices")
+        l += SearchableSetting(SettingsCommonActivity::class.java, R.string.always_continue_content, R.string.common, R.drawable.ic_round_resume_24, R.string.always_continue_content_desc, keywords = "resume auto continue watching reading")
+        l += SearchableSetting(SettingsCommonActivity::class.java, R.string.handoff_discovery_setting, R.string.common, R.drawable.ic_round_cast_24, R.string.handoff_discovery_setting_desc, keywords = "cast nearby lan")
+        l += SearchableSetting(SettingsCommonActivity::class.java, R.string.capture_defaults, R.string.common, R.drawable.ic_round_screenshot_frame_24, R.string.capture_defaults_desc, keywords = "screenshot clip gif video capture share card media info user logo frame rounded date source scanlator caption default reader player anime manga trim subtitles")
+        l += SearchableSetting(SettingsCommonActivity::class.java, R.string.hide_private, R.string.common, R.drawable.ic_round_visibility_off_24, R.string.hide_private_desc, keywords = "private list entries hidden")
+        l += SearchableSetting(SettingsCommonActivity::class.java, R.string.search_source_list, R.string.common, R.drawable.ic_round_manage_search_24, R.string.search_source_list_desc, keywords = "search library local list source")
+        l += SearchableSetting(SettingsCommonActivity::class.java, R.string.recentlyListOnly, R.string.common, R.drawable.ic_round_history_24, R.string.recentlyListOnly_desc, keywords = "recently watched read history list")
+        l += SearchableSetting(SettingsCommonActivity::class.java, R.string.adult_only_content, R.string.common, R.drawable.ic_round_nsfw_24, R.string.adult_only_content_desc, keywords = "nsfw 18")
+        l += SearchableSetting(SettingsCommonActivity::class.java, R.string.hidden_from_lists_manage, R.string.common, R.drawable.ic_round_playlist_remove_24, R.string.hidden_from_lists_manage_desc, keywords = "hide hidden remove filter continue watching reading list homepage")
         l += SearchableSetting(SettingsCommonActivity::class.java, R.string.selected_dns, R.string.common, IC_COMMON, anchorViewId = R.id.settingsExtensionDns, keywords = "doh dns over https cloudflare google")
         l += SearchableSetting(SettingsCommonActivity::class.java, R.string.startUpTab, R.string.common, IC_COMMON, anchorViewId = R.id.uiSettingsHome, keywords = "default startup home anime manga tab")
 
         // ---- Downloads ---- (live inside DownloadActivity, not a Settings screen: most are in
         // the settings dialog opened via its cog icon, which these entries open automatically;
         // only the download location stays inline, on the Manage tab)
-        l += SearchableSetting(DownloadActivity::class.java, R.string.download_manager_select, R.string.downloads, IC_DOWNLOAD, R.string.download_manager_select_desc, keywords = "download manager aria idm")
-        l += SearchableSetting(DownloadActivity::class.java, R.string.allow_metered_downloads, R.string.downloads, IC_DOWNLOAD, R.string.allow_metered_downloads_desc, keywords = "data wifi mobile")
+        l += SearchableSetting(DownloadActivity::class.java, R.string.download_manager_select, R.string.downloads, R.drawable.ic_round_download_manager_24, R.string.download_manager_select_desc, keywords = "download manager aria idm")
+        l += SearchableSetting(DownloadActivity::class.java, R.string.allow_metered_downloads, R.string.downloads, R.drawable.ic_round_download_metered_24, R.string.allow_metered_downloads_desc, keywords = "data wifi mobile")
         l += SearchableSetting(DownloadActivity::class.java, R.string.change_download_location, R.string.downloads, IC_DOWNLOAD, R.string.change_download_location_desc, intentTab = 1, keywords = "folder directory storage")
-        l += SearchableSetting(DownloadActivity::class.java, R.string.purge_anime_downloads, R.string.downloads, IC_DOWNLOAD, R.string.purge_anime_downloads_desc, keywords = "delete clear anime")
-        l += SearchableSetting(DownloadActivity::class.java, R.string.purge_manga_downloads, R.string.downloads, IC_DOWNLOAD, R.string.purge_manga_downloads_desc, keywords = "delete clear manga")
-        l += SearchableSetting(DownloadActivity::class.java, R.string.purge_novel_downloads, R.string.downloads, IC_DOWNLOAD, R.string.purge_novel_downloads_desc, keywords = "delete clear novel")
+        l += SearchableSetting(DownloadActivity::class.java, R.string.purge_anime_downloads, R.string.downloads, R.drawable.ic_round_purge_anime_24, R.string.purge_anime_downloads_desc, keywords = "delete clear anime")
+        l += SearchableSetting(DownloadActivity::class.java, R.string.purge_manga_downloads, R.string.downloads, R.drawable.ic_round_purge_manga_24, R.string.purge_manga_downloads_desc, keywords = "delete clear manga")
+        l += SearchableSetting(DownloadActivity::class.java, R.string.purge_novel_downloads, R.string.downloads, R.drawable.ic_round_purge_novel_24, R.string.purge_novel_downloads_desc, keywords = "delete clear novel")
 
         // ---- Backup & sync ----
-        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.backup_restore, R.string.backup_sync, IC_BACKUP, R.string.backup_restore_desc, keywords = "export import")
-        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.cloud_sync, R.string.backup_sync, IC_CLOUD_SYNC, R.string.cloud_sync_desc, keywords = "anilist cloud sync devices firebase", requiresOnline = true)
-        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.sync_code_title, R.string.backup_sync, IC_SYNC_CODE, R.string.sync_code_desc, keywords = "sync code key link pair connect add device qr scan encrypt encryption secure private", requiresOnline = true)
+        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.backup_restore, R.string.backup_sync, R.drawable.backup_restore, R.string.backup_restore_desc, keywords = "export import")
+        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.cloud_sync, R.string.backup_sync, R.drawable.ic_round_cloud_sync_24, R.string.cloud_sync_desc, keywords = "anilist cloud sync devices firebase", requiresOnline = true)
+        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.sync_code_title, R.string.backup_sync, R.drawable.ic_round_cloud_lock_24, R.string.sync_code_desc, keywords = "sync code key link pair connect add device qr scan encrypt encryption secure private", requiresOnline = true)
         // Described by what it does rather than by the row's live subtitle ("Last synced 3 minutes
         // ago"), which tells someone searching nothing about what they'd be tapping.
-        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.cloud_sync_now, R.string.backup_sync, IC_BACKUP, R.string.cloud_sync_now_desc, keywords = "cloud sync upload download last synced", requiresOnline = true)
-        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.sync_extensions, R.string.backup_sync, IC_EXTENSION, R.string.sync_extensions_desc, keywords = "extensions sources sync devices", requiresOnline = true)
-        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.sync_extensions_now, R.string.backup_sync, IC_EXTENSION, R.string.sync_extensions_now_desc, keywords = "extensions sources install uninstall reconcile", requiresOnline = true)
-        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.sync_extension_settings, R.string.backup_sync, IC_EXTENSION, R.string.sync_extension_settings_desc, keywords = "extension settings source preferences login credentials sync", requiresOnline = true)
-        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.force_upload, R.string.backup_sync, IC_BACKUP, R.string.force_upload_desc, keywords = "force overwrite upload push cloud replace", requiresOnline = true)
-        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.force_download, R.string.backup_sync, IC_BACKUP, R.string.force_download_desc, keywords = "force overwrite download pull cloud replace restore", requiresOnline = true)
-        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.cloud_wipe, R.string.backup_sync, IC_DELETE, R.string.cloud_wipe_desc, keywords = "delete wipe erase remove clear cloud data privacy account reset", requiresOnline = true)
+        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.cloud_sync_now, R.string.backup_sync, R.drawable.ic_round_sync_24, R.string.cloud_sync_now_desc, keywords = "cloud sync upload download last synced", requiresOnline = true)
+        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.sync_extensions, R.string.backup_sync, R.drawable.ic_round_extension_cloud_24, R.string.sync_extensions_desc, keywords = "extensions sources sync devices", requiresOnline = true)
+        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.sync_extensions_now, R.string.backup_sync, R.drawable.ic_round_extension_sync_24, R.string.sync_extensions_now_desc, keywords = "extensions sources install uninstall reconcile", requiresOnline = true)
+        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.sync_extension_settings, R.string.backup_sync, R.drawable.ic_round_extension_settings_24, R.string.sync_extension_settings_desc, keywords = "extension settings source preferences login credentials sync", requiresOnline = true)
+        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.force_upload, R.string.backup_sync, R.drawable.ic_round_cloud_upload_24, R.string.force_upload_desc, keywords = "force overwrite upload push cloud replace", requiresOnline = true)
+        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.force_download, R.string.backup_sync, R.drawable.ic_round_cloud_download_24, R.string.force_download_desc, keywords = "force overwrite download pull cloud replace restore", requiresOnline = true)
+        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.cloud_wipe, R.string.backup_sync, R.drawable.ic_round_delete_forever_24, R.string.cloud_wipe_desc, keywords = "delete wipe erase remove clear cloud data privacy account reset", requiresOnline = true)
 
         // ---- User Interface ----
         l += SearchableSetting(UserInterfaceSettingsActivity::class.java, R.string.immersive_mode, R.string.ui_settings, IC_UI, anchorViewId = R.id.uiSettingsImmersive, keywords = "fullscreen")
@@ -196,15 +186,15 @@ object SettingsSearch {
         l += SearchableSetting(UserInterfaceSettingsActivity::class.java, R.string.blur_banners, R.string.ui_settings, IC_UI, anchorViewId = R.id.uiSettingsBlurBanners, keywords = "blur banner background header")
 
         // ---- Anime ----
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.player_settings, R.string.anime, IC_PLAYER, R.string.player_settings_desc, keywords = "player video anime episode")
-        l += SearchableSetting(SettingsAnimeActivity::class.java, R.string.prefer_dub, R.string.anime, IC_ANIME, R.string.prefer_dub_desc, keywords = "dubbed audio")
-        l += SearchableSetting(SettingsAnimeActivity::class.java, R.string.show_yt, R.string.anime, IC_ANIME, R.string.show_yt_desc, keywords = "youtube trailer")
-        l += SearchableSetting(SettingsAnimeActivity::class.java, R.string.include_list, R.string.anime, IC_ANIME, R.string.include_list_anime_desc, keywords = "anime list watching include source")
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.player_settings, R.string.anime, R.drawable.ic_round_video_settings_24, R.string.player_settings_desc, keywords = "player video anime episode")
+        l += SearchableSetting(SettingsAnimeActivity::class.java, R.string.prefer_dub, R.string.anime, R.drawable.ic_anime_dub_24, R.string.prefer_dub_desc, keywords = "dubbed audio")
+        l += SearchableSetting(SettingsAnimeActivity::class.java, R.string.show_yt, R.string.anime, R.drawable.format_youtube_24, R.string.show_yt_desc, keywords = "youtube trailer")
+        l += SearchableSetting(SettingsAnimeActivity::class.java, R.string.include_list, R.string.anime, R.drawable.view_list_24, R.string.include_list_anime_desc, keywords = "anime list watching include source")
         l += SearchableSetting(SettingsAnimeActivity::class.java, R.string.default_ep_view, R.string.anime, IC_ANIME, anchorViewId = R.id.settingsEpList, keywords = "episode list grid compact")
 
         // ---- Manga ----
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.reader_settings, R.string.manga, IC_READER, R.string.reader_settings_desc, keywords = "reader manga chapter")
-        l += SearchableSetting(SettingsMangaActivity::class.java, R.string.include_list, R.string.manga, IC_MANGA, R.string.include_list_desc, keywords = "manga list reading include source")
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.reader_settings, R.string.manga, R.drawable.ic_round_reader_settings, R.string.reader_settings_desc, keywords = "reader manga chapter")
+        l += SearchableSetting(SettingsMangaActivity::class.java, R.string.include_list, R.string.manga, R.drawable.view_list_24, R.string.include_list_desc, keywords = "manga list reading include source")
         l += SearchableSetting(SettingsMangaActivity::class.java, R.string.default_chp_view, R.string.manga, IC_MANGA, anchorViewId = R.id.settingsChpList, keywords = "chapter list compact")
 
         // ---- Player settings (XML) ----
@@ -281,46 +271,46 @@ object SettingsSearch {
         l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.dual_page, R.string.reader_settings, IC_READER, anchorViewId = R.id.LNdualPageText, keywords = "novel light novel")
 
         // ---- Extensions ----
-        l += SearchableSetting(SettingsExtensionsActivity::class.java, R.string.anime_add_repository, R.string.extensions, IC_EXTENSION, R.string.anime_add_repository_desc, keywords = "repo source")
-        l += SearchableSetting(SettingsExtensionsActivity::class.java, R.string.manga_add_repository, R.string.extensions, IC_EXTENSION, R.string.manga_add_repository_desc, keywords = "repo source")
-        l += SearchableSetting(SettingsExtensionsActivity::class.java, R.string.novel_add_repository, R.string.extensions, IC_EXTENSION, R.string.novel_add_repository_desc, keywords = "repo source")
-        l += SearchableSetting(SettingsExtensionsActivity::class.java, R.string.extension_test, R.string.extensions, IC_EXTENSION, R.string.extension_test_desc, keywords = "test debug check extension source")
-        l += SearchableSetting(SettingsExtensionsActivity::class.java, R.string.user_agent, R.string.extensions, IC_EXTENSION, R.string.user_agent_desc, keywords = "http header browser request")
-        l += SearchableSetting(SettingsExtensionsActivity::class.java, R.string.proxy, R.string.extensions, IC_EXTENSION, R.string.proxy_desc, keywords = "network socks http tunnel")
-        l += SearchableSetting(SettingsExtensionsActivity::class.java, R.string.proxy_setup, R.string.extensions, IC_EXTENSION, R.string.proxy_setup_desc, keywords = "proxy network configure setup")
-        l += SearchableSetting(SettingsExtensionsActivity::class.java, R.string.force_legacy_installer, R.string.extensions, IC_EXTENSION, R.string.force_legacy_installer_desc, keywords = "install apk package manager legacy")
-        l += SearchableSetting(SettingsExtensionsActivity::class.java, R.string.skip_loading_extension_icons, R.string.extensions, IC_EXTENSION, R.string.skip_loading_extension_icons_desc, keywords = "icon performance loading skip")
-        l += SearchableSetting(SettingsExtensionsActivity::class.java, R.string.NSFWExtention, R.string.extensions, IC_EXTENSION, R.string.NSFWExtention_desc, keywords = "nsfw adult")
+        l += SearchableSetting(SettingsExtensionsActivity::class.java, R.string.anime_add_repository, R.string.extensions, R.drawable.ic_round_github_anime_24, R.string.anime_add_repository_desc, keywords = "repo source")
+        l += SearchableSetting(SettingsExtensionsActivity::class.java, R.string.manga_add_repository, R.string.extensions, R.drawable.ic_round_github_manga_24, R.string.manga_add_repository_desc, keywords = "repo source")
+        l += SearchableSetting(SettingsExtensionsActivity::class.java, R.string.novel_add_repository, R.string.extensions, R.drawable.ic_round_github_novel_24, R.string.novel_add_repository_desc, keywords = "repo source")
+        l += SearchableSetting(SettingsExtensionsActivity::class.java, R.string.extension_test, R.string.extensions, R.drawable.ic_round_science_24, R.string.extension_test_desc, keywords = "test debug check extension source")
+        l += SearchableSetting(SettingsExtensionsActivity::class.java, R.string.user_agent, R.string.extensions, R.drawable.ic_globe_24, R.string.user_agent_desc, keywords = "http header browser request")
+        l += SearchableSetting(SettingsExtensionsActivity::class.java, R.string.proxy, R.string.extensions, R.drawable.vpn_key_24, R.string.proxy_desc, keywords = "network socks http tunnel")
+        l += SearchableSetting(SettingsExtensionsActivity::class.java, R.string.proxy_setup, R.string.extensions, R.drawable.lan_24, R.string.proxy_setup_desc, keywords = "proxy network configure setup")
+        l += SearchableSetting(SettingsExtensionsActivity::class.java, R.string.force_legacy_installer, R.string.extensions, R.drawable.ic_round_history_24, R.string.force_legacy_installer_desc, keywords = "install apk package manager legacy")
+        l += SearchableSetting(SettingsExtensionsActivity::class.java, R.string.skip_loading_extension_icons, R.string.extensions, R.drawable.ic_round_no_icon_24, R.string.skip_loading_extension_icons_desc, keywords = "icon performance loading skip")
+        l += SearchableSetting(SettingsExtensionsActivity::class.java, R.string.NSFWExtention, R.string.extensions, R.drawable.ic_round_nsfw_24, R.string.NSFWExtention_desc, keywords = "nsfw adult")
 
         // ---- Add-ons ----
-        l += SearchableSetting(SettingsAddonActivity::class.java, R.string.anime_downloader_addon, R.string.addons, IC_ADDON, keywords = "download")
-        l += SearchableSetting(SettingsAddonActivity::class.java, R.string.torrent_addon, R.string.addons, IC_ADDON, keywords = "torrent")
-        l += SearchableSetting(SettingsAddonActivity::class.java, R.string.enable_torrent, R.string.addons, IC_ADDON, R.string.enable_torrent_desc, keywords = "torrent magnet p2p enable")
+        l += SearchableSetting(SettingsAddonActivity::class.java, R.string.anime_downloader_addon, R.string.addons, R.drawable.ic_round_addon_download_24, keywords = "download")
+        l += SearchableSetting(SettingsAddonActivity::class.java, R.string.torrent_addon, R.string.addons, R.drawable.ic_round_magnet_24, keywords = "torrent")
+        l += SearchableSetting(SettingsAddonActivity::class.java, R.string.enable_torrent, R.string.addons, R.drawable.ic_round_dns_24, R.string.enable_torrent_desc, keywords = "torrent magnet p2p enable")
 
         // ---- Notifications ----
-        l += SearchableSetting(SettingsSubscriptionNotificationActivity::class.java, R.string.subscription_notifications, R.string.notifications, IC_NOTIF, R.string.subscription_notifications_desc, keywords = "subscribe anime manga source notify alert")
-        l += SearchableSetting(SettingsUnreadChapterNotificationActivity::class.java, R.string.unread_chapter_notifications, R.string.notifications, IC_NOTIF, R.string.unread_chapter_notifications_desc, keywords = "unread chapter manga notify alert")
-        l += SearchableSetting(SettingsAnilistNotificationActivity::class.java, R.string.anilist_notifications, R.string.notifications, IC_NOTIF, R.string.anilist_notifications_desc, keywords = "anilist social activity friend reply")
-        l += SearchableSetting(SettingsCommentNotificationActivity::class.java, R.string.comment_notifications, R.string.notifications, IC_NOTIF, R.string.comment_notifications_desc, keywords = "comment reply discussion")
-        l += SearchableSetting(SettingsMuNotificationActivity::class.java, R.string.mu_notifications, R.string.notifications, IC_NOTIF, R.string.mu_notifications_desc, keywords = "mangaupdates chapter release mu")
-        l += SearchableSetting(SettingsNotificationActivity::class.java, R.string.use_alarm_manager_reliable, R.string.notifications, IC_NOTIF, R.string.use_alarm_manager_reliable_desc, keywords = "exact alarm")
+        l += SearchableSetting(SettingsSubscriptionNotificationActivity::class.java, R.string.subscription_notifications, R.string.notifications, R.drawable.ic_round_notif_subscriptions_24, R.string.subscription_notifications_desc, keywords = "subscribe anime manga source notify alert")
+        l += SearchableSetting(SettingsUnreadChapterNotificationActivity::class.java, R.string.unread_chapter_notifications, R.string.notifications, R.drawable.ic_round_notif_unread_24, R.string.unread_chapter_notifications_desc, keywords = "unread chapter manga notify alert")
+        l += SearchableSetting(SettingsAnilistNotificationActivity::class.java, R.string.anilist_notifications, R.string.notifications, R.drawable.ic_round_notif_anilist_24, R.string.anilist_notifications_desc, keywords = "anilist social activity friend reply")
+        l += SearchableSetting(SettingsCommentNotificationActivity::class.java, R.string.comment_notifications, R.string.notifications, R.drawable.ic_round_notif_comments_24, R.string.comment_notifications_desc, keywords = "comment reply discussion")
+        l += SearchableSetting(SettingsMuNotificationActivity::class.java, R.string.mu_notifications, R.string.notifications, R.drawable.ic_round_notif_mangaupdates_24, R.string.mu_notifications_desc, keywords = "mangaupdates chapter release mu")
+        l += SearchableSetting(SettingsNotificationActivity::class.java, R.string.use_alarm_manager_reliable, R.string.notifications, R.drawable.ic_round_alarm_24, R.string.use_alarm_manager_reliable_desc, keywords = "exact alarm")
         // Notification children
-        l += SearchableSetting(SettingsAnilistNotificationActivity::class.java, R.string.anilist_notification_filters, R.string.anilist_notifications, IC_NOTIF, R.string.anilist_notification_filters_desc, keywords = "filter type activity follow message")
-        l += SearchableSetting(SettingsSubscriptionNotificationActivity::class.java, R.string.notification_for_checking_subscriptions, R.string.subscription_notifications, IC_NOTIF, R.string.notification_for_checking_subscriptions_desc, keywords = "background check periodic schedule")
-        l += SearchableSetting(SettingsSubscriptionNotificationActivity::class.java, R.string.view_subscriptions, R.string.subscription_notifications, IC_NOTIF, R.string.view_subscriptions_desc, keywords = "list subscribed sources manage")
-        l += SearchableSetting(SettingsUnreadChapterNotificationActivity::class.java, R.string.unread_chapter_check_progress_notification, R.string.unread_chapter_notifications, IC_NOTIF, R.string.unread_chapter_check_progress_notification_desc, keywords = "background service check progress")
-        l += SearchableSetting(SettingsUnreadChapterNotificationActivity::class.java, R.string.clear_unread_chapter_history, R.string.unread_chapter_notifications, IC_NOTIF, R.string.clear_unread_chapter_history_desc, keywords = "clear reset history unread")
-        l += SearchableSetting(SettingsMuNotificationActivity::class.java, R.string.mu_notifications_enabled, R.string.mu_notifications, IC_NOTIF, R.string.mu_notifications_enabled_desc, keywords = "mangaupdates notify chapter release enable")
+        l += SearchableSetting(SettingsAnilistNotificationActivity::class.java, R.string.anilist_notification_filters, R.string.anilist_notifications, R.drawable.ic_anilist, R.string.anilist_notification_filters_desc, keywords = "filter type activity follow message")
+        l += SearchableSetting(SettingsSubscriptionNotificationActivity::class.java, R.string.notification_for_checking_subscriptions, R.string.subscription_notifications, R.drawable.ic_round_notif_progress_24, R.string.notification_for_checking_subscriptions_desc, keywords = "background check periodic schedule")
+        l += SearchableSetting(SettingsSubscriptionNotificationActivity::class.java, R.string.view_subscriptions, R.string.subscription_notifications, R.drawable.ic_round_subscriptions_24, R.string.view_subscriptions_desc, keywords = "list subscribed sources manage")
+        l += SearchableSetting(SettingsUnreadChapterNotificationActivity::class.java, R.string.unread_chapter_check_progress_notification, R.string.unread_chapter_notifications, R.drawable.ic_round_notif_progress_24, R.string.unread_chapter_check_progress_notification_desc, keywords = "background service check progress")
+        l += SearchableSetting(SettingsUnreadChapterNotificationActivity::class.java, R.string.clear_unread_chapter_history, R.string.unread_chapter_notifications, R.drawable.ic_round_delete_sweep_24, R.string.clear_unread_chapter_history_desc, keywords = "clear reset history unread")
+        l += SearchableSetting(SettingsMuNotificationActivity::class.java, R.string.mu_notifications_enabled, R.string.mu_notifications, R.drawable.ic_round_mangaupdates_24, R.string.mu_notifications_enabled_desc, keywords = "mangaupdates notify chapter release enable")
 
         // ---- About ----
-        l += SearchableSetting(FAQActivity::class.java, R.string.faq, R.string.about, IC_ABOUT, R.string.faq_desc, keywords = "help frequently asked questions")
-        l += SearchableSetting(SettingsAboutActivity::class.java, R.string.check_app_updates, R.string.about, IC_ABOUT, R.string.check_app_updates_desc, keywords = "update version")
-        l += SearchableSetting(SettingsAboutActivity::class.java, R.string.share_username_in_crash_reports, R.string.about, IC_ABOUT, R.string.share_username_in_crash_reports_desc, keywords = "crash report anonymous privacy username")
-        l += SearchableSetting(SettingsAboutActivity::class.java, R.string.disable_crash_reports, R.string.about, IC_ABOUT, R.string.disable_crash_reports_desc, keywords = "telemetry analytics")
-        l += SearchableSetting(SettingsAboutActivity::class.java, R.string.log_to_file, R.string.about, IC_ABOUT, R.string.logging_warning, keywords = "logging debug")
-        l += SearchableSetting(SettingsAboutActivity::class.java, R.string.devs, R.string.about, IC_ABOUT, R.string.devs_desc, keywords = "developers credits")
-        l += SearchableSetting(SettingsAboutActivity::class.java, R.string.disclaimer, R.string.about, IC_ABOUT, R.string.disclaimer_desc, keywords = "legal notice terms warning")
-        l += SearchableSetting(SettingsAboutActivity::class.java, R.string.privacy_policy, R.string.about, IC_ABOUT, R.string.privacy_policy_desc, keywords = "gdpr data legal privacy")
+        l += SearchableSetting(FAQActivity::class.java, R.string.faq, R.string.about, R.drawable.ic_round_quiz_24, R.string.faq_desc, keywords = "help frequently asked questions")
+        l += SearchableSetting(SettingsAboutActivity::class.java, R.string.check_app_updates, R.string.about, R.drawable.ic_round_new_releases_24, R.string.check_app_updates_desc, keywords = "update version")
+        l += SearchableSetting(SettingsAboutActivity::class.java, R.string.share_username_in_crash_reports, R.string.about, R.drawable.ic_round_badge_24, R.string.share_username_in_crash_reports_desc, keywords = "crash report anonymous privacy username")
+        l += SearchableSetting(SettingsAboutActivity::class.java, R.string.disable_crash_reports, R.string.about, R.drawable.ic_round_bug_report_24, R.string.disable_crash_reports_desc, keywords = "telemetry analytics")
+        l += SearchableSetting(SettingsAboutActivity::class.java, R.string.log_to_file, R.string.about, R.drawable.ic_round_description_24, R.string.logging_warning, keywords = "logging debug")
+        l += SearchableSetting(SettingsAboutActivity::class.java, R.string.devs, R.string.about, R.drawable.ic_round_group_24, R.string.devs_desc, keywords = "developers credits")
+        l += SearchableSetting(SettingsAboutActivity::class.java, R.string.disclaimer, R.string.about, R.drawable.ic_round_gavel_24, R.string.disclaimer_desc, keywords = "legal notice terms warning")
+        l += SearchableSetting(SettingsAboutActivity::class.java, R.string.privacy_policy, R.string.about, R.drawable.ic_shield, R.string.privacy_policy_desc, keywords = "gdpr data legal privacy")
 
         return l
     }

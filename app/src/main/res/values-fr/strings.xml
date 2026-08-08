@@ -64,6 +64,7 @@
     <string name="malsync_exclude_manage">Gérer les exclusions MALSync</string>
     <string name="malsync_exclude_manage_desc">Médias exclus des vérifications de chapitres / épisodes non lus</string>
     <string name="customize_info_tabs">Ordre des onglets d\'infos</string>
+    <string name="info_tab_fetch_disabled">connexion désactivée</string>
     <string name="customize_info_tabs_desc">Réorganiser et afficher/masquer les onglets d\'infos pour AniList anime, AniList manga et MangaUpdates manga</string>
     <string name="anilist_equivalent_found_title">Correspondance AniList trouvée</string>
     <string name="anilist_equivalent_found_desc">Ce manga possède également une entrée correspondante sur AniList. Souhaitez-vous plutôt la consulter là-bas ?</string>
@@ -186,7 +187,6 @@
     <string name="titles">Titres</string>
 
     <string name="anilist_settings">Paramètres Anilist</string>
-    <string name="mangaupdates_settings_desc">Configurer l\'intégration MangaUpdates</string>
     <string name="full_mangaupdates_account_help">
         Anilist ne répertorie pas tous les mangas existants, et c\'est là qu\'intervient MangaUpdates. En vous connectant avec votre compte MangaUpdates, Dantotsu peut récupérer des informations supplémentaires sur les mangas ainsi que vos listes de lecture depuis MangaUpdates, en complément des données d\'Anilist.
         \n\n Se connecter avec votre compte MangaUpdates ajoute les fonctionnalités suivantes :
@@ -229,8 +229,6 @@
     <string name="mu_custom_list_mapping_desc">Configurer la récupération des listes MangaUpdates personnalisées</string>
     <string name="mu_custom_list_mapping_hint">Choisir comment chaque liste personnalisée correspond à une catégorie de lecture. \u201cSéparé\u201d l\'affiche comme une section distincte dans la liste de lecture.</string>
     <string name="mu_custom_list_mapping_empty">Aucune liste personnalisée trouvée sur votre compte MangaUpdates</string>
-    <string name="mu_tab_enabled">Onglet MangaUpdates</string>
-    <string name="mu_tab_enabled_desc">Afficher l\'onglet informations MangaUpdates dans les détails du manga</string>
     <string name="disable_malsync">Activer les infos MALSync</string>
     <string name="disable_malsync_desc">Activer ou désactiver la récupération des infos MALSync et leur affichage associé</string>
     <string name="comick_connections_help">Comment fonctionne Comick ?</string>
@@ -1725,7 +1723,6 @@
     <string name="home_stats_select">Sélectionner les stats de l\'accueil</string>
     <string name="home_stats_select_desc">Choisis quelles stats sont affichées sur l\'accueil</string>
     <string name="manga_count">Nombre de mangas</string>
-    <string name="mangaupdates_settings">Paramètres MangaUpdates</string>
     <string name="mu_list_fetch_enabled">Listes MangaUpdates</string>
     <string name="mu_list_fetch_enabled_desc">Récupérer et afficher les listes MangaUpdates sur l\'accueil et les vues listes</string>
     <string name="mu_notifications">Notifications MangaUpdates</string>
