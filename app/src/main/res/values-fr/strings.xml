@@ -502,6 +502,9 @@
     <string name="origin">Origine</string>
     <string name="final_volume_label">Volume final</string>
     <string name="latest_volume_label">Dernier volume</string>
+    <string name="extensions_none_installed">Aucune extension installée pour le moment</string>
+    <string name="extensions_none_available">Aucune extension disponible à installer</string>
+    <string name="extensions_no_repos">Aucun dépôt d\'extensions ajouté pour le moment.\nAjoutez-en un pour parcourir les extensions.</string>
     <string name="mangabaka_tag_weight">Importance des tags par défaut</string>
     <string name="mangabaka_tag_weight_desc">Les listes de tags MangaBaka s\'ouvrent sur le filtre : %1$s</string>
     <string name="tag_filter_all">Tous</string>

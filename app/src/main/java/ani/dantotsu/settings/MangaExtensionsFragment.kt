@@ -16,9 +16,9 @@ import ani.dantotsu.settings.paging.MangaExtensionAdapter
 import ani.dantotsu.settings.paging.MangaExtensionsViewModel
 import ani.dantotsu.settings.paging.MangaExtensionsViewModelFactory
 import ani.dantotsu.settings.paging.OnMangaInstallClickListener
+import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.util.hideEmptyState
 import ani.dantotsu.util.showError
-import ani.dantotsu.util.showNoResults
 import eu.kanade.tachiyomi.extension.manga.MangaExtensionManager
 import eu.kanade.tachiyomi.extension.manga.model.MangaExtension
 import kotlinx.coroutines.flow.collectLatest
@@ -41,6 +41,8 @@ class MangaExtensionsFragment : Fragment(),
     }
 
     private val mangaExtensionManager: MangaExtensionManager = Injekt.get()
+
+    private var searchQuery = ""
 
 
     override fun onCreateView(
@@ -68,7 +70,11 @@ class MangaExtensionsFragment : Fragment(),
                 when {
                     refresh is LoadState.Error -> binding.extensionsEmptyState.showError(refresh.error)
                     refresh is LoadState.NotLoading && adapter.itemCount == 0 ->
-                        binding.extensionsEmptyState.showNoResults()
+                        binding.extensionsEmptyState.showExtensionsEmpty(
+                            filtered = searchQuery.isNotEmpty() || isLanguageFiltered(),
+                            installed = false,
+                            repoPref = PrefName.MangaExtensionRepos,
+                        )
                     else -> binding.extensionsEmptyState.hideEmptyState()
                 }
             }
@@ -78,7 +84,9 @@ class MangaExtensionsFragment : Fragment(),
     }
 
     override fun updateContentBasedOnQuery(query: String?) {
-        viewModel.setSearchQuery(query ?: "")
+        // Kept so the empty state can tell "nothing matches what you typed" from "there is nothing".
+        searchQuery = query.orEmpty()
+        viewModel.setSearchQuery(searchQuery)
     }
 
     override fun notifyDataChanged() {

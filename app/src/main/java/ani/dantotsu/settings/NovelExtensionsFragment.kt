@@ -21,10 +21,10 @@ import ani.dantotsu.settings.paging.NovelExtensionAdapter
 import ani.dantotsu.settings.paging.NovelExtensionsViewModel
 import ani.dantotsu.settings.paging.NovelExtensionsViewModelFactory
 import ani.dantotsu.settings.paging.OnNovelInstallClickListener
+import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.snackString
 import ani.dantotsu.util.hideEmptyState
 import ani.dantotsu.util.showError
-import ani.dantotsu.util.showNoResults
 import eu.kanade.tachiyomi.data.notification.Notifications
 import eu.kanade.tachiyomi.extension.InstallStep
 import kotlinx.coroutines.flow.collectLatest
@@ -47,6 +47,8 @@ class NovelExtensionsFragment : Fragment(),
     }
 
     private val novelExtensionManager: NovelExtensionManager = Injekt.get()
+
+    private var searchQuery = ""
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -73,7 +75,12 @@ class NovelExtensionsFragment : Fragment(),
                 when {
                     refresh is LoadState.Error -> binding.extensionsEmptyState.showError(refresh.error)
                     refresh is LoadState.NotLoading && adapter.itemCount == 0 ->
-                        binding.extensionsEmptyState.showNoResults()
+                        // No language check here: novel extensions aren't filtered by language.
+                        binding.extensionsEmptyState.showExtensionsEmpty(
+                            filtered = searchQuery.isNotEmpty(),
+                            installed = false,
+                            repoPref = PrefName.NovelExtensionRepos,
+                        )
                     else -> binding.extensionsEmptyState.hideEmptyState()
                 }
             }
@@ -82,7 +89,9 @@ class NovelExtensionsFragment : Fragment(),
     }
 
     override fun updateContentBasedOnQuery(query: String?) {
-        viewModel.setSearchQuery(query ?: "")
+        // Kept so the empty state can tell "nothing matches what you typed" from "there is nothing".
+        searchQuery = query.orEmpty()
+        viewModel.setSearchQuery(searchQuery)
     }
 
     override fun notifyDataChanged() {

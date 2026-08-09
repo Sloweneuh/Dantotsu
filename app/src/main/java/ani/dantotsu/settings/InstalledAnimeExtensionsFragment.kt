@@ -31,8 +31,6 @@ import ani.dantotsu.snackString
 import ani.dantotsu.util.Logger
 import ani.dantotsu.util.customAlertDialog
 import ani.dantotsu.util.hideEmptyState
-import ani.dantotsu.util.showNoResults
-
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.textfield.TextInputLayout
 import eu.kanade.tachiyomi.animesource.ConfigurableAnimeSource
@@ -52,6 +50,8 @@ class InstalledAnimeExtensionsFragment : Fragment(), SearchQueryHandler {
     private lateinit var extensionsRecyclerView: RecyclerView
     private val skipIcons: Boolean = PrefManager.getVal(PrefName.SkipExtensionIcons)
     private val animeExtensionManager: AnimeExtensionManager = Injekt.get()
+
+    private var searchQuery = ""
     private val uninstallConfirmation = UninstallConfirmation {
         snackString(getString(R.string.extension_uninstalled))
     }
@@ -184,8 +184,13 @@ class InstalledAnimeExtensionsFragment : Fragment(), SearchQueryHandler {
 
     private fun updateEmptyState() {
         val b = _binding ?: return
-        if (extensionsAdapter.itemCount == 0) b.extensionsEmptyState.showNoResults()
-        else b.extensionsEmptyState.hideEmptyState()
+        if (extensionsAdapter.itemCount == 0) {
+            // Installed extensions are never filtered by language, only by the search box.
+            b.extensionsEmptyState.showExtensionsEmpty(
+                filtered = searchQuery.isNotEmpty(),
+                installed = true,
+            )
+        } else b.extensionsEmptyState.hideEmptyState()
     }
 
     private fun sortToAnimeSourcesList(inpt: List<AnimeExtension.Installed>): List<AnimeExtension.Installed> {
@@ -201,8 +206,10 @@ class InstalledAnimeExtensionsFragment : Fragment(), SearchQueryHandler {
     }
 
     override fun updateContentBasedOnQuery(query: String?) {
+        // Kept so the empty state can tell "nothing matches what you typed" from "there is nothing".
+        searchQuery = query.orEmpty()
         extensionsAdapter.filter(
-            query ?: "",
+            searchQuery,
             sortToAnimeSourcesList(animeExtensionManager.installedExtensionsFlow.value)
         )
     }
