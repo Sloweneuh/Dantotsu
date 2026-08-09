@@ -205,6 +205,13 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
                                 searchWatchdog?.let { _binding?.searchProgress?.removeCallbacks(it) }
                                 searchWatchdog = null
                                 searchJob = null
+                                // Everything below this draws into the sheet and reads its strings.
+                                // A `finally` runs on cancellation too, so a search still in flight
+                                // when the sheet was dismissed arrives here with no view to draw
+                                // into and no context to ask for a string — which is what the
+                                // placeholder's first getString() crashed on. The `_binding?` calls
+                                // were already no-ops by then; the fragment-scoped ones weren't.
+                                if (!isAdded || _binding == null) return@launch
                                 _binding?.searchProgressContainer?.visibility = View.GONE
                                 if (results != null && results.isNotEmpty()) {
                                     _binding?.searchRecyclerView?.visibility = View.VISIBLE
