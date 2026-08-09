@@ -49,9 +49,12 @@ import android.text.Spanned
 import android.text.TextWatcher
 import android.util.AttributeSet
 import android.util.TypedValue
+import android.view.ActionMode
 import android.view.GestureDetector
 import android.view.Gravity
 import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuItem
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewAnimationUtils
@@ -1736,28 +1739,67 @@ fun String.decodeBase64ToString(): String {
     }
 }
 
+/**
+ * Keeps a search bar's text plain: strips rich-text spans, and drops the trailing whitespace a
+ * paste drags along. Clipboard text coerced from HTML (e.g. copied from a webpage) often carries
+ * a trailing newline/space that browsers quietly trim on paste but a plain EditText doesn't.
+ *
+ * The trim is tied to a real paste rather than to "several characters arrived at once": a keyboard
+ * suggestion also inserts a whole word in one go, and the space it appends is one the user wants.
+ */
 fun AutoCompleteTextView.stripSpansOnPaste() {
-    addTextChangedListener(object : TextWatcher {
-        // A single keystroke inserts one character; a paste inserts several at once. Clipboard
-        // text coerced from HTML (e.g. copied from a webpage) often carries a trailing
-        // newline/space that browsers quietly trim on paste but a plain EditText doesn't.
-        private var pastedMultipleChars = false
+    // Set the moment content arrives from outside the keyboard, consumed by the next text change.
+    // The window guards against a paste that inserted nothing (empty clipboard) leaving the flag
+    // armed for whatever the user types next.
+    var pasteAtMs = 0L
+    val pasteWindowMs = 1000L
 
+    // Pre-API 31 this is the only paste an arbitrary EditText can observe: the framework routes
+    // the selection/insertion toolbar's Paste through the custom action mode callback before
+    // handling it. Delegate to any callback already installed rather than replacing it.
+    fun pasteWatchingCallback(delegate: ActionMode.Callback?) = object : ActionMode.Callback {
+        override fun onCreateActionMode(mode: ActionMode, menu: Menu): Boolean =
+            delegate?.onCreateActionMode(mode, menu) ?: true
+
+        override fun onPrepareActionMode(mode: ActionMode, menu: Menu): Boolean =
+            delegate?.onPrepareActionMode(mode, menu) ?: true
+
+        override fun onActionItemClicked(mode: ActionMode, item: MenuItem): Boolean {
+            if (item.itemId == android.R.id.paste || item.itemId == android.R.id.pasteAsPlainText) {
+                pasteAtMs = System.currentTimeMillis()
+            }
+            return delegate?.onActionItemClicked(mode, item) ?: false
+        }
+
+        override fun onDestroyActionMode(mode: ActionMode) {
+            delegate?.onDestroyActionMode(mode)
+        }
+    }
+    customSelectionActionModeCallback = pasteWatchingCallback(customSelectionActionModeCallback)
+    customInsertionActionModeCallback = pasteWatchingCallback(customInsertionActionModeCallback)
+
+    // On API 31+ this additionally covers the paths that bypass the toolbar — Ctrl+V, drag and
+    // drop, the keyboard's clipboard chip. Returning the payload untouched keeps the default
+    // insertion behaviour.
+    ViewCompat.setOnReceiveContentListener(this, arrayOf("text/*")) { _, payload ->
+        pasteAtMs = System.currentTimeMillis()
+        payload
+    }
+
+    addTextChangedListener(object : TextWatcher {
         override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
 
-        override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
-            pastedMultipleChars = count > 1
-        }
+        override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {}
 
         override fun afterTextChanged(s: Editable) {
             val spans = s.getSpans(0, s.length, ParcelableSpan::class.java)
             if (spans.isNotEmpty()) spans.forEach { s.removeSpan(it) }
 
-            if (pastedMultipleChars) {
-                pastedMultipleChars = false
-                val trimmedLength = s.trimEnd().length
-                if (trimmedLength != s.length) s.delete(trimmedLength, s.length)
-            }
+            if (System.currentTimeMillis() - pasteAtMs > pasteWindowMs) return
+            // Cleared before the delete below re-enters this watcher.
+            pasteAtMs = 0L
+            val trimmedLength = s.trimEnd().length
+            if (trimmedLength != s.length) s.delete(trimmedLength, s.length)
         }
     })
 }
