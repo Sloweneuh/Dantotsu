@@ -160,6 +160,10 @@ class MUSearchFilterBottomSheet : BottomSheetDialogFragment() {
         }
         refreshManageFiltersButton()
         binding.manageFiltersButton.setOnClickListener {
+            // The popup outlives this sheet, which is still holding the selections it was opened
+            // with — applying those afterwards would put back whatever was cleared in the popup.
+            // So the sheet goes first and the popup edits the live search state on its own.
+            dismiss()
             ManageFiltersDialog.show(
                 activity,
                 activity.muSearchResult.toChipList().map { chip ->
@@ -167,14 +171,12 @@ class MUSearchFilterBottomSheet : BottomSheetDialogFragment() {
                         activity.muSearchResult.removeChip(chip)
                         activity.updateMuChips?.invoke()
                         activity.search()
-                        refreshManageFiltersButton()
                     }
                 }
             ) {
                 activity.muSearchResult.toChipList().forEach { activity.muSearchResult.removeChip(it) }
                 activity.updateMuChips?.invoke()
                 activity.search()
-                refreshManageFiltersButton()
             }
         }
     }

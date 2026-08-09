@@ -450,80 +450,56 @@ class ListActivity : AppCompatActivity() {
 
         // Add genre chips
         filters.genres.forEach { genre ->
-            addFilterChip(genre, "Genre") {
-                val newFilters = filters.copy(genres = filters.genres - genre)
-                model.applyFilters(newFilters)
-                updateFilterChips(newFilters)
-            }
+            addFilterChip(genre, "Genre") { removeFilter { copy(genres = genres - genre) } }
         }
 
         filters.excludedGenres.forEach { genre ->
             addFilterChip(getString(R.string.filter_exclude, genre), "ExcludedGenre") {
-                val newFilters = filters.copy(excludedGenres = filters.excludedGenres - genre)
-                model.applyFilters(newFilters)
-                updateFilterChips(newFilters)
+                removeFilter { copy(excludedGenres = excludedGenres - genre) }
             }
         }
 
         // Add tag chips
         filters.tags.forEach { tag ->
-            addFilterChip(tag, "Tag") {
-                val newFilters = filters.copy(tags = filters.tags - tag)
-                model.applyFilters(newFilters)
-                updateFilterChips(newFilters)
-            }
+            addFilterChip(tag, "Tag") { removeFilter { copy(tags = tags - tag) } }
         }
 
         filters.excludedTags.forEach { tag ->
             addFilterChip(getString(R.string.filter_exclude, tag), "ExcludedTag") {
-                val newFilters = filters.copy(excludedTags = filters.excludedTags - tag)
-                model.applyFilters(newFilters)
-                updateFilterChips(newFilters)
+                removeFilter { copy(excludedTags = excludedTags - tag) }
             }
         }
 
         // Add format chips
         filters.formats.forEach { format ->
             addFilterChip(getString(R.string.filter_format, format), "Format") {
-                val newFilters = filters.copy(formats = filters.formats - format)
-                model.applyFilters(newFilters)
-                updateFilterChips(newFilters)
+                removeFilter { copy(formats = formats - format) }
             }
         }
 
         // Add status chips
         filters.statuses.forEach { status ->
             addFilterChip(getString(R.string.filter_status, status.replace("_", " ")), "Status") {
-                val newFilters = filters.copy(statuses = filters.statuses - status)
-                model.applyFilters(newFilters)
-                updateFilterChips(newFilters)
+                removeFilter { copy(statuses = statuses - status) }
             }
         }
 
         // Add source chips
         filters.sources.forEach { source ->
             addFilterChip(getString(R.string.filter_source, source.replace("_", " ")), "Source") {
-                val newFilters = filters.copy(sources = filters.sources - source)
-                model.applyFilters(newFilters)
-                updateFilterChips(newFilters)
+                removeFilter { copy(sources = sources - source) }
             }
         }
 
         // Add season chip
         filters.season?.let { season ->
-            addFilterChip(season, "Season") {
-                val newFilters = filters.copy(season = null)
-                model.applyFilters(newFilters)
-                updateFilterChips(newFilters)
-            }
+            addFilterChip(season, "Season") { removeFilter { copy(season = null) } }
         }
 
         // Add country chip
         filters.countryOfOrigin?.let { country ->
             addFilterChip(getString(R.string.filter_country, country), "Country") {
-                val newFilters = filters.copy(countryOfOrigin = null)
-                model.applyFilters(newFilters)
-                updateFilterChips(newFilters)
+                removeFilter { copy(countryOfOrigin = null) }
             }
         }
 
@@ -540,96 +516,86 @@ class ListActivity : AppCompatActivity() {
                 String.format(Locale.US, "%.1f", filters.scoreRange.second)
             }
             addFilterChip("Score: $minScore-$maxScore", "Score") {
-                val newFilters = filters.copy(scoreRange = Pair(0.0f, 10.0f))
-                model.applyFilters(newFilters)
-                updateFilterChips(newFilters)
+                removeFilter { copy(scoreRange = Pair(0.0f, 10.0f)) }
             }
         }
 
         // Add year range chip (if not default)
         if (filters.yearRange != Pair(1970, 2028)) {
             addFilterChip("Years: ${filters.yearRange.first}-${filters.yearRange.second}", "YearRange") {
-                val newFilters = filters.copy(yearRange = Pair(1970, 2028))
-                model.applyFilters(newFilters)
-                updateFilterChips(newFilters)
+                removeFilter { copy(yearRange = Pair(1970, 2028)) }
             }
         }
 
         // Add English licenced chip
         if (filters.englishLicenced) {
             addFilterChip(getString(R.string.filter_english_licenced), "EnglishLicenced") {
-                val newFilters = filters.copy(englishLicenced = false)
-                model.applyFilters(newFilters)
-                updateFilterChips(newFilters)
+                removeFilter { copy(englishLicenced = false) }
             }
         }
 
         filters.muFormat?.let { muFormat ->
             addFilterChip(getString(R.string.filter_format, muFormat), "MuFormat") {
-                val newFilters = filters.copy(muFormat = null)
-                model.applyFilters(newFilters)
-                updateFilterChips(newFilters)
+                removeFilter { copy(muFormat = null) }
             }
         }
 
         filters.muYear?.let { muYear ->
             addFilterChip(getString(R.string.filter_year, muYear), "MuYear") {
-                val newFilters = filters.copy(muYear = null)
-                model.applyFilters(newFilters)
-                updateFilterChips(newFilters)
+                removeFilter { copy(muYear = null) }
             }
         }
 
         filters.muLicensed?.let { muLicensed ->
             val label = if (muLicensed == "yes") getString(R.string.mu_filter_licensed) else getString(R.string.not_licensed)
             addFilterChip(label, "MuLicensed") {
-                val newFilters = filters.copy(muLicensed = null)
-                model.applyFilters(newFilters)
-                updateFilterChips(newFilters)
+                removeFilter { copy(muLicensed = null) }
             }
         }
 
         filters.muGenres.forEach { genre ->
-            addFilterChip(genre, "MuGenre") {
-                val newFilters = filters.copy(muGenres = filters.muGenres - genre)
-                model.applyFilters(newFilters)
-                updateFilterChips(newFilters)
-            }
+            addFilterChip(genre, "MuGenre") { removeFilter { copy(muGenres = muGenres - genre) } }
         }
 
         filters.muExcludedGenres.forEach { genre ->
             addFilterChip(getString(R.string.filter_exclude, genre), "MuExcludedGenre") {
-                val newFilters = filters.copy(muExcludedGenres = filters.muExcludedGenres - genre)
-                model.applyFilters(newFilters)
-                updateFilterChips(newFilters)
+                removeFilter { copy(muExcludedGenres = muExcludedGenres - genre) }
             }
         }
 
         filters.muCategories.forEach { category ->
             addFilterChip(category, "MuCategory") {
-                val newFilters = filters.copy(muCategories = filters.muCategories - category)
-                model.applyFilters(newFilters)
-                updateFilterChips(newFilters)
+                removeFilter { copy(muCategories = muCategories - category) }
             }
         }
 
         filters.muExcludedCategories.forEach { category ->
             addFilterChip(getString(R.string.filter_exclude, category), "MuExcludedCategory") {
-                val newFilters = filters.copy(muExcludedCategories = filters.muExcludedCategories - category)
-                model.applyFilters(newFilters)
-                updateFilterChips(newFilters)
+                removeFilter { copy(muExcludedCategories = muExcludedCategories - category) }
             }
         }
 
         filters.muStatusFilters.forEach { status ->
             val label = ani.dantotsu.connections.anilist.MUSearchResults.STATUS_FILTER_LABELS[status] ?: status
             addFilterChip(label, "MuStatus") {
-                val newFilters = filters.copy(muStatusFilters = filters.muStatusFilters - status)
-                model.applyFilters(newFilters)
-                updateFilterChips(newFilters)
+                removeFilter { copy(muStatusFilters = muStatusFilters - status) }
             }
         }
 
+    }
+
+    /**
+     * Drops one filter, worked out against the set in force *now* rather than the one its chip was
+     * drawn from.
+     *
+     * The manage-filters popup holds every chip's remove action across the redraws that follow each
+     * removal, so a second removal computed from the set the chip was built with would put back
+     * whatever the first one cleared.
+     */
+    private fun removeFilter(without: ListFilters.() -> ListFilters) {
+        val newFilters = (model.currentFilters.value ?: ListFilters()).without()
+        model.applyFilters(newFilters)
+        updateFilterChips(newFilters)
     }
 
     private fun openManageFilters() {

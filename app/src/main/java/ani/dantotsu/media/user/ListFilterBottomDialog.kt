@@ -166,6 +166,10 @@ class ListFilterBottomDialog(
         binding.manageFiltersCount.visibility = if (activeFilterCount == 0) View.GONE else View.VISIBLE
         binding.manageFiltersCount.text = activeFilterCount.toString()
         binding.manageFiltersButton.setOnClickListener {
+            // The popup outlives this sheet, which is still holding the selections it was opened
+            // with — applying those afterwards would put back whatever was cleared in the popup.
+            // So the sheet goes first and the popup edits the live filter state on its own.
+            dismiss()
             onManageFilters()
         }
     }

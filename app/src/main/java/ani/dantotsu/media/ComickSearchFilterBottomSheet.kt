@@ -132,6 +132,10 @@ class ComickSearchFilterBottomSheet : BottomSheetDialogFragment() {
         }
         refreshManageFiltersButton()
         binding.manageFiltersButton.setOnClickListener {
+            // The popup outlives this sheet, which is still holding the selections it was opened
+            // with — applying those afterwards would put back whatever was cleared in the popup.
+            // So the sheet goes first and the popup edits the live search state on its own.
+            dismiss()
             ManageFiltersDialog.show(
                 activity,
                 activity.comickSearchResult.toChipList().map { chip ->
@@ -139,7 +143,6 @@ class ComickSearchFilterBottomSheet : BottomSheetDialogFragment() {
                         activity.comickSearchResult.removeChip(chip)
                         activity.updateComickChips?.invoke()
                         activity.search()
-                        refreshManageFiltersButton()
                     }
                 }
             ) {
@@ -147,7 +150,6 @@ class ComickSearchFilterBottomSheet : BottomSheetDialogFragment() {
                     .forEach { activity.comickSearchResult.removeChip(it) }
                 activity.updateComickChips?.invoke()
                 activity.search()
-                refreshManageFiltersButton()
             }
         }
 

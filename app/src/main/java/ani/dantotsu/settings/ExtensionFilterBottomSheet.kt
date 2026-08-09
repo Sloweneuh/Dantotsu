@@ -108,6 +108,10 @@ class ExtensionFilterBottomSheet : BottomSheetDialogFragment() {
         binding.manageFiltersCount.visibility = if (activeFilterCount == 0) View.GONE else View.VISIBLE
         binding.manageFiltersCount.text = activeFilterCount.toString()
         binding.manageFiltersButton.setOnClickListener {
+            // The popup outlives this sheet, whose controls still show the values it was rendered
+            // with — anything cleared in the popup would read as still set here, and go back the
+            // moment the sheet was applied. So the sheet goes first.
+            dismiss()
             browseActivity.openManageFilters()
         }
     }

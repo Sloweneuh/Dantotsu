@@ -354,21 +354,25 @@ class SearchFilterBottomDialog : BottomSheetDialogFragment() {
         }
         refreshManageFiltersButton()
         binding.manageFiltersButton.setOnClickListener {
+            // The popup outlives this sheet, which is still holding the selections it was opened
+            // with — applying those afterwards would put back whatever was cleared in the popup.
+            // So the sheet goes first and the popup edits the live search state on its own. The
+            // context is taken before that, since there is no requiring one from a detached sheet.
+            val context = requireContext()
+            dismiss()
             ManageFiltersDialog.show(
-                requireContext(),
+                context,
                 activity.aniMangaResult.toChipList().map { chip ->
                     ActiveFilterChip(chip.text.replace("_", " ")) {
                         activity.aniMangaResult.removeChip(chip)
                         activity.updateChips.invoke()
                         activity.search()
-                        refreshManageFiltersButton()
                     }
                 }
             ) {
                 activity.aniMangaResult.toChipList().forEach { activity.aniMangaResult.removeChip(it) }
                 activity.updateChips.invoke()
                 activity.search()
-                refreshManageFiltersButton()
             }
         }
 

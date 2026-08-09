@@ -126,6 +126,10 @@ class MangaBakaSearchFilterBottomSheet : BottomSheetDialogFragment() {
         }
         refreshManageFiltersButton()
         binding.manageFiltersButton.setOnClickListener {
+            // The popup outlives this sheet, which is still holding the selections it was opened
+            // with — applying those afterwards would put back whatever was cleared in the popup.
+            // So the sheet goes first and the popup edits the live search state on its own.
+            dismiss()
             ManageFiltersDialog.show(
                 activity,
                 activity.mangaBakaSearchResult.toChipList().map { chip ->
@@ -133,7 +137,6 @@ class MangaBakaSearchFilterBottomSheet : BottomSheetDialogFragment() {
                         activity.mangaBakaSearchResult.removeChip(chip)
                         activity.updateMangaBakaChips?.invoke()
                         activity.search()
-                        refreshManageFiltersButton()
                     }
                 }
             ) {
@@ -141,7 +144,6 @@ class MangaBakaSearchFilterBottomSheet : BottomSheetDialogFragment() {
                     .forEach { activity.mangaBakaSearchResult.removeChip(it) }
                 activity.updateMangaBakaChips?.invoke()
                 activity.search()
-                refreshManageFiltersButton()
             }
         }
     }
