@@ -2040,24 +2040,202 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="sync_module_extension_settings">Extension settings</string>
     <string name="sync_module_unread">Unread chapter results</string>
     <string name="sync_variant_warning">Sync does not carry between app variants. A release install and a beta install keep separate cloud data, even when linked with the same sync code.</string>
+
+    <!-- Settings search: extra terms per entry that are not part of the visible label.
+         Translatable so a localized app searches in its own language; an untranslated one falls
+         back to these. Keys match the entry titles in SettingsSearch.kt. -->
+    <string name="search_kw_accounts">login profile anilist myanimelist mangaupdates mangabaka connections</string>
+    <string name="search_kw_theme">appearance color dark light</string>
+    <string name="search_kw_common">general preferences</string>
+    <string name="search_kw_anime">video watch streaming episode</string>
+    <string name="search_kw_manga">read reading chapter</string>
+    <string name="search_kw_extensions">sources plugins parsers install</string>
+    <string name="search_kw_addons">plugins tools download torrent</string>
+    <string name="search_kw_notifications">alerts push subscribe</string>
+    <string name="search_kw_about">version info app</string>
+    <string name="search_kw_enable_rpc">discord presence</string>
+    <string name="search_kw_anilist_settings">anilist account profile activity</string>
+    <string name="search_kw_connections_settings">mal myanimelist malsync comick sync tracking</string>
+    <string name="search_kw_list_sync_settings">list sync tracking push myanimelist mal mangabaka anilist mangaupdates</string>
+    <string name="search_kw_login_to_mangabaka">mangabaka mb token login logout account tracking</string>
+    <string name="search_kw_comments_button">comment reply social discussion</string>
+    <string name="search_kw_airing_notifications">airing anime episode new release</string>
+    <string name="search_kw_display_adult_content">nsfw 18</string>
+    <string name="search_kw_restrict_messages">dm direct message inbox</string>
+    <string name="search_kw_disable_mangaupdates">mangaupdates mu tab browse info source</string>
+    <string name="search_kw_mu_list_fetch_enabled">mangaupdates mu list fetch import home</string>
+    <string name="search_kw_mu_custom_list_mapping">mangaupdates mu list status mapping</string>
+    <string name="search_kw_disable_comick">comick source manga</string>
+    <string name="search_kw_disable_mal">myanimelist mal account tracking</string>
+    <string name="search_kw_disable_malsync">malsync sync tracking progress</string>
+    <string name="search_kw_malsync_exclude_manage">exclude filter unread chapter episode notifications malsync</string>
+    <string name="search_kw_unread_sort_label">unread chapters home sort order sorting recent latest updated malsync mangaupdates</string>
+    <string name="search_kw_customize_info_tabs">anilist anime manga mangaupdates info tab order reorder visibility mal comick mangabaka</string>
+    <string name="search_kw_compare_lists">compare audit diff differences out of date myanimelist mal mangabaka anilist mangaupdates sync</string>
+    <string name="search_kw_auto_list_sync">automatic auto compare schedule interval frequency background periodic list sync push myanimelist mal mangabaka</string>
+    <string name="search_kw_auto_list_sync_removals">automatic auto compare remove removals delete entries tracker list sync</string>
+    <string name="search_kw_mal_list_sync">myanimelist mal list sync tracking anilist push</string>
+    <string name="search_kw_mangabaka_list_sync">mangabaka mb list sync tracking anilist mangaupdates push</string>
+    <string name="search_kw_theme_2">color scheme palette dark light oled auto appearance</string>
+    <string name="search_kw_oled_theme_variant">amoled black</string>
+    <string name="search_kw_use_material_you">monet dynamic</string>
+    <string name="search_kw_use_unique_theme_for_each_item">media card color individual per item</string>
+    <string name="search_kw_use_custom_theme">custom theme color accent</string>
+    <string name="search_kw_color_picker">custom accent</string>
+    <string name="search_kw_language_setting">locale translation</string>
+    <string name="search_kw_ui_settings">interface layout display home</string>
+    <string name="search_kw_app_lock">password biometric pin security</string>
+    <string name="search_kw_backup_sync">cloud sync export import backup restore devices</string>
+    <string name="search_kw_always_continue_content">resume auto continue watching reading</string>
+    <string name="search_kw_handoff_discovery_setting">cast nearby lan</string>
+    <string name="search_kw_capture_defaults">screenshot clip gif video capture share card media info user logo frame rounded date source scanlator caption default reader player anime manga trim subtitles</string>
+    <string name="search_kw_hide_private">private list entries hidden</string>
+    <string name="search_kw_search_source_list">search library local list source</string>
+    <string name="search_kw_recentlyListOnly">recently watched read history list</string>
+    <string name="search_kw_adult_only_content">nsfw 18</string>
+    <string name="search_kw_hidden_from_lists_manage">hide hidden remove filter continue watching reading list homepage</string>
+    <string name="search_kw_selected_dns">doh dns over https cloudflare google</string>
+    <string name="search_kw_startUpTab">default startup home anime manga tab</string>
+    <string name="search_kw_download_manager_select">download manager aria idm</string>
+    <string name="search_kw_allow_metered_downloads">data wifi mobile</string>
+    <string name="search_kw_change_download_location">folder directory storage</string>
+    <string name="search_kw_purge_anime_downloads">delete clear anime</string>
+    <string name="search_kw_purge_manga_downloads">delete clear manga</string>
+    <string name="search_kw_purge_novel_downloads">delete clear novel</string>
+    <string name="search_kw_backup_restore">export import</string>
+    <string name="search_kw_cloud_sync">anilist cloud sync devices firebase</string>
+    <string name="search_kw_sync_code_title">sync code key link pair connect add device qr scan encrypt encryption secure private setup set up</string>
+    <string name="search_kw_cloud_sync_now">cloud sync upload download last synced</string>
+    <string name="search_kw_sync_extensions">extensions sources sync devices</string>
+    <string name="search_kw_sync_extensions_now">extensions sources install uninstall reconcile</string>
+    <string name="search_kw_sync_extension_settings">extension settings source preferences login credentials sync</string>
+    <string name="search_kw_force_upload">force overwrite upload push cloud replace</string>
+    <string name="search_kw_force_download">force overwrite download pull cloud replace restore</string>
+    <string name="search_kw_cloud_wipe">delete wipe erase remove clear cloud data privacy account reset</string>
+    <string name="search_kw_immersive_mode">fullscreen</string>
+    <string name="search_kw_ui_show_system_bars">status navigation bar</string>
+    <string name="search_kw_hide_notification_dot">red dot badge</string>
+    <string name="search_kw_home_layout_show">home sections visible layout</string>
+    <string name="search_kw_home_stats_select">home stats score episodes count</string>
+    <string name="search_kw_small_view">compact card small view</string>
+    <string name="search_kw_show_anime_tab">anime tab bottom navigation</string>
+    <string name="search_kw_show_manga_tab">manga tab bottom navigation</string>
+    <string name="search_kw_banner_animations">animation banner header fade</string>
+    <string name="search_kw_layout_animations">animation transition list enter</string>
+    <string name="search_kw_trending_scroller">trending home browse discover</string>
+    <string name="search_kw_blur_banners">blur banner background header</string>
+    <string name="search_kw_player_settings">player video anime episode</string>
+    <string name="search_kw_prefer_dub">dubbed audio</string>
+    <string name="search_kw_show_yt">youtube trailer</string>
+    <string name="search_kw_include_list">anime list watching include source</string>
+    <string name="search_kw_default_ep_view">episode list grid compact</string>
+    <string name="search_kw_reader_settings">reader manga chapter</string>
+    <string name="search_kw_include_list_2">manga list reading include source</string>
+    <string name="search_kw_default_chp_view">chapter list compact</string>
+    <string name="search_kw_default_playback_speed">video</string>
+    <string name="search_kw_cursed_speeds">playback speed</string>
+    <string name="search_kw_resize_mode_button">video aspect fit fill</string>
+    <string name="search_kw_subtitle_toggle">subtitles captions</string>
+    <string name="search_kw_primary_sub_color_select">subtitle color</string>
+    <string name="search_kw_secondary_sub_color_select">subtitle color</string>
+    <string name="search_kw_secondary_sub_outline_type_select">subtitle outline</string>
+    <string name="search_kw_sub_background_color_select">subtitle background color</string>
+    <string name="search_kw_sub_window_color_select">subtitle window color</string>
+    <string name="search_kw_sub_alpha">subtitle opacity transparency</string>
+    <string name="search_kw_textview_sub">subtitle text</string>
+    <string name="search_kw_textview_sub_stroke">subtitle stroke</string>
+    <string name="search_kw_textview_sub_bottom_margin">subtitle margin</string>
+    <string name="search_kw_sub_font_select">subtitle font typeface</string>
+    <string name="search_kw_subtitle_font_size">subtitle text size</string>
+    <string name="search_kw_subtitle_langauge">subtitle language</string>
+    <string name="search_kw_always_load_time_stamps">aniskip timestamps</string>
+    <string name="search_kw_timestamp_proxy">aniskip proxy</string>
+    <string name="search_kw_show_skip_time_stamp_button">skip op ed</string>
+    <string name="search_kw_auto_hide_time_stamps">skip button hide timestamps</string>
+    <string name="search_kw_auto_skip_op_ed">opening ending intro outro</string>
+    <string name="search_kw_auto_skip_recap">recap skip auto</string>
+    <string name="search_kw_auto_play_next_episode">autoplay</string>
+    <string name="search_kw_auto_skip_fillers">filler</string>
+    <string name="search_kw_ask_update_progress_anime">progress update prompt confirm</string>
+    <string name="search_kw_ask_update_progress_chapter_zero">progress episode first zero</string>
+    <string name="search_kw_ask_update_progress_hentai">progress hentai adult update</string>
+    <string name="search_kw_always_continue">resume autoplay continue episode</string>
+    <string name="search_kw_pause_video_focus">pause audio focus call interrupt</string>
+    <string name="search_kw_gestures">brightness volume swipe</string>
+    <string name="search_kw_fast_forward">seek</string>
+    <string name="search_kw_double_tap">seek skip</string>
+    <string name="search_kw_picture_in_picture">pip</string>
+    <string name="search_kw_show_cast_button">chromecast</string>
+    <string name="search_kw_show_rotate_button">orientation</string>
+    <string name="search_kw_try_internal_cast_experimental">chromecast cast internal experimental</string>
+    <string name="search_kw_use_additional_codec">ffmpeg decoder</string>
+    <string name="search_kw_auto_detect_webtoon">webtoon vertical scroll auto detect</string>
+    <string name="search_kw_over_scroll">overscroll end chapter swipe</string>
+    <string name="search_kw_true_colors">color accurate display rendering</string>
+    <string name="search_kw_image_rotation">rotate image page</string>
+    <string name="search_kw_crop_borders">border trim whitespace crop</string>
+    <string name="search_kw_spaced_pages">padding gap pages margin</string>
+    <string name="search_kw_hide_scroll_bar">scroll bar hidden reader</string>
+    <string name="search_kw_hide_page_numbers">page numbers hidden overlay</string>
+    <string name="search_kw_horizontal_scroll_bar">horizontal scroll bar reader manga</string>
+    <string name="search_kw_keep_screen_on">manga</string>
+    <string name="search_kw_lock_screen_rotation">rotation lock landscape portrait</string>
+    <string name="search_kw_autoscroll">auto scroll speed webtoon</string>
+    <string name="search_kw_volume_buttons">manga</string>
+    <string name="search_kw_wrap_images">image fit width stretch wrap</string>
+    <string name="search_kw_image_long_clicking">save image download long press</string>
+    <string name="search_kw_preload_amount">preload images pages buffer cache ahead</string>
+    <string name="search_kw_layout">manga reading mode paged webtoon continuous</string>
+    <string name="search_kw_direction">manga reading ltr rtl</string>
+    <string name="search_kw_dual_page">manga double page spread</string>
+    <string name="search_kw_source_info">source name parser extension display</string>
+    <string name="search_kw_continuous_multi_chapter">continuous preload next chapter load</string>
+    <string name="search_kw_show_system_bars">status bar navigation reader manga</string>
+    <string name="search_kw_ask_update_progress_manga">progress update prompt confirm</string>
+    <string name="search_kw_ask_update_progress_chapter_zero_2">progress chapter first zero</string>
+    <string name="search_kw_ask_update_progress_doujin">progress doujin adult update</string>
+    <string name="search_kw_use_dark_theme">novel light novel</string>
+    <string name="search_kw_use_oled_theme">novel amoled</string>
+    <string name="search_kw_keep_screen_on_2">novel light novel</string>
+    <string name="search_kw_volume_buttons_2">novel light novel</string>
+    <string name="search_kw_layout_2">novel light novel reading mode</string>
+    <string name="search_kw_dual_page_2">novel light novel</string>
+    <string name="search_kw_anime_add_repository">repo source</string>
+    <string name="search_kw_manga_add_repository">repo source</string>
+    <string name="search_kw_novel_add_repository">repo source</string>
+    <string name="search_kw_extension_test">test debug check extension source</string>
+    <string name="search_kw_user_agent">http header browser request</string>
+    <string name="search_kw_proxy">network socks http tunnel</string>
+    <string name="search_kw_proxy_setup">proxy network configure setup</string>
+    <string name="search_kw_force_legacy_installer">install apk package manager legacy</string>
+    <string name="search_kw_skip_loading_extension_icons">icon performance loading skip</string>
+    <string name="search_kw_NSFWExtention">nsfw adult</string>
+    <string name="search_kw_anime_downloader_addon">download</string>
+    <string name="search_kw_torrent_addon">torrent</string>
+    <string name="search_kw_enable_torrent">torrent magnet p2p enable</string>
+    <string name="search_kw_subscription_notifications">subscribe anime manga source notify alert</string>
+    <string name="search_kw_unread_chapter_notifications">unread chapter manga notify alert</string>
+    <string name="search_kw_anilist_notifications">anilist social activity friend reply</string>
+    <string name="search_kw_comment_notifications">comment reply discussion</string>
+    <string name="search_kw_mu_notifications">mangaupdates chapter release mu</string>
+    <string name="search_kw_use_alarm_manager_reliable">exact alarm</string>
+    <string name="search_kw_anilist_notifications_checking_time_label">interval frequency how often schedule period every hours background check anilist</string>
+    <string name="search_kw_comment_notification_checking_time_label">interval frequency how often schedule period every hours background check comment</string>
+    <string name="search_kw_subscriptions_checking_time">interval frequency how often schedule period every hours background check subscription update</string>
+    <string name="search_kw_unread_chapter_notification_checking_time_label">interval frequency how often schedule period every hours background check unread chapter manga</string>
+    <string name="search_kw_mu_notification_interval_label">interval frequency how often schedule period every hours background check mangaupdates mu</string>
+    <string name="search_kw_anilist_notification_filters">filter type activity follow message</string>
+    <string name="search_kw_notification_for_checking_subscriptions">background check periodic schedule</string>
+    <string name="search_kw_view_subscriptions">list subscribed sources manage</string>
+    <string name="search_kw_unread_chapter_check_progress_notification">background service check progress</string>
+    <string name="search_kw_clear_unread_chapter_history">clear reset history unread</string>
+    <string name="search_kw_mu_notifications_enabled">mangaupdates notify chapter release enable</string>
+    <string name="search_kw_faq">help frequently asked questions</string>
+    <string name="search_kw_check_app_updates">update version</string>
+    <string name="search_kw_share_username_in_crash_reports">crash report anonymous privacy username</string>
+    <string name="search_kw_disable_crash_reports">telemetry analytics</string>
+    <string name="search_kw_log_to_file">logging debug</string>
+    <string name="search_kw_devs">developers credits</string>
+    <string name="search_kw_disclaimer">legal notice terms warning</string>
+    <string name="search_kw_privacy_policy">gdpr data legal privacy</string>
 </resources>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
