@@ -1186,6 +1186,14 @@
     <string name="what_did_you_open">Qu\'est-ce que tu as ouvert ?</string>
     <string name="error_getting_image_data">Erreur lors de la récupération des données de l\'image</string>
     <string name="anilist_down">Il semble qu\'Anilist soit en panne, essayez peut-être d\'utiliser un VPN ou attendez qu\'il revienne.</string>
+    <string name="anilist_not_responding">AniList ne répond pas</string>
+    <string name="anilist_api_unavailable">L\'API d\'AniList est indisponible</string>
+    <string name="anilist_api_unavailable_info">AniList a temporairement désactivé son API. Consultez le Discord officiel d\'AniList pour plus d\'informations.</string>
+    <string name="anilist_api_blocked">AniList a bloqué ce réseau</string>
+    <string name="anilist_api_blocked_info">Trop de requêtes ont été envoyées depuis cette adresse IP. L\'accès revient généralement de lui-même ; en attendant, essayez un autre réseau.</string>
+    <string name="anilist_api_retry_in">nouvelle tentative dans %1$d s</string>
+    <string name="anilist_discord">Discord AniList</string>
+    <string name="anilist_rate_limited">Limite de requêtes AniList atteinte</string>
     <string name="failed_to_load_data">Échec du chargement des données sauvegardées de %1$d</string>
     <string name="mal_login_uri_not_found">Connexion Mal : Uri non trouvée</string>
     <string name="mal_login_code_challenge_not_found">Connexion Mal : codeChallenge non trouvé</string>

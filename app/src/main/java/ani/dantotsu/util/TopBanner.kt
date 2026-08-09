@@ -9,7 +9,10 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isVisible
+import androidx.core.view.updateLayoutParams
 import ani.dantotsu.databinding.ViewTopBannerBinding
 import ani.dantotsu.statusBarHeight
 import java.lang.ref.WeakReference
@@ -163,8 +166,20 @@ object TopBanner {
         val topClearance = (56 * activity.resources.displayMetrics.density).toInt()
         card.layoutParams = FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP
-        ).apply { setMargins(side, statusBarHeight + topClearance, side, 0) }
+        ).apply { setMargins(side, topInset(content) + topClearance, side, 0) }
         content.addView(card)
+        // The margin above is the best guess available at this instant, and a banner raised by
+        // background work — an AniList outage found by the first query of a cold start — can be
+        // built before the window has dispatched a single inset, when the process-global heights
+        // are still their startup fallbacks. Correct it from the real insets whenever they arrive,
+        // which also covers a rotation or a move into multi-window changing them afterwards.
+        ViewCompat.setOnApplyWindowInsetsListener(card) { v, insets ->
+            v.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+                topMargin = statusBarTop(insets) + topClearance
+            }
+            insets
+        }
+        ViewCompat.requestApplyInsets(card)
         showingId = spec.id
         cards.add(WeakReference(card))
         // The card this one is replacing sits on the screen behind; taking it down here is what
@@ -256,6 +271,25 @@ object TopBanner {
             }
         })
     }
+
+    /**
+     * How far down the screen the card has to start to clear the status bar.
+     *
+     * Prefers what the window actually reports over [statusBarHeight], which is a process-global
+     * filled in by whichever activity started first and can still be a resource-table estimate — or
+     * plain wrong for this screen, since an immersive activity leaves it at the cutout size. The
+     * global is still taken as a floor: with the status bar hidden the live inset is 0, and the
+     * cutout it was set from is exactly what a card at the very top would run into.
+     */
+    private fun statusBarTop(insets: WindowInsetsCompat?): Int {
+        val live = insets
+            ?.takeIf { it.isVisible(WindowInsetsCompat.Type.statusBars()) }
+            ?.getInsets(WindowInsetsCompat.Type.statusBars())?.top ?: 0
+        return max(live, statusBarHeight)
+    }
+
+    private fun topInset(content: View): Int =
+        statusBarTop(ViewCompat.getRootWindowInsets(content))
 
     private fun hide(card: View, onEnd: () -> Unit) {
         showingId = null

@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+    Deliberately the download FAB's shape and size: both say "something is running in the
+    background, you don't have to do anything about it", and one vocabulary for that is easier to
+    read than two. The ring is determinate here — it drains as the wait passes — and falls back to
+    indeterminate when AniList didn't send a countdown to drain.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/anilistRateLimitRoot"
+    android:layout_width="64dp"
+    android:layout_height="64dp"
+    android:clickable="true"
+    android:focusable="true">
+
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="52dp"
+        android:layout_height="52dp"
+        android:layout_gravity="center"
+        app:cardBackgroundColor="?attr/colorSecondaryContainer"
+        app:cardCornerRadius="26dp"
+        app:cardElevation="6dp">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:gravity="center_horizontal"
+            android:orientation="vertical">
+
+            <ImageView
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                app:srcCompat="@drawable/ic_round_anilist_wait_24"
+                app:tint="?attr/colorOnSecondaryContainer"
+                tools:ignore="ContentDescription" />
+
+            <TextView
+                android:id="@+id/anilistRateLimitCountdown"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
+                android:fontFamily="@font/poppins_bold"
+                android:includeFontPadding="false"
+                android:maxLines="1"
+                android:textColor="?attr/colorOnSecondaryContainer"
+                android:textSize="9sp"
+                tools:text="0:42" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <com.google.android.material.progressindicator.CircularProgressIndicator
+        android:id="@+id/anilistRateLimitProgress"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:indeterminate="true"
+        app:indicatorColor="?attr/colorSecondary"
+        app:indicatorSize="60dp"
+        app:trackThickness="3dp" />
+
+</FrameLayout>

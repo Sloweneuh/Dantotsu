@@ -273,6 +273,7 @@ fun initActivity(a: Activity) {
     }
     if (a !is MainActivity) a.setNavigationTheme()
     ani.dantotsu.download.attachDownloadFab(a)
+    ani.dantotsu.connections.anilist.attachAnilistRateLimitBadge(a)
 }
 
 fun Activity.hideSystemBars() {

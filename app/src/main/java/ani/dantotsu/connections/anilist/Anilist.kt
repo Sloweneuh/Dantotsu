@@ -7,12 +7,10 @@ import androidx.browser.customtabs.CustomTabsIntent
 import ani.dantotsu.R
 import ani.dantotsu.client
 import ani.dantotsu.connections.comments.CommentsAPI
-import ani.dantotsu.currContext
 import ani.dantotsu.openLinkInBrowser
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.snackString
-import ani.dantotsu.toast
 import ani.dantotsu.util.Logger
 import org.json.JSONObject
 import java.util.Calendar
@@ -42,8 +40,6 @@ object Anilist {
 
     var genres: ArrayList<String>? = null
     var tags: Map<Boolean, List<String>>? = null
-
-    var rateLimitReset: Long = 0
 
     var initialized = false
     var adult: Boolean = false
@@ -322,9 +318,16 @@ object Anilist {
     ): T? {
         return try {
             if (show) Logger.log("Anilist Query: $query")
-            if (rateLimitReset > System.currentTimeMillis() / 1000) {
-                toast("Rate limited. Try after ${rateLimitReset - (System.currentTimeMillis() / 1000)} seconds")
-                throw Exception("Rate limited after ${rateLimitReset - (System.currentTimeMillis() / 1000)} seconds")
+            // AniList is refusing traffic and told us so; sending anyway would only add to what it
+            // is trying to shed. The banner AnilistApiStatus raised is already explaining why.
+            if (AnilistApiStatus.isPaused()) {
+                throw Exception(AnilistApiStatus.pausedMessage())
+            }
+            // Serving out a rate limit. The badge is already counting it down, so this only has to
+            // keep the request from being sent — a toast per blocked query was a burst of identical
+            // popups saying a number that changed while they were on screen.
+            if (AnilistRateLimit.isLimited()) {
+                throw Exception(AnilistRateLimit.waitMessage())
             }
             val data = mapOf(
                 "query" to query,
@@ -345,16 +348,25 @@ object Anilist {
                     cacheTime = cache ?: 10
                 )
                 val remaining = json.headers["X-RateLimit-Remaining"]?.toIntOrNull() ?: -1
+                val reset = json.headers["X-RateLimit-Reset"]?.toLongOrNull()
                 Logger.log("Remaining requests: $remaining")
                 if (json.code == 429) {
-                    val retry = json.headers["Retry-After"]?.toIntOrNull() ?: -1
-                    val passedLimitReset = json.headers["X-RateLimit-Reset"]?.toLongOrNull() ?: 0
-                    if (retry > 0) {
-                        rateLimitReset = passedLimitReset
-                    }
+                    AnilistRateLimit.limit(json.headers["Retry-After"]?.toIntOrNull(), reset)
+                    throw Exception(AnilistRateLimit.waitMessage())
+                }
+                // AniList counts every response down, so a window can be served out *before*
+                // spending a request on being refused: at zero remaining the next call is a 429 by
+                // definition. Only acted on when the reset time came with it — guessing how long to
+                // sit out a limit that may not even be reached is worse than finding out.
+                if (remaining == 0 && reset != null) {
+                    AnilistRateLimit.limit(null, reset)
+                }
 
-                    toast("Rate limited. Try after $retry seconds")
-                    throw Exception("Rate limited after $retry seconds")
+                // Maintenance, an IP block or a plain outage: pauses further queries and puts a
+                // banner up, so the rest of the screen's requests stop here instead of each
+                // discovering the same dead API on its own.
+                AnilistApiStatus.check(json.code, json.text)?.let { outage ->
+                    throw Exception(outage)
                 }
 
                 if (json.code == 403 || json.code == 400) {
@@ -375,9 +387,6 @@ object Anilist {
                     }
 
                     throw Exception(message)
-                }
-                if (!json.text.startsWith("{")) {
-                    throw Exception(currContext()?.getString(R.string.anilist_down) + " (error: ${json.code})")
                 }
 
                 json.parsed()

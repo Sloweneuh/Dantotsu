@@ -1,6 +1,7 @@
 package ani.dantotsu.util
 
 import android.app.Activity
+import ani.dantotsu.connections.anilist.AnilistOutageNotice
 import ani.dantotsu.connections.sync.ExtensionSyncNotice
 import ani.dantotsu.connections.sync.SyncConflictNotice
 import ani.dantotsu.connections.sync.SyncLinkNotice
@@ -17,13 +18,18 @@ import ani.dantotsu.settings.SettingsBackupSyncActivity
  *
  *  1. an unlinked device isn't syncing at all,
  *  2. a sync conflict leaves syncing stopped until it's settled,
- *  3. a pending reload leaves the current screen showing values that are no longer stored,
- *  4. mismatched extensions leave a device without sources another one has,
- *  5. extension updates are simply waiting, and lose nothing by waiting longer.
+ *  3. an AniList outage leaves every screen empty with nothing to explain it,
+ *  4. a pending reload leaves the current screen showing values that are no longer stored,
+ *  5. mismatched extensions leave a device without sources another one has,
+ *  6. extension updates are simply waiting, and lose nothing by waiting longer.
  *
- * The first two and the fourth share a property the others don't: they can *only* be finished by a
+ * The first two and the fifth share a property the others don't: they can *only* be finished by a
  * person. Nothing in the app can generate a sync code, choose which settings win, or agree to
  * install an extension on the user's behalf — so if they aren't surfaced, they never happen.
+ *
+ * The outage notice sits above them despite being the one thing here nobody can fix, because it is
+ * also the only one that stops being true on its own: deferred behind a notice that waits for the
+ * user, it would expire unseen, and the outage it was meant to explain would read as a broken app.
  *
  * Called from the application's activity-resumed callback, so notices follow the user instead of
  * belonging to one screen.
@@ -61,6 +67,7 @@ object AppNotices {
     private fun states(): List<Pair<String, Boolean>> = listOf(
         SyncLinkNotice.ID to SyncLinkNotice.isPending(),
         SyncConflictNotice.ID to SyncConflictNotice.isPending(),
+        AnilistOutageNotice.ID to AnilistOutageNotice.isPending(),
         SyncReloadNotice.ID to SyncReloadNotice.isPending(),
         ExtensionSyncNotice.ID to ExtensionSyncNotice.isPending(),
         ExtensionUpdateNotice.ID to ExtensionUpdateNotice.isPending(),
@@ -93,6 +100,10 @@ object AppNotices {
 
             SyncConflictNotice.isPending() -> show(activity, SyncConflictNotice.ID) {
                 TopBanner.show(activity, SyncConflictNotice.spec(activity))
+            }
+
+            AnilistOutageNotice.isPending() -> show(activity, AnilistOutageNotice.ID) {
+                TopBanner.show(activity, AnilistOutageNotice.spec(activity))
             }
 
             SyncReloadNotice.isPending() -> show(activity, SyncReloadNotice.ID) {
