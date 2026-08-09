@@ -53,7 +53,7 @@
                 android:layout_marginEnd="14dp"
                 android:layout_marginBottom="20dp"
                 android:padding="24dp"
-                app:srcCompat="@drawable/ic_anilist"
+                app:srcCompat="@drawable/ic_round_notif_anilist_24"
                 app:tint="?attr/colorOnBackground"
                 tools:ignore="ContentDescription" />
 

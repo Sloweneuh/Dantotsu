@@ -54,7 +54,7 @@
                 android:layout_height="96dp"
                 android:layout_gravity="center"
                 android:padding="24dp"
-                app:srcCompat="@drawable/ic_round_person_24"
+                app:srcCompat="@drawable/ic_round_manage_accounts_24"
                 app:tint="?attr/colorOnBackground"
                 tools:ignore="ContentDescription" />
 

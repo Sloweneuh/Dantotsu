@@ -48,6 +48,15 @@
                 android:text="@string/backup_sync"
                 android:textSize="28sp" />
 
+            <ImageView
+                android:layout_width="96dp"
+                android:layout_height="96dp"
+                android:layout_marginBottom="20dp"
+                android:padding="24dp"
+                app:srcCompat="@drawable/backup_restore"
+                app:tint="?attr/colorOnBackground"
+                tools:ignore="ContentDescription" />
+
         </LinearLayout>
 
         <ani.dantotsu.FadingEdgeRecyclerView
