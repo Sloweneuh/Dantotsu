@@ -69,14 +69,15 @@
         app:tint="?attr/colorPrimary"
         tools:ignore="ContentDescription" />
 
+    <!-- The chevron points forward on its own rather than by rotating the back one 180°: rows swap
+         this icon out for a download/delete/sync glyph, and those came out upside down. -->
     <ImageView
         android:id="@+id/settingsIconRight"
         android:layout_width="24dp"
         android:layout_height="24dp"
         android:layout_marginVertical="24dp"
-        android:rotation="180"
         android:visibility="gone"
-        app:srcCompat="@drawable/ic_round_arrow_back_ios_new_24"
+        app:srcCompat="@drawable/ic_round_arrow_forward_ios_new_24"
         app:tint="?attr/colorPrimary"
         tools:ignore="ContentDescription"
         tools:visibility="visible" />
