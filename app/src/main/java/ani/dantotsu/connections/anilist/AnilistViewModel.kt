@@ -542,37 +542,33 @@ class AnilistSearch : ViewModel() {
 
     var searched = false
     var notSet = true
+    // These deliberately start *unset* rather than holding null. A search result of null means "the
+    // request failed", and LiveData replays its current value to every new observer — so seeding
+    // them with null greeted a freshly opened search screen with the fetch-error placeholder,
+    // before it had even been asked to search anything.
     lateinit var aniMangaSearchResults: AniMangaSearchResults
-    private val aniMangaResult: MutableLiveData<AniMangaSearchResults?> =
-        MutableLiveData<AniMangaSearchResults?>(null)
+    private val aniMangaResult: MutableLiveData<AniMangaSearchResults?> = MutableLiveData()
 
     lateinit var characterSearchResults: CharacterSearchResults
-    private val characterResult: MutableLiveData<CharacterSearchResults?> =
-        MutableLiveData<CharacterSearchResults?>(null)
+    private val characterResult: MutableLiveData<CharacterSearchResults?> = MutableLiveData()
 
     lateinit var studioSearchResults: StudioSearchResults
-    private val studioResult: MutableLiveData<StudioSearchResults?> =
-        MutableLiveData<StudioSearchResults?>(null)
+    private val studioResult: MutableLiveData<StudioSearchResults?> = MutableLiveData()
 
     lateinit var staffSearchResults: StaffSearchResults
-    private val staffResult: MutableLiveData<StaffSearchResults?> =
-        MutableLiveData<StaffSearchResults?>(null)
+    private val staffResult: MutableLiveData<StaffSearchResults?> = MutableLiveData()
 
     lateinit var userSearchResults: UserSearchResults
-    private val userResult: MutableLiveData<UserSearchResults?> =
-        MutableLiveData<UserSearchResults?>(null)
+    private val userResult: MutableLiveData<UserSearchResults?> = MutableLiveData()
 
     lateinit var muSearchResults: MUSearchResults
-    private val muResult: MutableLiveData<MUSearchResults?> =
-        MutableLiveData<MUSearchResults?>(null)
+    private val muResult: MutableLiveData<MUSearchResults?> = MutableLiveData()
 
     lateinit var comickSearchResults: ComickSearchResults
-    private val comickResult: MutableLiveData<ComickSearchResults?> =
-        MutableLiveData<ComickSearchResults?>(null)
+    private val comickResult: MutableLiveData<ComickSearchResults?> = MutableLiveData()
 
     lateinit var mangaBakaSearchResults: MangaBakaSearchResults
-    private val mangaBakaResult: MutableLiveData<MangaBakaSearchResults?> =
-        MutableLiveData<MangaBakaSearchResults?>(null)
+    private val mangaBakaResult: MutableLiveData<MangaBakaSearchResults?> = MutableLiveData()
 
     fun <T> getSearch(type: SearchType): MutableLiveData<T?> {
         return when (type) {
