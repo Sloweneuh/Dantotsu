@@ -37,6 +37,12 @@ import com.google.android.material.color.MaterialColors
  * @param descRes      optional description, included in the search text
  * @param anchorViewId for XML-based screens, the id of the control to scroll to & flash. When 0,
  *                     the destination is a list screen and the row is matched by [titleRes].
+ * @param rowTitleRes  a second title to try when highlighting, for a setting whose row isn't
+ *                     titled [titleRes]: either the row's label changes with state (the backup
+ *                     screen's sync row reads "Sync code" once linked and "Set up sync" before
+ *                     that), or the setting lives in a dialog and the row that opens it is named
+ *                     after something else (the unread order, inside the MALSync checks dialog).
+ *                     Whichever of the two is on screen matches; the other finds nothing.
  * @param keywords     extra space separated search terms that aren't part of the visible label
  * @param intentTab    for [ani.dantotsu.download.DownloadActivity], which ViewPager tab ("tab"
  *                     intent extra) to land on; -1 leaves it at the activity's default. The
@@ -57,6 +63,7 @@ data class SearchableSetting(
     val icon: Int,
     val descRes: Int = 0,
     val anchorViewId: Int = 0,
+    val rowTitleRes: Int = 0,
     val keywords: String = "",
     val intentTab: Int = -1,
     val requiresOnline: Boolean = false,
@@ -115,7 +122,9 @@ object SettingsSearch {
         l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.disable_mal, R.string.connections_settings, R.drawable.ic_myanimelist, R.string.disable_mal_desc, keywords = "myanimelist mal account tracking")
         l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.disable_malsync, R.string.connections_settings, R.drawable.ic_malsync, R.string.disable_malsync_desc, keywords = "malsync sync tracking progress")
         l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.malsync_exclude_manage, R.string.connections_settings, R.drawable.ic_round_malsync_exclude_24, R.string.malsync_exclude_manage_desc, keywords = "exclude filter unread chapter episode notifications malsync")
-        l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.unread_sort_label, R.string.connections_settings, IC_ACCOUNT, R.string.unread_sort_desc, keywords = "unread chapters home sort order sorting recent latest updated malsync mangaupdates")
+        // Lives in the dialog behind the MALSync row's settings icon, so that row is what gets
+        // flashed — there is no row of its own to land on.
+        l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.unread_sort_label, R.string.connections_settings, IC_ACCOUNT, R.string.unread_sort_desc, rowTitleRes = R.string.disable_malsync, keywords = "unread chapters home sort order sorting recent latest updated malsync mangaupdates")
         l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.customize_info_tabs, R.string.connections_settings, R.drawable.ic_round_view_array_24, R.string.customize_info_tabs_desc, keywords = "anilist anime manga mangaupdates info tab order reorder visibility mal comick mangabaka")
 
         // ---- List sync ----
@@ -162,7 +171,8 @@ object SettingsSearch {
         // ---- Backup & sync ----
         l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.backup_restore, R.string.backup_sync, R.drawable.backup_restore, R.string.backup_restore_desc, keywords = "export import")
         l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.cloud_sync, R.string.backup_sync, R.drawable.ic_round_cloud_sync_24, R.string.cloud_sync_desc, keywords = "anilist cloud sync devices firebase", requiresOnline = true)
-        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.sync_code_title, R.string.backup_sync, R.drawable.ic_round_cloud_lock_24, R.string.sync_code_desc, keywords = "sync code key link pair connect add device qr scan encrypt encryption secure private", requiresOnline = true)
+        // That row is titled "Set up sync" until a code has been linked, and "Sync code" after.
+        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.sync_code_title, R.string.backup_sync, R.drawable.ic_round_cloud_lock_24, R.string.sync_code_desc, rowTitleRes = R.string.sync_setup_title, keywords = "sync code key link pair connect add device qr scan encrypt encryption secure private setup set up", requiresOnline = true)
         // Described by what it does rather than by the row's live subtitle ("Last synced 3 minutes
         // ago"), which tells someone searching nothing about what they'd be tapping.
         l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.cloud_sync_now, R.string.backup_sync, R.drawable.ic_round_sync_24, R.string.cloud_sync_now_desc, keywords = "cloud sync upload download last synced", requiresOnline = true)
@@ -362,6 +372,7 @@ object SettingsSearch {
 object SettingsRouter {
     const val EXTRA_ANCHOR_VIEW = "ani.dantotsu.settings.ANCHOR_VIEW"
     const val EXTRA_ANCHOR_TITLE = "ani.dantotsu.settings.ANCHOR_TITLE"
+    const val EXTRA_ANCHOR_TITLE_ALT = "ani.dantotsu.settings.ANCHOR_TITLE_ALT"
 
     fun open(context: Context, setting: SearchableSetting) {
         val intent = Intent(context, setting.dest)
@@ -369,6 +380,9 @@ object SettingsRouter {
             intent.putExtra(EXTRA_ANCHOR_VIEW, setting.anchorViewId)
         } else {
             intent.putExtra(EXTRA_ANCHOR_TITLE, setting.titleRes)
+            if (setting.rowTitleRes != 0) {
+                intent.putExtra(EXTRA_ANCHOR_TITLE_ALT, setting.rowTitleRes)
+            }
         }
         if (setting.intentTab >= 0) intent.putExtra("tab", setting.intentTab)
         context.startActivity(intent)
@@ -382,6 +396,7 @@ object SettingsRouter {
     fun handleHighlight(activity: Activity, vararg recyclers: RecyclerView) {
         val viewId = activity.intent.getIntExtra(EXTRA_ANCHOR_VIEW, 0)
         val titleRes = activity.intent.getIntExtra(EXTRA_ANCHOR_TITLE, 0)
+        val altTitleRes = activity.intent.getIntExtra(EXTRA_ANCHOR_TITLE_ALT, 0)
         when {
             viewId != 0 -> {
                 val target = activity.findViewById<View>(viewId) ?: return
@@ -390,8 +405,14 @@ object SettingsRouter {
             }
 
             titleRes != 0 && recyclers.isNotEmpty() -> {
-                val title = activity.getString(titleRes)
-                recyclers.forEach { recycler -> scheduleListHighlight(recycler, title, attempts = 12) }
+                // Both candidates are tried because only one can be right and which one depends on
+                // the screen's state. A title that matches nothing costs nothing: the lookup simply
+                // finds no row and stops.
+                val titles = listOfNotNull(titleRes, altTitleRes.takeIf { it != 0 })
+                    .map { activity.getString(it) }
+                recyclers.forEach { recycler ->
+                    titles.forEach { title -> scheduleListHighlight(recycler, title, attempts = 12) }
+                }
             }
         }
     }
