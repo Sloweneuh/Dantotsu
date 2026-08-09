@@ -359,6 +359,18 @@ class MediaListDialogSmallFragment : BottomSheetDialogFragment() {
                                 val endDate = if (status == "COMPLETED" && media.userCompletedAt.isEmpty())
                                     FuzzyDate().getToday()
                                 else null
+                                // Same treatment the reader/player gives a first-ever entry: land
+                                // it on 1 so the feed reads as a range rather than an entry that
+                                // opens partway in. It applies to whatever status is being set, so
+                                // an entry taken straight to completed here gets it too — which
+                                // this sheet's increment button does on its own at the last chapter.
+                                Anilist.mutation.primeActivity(
+                                    media.id,
+                                    isNewEntry = media.userStatus == null,
+                                    progress = progress,
+                                    status = status,
+                                    startedAt = startDate,
+                                )
                                 anilistOk = Anilist.mutation.editList(
                                     media.id,
                                     progress,

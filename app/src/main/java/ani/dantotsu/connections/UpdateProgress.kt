@@ -101,17 +101,10 @@ fun updateProgress(media: Media, number: String) {
                 if (status == "CURRENT" && media.userStartedAt.isEmpty()) {
                     startDate = FuzzyDate().getToday()
                 }
-                if (isNewEntry && (a ?: 0) > 1 && Anilist.activityMergeTime != 0) {
-                    // Land the entry on chapter/episode 1 first, then bump it to the real
-                    // progress below, so AniList's activity feed shows a normal start
-                    // instead of a first-ever entry jumping straight to a high number.
-                    Anilist.mutation.editList(
-                        media.id,
-                        1,
-                        status = status,
-                        startedAt = startDate
-                    )
-                }
+                // Land the entry on chapter/episode 1 first, then bump it to the real progress
+                // below, so AniList's activity feed shows a normal start instead of a first-ever
+                // entry jumping straight to a high number.
+                Anilist.mutation.primeActivity(media.id, isNewEntry, a, status, startDate)
                 Anilist.mutation.editList(
                     media.id,
                     a,

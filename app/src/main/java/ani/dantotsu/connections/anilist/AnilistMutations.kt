@@ -176,6 +176,30 @@ class AnilistMutations {
         return result?.get("errors") == null
     }
 
+    /**
+     * Lands a first-time entry on progress 1, ahead of the write that gives it its real progress.
+     *
+     * AniList merges consecutive progress activities on the same media inside the user's merge
+     * window, so writing 1 first leaves the feed reading "read chapters 1 - 57" instead of a
+     * first-ever entry that opens at 57. The status goes with it unchanged, which is what makes
+     * this work for an entry marked completed outright as well as one being started: both writes
+     * carry the same status, so only the progress activity is affected.
+     *
+     * Does nothing when the user has merging switched off, when the entry is already on the list
+     * (it has a history for the real write to merge into), or when there is no jump to hide.
+     */
+    suspend fun primeActivity(
+        mediaID: Int,
+        isNewEntry: Boolean,
+        progress: Int?,
+        status: String? = null,
+        startedAt: FuzzyDate? = null,
+    ) {
+        if (!isNewEntry || (progress ?: 0) <= 1) return
+        if (Anilist.activityMergeTime == 0) return
+        editList(mediaID, 1, status = status, startedAt = startedAt)
+    }
+
     suspend fun editList(
         mediaID: Int,
         progress: Int? = null,

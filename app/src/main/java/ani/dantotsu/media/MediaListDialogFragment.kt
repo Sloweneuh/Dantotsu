@@ -442,6 +442,18 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                                             || media?.userStatus == null
                                         if (anilistChanged) {
                                             anilistChangedLocal = true
+                                            // Same treatment the reader/player gives a first-ever
+                                            // entry: land it on 1 so the feed reads as a range
+                                            // rather than an entry that opens partway in. It
+                                            // applies to whatever status is being set, so an entry
+                                            // taken straight to completed here gets it too.
+                                            Anilist.mutation.primeActivity(
+                                                media!!.id,
+                                                isNewEntry = media?.userStatus == null,
+                                                progress = progress,
+                                                status = status,
+                                                startedAt = startD,
+                                            )
                                             anilistOk = Anilist.mutation.editList(
                                                 media!!.id,
                                                 progress,
