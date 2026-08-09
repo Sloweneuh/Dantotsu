@@ -354,9 +354,9 @@ object MangaBakaApi {
      * Searches series via `GET /v1/series/search`. All filters are optional but the route requires
      * at least one parameter, so a fully-empty search (no query/filters) short-circuits to empty.
      *
-     * `genres` are slug values (e.g. `slice_of_life`); `tags`/`excludedTags` are tag names or ids —
-     * both are accepted by the route. When [allowAdult] is false and the caller supplied no explicit
-     * content rating, results are limited to `safe`/`suggestive`.
+     * `genres` are slug values (e.g. `slice_of_life`); `tags`/`excludedTags` are tag names or ids,
+     * resolved to ids before they are sent (see [resolveTagIds]). When [allowAdult] is false and the
+     * caller supplied no explicit content rating, results are limited to `safe`/`suggestive`.
      */
     suspend fun searchSeries(
         query: String?,
@@ -389,8 +389,8 @@ object MangaBakaApi {
         urlBuilder.addQueryParameter("q", q ?: "")
         genres?.filter { it.isNotBlank() }?.forEach { urlBuilder.addQueryParameter("genre", it) }
         excludedGenres?.filter { it.isNotBlank() }?.forEach { urlBuilder.addQueryParameter("genre_not", it) }
-        tags?.filter { it.isNotBlank() }?.forEach { urlBuilder.addQueryParameter("tag", it) }
-        excludedTags?.filter { it.isNotBlank() }?.forEach { urlBuilder.addQueryParameter("tag_not", it) }
+        resolveTagIds(tags, keepUnresolved = true).forEach { urlBuilder.addQueryParameter("tag", it) }
+        resolveTagIds(excludedTags, keepUnresolved = false).forEach { urlBuilder.addQueryParameter("tag_not", it) }
         if (!tags.isNullOrEmpty()) urlBuilder.addQueryParameter("tag_mode", tagMode ?: "and")
         types?.filter { it.isNotBlank() }?.forEach { urlBuilder.addQueryParameter("type", it) }
         excludedTypes?.filter { it.isNotBlank() }?.forEach { urlBuilder.addQueryParameter("type_not", it) }
@@ -458,13 +458,18 @@ object MangaBakaApi {
     /** In-memory cache of the non-genre tag options (`/v1/tags`), fetched once. */
     private var tagOptions: List<TagOption>? = null
 
+    /** Lowercased tag name → numeric id, from the same fetch but without the is-genre filter. */
+    private var tagIdsByName: Map<String, Int> = emptyMap()
+
     /**
      * Returns selectable tag options from `GET /v1/tags`, excluding tags that are actually genres.
-     * Cached after the first fetch; returns an empty list on failure.
+     * Cached after the first successful fetch; returns an empty list on failure without caching it,
+     * so a transient error doesn't leave the process with no tags — and no way to resolve tag ids
+     * for the rest of its life (see [resolveTagIds]).
      */
     suspend fun getTagOptions(): List<TagOption> {
         tagOptions?.let { return it }
-        val list = tryWithSuspend {
+        val all = tryWithSuspend {
             val request = Request.Builder().url("$API_URL/v1/tags").get().build()
             val response = execute(request)
             val body = response.body?.string()
@@ -473,10 +478,37 @@ object MangaBakaApi {
                 return@tryWithSuspend null
             }
             Mapper.json.decodeFromString<TagsResponse>(body).data
-                ?.filter { it.isGenre != true && !it.name.isNullOrBlank() }
-        } ?: emptyList()
+        } ?: return emptyList()
+        tagIdsByName = all.mapNotNull { t ->
+            val name = t.name?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            val id = t.id ?: return@mapNotNull null
+            name.lowercase() to id
+        }.toMap()
+        val list = all.filter { it.isGenre != true && !it.name.isNullOrBlank() }
         tagOptions = list
         return list
+    }
+
+    /**
+     * Maps tag names to the numeric ids `/v1/series/search` wants. `tag_not` accepts ids only — a
+     * name there fails validation with a 400 and takes the whole search down with it — while `tag`
+     * takes either, though an id matches more broadly (an id also covers the tag's merged aliases,
+     * a name matches only itself).
+     *
+     * A value that can't be resolved is kept for `tag` ([keepUnresolved]), where a bare name still
+     * filters something, and dropped for `tag_not`, where sending it would cost every result.
+     */
+    private suspend fun resolveTagIds(values: List<String>?, keepUnresolved: Boolean): List<String> {
+        val wanted = values?.filter { it.isNotBlank() }.orEmpty()
+        if (wanted.isEmpty() || wanted.all { it.toIntOrNull() != null }) return wanted
+        if (tagIdsByName.isEmpty()) getTagOptions()
+        return wanted.mapNotNull { value ->
+            when {
+                value.toIntOrNull() != null -> value
+                else -> tagIdsByName[value.lowercase()]?.toString()
+                    ?: value.takeIf { keepUnresolved }
+            }
+        }
     }
 
     @Serializable
