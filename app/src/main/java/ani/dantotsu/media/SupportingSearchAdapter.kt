@@ -146,16 +146,21 @@ class SupportingSearchAdapter(private val activity: SearchActivity, private val 
     
 
         binding.searchBarText.removeTextChangedListener(textWatcher)
-        val modelText = when (type) {
-            SearchType.CHARACTER -> activity.characterResult.search
-            SearchType.STUDIO -> activity.studioResult.search
-            SearchType.STAFF -> activity.staffResult.search
-            SearchType.USER -> activity.userResult.search
-            SearchType.MANGAUPDATES -> activity.muSearchResult.search
-            SearchType.COMICK -> activity.comickSearchResult.search
-            SearchType.MANGABAKA -> activity.mangaBakaSearchResult.search
+
+        // The state this header edits, resolved on each use rather than captured: the text watcher
+        // needs the query as it stands when it fires, not as it stood when the header was bound.
+        fun currentResult(): SearchResults<*> = when (type) {
+            SearchType.CHARACTER -> activity.characterResult
+            SearchType.STUDIO -> activity.studioResult
+            SearchType.STAFF -> activity.staffResult
+            SearchType.USER -> activity.userResult
+            SearchType.MANGAUPDATES -> activity.muSearchResult
+            SearchType.COMICK -> activity.comickSearchResult
+            SearchType.MANGABAKA -> activity.mangaBakaSearchResult
             else -> throw IllegalArgumentException("Invalid search type")
-        } ?: ""
+        }
+
+        val modelText = currentResult().search ?: ""
 
         val currentText = binding.searchBarText.text.toString()
         if (!binding.searchBarText.hasFocus() && currentText != modelText) {
@@ -173,20 +178,7 @@ class SupportingSearchAdapter(private val activity: SearchActivity, private val 
         }
         updateClearHistoryVisibilityWithFilters()
         fun searchTitle() {
-            val searchText = binding.searchBarText.text.toString().takeIf { it.isNotEmpty() }
-
-            val result: SearchResults<*> = when (type) {
-                SearchType.CHARACTER -> activity.characterResult
-                SearchType.STUDIO -> activity.studioResult
-                SearchType.STAFF -> activity.staffResult
-                SearchType.USER -> activity.userResult
-                SearchType.MANGAUPDATES -> activity.muSearchResult
-                SearchType.COMICK -> activity.comickSearchResult
-                SearchType.MANGABAKA -> activity.mangaBakaSearchResult
-                else -> throw IllegalArgumentException("Invalid search type")
-            }
-
-            result.search = searchText
+            currentResult().search = binding.searchBarText.text.toString().takeIf { it.isNotEmpty() }
             activity.search()
         }
 
@@ -196,17 +188,14 @@ class SupportingSearchAdapter(private val activity: SearchActivity, private val 
             override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
 
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
-                if (s.toString().isBlank()) {
-                    when (type) {
-                        SearchType.CHARACTER -> activity.characterResult.search = null
-                        SearchType.STUDIO -> activity.studioResult.search = null
-                        SearchType.STAFF -> activity.staffResult.search = null
-                        SearchType.USER -> activity.userResult.search = null
-                        SearchType.MANGAUPDATES -> activity.muSearchResult.search = null
-                        SearchType.COMICK -> activity.comickSearchResult.search = null
-                        SearchType.MANGABAKA -> activity.mangaBakaSearchResult.search = null
-                        else -> Unit
-                    }
+                val text = s.toString().takeIf { it.isNotBlank() }
+                // The field restores the text it saved for itself, after bind() has already seeded
+                // it from the model — so every configuration change arrives here with nothing
+                // actually changed. Read as the user emptying the box, that wiped the results and
+                // sent the screen back to the history list.
+                if (text == currentResult().search) return
+                if (text == null) {
+                    currentResult().search = null
                     activity.emptyMediaAdapter()
                     CoroutineScope(Dispatchers.IO).launch {
                         delay(200)
@@ -221,6 +210,7 @@ class SupportingSearchAdapter(private val activity: SearchActivity, private val 
             }
         }
         binding.searchBarText.addTextChangedListener(textWatcher)
+        initContentVisibility(activity.model.resultsIsNotEmpty(activity.searchType))
 
         binding.searchBarText.setOnEditorActionListener { _, actionId, _ ->
             return@setOnEditorActionListener when (actionId) {

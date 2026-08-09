@@ -209,7 +209,13 @@ class SearchAdapter(private val activity: SearchActivity, private val type: Sear
             override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
 
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {
-                if (s.toString().isBlank()) {
+                val text = s.toString().takeIf { it.isNotBlank() }
+                // The field restores the text it saved for itself, after bind() has already seeded
+                // it from the model — so every configuration change arrives here with nothing
+                // actually changed. Read as the user emptying the box, that wiped the results and
+                // sent the screen back to the history list.
+                if (text == activity.aniMangaResult.search) return
+                if (text == null) {
                     activity.aniMangaResult.search = null
                     activity.emptyMediaAdapter()
                     CoroutineScope(Dispatchers.IO).launch {
@@ -225,6 +231,7 @@ class SearchAdapter(private val activity: SearchActivity, private val type: Sear
             }
         }
         binding.searchBarText.addTextChangedListener(textWatcher)
+        initContentVisibility(activity.model.resultsIsNotEmpty(activity.searchType))
 
         binding.searchBarText.setOnEditorActionListener { _, actionId, _ ->
             return@setOnEditorActionListener when (actionId) {

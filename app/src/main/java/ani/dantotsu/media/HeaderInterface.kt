@@ -35,6 +35,23 @@ abstract class HeaderInterface {
 
     protected abstract fun bind()
 
+    /**
+     * Puts the header on the results row or the history list to match what there is to show.
+     *
+     * The layout opens on the history list, and only the text watcher ever moved it off — which
+     * [bind] deliberately installs without running. Binding happens once per activity creation, so
+     * every configuration change left a screen of results sitting behind the history list.
+     *
+     * Sets only the two lists, without [setHistoryVisibility]'s fades (there is nothing to
+     * transition from at bind time) and without touching the image-search button, whose visibility
+     * follows the search type rather than which list is up.
+     */
+    protected fun initContentVisibility(hasResults: Boolean) {
+        binding.searchResultLayout.visibility = if (hasResults) View.VISIBLE else View.GONE
+        binding.searchHistoryList.visibility = if (hasResults) View.GONE else View.VISIBLE
+        if (hasResults) binding.clearHistory.visibility = View.GONE
+    }
+
     fun setHistoryVisibility(visible: Boolean) {
         if (visible) {
             binding.searchResultLayout.startAnimation(fadeOutAnimation())
