@@ -16,6 +16,7 @@ import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.databinding.ActivitySettingsConnectionsBinding
 import ani.dantotsu.initActivity
 import ani.dantotsu.media.InfoTabContext
+import ani.dantotsu.media.MangaBakaTagWeights
 import ani.dantotsu.others.CustomBottomDialog
 import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.navBarHeight
@@ -96,6 +97,33 @@ class SettingsConnectionsActivity : AppCompatActivity() {
                         }.show(supportFragmentManager, "mangabaka_help")
                     }
                 }
+            ),
+            Settings(
+                type = 1,
+                name = getString(R.string.mangabaka_tag_weight),
+                desc = tagWeightDesc(),
+                icon = R.drawable.ic_label_24,
+                // The description carries the current choice, so it has to be re-read on every
+                // bind - the `desc` above is fixed at build time and would come back stale once the
+                // row is recycled. Hiding attachView again is deliberate: the adapter shows that
+                // container for any row with an attach hook, and this row adds nothing to it.
+                attach = { b ->
+                    b.settingsDesc.text = tagWeightDesc()
+                    b.attachView.visibility = View.GONE
+                },
+                onClick = { b ->
+                    customAlertDialog().apply {
+                        setTitle(getString(R.string.mangabaka_tag_weight))
+                        singleChoiceItems(
+                            MangaBakaTagWeights.choiceAdapter(this@SettingsConnectionsActivity),
+                            MangaBakaTagWeights.defaultIndex(),
+                        ) { which ->
+                            PrefManager.setVal(PrefName.MangaBakaTagWeightFilter, which)
+                            b.settingsDesc.text = tagWeightDesc()
+                        }
+                        show()
+                    }
+                },
             ),
             Settings(
                 type = 2,
@@ -291,6 +319,12 @@ class SettingsConnectionsActivity : AppCompatActivity() {
         binding.connectionsRecyclerView.adapter = SettingsAdapter(settingsList)
         binding.connectionsRecyclerView.layoutManager = LinearLayoutManager(this)
     }
+
+    /** "MangaBaka tag lists start filtered to: <the option currently picked>". */
+    private fun tagWeightDesc(): String = getString(
+        R.string.mangabaka_tag_weight_desc,
+        getString(MangaBakaTagWeights.options[MangaBakaTagWeights.defaultIndex()].label)
+    )
 
     private fun showMalSyncExcludeDialog() {
         MediaExcludeBottomDialog.newInstance(

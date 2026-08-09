@@ -144,6 +144,8 @@ object SettingsSearch {
 
 
         // ---- Connections ----
+        l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.mangabaka_tag_weight, R.string.connections_settings, R.drawable.ic_label_24, R.string.mangabaka_tag_weight_desc, keywordsRes = R.string.search_kw_mangabaka_tag_weight)
+
         l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.disable_comick, R.string.connections_settings, R.drawable.ic_round_comick_24, R.string.disable_comick_desc, keywordsRes = R.string.search_kw_disable_comick)
 
         l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.disable_mal, R.string.connections_settings, R.drawable.ic_myanimelist, R.string.disable_mal_desc, keywordsRes = R.string.search_kw_disable_mal)

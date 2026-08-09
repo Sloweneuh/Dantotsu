@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  A row in the tag-weight choice dialog: label, its weight chevron, and the radio the list's choice
+  mode drives (a CheckedTextView draws that itself, at the end of the row).
+
+  minHeight rather than the fixed height the platform's own single-choice row uses, so a row grows
+  with its content instead of letting text spill past the bounds that are actually tappable.
+-->
+<CheckedTextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="?android:attr/selectableItemBackground"
+    android:checkMark="?android:attr/listChoiceIndicatorSingle"
+    android:drawablePadding="12dp"
+    android:drawableTint="@color/bg_opp"
+    android:ellipsize="marquee"
+    android:fontFamily="@font/poppins_semi_bold"
+    android:gravity="center_vertical"
+    android:minHeight="52dp"
+    android:paddingHorizontal="24dp"
+    android:paddingVertical="8dp"
+    android:textAlignment="viewStart"
+    android:textColor="@color/bg_opp"
+    android:textSize="15sp" />

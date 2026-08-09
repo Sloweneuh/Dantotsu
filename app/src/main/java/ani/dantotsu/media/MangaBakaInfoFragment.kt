@@ -478,13 +478,9 @@ class MangaBakaInfoFragment : Fragment() {
         val bind = ItemTagsSectionBinding.inflate(LayoutInflater.from(context), parent, false)
         bind.root.tag = "tags_mangabaka"
 
-        val filters = listOf(
-            TagFilter(getString(R.string.tag_filter_all), null, 0),
-            TagFilter(getString(R.string.tag_filter_incidental), R.drawable.ic_weight_incidental, 1),
-            TagFilter(getString(R.string.tag_filter_recurrent), R.drawable.ic_weight_recurrent, 2),
-            TagFilter(getString(R.string.tag_filter_defining), R.drawable.ic_weight_defining, 3),
-            TagFilter(getString(R.string.tag_filter_core), R.drawable.ic_weight_core, 4),
-        )
+        val filters = MangaBakaTagWeights.options.map {
+            TagFilter(getString(it.label), it.chevron, it.threshold)
+        }
 
         fun selectFilter(f: TagFilter) {
             bind.tagsFilterText.text = f.label
@@ -517,8 +513,9 @@ class MangaBakaInfoFragment : Fragment() {
         }
 
         parent.addView(bind.root)
-        // Default to hiding "unweighted" tags — start at the Incidental+ filter.
-        selectFilter(filters[1])
+        // Where the list starts is the user's to set; out of the box it's Incidental+, which hides
+        // only the tags MangaBaka never weighted.
+        selectFilter(filters[MangaBakaTagWeights.defaultIndex()])
     }
 
     /**

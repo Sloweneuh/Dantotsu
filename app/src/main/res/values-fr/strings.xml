@@ -502,6 +502,8 @@
     <string name="origin">Origine</string>
     <string name="final_volume_label">Volume final</string>
     <string name="latest_volume_label">Dernier volume</string>
+    <string name="mangabaka_tag_weight">Importance des tags par défaut</string>
+    <string name="mangabaka_tag_weight_desc">Les listes de tags MangaBaka s\'ouvrent sur le filtre : %1$s</string>
     <string name="tag_filter_all">Tous</string>
     <string name="tag_filter_incidental">Accessoire+</string>
     <string name="tag_filter_recurrent">Récurrent+</string>
@@ -1966,6 +1968,7 @@
     <string name="search_kw_disable_mangaupdates">mangaupdates mu onglet parcourir explorer info informations source</string>
     <string name="search_kw_mu_list_fetch_enabled">mangaupdates mu liste récupérer importer accueil</string>
     <string name="search_kw_mu_custom_list_mapping">mangaupdates mu liste statut correspondance</string>
+    <string name="search_kw_mangabaka_tag_weight">mangabaka tag tags importance poids filtre défaut accessoire récurrent déterminant central</string>
     <string name="search_kw_disable_comick">comick source manga</string>
     <string name="search_kw_disable_mal">myanimelist mal compte suivi</string>
     <string name="search_kw_disable_malsync">malsync sync synchronisation suivi progression</string>

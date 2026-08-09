@@ -130,6 +130,7 @@ object BackupTree {
                         BackupItem(PrefName.MangaUpdatesEnabled, R.string.disable_mangaupdates),
                         BackupItem(PrefName.MangaUpdatesListEnabled, R.string.mu_list_fetch_enabled),
                         BackupItem(PrefName.MangaBakaListSyncEnabled, R.string.mangabaka_list_sync),
+                        BackupItem(PrefName.MangaBakaTagWeightFilter, R.string.mangabaka_tag_weight),
                         BackupItem(PrefName.MalListSyncEnabled, R.string.mal_list_sync),
                         BackupItem(PrefName.AutoListSyncInterval, R.string.auto_list_sync_frequency),
                         BackupItem(PrefName.AutoListSyncRemovals, R.string.auto_list_sync_removals_label),

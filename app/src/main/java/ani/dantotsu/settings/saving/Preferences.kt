@@ -116,6 +116,8 @@ enum class PrefName(val data: Pref) {
     MangaUpdatesListEnabled(Pref(Location.General, Boolean::class, true)),
     MangaBakaInfoEnabled(Pref(Location.General, Boolean::class, true)),
     MangaBakaListSyncEnabled(Pref(Location.General, Boolean::class, true)),
+    /** Index into [ani.dantotsu.media.MangaBakaTagWeights.options] — where the tag list starts out. */
+    MangaBakaTagWeightFilter(Pref(Location.General, Int::class, 1)),
     MalListSyncEnabled(Pref(Location.General, Boolean::class, true)),
 
     /**

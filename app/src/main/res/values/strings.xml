@@ -633,6 +633,8 @@
     <string name="origin">Origin</string>
     <string name="final_volume_label">Final Volume</string>
     <string name="latest_volume_label">Latest Volume</string>
+    <string name="mangabaka_tag_weight">Default tag weight</string>
+    <string name="mangabaka_tag_weight_desc">MangaBaka tag lists start filtered to: %1$s</string>
     <string name="tag_filter_all">All</string>
     <string name="tag_filter_incidental">Incidental+</string>
     <string name="tag_filter_recurrent">Recurrent+</string>
@@ -2065,6 +2067,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="search_kw_disable_mangaupdates">mangaupdates mu tab browse info source</string>
     <string name="search_kw_mu_list_fetch_enabled">mangaupdates mu list fetch import home</string>
     <string name="search_kw_mu_custom_list_mapping">mangaupdates mu list status mapping</string>
+    <string name="search_kw_mangabaka_tag_weight">mangabaka tag weight filter default incidental recurrent defining core</string>
     <string name="search_kw_disable_comick">comick source manga</string>
     <string name="search_kw_disable_mal">myanimelist mal account tracking</string>
     <string name="search_kw_disable_malsync">malsync sync tracking progress</string>

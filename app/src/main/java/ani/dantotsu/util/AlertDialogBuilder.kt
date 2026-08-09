@@ -6,6 +6,7 @@ import android.content.Context
 import android.os.Build
 import android.view.WindowManager
 import android.view.View
+import android.widget.ListAdapter
 import ani.dantotsu.R
 
 class AlertDialogBuilder(private val context: Context) {
@@ -18,6 +19,7 @@ class AlertDialogBuilder(private val context: Context) {
     private var onNegativeButtonClick: (() -> Unit)? = null
     private var onNeutralButtonClick: (() -> Unit)? = null
     private var items: Array<String>? = null
+    private var itemsAdapter: ListAdapter? = null
     private var checkedItems: BooleanArray? = null
     private var onItemsSelected: ((BooleanArray) -> Unit)? = null
     private var selectedItemIndex: Int = -1
@@ -142,6 +144,22 @@ class AlertDialogBuilder(private val context: Context) {
         return this
     }
 
+    /**
+     * Single choice over rows the caller lays out, for a list whose items are more than a label -
+     * an icon per row, say. The list still drives the radio, so the adapter's rows have to be
+     * [android.widget.Checkable]; a [CheckedTextView] row is the usual way.
+     */
+    fun singleChoiceItems(
+        adapter: ListAdapter,
+        selectedItemIndex: Int = -1,
+        onItemSelected: (Int) -> Unit
+    ): AlertDialogBuilder {
+        this.itemsAdapter = adapter
+        this.selectedItemIndex = selectedItemIndex
+        this.onItemSelected = onItemSelected
+        return this
+    }
+
     fun multiChoiceItems(
         items: Array<String>,
         checkedItems: BooleanArray? = null,
@@ -160,7 +178,14 @@ class AlertDialogBuilder(private val context: Context) {
         if (title != null) builder.setTitle(title)
         if (message != null) builder.setMessage(message)
         if (customView != null) builder.setView(customView)
-        if (items != null) {
+        val adapter = itemsAdapter
+        if (adapter != null && onItemSelected != null) {
+            builder.setSingleChoiceItems(adapter, selectedItemIndex) { dialog, which ->
+                selectedItemIndex = which
+                onItemSelected?.invoke(which)
+                dialog.dismiss()
+            }
+        } else if (items != null) {
             if (onItemSelected != null) {
                 builder.setSingleChoiceItems(items, selectedItemIndex) { dialog, which ->
                     selectedItemIndex = which
