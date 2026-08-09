@@ -23,6 +23,7 @@ import ani.dantotsu.Refresh
 import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.databinding.ActivityListBinding
+import ani.dantotsu.dismissKeyboard
 import ani.dantotsu.getThemeColor
 import ani.dantotsu.hideSystemBarsExtendView
 import ani.dantotsu.media.ActiveFilterChip
@@ -40,6 +41,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
 
+private const val KEY_SEARCH_OPEN = "searchOpen"
 
 class ListActivity : AppCompatActivity() {
     private lateinit var binding: ActivityListBinding
@@ -424,12 +426,25 @@ class ListActivity : AppCompatActivity() {
             }
             model.searchLists(q)
         }
+
+        // A view's visibility isn't part of its saved state, but an EditText's text is: without
+        // this, a recreated activity (rotation, theme change) came back with the search bar hidden
+        // while the restored query kept filtering the list from behind it. Reopen it instead.
+        if (savedInstanceState?.getBoolean(KEY_SEARCH_OPEN) == true) {
+            binding.searchView.visibility = View.VISIBLE
+        }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putBoolean(KEY_SEARCH_OPEN, binding.searchView.isVisible)
     }
 
     private fun toggleSearchView(isVisible: Boolean) {
         if (isVisible) {
             binding.searchView.visibility = View.GONE
             binding.searchViewText.text.clear()
+            binding.searchViewText.dismissKeyboard()
         } else {
             binding.searchView.visibility = View.VISIBLE
             binding.searchViewText.requestFocus()

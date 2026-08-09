@@ -21,6 +21,7 @@ import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
 import ani.dantotsu.databinding.ActivityExtensionBrowseBinding
 import ani.dantotsu.databinding.ItemChipBinding
+import ani.dantotsu.dismissKeyboard
 import ani.dantotsu.initActivity
 import ani.dantotsu.media.ActiveFilterChip
 import ani.dantotsu.media.ManageFiltersDialog
@@ -70,6 +71,7 @@ class ExtensionBrowseActivity : AppCompatActivity() {
         private const val KEY_SOURCE_INDEX = "sourceIndex"
         private const val KEY_MODE = "mode"
         private const val KEY_QUERY = "query"
+        private const val KEY_SEARCH_OPEN = "searchOpen"
     }
 
     private lateinit var binding: ActivityExtensionBrowseBinding
@@ -220,13 +222,17 @@ class ExtensionBrowseActivity : AppCompatActivity() {
         val restoredMode = savedInstanceState?.getInt(KEY_MODE, -1)?.takeIf { it != -1 }
             ?.let { Mode.values().getOrNull(it) }
         val restoredQuery = savedInstanceState?.getString(KEY_QUERY).orEmpty()
-        if (restoredQuery.isNotEmpty()) {
-            currentQuery = restoredQuery
-            searchBoxHasText = true
+        // Visibility isn't part of a view's saved state: without the flag, a search bar the user
+        // had opened but not yet typed into vanished on rotation while the keyboard stayed up.
+        if (restoredQuery.isNotEmpty() || savedInstanceState?.getBoolean(KEY_SEARCH_OPEN) == true) {
             binding.extensionBrowseSearch.isVisible = true
             binding.extensionBrowseTitle.isVisible = false
             binding.extensionBrowseIcon.isVisible = false
             binding.extensionBrowseSearchIcon.setImageResource(R.drawable.ic_round_search_off_24)
+        }
+        if (restoredQuery.isNotEmpty()) {
+            currentQuery = restoredQuery
+            searchBoxHasText = true
             suppressQueryChange = true
             binding.extensionBrowseSearch.setQuery(restoredQuery, false)
             suppressQueryChange = false
@@ -239,6 +245,7 @@ class ExtensionBrowseActivity : AppCompatActivity() {
         outState.putInt(KEY_SOURCE_INDEX, sourceIndex)
         outState.putInt(KEY_MODE, currentMode.ordinal)
         outState.putString(KEY_QUERY, currentQuery)
+        outState.putBoolean(KEY_SEARCH_OPEN, binding.extensionBrowseSearch.isVisible)
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -385,6 +392,10 @@ class ExtensionBrowseActivity : AppCompatActivity() {
 
     // Hide the search bar and bring back the title/icon header, i.e. the pre-search display.
     private fun restoreSearchHeader() {
+        // Not every caller is the user tapping the close icon — backspacing the query to empty
+        // collapses the bar too — so drop the keyboard here rather than at the call sites, or it
+        // would be left hovering over a search bar that is no longer on screen.
+        binding.extensionBrowseSearch.dismissKeyboard()
         binding.extensionBrowseSearch.isVisible = false
         binding.extensionBrowseSearchIcon.isVisible = true
         binding.extensionBrowseSearchIcon.setImageResource(R.drawable.ic_round_search_24)

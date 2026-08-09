@@ -16,6 +16,7 @@ import androidx.viewpager2.adapter.FragmentStateAdapter
 import androidx.viewpager2.widget.ViewPager2
 import ani.dantotsu.R
 import ani.dantotsu.databinding.ActivityExtensionsBinding
+import ani.dantotsu.dismissKeyboard
 import ani.dantotsu.initActivity
 import ani.dantotsu.media.MediaType
 import ani.dantotsu.navBarHeight
@@ -152,6 +153,13 @@ class ExtensionsActivity : AppCompatActivity() {
             val changeUIVisibility: (Boolean) -> Unit = { show ->
                 findViewById<ViewPager2>(R.id.viewPager).isVisible = show
                 findViewById<TabLayout>(R.id.tabLayout).isVisible = show
+                // Hiding the field behind the preferences fragment has to take the query and the
+                // keyboard with it, or the extension list stays filtered by a search bar that
+                // isn't on screen any more.
+                if (!show) {
+                    searchView.setText("")
+                    searchView.dismissKeyboard()
+                }
                 findViewById<TextInputLayout>(R.id.searchView).isVisible = show
                 findViewById<TextView>(R.id.extensions).text = if (show) getString(R.string.extensions) else ""
                 findViewById<FrameLayout>(R.id.fragmentExtensionsContainer).isGone = show

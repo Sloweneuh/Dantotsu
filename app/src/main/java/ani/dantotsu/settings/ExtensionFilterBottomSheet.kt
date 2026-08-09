@@ -16,6 +16,7 @@ import ani.dantotsu.databinding.ItemExtensionFilterSeparatorBinding
 import ani.dantotsu.databinding.ItemExtensionFilterSortBinding
 import ani.dantotsu.databinding.ItemExtensionFilterTextBinding
 import ani.dantotsu.databinding.ItemExtensionFilterTristateBinding
+import ani.dantotsu.dismissKeyboard
 import ani.dantotsu.media.savedfilters.SavedExtensionFilter
 import ani.dantotsu.media.savedfilters.SavedFilterEntry
 import ani.dantotsu.media.savedfilters.SavedFiltersDialog
@@ -296,9 +297,12 @@ class ExtensionFilterBottomSheet : BottomSheetDialogFragment() {
             if (searchable) {
                 header.filterSectionSearch.visibility = if (expanded) View.GONE else View.VISIBLE
                 if (expanded) {
+                    // Collapsing the section takes its search box away without the user ever
+                    // touching the search icon, so it has to dismiss the keyboard too.
                     header.filterSectionSearchLayout.visibility = View.GONE
                     header.filterSectionSearch.setImageResource(ani.dantotsu.R.drawable.ic_round_search_24)
                     header.filterSectionSearchText.setText("")
+                    header.filterSectionSearchText.dismissKeyboard()
                 }
             }
         }
@@ -311,7 +315,10 @@ class ExtensionFilterBottomSheet : BottomSheetDialogFragment() {
                     if (isVisible) ani.dantotsu.R.drawable.ic_round_search_24
                     else ani.dantotsu.R.drawable.ic_round_search_off_24
                 )
-                if (isVisible) header.filterSectionSearchText.setText("")
+                if (isVisible) {
+                    header.filterSectionSearchText.setText("")
+                    header.filterSectionSearchText.dismissKeyboard()
+                }
             }
             header.filterSectionSearchText.addTextChangedListener(object : android.text.TextWatcher {
                 override fun afterTextChanged(s: android.text.Editable?) {

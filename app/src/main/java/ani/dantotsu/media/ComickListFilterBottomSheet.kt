@@ -22,6 +22,7 @@ import ani.dantotsu.R
 import ani.dantotsu.connections.comick.ComickApi
 import ani.dantotsu.databinding.BottomSheetComickListFilterBinding
 import ani.dantotsu.databinding.ItemChipBinding
+import ani.dantotsu.dismissKeyboard
 import ani.dantotsu.media.savedfilters.SavedComickListFilter
 import ani.dantotsu.media.savedfilters.SavedFilterEntry
 import ani.dantotsu.media.savedfilters.SavedFiltersDialog
@@ -137,7 +138,10 @@ class ComickListFilterBottomSheet : BottomSheetDialogFragment() {
     private fun setGenreSearchMode(enabled: Boolean) {
         binding.comickListFilterGenreSearchLayout.visibility = if (enabled) View.VISIBLE else View.GONE
         updateGenreSearchIcon(enabled)
-        if (!enabled) binding.comickListFilterGenreSearchText.setText("")
+        if (!enabled) {
+            binding.comickListFilterGenreSearchText.setText("")
+            binding.comickListFilterGenreSearchText.dismissKeyboard()
+        }
     }
 
     private fun setupFilters() {

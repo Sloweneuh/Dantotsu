@@ -26,6 +26,7 @@ import ani.dantotsu.R
 import ani.dantotsu.connections.comick.ComickApi
 import ani.dantotsu.databinding.BottomSheetComickSearchFilterBinding
 import ani.dantotsu.databinding.ItemChipBinding
+import ani.dantotsu.dismissKeyboard
 import ani.dantotsu.media.savedfilters.SavedComickFilter
 import ani.dantotsu.media.savedfilters.SavedFilterEntry
 import ani.dantotsu.media.savedfilters.SavedFiltersDialog
@@ -214,6 +215,7 @@ class ComickSearchFilterBottomSheet : BottomSheetDialogFragment() {
         updateGenreSearchIcon(enabled)
         if (!enabled) {
             binding.comickFilterGenreSearchText.setText("")
+            binding.comickFilterGenreSearchText.dismissKeyboard()
         }
     }
 

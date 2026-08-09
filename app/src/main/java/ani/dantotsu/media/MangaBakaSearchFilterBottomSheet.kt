@@ -23,6 +23,7 @@ import ani.dantotsu.R
 import ani.dantotsu.connections.mangabaka.MangaBakaApi
 import ani.dantotsu.databinding.BottomSheetMangabakaSearchFilterBinding
 import ani.dantotsu.databinding.ItemChipBinding
+import ani.dantotsu.dismissKeyboard
 import ani.dantotsu.media.savedfilters.SavedFilterEntry
 import ani.dantotsu.media.savedfilters.SavedFiltersDialog
 import ani.dantotsu.media.savedfilters.SavedFiltersStore
@@ -205,7 +206,10 @@ class MangaBakaSearchFilterBottomSheet : BottomSheetDialogFragment() {
             val visible = binding.mbGenreSearchLayout.visibility == View.VISIBLE
             binding.mbGenreSearchLayout.visibility = if (visible) View.GONE else View.VISIBLE
             updateGenreSearchIcon(!visible)
-            if (visible) binding.mbGenreSearchText.setText("")
+            if (visible) {
+                binding.mbGenreSearchText.setText("")
+                binding.mbGenreSearchText.dismissKeyboard()
+            }
         }
         binding.mbGenreSearchText.addTextChangedListener(simpleWatcher { q ->
             updateGenreResults(if (q.isBlank()) allGenres else allGenres.filter { it.label.contains(q, true) })
@@ -238,7 +242,10 @@ class MangaBakaSearchFilterBottomSheet : BottomSheetDialogFragment() {
             val visible = binding.mbTagSearchLayout.visibility == View.VISIBLE
             binding.mbTagSearchLayout.visibility = if (visible) View.GONE else View.VISIBLE
             updateTagSearchIcon(!visible)
-            if (visible) binding.mbTagSearchText.setText("")
+            if (visible) {
+                binding.mbTagSearchText.setText("")
+                binding.mbTagSearchText.dismissKeyboard()
+            }
         }
         binding.mbTagSearchText.addTextChangedListener(simpleWatcher { q ->
             if (q.isBlank()) updateTagResults(selectedTagOptions())

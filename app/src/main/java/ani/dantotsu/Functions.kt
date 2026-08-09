@@ -67,6 +67,7 @@ import android.view.animation.AnimationSet
 import android.view.animation.OvershootInterpolator
 import android.view.animation.ScaleAnimation
 import android.view.animation.TranslateAnimation
+import android.view.inputmethod.InputMethodManager
 import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
 import android.widget.DatePicker
@@ -1737,6 +1738,17 @@ fun String.decodeBase64ToString(): String {
         Logger.log(e)
         ""
     }
+}
+
+/**
+ * Drops focus and dismisses the soft keyboard. A search bar going away needs this whether the user
+ * closed it or something else did — a keyboard left hovering over a search bar that is no longer
+ * there is typing into nothing.
+ */
+fun View.dismissKeyboard() {
+    val imm = context?.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+    imm?.hideSoftInputFromWindow(windowToken, 0)
+    clearFocus()
 }
 
 /**
