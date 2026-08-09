@@ -46,6 +46,13 @@ object MUDetailsCache {
     private val cache = ConcurrentHashMap<Long, Detail>()
 
     /**
+     * A caller waiting on an in-flight id, and what it is waiting *for*: a fetch running for its
+     * cover alone cannot answer one that needs the release date, so those are held over and told
+     * only once the follow-up in [fetch] has been and got it.
+     */
+    private class Waiter(val needsRelease: Boolean, val notify: (Long) -> Unit)
+
+    /**
      * Who to tell when an in-flight id lands, keyed by that id — and, by existing, the record that
      * a fetch is already running for it.
      *
@@ -54,8 +61,15 @@ object MUDetailsCache {
      * two lists showing the same series (the unread row and the full-screen view opened over it)
      * left the second one blank until something happened to rebind it.
      */
-    private val waiting = HashMap<Long, MutableList<(Long) -> Unit>>()
+    private val waiting = HashMap<Long, MutableList<Waiter>>()
     private val lock = Any()
+
+    /**
+     * Ids a release date has been asked for that no fetch has got yet. Tracked apart from [waiting]
+     * because a caller may pass no callback at all, and its request still has to survive an
+     * in-flight fetch that isn't collecting one.
+     */
+    private val releaseWanted: MutableSet<Long> = ConcurrentHashMap.newKeySet()
 
     /**
      * Ids whose release date has been resolved, tracked apart from [cache] because it is optional:
@@ -87,6 +101,12 @@ object MUDetailsCache {
      * but every caller is still notified.
      * [onUpdated] is called on the main thread after each id's data is stored, on [scope], so a
      * caller that has gone away stops hearing about it.
+     *
+     * Asking for a release date always gets one, even when the id is already being fetched for its
+     * cover: that fetch isn't collecting the date, so the request is recorded and [fetch] goes back
+     * for it. Without that the caller was answered by a fetch that had nothing it asked for, and
+     * only its *next* pass started the real request — a wasted round of "draw, find no dates, wait
+     * again" for the screen holding itself back on them.
      */
     fun prefetch(
         scope: CoroutineScope,
@@ -98,16 +118,18 @@ object MUDetailsCache {
             val needDetail = !cache.containsKey(id)
             val needRelease = withReleases && id !in releasesResolved
             if (!needDetail && !needRelease) return@forEach
+            if (needRelease) releaseWanted += id
             val deliver: ((Long) -> Unit)? = onUpdated?.let {
                 { finished -> scope.launch(Dispatchers.Main) { it(finished) } }
             }
+            val waiter = deliver?.let { Waiter(needRelease, it) }
             val startFetch = synchronized(lock) {
                 val queue = waiting[id]
                 if (queue == null) {
-                    waiting[id] = mutableListOf<(Long) -> Unit>().apply { deliver?.let(::add) }
+                    waiting[id] = mutableListOf<Waiter>().apply { waiter?.let(::add) }
                     true
                 } else {
-                    deliver?.let(queue::add)
+                    waiter?.let(queue::add)
                     false
                 }
             }
@@ -156,12 +178,26 @@ object MUDetailsCache {
             // Resolved even if the request failed or the series has no dated release. Callers hold
             // the list back until every entry is answered, so an id that could come back "not yet"
             // for ever would keep the section on its spinner and re-request on every draw. The set
-            // is in-memory, so a restart is the retry boundary.
-            if (wantRelease) releasesResolved += id
-            // Always, and always before notifying: a waiter reads the cache the moment it hears,
-            // and one left in the map would block every future fetch of this id.
-            val callbacks = synchronized(lock) { waiting.remove(id) }.orEmpty()
-            callbacks.forEach { it(id) }
+            // is in-memory, so a restart is the retry boundary. It also ends the follow-up below,
+            // which is what keeps a series whose release request fails from being retried for ever.
+            if (wantRelease) {
+                releasesResolved += id
+                releaseWanted -= id
+            }
+            // Whoever this pass can answer is told now; anyone waiting on a release it didn't
+            // collect stays queued for the follow-up. Holding those two apart is the point — a
+            // cover waiter shouldn't wait out a second request it has no use for.
+            val (ready, followUp) = synchronized(lock) {
+                val queue = waiting.remove(id).orEmpty()
+                val (answered, held) = queue.partition { wantRelease || !it.needsRelease }
+                val owed = held.isNotEmpty() || id in releaseWanted
+                // The id keeps its place in the map for the length of the follow-up, so nothing
+                // arriving in between mistakes it for idle and starts a second fetch of its own.
+                if (owed) waiting[id] = held.toMutableList()
+                answered to owed
+            }
+            ready.forEach { it.notify(id) }
+            if (followUp) fetchScope.launch { fetch(id, wantDetail = false, wantRelease = true) }
         }
     }
 

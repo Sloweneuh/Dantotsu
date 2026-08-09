@@ -183,7 +183,14 @@ class UnreadChapterNotificationTask : Task {
                                         mediaId = media.id,
                                         lastChapter = lastChapter,
                                         source = result.source,
-                                        userProgress = userProgress
+                                        userProgress = userProgress,
+                                        // What this map becomes is the home row's cache (and the
+                                        // copy other devices reuse over UnreadSync), so it has to
+                                        // carry everything the row orders by. Dropped, every entry
+                                        // reaching the row from here had no release date, and the
+                                        // by-most-recent order — where an unknown date sorts last —
+                                        // had nothing to place them by.
+                                        latestChapterAt = result.lastEp.timestampMillis()
                                     )
                                 }
                             }
