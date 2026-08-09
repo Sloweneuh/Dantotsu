@@ -109,6 +109,16 @@ class SettingsAdapter(private val settings: ArrayList<Settings>) :
     }
 
     /** Position of the first visible row whose title matches [title], or -1 if none. */
+    /**
+     * Where the row titled [title] sits, for the settings search to scroll to and flash.
+     *
+     * A prefix match backs up the exact one because some rows render their current setting into
+     * their own title — "Unread chapter check interval : 6 hours" — which no fixed string can ever
+     * equal. Exact wins where both apply, so a label that happens to prefix a neighbouring row
+     * can't take that row's place.
+     */
     fun indexOfTitle(title: String): Int =
         settings.indexOfFirst { it.isVisible && it.name == title }
+            .takeIf { it >= 0 }
+            ?: settings.indexOfFirst { it.isVisible && it.name.startsWith(title) }
 }

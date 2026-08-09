@@ -1252,6 +1252,9 @@
     <string name="anilist_notifications_checking_time">Fréquence de mise à jour des notifications Anilist : %1$s</string>
     <string name="comment_notification_checking_time">Fréquence de mise à jour des notifications de commentaires : %1$s</string>
     <string name="unread_chapter_notification_checking_time">Intervalle de vérification des chapitres non lus : %1$s</string>
+    <string name="anilist_notifications_checking_time_label">Fréquence de mise à jour des notifications Anilist</string>
+    <string name="comment_notification_checking_time_label">Fréquence de mise à jour des notifications de commentaires</string>
+    <string name="unread_chapter_notification_checking_time_label">Intervalle de vérification des chapitres non lus</string>
     <string name="custom">Personnalisé…</string>
     <string name="custom_interval_title">Intervalle personnalisé</string>
     <string name="custom_interval_desc">Entrez l\'intervalle en minutes (1–1440)</string>
@@ -1574,6 +1577,7 @@
     <string name="mu_notifications_enabled_desc">Envoyer des notifications pour les nouveaux chapitres trouvés dans votre liste de lecture MangaUpdates</string>
     <string name="mu_notification_interval_title">Fréquence des notifications MangaUpdates</string>
     <string name="mu_notification_interval">Intervalle de notification : %1$s</string>
+    <string name="mu_notification_interval_label">Intervalle de notification</string>
     <string name="mu_notification_interval_desc">Fréquence de vérification des nouveaux chapitres (s\'applique uniquement si les vérifications de chapitres non lus sont désactivées)</string>
     <string name="mu_notification_interval_linked">Intervalle de notification : identique aux chapitres non lus (%1$s)</string>
     <string name="mu_notification_interval_linked_desc">Modifiez l\'intervalle dans les paramètres des notifications de chapitres non lus, ou désactivez ces vérifications pour définir un intervalle séparé ici</string>

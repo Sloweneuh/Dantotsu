@@ -65,6 +65,7 @@ class AutoListSyncTask : Task {
                 // AniList is the source every comparison reads from; without it there is nothing to
                 // compare against, and no amount of retrying will change that.
                 Logger.log("AutoListSyncTask: no AniList session; skipping")
+                record(0, 0)
                 return@withContext true
             }
             MAL.getSavedToken()
@@ -76,6 +77,7 @@ class AutoListSyncTask : Task {
             val sections = ListCompare.availableSections().filter { allowed(it) }
             if (sections.isEmpty()) {
                 Logger.log("AutoListSyncTask: no tracker is both logged in and enabled for sync")
+                record(0, 0)
                 return@withContext true
             }
 
@@ -129,6 +131,14 @@ class AutoListSyncTask : Task {
             PrefManager.getVal(PrefName.MangaBakaListSyncEnabled)
     }
 
+    /**
+     * Stamps the run for the settings row to report.
+     *
+     * Called for a pass that found nothing to do as well as one that pushed something: the row
+     * reads "hasn't run yet" from the absence of a stamp, so a task that ran and correctly decided
+     * there was nothing to compare was indistinguishable from one that never ran at all — which is
+     * the opposite of what someone checking that screen is trying to find out.
+     */
     private fun record(synced: Int, failed: Int) {
         PrefManager.setVal(PrefName.AutoListSyncLastRun, System.currentTimeMillis())
         PrefManager.setVal(PrefName.AutoListSyncLastSynced, synced)

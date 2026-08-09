@@ -59,8 +59,37 @@ class SettingsListSyncActivity : AppCompatActivity() {
      * only exists while the automatic comparison is switched on, so picking an interval changes
      * which rows are on screen.
      */
+    /**
+     * Whether anything is left for the automatic comparison to write to: a tracker has to be both
+     * signed in and switched on for sync, since [ani.dantotsu.connections.sync.AutoListSyncTask]
+     * skips every section whose switch is off. With none of them on it would wake on schedule, find
+     * nothing it is allowed to touch and go back to sleep, so the interval isn't offered at all.
+     *
+     * The manual comparison screen is deliberately not gated this way — pressing sync there *is*
+     * the permission the switches stand in for.
+     */
+    private fun hasSyncTargets(): Boolean =
+        (MAL.token != null && PrefManager.getVal(PrefName.MalListSyncEnabled)) ||
+            (MangaBaka.token != null && PrefManager.getVal(PrefName.MangaBakaListSyncEnabled))
+
+    /**
+     * Applies a change to one of the per-tracker switches and redraws around it.
+     *
+     * Turning the last one off also turns the automatic comparison off rather than leaving it
+     * scheduled with nothing to do — otherwise the row would vanish while a task went on waking up
+     * every twelve hours to do nothing, with no way left on screen to stop it.
+     */
+    private fun onTargetToggled() {
+        if (!hasSyncTargets() && PrefManager.getVal<Long>(PrefName.AutoListSyncInterval) > 0L) {
+            applyInterval(0L)
+        } else {
+            render()
+        }
+    }
+
     private fun render() {
         val autoInterval = PrefManager.getVal<Long>(PrefName.AutoListSyncInterval)
+        val canAutoSync = hasSyncTargets()
         val settingsList = arrayListOf(
             // Which trackers may be written to at all comes first: the comparison rows below are
             // scoped by these, and the automatic pass skips a tracker whose switch is off.
@@ -72,6 +101,7 @@ class SettingsListSyncActivity : AppCompatActivity() {
                 isChecked = PrefManager.getVal(PrefName.MalListSyncEnabled),
                 switch = { isChecked, _ ->
                     PrefManager.setVal(PrefName.MalListSyncEnabled, isChecked)
+                    onTargetToggled()
                 },
                 isVisible = MAL.token != null,
             ),
@@ -83,6 +113,7 @@ class SettingsListSyncActivity : AppCompatActivity() {
                 isChecked = PrefManager.getVal(PrefName.MangaBakaListSyncEnabled),
                 switch = { isChecked, _ ->
                     PrefManager.setVal(PrefName.MangaBakaListSyncEnabled, isChecked)
+                    onTargetToggled()
                 },
                 isVisible = MangaBaka.token != null,
             ),
@@ -103,7 +134,7 @@ class SettingsListSyncActivity : AppCompatActivity() {
                 desc = autoSyncDesc(autoInterval),
                 icon = R.drawable.ic_round_compare_schedule_24,
                 onClick = { view -> showIntervalDropdown(view.root) },
-                isVisible = MAL.token != null || MangaBaka.token != null,
+                isVisible = canAutoSync,
             ),
             Settings(
                 type = 2,
@@ -114,7 +145,7 @@ class SettingsListSyncActivity : AppCompatActivity() {
                 switch = { isChecked, _ ->
                     PrefManager.setVal(PrefName.AutoListSyncRemovals, isChecked)
                 },
-                isVisible = autoInterval > 0L && (MAL.token != null || MangaBaka.token != null),
+                isVisible = autoInterval > 0L && canAutoSync,
             ),
         )
 

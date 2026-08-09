@@ -2,11 +2,12 @@ package ani.dantotsu.notifications
 
 import android.content.Context
 import androidx.work.Constraints
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequest
+import androidx.work.WorkManager
 import ani.dantotsu.notifications.TaskScheduler.TaskType
-import ani.dantotsu.notifications.anilist.AnilistNotificationWorker
-import ani.dantotsu.notifications.comment.CommentNotificationWorker
-import ani.dantotsu.notifications.subscription.SubscriptionNotificationWorker
+import java.util.concurrent.TimeUnit
 
 class WorkManagerScheduler(private val context: Context) : TaskScheduler {
     override fun scheduleRepeatingTask(taskType: TaskType, interval: Long) {
@@ -20,145 +21,32 @@ class WorkManagerScheduler(private val context: Context) : TaskScheduler {
             interval
         }
         val constraints = Constraints.Builder()
-            .setRequiredNetworkType(androidx.work.NetworkType.CONNECTED)
+            .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()
 
-        when (taskType) {
-            TaskType.COMMENT_NOTIFICATION -> {
-                val recurringWork = PeriodicWorkRequest.Builder(
-                    CommentNotificationWorker::class.java,
-                    actualInterval,
-                    java.util.concurrent.TimeUnit.MINUTES,
-                    PeriodicWorkRequest.MIN_PERIODIC_FLEX_MILLIS,
-                    java.util.concurrent.TimeUnit.MILLISECONDS
-                )
-                    .setConstraints(constraints)
-                    .build()
-                androidx.work.WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-                    CommentNotificationWorker.WORK_NAME,
-                    androidx.work.ExistingPeriodicWorkPolicy.UPDATE,
-                    recurringWork
-                )
-            }
+        // No flex window. A flex period confines the work to the *end* of each interval, and these
+        // were all built with MIN_PERIODIC_FLEX_MILLIS — five minutes, whatever the interval. At
+        // anything but the shortest settings that is a sliver of eligibility per cycle: miss it to
+        // Doze or to the network constraint and the run is put off for another full period. Without
+        // one the whole interval is fair game, which is what a "roughly every N hours" task wants.
+        val recurringWork = PeriodicWorkRequest.Builder(
+            TaskScheduler.workerFor(taskType),
+            actualInterval,
+            TimeUnit.MINUTES
+        )
+            .setConstraints(constraints)
+            .build()
 
-            TaskType.ANILIST_NOTIFICATION -> {
-                val recurringWork = PeriodicWorkRequest.Builder(
-                    AnilistNotificationWorker::class.java,
-                    actualInterval,
-                    java.util.concurrent.TimeUnit.MINUTES,
-                    PeriodicWorkRequest.MIN_PERIODIC_FLEX_MILLIS,
-                    java.util.concurrent.TimeUnit.MILLISECONDS
-                )
-                    .setConstraints(constraints)
-                    .build()
-                androidx.work.WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-                    AnilistNotificationWorker.WORK_NAME,
-                    androidx.work.ExistingPeriodicWorkPolicy.UPDATE,
-                    recurringWork
-                )
-            }
-
-            TaskType.SUBSCRIPTION_NOTIFICATION -> {
-                val recurringWork = PeriodicWorkRequest.Builder(
-                    SubscriptionNotificationWorker::class.java,
-                    actualInterval,
-                    java.util.concurrent.TimeUnit.MINUTES,
-                    PeriodicWorkRequest.MIN_PERIODIC_FLEX_MILLIS,
-                    java.util.concurrent.TimeUnit.MILLISECONDS
-                )
-                    .setConstraints(constraints)
-                    .build()
-                androidx.work.WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-                    SubscriptionNotificationWorker.WORK_NAME,
-                    androidx.work.ExistingPeriodicWorkPolicy.UPDATE,
-                    recurringWork
-                )
-            }
-
-            TaskType.UNREAD_CHAPTER_NOTIFICATION -> {
-                val recurringWork = PeriodicWorkRequest.Builder(
-                    ani.dantotsu.notifications.unread.UnreadChapterNotificationWorker::class.java,
-                    actualInterval,
-                    java.util.concurrent.TimeUnit.MINUTES,
-                    PeriodicWorkRequest.MIN_PERIODIC_FLEX_MILLIS,
-                    java.util.concurrent.TimeUnit.MILLISECONDS
-                )
-                    .setConstraints(constraints)
-                    .build()
-                androidx.work.WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-                    ani.dantotsu.notifications.unread.UnreadChapterNotificationWorker.WORK_NAME,
-                    androidx.work.ExistingPeriodicWorkPolicy.UPDATE,
-                    recurringWork
-                )
-            }
-
-            TaskType.AUTO_LIST_SYNC -> {
-                val recurringWork = PeriodicWorkRequest.Builder(
-                    ani.dantotsu.connections.sync.AutoListSyncWorker::class.java,
-                    actualInterval,
-                    java.util.concurrent.TimeUnit.MINUTES,
-                    PeriodicWorkRequest.MIN_PERIODIC_FLEX_MILLIS,
-                    java.util.concurrent.TimeUnit.MILLISECONDS
-                )
-                    .setConstraints(constraints)
-                    .build()
-                androidx.work.WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-                    ani.dantotsu.connections.sync.AutoListSyncWorker.WORK_NAME,
-                    androidx.work.ExistingPeriodicWorkPolicy.UPDATE,
-                    recurringWork
-                )
-            }
-
-            TaskType.MU_NOTIFICATION -> {
-                val recurringWork = PeriodicWorkRequest.Builder(
-                    ani.dantotsu.notifications.unread.MuUnreadNotificationWorker::class.java,
-                    actualInterval,
-                    java.util.concurrent.TimeUnit.MINUTES,
-                    PeriodicWorkRequest.MIN_PERIODIC_FLEX_MILLIS,
-                    java.util.concurrent.TimeUnit.MILLISECONDS
-                )
-                    .setConstraints(constraints)
-                    .build()
-                androidx.work.WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-                    ani.dantotsu.notifications.unread.MuUnreadNotificationWorker.WORK_NAME,
-                    androidx.work.ExistingPeriodicWorkPolicy.UPDATE,
-                    recurringWork
-                )
-            }
-        }
+        WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+            TaskScheduler.workNameFor(taskType),
+            // UPDATE rather than REPLACE: an unchanged request keeps the schedule it is already on,
+            // so the scheduling pass every app launch makes doesn't restart the countdown.
+            ExistingPeriodicWorkPolicy.UPDATE,
+            recurringWork
+        )
     }
 
     override fun cancelTask(taskType: TaskType) {
-        when (taskType) {
-            TaskType.COMMENT_NOTIFICATION -> {
-                androidx.work.WorkManager.getInstance(context)
-                    .cancelUniqueWork(CommentNotificationWorker.WORK_NAME)
-            }
-
-            TaskType.ANILIST_NOTIFICATION -> {
-                androidx.work.WorkManager.getInstance(context)
-                    .cancelUniqueWork(AnilistNotificationWorker.WORK_NAME)
-            }
-
-            TaskType.SUBSCRIPTION_NOTIFICATION -> {
-                androidx.work.WorkManager.getInstance(context)
-                    .cancelUniqueWork(SubscriptionNotificationWorker.WORK_NAME)
-            }
-
-            TaskType.UNREAD_CHAPTER_NOTIFICATION -> {
-                androidx.work.WorkManager.getInstance(context)
-                    .cancelUniqueWork(ani.dantotsu.notifications.unread.UnreadChapterNotificationWorker.WORK_NAME)
-            }
-
-            TaskType.MU_NOTIFICATION -> {
-                androidx.work.WorkManager.getInstance(context)
-                    .cancelUniqueWork(ani.dantotsu.notifications.unread.MuUnreadNotificationWorker.WORK_NAME)
-            }
-
-            TaskType.AUTO_LIST_SYNC -> {
-                androidx.work.WorkManager.getInstance(context)
-                    .cancelUniqueWork(ani.dantotsu.connections.sync.AutoListSyncWorker.WORK_NAME)
-            }
-        }
+        WorkManager.getInstance(context).cancelUniqueWork(TaskScheduler.workNameFor(taskType))
     }
 }
