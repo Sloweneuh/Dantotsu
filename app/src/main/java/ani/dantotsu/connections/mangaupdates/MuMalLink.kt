@@ -1,5 +1,6 @@
 package ani.dantotsu.connections.mangaupdates
 
+import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.anilist.api.FuzzyDate
 import ani.dantotsu.connections.comick.ComickApi
 import ani.dantotsu.connections.mal.MAL
@@ -121,5 +122,35 @@ suspend fun syncMuToMal(
         start = startDate,
         force = force,
     )
+    return true
+}
+
+/**
+ * Removes a MangaUpdates series from MyAnimeList, the counterpart of [syncMuToMal] for a series the
+ * user has taken off their MangaUpdates list. Returns false when nothing was removed.
+ *
+ * Skipped when an AniList list entry covers the same MAL entry: that entry is the one AniList owns
+ * and keeps synced, so removing the MangaUpdates copy must not wipe it. It's the rule the compare
+ * screen applies when deciding which MAL entries are orphaned (see `ListCompare.compareMal`), asked
+ * here of the single series instead of the whole list — one lookup of the MAL id on AniList, which
+ * carries the user's own list entry when there is one.
+ *
+ * A lookup that fails outright reads as "AniList doesn't have it" and the removal goes ahead; the
+ * entry is recoverable, since the next comparison sees it missing on MAL and offers to push it back.
+ *
+ * [force] bypasses the list-sync toggle for explicit user actions, as in [syncMuToMal].
+ */
+suspend fun deleteMuFromMal(
+    muSeriesId: Long,
+    titles: List<String>,
+    force: Boolean = false,
+): Boolean {
+    if (MAL.token == null) return false
+    // deleteList applies this toggle itself; checking here too keeps an unwanted delete from paying
+    // for the id lookups that precede it.
+    if (!force && !PrefManager.getVal<Boolean>(PrefName.MalListSyncEnabled)) return false
+    val malId = resolveMuMalId(muSeriesId, titles) ?: return false
+    if (Anilist.query.getMedia(malId, mal = true, type = "MANGA")?.userStatus != null) return false
+    MAL.query.deleteList(isAnime = false, idMAL = malId, force = force)
     return true
 }

@@ -291,10 +291,10 @@ class MUListEditorFragment : BottomSheetDialogFragment() {
                 withContext(Dispatchers.IO) {
                     MangaUpdates.removeFromList(muMedia.id)
                     ani.dantotsu.connections.mangabaka.MangaBakaSync.deleteFromMangaUpdates(muMedia.id)
-                    // Deliberately not removed from MAL: a MAL entry for this series may well be the
-                    // one the user's AniList list owns and keeps synced, and deleting it here would
-                    // wipe that. An entry left behind with no source shows up as removable on the
-                    // list-compare screen, where the user can decide.
+                    // Mirrored to MAL the same way saving is, so the two directions match. The
+                    // removal is skipped for an entry the user's AniList list also covers — see
+                    // [deleteMuFromMal], which makes that call.
+                    deleteMuFromMal(muMedia.id, listOfNotNull(muMedia.title))
                 }
                 // Clear progress in the shared Media so MangaReadFragment reflects removal
                 model.getMedia().value?.let { media ->

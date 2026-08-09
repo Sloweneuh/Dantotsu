@@ -511,6 +511,10 @@ class AnilistQueries {
                 if (response != null) {
                     fun parse() {
                         val fetchedMedia = response?.data?.media ?: return
+                        // The query asks for it, so keep it: a media that reached this screen from a
+                        // list/search query that didn't fetch `idMal` otherwise stays without one,
+                        // and everything keyed on it — MAL list sync included — silently no-ops.
+                        fetchedMedia.idMal?.let { media.idMAL = it }
 
                         if (fetchedMedia.mediaListEntry != null) {
                             fetchedMedia.mediaListEntry?.apply {
