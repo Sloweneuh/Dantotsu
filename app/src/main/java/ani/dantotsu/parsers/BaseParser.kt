@@ -8,7 +8,6 @@ import ani.dantotsu.media.Media
 import ani.dantotsu.util.Logger
 import eu.kanade.tachiyomi.animesource.model.SAnime
 import eu.kanade.tachiyomi.source.model.SManga
-import me.xdrop.fuzzywuzzy.FuzzySearch
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.Serializable
@@ -57,140 +56,109 @@ abstract class BaseParser {
     abstract suspend fun search(query: String): List<ShowResponse>
 
     /**
-     * The function app uses to auto find the anime/manga using Media data provided by anilist
+     * Finds the source's entry for an AniList media on its own — what the read/watch screen calls
+     * before it can list any chapters or episodes.
+     *
+     * Searches each title the media is known by, best first, and takes the highest-scoring result
+     * across all of them ([SourceMatcher] decides what scores well and what is too weak to use), so a
+     * source that only carries the romaji spelling, or names the entry after a synonym, is still
+     * found. Returns null when nothing matched well enough — the caller then shows "not found" rather
+     * than an entry that looks right and isn't.
+     *
+     * Once found, the entry is saved under [saveName] and reused, so this only runs the first time a
+     * media is opened on a source, or after the user picks a different entry by hand.
      *
      * Isn't necessary to override, but recommended, if you want to improve auto search results
      * **/
     open suspend fun autoSearch(mediaObj: Media): ShowResponse? {
-        // Set the source language to English before searching
-        when (this) {
-            is DynamicMangaParser -> {
-                val sources = this.extension.sources
-                val enIndex = sources.indexOfFirst {
-                    val code = it.lang.lowercase()
-                    code == "en" || code.startsWith("en") || code.contains("english")
-                }
-                this.sourceLanguage = if (enIndex != -1) enIndex else (mediaObj.selected?.langIndex ?: 0)
+        applySourceLanguage(mediaObj)
+
+        val saved = loadSavedShowResponse(mediaObj.id)
+        if (saved != null) {
+            if (this !is OfflineMangaParser && this !is OfflineAnimeParser) {
+                saveShowResponse(mediaObj.id, saved, true)
             }
-            is DynamicAnimeParser -> {
-                val sources = this.extension.sources
-                val enIndex = sources.indexOfFirst {
-                    val code = it.lang.lowercase()
-                    code == "en" || code.startsWith("en") || code.contains("english")
-                }
-                this.sourceLanguage = if (enIndex != -1) enIndex else (mediaObj.selected?.langIndex ?: 0)
-            }
+            return saved
         }
-        var response: ShowResponse? = loadSavedShowResponse(mediaObj.id)
-        if (response != null && this !is OfflineMangaParser && this !is OfflineAnimeParser) {
-            saveShowResponse(mediaObj.id, response, true)
-        } else {
-            setUserText("Searching : ${mediaObj.mainName()}")
-            Logger.log("Searching : ${mediaObj.mainName()}")
-            val results = search(mediaObj.mainName())
-            // score candidates by comparing multiple name sources (title, other names, media synonyms)
-            fun scoreCandidate(candidate: ShowResponse, targetNames: List<String>): Int {
-                var best = 0
-                // compare the main candidate name
-                for (t in targetNames) {
-                    try {
-                        val s = FuzzySearch.tokenSetRatio(candidate.name.lowercase(), t.lowercase())
-                        if (s > best) best = s
-                    } catch (e: Exception) { }
-                }
-                // compare any other names the candidate advertises
-                for (other in candidate.otherNames) {
-                    for (t in targetNames) {
-                        try {
-                            val s = FuzzySearch.tokenSetRatio(other.lowercase(), t.lowercase())
-                            if (s > best) best = s
-                        } catch (e: Exception) { }
-                    }
-                }
-                return best
+
+        val targets = SourceMatcher.targets(mediaObj)
+        var best: SourceMatcher.Match? = null
+        var answered = false
+        var failure: Throwable? = null
+
+        // Every title AniList knows the media by is a query worth trying, since a source indexes only
+        // the spelling its own site uses — but each one is a round trip, so they are tried best-first
+        // and stopped as soon as a candidate is good enough to not be improved on.
+        for (query in SourceMatcher.queries(mediaObj).take(SourceMatcher.MAX_QUERIES)) {
+            setUserText("Searching : $query")
+            Logger.log("[$name] searching : $query")
+            val results = try {
+                search(query)
+            } catch (e: Throwable) {
+                // One query failing shouldn't hide the others; a run where *nothing* answered is
+                // reported below, so a broken source still surfaces as an error and not as no match.
+                failure = failure ?: e
+                Logger.log(e)
+                continue
             }
-
-            val targetNamesMain = mutableListOf<String>().apply {
-                add(mediaObj.mainName())
-                mediaObj.nameRomaji.let { if (it.isNotEmpty()) add(it) }
-                mediaObj.name?.let { if (!it.isNullOrEmpty()) add(it) }
-                // include synonyms from Media (if any)
-                try {
-                    (mediaObj.synonyms ?: arrayListOf<String>()).forEach { if (it.isNotEmpty()) add(it) }
-                } catch (e: Exception) { }
-            }
-
-            // prefer exact matches (case-insensitive) on candidate name or otherNames
-            val exactMatch = results.firstOrNull { candidate ->
-                targetNamesMain.any { t ->
-                    candidate.name.equals(t, ignoreCase = true) || candidate.otherNames.any { it.equals(t, ignoreCase = true) }
-                }
-            }
-
-            if (exactMatch != null) {
-                response = exactMatch
-            } else {
-                val scored = results.map { it to scoreCandidate(it, targetNamesMain) }
-                    .sortedByDescending { it.second }
-                // require a reasonable confidence to accept fuzzy match
-                val bestPair = scored.firstOrNull()
-                response = if (bestPair != null && bestPair.second >= 55) bestPair.first else null
-            }
-
-            if (response == null || FuzzySearch.ratio(
-                    response.name.lowercase(),
-                    mediaObj.mainName().lowercase()
-                ) < 100
-            ) {
-                setUserText("Searching : ${mediaObj.nameRomaji}")
-                Logger.log("Searching : ${mediaObj.nameRomaji}")
-                val romajiResults = search(mediaObj.nameRomaji)
-                val targetNamesRomaji = mutableListOf<String>().apply {
-                    add(mediaObj.nameRomaji)
-                    add(mediaObj.mainName())
-                    mediaObj.name?.let { if (!it.isNullOrEmpty()) add(it) }
-                    try {
-                        (mediaObj.synonyms ?: arrayListOf<String>()).forEach { if (it.isNotEmpty()) add(it) }
-                    } catch (e: Exception) { }
-                }
-
-                val exactRomaji = romajiResults.firstOrNull { candidate ->
-                    targetNamesRomaji.any { t ->
-                        candidate.name.equals(t, ignoreCase = true) || candidate.otherNames.any { it.equals(t, ignoreCase = true) }
-                    }
-                }
-
-                val closestRomaji = when {
-                    exactRomaji != null -> exactRomaji
-                    else -> romajiResults.map { it to scoreCandidate(it, targetNamesRomaji) }
-                        .sortedByDescending { it.second }
-                        .firstOrNull()?.first
-                }
-                Logger.log("Closest match from RomajiResults: ${closestRomaji?.name ?: "None"}")
-
-                response = if (response == null) {
-                    Logger.log("No exact match found in results. Using closest match from RomajiResults.")
-                    closestRomaji
-                } else {
-                    // compare best scores using the same scoring function
-                    val currentScore = scoreCandidate(response, targetNamesRomaji)
-                    val romajiScore = closestRomaji?.let { scoreCandidate(it, targetNamesRomaji) } ?: 0
-                    Logger.log("Score for current response: $currentScore for ${response.name.lowercase()}")
-                    Logger.log("Score for romaji candidate: $romajiScore for ${closestRomaji?.name?.lowercase() ?: "None"}")
-
-                    if (romajiScore > currentScore) {
-                        Logger.log("RomajiResults has a closer match. Replacing response.")
-                        closestRomaji
-                    } else {
-                        Logger.log("Results has a closer or equal match. Keeping existing response.")
-                        response
-                    }
-                }
-
-            }
-            saveShowResponse(mediaObj.id, response)
+            answered = true
+            val match = SourceMatcher.best(results, targets)
+            Logger.log(
+                "[$name] \"$query\" -> ${match?.response?.name ?: "nothing"}" +
+                    " (score ${match?.score ?: 0}, ${results.size} results)"
+            )
+            if (match != null && match.score > (best?.score ?: -1)) best = match
+            if ((best?.score ?: 0) >= SourceMatcher.CONFIDENT) break
         }
+
+        if (!answered && failure != null) throw failure
+
+        val response = best?.takeIf { it.score >= SourceMatcher.ACCEPT }?.response
+        if (response == null) {
+            Logger.log(
+                "[$name] no match for ${mediaObj.mainName()}" +
+                    " (best ${best?.response?.name ?: "none"} scored ${best?.score ?: 0})"
+            )
+        }
+        saveShowResponse(mediaObj.id, response)
         return response
+    }
+
+    /**
+     * Points the parser at the language the chapters/episodes should come from, before searching.
+     *
+     * Two things have to hold. A media nobody picked a language for searches English, because a
+     * source's first entry is whatever language the extension happens to list first — which is how
+     * chapter lists used to arrive in a language nobody asked for. But a language the user *did* pick
+     * has to survive: the read/watch screen sets it on the parser and persists it as
+     * [ani.dantotsu.media.Selected.langIndex] before triggering the load that lands here, so
+     * overwriting it with English is what made the language dropdown look like it did nothing.
+     *
+     * Neither value distinguishes "picked the first entry" from "never picked", so index 0 is read as
+     * unset — the case that costs is a user deliberately choosing the first entry on an extension
+     * that also carries English, where this still lands on English as it did before.
+     */
+    private fun applySourceLanguage(mediaObj: Media) {
+        val selected = mediaObj.selected?.langIndex
+        when (this) {
+            is DynamicMangaParser ->
+                this.sourceLanguage =
+                    resolveLanguage(extension.sources.map { it.lang }, selected, this.sourceLanguage)
+
+            is DynamicAnimeParser ->
+                this.sourceLanguage =
+                    resolveLanguage(extension.sources.map { it.lang }, selected, this.sourceLanguage)
+        }
+    }
+
+    private fun resolveLanguage(langs: List<String>, selected: Int?, current: Int): Int {
+        listOf(selected, current).firstOrNull { it != null && it > 0 && it in langs.indices }
+            ?.let { return it }
+        val english = langs.indexOfFirst {
+            val code = it.lowercase()
+            code == "en" || code.startsWith("en") || code.contains("english")
+        }
+        return if (english != -1) english else selected?.takeIf { it in langs.indices } ?: 0
     }
 
     /**
