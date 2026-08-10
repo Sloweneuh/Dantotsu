@@ -307,6 +307,20 @@ class SettingsCommonActivity : AppCompatActivity() {
                 layoutManager = LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false)
                 setHasFixedSize(true)
             }
+            refreshStartUpTabPicker()
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Anime/manga tabs are toggled on the UI settings screen, one back-stack entry away — refresh
+        // here rather than only in onCreate, or backing out of that screen left this one showing a
+        // picker for a tab that was just turned off (or, with both off, the whole dead row).
+        if (::binding.isInitialized) refreshStartUpTabPicker()
+    }
+
+    private fun refreshStartUpTabPicker() {
+        binding.apply {
             val showAnimeTab = PrefManager.getVal<Boolean>(PrefName.ShowAnimeTab)
             val showMangaTab = PrefManager.getVal<Boolean>(PrefName.ShowMangaTab)
             // Auto-correct saved default tab if the corresponding tab is now disabled
@@ -319,6 +333,9 @@ class SettingsCommonActivity : AppCompatActivity() {
                 if (showAnimeTab) View.VISIBLE else View.GONE
             (uiSettingsManga.parent as? View)?.visibility =
                 if (showMangaTab) View.VISIBLE else View.GONE
+            // With both anime and manga tabs off, Home is the only option left, so there is nothing
+            // left to pick — hide the whole row rather than a picker with one dead choice in it.
+            startUpTabRow.visibility = if (showAnimeTab || showMangaTab) View.VISIBLE else View.GONE
 
             var previousStart: View =
                 when (PrefManager.getVal<Int>(PrefName.DefaultStartUpTab)) {
@@ -337,7 +354,7 @@ class SettingsCommonActivity : AppCompatActivity() {
                 previousStart = current
                 current.alpha = 1f
                 PrefManager.setVal(PrefName.DefaultStartUpTab, mode)
-                initActivity(context)
+                initActivity(this@SettingsCommonActivity)
             }
 
             uiSettingsAnime.setOnClickListener {
