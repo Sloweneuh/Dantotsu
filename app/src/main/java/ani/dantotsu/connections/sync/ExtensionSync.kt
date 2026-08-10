@@ -204,6 +204,22 @@ object ExtensionSync {
         }
     }
 
+    /**
+     * Whether this device's installed set matches what's currently in the cloud, for the sync
+     * details panel. Null when that can't be answered: not linked, no account, cloud unreachable,
+     * a newer schema this build can't read, or nothing published yet — there's nothing to be behind.
+     *
+     * Deliberately ignores [enabled]: a device with extension sync switched off can still be shown
+     * how far its installed set has drifted from the cloud, same as the panel already shows a cloud
+     * timestamp for this module regardless of the toggle.
+     */
+    suspend fun localMatchesCloud(): Boolean? {
+        val uid = userId() ?: return null
+        val remote = fetchRemote(uid).getOrNull() ?: return null
+        val local = gson.toJson(localPayload())
+        return local.hashCode() == remote.rawHash
+    }
+
     // ---- reconcile ----
 
     /**

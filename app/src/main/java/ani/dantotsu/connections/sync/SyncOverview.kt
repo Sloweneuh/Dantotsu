@@ -48,6 +48,7 @@ object SyncOverview {
         val settingsCloud = runCatching { CloudSync.cloudInfo() }.getOrNull()
         val progressLocal = ProgressSync.localSummary()
         val progressCloud = cloudProgress()
+        val extensionsMatch = runCatching { ExtensionSync.localMatchesCloud() }.getOrNull()
 
         listOf(
             Module(
@@ -67,8 +68,14 @@ object SyncOverview {
             Module(
                 nameRes = R.string.sync_module_extensions,
                 localTs = null,
-                // Not a gap in the bookkeeping — this one diverges by content, never by date.
-                localNoteRes = R.string.sync_compared_by_content,
+                // Not a gap in the bookkeeping — this one diverges by content, never by date. Say
+                // so plainly when a live comparison was possible; fall back to explaining why there's
+                // no timestamp when it wasn't (not linked, cloud unreachable, nothing published yet).
+                localNoteRes = when (extensionsMatch) {
+                    true -> R.string.cloud_sync_up_to_date
+                    false -> R.string.sync_extensions_differs
+                    null -> R.string.sync_compared_by_content
+                },
                 cloudTs = cloudTs("extensions"),
                 // The same kind of stall as the settings one, reached differently: nothing can
                 // install or remove an extension on the user's behalf, so an unreconciled

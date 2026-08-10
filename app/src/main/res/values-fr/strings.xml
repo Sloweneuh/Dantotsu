@@ -1948,6 +1948,7 @@
     <string name="cloud_sync_count_at">%1$s éléments, %2$s</string>
     <string name="cloud_sync_from_device">%1$s, depuis %2$s</string>
     <string name="sync_compared_by_content">Comparé par contenu, pas par date</string>
+    <string name="sync_extensions_differs">Diffère du cloud</string>
     <string name="sync_shared_cache">Cache partagé, conservé uniquement dans le cloud</string>
     <string name="sync_module_settings">Paramètres</string>
     <string name="sync_module_progress">Progression de lecture</string>
