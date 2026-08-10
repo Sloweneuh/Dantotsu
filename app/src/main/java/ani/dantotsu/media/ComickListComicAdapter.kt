@@ -8,6 +8,7 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
 import ani.dantotsu.connections.comick.ComickListComic
+import ani.dantotsu.connections.comick.displayTitle
 import ani.dantotsu.databinding.ItemMediaCompactBinding
 import ani.dantotsu.setSafeOnClickListener
 import com.bumptech.glide.Glide
@@ -67,10 +68,7 @@ class ComickListComicAdapter(
             true
         }
 
-        val englishTitle = comic.md_titles
-            ?.firstOrNull { it.lang?.equals("en", ignoreCase = true) == true && !it.title.isNullOrBlank() }
-            ?.title
-        b.itemCompactTitle.text = englishTitle ?: comic.title ?: b.root.context.getString(R.string.unknown)
+        b.itemCompactTitle.text = comic.displayTitle() ?: b.root.context.getString(R.string.unknown)
         b.itemCompactTitle.maxLines = 2
         // onClick on title so regular taps aren't swallowed by the long-click listener
         b.itemCompactTitle.setSafeOnClickListener { onItemClick(comic) }

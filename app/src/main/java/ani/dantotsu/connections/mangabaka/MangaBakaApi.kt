@@ -600,7 +600,30 @@ object MangaBakaApi {
         val genres: List<String>? = null,
         @SerialName("tags_v2") val tags: List<TagEntry>? = null,
         val source: SeriesSource? = null,
-    )
+    ) {
+        /**
+         * [title] when no English entry exists in [titles], else that entry — see [pickEnglishTitle].
+         * What search results and media pages should show as the name.
+         */
+        fun displayTitle(): String? = pickEnglishTitle(title, titles)
+    }
+
+    /**
+     * The English entry in a series' `titles` array, preferring one flagged primary, else the first
+     * found; null when none exists. `is_primary` is per-language (a series can have an
+     * `is_primary`-flagged native title *and* an `is_primary`-flagged English one), so this alone
+     * decides which of possibly several English synonyms is the "real" one rather than a fan title.
+     *
+     * Shared by [Series] and [SimilarSeries]: the `similar` route embeds the same `titles` shape as
+     * every other series lookup, just under a slimmer series object.
+     */
+    private fun pickEnglishTitle(title: String?, titles: List<TitleEntry>?): String? {
+        val english = titles.orEmpty().filter {
+            it.language?.substringBefore('-')?.lowercase() == "en" && !it.title.isNullOrBlank()
+        }
+        val englishTitle = english.firstOrNull { it.isPrimary == true }?.title ?: english.firstOrNull()?.title
+        return englishTitle ?: title
+    }
 
     @Serializable
     data class Published(
@@ -711,5 +734,11 @@ object MangaBakaApi {
         val cover: CoverImage? = null,
         val type: String? = null,
         val source: SeriesSource? = null,
-    )
+        // Confirmed present on the live `similar` route despite this model otherwise being a slim
+        // stub: same shape TitleEntry/Series.titles uses, so recommendations can prefer English too.
+        val titles: List<TitleEntry>? = null,
+    ) {
+        /** See [Series.displayTitle] / [pickEnglishTitle] — same preference, same titles shape. */
+        fun displayTitle(): String? = pickEnglishTitle(title, titles)
+    }
 }

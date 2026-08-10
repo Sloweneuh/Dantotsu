@@ -22,6 +22,8 @@ import ani.dantotsu.connections.comick.ComickApi
 import ani.dantotsu.connections.comick.ComickChapter
 import ani.dantotsu.connections.comick.ComickComic
 import ani.dantotsu.connections.comick.ComickListComic
+import ani.dantotsu.connections.comick.displayTitle
+import ani.dantotsu.connections.comick.hasCJK
 import ani.dantotsu.connections.comick.toComickReview
 import ani.dantotsu.connections.mangaupdates.AniListQuickSearchDialogFragment
 import ani.dantotsu.connections.mangaupdates.MUMediaDetailsActivity
@@ -377,11 +379,7 @@ class ComickMediaActivity : AppCompatActivity() {
             binding.comickMediaCover.loadImage(coverUrl)
             blurImage(binding.comickMediaBanner, coverUrl)
         }
-        val englishTitle = comic.md_titles
-            ?.filter { it.lang?.equals("en", ignoreCase = true) == true }
-            ?.mapNotNull { it.title?.takeIf { t -> t.isNotBlank() && !hasCJK(t) } }
-            ?.firstOrNull()
-        val displayTitle = englishTitle ?: comic.title ?: getString(R.string.unknown)
+        val displayTitle = comic.displayTitle() ?: getString(R.string.unknown)
         binding.comickMediaTitle.text = displayTitle
         binding.comickMediaTitle.setOnLongClickListener {
             copyToClipboard(displayTitle)
@@ -451,11 +449,6 @@ class ComickMediaActivity : AppCompatActivity() {
         return titles
     }
 
-    private fun hasCJK(text: String) = text.any { c ->
-        c.code in 0x3040..0x309F || c.code in 0x30A0..0x30FF ||
-        c.code in 0x4E00..0x9FFF || c.code in 0xAC00..0xD7AF || c.code in 0x1100..0x11FF
-    }
-
     @SuppressLint("SetTextI18n")
     private fun displayInfo(comic: ComickComic) {
         val parent = binding.comickMediaContent
@@ -507,9 +500,14 @@ class ComickMediaActivity : AppCompatActivity() {
         }
         parent.addView(descView)
 
+        // Excludes whatever setupHeader already put on screen as the title, so a comic whose header
+        // picked an English md_titles entry doesn't show that same text again as its own chip here.
+        val displayedTitle = comic.displayTitle()?.trim()
         val englishTitles = comic.md_titles
             ?.filter { it.lang?.equals("en", ignoreCase = true) == true && !it.title.isNullOrBlank() }
-            ?.mapNotNull { it.title }
+            ?.mapNotNull { it.title?.trim() }
+            ?.filterNot { hasCJK(it) || it.equals(displayedTitle, ignoreCase = true) }
+            ?.distinct()
         if (!englishTitles.isNullOrEmpty()) {
             val bind = ItemTitleChipgroupBinding.inflate(LayoutInflater.from(this), parent, false)
             bind.itemTitle.text = getString(R.string.synonyms)
@@ -684,7 +682,7 @@ class ComickMediaActivity : AppCompatActivity() {
             val recsAsComics = recommendations.mapNotNull { rec ->
                 val rel = rec.relates ?: return@mapNotNull null
                 if (rel.slug.isNullOrBlank()) return@mapNotNull null
-                ComickListComic(title = rel.title, slug = rel.slug, hid = rel.hid, last_chapter = null, md_titles = null, md_covers = rel.md_covers)
+                ComickListComic(title = rel.title, slug = rel.slug, hid = rel.hid, last_chapter = null, md_titles = rel.md_titles, md_covers = rel.md_covers)
             }
             if (recsAsComics.isNotEmpty()) {
                 ItemTitleRecyclerBinding.inflate(LayoutInflater.from(this), parent, false).apply {

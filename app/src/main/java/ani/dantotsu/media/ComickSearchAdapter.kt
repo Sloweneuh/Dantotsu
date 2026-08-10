@@ -13,6 +13,7 @@ import androidx.core.text.HtmlCompat
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
 import ani.dantotsu.connections.comick.ComickComic
+import ani.dantotsu.connections.comick.displayTitle
 import ani.dantotsu.databinding.ItemMediaCompactBinding
 import ani.dantotsu.databinding.ItemMediaLargeBinding
 import ani.dantotsu.setSafeOnClickListener
@@ -75,7 +76,7 @@ class ComickSearchAdapter(
     private fun bindCompact(b: ItemMediaCompactBinding, comic: ComickComic) {
         loadCover(b.itemCompactImage, comic)
 
-        b.itemCompactTitle.text = comic.title
+        b.itemCompactTitle.text = comic.displayTitle()
         b.itemCompactTitle.ellipsize = TextUtils.TruncateAt.MARQUEE
         b.itemCompactTitle.marqueeRepeatLimit = -1
         b.itemCompactTitle.isSingleLine = true
@@ -111,7 +112,7 @@ class ComickSearchAdapter(
         loadCover(b.itemCompactImage, comic)
         loadCover(b.itemCompactBanner, comic)
 
-        b.itemCompactTitle.text = comic.title
+        b.itemCompactTitle.text = comic.displayTitle()
         b.itemCompactTitle.maxLines = 3
 
         b.itemCompactStatus.text = when (comic.status) {

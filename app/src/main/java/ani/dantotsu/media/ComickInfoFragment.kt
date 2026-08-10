@@ -19,6 +19,8 @@ import ani.dantotsu.connections.anilist.AnilistSearch.SearchType
 import ani.dantotsu.connections.anilist.AnilistSearch.SearchType.Companion.toAnilistString
 import ani.dantotsu.connections.comick.ComickApi
 import ani.dantotsu.connections.comick.ComickResponse
+import ani.dantotsu.connections.comick.displayTitle
+import ani.dantotsu.connections.comick.hasCJK
 import ani.dantotsu.connections.comick.toComickReview
 import ani.dantotsu.connections.malsync.MalSyncApi
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
@@ -756,9 +758,9 @@ class ComickInfoFragment : Fragment() {
                         ?: false
 
         // Display Title
-        binding.mediaInfoName.text = tripleTab + (comic.title ?: getString(R.string.unknown))
+        binding.mediaInfoName.text = tripleTab + (comic.displayTitle() ?: getString(R.string.unknown))
         binding.mediaInfoName.setOnLongClickListener {
-            copyToClipboard(comic.title ?: "")
+            copyToClipboard(comic.displayTitle() ?: "")
             true
         }
 
@@ -1037,14 +1039,19 @@ class ComickInfoFragment : Fragment() {
         // Add Synonyms / Alternative Titles (English only from md_titles)
         val mdTitles = comic.md_titles
         if (!mdTitles.isNullOrEmpty()) {
-            // Filter for English titles only
+            // Filter for English titles only, excluding whatever's already shown as the header
+            // above (mediaInfoName now prefers an md_titles English entry too) and anything
+            // mistagged as English that's actually CJK script.
+            val displayedTitle = comic.displayTitle()?.trim()
             val englishTitles =
                     mdTitles
                             .filter {
                                 it.lang?.equals("en", ignoreCase = true) == true &&
                                         !it.title.isNullOrBlank()
                             }
-                            .mapNotNull { it.title }
+                            .mapNotNull { it.title?.trim() }
+                            .filterNot { hasCJK(it) || it.equals(displayedTitle, ignoreCase = true) }
+                            .distinct()
 
             if (englishTitles.isNotEmpty() &&
                             parent.findViewWithTag<View>("synonyms_comick") == null

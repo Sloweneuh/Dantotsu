@@ -67,7 +67,7 @@ class MangaBakaSearchAdapter(
     private fun bindCompact(b: ItemMediaCompactBinding, series: MangaBakaApi.Series) {
         loadCover(b.itemCompactImage, series)
 
-        b.itemCompactTitle.text = series.title
+        b.itemCompactTitle.text = series.displayTitle()
         b.itemCompactTitle.ellipsize = TextUtils.TruncateAt.MARQUEE
         b.itemCompactTitle.marqueeRepeatLimit = -1
         b.itemCompactTitle.isSingleLine = true
@@ -100,7 +100,7 @@ class MangaBakaSearchAdapter(
         loadCover(b.itemCompactImage, series)
         loadCover(b.itemCompactBanner, series)
 
-        b.itemCompactTitle.text = series.title
+        b.itemCompactTitle.text = series.displayTitle()
         b.itemCompactTitle.maxLines = 3
 
         b.itemCompactStatus.text = when (series.status?.lowercase()) {

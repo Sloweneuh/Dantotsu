@@ -212,8 +212,8 @@ class MangaBakaInfoFragment : Fragment() {
         val nativeLangs = nativeLanguages(series)
 
         // Title
-        binding.mediaInfoName.text = tripleTab + (series.title ?: getString(R.string.unknown))
-        binding.mediaInfoName.setOnLongClickListener { copyToClipboard(series.title ?: ""); true }
+        binding.mediaInfoName.text = tripleTab + (series.displayTitle() ?: getString(R.string.unknown))
+        binding.mediaInfoName.setOnLongClickListener { copyToClipboard(series.displayTitle() ?: ""); true }
 
         // Romaji / romanized title
         val romaji = series.romanizedTitle?.takeIf { it.isNotBlank() }
@@ -342,10 +342,13 @@ class MangaBakaInfoFragment : Fragment() {
         addRecommendations(parent, seriesId, media, model)
     }
 
-    /** English + original-language synonyms, excluding the primary/romanized titles already shown. */
+    /** English + original-language synonyms, excluding the displayed/romanized titles already shown. */
     private fun addSynonyms(parent: ViewGroup, series: MangaBakaApi.Series, nativeLangs: Set<String>) {
         val allowed = nativeLangs + "en"
-        val primary = series.title?.trim()
+        // Excludes whatever the header now shows (displayTitle(), English when one exists) rather
+        // than always the raw native title, so that text doesn't also show up as its own chip, and
+        // the native title reappears here once it's no longer the one shown up top.
+        val primary = series.displayTitle()?.trim()
         val romaji = series.romanizedTitle?.trim()
         val shown = LinkedHashSet<String>()
         series.titles.orEmpty().forEach { t ->
@@ -654,7 +657,7 @@ class MangaBakaInfoFragment : Fragment() {
                         recAnilistPairs.add(index to anilistId)
                     muId != null && muId > 0 && muId != currentMuId -> {
                         val cover = s.cover?.thumbUrl()
-                        val name = s.title ?: return@forEachIndexed
+                        val name = s.displayTitle() ?: return@forEachIndexed
                         indexToMedia[index] = muFallbackMedia(muId, name, cover)
                     }
                 }

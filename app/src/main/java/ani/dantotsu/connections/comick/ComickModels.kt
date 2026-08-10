@@ -75,6 +75,28 @@ data class ComickAlternativeTitle(
     val lang: String?
 ) : Serializable
 
+/** True when [text] contains CJK script — catches entries mistagged as English in md_titles. */
+fun hasCJK(text: String) = text.any { c ->
+    c.code in 0x3040..0x309F || c.code in 0x30A0..0x30FF ||
+        c.code in 0x4E00..0x9FFF || c.code in 0xAC00..0xD7AF || c.code in 0x1100..0x11FF
+}
+
+/**
+ * The primary display title wherever a Comick title is shown: the first English-tagged entry in
+ * an `md_titles` list that isn't actually CJK script (some entries are mistagged), else the
+ * native title itself. Shared by every model carrying an `md_titles` array — search results, the
+ * media page, recommendations, and custom-list entries all use the same shape.
+ */
+private fun pickEnglishTitle(title: String?, mdTitles: List<ComickAlternativeTitle>?): String? {
+    val englishTitle = mdTitles
+        ?.filter { it.lang?.equals("en", ignoreCase = true) == true }
+        ?.mapNotNull { it.title?.takeIf { t -> t.isNotBlank() && !hasCJK(t) } }
+        ?.firstOrNull()
+    return englishTitle ?: title
+}
+
+fun ComickComic.displayTitle(): String? = pickEnglishTitle(title, md_titles)
+
 data class ComickGenre(
     val md_genres: ComickGenreInfo?
 ) : Serializable
@@ -141,7 +163,9 @@ data class ComickListComic(
     val genres: List<Int>? = null,
     val translation_completed: Boolean? = null,
     val created_at: String? = null,
-) : Serializable
+) : Serializable {
+    fun displayTitle(): String? = pickEnglishTitle(title, md_titles)
+}
 
 data class ComickFollowEntry(
     val md_comics: ComickListComic?,
@@ -159,7 +183,10 @@ data class ComickRecommendedComic(
     val title: String?,
     val slug: String?,
     val hid: String?,
-    val md_covers: List<ComickCover>?
+    val md_covers: List<ComickCover>?,
+    // Confirmed present on the live comic-details response despite not being read before — same
+    // shape as ComickComic.md_titles, so recommendation cards can prefer English too.
+    val md_titles: List<ComickAlternativeTitle>? = null,
 ) : Serializable
 
 data class ComickCover(

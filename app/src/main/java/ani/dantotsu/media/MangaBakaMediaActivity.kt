@@ -113,7 +113,7 @@ class MangaBakaMediaActivity : AppCompatActivity() {
             binding.mangaBakaMediaCover.loadImage(coverUrl)
             blurImage(binding.mangaBakaMediaBanner, coverUrl)
         }
-        val displayTitle = series.title ?: getString(R.string.unknown)
+        val displayTitle = series.displayTitle() ?: getString(R.string.unknown)
         binding.mangaBakaMediaTitle.text = displayTitle
         binding.mangaBakaMediaTitle.setOnLongClickListener {
             copyToClipboard(displayTitle)
@@ -288,7 +288,10 @@ class MangaBakaMediaActivity : AppCompatActivity() {
 
     private fun addSynonyms(parent: ViewGroup, series: MangaBakaApi.Series, nativeLangs: Set<String>) {
         val allowed = nativeLangs + "en"
-        val primary = series.title?.trim()
+        // The header now shows displayTitle() rather than always the raw native title, so that's
+        // what has to be excluded here — otherwise whichever one is on screen up top (English, most
+        // of the time) would also show up a second time as its own synonym chip.
+        val primary = series.displayTitle()?.trim()
         val romaji = series.romanizedTitle?.trim()
         val shown = LinkedHashSet<String>()
         series.titles.orEmpty().forEach { t ->
@@ -545,7 +548,7 @@ class MangaBakaMediaActivity : AppCompatActivity() {
                     anilistId != null && anilistId > 0 -> recAnilistPairs.add(index to anilistId)
                     muId != null && muId > 0 -> {
                         val cover = s.cover?.thumbUrl()
-                        val name = s.title ?: return@forEachIndexed
+                        val name = s.displayTitle() ?: return@forEachIndexed
                         indexToMedia[index] = muFallbackMedia(muId, name, cover)
                     }
                 }
