@@ -372,6 +372,18 @@ class MainActivity : AppCompatActivity() {
                         val isMAL = intent.extras?.getBoolean("mal") ?: false
                         val cont = intent.extras?.getBoolean("continue") ?: false
                         val mediaType = intent.extras?.getString("mediaType")
+
+                        // A MangaUpdates row from the waiting widget: those series have no AniList id
+                        // to look up, so they arrive as the series URL that MUMediaDetailsActivity
+                        // already accepts as a deep link.
+                        intent.extras?.getString("muUrl")?.let { muUrl ->
+                            startActivity(
+                                Intent(Intent.ACTION_VIEW, android.net.Uri.parse(muUrl)).setClass(
+                                    this@MainActivity,
+                                    ani.dantotsu.connections.mangaupdates.MUMediaDetailsActivity::class.java
+                                )
+                            )
+                        }
                         if (id != null && id != 0) {
                             val media = withContext(Dispatchers.IO) {
                                 Anilist.query.getMedia(id, isMAL, mediaType)

@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?><!-- One media row in a list widget; bound by MediaListFactory. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/itemRoot"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingVertical="6dp">
+
+    <ImageView
+        android:id="@+id/itemCover"
+        android:layout_width="32dp"
+        android:layout_height="44dp"
+        android:contentDescription="@string/airing_image"
+        android:scaleType="centerCrop"
+        android:src="@drawable/widget_cover_placeholder" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/itemTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:fontFamily="@font/poppins_bold"
+            android:maxLines="2"
+            android:textSize="14sp"
+            tools:text="@string/widget_preview_title" />
+
+        <!--
+            The second line. itemSubtitle carries the counts text and, for a manga row, its source as
+            plain text ending the string. An anime row instead ends the string with a bare " ·" (see
+            MediaListFactory.subtitle()) and shows its language as the icon + code pair after it — the
+            dub/sub distinction doesn't reduce to a word the way a site or scanlation group name does.
+        -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <!--
+                wrap_content and not weighted: the icon+code have to sit right after the text, not
+                pinned to the row's far end — a weighted 0dp box left the icon stranded behind a gap of
+                blank space whenever the text was shorter than the box. The counts+"next" text this
+                actually holds is short and bounded, so the rare very long title/count overflowing
+                un-ellipsized is an acceptable trade for that.
+            -->
+            <TextView
+                android:id="@+id/itemSubtitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:maxLines="1"
+                android:fontFamily="@font/poppins"
+                android:textSize="12sp"
+                tools:text="@string/widget_preview_subtitle" />
+
+            <ImageView
+                android:id="@+id/itemLanguageIcon"
+                android:layout_width="11dp"
+                android:layout_height="11dp"
+                android:layout_marginStart="4dp"
+                android:contentDescription="@null"
+                android:src="@drawable/ic_anime_sub_24"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/itemLanguageCode"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="2dp"
+                android:fontFamily="@font/poppins"
+                android:textSize="12sp"
+                android:visibility="gone"
+                tools:text="EN" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

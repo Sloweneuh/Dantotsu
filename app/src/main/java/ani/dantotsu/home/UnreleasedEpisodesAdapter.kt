@@ -97,24 +97,7 @@ class UnreleasedEpisodesAdapter(
                 val languageOption = ani.dantotsu.connections.malsync.LanguageMapper.mapLanguage(info.languageId)
                 itemCompactLanguageIcon.setImageResource(languageOption.iconRes)
                 // Extract short language code (e.g., "EN" from "English", or first 2 chars from languageId)
-                val languageCode = when {
-                    info.languageId.startsWith("en") -> "EN"
-                    info.languageId.startsWith("ja") || info.languageId.startsWith("jp") -> "JP"
-                    info.languageId.startsWith("de") -> "DE"
-                    info.languageId.startsWith("fr") -> "FR"
-                    info.languageId.startsWith("es") -> "ES"
-                    info.languageId.startsWith("pt") -> "PT"
-                    info.languageId.startsWith("it") -> "IT"
-                    info.languageId.startsWith("ru") -> "RU"
-                    info.languageId.startsWith("ar") -> "AR"
-                    info.languageId.startsWith("zh") -> "ZH"
-                    info.languageId.startsWith("ko") -> "KO"
-                    info.languageId.startsWith("id") -> "ID"
-                    info.languageId.startsWith("ms") -> "MS"
-                    info.languageId.startsWith("th") -> "TH"
-                    info.languageId.startsWith("vi") -> "VI"
-                    else -> info.languageId.split("/")[0].take(2).uppercase()
-                }
+                val languageCode = ani.dantotsu.connections.malsync.LanguageMapper.shortCode(info.languageId)
                 itemCompactLanguageCode.text = languageCode
                 itemCompactLanguageBG.visibility = View.VISIBLE
             } else {
@@ -236,24 +219,7 @@ class UnreleasedEpisodesAdapter(
                 val languageOption = ani.dantotsu.connections.malsync.LanguageMapper.mapLanguage(info.languageId)
                 itemCompactLanguageBG.visibility = View.VISIBLE
                 itemCompactLanguageIcon.setImageResource(languageOption.iconRes)
-                val languageCode = when {
-                    info.languageId.startsWith("en") -> "EN"
-                    info.languageId.startsWith("ja") || info.languageId.startsWith("jp") -> "JP"
-                    info.languageId.startsWith("de") -> "DE"
-                    info.languageId.startsWith("fr") -> "FR"
-                    info.languageId.startsWith("es") -> "ES"
-                    info.languageId.startsWith("pt") -> "PT"
-                    info.languageId.startsWith("it") -> "IT"
-                    info.languageId.startsWith("ru") -> "RU"
-                    info.languageId.startsWith("ar") -> "AR"
-                    info.languageId.startsWith("zh") -> "ZH"
-                    info.languageId.startsWith("ko") -> "KO"
-                    info.languageId.startsWith("id") -> "ID"
-                    info.languageId.startsWith("ms") -> "MS"
-                    info.languageId.startsWith("th") -> "TH"
-                    info.languageId.startsWith("vi") -> "VI"
-                    else -> info.languageId.split("/")[0].take(2).uppercase()
-                }
+                val languageCode = ani.dantotsu.connections.malsync.LanguageMapper.shortCode(info.languageId)
                 itemCompactLanguageCode.text = languageCode
                 // Hide relation/type column to avoid duplication
                 itemCompactType.visibility = View.GONE

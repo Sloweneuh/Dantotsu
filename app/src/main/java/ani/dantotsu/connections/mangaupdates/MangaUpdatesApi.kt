@@ -796,22 +796,36 @@ object MangaUpdates {
         } ?: emptyList()
     }
 
+    /** Every page of one list, as [MUMedia]. */
+    private suspend fun getUserListFully(listId: Int): List<MUMedia> {
+        val entries = mutableListOf<MUListEntry>()
+        var page = 1
+        while (true) {
+            val response = getUserList(listId, page) ?: break
+            entries += response.results.orEmpty()
+            val total = response.totalHits ?: 0
+            if (entries.size >= total) break
+            page++
+        }
+        return entries.mapNotNull { it.toMUMedia(listId) }
+    }
+
+    /**
+     * Just the reading list (list 0).
+     *
+     * For callers that only want what's in progress — the waiting widget — and shouldn't pay for the
+     * planning, completed, dropped and paused lists that [getAllUserLists] also walks.
+     */
+    suspend fun getReadingList(): List<MUMedia> = getUserListFully(READING_LIST_ID)
+
     suspend fun getAllUserLists(): Map<String, List<MUMedia>> {
         val statusNames = listOf("Reading", "Planning", "Completed", "Dropped", "Paused")
         val result = mutableMapOf<String, MutableList<MUMedia>>()
 
         for ((listId, name) in statusNames.withIndex()) {
-            val entries = mutableListOf<MUListEntry>()
-            var page = 1
-            while (true) {
-                val response = getUserList(listId, page) ?: break
-                entries += response.results.orEmpty()
-                val total = response.totalHits ?: 0
-                if (entries.size >= total) break
-                page++
-            }
+            val entries = getUserListFully(listId)
             if (entries.isNotEmpty()) {
-                result.getOrPut(name) { mutableListOf() }.addAll(entries.mapNotNull { it.toMUMedia(listId) })
+                result.getOrPut(name) { mutableListOf() }.addAll(entries)
             }
         }
 
@@ -841,4 +855,6 @@ object MangaUpdates {
 
         return result.mapValues { it.value.toList() }
     }
+
+    private const val READING_LIST_ID = 0
 }

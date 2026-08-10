@@ -1,0 +1,386 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?attr/colorSurface"
+    android:orientation="vertical">
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:clipToPadding="false"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/poppins_bold"
+                android:paddingTop="16dp"
+                android:text="@string/widget_configure_title"
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="22sp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:fontFamily="@font/poppins"
+                android:text="@string/widget_configure_subtitle"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="13sp" />
+
+            <!--
+                The preview sits on a chequered tile so a translucent background reads as translucent
+                rather than as whatever colour happens to be behind it.
+            -->
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/widget_preview_checker"
+                android:padding="12dp">
+
+                <include
+                    android:id="@+id/preview"
+                    layout="@layout/widget_configure_preview" />
+            </FrameLayout>
+
+            <TextView
+                style="@style/WidgetConfigureSectionLabel"
+                android:text="@string/widget_theme" />
+
+            <com.google.android.material.button.MaterialButtonToggleGroup
+                android:id="@+id/themeGroup"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:selectionRequired="true"
+                app:singleSelection="true">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/themeMaterialYou"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:insetLeft="0dp"
+                    android:insetRight="0dp"
+                    android:paddingHorizontal="2dp"
+                    android:textSize="12sp"
+                    android:text="@string/widget_theme_material_you"
+                    android:textAllCaps="false" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/themeAppTheme"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:insetLeft="0dp"
+                    android:insetRight="0dp"
+                    android:paddingHorizontal="2dp"
+                    android:textSize="12sp"
+                    android:text="@string/widget_theme_app"
+                    android:textAllCaps="false" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/themeCustom"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:insetLeft="0dp"
+                    android:insetRight="0dp"
+                    android:paddingHorizontal="2dp"
+                    android:textSize="12sp"
+                    android:text="@string/widget_theme_custom"
+                    android:textAllCaps="false" />
+            </com.google.android.material.button.MaterialButtonToggleGroup>
+
+            <TextView
+                android:id="@+id/themeMaterialYouUnavailable"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:fontFamily="@font/poppins"
+                android:text="@string/widget_theme_material_you_unavailable"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="12sp"
+                android:visibility="gone" />
+
+            <LinearLayout
+                android:id="@+id/customColors"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:id="@+id/backgroundColorRow"
+                    style="@style/WidgetConfigureRow">
+
+                    <View
+                        android:id="@+id/backgroundSwatch"
+                        style="@style/WidgetConfigureSwatch" />
+
+                    <TextView
+                        style="@style/WidgetConfigureRowLabel"
+                        android:text="@string/widget_background_colour" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/titleColorRow"
+                    style="@style/WidgetConfigureRow">
+
+                    <View
+                        android:id="@+id/titleSwatch"
+                        style="@style/WidgetConfigureSwatch" />
+
+                    <TextView
+                        style="@style/WidgetConfigureRowLabel"
+                        android:text="@string/widget_title_colour" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/subtitleColorRow"
+                    style="@style/WidgetConfigureRow">
+
+                    <View
+                        android:id="@+id/subtitleSwatch"
+                        style="@style/WidgetConfigureSwatch" />
+
+                    <TextView
+                        style="@style/WidgetConfigureRowLabel"
+                        android:text="@string/widget_subtitle_colour" />
+                </LinearLayout>
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/fadeBackground"
+                    style="@style/WidgetConfigureSwitch"
+                    android:text="@string/widget_fade_background" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/listOptions"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    style="@style/WidgetConfigureSectionLabel"
+                    android:text="@string/widget_list_options" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:fontFamily="@font/poppins"
+                        android:text="@string/widget_rows_to_show"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/itemLimitValue"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/poppins_bold"
+                        android:textColor="?attr/colorPrimary"
+                        android:textSize="14sp"
+                        tools:ignore="MissingPrefix" />
+                </LinearLayout>
+
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/itemLimitSlider"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:stepSize="1"
+                    android:valueFrom="1"
+                    android:valueTo="25" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/showAllItems"
+                    style="@style/WidgetConfigureSwitch"
+                    android:text="@string/widget_show_all_items" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/showCovers"
+                    style="@style/WidgetConfigureSwitch"
+                    android:text="@string/widget_show_covers" />
+
+                <LinearLayout
+                    android:id="@+id/contentGroupContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone">
+
+                    <TextView
+                        style="@style/WidgetConfigureSectionLabel"
+                        android:text="@string/widget_content" />
+
+                    <com.google.android.material.button.MaterialButtonToggleGroup
+                        android:id="@+id/contentGroup"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        app:selectionRequired="true"
+                        app:singleSelection="true">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/contentAnime"
+                            style="?attr/materialButtonOutlinedStyle"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/anime"
+                            android:textAllCaps="false" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/contentManga"
+                            style="?attr/materialButtonOutlinedStyle"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/manga"
+                            android:textAllCaps="false" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/contentBoth"
+                            style="?attr/materialButtonOutlinedStyle"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/widget_content_both"
+                            android:textAllCaps="false" />
+                    </com.google.android.material.button.MaterialButtonToggleGroup>
+                </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/statsOptions"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <TextView
+                    style="@style/WidgetConfigureSectionLabel"
+                    android:text="@string/widget_stats_shown" />
+
+                <TextView
+                    style="@style/WidgetConfigureCaption"
+                    android:text="@string/widget_stat_top_left" />
+
+                <com.google.android.material.textfield.TextInputLayout style="@style/WidgetConfigureDropdown">
+
+                    <AutoCompleteTextView
+                        android:id="@+id/statSlot1Dropdown"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/poppins_bold"
+                        android:freezesText="false"
+                        android:inputType="none"
+                        android:padding="8dp"
+                        android:textColor="?android:attr/textColorSecondary"
+                        android:textSize="14sp"
+                        tools:ignore="LabelFor,TextContrastCheck" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <TextView
+                    style="@style/WidgetConfigureCaption"
+                    android:text="@string/widget_stat_top_right" />
+
+                <com.google.android.material.textfield.TextInputLayout style="@style/WidgetConfigureDropdown">
+
+                    <AutoCompleteTextView
+                        android:id="@+id/statSlot2Dropdown"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/poppins_bold"
+                        android:freezesText="false"
+                        android:inputType="none"
+                        android:padding="8dp"
+                        android:textColor="?android:attr/textColorSecondary"
+                        android:textSize="14sp"
+                        tools:ignore="LabelFor,TextContrastCheck" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <TextView
+                    style="@style/WidgetConfigureCaption"
+                    android:text="@string/widget_stat_bottom_left" />
+
+                <com.google.android.material.textfield.TextInputLayout style="@style/WidgetConfigureDropdown">
+
+                    <AutoCompleteTextView
+                        android:id="@+id/statSlot3Dropdown"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/poppins_bold"
+                        android:freezesText="false"
+                        android:inputType="none"
+                        android:padding="8dp"
+                        android:textColor="?android:attr/textColorSecondary"
+                        android:textSize="14sp"
+                        tools:ignore="LabelFor,TextContrastCheck" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <TextView
+                    style="@style/WidgetConfigureCaption"
+                    android:text="@string/widget_stat_bottom_right" />
+
+                <com.google.android.material.textfield.TextInputLayout style="@style/WidgetConfigureDropdown">
+
+                    <AutoCompleteTextView
+                        android:id="@+id/statSlot4Dropdown"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/poppins_bold"
+                        android:freezesText="false"
+                        android:inputType="none"
+                        android:padding="8dp"
+                        android:textColor="?android:attr/textColorSecondary"
+                        android:textSize="14sp"
+                        tools:ignore="LabelFor,TextContrastCheck" />
+                </com.google.android.material.textfield.TextInputLayout>
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+
+    <LinearLayout
+        android:id="@+id/widgetActions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="end"
+        android:orientation="horizontal"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="12dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/widgetCancel"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@android:string/cancel"
+            android:textAllCaps="false" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/widgetSave"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="@string/save"
+            android:textAllCaps="false" />
+    </LinearLayout>
+</LinearLayout>

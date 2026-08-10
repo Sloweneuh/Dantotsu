@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The widget background, drawn white so it can be tinted to any colour at runtime by
+    WidgetStyle.applyTo(). drawable-v31 overrides the radius with the system widget radius so widgets
+    match the launcher's own corner rounding.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@android:color/white" />
+    <corners android:radius="16dp" />
+</shape>

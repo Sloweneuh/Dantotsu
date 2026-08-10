@@ -60,6 +60,12 @@ fun updateProgress(media: Media, number: String) {
                     toast(currContext()?.getString(R.string.setting_progress, a))
                     media.userProgress = a
                     Refresh.all()
+                    // Keyed the way the widget keys MangaUpdates rows, not by media.id.
+                    a?.let {
+                        noteWidgetProgress(
+                            ani.dantotsu.connections.mangaupdates.muMediaKey(muSeriesId), it
+                        )
+                    }
                     // Mirror to MangaBaka and MAL afterwards: each costs an id lookup plus a write,
                     // and the update is already committed by then, so making the confirmation wait
                     // on them only makes the app feel slow.
@@ -160,8 +166,21 @@ fun updateProgress(media: Media, number: String) {
             }
             media.userProgress = a
             Refresh.all()
+            a?.let { noteWidgetProgress(media.id, it) }
         }
     } else {
         toast(currContext()?.getString(R.string.login_anilist_account))
     }
+}
+
+/**
+ * Tells the widgets progress moved, so the waiting list stops offering what was just read or watched.
+ *
+ * The counts behind that list are gathered on a schedule, so without this the row would go on claiming
+ * those episodes are waiting until the next check.
+ */
+private fun noteWidgetProgress(widgetKey: Int, progress: Int) {
+    val context = currContext() ?: return
+    ani.dantotsu.widgets.WidgetProgress.record(context, widgetKey, progress)
+    ani.dantotsu.widgets.WidgetRefresh.onContinueChanged(context)
 }

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    As widget_background, but fading out towards the bottom. Tinting keeps the alpha ramp, so one
+    colour plus this drawable reproduces what used to need a two-colour gradient bitmap.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:angle="270"
+        android:endColor="#00FFFFFF"
+        android:startColor="@android:color/white"
+        android:type="linear" />
+    <corners android:radius="16dp" />
+</shape>

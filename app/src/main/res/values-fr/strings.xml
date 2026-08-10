@@ -2154,4 +2154,85 @@
     <string name="search_kw_devs">développeurs générique crédits</string>
     <string name="search_kw_disclaimer">légal mentions avis conditions avertissement</string>
     <string name="search_kw_privacy_policy">rgpd données légal mentions confidentialité</string>
+
+    <!--
+        Widgets de l\'écran d\'accueil. Chaque nom est le android:label du receiver, c\'est-à-dire ce
+        que le sélecteur de widgets affiche.
+    -->
+    <string name="user_avatar">Avatar de l\'utilisateur</string>
+    <string name="widget_upcoming_label">Prochains épisodes</string>
+    <string name="widget_stats_title">Vos statistiques</string>
+    <string name="widget_this_week">Cette semaine</string>
+    <string name="widget_waiting">En attente</string>
+    <string name="widget_upcoming_description">Les prochains épisodes de votre liste</string>
+    <string name="widget_schedule_description">Les épisodes diffusés cette semaine, par jour</string>
+    <string name="widget_waiting_description">Chapitres non lus et épisodes non vus</string>
+
+    <!-- Lignes des widgets -->
+    <string name="widget_aired">Disponible</string>
+    <string name="widget_today">Aujourd\'hui</string>
+    <string name="widget_tomorrow">Demain</string>
+    <string name="widget_episode_in">Ép. %1$d %2$s</string>
+    <string name="widget_calendar_entry">%1$s · Ép. %2$d</string>
+    <string name="widget_next_episode">Épisode %1$d</string>
+    <string name="widget_next_episode_of">Épisode %1$d sur %2$d</string>
+    <string name="widget_next_chapter">Chapitre %1$d</string>
+    <string name="widget_next_chapter_of">Chapitre %1$d sur %2$d</string>
+
+    <!-- États vides et erreurs -->
+    <string name="widget_sign_in">Appuyez pour vous connecter à AniList</string>
+    <string name="widget_offline">AniList est injoignable. Vérifiez votre connexion.</string>
+    <string name="widget_error">Chargement impossible. Appuyez pour ouvrir Dantotsu.</string>
+    <string name="widget_nothing_this_week">Aucune diffusion cette semaine</string>
+    <string name="widget_nothing_waiting">Rien en attente. Vous êtes à jour.</string>
+
+    <!-- Ce qui est sorti au-delà de la progression, et le numéro suivant -->
+    <plurals name="widget_episodes_behind">
+        <item quantity="one">%1$d épisode sorti · Suivant : %2$d</item>
+        <item quantity="other">%1$d épisodes sortis · Suivant : %2$d</item>
+    </plurals>
+    <plurals name="widget_chapters_behind">
+        <item quantity="one">%1$d chapitre sorti · Suivant : %2$d</item>
+        <item quantity="other">%1$d chapitres sortis · Suivant : %2$d</item>
+    </plurals>
+
+    <!-- Configuration des widgets -->
+    <string name="widget_configure_title">Paramètres du widget</string>
+    <string name="widget_configure_subtitle">Les modifications apparaissent dans l\'aperçu au fur et à mesure.</string>
+    <string name="widget_theme">Couleurs</string>
+    <string name="widget_theme_material_you">Material You</string>
+    <!-- Boutons segmentés de largeur égale : la plus longue étiquette impose la troncature. -->
+    <string name="widget_theme_app">Thème appli</string>
+    <string name="widget_theme_custom">Personnalisé</string>
+    <string name="widget_theme_material_you_unavailable">Material You nécessite Android 12 ou une version plus récente. Le thème de l\'application est utilisé à la place.</string>
+    <string name="widget_pick_colour">Choisir une couleur</string>
+    <string name="widget_background_colour">Arrière-plan</string>
+    <string name="widget_title_colour">Titres</string>
+    <string name="widget_subtitle_colour">Texte secondaire</string>
+    <string name="widget_fade_background">Estomper l\'arrière-plan vers le bas</string>
+    <string name="widget_list_options">Liste</string>
+    <string name="widget_rows_to_show">Lignes à afficher</string>
+    <string name="widget_show_all_items">Afficher toutes les lignes</string>
+    <string name="widget_rows_all">Toutes</string>
+    <string name="widget_show_covers">Afficher les couvertures</string>
+    <string name="widget_content">Inclure</string>
+    <string name="widget_content_both">Les deux</string>
+    <string name="widget_stats_shown">Statistiques affichées</string>
+    <string name="widget_stat_top_left">En haut à gauche</string>
+    <string name="widget_stat_top_right">En haut à droite</string>
+    <string name="widget_stat_bottom_left">En bas à gauche</string>
+    <string name="widget_stat_bottom_right">En bas à droite</string>
+
+    <!--
+        Exemples affichés dans l\'aperçu de configuration. Les titres restent en version originale :
+        ce sont des noms propres, et les couvertures fournies avec l\'appli sont celles de ces séries.
+    -->
+    <string name="widget_preview_subtitle">Ép. 12 dans 2 jours</string>
+    <string name="widget_preview_subtitle_two">Ép. 4 dans 6 heures</string>
+    <string name="widget_preview_stat_value">248</string>
+    <string name="widget_preview_stat_value_two">3 517</string>
+    <string name="widget_preview_stat_value_three">126</string>
+    <string name="widget_preview_stat_value_four">8 904</string>
+    <string name="widget_preview_subtitle_waiting">3 chapitres sortis · Suivant : 1104</string>
+    <string name="widget_preview_subtitle_waiting_two">1 épisode sorti · Suivant : 8 ·</string>
 </resources>

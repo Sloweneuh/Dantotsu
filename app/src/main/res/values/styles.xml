@@ -9,4 +9,201 @@
         <item name="android:background">?android:attr/colorBackground</item>
         <item name="android:textColor">?android:attr/textColorPrimary</item>
     </style>
+
+    <!-- Widget configuration screen -->
+    <style name="WidgetConfigureSectionLabel">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">20dp</item>
+        <item name="android:layout_marginBottom">8dp</item>
+        <item name="android:fontFamily">@font/poppins_bold</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:textColor">?attr/colorPrimary</item>
+        <item name="android:textSize">12sp</item>
+    </style>
+
+    <!-- Small caption above one of the stats widget's four dropdowns, matching dialog_home_stats. -->
+    <style name="WidgetConfigureCaption">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginBottom">4dp</item>
+        <item name="android:alpha">0.58</item>
+        <item name="android:fontFamily">@font/poppins_bold</item>
+        <item name="android:textSize">12sp</item>
+    </style>
+
+    <!-- One of the stats widget's four "which stat" pickers; the AutoCompleteTextView inside carries -->
+    <!-- its own id, so this only supplies the outlined-box chrome shared by all four. -->
+    <style name="WidgetConfigureDropdown" parent="Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginBottom">16dp</item>
+        <item name="boxCornerRadiusBottomEnd">8dp</item>
+        <item name="boxCornerRadiusBottomStart">8dp</item>
+        <item name="boxCornerRadiusTopEnd">8dp</item>
+        <item name="boxCornerRadiusTopStart">8dp</item>
+        <item name="hintAnimationEnabled">false</item>
+    </style>
+
+    <style name="WidgetConfigureRow">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:background">?attr/selectableItemBackground</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:minHeight">56dp</item>
+        <item name="android:orientation">horizontal</item>
+    </style>
+
+    <style name="WidgetConfigureRowLabel">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginStart">16dp</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:fontFamily">@font/poppins</item>
+        <item name="android:textColor">?attr/colorOnSurface</item>
+        <item name="android:textSize">14sp</item>
+    </style>
+
+    <style name="WidgetConfigureSwatch">
+        <item name="android:layout_width">28dp</item>
+        <item name="android:layout_height">28dp</item>
+        <item name="android:background">@drawable/widget_swatch</item>
+    </style>
+
+    <style name="WidgetConfigureSwitch" parent="Widget.Material3.CompoundButton.MaterialSwitch">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:fontFamily">@font/poppins</item>
+        <item name="android:minHeight">56dp</item>
+        <item name="android:textColor">?attr/colorOnSurface</item>
+        <item name="android:textSize">14sp</item>
+    </style>
+
+    <!--
+        Widget picker previews (previewLayout). Colours are literal because the picker inflates these
+        without running any of our code, so nothing here can be tinted at runtime.
+    -->
+    <style name="WidgetPreviewHeader">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginStart">8dp</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:fontFamily">@font/poppins_bold</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:textColor">#FFE6E1E5</item>
+        <item name="android:textSize">15sp</item>
+    </style>
+
+    <style name="WidgetPreviewRow">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:orientation">horizontal</item>
+        <item name="android:paddingVertical">5dp</item>
+    </style>
+
+    <!--
+        A cover in a picker preview. Each row sets its own android:src to the cover of the title it
+        names — an empty grey block next to a real title reads as a broken widget, not a sample.
+    -->
+    <style name="WidgetPreviewCover">
+        <item name="android:layout_width">28dp</item>
+        <item name="android:layout_height">38dp</item>
+        <item name="android:scaleType">centerCrop</item>
+    </style>
+
+    <style name="WidgetPreviewTitle">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:ellipsize">end</item>
+        <item name="android:fontFamily">@font/poppins_bold</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:textColor">#FFE6E1E5</item>
+        <item name="android:textSize">13sp</item>
+    </style>
+
+    <style name="WidgetPreviewSubtitle">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:ellipsize">end</item>
+        <item name="android:fontFamily">@font/poppins</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:textColor">#FFCAC4D0</item>
+        <item name="android:textSize">11sp</item>
+    </style>
+
+    <style name="WidgetPreviewStatValue">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:fontFamily">@font/poppins_bold</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:textColor">#FFE6E1E5</item>
+        <item name="android:textSize">20sp</item>
+    </style>
+
+    <style name="WidgetPreviewDay">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:fontFamily">@font/poppins_bold</item>
+        <item name="android:paddingTop">6dp</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:textColor">#FFD0BCFF</item>
+        <item name="android:textSize">10sp</item>
+    </style>
+
+    <!-- The This Week widget preview's compact rows — mirrors item_widget_calendar_row.xml. -->
+    <style name="WidgetPreviewCalendarRow">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:orientation">horizontal</item>
+        <item name="android:paddingVertical">3dp</item>
+    </style>
+
+    <style name="WidgetPreviewCalendarTime">
+        <item name="android:layout_width">36dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:fontFamily">@font/poppins_bold</item>
+        <item name="android:textColor">#FFD0BCFF</item>
+        <item name="android:textSize">10sp</item>
+    </style>
+
+    <style name="WidgetPreviewCalendarTitle">
+        <item name="android:layout_width">0dp</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginStart">6dp</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:ellipsize">end</item>
+        <item name="android:fontFamily">@font/poppins</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:textColor">#FFE6E1E5</item>
+        <item name="android:textSize">11sp</item>
+    </style>
+
+    <!-- One count in the profile stats widget -->
+    <style name="WidgetStatCell">
+        <item name="android:layout_height">match_parent</item>
+        <item name="android:gravity">center_vertical</item>
+        <item name="android:orientation">vertical</item>
+    </style>
+
+    <style name="WidgetStatValue">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:ellipsize">end</item>
+        <item name="android:fontFamily">@font/poppins_bold</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:textSize">22sp</item>
+    </style>
+
+    <style name="WidgetStatLabel">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:ellipsize">end</item>
+        <item name="android:fontFamily">@font/poppins</item>
+        <item name="android:maxLines">2</item>
+        <item name="android:textSize">11sp</item>
+    </style>
 </resources>

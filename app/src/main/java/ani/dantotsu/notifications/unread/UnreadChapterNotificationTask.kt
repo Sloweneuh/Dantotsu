@@ -94,8 +94,17 @@ class UnreadChapterNotificationTask : Task {
                         ) * 60_000L
                         val shared = UnreadSync.fetchFresh(sharedMaxAgeMs)
                         if (shared != null) {
-                            Logger.log("UnreadChapterNotificationTask: using shared cloud result (${shared.size}); skipping MALSync scan")
-                            handleUnreadResult(context, shared, mangaList)
+                            // shared bakes in whichever device computed it's userProgress at that
+                            // device's check time — which can be older than mangaList, fetched fresh on
+                            // this device just above. Without reconciling against it, a chapter read
+                            // since that snapshot (on any device, or on the AniList website) would keep
+                            // reporting — and notifying about — a chapter this account has already read.
+                            val reconciled = reconcileWithLiveProgress(shared, mangaList)
+                            Logger.log(
+                                "UnreadChapterNotificationTask: using shared cloud result (${shared.size}, " +
+                                    "${reconciled.size} still unread after live progress); skipping MALSync scan"
+                            )
+                            handleUnreadResult(context, reconciled, mangaList)
                             return@anilistCheck
                         }
 
@@ -220,6 +229,28 @@ class UnreadChapterNotificationTask : Task {
             currentlyPerforming = false
             return false
         }
+    }
+
+    /**
+     * Re-derives each entry's `userProgress` from [mangaList] — fetched fresh in this same run — and
+     * drops anything the live figure shows as already read.
+     *
+     * Exists for the shared-cloud path: [UnreadSync.push] bakes in whichever device computed the
+     * result's progress at that device's check time, which is only as fresh as that device's last scan.
+     * Trusting it verbatim is how a chapter read since — on another device, or on the AniList website
+     * itself, neither of which this device would otherwise hear about until its own next scan — kept
+     * showing (and notifying) as unread.
+     */
+    private fun reconcileWithLiveProgress(
+        unreadInfo: Map<Int, UnreadChapterInfo>,
+        mangaList: List<Media>
+    ): Map<Int, UnreadChapterInfo> {
+        val liveProgressById = mangaList.associate { it.id to (it.userProgress ?: 0) }
+        return unreadInfo.mapNotNull { (mediaId, info) ->
+            val live = liveProgressById[mediaId] ?: return@mapNotNull mediaId to info
+            if (info.lastChapter <= live) return@mapNotNull null
+            mediaId to if (live != info.userProgress) info.copy(userProgress = live) else info
+        }.toMap()
     }
 
     /** Caches the result, broadcasts the update, and fires notifications for newly-unread chapters. */

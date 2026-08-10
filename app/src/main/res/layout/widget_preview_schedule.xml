@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+    Widget picker preview for the This Week widget. See widget_preview_upcoming for why the preview is
+    its own layout rather than the widget's.
+
+    Rows are the same compact single line (time + title, no cover) MediaListFactory.calendarRow() draws
+    for real — this is the global schedule, which can run to dozens of entries a day, so the point of
+    the preview is showing how many fit rather than showing off cover art.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_preview_card"
+    android:orientation="vertical"
+    android:padding="12dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_dantotsu_round" />
+
+        <TextView
+            style="@style/WidgetPreviewHeader"
+            android:text="@string/widget_this_week" />
+    </LinearLayout>
+
+    <TextView
+        style="@style/WidgetPreviewDay"
+        android:text="@string/widget_today" />
+
+    <LinearLayout style="@style/WidgetPreviewCalendarRow">
+        <TextView style="@style/WidgetPreviewCalendarTime" android:text="@string/widget_preview_time_one" />
+        <TextView style="@style/WidgetPreviewCalendarTitle" android:text="@string/widget_preview_title" />
+    </LinearLayout>
+
+    <LinearLayout style="@style/WidgetPreviewCalendarRow">
+        <TextView style="@style/WidgetPreviewCalendarTime" android:text="@string/widget_preview_time_two" />
+        <TextView style="@style/WidgetPreviewCalendarTitle" android:text="@string/widget_preview_title_two" />
+    </LinearLayout>
+
+    <LinearLayout style="@style/WidgetPreviewCalendarRow">
+        <TextView style="@style/WidgetPreviewCalendarTime" android:text="@string/widget_preview_time_three" />
+        <TextView style="@style/WidgetPreviewCalendarTitle" android:text="@string/widget_preview_title_three" />
+    </LinearLayout>
+
+    <TextView
+        style="@style/WidgetPreviewDay"
+        android:text="@string/widget_tomorrow" />
+
+    <LinearLayout style="@style/WidgetPreviewCalendarRow">
+        <TextView style="@style/WidgetPreviewCalendarTime" android:text="@string/widget_preview_time_four" />
+        <TextView style="@style/WidgetPreviewCalendarTitle" android:text="@string/widget_preview_title_four" />
+    </LinearLayout>
+
+    <LinearLayout style="@style/WidgetPreviewCalendarRow">
+        <TextView style="@style/WidgetPreviewCalendarTime" android:text="@string/widget_preview_time_five" />
+        <TextView style="@style/WidgetPreviewCalendarTitle" android:text="@string/widget_preview_title_five" />
+    </LinearLayout>
+</LinearLayout>

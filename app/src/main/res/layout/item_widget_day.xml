@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?><!-- A day heading in the weekly schedule widget; see MediaListFactory's BY_DAY layout. -->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/dayLabel"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:ellipsize="end"
+    android:fontFamily="@font/poppins_bold"
+    android:maxLines="1"
+    android:paddingTop="10dp"
+    android:paddingBottom="2dp"
+    android:textAllCaps="true"
+    android:textSize="11sp"
+    tools:text="@string/widget_today" />

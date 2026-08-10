@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+    One row of the This Week widget's global schedule; bound by MediaListFactory.calendarRow().
+
+    Deliberately bare — no cover, no source, one line — because this list has no bound on size the way
+    a personal one does: a single day can carry dozens of entries, so every row has to be as short as
+    possible for more than two or three of them to fit in a home-screen widget at once.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/itemRoot"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingVertical="3dp">
+
+    <TextView
+        android:id="@+id/itemTime"
+        android:layout_width="42dp"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/poppins_bold"
+        android:textSize="11sp"
+        tools:text="18:30" />
+
+    <TextView
+        android:id="@+id/itemTitle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="6dp"
+        android:layout_weight="1"
+        android:ellipsize="end"
+        android:fontFamily="@font/poppins"
+        android:maxLines="1"
+        android:textSize="12sp"
+        tools:text="@string/widget_preview_title" />
+</LinearLayout>

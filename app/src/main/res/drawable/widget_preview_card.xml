@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+    Background for the widget *preview* layouts only.
+
+    Fixed colours on purpose: a preview is rendered by the launcher's widget picker, which never runs
+    our code, so it can't be tinted the way a live widget's background is. A neutral dark card reads
+    correctly against every picker background, and matches what the widget looks like with the default
+    Material You palette in dark mode.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#FF1C1B1F" />
+    <corners android:radius="16dp" />
+</shape>

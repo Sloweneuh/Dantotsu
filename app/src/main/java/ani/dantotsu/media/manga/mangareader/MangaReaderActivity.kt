@@ -439,6 +439,13 @@ class MangaReaderActivity : AppCompatActivity() {
         list.add(media.id)
 
         PrefManager.setCustomVal("continueMangaList", list)
+        // Same event, recorded once more where anime and manga share an ordering — see ContinueHistory.
+        // muSeriesId matters: for a MangaUpdates series media.id is only a truncated key, not an
+        // AniList id, and anything that looks it up on AniList would resolve the wrong series or none.
+        ani.dantotsu.widgets.ContinueHistory.record(
+            media.id, isAnime = false, muSeriesId = media.muSeriesId
+        )
+        ani.dantotsu.widgets.WidgetRefresh.onContinueChanged(this)
         if (PrefManager.getVal(PrefName.AutoDetectWebtoon) && media.countryOfOrigin != "JP") applyWebtoon(
             defaultSettings
         )

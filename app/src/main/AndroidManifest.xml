@@ -112,7 +112,8 @@
 
         <receiver
             android:name=".widgets.upcoming.UpcomingWidget"
-            android:exported="true">
+            android:exported="true"
+            android:label="@string/widget_upcoming_label">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
@@ -121,9 +122,37 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/upcoming_widget_info" />
         </receiver>
+        <receiver
+            android:name=".widgets.list.ScheduleWidget"
+            android:exported="true"
+            android:label="@string/widget_this_week">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/schedule_widget_info" />
+        </receiver>
+        <receiver
+            android:name=".widgets.list.WaitingWidget"
+            android:exported="true"
+            android:label="@string/widget_waiting">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/waiting_widget_info" />
+        </receiver>
+
+        <!-- One configure screen for every widget; it resolves which one from the widget id. -->
         <activity
-            android:name=".widgets.upcoming.UpcomingWidgetConfigure"
-            android:exported="true">
+            android:name=".widgets.WidgetConfigureActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:label="@string/widget_configure_title">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
             </intent-filter>
@@ -131,7 +160,8 @@
 
         <receiver
             android:name=".widgets.statistics.ProfileStatsWidget"
-            android:exported="false">
+            android:exported="false"
+            android:label="@string/widget_stats_title">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
@@ -254,13 +284,6 @@
         <activity
             android:name=".settings.ExtensionMediaInfoActivity"
             android:parentActivityName=".settings.ExtensionBrowseActivity" />
-        <activity
-            android:name=".widgets.statistics.ProfileStatsConfigure"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
-            </intent-filter>
-        </activity>
 
         <activity
             android:name=".profile.ProfileActivity"
@@ -594,8 +617,17 @@
                 android:resource="@xml/provider_paths" />
         </provider>
 
+        <!-- Row providers for the list widgets. All three feed on MediaListFactory. -->
         <service
             android:name=".widgets.upcoming.UpcomingRemoteViewsService"
+            android:exported="true"
+            android:permission="android.permission.BIND_REMOTEVIEWS" />
+        <service
+            android:name=".widgets.list.ScheduleRemoteViewsService"
+            android:exported="true"
+            android:permission="android.permission.BIND_REMOTEVIEWS" />
+        <service
+            android:name=".widgets.list.WaitingRemoteViewsService"
             android:exported="true"
             android:permission="android.permission.BIND_REMOTEVIEWS" />
         <service

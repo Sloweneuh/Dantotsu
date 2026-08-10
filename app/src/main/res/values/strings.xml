@@ -2253,4 +2253,93 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="search_kw_devs">developers credits</string>
     <string name="search_kw_disclaimer">legal notice terms warning</string>
     <string name="search_kw_privacy_policy">gdpr data legal privacy</string>
+
+    <!--
+        Home screen widgets. Each name is the receiver's android:label, which is what the widget picker
+        lists it as — without one every widget shows up under the app's own name, telling the user
+        nothing about which is which.
+    -->
+    <string name="user_avatar">User avatar</string>
+    <string name="widget_upcoming_label">Upcoming episodes</string>
+    <string name="widget_stats_title">Your stats</string>
+    <string name="widget_this_week">This week</string>
+    <string name="widget_waiting">Waiting for you</string>
+    <string name="widget_upcoming_description">The next episodes on your list</string>
+    <string name="widget_schedule_description">The week\'s airing episodes, by day</string>
+    <string name="widget_waiting_description">Unread chapters and unwatched episodes</string>
+
+    <!-- Widget rows -->
+    <string name="widget_aired">Out now</string>
+    <string name="widget_today">Today</string>
+    <string name="widget_tomorrow">Tomorrow</string>
+    <string name="widget_episode_in">Ep %1$d %2$s</string>
+    <!-- One compact schedule-widget row: title, then its episode number. -->
+    <string name="widget_calendar_entry">%1$s · Ep %2$d</string>
+    <string name="widget_next_episode">Episode %1$d</string>
+    <string name="widget_next_episode_of">Episode %1$d of %2$d</string>
+    <string name="widget_next_chapter">Chapter %1$d</string>
+    <string name="widget_next_chapter_of">Chapter %1$d of %2$d</string>
+
+    <!-- Widget empty and error states -->
+    <string name="widget_sign_in">Tap to sign in to AniList</string>
+    <string name="widget_offline">Couldn\'t reach AniList. Check your connection.</string>
+    <string name="widget_error">Couldn\'t load. Tap to open Dantotsu.</string>
+    <string name="widget_nothing_this_week">Nothing airing this week</string>
+    <string name="widget_nothing_waiting">Nothing waiting. You\'re all caught up.</string>
+
+    <!-- How much is out past the user's progress, and which episode/chapter is next -->
+    <plurals name="widget_episodes_behind">
+        <item quantity="one">%1$d episode out · Next : %2$d</item>
+        <item quantity="other">%1$d episodes out · Next : %2$d</item>
+    </plurals>
+    <plurals name="widget_chapters_behind">
+        <item quantity="one">%1$d chapter out · Next : %2$d</item>
+        <item quantity="other">%1$d chapters out · Next : %2$d</item>
+    </plurals>
+
+    <!-- Widget configuration -->
+    <string name="widget_configure_title">Widget settings</string>
+    <string name="widget_configure_subtitle">Changes show in the preview as you make them.</string>
+    <string name="widget_theme">Colours</string>
+    <string name="widget_theme_material_you">Material You</string>
+    <string name="widget_theme_app">App theme</string>
+    <string name="widget_theme_custom">Custom</string>
+    <string name="widget_theme_material_you_unavailable">Material You needs Android 12 or newer. Using the app theme instead.</string>
+    <string name="widget_pick_colour">Pick a colour</string>
+    <string name="widget_background_colour">Background</string>
+    <string name="widget_title_colour">Titles</string>
+    <string name="widget_subtitle_colour">Secondary text</string>
+    <string name="widget_fade_background">Fade background towards the bottom</string>
+    <string name="widget_list_options">List</string>
+    <string name="widget_rows_to_show">Rows to show</string>
+    <string name="widget_show_all_items">Show all rows</string>
+    <string name="widget_rows_all">All</string>
+    <string name="widget_show_covers">Show covers</string>
+    <string name="widget_content">Include</string>
+    <string name="widget_content_both">Both</string>
+    <string name="widget_stats_shown">Stats shown</string>
+    <string name="widget_stat_top_left">Top left</string>
+    <string name="widget_stat_top_right">Top right</string>
+    <string name="widget_stat_bottom_left">Bottom left</string>
+    <string name="widget_stat_bottom_right">Bottom right</string>
+
+    <!-- Sample text in the widget configuration preview -->
+    <string name="widget_preview_title" translatable="false">Frieren: Beyond Journey\'s End</string>
+    <string name="widget_preview_title_two" translatable="false">Vinland Saga</string>
+    <string name="widget_preview_title_three" translatable="false">One Piece</string>
+    <string name="widget_preview_title_four" translatable="false">Attack on Titan</string>
+    <string name="widget_preview_title_five" translatable="false">Jujutsu Kaisen</string>
+    <string name="widget_preview_subtitle">Ep 12 in 2 days</string>
+    <string name="widget_preview_subtitle_two">Ep 4 in 6 hours</string>
+    <string name="widget_preview_stat_value">248</string>
+    <string name="widget_preview_stat_value_two">3,517</string>
+    <string name="widget_preview_stat_value_three">126</string>
+    <string name="widget_preview_stat_value_four">8,904</string>
+    <string name="widget_preview_time_one" translatable="false">09:30</string>
+    <string name="widget_preview_time_two" translatable="false">18:30</string>
+    <string name="widget_preview_time_three" translatable="false">21:00</string>
+    <string name="widget_preview_time_four" translatable="false">17:00</string>
+    <string name="widget_preview_time_five" translatable="false">23:00</string>
+    <string name="widget_preview_subtitle_waiting">3 chapters out · Next : 1104</string>
+    <string name="widget_preview_subtitle_waiting_two">1 episode out · Next : 8 ·</string>
 </resources>

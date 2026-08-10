@@ -1748,6 +1748,9 @@ class ExoplayerView :
         if (list.contains(media.id)) list.remove(media.id)
         list.add(media.id)
         PrefManager.setCustomVal("continueAnimeList", list)
+        // Same event, recorded once more where anime and manga share an ordering — see ContinueHistory.
+        ani.dantotsu.widgets.ContinueHistory.record(media.id, isAnime = true)
+        ani.dantotsu.widgets.WidgetRefresh.onContinueChanged(this)
 
         lifecycleScope.launch(Dispatchers.IO) {
             extractor?.onVideoStopped(video)

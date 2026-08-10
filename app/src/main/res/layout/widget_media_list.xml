@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+    Shared by the upcoming, weekly schedule and continue widgets; see MediaListWidget.
+
+    The background is a tinted drawable rather than the bitmap the old layout displayed: a
+    GradientDrawable used to be rasterised at the widget's measured size on every single update, which
+    made resizing smear it and cost a bitmap allocation per refresh.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/widgetContainer"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:theme="@style/Theme.Dantotsu.AppWidgetContainer">
+
+    <ImageView
+        android:id="@+id/widgetBackground"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY"
+        android:src="@drawable/widget_background"
+        tools:ignore="ContentDescription" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:paddingHorizontal="12dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="4dp">
+
+        <LinearLayout
+            android:id="@+id/widgetHeader"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_dantotsu_round"
+                tools:ignore="ContentDescription" />
+
+            <TextView
+                android:id="@+id/widgetTitle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:fontFamily="@font/poppins_bold"
+                android:maxLines="1"
+                android:textSize="16sp"
+                tools:text="@string/upcoming" />
+
+            <!--
+                Swapped for the refresh icon while a refresh runs, so a press is visibly acknowledged.
+                RemoteViews can show an indeterminate ProgressBar; it can't animate anything else.
+            -->
+            <ProgressBar
+                android:id="@+id/widgetProgress"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:indeterminate="true"
+                android:padding="6dp"
+                android:visibility="gone" />
+
+            <ImageView
+                android:id="@+id/widgetRefresh"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:contentDescription="@string/refresh"
+                android:padding="6dp"
+                android:src="@drawable/ic_round_refresh_24" />
+
+            <ImageView
+                android:id="@+id/widgetConfigure"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:contentDescription="@string/widget_configure_title"
+                android:padding="6dp"
+                android:src="@drawable/ic_round_settings_24" />
+        </LinearLayout>
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_marginTop="4dp"
+            android:layout_weight="1">
+
+            <ListView
+                android:id="@+id/widgetListView"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:divider="@null"
+                android:dividerHeight="0dp"
+                android:scrollbars="none" />
+
+            <TextView
+                android:id="@+id/widgetEmpty"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:ellipsize="end"
+                android:fontFamily="@font/poppins"
+                android:gravity="center"
+                android:maxLines="3"
+                android:paddingHorizontal="16dp"
+                android:textSize="14sp"
+                tools:text="@string/no_shows_to_display" />
+        </FrameLayout>
+    </LinearLayout>
+</FrameLayout>

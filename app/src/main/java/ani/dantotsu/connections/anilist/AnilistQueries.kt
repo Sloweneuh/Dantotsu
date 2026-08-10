@@ -1505,8 +1505,8 @@ Page(page:$page,perPage:50) {
         }
         next()
         while (res?.pageInfo?.hasNextPage == true) {
-            next()
             i++
+            next()
         }
         return list.reversed().toMutableList()
     }
@@ -1777,22 +1777,67 @@ Page(page:$page,perPage:50) {
         return """Page(page:$page,perPage:50){activities(isFollowing: true,type_in:[TEXT,ANIME_LIST,MANGA_LIST,MEDIA_LIST],sort:ID_DESC){__typename ... on TextActivity{id userId type replyCount text(asHtml:true)siteUrl isLocked isSubscribed replyCount likeCount isLiked createdAt user{id name bannerImage avatar{medium large}}likes{id name bannerImage avatar{medium large}}}... on ListActivity{id userId type replyCount status progress siteUrl isLocked isSubscribed replyCount likeCount isLiked isPinned createdAt user{id name bannerImage avatar{medium large}}media{id isAdult title{english romaji native userPreferred}bannerImage coverImage{extraLarge medium large}}likes{id name bannerImage avatar{medium large}}}... on MessageActivity{id type createdAt}}}"""
     }
 
+    /**
+     * The user's anime that have a next episode scheduled, soonest first.
+     *
+     * Carries the absolute airing time on [ani.dantotsu.media.anime.Anime.nextAiringEpisodeTime] as
+     * well as the countdown. Widgets cache this, and a cached *remaining duration* is stale the moment
+     * it is written — which is how the upcoming widget ended up counting down into negative days.
+     *
+     * Completed and dropped entries are left out: a finished show that starts re-airing is not what
+     * anyone wants filling an upcoming list.
+     */
     suspend fun getUpcomingAnime(id: String): List<Media> {
         val res = executeQuery<Query.MediaListCollection>(
-            """{MediaListCollection(userId:$id,type:ANIME){lists{name entries{media{id,isFavourite,title{userPreferred,romaji}coverImage{medium}nextAiringEpisode{timeUntilAiring}}}}}}""",
+            """{MediaListCollection(userId:$id,type:ANIME,status_in:[CURRENT,REPEATING,PLANNING,PAUSED]){lists{name entries{progress media{id,idMal,isAdult,isFavourite,status(version:2),type,episodes,title{userPreferred,romaji,english}coverImage{medium,large}nextAiringEpisode{episode,airingAt,timeUntilAiring}mediaListEntry{progress}}}}}}""",
             force = true
         )
         val list = mutableListOf<Media>()
         res?.data?.mediaListCollection?.lists?.forEach { listEntry ->
             listEntry.entries?.forEach { entry ->
-                entry.media?.nextAiringEpisode?.timeUntilAiring?.let {
-                    list.add(Media(entry.media!!))
-                }
+                val apiMedia = entry.media ?: return@forEach
+                val airing = apiMedia.nextAiringEpisode ?: return@forEach
+                if (airing.timeUntilAiring == null) return@forEach
+                runCatching {
+                    Media(apiMedia).apply { anime?.nextAiringEpisodeTime = airing.airingAt?.toLong() }
+                }.onSuccess { list.add(it) }
+                    .onFailure { Logger.log("getUpcomingAnime: skipped ${apiMedia.id}: $it") }
             }
         }
-        return list.sortedBy { it.timeUntilAiring }
-            .distinctBy { it.id }
-            .filter { it.timeUntilAiring != null }
+        return list.distinctBy { it.id }.sortedBy { it.timeUntilAiring }
+    }
+
+    /**
+     * The anime the user is currently watching or rewatching, with progress and MAL id.
+     *
+     * Feeds the waiting widget, which asks MALSync how many episodes are actually out for each of
+     * these — AniList's own `nextAiringEpisode` only knows about broadcast schedules, so it says
+     * nothing for anything already finished airing or streaming ahead of schedule.
+     */
+    suspend fun getWatchingAnime(id: String): List<Media> {
+        val res = executeQuery<Query.MediaListCollection>(
+            // isFavourite and status are not optional: Media's ApiMedia constructor reads isFavourite
+            // with !! (Media.kt:123), so a query that leaves it out throws NPE per entry, and status
+            // would otherwise be stringified from null into the literal "null".
+            """{MediaListCollection(userId:$id,type:ANIME,status_in:[CURRENT,REPEATING]){lists{name entries{progress media{id,idMal,isAdult,isFavourite,status(version:2),type,episodes,title{userPreferred,romaji,english}coverImage{medium,large}nextAiringEpisode{episode,airingAt}mediaListEntry{progress}}}}}}""",
+            force = true
+        )
+        val list = mutableListOf<Media>()
+        res?.data?.mediaListCollection?.lists?.forEach { listEntry ->
+            listEntry.entries?.forEach { entry ->
+                val apiMedia = entry.media ?: return@forEach
+                // Per entry, so one unexpected shape can't cost the whole list — a widget reading this
+                // has nothing to fall back on but an error message.
+                runCatching {
+                    Media(apiMedia).apply {
+                        anime?.nextAiringEpisodeTime = apiMedia.nextAiringEpisode?.airingAt?.toLong()
+                        if (userProgress == null) userProgress = entry.progress
+                    }
+                }.onSuccess { list.add(it) }
+                    .onFailure { Logger.log("getWatchingAnime: skipped ${apiMedia.id}: $it") }
+            }
+        }
+        return list.distinctBy { it.id }
     }
 
     suspend fun isUserFav(

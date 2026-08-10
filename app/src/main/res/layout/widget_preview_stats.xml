@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+    Widget picker preview for the profile stats widget.
+
+    Its own layout for the same reason as the others: statistics_widget's four counts are set at
+    runtime, so previewing the real layout showed an empty 2x2 grid.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_preview_card"
+    android:orientation="vertical"
+    android:padding="12dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_dantotsu_round" />
+
+        <TextView
+            style="@style/WidgetPreviewHeader"
+            android:text="@string/widget_stats_title" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginTop="10dp"
+        android:layout_weight="1"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center_vertical"
+            android:orientation="vertical">
+
+            <TextView
+                style="@style/WidgetPreviewStatValue"
+                android:text="@string/widget_preview_stat_value" />
+
+            <TextView
+                style="@style/WidgetPreviewSubtitle"
+                android:maxLines="2"
+                android:text="@string/anime_watched" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center_vertical"
+            android:orientation="vertical">
+
+            <TextView
+                style="@style/WidgetPreviewStatValue"
+                android:text="@string/widget_preview_stat_value_two" />
+
+            <TextView
+                style="@style/WidgetPreviewSubtitle"
+                android:maxLines="2"
+                android:text="@string/episodes_watched_n" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center_vertical"
+            android:orientation="vertical">
+
+            <TextView
+                style="@style/WidgetPreviewStatValue"
+                android:text="@string/widget_preview_stat_value_three" />
+
+            <TextView
+                style="@style/WidgetPreviewSubtitle"
+                android:maxLines="2"
+                android:text="@string/manga_read" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:gravity="center_vertical"
+            android:orientation="vertical">
+
+            <TextView
+                style="@style/WidgetPreviewStatValue"
+                android:text="@string/widget_preview_stat_value_four" />
+
+            <TextView
+                style="@style/WidgetPreviewSubtitle"
+                android:maxLines="2"
+                android:text="@string/chapters_read_n" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

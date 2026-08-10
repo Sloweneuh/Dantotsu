@@ -4,9 +4,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.coroutines.resume
 
 /**
  * App-wide cache for MangaUpdates series details (cover URL and description).
@@ -38,6 +40,14 @@ object MUDetailsCache {
          * sorted by when you last touched a series rather than when it last got a chapter.
          */
         val latestReleaseAt: Long? = null,
+        /**
+         * Who released [latestChapter] — the scanlation group on the newest release, when one is named.
+         *
+         * Comes free with the release lookup that fills [latestReleaseAt]: the same response already
+         * carries the groups. Used as the source label on a MangaUpdates row in the waiting widget,
+         * which otherwise has nothing to show there (MALSync only knows sites it has mapped).
+         */
+        val latestGroup: String? = null,
     )
 
     /** Concurrent requests allowed across the whole app, to avoid API throttling. */
@@ -88,6 +98,37 @@ object MUDetailsCache {
     private val gate = Semaphore(MAX_CONCURRENT)
 
     fun get(id: Long): Detail? = cache[id]
+
+    /**
+     * [get], but waits for the fetch instead of returning null the first time.
+     *
+     * [prefetch] is fire-and-forget — right for UI, which redraws on [onUpdated] — but it has no result
+     * to hand back, which is what a caller with no view to rebind (the waiting widget's background
+     * refresh, running with no UI at all) actually needs. Joins the same in-flight fetch [prefetch]
+     * would have started, rather than kicking off a second one for the same id.
+     */
+    suspend fun ensure(id: Long, withRelease: Boolean = false): Detail? {
+        val needDetail = !cache.containsKey(id)
+        val needRelease = withRelease && id !in releasesResolved
+        if (!needDetail && !needRelease) return cache[id]
+        return suspendCancellableCoroutine { cont ->
+            if (needRelease) releaseWanted += id
+            val waiter = Waiter(needRelease) { finishedId ->
+                if (cont.isActive) cont.resume(cache[finishedId])
+            }
+            val startFetch = synchronized(lock) {
+                val queue = waiting[id]
+                if (queue == null) {
+                    waiting[id] = mutableListOf(waiter)
+                    true
+                } else {
+                    queue.add(waiter)
+                    false
+                }
+            }
+            if (startFetch) fetchScope.launch { fetch(id, needDetail, needRelease) }
+        }
+    }
 
     /**
      * Whether [id]'s release date has been looked up — true even when the answer was "no date", so
@@ -160,15 +201,18 @@ object MUDetailsCache {
                             ?: emptySet(),
                         completed = record?.completed,
                         latestChapter = record?.latest_chapter,
-                        // Carried over so a details refetch doesn't drop a date already resolved.
+                        // Carried over so a details refetch doesn't drop what's already resolved.
                         latestReleaseAt = cache[id]?.latestReleaseAt,
+                        latestGroup = cache[id]?.latestGroup,
                     )
                 }
                 if (wantRelease) {
                     // The releases are a separate endpoint; the newest one is first in the list.
                     val newest = MangaUpdates.getSeriesGroups(id)?.releaseList?.firstOrNull()
                     val at = newest?.releaseDate?.let(::parseReleaseDate)
-                    cache[id] = (cache[id] ?: Detail(null, null)).copy(latestReleaseAt = at)
+                    val group = newest?.groups?.firstOrNull()?.name?.takeIf { it.isNotBlank() }
+                    cache[id] = (cache[id] ?: Detail(null, null))
+                        .copy(latestReleaseAt = at, latestGroup = group ?: cache[id]?.latestGroup)
                 }
             }
         } catch (e: Exception) {

@@ -83,6 +83,32 @@ class LanguageAdapter(
 object LanguageMapper {
 
     /**
+     * The 2-letter code a language badge shows next to its dub/sub icon — "EN" for `en/dub`, "JP" for
+     * `ja/sub`, and so on.
+     *
+     * Was inlined twice in [ani.dantotsu.home.UnreleasedEpisodesAdapter] (its compact and large binds);
+     * pulled out here so a third copy wasn't needed for the same badge on a waiting-widget row.
+     */
+    fun shortCode(languageId: String): String = when {
+        languageId.startsWith("en") -> "EN"
+        languageId.startsWith("ja") || languageId.startsWith("jp") -> "JP"
+        languageId.startsWith("de") -> "DE"
+        languageId.startsWith("fr") -> "FR"
+        languageId.startsWith("es") -> "ES"
+        languageId.startsWith("pt") -> "PT"
+        languageId.startsWith("it") -> "IT"
+        languageId.startsWith("ru") -> "RU"
+        languageId.startsWith("ar") -> "AR"
+        languageId.startsWith("zh") -> "ZH"
+        languageId.startsWith("ko") -> "KO"
+        languageId.startsWith("id") -> "ID"
+        languageId.startsWith("ms") -> "MS"
+        languageId.startsWith("th") -> "TH"
+        languageId.startsWith("vi") -> "VI"
+        else -> languageId.split("/")[0].take(2).uppercase()
+    }
+
+    /**
      * Map language ID to full name and icon
      */
     fun mapLanguage(languageId: String, episodeCount: Int? = null): LanguageOption {

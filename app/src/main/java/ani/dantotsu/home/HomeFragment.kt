@@ -133,6 +133,9 @@ class HomeFragment : Fragment() {
 
     /** The MangaUpdates reading list [muUnreadInfo] was fetched for, so a redraw doesn't refetch. */
     private var muUnreadInfoKey: String? = null
+
+    /** What was last persisted for the waiting widget, so a redraw doesn't rewrite the same list. */
+    private var savedMuUnreadKey: String? = null
     private var muUnreadInfoJob: kotlinx.coroutines.Job? = null
 
     /** Everything the row knows about either half, as one map. */
@@ -194,6 +197,18 @@ class HomeFragment : Fragment() {
         val combined: List<Any> = UnreadOrder.sort(items, info)
         // Nothing to show and no answer yet: leave the section as it is, still loading.
         if (combined.isEmpty() && !unreadAniListSettled) return
+
+        // The MangaUpdates half exists only here, resolved per fragment. Persist it so the waiting
+        // widget — which has no viewmodel to ask for the MU reading list — can show those series too.
+        // Guarded because this row redraws often and each write serialises the whole list.
+        val muForWidget = muUnread()
+        val muKey = muForWidget.joinToString(",") { "${it.id}:${it.userChapter}:${it.latestChapter}" }
+        if (muKey != savedMuUnreadKey) {
+            savedMuUnreadKey = muKey
+            ani.dantotsu.notifications.unread.UnreadCache.saveMu(
+                requireContext(), muUnreadInfo, muForWidget
+            )
+        }
 
         val rv = binding.homeUnreadChaptersRecyclerView
         rv.visibility = View.GONE
