@@ -1,6 +1,11 @@
 package ani.dantotsu.util
 
 import android.app.Activity
+import android.content.Context
+import ani.dantotsu.App
+import ani.dantotsu.isOnline
+import ani.dantotsu.settings.saving.PrefManager
+import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.connections.anilist.AnilistOutageNotice
 import ani.dantotsu.connections.sync.ExtensionSyncNotice
 import ani.dantotsu.connections.sync.SyncConflictNotice
@@ -63,15 +68,43 @@ object AppNotices {
         SyncConflictNotice.ID to SettingsBackupSyncActivity::class.java,
     )
 
-    /** Every notice, paired with whether it currently has anything to say. */
-    private fun states(): List<Pair<String, Boolean>> = listOf(
+    /**
+     * Notices whose offer cannot be taken up without a connection: linking a device, settling a
+     * conflict, installing or updating extensions, and an AniList outage — which says nothing at
+     * all to someone who is not trying to reach AniList.
+     *
+     * [SyncReloadNotice] is deliberately absent. The pull that raised it has already landed in
+     * preferences, so applying it is entirely local and works offline.
+     */
+    private val NEEDS_NETWORK = setOf(
+        SyncLinkNotice.ID,
+        SyncConflictNotice.ID,
+        AnilistOutageNotice.ID,
+        ExtensionSyncNotice.ID,
+        ExtensionUpdateNotice.ID,
+    )
+
+    private fun offline(context: Context?): Boolean {
+        val ctx = context ?: return false
+        return !isOnline(ctx) || PrefManager.getVal(PrefName.OfflineMode)
+    }
+
+    /** Whether a notice is worth raising here and now, connection included. */
+    private fun allowed(context: Context?, id: String) =
+        !(id in NEEDS_NETWORK && offline(context))
+
+    /**
+     * Every notice, paired with whether it currently has anything to say — which offline means
+     * anything it can still act on.
+     */
+    private fun states(context: Context?): List<Pair<String, Boolean>> = listOf(
         SyncLinkNotice.ID to SyncLinkNotice.isPending(),
         SyncConflictNotice.ID to SyncConflictNotice.isPending(),
         AnilistOutageNotice.ID to AnilistOutageNotice.isPending(),
         SyncReloadNotice.ID to SyncReloadNotice.isPending(),
         ExtensionSyncNotice.ID to ExtensionSyncNotice.isPending(),
         ExtensionUpdateNotice.ID to ExtensionUpdateNotice.isPending(),
-    )
+    ).map { (id, pending) -> id to (pending && allowed(context, id)) }
 
     /**
      * Takes down a banner whose subject stopped being true while it was on screen — turning cloud
@@ -81,7 +114,9 @@ object AppNotices {
      * Safe to call from anywhere that changes sync state; it only acts on the banner showing.
      */
     fun dismissStale() {
-        states().forEach { (id, pending) ->
+        // App.context so that switching offline mode on takes down a banner already raised, not
+        // just stops the next one; the callers that change sync state have no activity to hand.
+        states(App.context).forEach { (id, pending) ->
             if (!pending && TopBanner.isShowing(id)) TopBanner.dismiss(id)
         }
     }
@@ -93,28 +128,30 @@ object AppNotices {
         // A banner raised earlier may have been settled elsewhere since — resolved on another
         // screen, or made moot by sync being switched off.
         dismissStale()
+        val states = states(activity).toMap()
+        fun pending(id: String) = states[id] == true
         when {
-            SyncLinkNotice.isPending() -> show(activity, SyncLinkNotice.ID) {
+            pending(SyncLinkNotice.ID) -> show(activity, SyncLinkNotice.ID) {
                 TopBanner.show(activity, SyncLinkNotice.spec(activity))
             }
 
-            SyncConflictNotice.isPending() -> show(activity, SyncConflictNotice.ID) {
+            pending(SyncConflictNotice.ID) -> show(activity, SyncConflictNotice.ID) {
                 TopBanner.show(activity, SyncConflictNotice.spec(activity))
             }
 
-            AnilistOutageNotice.isPending() -> show(activity, AnilistOutageNotice.ID) {
+            pending(AnilistOutageNotice.ID) -> show(activity, AnilistOutageNotice.ID) {
                 TopBanner.show(activity, AnilistOutageNotice.spec(activity))
             }
 
-            SyncReloadNotice.isPending() -> show(activity, SyncReloadNotice.ID) {
+            pending(SyncReloadNotice.ID) -> show(activity, SyncReloadNotice.ID) {
                 TopBanner.show(activity, SyncReloadNotice.spec(activity))
             }
 
-            ExtensionSyncNotice.isPending() -> show(activity, ExtensionSyncNotice.ID) {
+            pending(ExtensionSyncNotice.ID) -> show(activity, ExtensionSyncNotice.ID) {
                 TopBanner.show(activity, ExtensionSyncNotice.spec(activity))
             }
 
-            ExtensionUpdateNotice.isPending() -> show(activity, ExtensionUpdateNotice.ID) {
+            pending(ExtensionUpdateNotice.ID) -> show(activity, ExtensionUpdateNotice.ID) {
                 TopBanner.show(activity, ExtensionUpdateNotice.spec(activity))
                 ExtensionUpdateNotice.markShown()
             }
