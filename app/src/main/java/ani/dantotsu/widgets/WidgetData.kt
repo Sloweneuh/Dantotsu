@@ -1,11 +1,13 @@
 package ani.dantotsu.widgets
 
 import android.content.Context
+import ani.dantotsu.R
 import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.malsync.MalSyncApi
 import ani.dantotsu.connections.mangaupdates.MUDetailsCache
 import ani.dantotsu.connections.mangaupdates.MUMedia
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
+import ani.dantotsu.connections.mangaupdates.isMuNovelType
 import ani.dantotsu.connections.mangaupdates.muMediaKey
 import ani.dantotsu.media.Media
 import ani.dantotsu.notifications.unread.UnreadCache
@@ -58,7 +60,28 @@ data class WidgetItem(
      * [id] is then only a key — `muSeriesId` truncated to Int, as [muMediaKey] defines — and must
      * never be sent to AniList as an id. Rows carrying this open MangaUpdates directly.
      */
-    val muSeriesId: Long? = null
+    val muSeriesId: Long? = null,
+    /**
+     * When an activity row happened, epoch millis — distinct from [airingAtMillis], which is a future
+     * schedule time these rows have none of.
+     */
+    val createdAtMillis: Long? = null,
+    /** An activity row posted by the signed-in account itself, for [WidgetPrefs.hideOwnActivity]. */
+    val isOwnActivity: Boolean = false,
+    /**
+     * The acting user's avatar, shown as a small badge over [coverUrl] on a list-update row — that cover
+     * is the *media's*, so the avatar is what actually identifies whose activity the row is. Null for a
+     * text post, which has no media cover to badge; there [coverUrl] is the avatar itself instead.
+     */
+    val avatarUrl: String? = null,
+    /**
+     * The AniList id an activity or recommendation row should open — distinct from [id], which for an
+     * activity row is the *activity's* id (needed to tell rows apart) rather than the media it's about,
+     * and for a text post there is no media at all.
+     */
+    val mediaId: Int? = null,
+    /** A manga-typed recommendation that is specifically a light novel — see [ani.dantotsu.R.string.novel]. */
+    val isNovel: Boolean = false
 ) {
     /** Episodes or chapters out that the user hasn't reached. */
     val behind: Int get() = ((latest ?: 0) - (progress ?: 0)).coerceAtLeast(0)
@@ -94,7 +117,13 @@ object WidgetData {
          * watches — for the This Week widget. Not gated behind [PrefName.AnilistUserId] the way the
          * other two datasets are: it needs no account at all, only [Anilist.query]'s own token.
          */
-        CALENDAR("calendar")
+        CALENDAR("calendar"),
+
+        /** The signed-in account's activity feed and the people it follows — the Activity widget. */
+        ACTIVITY("activity"),
+
+        /** The same on-list-and-planned recommendations row the home screen shows. */
+        RECOMMENDATIONS("recommendations")
     }
 
     private const val CACHE_PREFS = "ani.dantotsu.widget.cache"
@@ -202,6 +231,8 @@ object WidgetData {
                 Dataset.AIRING -> fetchAiring(userId!!)
                 Dataset.WAITING -> fetchWaiting(context, userId!!, networkAllowed, animeAllowed)
                 Dataset.CALENDAR -> fetchCalendar()
+                Dataset.ACTIVITY -> fetchActivity(context)
+                Dataset.RECOMMENDATIONS -> fetchRecommendations()
             }
             store(
                 context,
@@ -271,6 +302,98 @@ object WidgetData {
             )
         }
     }
+
+    /** Strips the HTML a text activity's body comes as, for a row with no markdown renderer. */
+    private val htmlTagRegex = Regex("<[^>]*>")
+
+    /**
+     * The signed-in account's activity feed — its own posts and list updates mixed with the people it
+     * follows, the same combination [ani.dantotsu.profile.activity.ActivityFragment]'s USER mode shows.
+     * [WidgetPrefs.hideOwnActivity] then decides whether to keep [WidgetItem.isOwnActivity] rows, per
+     * instance — this dataset is shared by every Activity widget, so that toggle can't be applied here.
+     *
+     * Fetched as two separate requests rather than one `isFollowing` page, both AniList's own
+     * `userId`/`userId_not` filters rather than a client-side split: a prolific poster's own activity can
+     * otherwise fill an entire page by itself, leaving that toggle nothing from the people they follow to
+     * fall back on even though plenty exists further back in the combined feed.
+     *
+     * Only list updates and text posts are fetched; message activities (DMs) are excluded by the same
+     * `type_in` the query already applies for the "following" half, same as the app's own feed.
+     */
+    private suspend fun fetchActivity(context: Context): List<WidgetItem> {
+        val myId = Anilist.userid
+        val own = if (myId != null) {
+            Anilist.query.getFeed(userId = myId, page = 1)?.data?.page?.activities.orEmpty()
+        } else emptyList()
+        val following = Anilist.query.getFeed(userId = null, global = false, page = 1, excludeUserId = myId)
+            ?.data?.page?.activities.orEmpty()
+        val activities = (own + following).sortedByDescending { it.createdAt }
+        return activities.mapNotNull { activity ->
+            val user = activity.user ?: return@mapNotNull null
+            val createdAt = activity.createdAt * 1000L
+            val isOwn = myId != null && activity.userId == myId
+            val avatarUrl = (user.avatar?.large ?: user.avatar?.medium).orEmpty()
+            when (activity.typename) {
+                // The media's cover is the main image; the avatar rides along as a small badge on it
+                // (see mediaRow()) so the row shows both what happened and who it happened to.
+                "ListActivity" -> WidgetItem(
+                    id = activity.id,
+                    title = buildString {
+                        append(user.name)
+                        append(' ')
+                        append(activity.status.orEmpty())
+                        append(' ')
+                        val mediaTitle = activity.media?.title?.userPreferred.orEmpty()
+                        // AniList's own status/progress read as a full sentence only with the media
+                        // named too — "completed" or "watched episode 5" alone says nothing about what.
+                        // The app's own activity screen gets away without this because the media title
+                        // sits in its own separate label next to the cover; a widget row has only one.
+                        append(
+                            activity.progress?.let {
+                                context.getString(R.string.widget_activity_progress_of, it, mediaTitle)
+                            } ?: mediaTitle
+                        )
+                    }.trim(),
+                    coverUrl = activity.media?.coverImage?.large.orEmpty(),
+                    isAnime = activity.type == "ANIME_LIST",
+                    createdAtMillis = createdAt,
+                    isOwnActivity = isOwn,
+                    mediaId = activity.media?.id,
+                    avatarUrl = avatarUrl
+                )
+
+                // No media, so no cover — the avatar is the row's only image, and it goes in the same
+                // slot it occupies on a list-update row rather than being stretched into the cover's
+                // portrait box, which would crop a circular avatar into an oval.
+                "TextActivity" -> WidgetItem(
+                    id = activity.id,
+                    title = "${user.name}: ${activity.text.orEmpty().replace(htmlTagRegex, "").trim()}",
+                    coverUrl = "",
+                    isAnime = true,
+                    createdAtMillis = createdAt,
+                    isOwnActivity = isOwn,
+                    avatarUrl = avatarUrl
+                )
+
+                else -> null
+            }
+        }
+    }
+
+    /**
+     * The same on-list-and-planned recommendations the home screen's row shows —
+     * [Anilist.query.getRecommendations] is the exact function it calls, so the two can't disagree.
+     */
+    private suspend fun fetchRecommendations(): List<WidgetItem> =
+        Anilist.query.getRecommendations().map { media ->
+            WidgetItem(
+                id = media.id,
+                title = media.userPreferredName,
+                coverUrl = media.cover.orEmpty(),
+                isAnime = media.anime != null,
+                isNovel = media.manga != null && isMuNovelType(media.format)
+            )
+        }
 
     /**
      * Everything with episodes or chapters out that the user hasn't reached, newest release first.

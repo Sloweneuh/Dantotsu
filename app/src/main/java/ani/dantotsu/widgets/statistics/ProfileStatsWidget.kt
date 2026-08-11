@@ -39,6 +39,21 @@ class ProfileStatsWidget : AppWidgetProvider() {
         WidgetRefresh.sync(context)
     }
 
+    /**
+     * Redraws after a resize, which is the only way the row count can change — [rowsFor] reads the
+     * size the launcher reports, and without this the extra rows would only appear the next time
+     * something else happened to refresh the widget.
+     */
+    override fun onAppWidgetOptionsChanged(
+        context: Context,
+        appWidgetManager: AppWidgetManager,
+        appWidgetId: Int,
+        newOptions: android.os.Bundle?
+    ) {
+        super.onAppWidgetOptionsChanged(context, appWidgetManager, appWidgetId, newOptions)
+        updateAppWidget(context, appWidgetManager, appWidgetId)
+    }
+
     /** Handles the refresh button, then defers to [AppWidgetProvider] for the framework's actions. */
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == ACTION_REFRESH) {
@@ -182,10 +197,15 @@ class ProfileStatsWidget : AppWidgetProvider() {
             avatar?.let { setImageViewBitmap(R.id.userAvatar, it) }
 
             val prefs = WidgetPrefs.of(context, appWidgetId)
-            bindStat(context, prefs.statSlot1, stats, R.id.topLeftItem, R.id.topLeftLabel)
-            bindStat(context, prefs.statSlot2, stats, R.id.topRightItem, R.id.topRightLabel)
-            bindStat(context, prefs.statSlot3, stats, R.id.bottomLeftItem, R.id.bottomLeftLabel)
-            bindStat(context, prefs.statSlot4, stats, R.id.bottomRightItem, R.id.bottomRightLabel)
+            val slots = prefs.statSlots
+            val rows = rowsFor(context, appWidgetId)
+            STAT_ROW_IDS.forEachIndexed { index, row ->
+                val visible = index < rows
+                row.container?.let { setViewVisibility(it, if (visible) View.VISIBLE else View.GONE) }
+                if (!visible) return@forEachIndexed
+                bindStat(context, slots[index * 2], stats, row.leftValue, row.leftLabel)
+                bindStat(context, slots[index * 2 + 1], stats, row.rightValue, row.rightLabel)
+            }
 
             setOnClickPendingIntent(
                 R.id.widgetContainer,
@@ -194,16 +214,68 @@ class ProfileStatsWidget : AppWidgetProvider() {
                     stats.userId,
                     Intent(context, ProfileActivity::class.java)
                         .putExtra("userId", stats.userId)
+                        // Same tab index the home screen's own stats row opens straight to — this
+                        // widget has nothing else on it worth landing on Overview for.
+                        .putExtra("selectedTab", 2)
                         .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK),
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 )
             )
         }
 
+        /** The four view ids one row of the grid is built from. */
+        private class StatRow(
+            val leftValue: Int,
+            val leftLabel: Int,
+            val rightValue: Int,
+            val rightLabel: Int,
+            /** Null for the first two rows, which are always on screen and so never toggled. */
+            val container: Int? = null
+        )
+
+        private val STAT_ROW_IDS = listOf(
+            StatRow(R.id.topLeftItem, R.id.topLeftLabel, R.id.topRightItem, R.id.topRightLabel),
+            StatRow(
+                R.id.bottomLeftItem, R.id.bottomLeftLabel,
+                R.id.bottomRightItem, R.id.bottomRightLabel
+            ),
+            StatRow(
+                R.id.rowThreeLeftItem, R.id.rowThreeLeftLabel,
+                R.id.rowThreeRightItem, R.id.rowThreeRightLabel, R.id.statsRowThree
+            ),
+            StatRow(
+                R.id.rowFourLeftItem, R.id.rowFourLeftLabel,
+                R.id.rowFourRightItem, R.id.rowFourRightLabel, R.id.statsRowFour
+            )
+        )
+
+        /**
+         * How many of the four stat rows this instance is currently tall enough for.
+         *
+         * The widget's minimum is two cells ([MIN_HEIGHT_DP]) and a home screen cell is roughly
+         * [CELL_HEIGHT_DP], so every cell the user drags it taller buys one more row. Read from the
+         * options bundle rather than measured anywhere, because a RemoteViews tree can't measure itself
+         * — the launcher tells us the size it gave us and that is all there is to go on.
+         */
+        fun rowsFor(context: Context, appWidgetId: Int): Int {
+            val options = AppWidgetManager.getInstance(context)?.getAppWidgetOptions(appWidgetId)
+            val heightDp = options?.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0) ?: 0
+            // A brand new widget has no options yet; two rows is what it shipped with before this
+            // was responsive at all, so that's the safe assumption rather than showing everything.
+            if (heightDp <= 0) return DEFAULT_STAT_ROWS
+            val extra = (heightDp - MIN_HEIGHT_DP) / CELL_HEIGHT_DP
+            return (DEFAULT_STAT_ROWS + extra).coerceIn(DEFAULT_STAT_ROWS, STAT_ROW_IDS.size)
+        }
+
+        /** Matches minHeight in the provider XML: two cells. */
+        private const val MIN_HEIGHT_DP = 110
+        private const val CELL_HEIGHT_DP = 70
+        const val DEFAULT_STAT_ROWS = 2
+
         /**
          * One grid cell. [ProfileStat.NONE] leaves both value and label [View.INVISIBLE] rather than
-         * [View.GONE] — a 2x2 grid built from four fixed cells has nowhere for the others to reflow
-         * into, so hiding one only leaves it blank rather than collapsing the layout around it.
+         * [View.GONE] — a row built from two fixed cells has nowhere for the other to reflow into, so
+         * hiding one only leaves it blank rather than collapsing the layout around it.
          */
         private fun RemoteViews.bindStat(
             context: Context,
@@ -252,11 +324,12 @@ class ProfileStatsWidget : AppWidgetProvider() {
         private const val ACTION_REFRESH = "ani.dantotsu.widgets.action.REFRESH"
         private const val REQUEST_REFRESH_OFFSET = 200_000
 
-        private val LABEL_IDS = intArrayOf(
-            R.id.topLeftLabel, R.id.topRightLabel, R.id.bottomLeftLabel, R.id.bottomRightLabel
-        )
-        private val VALUE_IDS = intArrayOf(
-            R.id.topLeftItem, R.id.topRightItem, R.id.bottomLeftItem, R.id.bottomRightItem
-        )
+        // Derived from the row table rather than listed again: these drive the theme colours, and a
+        // hand-written copy is exactly how rows three and four ended up drawing in the layout's
+        // default grey while the two above them followed the widget's palette.
+        private val LABEL_IDS =
+            STAT_ROW_IDS.flatMap { listOf(it.leftLabel, it.rightLabel) }.toIntArray()
+        private val VALUE_IDS =
+            STAT_ROW_IDS.flatMap { listOf(it.leftValue, it.rightValue) }.toIntArray()
     }
 }

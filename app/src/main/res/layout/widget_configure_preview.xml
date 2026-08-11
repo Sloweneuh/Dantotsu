@@ -46,16 +46,31 @@
             android:orientation="vertical">
 
             <LinearLayout
+                android:id="@+id/previewRowOne"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
                 android:paddingVertical="6dp">
 
+                <!-- Only shown for the activity widget — see WidgetConfigureActivity.renderPreview(). -->
+                <ImageView
+                    android:id="@+id/previewAvatarOne"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:layout_marginEnd="8dp"
+                    android:adjustViewBounds="true"
+                    android:maxWidth="48dp"
+                    android:maxHeight="48dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_widget_avatar"
+                    android:visibility="gone"
+                    tools:ignore="ContentDescription" />
+
                 <ImageView
                     android:id="@+id/previewCoverOne"
-                    android:layout_width="32dp"
-                    android:layout_height="44dp"
+                    android:layout_width="38dp"
+                    android:layout_height="52dp"
                     android:scaleType="centerCrop"
                     android:src="@drawable/preview_cover_frieren"
                     tools:ignore="ContentDescription" />
@@ -96,10 +111,24 @@
                 android:orientation="horizontal"
                 android:paddingVertical="6dp">
 
+                <!-- Only shown for the activity widget — see WidgetConfigureActivity.renderPreview(). -->
+                <ImageView
+                    android:id="@+id/previewAvatarTwo"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:layout_marginEnd="8dp"
+                    android:adjustViewBounds="true"
+                    android:maxWidth="48dp"
+                    android:maxHeight="48dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/ic_widget_avatar"
+                    android:visibility="gone"
+                    tools:ignore="ContentDescription" />
+
                 <ImageView
                     android:id="@+id/previewCoverTwo"
-                    android:layout_width="32dp"
-                    android:layout_height="44dp"
+                    android:layout_width="38dp"
+                    android:layout_height="52dp"
                     android:scaleType="centerCrop"
                     android:src="@drawable/preview_cover_vinland"
                     tools:ignore="ContentDescription" />
@@ -280,114 +309,272 @@
             </LinearLayout>
         </LinearLayout>
 
-        <LinearLayout
-            android:id="@+id/previewStats"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:orientation="horizontal"
-            android:visibility="gone">
+            <!--
+                The stats grid, which doubles as the picker: each cell is clickable and opens the stat
+                chooser for that position, so the setting is made where its result is visible rather than
+                in a separate column of dropdowns that named grid positions in words. Rows appear only as
+                far as the widget's current size will actually draw them — see
+                WidgetConfigureActivity.setUpStatsOptions().
+            -->
+            <LinearLayout
+                android:id="@+id/previewStats"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
 
             <LinearLayout
-                android:layout_width="0dp"
+                android:id="@+id/previewStatRow1"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical">
+                android:layout_marginTop="16dp"
+                android:orientation="horizontal">
 
-                <TextView
-                    android:id="@+id/previewStatValueOne"
-                    android:layout_width="wrap_content"
+                <LinearLayout
+                    android:id="@+id/previewStatCell1"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:fontFamily="@font/poppins_bold"
-                    android:text="@string/widget_preview_stat_value"
-                    android:textSize="22sp" />
+                    android:layout_weight="1"
+                    android:background="?attr/selectableItemBackground"
+                    android:orientation="vertical"
+                    android:padding="4dp">
 
-                <TextView
-                    android:id="@+id/previewStatLabelOne"
-                    android:layout_width="wrap_content"
+                    <TextView
+                        android:id="@+id/previewStatValue1"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/poppins_bold"
+                        android:maxLines="1"
+                        android:textSize="22sp"
+                        tools:text="@string/widget_preview_stat_value" />
+
+                    <TextView
+                        android:id="@+id/previewStatLabel1"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/poppins"
+                        android:maxLines="1"
+                        android:textSize="12sp"
+                        tools:text="@string/anime_count" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/previewStatCell2"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:fontFamily="@font/poppins"
-                    android:text="@string/anime_watched"
-                    android:textSize="12sp" />
+                    android:layout_weight="1"
+                    android:background="?attr/selectableItemBackground"
+                    android:orientation="vertical"
+                    android:padding="4dp">
+
+                    <TextView
+                        android:id="@+id/previewStatValue2"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/poppins_bold"
+                        android:maxLines="1"
+                        android:textSize="22sp"
+                        tools:text="@string/widget_preview_stat_value" />
+
+                    <TextView
+                        android:id="@+id/previewStatLabel2"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/poppins"
+                        android:maxLines="1"
+                        android:textSize="12sp"
+                        tools:text="@string/anime_count" />
+                </LinearLayout>
             </LinearLayout>
-
             <LinearLayout
-                android:layout_width="0dp"
+                android:id="@+id/previewStatRow2"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical">
+                android:layout_marginTop="10dp"
+                android:orientation="horizontal">
 
-                <TextView
-                    android:id="@+id/previewStatValueTwo"
-                    android:layout_width="wrap_content"
+                <LinearLayout
+                    android:id="@+id/previewStatCell3"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:fontFamily="@font/poppins_bold"
-                    android:text="@string/widget_preview_stat_value_two"
-                    android:textSize="22sp" />
+                    android:layout_weight="1"
+                    android:background="?attr/selectableItemBackground"
+                    android:orientation="vertical"
+                    android:padding="4dp">
 
-                <TextView
-                    android:id="@+id/previewStatLabelTwo"
-                    android:layout_width="wrap_content"
+                    <TextView
+                        android:id="@+id/previewStatValue3"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/poppins_bold"
+                        android:maxLines="1"
+                        android:textSize="22sp"
+                        tools:text="@string/widget_preview_stat_value" />
+
+                    <TextView
+                        android:id="@+id/previewStatLabel3"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/poppins"
+                        android:maxLines="1"
+                        android:textSize="12sp"
+                        tools:text="@string/anime_count" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/previewStatCell4"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:fontFamily="@font/poppins"
-                    android:text="@string/episodes_watched_n"
-                    android:textSize="12sp" />
+                    android:layout_weight="1"
+                    android:background="?attr/selectableItemBackground"
+                    android:orientation="vertical"
+                    android:padding="4dp">
+
+                    <TextView
+                        android:id="@+id/previewStatValue4"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/poppins_bold"
+                        android:maxLines="1"
+                        android:textSize="22sp"
+                        tools:text="@string/widget_preview_stat_value" />
+
+                    <TextView
+                        android:id="@+id/previewStatLabel4"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/poppins"
+                        android:maxLines="1"
+                        android:textSize="12sp"
+                        tools:text="@string/anime_count" />
+                </LinearLayout>
             </LinearLayout>
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/previewStatsRowTwo"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:orientation="horizontal"
-            android:visibility="gone">
-
             <LinearLayout
-                android:layout_width="0dp"
+                android:id="@+id/previewStatRow3"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical">
+                android:layout_marginTop="10dp"
+                android:orientation="horizontal">
 
-                <TextView
-                    android:id="@+id/previewStatValueThree"
-                    android:layout_width="wrap_content"
+                <LinearLayout
+                    android:id="@+id/previewStatCell5"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:fontFamily="@font/poppins_bold"
-                    android:text="@string/widget_preview_stat_value_three"
-                    android:textSize="22sp" />
+                    android:layout_weight="1"
+                    android:background="?attr/selectableItemBackground"
+                    android:orientation="vertical"
+                    android:padding="4dp">
 
-                <TextView
-                    android:id="@+id/previewStatLabelThree"
-                    android:layout_width="wrap_content"
+                    <TextView
+                        android:id="@+id/previewStatValue5"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/poppins_bold"
+                        android:maxLines="1"
+                        android:textSize="22sp"
+                        tools:text="@string/widget_preview_stat_value" />
+
+                    <TextView
+                        android:id="@+id/previewStatLabel5"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/poppins"
+                        android:maxLines="1"
+                        android:textSize="12sp"
+                        tools:text="@string/anime_count" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/previewStatCell6"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:fontFamily="@font/poppins"
-                    android:text="@string/manga_read"
-                    android:textSize="12sp" />
+                    android:layout_weight="1"
+                    android:background="?attr/selectableItemBackground"
+                    android:orientation="vertical"
+                    android:padding="4dp">
+
+                    <TextView
+                        android:id="@+id/previewStatValue6"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/poppins_bold"
+                        android:maxLines="1"
+                        android:textSize="22sp"
+                        tools:text="@string/widget_preview_stat_value" />
+
+                    <TextView
+                        android:id="@+id/previewStatLabel6"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/poppins"
+                        android:maxLines="1"
+                        android:textSize="12sp"
+                        tools:text="@string/anime_count" />
+                </LinearLayout>
             </LinearLayout>
-
             <LinearLayout
-                android:layout_width="0dp"
+                android:id="@+id/previewStatRow4"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical">
+                android:layout_marginTop="10dp"
+                android:orientation="horizontal">
 
-                <TextView
-                    android:id="@+id/previewStatValueFour"
-                    android:layout_width="wrap_content"
+                <LinearLayout
+                    android:id="@+id/previewStatCell7"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:fontFamily="@font/poppins_bold"
-                    android:text="@string/widget_preview_stat_value_four"
-                    android:textSize="22sp" />
+                    android:layout_weight="1"
+                    android:background="?attr/selectableItemBackground"
+                    android:orientation="vertical"
+                    android:padding="4dp">
 
-                <TextView
-                    android:id="@+id/previewStatLabelFour"
-                    android:layout_width="wrap_content"
+                    <TextView
+                        android:id="@+id/previewStatValue7"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/poppins_bold"
+                        android:maxLines="1"
+                        android:textSize="22sp"
+                        tools:text="@string/widget_preview_stat_value" />
+
+                    <TextView
+                        android:id="@+id/previewStatLabel7"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/poppins"
+                        android:maxLines="1"
+                        android:textSize="12sp"
+                        tools:text="@string/anime_count" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/previewStatCell8"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:fontFamily="@font/poppins"
-                    android:text="@string/chapters_read_n"
-                    android:textSize="12sp" />
+                    android:layout_weight="1"
+                    android:background="?attr/selectableItemBackground"
+                    android:orientation="vertical"
+                    android:padding="4dp">
+
+                    <TextView
+                        android:id="@+id/previewStatValue8"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/poppins_bold"
+                        android:maxLines="1"
+                        android:textSize="22sp"
+                        tools:text="@string/widget_preview_stat_value" />
+
+                    <TextView
+                        android:id="@+id/previewStatLabel8"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/poppins"
+                        android:maxLines="1"
+                        android:textSize="12sp"
+                        tools:text="@string/anime_count" />
+                </LinearLayout>
             </LinearLayout>
-        </LinearLayout>
+            </LinearLayout>
     </LinearLayout>
 </FrameLayout>

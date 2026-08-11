@@ -37,7 +37,6 @@ import ani.dantotsu.profile.activity.ActivityFragment.Companion.ActivityType
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.snackString
-import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.toast
 import com.google.android.material.appbar.AppBarLayout
@@ -59,6 +58,15 @@ class ProfileActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedListene
     private var statsStatType: ChartBuilder.Companion.StatType? = null
     lateinit var navBar: AnimatedBottomBar
 
+    /**
+     * Real top inset, captured the moment it's dispatched — used instead of the app's statusBarHeight
+     * global for the banner/close/menu offsets below. That global is only ever populated as a side
+     * effect of some other activity's initActivity() call running first; on a true cold start (this
+     * screen reachable directly from a widget's header tap now) it can still be 0 by the time these
+     * offsets are applied.
+     */
+    private var liveStatusBarHeight = 0
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         ThemeManager(this).applyTheme()
@@ -71,6 +79,11 @@ class ProfileActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedListene
         // Ensure the side rail is offset from system navigation insets and brought to front
         val rootView = window.decorView.findViewById(android.R.id.content) as View
         ViewCompat.setOnApplyWindowInsetsListener(rootView) { _, insets ->
+            // displayCutout as well as statusBars: immersive mode hides the status bar, so statusBars
+            // reports a zero top inset there and the banner would sit under the camera cutout.
+            liveStatusBarHeight = insets.getInsets(
+                WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.displayCutout()
+            ).top
             val navInsets = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
             val isLandscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
             val rightInset = if (isLandscape) navInsets.right else 0
@@ -264,12 +277,12 @@ class ProfileActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedListene
                         bannerAnimations,
                         user.bannerImage ?: user.avatar?.medium
                     )
-                    profileBannerImage.updateLayoutParams { height += statusBarHeight }
-                    profileBannerImageNoKen.updateLayoutParams { height += statusBarHeight }
-                    profileBannerGradient.updateLayoutParams { height += statusBarHeight }
-                    profileCloseButton.updateLayoutParams<ViewGroup.MarginLayoutParams> { topMargin += statusBarHeight }
-                    profileMenuButton.updateLayoutParams<ViewGroup.MarginLayoutParams> { topMargin += statusBarHeight }
-                    profileButtonContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> { topMargin += statusBarHeight }
+                    profileBannerImage.updateLayoutParams { height += liveStatusBarHeight }
+                    profileBannerImageNoKen.updateLayoutParams { height += liveStatusBarHeight }
+                    profileBannerGradient.updateLayoutParams { height += liveStatusBarHeight }
+                    profileCloseButton.updateLayoutParams<ViewGroup.MarginLayoutParams> { topMargin += liveStatusBarHeight }
+                    profileMenuButton.updateLayoutParams<ViewGroup.MarginLayoutParams> { topMargin += liveStatusBarHeight }
+                    profileButtonContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> { topMargin += liveStatusBarHeight }
 
                     profileBannerImage.openImage(
                         context.getString(R.string.banner, user.name),

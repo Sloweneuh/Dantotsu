@@ -101,6 +101,11 @@ class WidgetPrefs private constructor(context: Context, private val appWidgetId:
         get() = prefs.getBoolean(SHOW_COVERS, true)
         set(value) = prefs.edit().putBoolean(SHOW_COVERS, value).apply()
 
+    /** Filters the signed-in account's own posts out of the Activity widget. */
+    var hideOwnActivity: Boolean
+        get() = prefs.getBoolean(HIDE_OWN_ACTIVITY, false)
+        set(value) = prefs.edit().putBoolean(HIDE_OWN_ACTIVITY, value).apply()
+
     /**
      * What the profile stats widget's four cells show — top-left, top-right, bottom-left, bottom-right.
      * Defaults match the grid before this was configurable at all, so an existing widget's look doesn't
@@ -121,6 +126,34 @@ class WidgetPrefs private constructor(context: Context, private val appWidgetId:
     var statSlot4: ProfileStat
         get() = ProfileStat.from(prefs.getString(STAT_SLOT_4, null), ProfileStat.CHAPTERS_READ)
         set(value) = prefs.edit().putString(STAT_SLOT_4, value.name).apply()
+
+    /**
+     * Rows three and four, shown only once the widget is resized tall enough to hold them — see
+     * [ani.dantotsu.widgets.statistics.ProfileStatsWidget]. Their defaults are the stats the first two
+     * rows leave out, so growing the widget shows something new rather than repeating what's above.
+     */
+    var statSlot5: ProfileStat
+        get() = ProfileStat.from(prefs.getString(STAT_SLOT_5, null), ProfileStat.DAYS_WATCHED)
+        set(value) = prefs.edit().putString(STAT_SLOT_5, value.name).apply()
+
+    var statSlot6: ProfileStat
+        get() = ProfileStat.from(prefs.getString(STAT_SLOT_6, null), ProfileStat.ANIME_MEAN_SCORE)
+        set(value) = prefs.edit().putString(STAT_SLOT_6, value.name).apply()
+
+    var statSlot7: ProfileStat
+        get() = ProfileStat.from(prefs.getString(STAT_SLOT_7, null), ProfileStat.VOLUMES_READ)
+        set(value) = prefs.edit().putString(STAT_SLOT_7, value.name).apply()
+
+    var statSlot8: ProfileStat
+        get() = ProfileStat.from(prefs.getString(STAT_SLOT_8, null), ProfileStat.MANGA_MEAN_SCORE)
+        set(value) = prefs.edit().putString(STAT_SLOT_8, value.name).apply()
+
+    /** Every stat slot in grid order, so callers can index rows without naming each one. */
+    val statSlots: List<ProfileStat>
+        get() = listOf(
+            statSlot1, statSlot2, statSlot3, statSlot4,
+            statSlot5, statSlot6, statSlot7, statSlot8
+        )
 
     /**
      * Pulls the settings this instance would have had before per-instance storage existed, once.
@@ -165,10 +198,15 @@ class WidgetPrefs private constructor(context: Context, private val appWidgetId:
         other.showAllItems = showAllItems
         other.content = content
         other.showCovers = showCovers
+        other.hideOwnActivity = hideOwnActivity
         other.statSlot1 = statSlot1
         other.statSlot2 = statSlot2
         other.statSlot3 = statSlot3
         other.statSlot4 = statSlot4
+        other.statSlot5 = statSlot5
+        other.statSlot6 = statSlot6
+        other.statSlot7 = statSlot7
+        other.statSlot8 = statSlot8
     }
 
     companion object {
@@ -202,10 +240,15 @@ class WidgetPrefs private constructor(context: Context, private val appWidgetId:
         private const val SHOW_ALL_ITEMS = "show_all_items"
         private const val CONTENT = "content"
         private const val SHOW_COVERS = "show_covers"
+        private const val HIDE_OWN_ACTIVITY = "hide_own_activity"
         private const val STAT_SLOT_1 = "stat_slot_1"
         private const val STAT_SLOT_2 = "stat_slot_2"
         private const val STAT_SLOT_3 = "stat_slot_3"
         private const val STAT_SLOT_4 = "stat_slot_4"
+        private const val STAT_SLOT_5 = "stat_slot_5"
+        private const val STAT_SLOT_6 = "stat_slot_6"
+        private const val STAT_SLOT_7 = "stat_slot_7"
+        private const val STAT_SLOT_8 = "stat_slot_8"
 
         private const val LEGACY_UPCOMING_PREFS = "ani.dantotsu.widgets.UpcomingWidget"
         private const val LEGACY_STATS_PREFS = "ani.dantotsu.widgets.Statistics."

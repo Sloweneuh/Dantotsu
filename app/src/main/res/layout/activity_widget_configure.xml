@@ -266,6 +266,12 @@
                             android:textAllCaps="false" />
                     </com.google.android.material.button.MaterialButtonToggleGroup>
                 </LinearLayout>
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/hideOwnActivity"
+                    style="@style/WidgetConfigureSwitch"
+                    android:text="@string/widget_hide_own_activity"
+                    android:visibility="gone" />
             </LinearLayout>
 
             <LinearLayout
@@ -280,80 +286,13 @@
                     android:text="@string/widget_stats_shown" />
 
                 <TextView
-                    style="@style/WidgetConfigureCaption"
-                    android:text="@string/widget_stat_top_left" />
-
-                <com.google.android.material.textfield.TextInputLayout style="@style/WidgetConfigureDropdown">
-
-                    <AutoCompleteTextView
-                        android:id="@+id/statSlot1Dropdown"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="@font/poppins_bold"
-                        android:freezesText="false"
-                        android:inputType="none"
-                        android:padding="8dp"
-                        android:textColor="?android:attr/textColorSecondary"
-                        android:textSize="14sp"
-                        tools:ignore="LabelFor,TextContrastCheck" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <TextView
-                    style="@style/WidgetConfigureCaption"
-                    android:text="@string/widget_stat_top_right" />
-
-                <com.google.android.material.textfield.TextInputLayout style="@style/WidgetConfigureDropdown">
-
-                    <AutoCompleteTextView
-                        android:id="@+id/statSlot2Dropdown"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="@font/poppins_bold"
-                        android:freezesText="false"
-                        android:inputType="none"
-                        android:padding="8dp"
-                        android:textColor="?android:attr/textColorSecondary"
-                        android:textSize="14sp"
-                        tools:ignore="LabelFor,TextContrastCheck" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <TextView
-                    style="@style/WidgetConfigureCaption"
-                    android:text="@string/widget_stat_bottom_left" />
-
-                <com.google.android.material.textfield.TextInputLayout style="@style/WidgetConfigureDropdown">
-
-                    <AutoCompleteTextView
-                        android:id="@+id/statSlot3Dropdown"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="@font/poppins_bold"
-                        android:freezesText="false"
-                        android:inputType="none"
-                        android:padding="8dp"
-                        android:textColor="?android:attr/textColorSecondary"
-                        android:textSize="14sp"
-                        tools:ignore="LabelFor,TextContrastCheck" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <TextView
-                    style="@style/WidgetConfigureCaption"
-                    android:text="@string/widget_stat_bottom_right" />
-
-                <com.google.android.material.textfield.TextInputLayout style="@style/WidgetConfigureDropdown">
-
-                    <AutoCompleteTextView
-                        android:id="@+id/statSlot4Dropdown"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="@font/poppins_bold"
-                        android:freezesText="false"
-                        android:inputType="none"
-                        android:padding="8dp"
-                        android:textColor="?android:attr/textColorSecondary"
-                        android:textSize="14sp"
-                        tools:ignore="LabelFor,TextContrastCheck" />
-                </com.google.android.material.textfield.TextInputLayout>
+                    android:id="@+id/statsHint"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/poppins"
+                    android:text="@string/widget_stats_tap_hint"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:textSize="12sp" />
             </LinearLayout>
         </LinearLayout>
     </ScrollView>

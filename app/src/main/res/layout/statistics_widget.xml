@@ -54,24 +54,24 @@
 
             <ProgressBar
                 android:id="@+id/widgetProgress"
-                android:layout_width="30dp"
-                android:layout_height="30dp"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
                 android:indeterminate="true"
                 android:padding="6dp"
                 android:visibility="gone" />
 
             <ImageView
                 android:id="@+id/widgetRefresh"
-                android:layout_width="30dp"
-                android:layout_height="30dp"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
                 android:contentDescription="@string/refresh"
                 android:padding="6dp"
                 android:src="@drawable/ic_round_refresh_24" />
 
             <ImageView
                 android:id="@+id/widgetConfigure"
-                android:layout_width="30dp"
-                android:layout_height="30dp"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
                 android:contentDescription="@string/widget_configure_title"
                 android:padding="6dp"
                 android:src="@drawable/ic_round_settings_24" />
@@ -173,6 +173,98 @@
                         android:id="@+id/bottomRightLabel"
                         style="@style/WidgetStatLabel"
                         tools:text="@string/chapters_read_n" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!--
+                Only shown once the widget is tall enough to hold it — see ProfileStatsWidget.rowsFor().
+                GONE rather than INVISIBLE here: these are whole rows, so the ones above simply take the
+                space back, unlike an individual empty cell which has to hold its place in the grid.
+            -->
+            <LinearLayout
+                android:id="@+id/statsRowThree"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:orientation="horizontal"
+                android:visibility="gone">
+
+                <LinearLayout
+                    style="@style/WidgetStatCell"
+                    android:layout_width="0dp"
+                    android:layout_weight="1">
+
+                    <TextView
+                        android:id="@+id/rowThreeLeftItem"
+                        style="@style/WidgetStatValue"
+                        tools:text="@string/widget_preview_stat_value" />
+
+                    <TextView
+                        android:id="@+id/rowThreeLeftLabel"
+                        style="@style/WidgetStatLabel"
+                        tools:text="@string/days_watched" />
+                </LinearLayout>
+
+                <LinearLayout
+                    style="@style/WidgetStatCell"
+                    android:layout_width="0dp"
+                    android:layout_weight="1">
+
+                    <TextView
+                        android:id="@+id/rowThreeRightItem"
+                        style="@style/WidgetStatValue"
+                        tools:text="@string/widget_preview_stat_value_two" />
+
+                    <TextView
+                        android:id="@+id/rowThreeRightLabel"
+                        style="@style/WidgetStatLabel"
+                        tools:text="@string/volumes_read_n" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!--
+                Only shown once the widget is tall enough to hold it — see ProfileStatsWidget.rowsFor().
+                GONE rather than INVISIBLE here: these are whole rows, so the ones above simply take the
+                space back, unlike an individual empty cell which has to hold its place in the grid.
+            -->
+            <LinearLayout
+                android:id="@+id/statsRowFour"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:orientation="horizontal"
+                android:visibility="gone">
+
+                <LinearLayout
+                    style="@style/WidgetStatCell"
+                    android:layout_width="0dp"
+                    android:layout_weight="1">
+
+                    <TextView
+                        android:id="@+id/rowFourLeftItem"
+                        style="@style/WidgetStatValue"
+                        tools:text="@string/widget_preview_stat_value" />
+
+                    <TextView
+                        android:id="@+id/rowFourLeftLabel"
+                        style="@style/WidgetStatLabel"
+                        tools:text="@string/days_watched" />
+                </LinearLayout>
+
+                <LinearLayout
+                    style="@style/WidgetStatCell"
+                    android:layout_width="0dp"
+                    android:layout_weight="1">
+
+                    <TextView
+                        android:id="@+id/rowFourRightItem"
+                        style="@style/WidgetStatValue"
+                        tools:text="@string/widget_preview_stat_value_two" />
+
+                    <TextView
+                        android:id="@+id/rowFourRightLabel"
+                        style="@style/WidgetStatLabel"
+                        tools:text="@string/volumes_read_n" />
                 </LinearLayout>
             </LinearLayout>
         </LinearLayout>

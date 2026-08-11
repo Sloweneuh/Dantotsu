@@ -748,12 +748,12 @@ class AnilistQueries {
             response?.data?.plannedAnime?.lists?.flatMap { it.entries ?: emptyList() }?.reversed(),
             null
         )
-        if (toShow.getOrNull(3) == true) processMedia(
+        if (toShow.getOrNull(4) == true) processMedia(
             "Manga",
             response?.data?.currentManga?.lists?.flatMap { it.entries ?: emptyList() }?.reversed(),
             response?.data?.repeatingManga?.lists?.flatMap { it.entries ?: emptyList() }?.reversed()
         )
-        if (toShow.getOrNull(5) == true) processMedia(
+        if (toShow.getOrNull(6) == true) processMedia(
             "MangaPlanned",
             response?.data?.plannedManga?.lists?.flatMap { it.entries ?: emptyList() }?.reversed(),
             null
@@ -778,44 +778,66 @@ class AnilistQueries {
             "Anime",
             response?.data?.favoriteAnime?.favourites?.anime?.edges
         )
-        if (toShow.getOrNull(4) == true) processFavorites(
+        if (toShow.getOrNull(5) == true) processFavorites(
             "Manga",
             response?.data?.favoriteManga?.favourites?.manga?.edges
         )
 
-        if (toShow.getOrNull(6) == true) {
-            val subMap = mutableMapOf<Int, Media>()
-            response?.data?.recommendationQuery?.recommendations?.forEach {
-                it.mediaRecommendation?.let { json ->
-                    val media = Media(json)
-                    media.relation = json.type?.toString()
-                    subMap[media.id] = media
-                }
-            }
-            response?.data?.recommendationPlannedQueryAnime?.lists?.flatMap {
-                it.entries ?: emptyList()
-            }?.forEach {
-                val media = Media(it)
-                if (media.status in listOf("RELEASING", "FINISHED")) {
-                    media.relation = it.media?.type?.toString()
-                    subMap[media.id] = media
-                }
-            }
-            response?.data?.recommendationPlannedQueryManga?.lists?.flatMap {
-                it.entries ?: emptyList()
-            }?.forEach {
-                val media = Media(it)
-                if (media.status in listOf("RELEASING", "FINISHED")) {
-                    media.relation = it.media?.type?.toString()
-                    subMap[media.id] = media
-                }
-            }
-            val list = ArrayList(subMap.values).apply { sortByDescending { it.meanScore } }
-            returnMap["recommendations"] = list
+        if (toShow.getOrNull(7) == true) {
+            returnMap["recommendations"] = ArrayList(mergeRecommendations(response))
         }
 
         returnMap["hidden"] = removedMedia.distinctBy { it.id }.toCollection(arrayListOf())
         return returnMap
+    }
+
+    /**
+     * The recommendations row's own on-list picks plus the user's planned titles, merged and ranked —
+     * shared by [initHomePage] and [getRecommendations] so a widget reading the same row can't drift
+     * from what the home screen shows.
+     */
+    private fun mergeRecommendations(response: Query.HomePageMedia?): List<Media> {
+        val subMap = mutableMapOf<Int, Media>()
+        response?.data?.recommendationQuery?.recommendations?.forEach {
+            it.mediaRecommendation?.let { json ->
+                val media = Media(json)
+                media.relation = json.type?.toString()
+                subMap[media.id] = media
+            }
+        }
+        response?.data?.recommendationPlannedQueryAnime?.lists?.flatMap {
+            it.entries ?: emptyList()
+        }?.forEach {
+            val media = Media(it)
+            if (media.status in listOf("RELEASING", "FINISHED")) {
+                media.relation = it.media?.type?.toString()
+                subMap[media.id] = media
+            }
+        }
+        response?.data?.recommendationPlannedQueryManga?.lists?.flatMap {
+            it.entries ?: emptyList()
+        }?.forEach {
+            val media = Media(it)
+            if (media.status in listOf("RELEASING", "FINISHED")) {
+                media.relation = it.media?.type?.toString()
+                subMap[media.id] = media
+            }
+        }
+        return subMap.values.sortedByDescending { it.meanScore }
+    }
+
+    /**
+     * The recommendations row's data on its own, for a caller with no home-layout toggles to consult —
+     * a widget background refresh, not a screen. See [mergeRecommendations].
+     */
+    suspend fun getRecommendations(): List<Media> {
+        val query = """{
+recommendationQuery: ${recommendationQuery()}
+recommendationPlannedQueryAnime: ${recommendationPlannedQuery("ANIME")}
+recommendationPlannedQueryManga: ${recommendationPlannedQuery("MANGA")}
+}""".prepare()
+        val response = executeQuery<Query.HomePageMedia>(query, force = true)
+        return mergeRecommendations(response)
     }
 
 
@@ -1750,16 +1772,19 @@ Page(page:$page,perPage:50) {
         userId: Int?,
         global: Boolean = false,
         page: Int = 1,
-        activityId: Int? = null
+        activityId: Int? = null,
+        /** Excludes one user's own posts from an `isFollowing` feed — see [WidgetData.fetchActivity]. */
+        excludeUserId: Int? = null
     ): FeedResponse? {
         val filter = if (activityId != null) "id:$activityId,"
         else if (userId != null) "userId:$userId,"
         else if (global) "isFollowing:false,hasRepliesOrTypeText:true,"
         else "isFollowing:true,"
+        val exclude = if (excludeUserId != null) "userId_not:$excludeUserId," else ""
         val typeIn =
             if (filter == "isFollowing:true,") "type_in:[TEXT,ANIME_LIST,MANGA_LIST,MEDIA_LIST]," else ""
         return executeQuery<FeedResponse>(
-            """{Page(page:$page,perPage:$ITEMS_PER_PAGE){activities(${filter}${typeIn}sort:ID_DESC){__typename ... on TextActivity{id userId type replyCount text(asHtml:true)siteUrl isLocked isSubscribed likeCount isLiked isPinned createdAt user{id name bannerImage avatar{medium large}}replies{id userId activityId text(asHtml:true)likeCount isLiked createdAt user{id name bannerImage avatar{medium large}}likes{id name bannerImage avatar{medium large}}}likes{id name bannerImage avatar{medium large}}}... on ListActivity{id userId type replyCount status progress siteUrl isLocked isSubscribed likeCount isLiked isPinned createdAt user{id name bannerImage avatar{medium large}}media{id title{english romaji native userPreferred}bannerImage coverImage{medium large}isAdult}replies{id userId activityId text(asHtml:true)likeCount isLiked createdAt user{id name bannerImage avatar{medium large}}likes{id name bannerImage avatar{medium large}}}likes{id name bannerImage avatar{medium large}}}... on MessageActivity{id recipientId messengerId type replyCount likeCount message(asHtml:true)isLocked isSubscribed isLiked isPrivate siteUrl createdAt recipient{id name bannerImage avatar{medium large}}messenger{id name bannerImage avatar{medium large}}replies{id userId activityId text(asHtml:true)likeCount isLiked createdAt user{id name bannerImage avatar{medium large}}likes{id name bannerImage avatar{medium large}}}likes{id name bannerImage avatar{medium large}}}}}}""",
+            """{Page(page:$page,perPage:$ITEMS_PER_PAGE){activities(${filter}${exclude}${typeIn}sort:ID_DESC){__typename ... on TextActivity{id userId type replyCount text(asHtml:true)siteUrl isLocked isSubscribed likeCount isLiked isPinned createdAt user{id name bannerImage avatar{medium large}}replies{id userId activityId text(asHtml:true)likeCount isLiked createdAt user{id name bannerImage avatar{medium large}}likes{id name bannerImage avatar{medium large}}}likes{id name bannerImage avatar{medium large}}}... on ListActivity{id userId type replyCount status progress siteUrl isLocked isSubscribed likeCount isLiked isPinned createdAt user{id name bannerImage avatar{medium large}}media{id title{english romaji native userPreferred}bannerImage coverImage{medium large}isAdult}replies{id userId activityId text(asHtml:true)likeCount isLiked createdAt user{id name bannerImage avatar{medium large}}likes{id name bannerImage avatar{medium large}}}likes{id name bannerImage avatar{medium large}}}... on MessageActivity{id recipientId messengerId type replyCount likeCount message(asHtml:true)isLocked isSubscribed isLiked isPrivate siteUrl createdAt recipient{id name bannerImage avatar{medium large}}messenger{id name bannerImage avatar{medium large}}replies{id userId activityId text(asHtml:true)likeCount isLiked createdAt user{id name bannerImage avatar{medium large}}likes{id name bannerImage avatar{medium large}}}likes{id name bannerImage avatar{medium large}}}}}}""",
             force = true
         )
     }

@@ -8,6 +8,8 @@ import android.view.Window
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
@@ -20,7 +22,6 @@ import ani.dantotsu.hideSystemBarsExtendView
 import ani.dantotsu.media.user.ListViewPagerAdapter
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
-import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
 import com.google.android.material.chip.Chip
 import com.google.android.material.tabs.TabLayout
@@ -74,15 +75,29 @@ class CalendarActivity : AppCompatActivity(), AniMangaFilterHost {
         if (!(PrefManager.getVal(PrefName.ImmersiveMode) as Boolean)) {
             this.window.statusBarColor =
                 ContextCompat.getColor(this, R.color.nav_bg_inv)
-            binding.root.fitsSystemWindows = true
-
         } else {
-            binding.root.fitsSystemWindows = false
             requestWindowFeature(Window.FEATURE_NO_TITLE)
             hideSystemBarsExtendView()
+        }
+        // Live insets rather than fitsSystemWindows (unreliable once WindowCompat.setDecorFitsSystemWindows
+        // has been set false anywhere in this process, which every other activity's initActivity() does)
+        // or the app's statusBarHeight global (this activity never calls initActivity(), and the global
+        // is 0 on a genuine cold start regardless — a widget's header tap can now launch this directly).
+        binding.root.fitsSystemWindows = false
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, insets ->
+            // displayCutout as well as systemBars: immersive mode hides the status bar, so systemBars
+            // reports a zero top inset there and content would sit under the camera cutout. Taking both
+            // gives the status bar's inset in normal mode and the cutout's in immersive, with no branch.
+            val bars = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+            )
             binding.settingsContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-                topMargin = statusBarHeight
+                topMargin = bars.top
             }
+            binding.root.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+                bottomMargin = bars.bottom
+            }
+            insets
         }
         setContentView(binding.root)
 

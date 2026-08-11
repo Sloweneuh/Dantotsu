@@ -11,6 +11,7 @@ import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isInvisible
@@ -19,8 +20,12 @@ import androidx.core.view.updatePadding
 import ani.dantotsu.R
 import ani.dantotsu.databinding.ActivityWidgetConfigureBinding
 import ani.dantotsu.themes.ThemeManager
+import ani.dantotsu.widgets.list.ActivityWidget
+import ani.dantotsu.widgets.list.RecommendationsWidget
 import ani.dantotsu.widgets.list.WaitingWidget
 import ani.dantotsu.widgets.statistics.ProfileStat
+import ani.dantotsu.widgets.statistics.ProfileStatsCache
+import ani.dantotsu.widgets.statistics.ProfileStatsWidget
 import eltos.simpledialogfragment.SimpleDialog
 import eltos.simpledialogfragment.color.SimpleColorDialog
 
@@ -197,8 +202,10 @@ class WidgetConfigureActivity : AppCompatActivity(), SimpleDialog.OnDialogResult
             renderPreview()
         }
 
-        // Only the waiting widget mixes types; the airing ones are anime by definition.
-        val mixesTypes = provider?.className == WaitingWidget::class.java.name
+        // The waiting widget mixes anime and manga; so does recommendations, which reuses the exact
+        // same home-screen row for both. The other airing widgets are anime by definition.
+        val mixesTypes = provider?.className == WaitingWidget::class.java.name ||
+            provider?.className == RecommendationsWidget::class.java.name
         binding.contentGroupContainer.isVisible = mixesTypes
         if (mixesTypes) {
             binding.contentGroup.check(
@@ -217,6 +224,17 @@ class WidgetConfigureActivity : AppCompatActivity(), SimpleDialog.OnDialogResult
                 }
             }
         }
+
+        // Only the activity widget's rows can even be the signed-in account's own.
+        val isActivity = provider?.className == ActivityWidget::class.java.name
+        binding.hideOwnActivity.isVisible = isActivity
+        if (isActivity) {
+            binding.hideOwnActivity.isChecked = prefs.hideOwnActivity
+            binding.hideOwnActivity.setOnCheckedChangeListener { _, checked ->
+                prefs.hideOwnActivity = checked
+                renderPreview()
+            }
+        }
     }
 
     /**
@@ -226,28 +244,49 @@ class WidgetConfigureActivity : AppCompatActivity(), SimpleDialog.OnDialogResult
      * string resources — just persisted per widget instance like everything else here, and with four
      * slots instead of two since the widget's grid has four cells to fill.
      */
+    /**
+     * The stat picker, which is the preview itself: every cell is a tap target that opens the chooser
+     * for that position.
+     *
+     * This replaced eight dropdowns whose captions had to name grid positions in words ("Row 3, left")
+     * precisely because the thing being configured was off in a separate section. Tapping the cell that
+     * will change removes that indirection, and the preview already had to render the grid anyway.
+     */
     private fun setUpStatsOptions() {
         val isStats = provider?.className == PROFILE_STATS_CLASS
         binding.statsOptions.isVisible = isStats
         if (!isStats) return
 
-        val options = ProfileStat.entries
-        val labels = options.map { getString(it.labelRes) }
-        val adapter = { ArrayAdapter(this, R.layout.item_dropdown, labels) }
+        val setters = listOf<(ProfileStat) -> Unit>(
+            { prefs.statSlot1 = it }, { prefs.statSlot2 = it },
+            { prefs.statSlot3 = it }, { prefs.statSlot4 = it },
+            { prefs.statSlot5 = it }, { prefs.statSlot6 = it },
+            { prefs.statSlot7 = it }, { prefs.statSlot8 = it }
+        )
+        statCells().forEachIndexed { index, cell ->
+            cell.setOnClickListener { pickStat(index, setters[index]) }
+        }
+    }
 
-        fun bind(dropdown: AutoCompleteTextView, current: ProfileStat, onPicked: (ProfileStat) -> Unit) {
-            dropdown.setAdapter(adapter())
-            dropdown.setText(getString(current.labelRes), false)
-            dropdown.setOnItemClickListener { _, _, position, _ ->
-                onPicked(options[position])
+    /** The eight tappable cells of the preview grid, in the same order as [WidgetPrefs.statSlots]. */
+    private fun statCells() = with(binding.preview) {
+        listOf(
+            previewStatCell1, previewStatCell2, previewStatCell3, previewStatCell4,
+            previewStatCell5, previewStatCell6, previewStatCell7, previewStatCell8
+        )
+    }
+
+    private fun pickStat(index: Int, onPicked: (ProfileStat) -> Unit) {
+        val options = ProfileStat.entries
+        val labels = options.map { getString(it.labelRes) }.toTypedArray()
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.widget_stats_pick)
+            .setSingleChoiceItems(labels, options.indexOf(prefs.statSlots[index])) { dialog, which ->
+                onPicked(options[which])
+                dialog.dismiss()
                 renderPreview()
             }
-        }
-
-        bind(binding.statSlot1Dropdown, prefs.statSlot1) { prefs.statSlot1 = it }
-        bind(binding.statSlot2Dropdown, prefs.statSlot2) { prefs.statSlot2 = it }
-        bind(binding.statSlot3Dropdown, prefs.statSlot3) { prefs.statSlot3 = it }
-        bind(binding.statSlot4Dropdown, prefs.statSlot4) { prefs.statSlot4 = it }
+            .show()
     }
 
     /**
@@ -263,6 +302,8 @@ class WidgetConfigureActivity : AppCompatActivity(), SimpleDialog.OnDialogResult
         val isStats = provider?.className == PROFILE_STATS_CLASS
         val isSchedule = provider?.className == SCHEDULE_CLASS
         val isWaiting = provider?.className == WaitingWidget::class.java.name
+        val isActivity = provider?.className == ActivityWidget::class.java.name
+        val isRecommendations = provider?.className == RecommendationsWidget::class.java.name
         style.applyTo(binding.preview.widgetBackground)
         with(binding.preview) {
             widgetTitle.setTextColor(style.title)
@@ -271,7 +312,11 @@ class WidgetConfigureActivity : AppCompatActivity(), SimpleDialog.OnDialogResult
             previewRows.isVisible = !isStats && !isSchedule
             previewCalendarRows.isVisible = isSchedule
             previewStats.isVisible = isStats
-            previewStatsRowTwo.isVisible = isStats
+
+            // Row one is the signed-in account's own sample post — the one row hiding it would
+            // actually remove, so the toggle's effect shows up in the preview rather than only in
+            // what a real refresh would eventually draw.
+            previewRowOne.isVisible = !(isActivity && prefs.hideOwnActivity)
 
             previewTitleOne.setTextColor(style.title)
             previewTitleTwo.setTextColor(style.title)
@@ -281,28 +326,56 @@ class WidgetConfigureActivity : AppCompatActivity(), SimpleDialog.OnDialogResult
             previewCoverTwo.isVisible = prefs.showCovers
 
             // Row one's sample swaps with the widget: "counts behind" reads correctly only for the
-            // waiting widget, an airing countdown only for upcoming. Row two stays Vinland Saga either
-            // way; only its subtitle needs to change to end in "·" and pair with the icon below.
+            // waiting widget, an airing countdown only for upcoming, a built sentence and a relative
+            // time only for activity, a bare category only for recommendations. Row two stays Vinland
+            // Saga for every case but activity, whose two rows are both sentences of their own.
             previewCoverOne.setImageResource(
-                if (isWaiting) R.drawable.preview_cover_onepiece else R.drawable.preview_cover_frieren
+                when {
+                    isWaiting || isRecommendations -> R.drawable.preview_cover_onepiece
+                    else -> R.drawable.preview_cover_frieren
+                }
             )
+            previewCoverTwo.setImageResource(R.drawable.preview_cover_vinland)
+            // An activity row's cover is the media's; the acting user's avatar sits beside the title
+            // rather than taking the cover slot over — see item_widget_media.xml.
+            previewAvatarOne.isVisible = isActivity && prefs.showCovers
+            previewAvatarTwo.isVisible = isActivity && prefs.showCovers
             previewTitleOne.text = getString(
-                if (isWaiting) R.string.widget_preview_title_three else R.string.widget_preview_title
+                when {
+                    isWaiting || isRecommendations -> R.string.widget_preview_title_three
+                    isActivity -> R.string.widget_preview_activity_one
+                    else -> R.string.widget_preview_title
+                }
             )
-            previewSubtitleOne.text = getString(
-                if (isWaiting) R.string.widget_preview_subtitle_waiting else R.string.widget_preview_subtitle
+            previewTitleTwo.text = getString(
+                if (isActivity) R.string.widget_preview_activity_two else R.string.widget_preview_title_two
             )
-            previewSubtitleTwo.text = getString(
-                if (isWaiting) R.string.widget_preview_subtitle_waiting_two
-                else R.string.widget_preview_subtitle_two
+            // A recommendation's type is the icon+label below, not text here — see mediaRow().
+            previewSubtitleOne.text = if (isRecommendations) "" else getString(
+                when {
+                    isWaiting -> R.string.widget_preview_subtitle_waiting
+                    isActivity -> R.string.widget_preview_activity_time_one
+                    else -> R.string.widget_preview_subtitle
+                }
+            )
+            previewSubtitleTwo.text = if (isRecommendations) "" else getString(
+                when {
+                    isWaiting -> R.string.widget_preview_subtitle_waiting_two
+                    isActivity -> R.string.widget_preview_activity_time_two
+                    else -> R.string.widget_preview_subtitle_two
+                }
             )
 
-            // Only the waiting widget's rows can end in the dub/sub icon + code instead of text — see
-            // MediaListFactory.mediaRow().
-            previewLanguageIcon.isVisible = isWaiting
-            previewLanguageCode.isVisible = isWaiting
+            // The waiting widget's rows end in the dub/sub icon + code instead of text, a
+            // recommendation's in a type icon + label — both share this slot; see MediaListFactory.
+            previewLanguageIcon.isVisible = isWaiting || isRecommendations
+            previewLanguageCode.isVisible = isWaiting || isRecommendations
             previewLanguageCode.setTextColor(style.subtitle)
             previewLanguageIcon.setColorFilter(style.subtitle)
+            if (isRecommendations) {
+                previewLanguageIcon.setImageResource(R.drawable.ic_round_import_contacts_24)
+                previewLanguageCode.text = getString(R.string.anime)
+            }
 
             for (day in listOf(previewCalendarDayOne, previewCalendarDayTwo)) {
                 day.setTextColor(style.accent)
@@ -314,21 +387,36 @@ class WidgetConfigureActivity : AppCompatActivity(), SimpleDialog.OnDialogResult
                 title.setTextColor(style.title)
             }
 
-            // Sample values stay fixed placeholders (no network call from a configure screen); only the
-            // label swaps to whatever the matching dropdown is currently set to, so all four slots give
-            // live feedback the same way the colour and cover options do.
-            for ((value, label, slot) in listOf(
-                Triple(previewStatValueOne, previewStatLabelOne, prefs.statSlot1),
-                Triple(previewStatValueTwo, previewStatLabelTwo, prefs.statSlot2),
-                Triple(previewStatValueThree, previewStatLabelThree, prefs.statSlot3),
-                Triple(previewStatValueFour, previewStatLabelFour, prefs.statSlot4)
-            )) {
-                value.setTextColor(style.title)
-                label.setTextColor(style.subtitle)
+            // Real numbers, not placeholders: the cached stats are what the widget itself draws, so
+            // the preview shows the user their own figures and a picked stat is recognisable at a
+            // glance. Falls back to the stat's name alone when nothing is cached yet (signed out, or
+            // the first refresh hasn't landed), which is still enough to configure by.
+            val stats = ProfileStatsCache.cached(this@WidgetConfigureActivity)
+            val visibleRows = ProfileStatsWidget.rowsFor(this@WidgetConfigureActivity, appWidgetId)
+            val slots = prefs.statSlots
+            val rows = listOf(previewStatRow1, previewStatRow2, previewStatRow3, previewStatRow4)
+            val values = listOf(
+                previewStatValue1, previewStatValue2, previewStatValue3, previewStatValue4,
+                previewStatValue5, previewStatValue6, previewStatValue7, previewStatValue8
+            )
+            val labels = listOf(
+                previewStatLabel1, previewStatLabel2, previewStatLabel3, previewStatLabel4,
+                previewStatLabel5, previewStatLabel6, previewStatLabel7, previewStatLabel8
+            )
+            rows.forEachIndexed { index, row -> row.isVisible = isStats && index < visibleRows }
+            slots.forEachIndexed { index, slot ->
+                values[index].setTextColor(style.title)
+                labels[index].setTextColor(style.subtitle)
                 val hidden = slot == ProfileStat.NONE
-                value.isInvisible = hidden
-                label.isInvisible = hidden
-                if (!hidden) label.text = getString(slot.labelRes)
+                values[index].isInvisible = hidden
+                if (!hidden) {
+                    values[index].text = stats?.let { slot.value(it) } ?: PLACEHOLDER_STAT_VALUE
+                    labels[index].text = getString(slot.labelRes)
+                } else {
+                    // The label still names the empty slot, so it stays tappable and identifiable —
+                    // an entirely blank cell would give the user nothing to aim at.
+                    labels[index].text = getString(slot.labelRes)
+                }
             }
         }
 
@@ -343,6 +431,8 @@ class WidgetConfigureActivity : AppCompatActivity(), SimpleDialog.OnDialogResult
         PROFILE_STATS_CLASS -> R.string.widget_stats_title
         WaitingWidget::class.java.name -> R.string.widget_waiting
         SCHEDULE_CLASS -> R.string.widget_this_week
+        ActivityWidget::class.java.name -> R.string.widget_activity
+        RecommendationsWidget::class.java.name -> R.string.widget_recommendations
         else -> R.string.upcoming
     }
 
@@ -376,6 +466,9 @@ class WidgetConfigureActivity : AppCompatActivity(), SimpleDialog.OnDialogResult
         private const val TAG_SUBTITLE = "widget_subtitle"
 
         private const val PROFILE_STATS_CLASS = "ani.dantotsu.widgets.statistics.ProfileStatsWidget"
+
+        /** Shown in place of a real figure when no stats have been cached yet. */
+        private const val PLACEHOLDER_STAT_VALUE = "—"
         private const val SCHEDULE_CLASS = "ani.dantotsu.widgets.list.ScheduleWidget"
 
         /** Launched from a widget's own settings tap target, where the provider is already known. */

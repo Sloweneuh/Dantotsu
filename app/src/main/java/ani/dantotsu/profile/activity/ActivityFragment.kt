@@ -19,6 +19,8 @@ import ani.dantotsu.databinding.FragmentFeedBinding
 import ani.dantotsu.media.MediaDetailsActivity
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.profile.ProfileActivity
+import ani.dantotsu.settings.saving.PrefManager
+import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.util.ActivityMarkdownCreator
 import com.xwray.groupie.GroupieAdapter
 import eu.kanade.tachiyomi.util.system.getSerializableCompat
@@ -102,7 +104,11 @@ class ActivityFragment : Fragment() {
     private suspend fun getList() {
         val list = when (type) {
             ActivityType.GLOBAL -> getActivities(global = true)
-            ActivityType.USER -> getActivities(filter = true)
+            ActivityType.USER -> getActivities(
+                filter = true,
+                excludeSelf = PrefManager.getVal(PrefName.HideOwnActivityFromFeed)
+            )
+
             ActivityType.OTHER_USER -> getActivities(userId = userId)
             ActivityType.ONE -> getActivities(activityId = activityId)
         }
@@ -113,14 +119,29 @@ class ActivityFragment : Fragment() {
         global: Boolean = false,
         userId: Int? = null,
         activityId: Int? = null,
-        filter: Boolean = false
+        filter: Boolean = false,
+        excludeSelf: Boolean = false
     ): List<Activity> {
-        val res = Anilist.query.getFeed(userId, global, page, activityId)?.data?.page?.activities
+        val exclude = if (excludeSelf) Anilist.userid else null
+        val res = Anilist.query.getFeed(userId, global, page, activityId, exclude)?.data?.page?.activities
         page += 1
         return res
             ?.filter { if (Anilist.adult) true else it.media?.isAdult != true }
             ?.filterNot { it.recipient?.id != null && it.recipient.id != Anilist.userid && filter }
             ?: emptyList()
+    }
+
+    /** Clears and reloads from the top — used when [PrefName.HideOwnActivityFromFeed] is toggled. */
+    fun reload() {
+        if (!this::binding.isInitialized) return
+        adapter.clear()
+        page = 1
+        lifecycleScope.launch {
+            binding.listProgressBar.isVisible = true
+            getList()
+            binding.emptyTextView.isVisible = adapter.itemCount == 0
+            binding.listProgressBar.isVisible = false
+        }
     }
 
     private fun shouldLoadMore(): Boolean {

@@ -1,9 +1,11 @@
 package ani.dantotsu.widgets.list
 
 import android.appwidget.AppWidgetManager
+import android.content.Context
 import android.content.Intent
 import android.widget.RemoteViewsService
 import ani.dantotsu.R
+import ani.dantotsu.media.CalendarActivity
 import ani.dantotsu.widgets.WidgetData
 
 /**
@@ -22,6 +24,8 @@ class ScheduleWidget : MediaListWidget() {
     override val layout = ListLayout.BY_DAY
     override val titleRes = R.string.widget_this_week
     override val emptyRes = R.string.widget_nothing_this_week
+
+    override fun headerIntent(context: Context): Intent = Intent(context, CalendarActivity::class.java)
 }
 
 class ScheduleRemoteViewsService : RemoteViewsService() {

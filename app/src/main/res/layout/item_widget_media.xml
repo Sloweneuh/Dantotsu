@@ -8,10 +8,38 @@
     android:orientation="horizontal"
     android:paddingVertical="6dp">
 
+    <!--
+        An activity row's cover is the media's, not the acting user's — this is what actually says whose
+        activity it is, so it leads the row rather than sitting as a badge cropped into the cover's
+        corner, where it was too small to recognise anyone by.
+
+        match_parent height + adjustViewBounds is what makes it track the row: the bitmap is square (see
+        BitmapUtil.toCircularBitmap), so the width follows whatever height the row settles at, which grows
+        when a title wraps to a second line. maxWidth/maxHeight hold it just under the cover's height —
+        the avatar and the cover both eat into the title's width, and letting it match a two-line row
+        outright cost enough of that to truncate titles that used to fit.
+
+        Only used by the activity widget — see WidgetItem.avatarUrl / MediaListFactory.
+
+        marginEnd rather than the cover carrying a marginStart: a GONE view contributes no margins, so
+        every other widget (which has no avatar) gets its cover flush to the row's leading edge.
+    -->
+    <ImageView
+        android:id="@+id/itemAvatar"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:layout_marginEnd="8dp"
+        android:adjustViewBounds="true"
+        android:maxWidth="48dp"
+        android:maxHeight="48dp"
+        android:scaleType="fitCenter"
+        android:visibility="gone"
+        tools:ignore="ContentDescription" />
+
     <ImageView
         android:id="@+id/itemCover"
-        android:layout_width="32dp"
-        android:layout_height="44dp"
+        android:layout_width="38dp"
+        android:layout_height="52dp"
         android:contentDescription="@string/airing_image"
         android:scaleType="centerCrop"
         android:src="@drawable/widget_cover_placeholder" />

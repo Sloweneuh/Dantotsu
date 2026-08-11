@@ -1,6 +1,10 @@
 package ani.dantotsu.widgets.upcoming
 
+import android.content.Context
+import android.content.Intent
+import ani.dantotsu.MainActivity
 import ani.dantotsu.R
+import ani.dantotsu.home.AnimeFragment
 import ani.dantotsu.widgets.WidgetData
 import ani.dantotsu.widgets.list.ListLayout
 import ani.dantotsu.widgets.list.MediaListWidget
@@ -18,4 +22,8 @@ class UpcomingWidget : MediaListWidget() {
     override val layout = ListLayout.FLAT
     override val titleRes = R.string.upcoming
     override val emptyRes = R.string.no_shows_to_display
+
+    override fun headerIntent(context: Context): Intent =
+        Intent(context, MainActivity::class.java)
+            .putExtra("FRAGMENT_CLASS_NAME", AnimeFragment::class.java.name)
 }

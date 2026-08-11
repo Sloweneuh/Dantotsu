@@ -27,6 +27,20 @@ object BitmapUtil {
         return output
     }
 
+    /**
+     * Full circular crop, for the small avatar badge a widget activity row overlays on a cover —
+     * [roundCorners]'s fixed radius reads as barely-rounded once shrunk to badge size, not as an avatar.
+     */
+    fun toCircularBitmap(bitmap: Bitmap): Bitmap {
+        val output = Bitmap.createBitmap(bitmap.width, bitmap.height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(output)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        paint.shader = BitmapShader(bitmap, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
+        val radius = minOf(bitmap.width, bitmap.height) / 2f
+        canvas.drawCircle(bitmap.width / 2f, bitmap.height / 2f, radius, paint)
+        return output
+    }
+
     private val cacheSize = (Runtime.getRuntime().maxMemory() / 1024 / 16).toInt()
     private val bitmapCache = LruCache<String, Bitmap>(cacheSize)
 

@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+    Widget picker preview for the Recommendations widget. See widget_preview_upcoming for why the
+    preview is its own layout rather than the widget's.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_preview_card"
+    android:orientation="vertical"
+    android:padding="12dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_dantotsu_round" />
+
+        <TextView
+            style="@style/WidgetPreviewHeader"
+            android:text="@string/widget_recommendations" />
+    </LinearLayout>
+
+    <LinearLayout style="@style/WidgetPreviewRow">
+
+        <ImageView
+            style="@style/WidgetPreviewCover"
+            android:contentDescription="@null"
+            android:src="@drawable/preview_cover_onepiece" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                style="@style/WidgetPreviewTitle"
+                android:text="@string/widget_preview_title_three" />
+
+            <!-- The type icon + label, same slot a waiting row uses for its dub/sub chip. -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:layout_width="11dp"
+                    android:layout_height="11dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_widget_movie_filter" />
+
+                <TextView
+                    style="@style/WidgetPreviewSubtitle"
+                    android:layout_marginStart="4dp"
+                    android:text="@string/anime" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout style="@style/WidgetPreviewRow">
+
+        <ImageView
+            style="@style/WidgetPreviewCover"
+            android:contentDescription="@null"
+            android:src="@drawable/preview_cover_vinland" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                style="@style/WidgetPreviewTitle"
+                android:text="@string/widget_preview_title_two" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:layout_width="11dp"
+                    android:layout_height="11dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_widget_movie_filter" />
+
+                <TextView
+                    style="@style/WidgetPreviewSubtitle"
+                    android:layout_marginStart="4dp"
+                    android:text="@string/anime" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

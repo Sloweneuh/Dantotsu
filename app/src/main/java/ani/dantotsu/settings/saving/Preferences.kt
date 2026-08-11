@@ -38,6 +38,7 @@ enum class PrefName(val data: Pref) {
     VerboseLogging(Pref(Location.General, Boolean::class, false)),
     DohProvider(Pref(Location.General, Int::class, 0)),
     HidePrivate(Pref(Location.General, Boolean::class, false)),
+    HideOwnActivityFromFeed(Pref(Location.General, Boolean::class, false)),
     DefaultUserAgent(
         Pref(
             Location.General,

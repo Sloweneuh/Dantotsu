@@ -2264,9 +2264,15 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="widget_stats_title">Your stats</string>
     <string name="widget_this_week">This week</string>
     <string name="widget_waiting">Waiting for you</string>
+    <string name="widget_activity">Activity</string>
+    <string name="widget_recommendations">Recommendations</string>
     <string name="widget_upcoming_description">The next episodes on your list</string>
     <string name="widget_schedule_description">The week\'s airing episodes, by day</string>
     <string name="widget_waiting_description">Unread chapters and unwatched episodes</string>
+    <string name="widget_activity_description">Your activity feed and the people you follow</string>
+    <!-- "watched episode 5 of Attack on Titan" — %1$s is AniList's own progress phrase, %2$s the title. -->
+    <string name="widget_activity_progress_of">%1$s of %2$s</string>
+    <string name="widget_recommendations_description">Recommended anime and manga, same as the home screen</string>
 
     <!-- Widget rows -->
     <string name="widget_aired">Out now</string>
@@ -2286,6 +2292,8 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="widget_error">Couldn\'t load. Tap to open Dantotsu.</string>
     <string name="widget_nothing_this_week">Nothing airing this week</string>
     <string name="widget_nothing_waiting">Nothing waiting. You\'re all caught up.</string>
+    <string name="widget_nothing_activity">No activity yet</string>
+    <string name="widget_nothing_recommendations">No recommendations yet</string>
 
     <!-- How much is out past the user's progress, and which episode/chapter is next -->
     <plurals name="widget_episodes_behind">
@@ -2317,11 +2325,10 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="widget_show_covers">Show covers</string>
     <string name="widget_content">Include</string>
     <string name="widget_content_both">Both</string>
+    <string name="widget_hide_own_activity">Hide my own activity</string>
     <string name="widget_stats_shown">Stats shown</string>
-    <string name="widget_stat_top_left">Top left</string>
-    <string name="widget_stat_top_right">Top right</string>
-    <string name="widget_stat_bottom_left">Bottom left</string>
-    <string name="widget_stat_bottom_right">Bottom right</string>
+    <string name="widget_stats_tap_hint">Tap a stat above to change it. Make the widget taller for more rows.</string>
+    <string name="widget_stats_pick">Show here</string>
 
     <!-- Sample text in the widget configuration preview -->
     <string name="widget_preview_title" translatable="false">Frieren: Beyond Journey\'s End</string>
@@ -2342,4 +2349,8 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="widget_preview_time_five" translatable="false">23:00</string>
     <string name="widget_preview_subtitle_waiting">3 chapters out · Next : 1104</string>
     <string name="widget_preview_subtitle_waiting_two">1 episode out · Next : 8 ·</string>
+    <string name="widget_preview_activity_one">You completed Vinland Saga</string>
+    <string name="widget_preview_activity_two">Friend watched Episode 24 of Frieren: Beyond Journey\'s End</string>
+    <string name="widget_preview_activity_time_one" translatable="false">2 hours ago</string>
+    <string name="widget_preview_activity_time_two" translatable="false">1 day ago</string>
 </resources>

@@ -217,11 +217,18 @@ abstract class MediaListWidget : AppWidgetProvider() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+    /**
+     * The screen a tap on the header opens — the single most relevant page for this widget's content,
+     * not just the app's own default landing tab. [MainActivity] is the fallback for subclasses with
+     * nothing more specific to point at.
+     */
+    protected open fun headerIntent(context: Context): Intent = Intent(context, MainActivity::class.java)
+
     private fun openApp(context: Context, appWidgetId: Int): PendingIntent =
         PendingIntent.getActivity(
             context,
             appWidgetId + REQUEST_OPEN_OFFSET,
-            Intent(context, MainActivity::class.java)
+            headerIntent(context)
                 .apply { flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK },
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )

@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+    Widget picker preview for the Activity widget. See widget_preview_upcoming for why the preview is
+    its own layout rather than the widget's.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_preview_card"
+    android:orientation="vertical"
+    android:padding="12dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_dantotsu_round" />
+
+        <TextView
+            style="@style/WidgetPreviewHeader"
+            android:text="@string/widget_activity" />
+    </LinearLayout>
+
+    <LinearLayout style="@style/WidgetPreviewRow">
+
+        <!-- Media cover, then the acting user's avatar beside the title — see item_widget_media.xml. -->
+        <ImageView
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:layout_marginEnd="8dp"
+            android:contentDescription="@null"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_widget_avatar" />
+
+        <ImageView
+            style="@style/WidgetPreviewCover"
+            android:contentDescription="@null"
+            android:src="@drawable/preview_cover_vinland" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                style="@style/WidgetPreviewTitle"
+                android:maxLines="2"
+                android:text="@string/widget_preview_activity_one" />
+
+            <TextView
+                style="@style/WidgetPreviewSubtitle"
+                android:text="@string/widget_preview_activity_time_one" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout style="@style/WidgetPreviewRow">
+
+        <ImageView
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:layout_marginEnd="8dp"
+            android:contentDescription="@null"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_widget_avatar" />
+
+        <ImageView
+            style="@style/WidgetPreviewCover"
+            android:contentDescription="@null"
+            android:src="@drawable/preview_cover_frieren" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                style="@style/WidgetPreviewTitle"
+                android:maxLines="2"
+                android:text="@string/widget_preview_activity_two" />
+
+            <TextView
+                style="@style/WidgetPreviewSubtitle"
+                android:text="@string/widget_preview_activity_time_two" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

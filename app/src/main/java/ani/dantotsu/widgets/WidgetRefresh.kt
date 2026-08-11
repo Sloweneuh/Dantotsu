@@ -12,6 +12,8 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import ani.dantotsu.R
 import ani.dantotsu.util.Logger
+import ani.dantotsu.widgets.list.ActivityWidget
+import ani.dantotsu.widgets.list.RecommendationsWidget
 import ani.dantotsu.widgets.list.WaitingWidget
 import ani.dantotsu.widgets.list.ScheduleWidget
 import ani.dantotsu.widgets.statistics.ProfileStatsWidget
@@ -41,6 +43,8 @@ object WidgetRefresh {
         UpcomingWidget::class.java to true,
         ScheduleWidget::class.java to true,
         WaitingWidget::class.java to true,
+        ActivityWidget::class.java to true,
+        RecommendationsWidget::class.java to true,
         ProfileStatsWidget::class.java to false
     )
 
@@ -116,7 +120,7 @@ class WidgetRefreshWorker(appContext: Context, params: WorkerParameters) :
             for (dataset in WidgetData.Dataset.entries) {
                 // CALENDAR is an unpaginated pull of every airing anime worldwide for the week — cheap
                 // enough for a screen someone opens occasionally, too heavy to force on every 30-minute
-                // tick like the other two (one batch call each). Left to its own 4-hour staleness
+                // tick like the others (one or two batch calls each). Left to its own 4-hour staleness
                 // window instead, by not forcing it here.
                 WidgetData.load(applicationContext, dataset, force = dataset != WidgetData.Dataset.CALENDAR)
             }

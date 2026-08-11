@@ -109,8 +109,8 @@
         names — an empty grey block next to a real title reads as a broken widget, not a sample.
     -->
     <style name="WidgetPreviewCover">
-        <item name="android:layout_width">28dp</item>
-        <item name="android:layout_height">38dp</item>
+        <item name="android:layout_width">34dp</item>
+        <item name="android:layout_height">46dp</item>
         <item name="android:scaleType">centerCrop</item>
     </style>
 

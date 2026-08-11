@@ -7,6 +7,8 @@ import android.widget.RemoteViews
 import android.widget.RemoteViewsService
 import ani.dantotsu.R
 import ani.dantotsu.connections.malsync.LanguageMapper
+import ani.dantotsu.profile.activity.ActivityItemBuilder
+import ani.dantotsu.util.BitmapUtil
 import ani.dantotsu.util.BitmapUtil.downloadImageAsBitmap
 import ani.dantotsu.widgets.WidgetData
 import ani.dantotsu.widgets.WidgetItem
@@ -64,6 +66,9 @@ class MediaListFactory(
         val content = prefs.content
         val items = WidgetData.cached(context, dataset)
             .filter { if (it.isAnime) content.includesAnime else content.includesManga }
+            // Shared across every Activity widget instance, so "hide my own posts" has to be applied
+            // here rather than in WidgetData — each instance can set it differently.
+            .filter { dataset != WidgetData.Dataset.ACTIVITY || !(prefs.hideOwnActivity && it.isOwnActivity) }
         val limit = if (prefs.showAllItems) Int.MAX_VALUE else prefs.itemLimit
         rows = when (layout) {
             ListLayout.FLAT -> items.take(limit).map { Row.Media(it) }
@@ -172,23 +177,43 @@ class MediaListFactory(
             setTextViewText(R.id.itemSubtitle, subtitle(item))
             setTextColor(R.id.itemSubtitle, style.subtitle)
 
-            // The dub/sub distinction doesn't reduce to a word the way a manga source does, so an anime
-            // row gets an icon + short code here instead of more text — subtitle() already ended the
-            // string with a bare " ·" to lead into it.
-            if (item.languageId != null) {
-                setViewVisibility(R.id.itemLanguageIcon, View.VISIBLE)
-                setViewVisibility(R.id.itemLanguageCode, View.VISIBLE)
-                setImageViewResource(
-                    R.id.itemLanguageIcon, LanguageMapper.mapLanguage(item.languageId).iconRes
-                )
-                // The vector's own fill is fixed, so without this it wouldn't follow the row's theme
-                // the way the text next to it does.
-                setInt(R.id.itemLanguageIcon, "setColorFilter", style.subtitle)
-                setTextViewText(R.id.itemLanguageCode, LanguageMapper.shortCode(item.languageId))
-                setTextColor(R.id.itemLanguageCode, style.subtitle)
-            } else {
-                setViewVisibility(R.id.itemLanguageIcon, View.GONE)
-                setViewVisibility(R.id.itemLanguageCode, View.GONE)
+            // This icon + text slot means two different things depending on the dataset — a waiting
+            // row's dub/sub distinction doesn't reduce to a word the way a manga source does, so it
+            // gets an icon + short code instead (subtitle() ends with a bare " ·" to lead into it); a
+            // recommendation carries no per-source distinction at all, so the same slot instead shows
+            // what kind of media it even is, the way the home screen's own recommendation cards do.
+            when {
+                item.languageId != null -> {
+                    setViewVisibility(R.id.itemLanguageIcon, View.VISIBLE)
+                    setViewVisibility(R.id.itemLanguageCode, View.VISIBLE)
+                    setImageViewResource(
+                        R.id.itemLanguageIcon, LanguageMapper.mapLanguage(item.languageId).iconRes
+                    )
+                    // The vector's own fill is fixed, so without this it wouldn't follow the row's
+                    // theme the way the text next to it does.
+                    setInt(R.id.itemLanguageIcon, "setColorFilter", style.subtitle)
+                    setTextViewText(R.id.itemLanguageCode, LanguageMapper.shortCode(item.languageId))
+                    setTextColor(R.id.itemLanguageCode, style.subtitle)
+                }
+
+                dataset == WidgetData.Dataset.RECOMMENDATIONS -> {
+                    setViewVisibility(R.id.itemLanguageIcon, View.VISIBLE)
+                    setViewVisibility(R.id.itemLanguageCode, View.VISIBLE)
+                    val (labelRes, iconRes) = when {
+                        item.isNovel -> R.string.novel to R.drawable.ic_round_import_contacts_24
+                        item.isAnime -> R.string.anime to R.drawable.ic_round_movie_filter_24
+                        else -> R.string.manga to R.drawable.ic_round_import_contacts_24
+                    }
+                    setImageViewResource(R.id.itemLanguageIcon, iconRes)
+                    setInt(R.id.itemLanguageIcon, "setColorFilter", style.subtitle)
+                    setTextViewText(R.id.itemLanguageCode, context.getString(labelRes))
+                    setTextColor(R.id.itemLanguageCode, style.subtitle)
+                }
+
+                else -> {
+                    setViewVisibility(R.id.itemLanguageIcon, View.GONE)
+                    setViewVisibility(R.id.itemLanguageCode, View.GONE)
+                }
             }
 
             if (prefs.showCovers && item.coverUrl.isNotEmpty()) {
@@ -196,6 +221,18 @@ class MediaListFactory(
                 setImageViewBitmap(R.id.itemCover, downloadImageAsBitmap(item.coverUrl))
             } else {
                 setViewVisibility(R.id.itemCover, View.GONE)
+            }
+
+            // The cover above is the media's on an activity row; this is the acting user's, sized to the
+            // row so it stays recognisable. Tied to showCovers as well — with images off the row is meant
+            // to be text only, and this is an image like any other.
+            val avatar = item.avatarUrl?.takeIf { prefs.showCovers && it.isNotEmpty() }
+                ?.let { downloadImageAsBitmap(it) }
+            if (avatar != null) {
+                setViewVisibility(R.id.itemAvatar, View.VISIBLE)
+                setImageViewBitmap(R.id.itemAvatar, BitmapUtil.toCircularBitmap(avatar))
+            } else {
+                setViewVisibility(R.id.itemAvatar, View.GONE)
             }
 
             // Filled into the provider's pending-intent template. MainActivity reads these extras and
@@ -206,6 +243,10 @@ class MediaListFactory(
                 Intent().apply {
                     if (item.muSeriesId != null) {
                         putExtra("muUrl", MU_SERIES_URL + item.muSeriesId.toString(36))
+                    } else if (dataset == WidgetData.Dataset.ACTIVITY) {
+                        // item.id is the *activity's* id here, not a media id — a text post has no
+                        // media at all, so there may be nothing to put.
+                        item.mediaId?.let { putExtra("mediaId", it) }
                     } else {
                         putExtra("mediaId", item.id)
                     }
@@ -217,6 +258,16 @@ class MediaListFactory(
 
     /** The second line: when the next episode airs, or how much is waiting to be read or watched. */
     private fun subtitle(item: WidgetItem): String {
+        // Neither dataset is "next episode/chapter out" — an activity row already says what happened
+        // in its title, and a recommendation carries no progress to report at all.
+        if (dataset == WidgetData.Dataset.ACTIVITY) {
+            return item.createdAtMillis?.let { ActivityItemBuilder.getDateTime((it / 1000).toInt()) }
+                .orEmpty()
+        }
+        if (dataset == WidgetData.Dataset.RECOMMENDATIONS) {
+            // The type icon + label mediaRow() puts in the language slot already says this — see there.
+            return ""
+        }
         val airing = item.airingAtMillis
         if (dataset == WidgetData.Dataset.AIRING && airing != null) {
             val countdown = WidgetTime.untilAiring(context, airing)

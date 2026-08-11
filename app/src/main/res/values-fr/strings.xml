@@ -2164,9 +2164,14 @@
     <string name="widget_stats_title">Vos statistiques</string>
     <string name="widget_this_week">Cette semaine</string>
     <string name="widget_waiting">En attente</string>
+    <string name="widget_activity">Activité</string>
+    <string name="widget_recommendations">Recommandations</string>
     <string name="widget_upcoming_description">Les prochains épisodes de votre liste</string>
     <string name="widget_schedule_description">Les épisodes diffusés cette semaine, par jour</string>
     <string name="widget_waiting_description">Chapitres non lus et épisodes non vus</string>
+    <string name="widget_activity_description">Votre fil d\'activité et celui des personnes que vous suivez</string>
+    <string name="widget_activity_progress_of">%1$s de %2$s</string>
+    <string name="widget_recommendations_description">Anime et manga recommandés, comme sur l\'écran d\'accueil</string>
 
     <!-- Lignes des widgets -->
     <string name="widget_aired">Disponible</string>
@@ -2185,6 +2190,8 @@
     <string name="widget_error">Chargement impossible. Appuyez pour ouvrir Dantotsu.</string>
     <string name="widget_nothing_this_week">Aucune diffusion cette semaine</string>
     <string name="widget_nothing_waiting">Rien en attente. Vous êtes à jour.</string>
+    <string name="widget_nothing_activity">Aucune activité pour le moment</string>
+    <string name="widget_nothing_recommendations">Aucune recommandation pour le moment</string>
 
     <!-- Ce qui est sorti au-delà de la progression, et le numéro suivant -->
     <plurals name="widget_episodes_behind">
@@ -2217,11 +2224,10 @@
     <string name="widget_show_covers">Afficher les couvertures</string>
     <string name="widget_content">Inclure</string>
     <string name="widget_content_both">Les deux</string>
+    <string name="widget_hide_own_activity">Masquer ma propre activité</string>
     <string name="widget_stats_shown">Statistiques affichées</string>
-    <string name="widget_stat_top_left">En haut à gauche</string>
-    <string name="widget_stat_top_right">En haut à droite</string>
-    <string name="widget_stat_bottom_left">En bas à gauche</string>
-    <string name="widget_stat_bottom_right">En bas à droite</string>
+    <string name="widget_stats_tap_hint">Appuyez sur une statistique ci-dessus pour la modifier. Agrandissez le widget en hauteur pour plus de lignes.</string>
+    <string name="widget_stats_pick">Afficher ici</string>
 
     <!--
         Exemples affichés dans l\'aperçu de configuration. Les titres restent en version originale :
@@ -2235,4 +2241,6 @@
     <string name="widget_preview_stat_value_four">8 904</string>
     <string name="widget_preview_subtitle_waiting">3 chapitres sortis · Suivant : 1104</string>
     <string name="widget_preview_subtitle_waiting_two">1 épisode sorti · Suivant : 8 ·</string>
+    <string name="widget_preview_activity_one">Vous avez terminé Vinland Saga</string>
+    <string name="widget_preview_activity_two">Ami a regardé l\'épisode 24 de Frieren: Beyond Journey\'s End</string>
 </resources>

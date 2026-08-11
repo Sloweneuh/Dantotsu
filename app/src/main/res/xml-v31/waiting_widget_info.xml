@@ -5,7 +5,7 @@
     android:initialLayout="@layout/widget_media_list"
     android:minWidth="250dp"
     android:minHeight="110dp"
-    android:minResizeWidth="110dp"
+    android:minResizeWidth="250dp"
     android:minResizeHeight="110dp"
     android:previewImage="@drawable/waiting_widget_preview"
     android:previewLayout="@layout/widget_preview_waiting"

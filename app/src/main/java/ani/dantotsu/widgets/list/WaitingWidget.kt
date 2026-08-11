@@ -1,9 +1,12 @@
 package ani.dantotsu.widgets.list
 
 import android.appwidget.AppWidgetManager
+import android.content.Context
 import android.content.Intent
 import android.widget.RemoteViewsService
+import ani.dantotsu.MainActivity
 import ani.dantotsu.R
+import ani.dantotsu.home.HomeFragment
 import ani.dantotsu.widgets.WidgetData
 
 /**
@@ -37,6 +40,12 @@ class WaitingWidget : MediaListWidget() {
      * every press — the same thing a homepage redraw already does with no staleness cache of its own.
      */
     override val refreshAnimeOnRefresh = true
+
+    // Mixes anime and manga, so neither list tab is uniquely "the" relevant one — Home is where the
+    // unread-chapters/continue sections this widget mirrors actually live.
+    override fun headerIntent(context: Context): Intent =
+        Intent(context, MainActivity::class.java)
+            .putExtra("FRAGMENT_CLASS_NAME", HomeFragment::class.java.name)
 }
 
 class WaitingRemoteViewsService : RemoteViewsService() {
