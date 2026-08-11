@@ -80,6 +80,30 @@ class AnilistMutations {
         executeQuery<JsonObject>(query, variables)
     }
 
+    /**
+     * Asks AniList to recompute the logged-in user's statistics now.
+     *
+     * AniList only recalculates stats on its own every couple of days, which is why its own site
+     * keeps an "Update Stats" button on the settings page — writing to the user is what schedules
+     * the recalculation. There is no mutation dedicated to it, so this sends the smallest possible
+     * UpdateUser: the timezone the account already has, or nothing at all when we don't know it.
+     * Either way no setting actually changes.
+     *
+     * Only ever affects the authenticated user, since that is all UpdateUser can touch.
+     */
+    suspend fun forceStatsUpdate(): Boolean {
+        val query = """
+            mutation (${"$"}timezone: String) {
+                UpdateUser(timezone: ${"$"}timezone) {
+                    id
+                }
+            }
+        """.trimIndent()
+        val variables = Anilist.timezone?.let { """{"timezone":"$it"}""" } ?: "{}"
+        val result = executeQuery<JsonObject>(query, variables)
+        return result?.get("errors") == null && result != null
+    }
+
     suspend fun toggleFav(anime: Boolean = true, id: Int) {
         val query = """
             mutation (${"$"}animeId: Int, ${"$"}mangaId: Int) {

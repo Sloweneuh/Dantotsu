@@ -17,4 +17,9 @@
         android:title="@string/copy_user_id"
         app:showAsAction="never" />
 
+    <item
+        android:id="@+id/action_update_stats"
+        android:title="@string/update_stats"
+        app:showAsAction="never" />
+
 </menu>

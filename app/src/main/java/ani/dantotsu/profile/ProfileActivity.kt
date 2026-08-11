@@ -227,6 +227,10 @@ class ProfileActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedListene
                     profileMenuButton.setOnClickListener {
                         val popup = PopupMenu(context, profileMenuButton)
                         popup.menuInflater.inflate(R.menu.menu_profile, popup.menu)
+                        // UpdateUser only ever touches the account the token belongs to, so a
+                        // forced recalculation is meaningless on anyone else's profile.
+                        popup.menu.findItem(R.id.action_update_stats).isVisible =
+                            Anilist.userid != null && user.id == Anilist.userid
                         popup.setOnMenuItemClickListener { item ->
                             when (item.itemId) {
                                 R.id.action_view_on_anilist -> {
@@ -252,6 +256,20 @@ class ProfileActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedListene
 
                                 R.id.action_copy_user_id -> {
                                     copyToClipboard(user.id.toString(), true)
+                                    true
+                                }
+
+                                R.id.action_update_stats -> {
+                                    snackString(R.string.please_wait)
+                                    lifecycleScope.launch(Dispatchers.IO) {
+                                        val success = Anilist.mutation.forceStatsUpdate()
+                                        withContext(Dispatchers.Main) {
+                                            snackString(
+                                                if (success) R.string.stats_update_requested
+                                                else R.string.stats_update_failed
+                                            )
+                                        }
+                                    }
                                     true
                                 }
 

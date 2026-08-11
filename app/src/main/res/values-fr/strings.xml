@@ -789,6 +789,9 @@
     <string name="hide_scroll_bar">Masquer la barre de défilement</string>
     <string name="share_profile">Partager le profil</string>
     <string name="copy_user_id">Copier l\'ID utilisateur</string>
+    <string name="update_stats">Mettre à jour les stats</string>
+    <string name="stats_update_requested">AniList recalcule vos stats, cela peut prendre un moment</string>
+    <string name="stats_update_failed">Impossible de demander la mise à jour des stats</string>
     <string name="anilist_notification_filters">Filtrer les notifications</string>
     <string name="activities">Activités</string>
     <string name="enable_rpc">Activer Discord RPC</string>
