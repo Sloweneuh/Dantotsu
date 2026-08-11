@@ -218,7 +218,16 @@ class MediaListFactory(
 
             if (prefs.showCovers && item.coverUrl.isNotEmpty()) {
                 setViewVisibility(R.id.itemCover, View.VISIBLE)
-                setImageViewBitmap(R.id.itemCover, downloadImageAsBitmap(item.coverUrl))
+                // Cropped and rounded at the size it will actually be drawn at — rounding the
+                // full-resolution download instead leaves a radius too small to see. See roundedCover().
+                downloadImageAsBitmap(item.coverUrl, rounded = false)?.let {
+                    setImageViewBitmap(
+                        R.id.itemCover,
+                        BitmapUtil.roundedCover(
+                            it, dp(COVER_WIDTH_DP), dp(COVER_HEIGHT_DP), dp(COVER_RADIUS_DP).toFloat()
+                        )
+                    )
+                }
             } else {
                 setViewVisibility(R.id.itemCover, View.GONE)
             }
@@ -313,8 +322,17 @@ class MediaListFactory(
         rows = emptyList()
     }
 
+    /** dp to px for this factory's context, for bitmaps that must match a layout's declared size. */
+    private fun dp(value: Int): Int =
+        (value * context.resources.displayMetrics.density).toInt()
+
     private companion object {
         const val DAYS_IN_WEEK = 7
+
+        // Must track item_widget_media.xml's itemCover, which is what these bitmaps are drawn into.
+        const val COVER_WIDTH_DP = 38
+        const val COVER_HEIGHT_DP = 52
+        const val COVER_RADIUS_DP = 8
 
         /** MUMediaDetailsActivity already handles these as a VIEW deep link. */
         const val MU_SERIES_URL = "https://www.mangaupdates.com/series/"
