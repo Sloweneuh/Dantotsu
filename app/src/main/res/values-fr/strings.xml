@@ -260,6 +260,7 @@
     <string name="quick_tiles_remove">Retirer</string>
     <string name="quick_tiles_reset">Réinitialiser</string>
     <string name="quick_tiles_undo">Annuler</string>
+    <string name="backup_quick_tiles">Disposition des tuiles rapides</string>
     <string name="quick_tile_list_sync">Synchro des listes</string>
     <string name="quick_tile_discord_rpc">Discord RPC</string>
     <string name="quick_tile_needs_discord">Discord requis</string>

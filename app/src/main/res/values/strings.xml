@@ -302,6 +302,7 @@
     <string name="quick_tiles_remove">Remove</string>
     <string name="quick_tiles_reset">Reset</string>
     <string name="quick_tiles_undo">Undo</string>
+    <string name="backup_quick_tiles">Quick tiles layout</string>
     <string name="quick_tile_list_sync">List Sync</string>
     <string name="quick_tile_discord_rpc">Discord RPC</string>
     <string name="quick_tile_needs_discord">Needs Discord</string>

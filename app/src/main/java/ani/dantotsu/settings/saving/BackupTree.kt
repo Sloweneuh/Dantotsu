@@ -205,6 +205,7 @@ object BackupTree {
                         BackupItem(PrefName.DefaultStartUpTab, R.string.startUpTab),
                         BackupItem(PrefName.HomeLayout, R.string.home_layout_show),
                         BackupItem(PrefName.HomeLayoutOrder, R.string.home_layout_show),
+                        BackupItem(PrefName.QuickTileOrder, R.string.backup_quick_tiles),
                         BackupItem(PrefName.ShowAnimeTab, R.string.show_anime_tab),
                         BackupItem(PrefName.ShowMangaTab, R.string.show_manga_tab),
                         BackupItem(PrefName.HomeStat1, R.string.home_stats_stat1),
