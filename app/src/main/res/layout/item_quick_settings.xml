@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+    Shared "open the settings sheet" button, included into the top bar of screens that have room
+    for it. Screens whose bar is already full instead rely on long-pressing their back arrow.
+
+    Shows the signed-in user's avatar, falling back to a person glyph — not a cog, which several of
+    the host screens already use for their own per-screen settings.
+
+    Deliberately a plain CardView with the same default elevation and translationZ as the floating
+    close chips it sits beside on the media/character/studio screens: those are siblings of an
+    AppBarLayout that outranks anything at a lower Z, and a MaterialCardView here was silently
+    painted underneath the banner.
+-->
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="36dp"
+    android:layout_height="36dp"
+    android:clickable="true"
+    android:contentDescription="@string/settings"
+    android:focusable="true"
+    android:translationZ="7dp"
+    app:cardBackgroundColor="@color/nav_bg"
+    app:cardCornerRadius="18dp">
+
+    <!--
+        match_parent, not a fixed size: hosts shrink the card via the <include> tag, which only
+        overrides the root's layout params — a fixed child would keep its own size and sit off
+        centre inside the smaller card.
+    -->
+    <com.google.android.material.imageview.ShapeableImageView
+        android:id="@+id/quickSettingsAvatar"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_gravity="center"
+        android:padding="6dp"
+        android:scaleType="centerCrop"
+        app:srcCompat="@drawable/ic_round_person_24"
+        app:tint="?attr/colorOnBackground"
+        tools:ignore="ContentDescription,ImageContrastCheck" />
+
+</androidx.cardview.widget.CardView>

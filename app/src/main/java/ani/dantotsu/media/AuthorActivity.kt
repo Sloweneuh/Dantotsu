@@ -29,6 +29,7 @@ import ani.dantotsu.others.ImageViewDialog
 import ani.dantotsu.others.SpoilerPlugin
 import ani.dantotsu.others.getSerialized
 import ani.dantotsu.px
+import ani.dantotsu.settings.bindQuickSettings
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.snackString
@@ -76,6 +77,11 @@ class AuthorActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedListener
         binding.characterRecyclerView.updatePadding(bottom = 64f.px + navBarHeight)
         binding.characterTitle.isSelected = true
         binding.characterAppBar.addOnOffsetChangedListener(this)
+
+        binding.quickSettings.root.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+            topMargin += statusBarHeight
+        }
+        binding.quickSettings.bindQuickSettings(this)
 
         binding.characterClose.setOnClickListener {
             onBackPressedDispatcher.onBackPressed()

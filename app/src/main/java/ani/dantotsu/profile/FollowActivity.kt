@@ -16,6 +16,7 @@ import ani.dantotsu.connections.anilist.api.User
 import ani.dantotsu.databinding.ActivityFollowBinding
 import ani.dantotsu.initActivity
 import ani.dantotsu.navBarHeight
+import ani.dantotsu.settings.enableSettingsLongPress
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.statusBarHeight
@@ -55,6 +56,7 @@ class FollowActivity : AppCompatActivity() {
         )
         binding.listRecyclerView.adapter = adapter
         binding.listProgressBar.visibility = View.VISIBLE
+        binding.listBack.enableSettingsLongPress()
         binding.listBack.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
 
         val title = intent.getStringExtra("title")

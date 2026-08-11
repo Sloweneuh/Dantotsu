@@ -28,6 +28,7 @@ import ani.dantotsu.loadImage
 import ani.dantotsu.initActivity
 import ani.dantotsu.getThemeColor
 import ani.dantotsu.hideSystemBarsExtendView
+import ani.dantotsu.settings.enableSettingsLongPress
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.statusBarHeight
@@ -73,7 +74,10 @@ class MediaEquivalentsActivity : AppCompatActivity() {
         // Standard CoordinatorLayout/AppBar behavior used; no manual top padding applied.
 
         // back button
-        binding.root.findViewById<View?>(R.id.back)?.setOnClickListener { finish() }
+        binding.root.findViewById<View?>(R.id.back)?.apply {
+            setOnClickListener { finish() }
+            enableSettingsLongPress()
+        }
 
         // Tapping the title scrolls the results back to the top.
         binding.listTitle.setOnClickListener {

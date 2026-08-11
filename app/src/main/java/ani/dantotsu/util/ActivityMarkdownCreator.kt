@@ -17,6 +17,7 @@ import ani.dantotsu.initActivity
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.openLinkInBrowser
 import ani.dantotsu.others.AndroidBug5497Workaround
+import ani.dantotsu.settings.enableSettingsLongPress
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.toast
@@ -113,6 +114,7 @@ class ActivityMarkdownCreator : AppCompatActivity() {
         }
         previewMarkdown(false)
 
+        binding.markdownCreatorBack.enableSettingsLongPress()
         binding.markdownCreatorBack.setOnClickListener {
             onBackPressedDispatcher.onBackPressed()
         }

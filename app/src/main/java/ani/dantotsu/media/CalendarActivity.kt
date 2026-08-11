@@ -20,6 +20,7 @@ import ani.dantotsu.databinding.ActivityListBinding
 import ani.dantotsu.getThemeColor
 import ani.dantotsu.hideSystemBarsExtendView
 import ani.dantotsu.media.user.ListViewPagerAdapter
+import ani.dantotsu.settings.enableSettingsLongPress
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.themes.ThemeManager
@@ -101,6 +102,7 @@ class CalendarActivity : AppCompatActivity(), AniMangaFilterHost {
         }
         setContentView(binding.root)
 
+        binding.listBack.enableSettingsLongPress()
         binding.listBack.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
 
         binding.listTitle.setText(R.string.release_calendar)

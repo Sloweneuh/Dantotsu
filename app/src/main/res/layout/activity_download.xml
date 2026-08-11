@@ -9,6 +9,7 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:gravity="center_vertical"
         android:orientation="horizontal">
 
         <androidx.cardview.widget.CardView
@@ -46,7 +47,7 @@
             android:id="@+id/downloadSettingsButton"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:layout_marginEnd="16dp"
+            android:layout_marginEnd="8dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/download_settings"
             android:padding="12dp"
@@ -54,6 +55,13 @@
             app:tint="?attr/colorOnBackground"
             tools:ignore="SpeakableTextPresentCheck"
             xmlns:tools="http://schemas.android.com/tools" />
+
+        <include
+            android:id="@+id/quickSettings"
+            layout="@layout/item_quick_settings"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_marginEnd="16dp" />
     </LinearLayout>
 
     <nl.joery.animatedbottombar.AnimatedBottomBar

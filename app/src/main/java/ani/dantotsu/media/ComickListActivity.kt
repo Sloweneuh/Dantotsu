@@ -22,6 +22,7 @@ import ani.dantotsu.getThemeColor
 import ani.dantotsu.hideSystemBarsExtendView
 import ani.dantotsu.initActivity
 import ani.dantotsu.others.CustomBottomDialog
+import ani.dantotsu.settings.enableSettingsLongPress
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.statusBarHeight
@@ -164,6 +165,7 @@ class ComickListActivity : AppCompatActivity() {
 
         binding.listTitle.text = listTitle ?: listSlug
         binding.listTitle.isSelected = true
+        binding.listBack.enableSettingsLongPress()
         binding.listBack.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
 
         // Tapping the list name scrolls the results back to the top.

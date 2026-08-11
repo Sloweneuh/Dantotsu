@@ -501,6 +501,21 @@
             tools:ignore="ContentDescription" />
     </androidx.cardview.widget.CardView>
 
+    <!--
+        Sits beside the close chip rather than in the title bar: that row already carries the
+        progress text plus the handoff/share/favourite icons, and an extra button there would push
+        the progress text into truncation. Floating here it is pinned above the banner, so it stays
+        put whether the app bar is expanded or collapsed.
+    -->
+    <include
+        android:id="@+id/quickSettings"
+        layout="@layout/item_quick_settings"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:layout_gravity="end"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="56dp" />
+
     <androidx.cardview.widget.CardView
         android:id="@+id/mediaCover"
         android:layout_width="wrap_content"

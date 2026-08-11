@@ -25,6 +25,7 @@ import ani.dantotsu.home.MergedReadingAdapter
 import ani.dantotsu.initActivity
 import ani.dantotsu.others.CustomBottomDialog
 import ani.dantotsu.others.getSerialized
+import ani.dantotsu.settings.enableSettingsLongPress
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.statusBarHeight
@@ -97,6 +98,7 @@ class MediaListViewActivity : AppCompatActivity() {
         binding.listAppBar.setBackgroundColor(primaryColor)
         binding.listTitle.setTextColor(primaryTextColor)
         binding.listTitle.isSelected = true
+        binding.listBack.enableSettingsLongPress()
         binding.listBack.setOnClickListener { finish() }
 
         screenWidth = resources.displayMetrics.run { widthPixels / density }

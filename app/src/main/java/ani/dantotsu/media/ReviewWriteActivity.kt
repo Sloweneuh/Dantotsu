@@ -11,6 +11,7 @@ import ani.dantotsu.databinding.ActivityReviewWriteBinding
 import ani.dantotsu.initActivity
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.others.AndroidBug5497Workaround
+import ani.dantotsu.settings.enableSettingsLongPress
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.toast
@@ -55,6 +56,7 @@ class ReviewWriteActivity : AppCompatActivity() {
             override fun onStopTrackingTouch(seekBar: SeekBar) {}
         })
 
+        binding.reviewWriteBack.enableSettingsLongPress()
         binding.reviewWriteBack.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
 
         binding.reviewSubmitButton.setOnClickListener { submitReview() }

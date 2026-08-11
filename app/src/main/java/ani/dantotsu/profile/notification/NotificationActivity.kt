@@ -25,6 +25,7 @@ import ani.dantotsu.settings.SettingsAnilistNotificationActivity
 import ani.dantotsu.settings.SettingsCommentNotificationActivity
 import ani.dantotsu.settings.SettingsSubscriptionNotificationActivity
 import ani.dantotsu.settings.SettingsUnreadChapterNotificationActivity
+import ani.dantotsu.settings.bindQuickSettings
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.statusBarHeight
@@ -68,7 +69,8 @@ class NotificationActivity : AppCompatActivity() {
         if (requestedTab in tabs.indices) selected = requestedTab
 
         binding.notificationBack.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
-        
+        binding.quickSettings.bindQuickSettings(this)
+
         // Settings button click listener
         binding.notificationSettings.setOnClickListener {
             openSettingsForCurrentTab()

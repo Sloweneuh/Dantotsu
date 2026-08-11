@@ -326,4 +326,14 @@
 
     </androidx.cardview.widget.CardView>
 
+    <!-- Same floating chip treatment as the close button beside it. -->
+    <include
+        android:id="@+id/quickSettings"
+        layout="@layout/item_quick_settings"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:layout_gravity="top|end"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="56dp" />
+
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

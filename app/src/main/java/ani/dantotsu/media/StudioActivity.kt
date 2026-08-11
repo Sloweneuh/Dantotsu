@@ -21,6 +21,7 @@ import ani.dantotsu.initActivity
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.others.getSerialized
 import ani.dantotsu.px
+import ani.dantotsu.settings.bindQuickSettings
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
 import kotlinx.coroutines.Dispatchers
@@ -52,6 +53,8 @@ class StudioActivity : AppCompatActivity() {
 
         studio = intent.getSerialized("studio")
         binding.studioTitle.text = studio?.name
+
+        binding.quickSettings.bindQuickSettings(this)
 
         binding.studioClose.setOnClickListener {
             onBackPressedDispatcher.onBackPressed()

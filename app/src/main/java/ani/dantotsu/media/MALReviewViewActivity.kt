@@ -12,6 +12,7 @@ import ani.dantotsu.loadImage
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.others.MALReview
 import ani.dantotsu.profile.activity.ActivityItemBuilder
+import ani.dantotsu.settings.enableSettingsLongPress
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.util.AniMarkdown
@@ -56,6 +57,7 @@ class MALReviewViewActivity : AppCompatActivity() {
         binding.voteText.visibility = View.GONE
 
         try {
+            binding.closeButton.enableSettingsLongPress()
             binding.closeButton.setOnClickListener { finish() }
         } catch (_: Throwable) {}
     }

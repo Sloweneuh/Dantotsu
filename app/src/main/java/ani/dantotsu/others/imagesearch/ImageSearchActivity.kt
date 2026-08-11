@@ -19,6 +19,7 @@ import ani.dantotsu.databinding.ActivityImageSearchBinding
 import ani.dantotsu.initActivity
 import ani.dantotsu.media.MediaDetailsActivity
 import ani.dantotsu.navBarHeight
+import ani.dantotsu.settings.enableSettingsLongPress
 import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.toast
 import ani.dantotsu.util.friendlyErrorReason
@@ -67,6 +68,7 @@ class ImageSearchActivity : AppCompatActivity() {
             viewModel.clearResults()
             imageSelectionLauncher.launch("image/*")
         }
+        binding.imageSearchTitle.enableSettingsLongPress()
         binding.imageSearchTitle.setOnClickListener {
             onBackPressedDispatcher.onBackPressed()
         }

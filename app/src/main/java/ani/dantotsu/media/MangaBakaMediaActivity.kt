@@ -47,6 +47,7 @@ import ani.dantotsu.others.ImageViewDialog
 import ani.dantotsu.media.manga.Manga
 import ani.dantotsu.px
 import ani.dantotsu.setSafeOnClickListener
+import ani.dantotsu.settings.bindQuickSettings
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
 import com.google.android.material.chip.Chip
@@ -82,6 +83,10 @@ class MangaBakaMediaActivity : AppCompatActivity() {
         binding.mangaBakaMediaClose.updateLayoutParams<ViewGroup.MarginLayoutParams> {
             topMargin = statusBarHeight + 16f.px
         }
+        binding.quickSettings.root.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+            topMargin = statusBarHeight + 16f.px
+        }
+        binding.quickSettings.bindQuickSettings(this)
         binding.mangaBakaMediaClose.setOnClickListener { finish() }
 
         val seriesId = intent.getLongExtra(EXTRA_SERIES_ID, -1L)

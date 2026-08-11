@@ -15,6 +15,7 @@ import ani.dantotsu.R
 import ani.dantotsu.databinding.ActivityNotificationBinding
 import ani.dantotsu.initActivity
 import ani.dantotsu.profile.activity.ActivityFragment.Companion.ActivityType
+import ani.dantotsu.settings.bindQuickSettings
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.themes.ThemeManager
@@ -79,6 +80,7 @@ class FeedActivity : AppCompatActivity() {
         tabs.forEach { (icon, title) -> navBar.addTab(navBar.createTab(icon, title)) }
 
         binding.notificationBack.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
+        binding.quickSettings.bindQuickSettings(this)
         val getOne = intent.getIntExtra("activityId", -1)
         if (getOne != -1) {
             navBar.visibility = View.GONE

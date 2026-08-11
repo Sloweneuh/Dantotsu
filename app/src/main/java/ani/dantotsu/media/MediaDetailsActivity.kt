@@ -60,6 +60,7 @@ import ani.dantotsu.openLinkInBrowser
 import ani.dantotsu.others.AndroidBug5497Workaround
 import ani.dantotsu.others.ImageViewDialog
 import ani.dantotsu.others.getSerialized
+import ani.dantotsu.settings.bindQuickSettings
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.snackString
@@ -285,6 +286,12 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
         binding.mediaCollapsing.minimumHeight = statusBarHeight
 
         binding.mediaTitle.isSelected = true
+        // Same status bar inset as the close chip it sits next to (stacking comes from the shared
+        // layout's translationZ).
+        binding.quickSettings.root.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+            topMargin += statusBarHeight
+        }
+        binding.quickSettings.bindQuickSettings(this)
 
         mMaxScrollSize = binding.mediaAppBar.totalScrollRange
         binding.mediaAppBar.addOnOffsetChangedListener(this)

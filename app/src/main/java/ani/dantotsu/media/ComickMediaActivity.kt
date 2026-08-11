@@ -48,6 +48,7 @@ import ani.dantotsu.openOrCopyAnilistLink
 import ani.dantotsu.others.ImageViewDialog
 import ani.dantotsu.px
 import ani.dantotsu.setSafeOnClickListener
+import ani.dantotsu.settings.bindQuickSettings
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
 import com.google.android.material.chip.Chip
@@ -95,6 +96,10 @@ class ComickMediaActivity : AppCompatActivity() {
         binding.comickMediaClose.updateLayoutParams<ViewGroup.MarginLayoutParams> {
             topMargin = statusBarHeight + 16f.px
         }
+        binding.quickSettings.root.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+            topMargin = statusBarHeight + 16f.px
+        }
+        binding.quickSettings.bindQuickSettings(this)
         binding.comickMediaClose.setOnClickListener { finish() }
 
         val slug = intent.getStringExtra(EXTRA_SLUG)

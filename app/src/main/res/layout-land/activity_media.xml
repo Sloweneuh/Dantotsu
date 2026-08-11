@@ -343,6 +343,16 @@
                 tools:ignore="ContentDescription" />
         </androidx.cardview.widget.CardView>
 
+        <!-- Beside the close chip, matching the portrait layout. -->
+        <include
+            android:id="@+id/quickSettings"
+            layout="@layout/item_quick_settings"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_gravity="end"
+            android:layout_marginTop="16dp"
+            android:layout_marginEnd="56dp" />
+
         <FrameLayout
             android:id="@+id/fragmentExtensionsContainer"
             android:layout_width="match_parent"

@@ -28,6 +28,7 @@ import ani.dantotsu.getThemeColor
 import ani.dantotsu.hideSystemBarsExtendView
 import ani.dantotsu.media.ActiveFilterChip
 import ani.dantotsu.media.ManageFiltersDialog
+import ani.dantotsu.settings.enableSettingsLongPress
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.statusBarHeight
@@ -111,6 +112,7 @@ class ListActivity : AppCompatActivity() {
             )
         }
 
+        binding.listBack.enableSettingsLongPress()
         binding.listBack.setOnClickListener {
             finish()
         }

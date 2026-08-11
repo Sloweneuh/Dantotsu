@@ -7,6 +7,8 @@ import android.view.animation.Animation
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import ani.dantotsu.databinding.ItemSearchHeaderBinding
+import ani.dantotsu.settings.bindQuickSettings
+import ani.dantotsu.settings.enableSettingsLongPress
 import ani.dantotsu.stripSpansOnPaste
 
 abstract class HeaderInterface {
@@ -30,6 +32,10 @@ abstract class HeaderInterface {
     fun attach(binding: ItemSearchHeaderBinding) {
         this.binding = binding
         binding.searchBarText.stripSpansOnPaste()
+        // Here rather than in bind(): the header is shared by SearchAdapter and
+        // SupportingSearchAdapter, and only one of them is attached per search type.
+        binding.quickSettings.bindQuickSettings()
+        binding.searchBack.enableSettingsLongPress()
         bind()
     }
 

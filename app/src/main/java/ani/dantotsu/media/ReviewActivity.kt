@@ -18,6 +18,7 @@ import ani.dantotsu.connections.anilist.api.Query
 import ani.dantotsu.databinding.ActivityFollowBinding
 import ani.dantotsu.initActivity
 import ani.dantotsu.navBarHeight
+import ani.dantotsu.settings.enableSettingsLongPress
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.util.ActivityMarkdownCreator
@@ -72,6 +73,7 @@ class ReviewActivity : AppCompatActivity() {
             false
         )
         binding.listProgressBar.visibility = View.VISIBLE
+        binding.listBack.enableSettingsLongPress()
         binding.listBack.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
 
         lifecycleScope.launch(Dispatchers.IO) {

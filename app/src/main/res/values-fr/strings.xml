@@ -1110,6 +1110,7 @@
         <item>Support MAL ? bruh.</item>
         <item>Des romans ? plutôt des NON-mans.</item>
         <item>Appui long sur le logo pour vérifier les mises à jour.</item>
+        <item>Appui long sur la flèche de retour de n\'importe quel écran pour ouvrir les paramètres.</item>
     </string-array>
     <string-array name="themes">
         <item>Défaut</item>

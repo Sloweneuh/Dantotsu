@@ -12,6 +12,7 @@ import ani.dantotsu.databinding.ActivityMediaListViewBinding
 import ani.dantotsu.getThemeColor
 import ani.dantotsu.hideSystemBarsExtendView
 import ani.dantotsu.initActivity
+import ani.dantotsu.settings.enableSettingsLongPress
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.statusBarHeight
@@ -93,6 +94,7 @@ class StackListViewActivity : AppCompatActivity() {
         binding.mediaGrid.setOnClickListener { changeView(0, binding.mediaGrid) }
 
         binding.listTitle.text = "${intent.getStringExtra("title")} (${stacks.size})"
+        binding.listBack.enableSettingsLongPress()
         binding.listBack.setOnClickListener { finish() }
 
         // Set initial adapter/layout

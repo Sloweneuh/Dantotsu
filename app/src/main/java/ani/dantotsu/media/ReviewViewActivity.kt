@@ -22,6 +22,7 @@ import ani.dantotsu.navBarHeight
 import ani.dantotsu.openImage
 import ani.dantotsu.profile.ProfileActivity
 import ani.dantotsu.profile.activity.ActivityItemBuilder
+import ani.dantotsu.settings.enableSettingsLongPress
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.toast
@@ -49,6 +50,7 @@ class ReviewViewActivity : AppCompatActivity() {
         review = intent.getSerializableExtra("review") as Query.Review
         // Close/back button
         try {
+            binding.closeButton.enableSettingsLongPress()
             binding.closeButton.setOnClickListener { finish() }
         } catch (_: Throwable) {}
         binding.userName.text = review.user?.name

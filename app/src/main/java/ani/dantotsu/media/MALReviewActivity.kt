@@ -17,6 +17,7 @@ import ani.dantotsu.navBarHeight
 import ani.dantotsu.others.Jikan
 import ani.dantotsu.others.MALReview
 import ani.dantotsu.others.toMALReview
+import ani.dantotsu.settings.enableSettingsLongPress
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
 import com.xwray.groupie.GroupieAdapter
@@ -62,6 +63,7 @@ class MALReviewActivity : AppCompatActivity() {
         binding.listRecyclerView.adapter = adapter
         binding.listRecyclerView.layoutManager = LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false)
         binding.listProgressBar.visibility = View.VISIBLE
+        binding.listBack.enableSettingsLongPress()
         binding.listBack.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
 
         lifecycleScope.launch(Dispatchers.IO) {

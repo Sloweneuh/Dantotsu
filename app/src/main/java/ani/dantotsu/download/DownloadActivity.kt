@@ -16,6 +16,7 @@ import ani.dantotsu.download.manage.DownloadQueueFragment
 import ani.dantotsu.initActivity
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.settings.SettingsRouter
+import ani.dantotsu.settings.bindQuickSettings
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.util.LauncherWrapper
@@ -38,6 +39,7 @@ class DownloadActivity : AppCompatActivity() {
             bottomMargin = navBarHeight
         }
         binding.downloadBack.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
+        binding.quickSettings.bindQuickSettings(this)
         binding.downloadSettingsButton.setOnClickListener {
             if (binding.downloadSettingsContainer.isVisible) {
                 onBackPressedDispatcher.onBackPressed()

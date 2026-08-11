@@ -34,6 +34,7 @@ import ani.dantotsu.openLinkInBrowser
 import ani.dantotsu.profile.ChartBuilder
 import ani.dantotsu.profile.activity.ActivityFragment
 import ani.dantotsu.profile.activity.ActivityFragment.Companion.ActivityType
+import ani.dantotsu.settings.bindQuickSettings
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.snackString
@@ -224,6 +225,7 @@ class ProfileActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedListene
                         }
                     }
                     profileAppBar.visibility = View.VISIBLE
+                    quickSettings.bindQuickSettings(context, useAvatar = false)
                     profileMenuButton.setOnClickListener {
                         val popup = PopupMenu(context, profileMenuButton)
                         popup.menuInflater.inflate(R.menu.menu_profile, popup.menu)
@@ -299,7 +301,9 @@ class ProfileActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedListene
                     profileBannerImageNoKen.updateLayoutParams { height += liveStatusBarHeight }
                     profileBannerGradient.updateLayoutParams { height += liveStatusBarHeight }
                     profileCloseButton.updateLayoutParams<ViewGroup.MarginLayoutParams> { topMargin += liveStatusBarHeight }
-                    profileMenuButton.updateLayoutParams<ViewGroup.MarginLayoutParams> { topMargin += liveStatusBarHeight }
+                    // The whole action row, not the menu button alone: it now has the quick-settings
+                    // button beside it, and offsetting one child leaves the two out of line.
+                    profileTopActions.updateLayoutParams<ViewGroup.MarginLayoutParams> { topMargin += liveStatusBarHeight }
                     profileButtonContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> { topMargin += liveStatusBarHeight }
 
                     profileBannerImage.openImage(

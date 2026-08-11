@@ -68,6 +68,13 @@
             android:contentDescription=""
             tools:ignore="ContentDescription,ImageContrastCheck" />
 
+        <include
+            android:id="@+id/quickSettings"
+            layout="@layout/item_quick_settings"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_marginStart="8dp" />
+
     </LinearLayout>
 
 
