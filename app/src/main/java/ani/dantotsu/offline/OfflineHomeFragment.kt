@@ -70,8 +70,11 @@ class OfflineHomeFragment : Fragment() {
         binding.homeNotificationCount.visibility = View.GONE
         binding.homeUserName.text =
             Anilist.username?.takeIf { it.isNotBlank() } ?: getString(R.string.app_name)
-        // Leave the avatar ImageView showing its default cog icon (set in the layout) rather than
-        // trying to load the network avatar, which isn't fetchable offline anyway.
+        // Worth asking for even offline: the URL is cached in preferences and Glide serves the
+        // image from its disk cache, so this is normally the real avatar rather than the glyph —
+        // and it is what the settings sheet shows in this same state. Guarded because loadImage
+        // clears the view when handed nothing, which would wipe the layout's glyph too.
+        Anilist.avatar?.takeIf { it.isNotBlank() }?.let { binding.homeUserAvatar.loadImage(it) }
         val bannerAnimations: Boolean = PrefManager.getVal(PrefName.BannerAnimations)
         blurImage(if (bannerAnimations) binding.homeUserBg else binding.homeUserBgNoKen, Anilist.bg)
         binding.homeUserStat1Row.visibility = View.VISIBLE

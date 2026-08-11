@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+    One layout for both tile sizes: a large tile is icon + text, a small tile is the same view with
+    the text block gone and the icon centred. Two layouts would mean two holders binding the same
+    dozen properties.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:clipChildren="false"
+    android:clipToPadding="false"
+    android:padding="4dp">
+
+    <LinearLayout
+        android:id="@+id/quickTileRoot"
+        android:layout_width="match_parent"
+        android:layout_height="72dp"
+        android:background="@drawable/quick_tile_background"
+        android:clickable="true"
+        android:focusable="true"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp">
+
+        <ImageView
+            android:id="@+id/quickTileIcon"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            app:srcCompat="@drawable/ic_round_settings_24"
+            tools:ignore="ContentDescription" />
+
+        <LinearLayout
+            android:id="@+id/quickTileText"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/quickTileLabel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:fontFamily="@font/poppins_bold"
+                android:maxLines="2"
+                android:textSize="13sp"
+                tools:text="Incognito" />
+
+            <TextView
+                android:id="@+id/quickTileState"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:alpha="0.7"
+                android:ellipsize="end"
+                android:fontFamily="@font/poppins_family"
+                android:maxLines="1"
+                android:textSize="11sp"
+                android:visibility="gone"
+                tools:text="On"
+                tools:visibility="visible" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- Shelf-only: the "+" that puts an unplaced tile on the panel. ic_add carries its own
+         colorControlNormal tint, which is near-invisible on the accent disc, so the code retints
+         it to colorOnPrimary. -->
+    <ImageView
+        android:id="@+id/quickTileBadge"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_gravity="top|end"
+        android:background="@drawable/quick_tile_badge_background"
+        android:padding="4dp"
+        android:visibility="gone"
+        app:srcCompat="@drawable/ic_add"
+        tools:ignore="ContentDescription"
+        tools:visibility="visible" />
+
+    <!--
+        Shown on the selected tile only: the resize handle straddling its trailing edge.
+
+        The negative end margin puts the container's edge on the item's edge, so the pill, sitting
+        flush inside it, is centred on the tile's border. The pill is kept short: the tile is fully
+        rounded, so its edge curves away above and below the midline, and a tall pill reads as
+        hanging off the side even when its centre is exactly on the ring.
+
+        Touches are actually routed by an OnItemTouchListener on the list, which can claim the gap
+        and the neighbour's edge that this view can never receive; the size here only sets a
+        sensible fallback.
+    -->
+    <FrameLayout
+        android:id="@+id/quickTileResize"
+        android:layout_width="48dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="end|center_vertical"
+        android:layout_marginEnd="-4dp"
+        android:clickable="true"
+        android:contentDescription="@string/quick_tiles_resize"
+        android:focusable="true"
+        android:visibility="gone"
+        tools:visibility="visible">
+
+        <View
+            android:layout_width="8dp"
+            android:layout_height="16dp"
+            android:layout_gravity="end|center_vertical"
+            android:background="@drawable/quick_tile_resize_pill" />
+
+    </FrameLayout>
+
+</FrameLayout>

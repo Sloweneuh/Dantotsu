@@ -214,13 +214,16 @@ class HandoffBottomSheet : BottomSheetDialogFragment() {
         }
     }
 
-    /** Wires the contextual "enable …" buttons (shown by [refreshLocalControls]). */
+    /** Wires the discovery switch and the contextual "enable …" buttons. */
     private fun setupLocalControls() {
-        binding.handoffEnableDiscovery.setOnClickListener {
-            PrefManager.setVal(PrefName.HandoffDiscoveryEnabled, true)
-            if (mode == MODE_SEND) startLocalDiscoveryIfEnabled()
-            else {
-                GlobalHandoffReceiver.restart(requireContext().applicationContext)
+        binding.handoffDiscoveryToggle.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked == HandoffManager.localDiscoveryEnabled()) return@setOnCheckedChangeListener
+            PrefManager.setVal(PrefName.HandoffDiscoveryEnabled, isChecked)
+            if (mode == MODE_SEND) {
+                if (isChecked) startLocalDiscoveryIfEnabled() else manager?.stop()
+            } else {
+                if (isChecked) GlobalHandoffReceiver.restart(requireContext().applicationContext)
+                else GlobalHandoffReceiver.stop()
                 updateReceiveStatus()
             }
             refreshLocalControls()
@@ -244,13 +247,18 @@ class HandoffBottomSheet : BottomSheetDialogFragment() {
     private fun refreshLocalControls() {
         if (_binding == null) return
         if (isVirtual()) {
-            binding.handoffEnableDiscovery.visibility = View.GONE
+            // No Nearby/LAN here, so the switch would control nothing.
+            binding.handoffDiscoveryToggle.visibility = View.GONE
             binding.handoffEnableBluetooth.visibility = View.GONE
             binding.handoffEnableWifi.visibility = View.GONE
             return
         }
         val enabled = HandoffManager.localDiscoveryEnabled()
-        binding.handoffEnableDiscovery.visibility = if (!enabled) View.VISIBLE else View.GONE
+        binding.handoffDiscoveryToggle.visibility = View.VISIBLE
+        // Set without firing the listener back into the work that just ran.
+        if (binding.handoffDiscoveryToggle.isChecked != enabled) {
+            binding.handoffDiscoveryToggle.isChecked = enabled
+        }
         binding.handoffEnableBluetooth.visibility =
             if (enabled && !bluetoothOn()) View.VISIBLE else View.GONE
         binding.handoffEnableWifi.visibility =

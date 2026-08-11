@@ -285,6 +285,11 @@ object Anilist {
             PrefManager.getVal(PrefName.AnilistUserId, null as String?)?.toIntOrNull()
         if (username == null) username =
             PrefManager.getVal(PrefName.AnilistUserName, null as String?)?.takeIf { it.isNotBlank() }
+        // Cached alongside the name, so the avatar survives a cold start and is there offline.
+        // Without it the name came back and the picture did not, and the two disagreed everywhere
+        // they are shown together.
+        if (avatar == null) avatar =
+            PrefManager.getVal(PrefName.AnilistAvatar, null as String?)?.takeIf { it.isNotBlank() }
     }
 
     fun removeSavedToken() {
@@ -303,6 +308,7 @@ object Anilist {
         animeMeanScore = null
         mangaMeanScore = null
         PrefManager.removeVal(PrefName.AnilistToken)
+        PrefManager.removeVal(PrefName.AnilistAvatar)
         //logout from comments api
         CommentsAPI.logout()
 

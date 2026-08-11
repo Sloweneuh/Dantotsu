@@ -8,13 +8,8 @@
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="wrap_content"
         android:orientation="vertical">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:orientation="vertical">
 
             <LinearLayout
                 android:id="@+id/settingsAccountRow"
@@ -80,6 +75,7 @@
                 <!-- Cloud sync at a glance. Sync is silent by design, so without this there is
                      nothing anywhere that distinguishes "off", "working" and "needs you". -->
                 <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/settingsCloudCard"
                     android:layout_width="52dp"
                     android:layout_height="52dp"
                     android:layout_marginTop="4dp"
@@ -101,6 +97,7 @@
                 </com.google.android.material.card.MaterialCardView>
 
                 <FrameLayout
+                    android:id="@+id/settingsNotificationContainer"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
@@ -141,152 +138,148 @@
                 </FrameLayout>
             </LinearLayout>
 
-            <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/settingsIncognito"
-                style="@style/Widget.Material3.Button.TextButton"
+            <!-- Quick tiles. The row above is the account and stays fixed; everything below
+                 it is whatever the user arranged. -->
+            <FrameLayout
                 android:layout_width="match_parent"
-                android:layout_height="64dp"
-                android:checked="false"
-                android:drawableStart="@drawable/ic_incognito_24"
-                android:drawablePadding="16dp"
-                android:elegantTextHeight="true"
-                android:fontFamily="@font/poppins_bold"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                android:paddingStart="32dp"
-                android:paddingEnd="32dp"
-                android:text="@string/incognito_mode"
-                android:textAlignment="viewStart"
-                android:textColor="?attr/colorOnBackground"
-                app:cornerRadius="0dp"
-                app:drawableTint="?attr/colorPrimary"
-                app:showText="false"
-                app:thumbTint="@color/button_switch_track" />
+                android:layout_height="wrap_content"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp">
 
-            <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/settingsDownloads"
-                style="@style/Widget.Material3.Button.TextButton"
+                <androidx.viewpager2.widget.ViewPager2
+                    android:id="@+id/quickTilesPager"
+                    android:layout_width="match_parent"
+                    android:layout_height="320dp" />
+
+                <!-- Editing is one continuous surface instead of pages: the arrangement has to be
+                     reorderable as a whole, with the catalogue shelf below it. -->
+                <LinearLayout
+                    android:id="@+id/quickTilesEditContainer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone"
+                    tools:visibility="gone">
+
+                    <FrameLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp">
+
+                        <ImageButton
+                            android:id="@+id/quickTilesEditDone"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:layout_gravity="start|center_vertical"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:contentDescription="@string/quick_tiles_done"
+                            android:padding="8dp"
+                            android:src="@drawable/ic_round_arrow_back_ios_new_24"
+                            app:tint="?attr/colorOnBackground" />
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="end|center_vertical"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <!-- Appears only once there is something to undo, as in the system
+                                 panel. The arrangement saves as you go, so this is the way back
+                                 from a mistaken removal. -->
+                            <ImageButton
+                                android:id="@+id/quickTilesUndo"
+                                android:layout_width="36dp"
+                                android:layout_height="36dp"
+                                android:layout_marginEnd="4dp"
+                                android:background="?attr/selectableItemBackgroundBorderless"
+                                android:contentDescription="@string/quick_tiles_undo"
+                                android:padding="7dp"
+                                android:src="@drawable/ic_round_undo_24"
+                                android:visibility="gone"
+                                app:tint="?attr/colorOnBackground"
+                                tools:visibility="visible" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/quickTilesRemove"
+                                style="@style/Widget.Material3.Button"
+                                android:layout_width="wrap_content"
+                                android:layout_height="40dp"
+                                android:fontFamily="@font/poppins_bold"
+                                android:insetTop="0dp"
+                                android:insetBottom="0dp"
+                                android:minWidth="0dp"
+                                android:paddingStart="20dp"
+                                android:paddingEnd="20dp"
+                                android:text="@string/quick_tiles_remove"
+                                android:textAllCaps="false"
+                                android:textSize="13sp"
+                                app:cornerRadius="20dp" />
+
+                        </LinearLayout>
+
+                    </FrameLayout>
+
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/quickTilesEditor"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:clipChildren="false"
+                        android:nestedScrollingEnabled="false"
+                        android:overScrollMode="never"
+                        tools:itemCount="6"
+                        tools:listitem="@layout/item_quick_tile" />
+
+                    <!-- Below the whole catalogue rather than up in the toolbar, where the system
+                         panel puts it: throwing the arrangement away is the last thing on the
+                         screen, not something to brush past on the way in. -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/quickTilesReset"
+                        style="@style/Widget.Material3.Button"
+                        android:layout_width="wrap_content"
+                        android:layout_height="40dp"
+                        android:layout_gravity="center_horizontal"
+                        android:layout_marginTop="16dp"
+                        android:layout_marginBottom="8dp"
+                        android:fontFamily="@font/poppins_bold"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:minWidth="0dp"
+                        android:paddingStart="24dp"
+                        android:paddingEnd="24dp"
+                        android:text="@string/quick_tiles_reset"
+                        android:textAllCaps="false"
+                        android:textSize="13sp"
+                        app:cornerRadius="20dp" />
+
+                </LinearLayout>
+
+            </FrameLayout>
+
+            <FrameLayout
                 android:layout_width="match_parent"
-                android:layout_height="64dp"
-                android:checked="false"
-                android:drawableStart="@drawable/ic_signal_wifi_off_24"
-                android:drawablePadding="16dp"
-                android:elegantTextHeight="true"
-                android:fontFamily="@font/poppins_bold"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                android:paddingStart="32dp"
-                android:paddingEnd="32dp"
-                android:text="@string/offline_mode"
-                android:textAlignment="viewStart"
-                android:textColor="?attr/colorOnBackground"
-                app:cornerRadius="0dp"
-                app:drawableTint="?attr/colorPrimary"
-                app:showText="false"
-                app:thumbTint="@color/button_switch_track" />
-        </LinearLayout>
+                android:layout_height="48dp"
+                android:paddingStart="16dp"
+                android:paddingEnd="8dp">
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:orientation="vertical">
+                <ani.dantotsu.settings.quicktiles.QuickTilePageIndicator
+                    android:id="@+id/quickTilesIndicator"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center" />
 
-            <Button
-                android:id="@+id/settingsActivity"
-                style="@style/Widget.Material3.Button.TextButton"
-                android:layout_width="match_parent"
-                android:layout_height="64dp"
-                android:fontFamily="@font/poppins_bold"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                android:paddingStart="32dp"
-                android:paddingEnd="32dp"
-                android:text="@string/activities"
-                android:textAlignment="viewStart"
-                android:textAllCaps="false"
-                android:textColor="?attr/colorOnBackground"
-                app:cornerRadius="0dp"
-                app:icon="@drawable/inbox_empty"
-                app:iconPadding="16dp"
-                app:iconSize="24dp" />
+                <ImageButton
+                    android:id="@+id/quickTilesEdit"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_gravity="end|center_vertical"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/quick_tiles_edit"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_round_edit_24"
+                    app:tint="?attr/colorOnBackground" />
 
-            <Button
-                android:id="@+id/settingsExtensionSettings"
-                style="@style/Widget.Material3.Button.TextButton"
-                android:layout_width="match_parent"
-                android:layout_height="64dp"
-                android:fontFamily="@font/poppins_bold"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                android:paddingStart="32dp"
-                android:paddingEnd="32dp"
-                android:text="@string/extension_settings"
-                android:textAlignment="viewStart"
-                android:textAllCaps="false"
-                android:textColor="?attr/colorOnBackground"
-                app:cornerRadius="0dp"
-                app:icon="@drawable/ic_extension"
-                app:iconPadding="16dp"
-                app:iconSize="24dp" />
+            </FrameLayout>
 
-            <Button
-                android:id="@+id/settingsDownloadQueue"
-                style="@style/Widget.Material3.Button.TextButton"
-                android:layout_width="match_parent"
-                android:layout_height="64dp"
-                android:fontFamily="@font/poppins_bold"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                android:paddingStart="32dp"
-                android:paddingEnd="32dp"
-                android:text="@string/downloads"
-                android:textAlignment="viewStart"
-                android:textAllCaps="false"
-                android:textColor="?attr/colorOnBackground"
-                app:cornerRadius="0dp"
-                app:icon="@drawable/ic_download_24"
-                app:iconPadding="16dp"
-                app:iconSize="24dp" />
-
-            <Button
-                android:id="@+id/settingsReceiveHandoff"
-                style="@style/Widget.Material3.Button.TextButton"
-                android:layout_width="match_parent"
-                android:layout_height="64dp"
-                android:fontFamily="@font/poppins_bold"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                android:paddingStart="32dp"
-                android:paddingEnd="32dp"
-                android:text="@string/receive_from_another_device"
-                android:textAlignment="viewStart"
-                android:textAllCaps="false"
-                android:textColor="?attr/colorOnBackground"
-                app:cornerRadius="0dp"
-                app:icon="@drawable/ic_round_cast_24"
-                app:iconPadding="16dp"
-                app:iconSize="24dp" />
-
-            <Button
-                android:id="@+id/settingsSettings"
-                style="@style/Widget.Material3.Button.TextButton"
-                android:layout_width="match_parent"
-                android:layout_height="64dp"
-                android:layout_marginBottom="16dp"
-                android:fontFamily="@font/poppins_bold"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                android:paddingStart="32dp"
-                android:paddingEnd="32dp"
-                android:text="@string/settings"
-                android:textAlignment="viewStart"
-                android:textAllCaps="false"
-                android:textColor="?attr/colorOnBackground"
-                app:cornerRadius="0dp"
-                app:icon="@drawable/ic_round_settings_24"
-                app:iconPadding="16dp"
-                app:iconSize="24dp" />
-        </LinearLayout>
     </LinearLayout>
 
 </androidx.core.widget.NestedScrollView>

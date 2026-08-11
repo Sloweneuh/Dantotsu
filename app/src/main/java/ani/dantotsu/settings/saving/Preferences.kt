@@ -299,6 +299,11 @@ enum class PrefName(val data: Pref) {
     //Irrelevant
     Incognito(Pref(Location.Irrelevant, Boolean::class, false)),
     OfflineMode(Pref(Location.Irrelevant, Boolean::class, false)),
+
+    // Ids of the quick-settings sheet's tiles, in the order the user arranged them. Ids rather
+    // than indices so that adding or retiring a tile never silently reshuffles someone's layout;
+    // unknown ids are dropped on read. Empty means "never customised" — see QuickTiles.DEFAULT.
+    QuickTileOrder(Pref(Location.UI, List::class, listOf<String>())),
     DiscordStatus(Pref(Location.Irrelevant, String::class, "online")),
     MalSyncLanguagePreferences(Pref(Location.Irrelevant, Set::class, setOf<String>())), // Stores "mediaId:language" pairs
     DiscordRPCModeAnime(Pref(Location.Irrelevant, String::class, "dantotsu")),
@@ -353,6 +358,7 @@ enum class PrefName(val data: Pref) {
     AnilistToken(Pref(Location.Protected, String::class, "")),
     AnilistUserName(Pref(Location.Protected, String::class, "")),
     AnilistUserId(Pref(Location.Protected, String::class, "")),
+    AnilistAvatar(Pref(Location.Protected, String::class, "")),
     MALUserName(Pref(Location.Protected, String::class, "")),
     MALCodeChallenge(Pref(Location.Protected, String::class, "")),
     MALToken(Pref(Location.Protected, MAL.ResponseToken::class, "")),
