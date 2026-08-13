@@ -38,6 +38,12 @@ internal fun ItemQuickTileBinding.paintQuickTile(
     val context = root.context
     val large = placed.size == TileSize.LARGE
 
+    // A live resize drag writes an explicit pixel width here, and LayoutParams belong to the view
+    // rather than the tile in it. Left alone, the next tile recycled into this view inherits that
+    // width — which is what pulled the selection ring away from the resize handle after a reorder,
+    // since the handle is positioned against the cell and the ring follows this.
+    quickTileRoot.updateLayoutParams { width = ViewGroup.LayoutParams.MATCH_PARENT }
+
     val extensionIcon = (tile as? QuickTile.Extension)?.loadIcon(host)
     if (extensionIcon != null) {
         quickTileIcon.setImageDrawable(extensionIcon)
