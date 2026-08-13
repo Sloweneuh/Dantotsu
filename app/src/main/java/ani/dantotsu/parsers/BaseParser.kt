@@ -102,10 +102,18 @@ abstract class BaseParser {
                 continue
             }
             answered = true
-            val match = SourceMatcher.best(results, targets)
+            val titled = SourceMatcher.best(results, targets)
+            // Nothing here looks like a title we know — but the source answered this query, and a
+            // query specific enough only gets answered by a site that has the entry under a name it
+            // doesn't show us. See SourceMatcher.endorsed.
+            val endorsed = if ((titled?.score ?: 0) < SourceMatcher.ACCEPT) {
+                SourceMatcher.endorsed(query, results)
+            } else null
+            val match = endorsed ?: titled
             Logger.log(
                 "[$name] \"$query\" -> ${match?.response?.name ?: "nothing"}" +
-                    " (score ${match?.score ?: 0}, ${results.size} results)"
+                    " (score ${match?.score ?: 0}${if (endorsed != null) " endorsed" else ""}," +
+                    " ${results.size} results)"
             )
             if (match != null && match.score > (best?.score ?: -1)) best = match
             if ((best?.score ?: 0) >= SourceMatcher.CONFIDENT) break

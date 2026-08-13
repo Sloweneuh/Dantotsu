@@ -30,6 +30,12 @@ object SourceMatcher {
     /** Score that ends the search early — no later query is going to beat this candidate. */
     const val CONFIDENT = 92
 
+    /**
+     * Score for a result only the source's own search vouches for — see [endorsed]. Above [ACCEPT] so
+     * it gets used, below [CONFIDENT] so a title that actually matches still wins.
+     */
+    const val ENDORSED = 78
+
     /** Cap on searches per [BaseParser.autoSearch] call, so a hard-to-find title can't cost N round trips. */
     const val MAX_QUERIES = 3
 
@@ -37,6 +43,13 @@ object SourceMatcher {
     private const val MAX_TARGETS = 12
 
     private const val MAX_OTHER_NAMES = 8
+
+    /** How narrowly a source has to answer before [endorsed] reads its result as a deliberate hit. */
+    private const val MAX_ENDORSED_RESULTS = 2
+
+    /** How specific a query has to be before [endorsed] trusts it, in words and in characters. */
+    private const val DISTINCTIVE_TOKENS = 5
+    private const val DISTINCTIVE_LENGTH = 25
 
     /**
      * A title reduced to what can be compared. [strict] keeps every meaningful word; [core] also
@@ -100,6 +113,46 @@ object SourceMatcher {
             if (better) best = Match(candidate, score)
         }
         return best
+    }
+
+    /**
+     * The result to use when the titles agree on nothing but the source's search found it anyway.
+     *
+     * A source indexes titles it never displays: MangaDex lists an entry under every language it has
+     * a name in, but a search result carries only the one title, and [ShowResponse.otherNames] is
+     * empty for every extension-backed source. So a media whose romaji name AniList doesn't list as a
+     * synonym of its English name — searching "Muteki Shounin no Isekai Nariagari Monogatari…" returns
+     * "The Story of the Invincible Merchant's Rise in Another World…" — matches on no title at all,
+     * and [score] correctly reports that it doesn't. The evidence is in the search itself: the site
+     * answered a name it won't show us.
+     *
+     * That evidence only counts when the source couldn't have hit it by chance, so both hold:
+     *
+     * - The query is long and specific ([DISTINCTIVE_TOKENS] words, [DISTINCTIVE_LENGTH] characters).
+     *   A short query ("Bleach") matches half a catalogue by accident; a full sentence of a title does
+     *   not.
+     * - The source narrowed to [MAX_ENDORSED_RESULTS] entries. This is what separates a site that
+     *   *found* the title from one that fell back to fuzzy word-matching or a popular list — those
+     *   answer with a page of results, and their top hit means nothing.
+     *
+     * A stated season or part that contradicts the query still disqualifies, exactly as in
+     * [similarity]: the whole risk of a title-blind match is landing on the wrong entry of a
+     * franchise.
+     */
+    fun endorsed(query: String, results: List<ShowResponse>): Match? {
+        if (results.isEmpty() || results.size > MAX_ENDORSED_RESULTS) return null
+        val asked = key(query)
+        if (!asked.isUsable) return null
+        if (asked.core.length < DISTINCTIVE_LENGTH) return null
+        if (asked.core.count { it == ' ' } + 1 < DISTINCTIVE_TOKENS) return null
+
+        // Of the few results, still the closest to what was asked for — and where nothing separates
+        // them, the one carrying more chapters.
+        val pick = best(results, listOf(asked))?.response ?: return null
+        val found = key(pick.name)
+        if (found.season != null && asked.season != null && found.season != asked.season) return null
+        if (found.part != null && asked.part != null && found.part != asked.part) return null
+        return Match(pick, ENDORSED)
     }
 
     /** Every title a candidate is worth comparing against, native script included. */
