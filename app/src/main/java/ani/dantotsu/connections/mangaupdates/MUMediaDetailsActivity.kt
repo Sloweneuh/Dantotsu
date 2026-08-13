@@ -55,6 +55,7 @@ import ani.dantotsu.others.AndroidBug5497Workaround
 import ani.dantotsu.others.ImageViewDialog
 import ani.dantotsu.others.getSerialized
 import ani.dantotsu.Mapper
+import ani.dantotsu.settings.bindQuickSettings
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.snackString
@@ -568,6 +569,9 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
                 binding.incognito.updateLayoutParams<ViewGroup.MarginLayoutParams> {
                     topMargin += delta
                 }
+                binding.quickSettings.root.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+                    topMargin += delta
+                }
                 binding.mediaCollapsing.minimumHeight = realStatusBarHeight
             }
             val navInsets = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
@@ -776,6 +780,12 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         binding.mediaBannerNoKen.updateLayoutParams { height += statusBarHeight }
         binding.mediaClose.updateLayoutParams<ViewGroup.MarginLayoutParams> { topMargin += statusBarHeight }
         binding.incognito.updateLayoutParams<ViewGroup.MarginLayoutParams> { topMargin += statusBarHeight }
+        // This screen shares activity_media with the AniList one, so it inherits the quick-settings
+        // chip and has to give it the same inset and stacking the close chip beside it gets.
+        binding.quickSettings.root.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+            topMargin += statusBarHeight
+        }
+        binding.quickSettings.bindQuickSettings(this)
         binding.mediaCollapsing.minimumHeight = statusBarHeight
         // Source preference fragments (opened from item_media_source) fill this container over the
         // whole activity, so it has to clear the status bar itself.

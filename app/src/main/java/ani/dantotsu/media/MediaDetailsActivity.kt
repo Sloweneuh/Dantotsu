@@ -165,6 +165,11 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                 binding.incognito.updateLayoutParams<ViewGroup.MarginLayoutParams> {
                     topMargin += delta
                 }
+                // Same correction as the close chip: on a cold start straight into this screen the
+                // real status bar height only arrives here, after the initial margin was applied.
+                binding.quickSettings.root.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+                    topMargin += delta
+                }
                 binding.mediaCollapsing.minimumHeight = realStatusBarHeight
             }
             val navInsets = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
