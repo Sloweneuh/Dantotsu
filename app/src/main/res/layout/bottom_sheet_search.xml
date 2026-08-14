@@ -1,216 +1,29 @@
-<?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+<?xml version="1.0" encoding="utf-8"?><!--
+    The same tile panel as the quick-settings sheet, over the search catalogue: the fixed column of
+    nine buttons became tiles that can be reordered, resized and taken off.
+-->
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:background="@drawable/bottom_sheet_background"
-    android:padding="16dp">
+    android:background="@drawable/bottom_sheet_background">
 
-    <TextView
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/search"
-        android:fontFamily="@font/poppins_bold"
-        android:textSize="17sp"
-        android:gravity="center"/>
+        android:orientation="vertical"
+        android:paddingTop="16dp">
 
-    <Button
-        android:id="@+id/animeSearch"
-        style="@style/Widget.Material3.Button.TextButton"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:layout_marginBottom="16dp"
-        android:fontFamily="@font/poppins_bold"
-        android:insetTop="0dp"
-        android:insetBottom="0dp"
-        android:paddingStart="32dp"
-        android:paddingEnd="32dp"
-        android:text="@string/anime"
-        app:icon="@drawable/ic_round_movie_filter_24"
-        app:iconTint="?attr/colorPrimary"
-        app:iconSize="24dp"
-        app:iconPadding="16dp"
-        android:textSize="17sp"
-        android:textAlignment="viewStart"
-        android:textAllCaps="false"
-        android:textColor="?attr/colorOnBackground"
-        app:cornerRadius="0dp" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/poppins_bold"
+            android:gravity="center"
+            android:paddingBottom="8dp"
+            android:text="@string/search"
+            android:textSize="17sp" />
 
-    <Button
-        android:id="@+id/mangaSearch"
-        style="@style/Widget.Material3.Button.TextButton"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:layout_marginBottom="16dp"
-        android:fontFamily="@font/poppins_bold"
-        android:insetTop="0dp"
-        android:insetBottom="0dp"
-        android:paddingStart="32dp"
-        android:paddingEnd="32dp"
-        android:text="@string/manga"
-        app:icon="@drawable/ic_round_menu_book_24"
-        app:iconTint="?attr/colorPrimary"
-        app:iconSize="24dp"
-        app:iconPadding="16dp"
-        android:textSize="17sp"
-        android:textAlignment="viewStart"
-        android:textAllCaps="false"
-        android:textColor="?attr/colorOnBackground"
-        app:cornerRadius="0dp" />
+        <include layout="@layout/view_tile_panel" />
 
-    <Button
-        android:id="@+id/userSearch"
-        style="@style/Widget.Material3.Button.TextButton"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:layout_marginBottom="16dp"
-        android:fontFamily="@font/poppins_bold"
-        android:insetTop="0dp"
-        android:insetBottom="0dp"
-        android:paddingStart="32dp"
-        android:paddingEnd="32dp"
-        android:text="@string/users"
-        app:icon="@drawable/ic_round_person_24"
-        app:iconTint="?attr/colorPrimary"
-        app:iconSize="24dp"
-        app:iconPadding="16dp"
-        android:textSize="17sp"
-        android:textAlignment="viewStart"
-        android:textAllCaps="false"
-        android:textColor="?attr/colorOnBackground"
-        app:cornerRadius="0dp" />
+    </LinearLayout>
 
-    <Button
-        android:id="@+id/characterSearch"
-        style="@style/Widget.Material3.Button.TextButton"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:layout_marginBottom="16dp"
-        android:fontFamily="@font/poppins_bold"
-        android:insetTop="0dp"
-        android:insetBottom="0dp"
-        android:paddingStart="32dp"
-        android:paddingEnd="32dp"
-        android:text="@string/characters"
-        app:icon="@drawable/ic_round_face_24"
-        app:iconTint="?attr/colorPrimary"
-        app:iconSize="24dp"
-        app:iconPadding="16dp"
-        android:textSize="17sp"
-        android:textAlignment="viewStart"
-        android:textAllCaps="false"
-        android:textColor="?attr/colorOnBackground"
-        app:cornerRadius="0dp" />
-
-    <Button
-        android:id="@+id/staffSearch"
-        style="@style/Widget.Material3.Button.TextButton"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:layout_marginBottom="16dp"
-        android:fontFamily="@font/poppins_bold"
-        android:insetTop="0dp"
-        android:insetBottom="0dp"
-        android:paddingStart="32dp"
-        android:paddingEnd="32dp"
-        android:text="@string/staff"
-        app:icon="@drawable/ic_round_group_24"
-        app:iconTint="?attr/colorPrimary"
-        app:iconSize="24dp"
-        app:iconPadding="16dp"
-        android:textSize="17sp"
-        android:textAlignment="viewStart"
-        android:textAllCaps="false"
-        android:textColor="?attr/colorOnBackground"
-        app:cornerRadius="0dp" />
-
-    <Button
-        android:id="@+id/studioSearch"
-        style="@style/Widget.Material3.Button.TextButton"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:layout_marginBottom="16dp"
-        android:fontFamily="@font/poppins_bold"
-        android:insetTop="0dp"
-        android:insetBottom="0dp"
-        android:paddingStart="32dp"
-        android:paddingEnd="32dp"
-        android:text="@string/studios"
-        app:icon="@drawable/ic_round_movie_edit_24"
-        app:iconTint="?attr/colorPrimary"
-        app:iconSize="24dp"
-        app:iconPadding="16dp"
-        android:textSize="17sp"
-        android:textAlignment="viewStart"
-        android:textAllCaps="false"
-        android:textColor="?attr/colorOnBackground"
-        app:cornerRadius="0dp" />
-
-    <Button
-        android:id="@+id/muSearch"
-        style="@style/Widget.Material3.Button.TextButton"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:layout_marginBottom="16dp"
-        android:fontFamily="@font/poppins_bold"
-        android:insetTop="0dp"
-        android:insetBottom="0dp"
-        android:paddingStart="32dp"
-        android:paddingEnd="32dp"
-        android:text="@string/mu_series_search"
-        app:icon="@drawable/ic_round_mangaupdates_24"
-        app:iconTint="?attr/colorPrimary"
-        app:iconSize="24dp"
-        app:iconPadding="16dp"
-        android:textSize="17sp"
-        android:textAlignment="viewStart"
-        android:textAllCaps="false"
-        android:textColor="?attr/colorOnBackground"
-        app:cornerRadius="0dp" />
-
-    <Button
-        android:id="@+id/comickSearch"
-        style="@style/Widget.Material3.Button.TextButton"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:layout_marginBottom="16dp"
-        android:fontFamily="@font/poppins_bold"
-        android:insetTop="0dp"
-        android:insetBottom="0dp"
-        android:paddingStart="32dp"
-        android:paddingEnd="32dp"
-        android:text="@string/comick"
-        app:icon="@drawable/ic_round_comick_24"
-        app:iconTint="?attr/colorPrimary"
-        app:iconSize="24dp"
-        app:iconPadding="16dp"
-        android:textSize="17sp"
-        android:textAlignment="viewStart"
-        android:textAllCaps="false"
-        android:textColor="?attr/colorOnBackground"
-        app:cornerRadius="0dp" />
-
-    <Button
-        android:id="@+id/mangaBakaSearch"
-        style="@style/Widget.Material3.Button.TextButton"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:layout_marginBottom="16dp"
-        android:fontFamily="@font/poppins_bold"
-        android:insetTop="0dp"
-        android:insetBottom="0dp"
-        android:paddingStart="32dp"
-        android:paddingEnd="32dp"
-        android:text="@string/mangabaka"
-        app:icon="@drawable/ic_round_mangabaka_24"
-        app:iconTint="?attr/colorPrimary"
-        app:iconSize="24dp"
-        app:iconPadding="16dp"
-        android:textSize="17sp"
-        android:textAlignment="viewStart"
-        android:textAllCaps="false"
-        android:textColor="?attr/colorOnBackground"
-        app:cornerRadius="0dp" />
-
-</LinearLayout>
+</androidx.core.widget.NestedScrollView>

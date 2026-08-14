@@ -304,6 +304,11 @@
     <string name="quick_tiles_undo">Undo</string>
     <string name="quick_tiles_version" translatable="false">%1$s v%2$s</string>
     <string name="backup_quick_tiles">Quick tiles layout</string>
+    <string name="search_cat_anilist">AniList</string>
+    <string name="search_cat_services">Other services</string>
+    <string name="search_needs_mangaupdates">Sign in to MangaUpdates</string>
+    <string name="search_needs_connection_enabled">Enabled in Connections</string>
+    <string name="backup_search_tiles">Search tiles layout</string>
     <string name="quick_tile_list_sync">List Sync</string>
     <string name="quick_tile_discord_rpc">Discord RPC</string>
     <string name="quick_tile_needs_discord">Needs Discord</string>

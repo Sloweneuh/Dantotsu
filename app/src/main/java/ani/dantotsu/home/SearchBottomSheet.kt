@@ -1,21 +1,23 @@
 package ani.dantotsu.home
 
-import android.content.Context
-import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.core.content.ContextCompat
 import ani.dantotsu.BottomSheetDialogFragment
-import ani.dantotsu.connections.anilist.AnilistSearch.SearchType
-import ani.dantotsu.connections.anilist.AnilistSearch.SearchType.Companion.toAnilistString
-import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.databinding.BottomSheetSearchBinding
-import ani.dantotsu.media.SearchActivity
+import ani.dantotsu.databinding.ViewTilePanelBinding
+import ani.dantotsu.isOnline
+import ani.dantotsu.settings.quicktiles.SearchTiles
+import ani.dantotsu.settings.quicktiles.TilePanelController
+import ani.dantotsu.settings.quicktiles.tileHostOf
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 
+/**
+ * Where to search. The same tile panel the quick-settings sheet uses, over [SearchTiles] — the
+ * fixed column of buttons was the same nine for everyone, most of them never touched.
+ */
 class SearchBottomSheet : BottomSheetDialogFragment() {
     private var _binding: BottomSheetSearchBinding? = null
     private val binding get() = _binding!!
@@ -30,6 +32,7 @@ class SearchBottomSheet : BottomSheetDialogFragment() {
             f.arguments = args
             return f
         }
+
         fun newInstance(): SearchBottomSheet = newInstance(null)
     }
 
@@ -45,89 +48,22 @@ class SearchBottomSheet : BottomSheetDialogFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val currentQuery = arguments?.getString(ARG_QUERY)
+        // Read by whichever tile is tapped; see SearchTiles.pendingQuery.
+        SearchTiles.pendingQuery = arguments?.getString(ARG_QUERY)
 
-        binding.animeSearch.setOnClickListener {
-            startActivity(requireContext(), SearchType.ANIME, currentQuery)
-            dismiss()
-        }
-        binding.mangaSearch.setOnClickListener {
-            startActivity(requireContext(), SearchType.MANGA, currentQuery)
-            dismiss()
-        }
-        binding.characterSearch.setOnClickListener {
-            startActivity(requireContext(), SearchType.CHARACTER, currentQuery)
-            dismiss()
-        }
-        binding.staffSearch.setOnClickListener {
-            startActivity(requireContext(), SearchType.STAFF, currentQuery)
-            dismiss()
-        }
-        binding.studioSearch.setOnClickListener {
-            startActivity(requireContext(), SearchType.STUDIO, currentQuery)
-            dismiss()
-        }
-        binding.userSearch.setOnClickListener {
-            startActivity(requireContext(), SearchType.USER, currentQuery)
-            dismiss()
-        }
-        binding.muSearch.visibility = if (MangaUpdates.token != null) View.VISIBLE else View.GONE
-        binding.muSearch.setOnClickListener {
-            startActivity(requireContext(), SearchType.MANGAUPDATES, currentQuery)
-            dismiss()
-        }
-        binding.comickSearch.setOnClickListener {
-            startActivity(requireContext(), SearchType.COMICK, currentQuery)
-            dismiss()
-        }
-        binding.mangaBakaSearch.setOnClickListener {
-            startActivity(requireContext(), SearchType.MANGABAKA, currentQuery)
-            dismiss()
-        }
-
-        applyConnectionVisibility()
-    }
-
-    override fun onResume() {
-        super.onResume()
-        applyConnectionVisibility()
-    }
-
-    private fun applyConnectionVisibility() {
-        val comickEnabled = PrefManager.getVal<Boolean>(PrefName.ComickEnabled) == true
-        binding.comickSearch.visibility = if (comickEnabled) View.VISIBLE else View.GONE
-        binding.comickSearch.isEnabled = comickEnabled
-
-        val mangaBakaEnabled = PrefManager.getVal<Boolean>(PrefName.MangaBakaInfoEnabled) == true
-        binding.mangaBakaSearch.visibility = if (mangaBakaEnabled) View.VISIBLE else View.GONE
-        binding.mangaBakaSearch.isEnabled = mangaBakaEnabled
-    }
-
-    private fun startActivity(context: Context, type: SearchType, query: String?) {
-        val intent = Intent(context, SearchActivity::class.java).putExtra("type", type.toAnilistString())
-        if (!query.isNullOrBlank()) intent.putExtra("query", query)
-        // If opened from an existing SearchActivity, only copy the current textual search
-        val src = activity as? SearchActivity
-        if (src != null) {
-            val srcSearchText = src.getHeaderSearchText()
-            if (!srcSearchText.isNullOrBlank()) intent.putExtra("query", srcSearchText)
-        }
-
-        // If a query is present, request the new activity to perform the search immediately
-        if (intent.getStringExtra("query") != null) intent.putExtra("search", true)
-
-        ContextCompat.startActivity(context, intent, null)
-        // If the bottom sheet was opened from an existing SearchActivity, finish it
-        // so the new SearchActivity doesn't stack on top of the old one.
-        if (src != null) {
-            src.finish()
-        }
+        val offline = !isOnline(requireContext()) ||
+                PrefManager.getVal<Boolean>(PrefName.OfflineMode)
+        TilePanelController(
+            binding = ViewTilePanelBinding.bind(binding.root),
+            catalogue = SearchTiles,
+            host = tileHostOf(requireActivity()) { dismiss() },
+            offline = offline,
+        ).attach()
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
+        SearchTiles.pendingQuery = null
         _binding = null
     }
-
-    // companion object moved above
 }

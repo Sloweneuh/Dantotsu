@@ -87,6 +87,9 @@ internal fun ItemQuickTileBinding.paintQuickTile(
 
     quickTileBadge.isVisible = false
     quickTileResize.isVisible = false
+    // Cleared with the width above: a stretch drags the handle along, and the offset would
+    // otherwise ride the recycled view onto the next tile.
+    quickTileResize.translationX = 0f
     quickTileRoot.foreground = null
 }
 

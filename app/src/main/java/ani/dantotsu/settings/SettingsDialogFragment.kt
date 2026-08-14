@@ -8,11 +8,9 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
-import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.recyclerview.widget.GridLayoutManager
 import ani.dantotsu.BottomSheetDialogFragment
 import ani.dantotsu.BuildConfig
 import ani.dantotsu.MainActivity
@@ -20,6 +18,7 @@ import ani.dantotsu.R
 import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.sync.SyncStatus
 import ani.dantotsu.databinding.BottomSheetSettingsBinding
+import ani.dantotsu.databinding.ViewTilePanelBinding
 import ani.dantotsu.getThemeColor
 import ani.dantotsu.home.AnimeFragment
 import ani.dantotsu.home.HomeFragment
@@ -30,14 +29,9 @@ import ani.dantotsu.isOnline
 import ani.dantotsu.loadImage
 import ani.dantotsu.profile.ProfileActivity
 import ani.dantotsu.profile.notification.NotificationActivity
-import ani.dantotsu.settings.quicktiles.QUICK_TILE_COLUMNS
-import ani.dantotsu.settings.quicktiles.QUICK_TILE_ROWS
-import ani.dantotsu.settings.quicktiles.QuickTileArrangementBorder
-import ani.dantotsu.settings.quicktiles.QuickTileEditAdapter
-import ani.dantotsu.settings.quicktiles.QuickTilePagerAdapter
 import ani.dantotsu.settings.quicktiles.QuickTileHost
 import ani.dantotsu.settings.quicktiles.QuickTiles
-import ani.dantotsu.settings.quicktiles.quickTileRowHeightPx
+import ani.dantotsu.settings.quicktiles.TilePanelController
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.startMainActivity
@@ -81,12 +75,6 @@ class SettingsDialogFragment : BottomSheetDialogFragment() {
         // notifications, sync state, and opening the profile.
         binding.settingsCloudCard.isVisible = !offline
         binding.settingsNotificationContainer.isVisible = !offline
-
-        binding.quickTilesVersion.text = getString(
-            R.string.quick_tiles_version,
-            getString(R.string.app_name),
-            BuildConfig.VERSION_NAME,
-        )
 
         setupQuickTiles(offline)
 
@@ -153,86 +141,27 @@ class SettingsDialogFragment : BottomSheetDialogFragment() {
 
     }
 
-    /**
-     * Builds the tile grid and its edit affordances.
-     *
-     * The grid is the whole sheet below the account row now, so it has to carry both the toggles
-     * and the shortcuts the fixed rows used to.
-     */
+    /** The tile panel below the account row: same machinery as the search sheet. */
     private fun setupQuickTiles(offline: Boolean) {
-        val host = QuickTileHost(
-            activity = requireActivity(),
-            dismiss = { dismiss() },
-            setOfflineMode = ::switchOfflineMode,
-        )
-
-        var editing = false
-
-        // Every placed tile is laid out, including ones that cannot work right now; the grid greys
-        // those out in place. Dropping them would reflow the panel around a missing tile and
-        // reflow it back later, which reads far worse than an inert one.
-        fun livePages() = QuickTiles.paginate(
-            QuickTiles.placed(),
-            QUICK_TILE_COLUMNS,
-            QUICK_TILE_ROWS,
-        )
-
-        lateinit var setEditing: (Boolean) -> Unit
-
-        fun showPages() {
-            val pages = livePages()
-            val adapter = QuickTilePagerAdapter(host, pages, offline) { setEditing(true) }
-            binding.quickTilesPager.adapter = adapter
-            binding.quickTilesPager.updateLayoutParams {
-                height = adapter.maxRows() *
-                        quickTileRowHeightPx(resources.displayMetrics.density)
-            }
-            binding.quickTilesIndicator.attachTo(binding.quickTilesPager, pages.size)
-        }
-
-        setEditing = { value ->
-            editing = value
-            binding.quickTilesPager.isVisible = !value
-            binding.quickTilesIndicator.isVisible = !value && binding.quickTilesPager.adapter
-                .let { (it?.itemCount ?: 0) > 1 }
-            binding.quickTilesEdit.isVisible = !value
-            binding.quickTilesEditContainer.isVisible = value
-            if (value) {
-                val editor = QuickTileEditAdapter(
-                    host,
-                    initial = QuickTiles.placed(),
-                    onArrangementChanged = { QuickTiles.save(it) },
-                    // Nothing selected means nothing to remove; Android greys the button out too.
-                    onSelectionChanged = { binding.quickTilesRemove.isEnabled = it != null },
-                    onHistoryChanged = { binding.quickTilesUndo.isVisible = it },
+        TilePanelController(
+            binding = ViewTilePanelBinding.bind(binding.root),
+            catalogue = QuickTiles,
+            host = QuickTileHost(
+                activity = requireActivity(),
+                dismiss = { dismiss() },
+                setOfflineMode = ::switchOfflineMode,
+            ),
+            offline = offline,
+        ).apply {
+            setFooterText(
+                getString(
+                    R.string.quick_tiles_version,
+                    getString(R.string.app_name),
+                    BuildConfig.VERSION_NAME,
                 )
-                binding.quickTilesRemove.isEnabled = false
-                binding.quickTilesUndo.isVisible = false
-                binding.quickTilesRemove.setOnClickListener { editor.removeSelected() }
-                binding.quickTilesReset.setOnClickListener { editor.reset() }
-                binding.quickTilesUndo.setOnClickListener { editor.undo() }
-
-                val manager = GridLayoutManager(requireContext(), QUICK_TILE_COLUMNS)
-                manager.spanSizeLookup = editor.spanSizeLookup()
-                binding.quickTilesEditor.layoutManager = manager
-                binding.quickTilesEditor.adapter = editor
-                while (binding.quickTilesEditor.itemDecorationCount > 0) {
-                    binding.quickTilesEditor.removeItemDecorationAt(0)
-                }
-                binding.quickTilesEditor.addItemDecoration(QuickTileArrangementBorder(editor))
-                // Before the drag helper: the first listener to claim a gesture keeps it, and a
-                // touch on the resize handle must not turn into a reorder drag.
-                binding.quickTilesEditor.addOnItemTouchListener(editor.handleTouchListener())
-                editor.touchHelper().attachToRecyclerView(binding.quickTilesEditor)
-            } else {
-                // Re-paginate: sizes and membership may both have changed under the editor.
-                showPages()
-            }
+            )
+            attach()
         }
-
-        showPages()
-        binding.quickTilesEdit.setOnClickListener { setEditing(true) }
-        binding.quickTilesEditDone.setOnClickListener { setEditing(false) }
     }
 
     /**

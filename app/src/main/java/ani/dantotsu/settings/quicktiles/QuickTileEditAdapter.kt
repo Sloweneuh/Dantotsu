@@ -12,6 +12,7 @@ import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
 import android.view.animation.OvershootInterpolator
 import androidx.core.content.ContextCompat
+import androidx.core.view.doOnPreDraw
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
 import androidx.core.view.updatePaddingRelative
@@ -36,6 +37,7 @@ import kotlin.math.abs
  */
 class QuickTileEditAdapter(
     private val host: QuickTileHost,
+    private val catalogue: TileCatalogue,
     initial: List<PlacedTile>,
     private val onArrangementChanged: (List<PlacedTile>) -> Unit,
     /** Lets the toolbar enable its remove button only when there is something to remove. */
@@ -114,12 +116,37 @@ class QuickTileEditAdapter(
 
         with(holder.binding) {
             if (dragBaseWidth == 0) dragBaseWidth = quickTileRoot.width
-            quickTileRoot.updateLayoutParams { width = (dragBaseWidth + travel).toInt() }
+            val stretched = dragBaseWidth + travel
+            quickTileRoot.updateLayoutParams { width = stretched.toInt() }
             // The label is laid out for the wide shape throughout, and simply dissolves; that is
             // what the recording shows, rather than it popping in at the end.
             quickTileText.isVisible = true
             quickTileText.alpha = if (growing) fraction else 1f - fraction
+            // Pinned to the wide layout for the whole gesture, so nothing re-lays-out under the
+            // finger. The icon is then placed by hand below, which is the only way it can travel
+            // smoothly rather than jumping the moment the gravity changes.
             quickTileRoot.gravity = Gravity.CENTER_VERTICAL
+
+            // How far along the change is, as "how large does this look": 0 small, 1 large.
+            val largeness = if (growing) fraction else 1f - fraction
+            val isExtension = target.tile is QuickTile.Extension
+            val fromDp = quickTileIconDp(!growing, isExtension)
+            val toDp = quickTileIconDp(growing, isExtension)
+            val density = root.resources.displayMetrics.density
+
+            // Between centred in the tile (small) and sitting at the start padding (large).
+            val iconWidth = fromDp * density
+            val centred = (stretched - iconWidth) / 2f
+            val start = quickTileRoot.paddingStart.toFloat()
+            quickTileIcon.translationX = (centred - start) * (1f - largeness)
+            val scale = 1f + (toDp.toFloat() / fromDp - 1f) * fraction
+            quickTileIcon.scaleX = scale
+            quickTileIcon.scaleY = scale
+
+            // The handle is a sibling anchored to the cell, and the cell does not move while
+            // the tile stretches inside it. Carry it along by hand or it sits at the old edge
+            // until the finger lifts.
+            quickTileResize.translationX = travel
         }
         shiftRowAfter(rv, position, travel)
     }
@@ -208,7 +235,7 @@ class QuickTileEditAdapter(
 
     private sealed interface Row {
         class Placed(val placed: PlacedTile) : Row
-        class Category(val category: QuickTileCategory) : Row
+        class Category(val category: TileCategory) : Row
         class Shelf(val tile: QuickTile) : Row
     }
 
@@ -217,8 +244,8 @@ class QuickTileEditAdapter(
     private fun buildRows(): List<Row> = buildList {
         placed.forEach { add(Row.Placed(it)) }
         // Fixed catalogue order, so a tile never moves around the shelf as the panel changes.
-        QuickTileCategory.entries.forEach { category ->
-            val tiles = QuickTiles.all.filter { it.category == category }
+        catalogue.categories().forEach { category ->
+            val tiles = catalogue.all.filter { it.category == category }
             if (tiles.isEmpty()) return@forEach
             add(Row.Category(category))
             tiles.forEach { add(Row.Shelf(it)) }
@@ -250,7 +277,7 @@ class QuickTileEditAdapter(
     fun reset() {
         snapshot()
         placed.clear()
-        placed += QuickTiles.defaults().map { PlacedTile(it.tile, it.size) }
+        placed += catalogue.defaults().map { PlacedTile(it.tile, it.size) }
         select(null)
         onArrangementChanged(placed)
         rebuild()
@@ -318,6 +345,7 @@ class QuickTileEditAdapter(
         if (pending == null) {
             quickTileIcon.scaleX = 1f
             quickTileIcon.scaleY = 1f
+            quickTileIcon.translationX = 0f
             quickTileText.alpha = 1f
             return
         }
@@ -329,13 +357,29 @@ class QuickTileEditAdapter(
         val startScale = fromDp.toFloat() / toDp
         quickTileIcon.scaleX = startScale
         quickTileIcon.scaleY = startScale
+
+        // The icon also changes where it sits — centred on a small tile, at the start padding on a
+        // large one — and the rebind has already moved it. Put it back at the old spot for a frame
+        // so it travels rather than teleporting. Measured on the pre-draw pass because the new
+        // width is not known until this layout runs.
+        val interpolator =
+            if (pending.durationMs >= TAP_RESIZE_MS) OvershootInterpolator(1.4f)
+            else DecelerateInterpolator()
+        root.doOnPreDraw {
+            val start = quickTileRoot.paddingStart.toFloat()
+            val centred = (quickTileRoot.width - quickTileIcon.width) / 2f
+            quickTileIcon.translationX = if (large) centred - start else start - centred
+            quickTileIcon.animate()
+                .translationX(0f)
+                .setDuration(pending.durationMs)
+                .setInterpolator(interpolator)
+                .start()
+        }
+
         quickTileIcon.animate()
             .scaleX(1f).scaleY(1f)
             .setDuration(pending.durationMs)
-            .setInterpolator(
-                if (pending.durationMs >= TAP_RESIZE_MS) OvershootInterpolator(1.4f)
-                else DecelerateInterpolator()
-            )
+            .setInterpolator(interpolator)
             .start()
 
         if (large) {

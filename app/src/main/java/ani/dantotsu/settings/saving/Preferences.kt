@@ -304,6 +304,9 @@ enum class PrefName(val data: Pref) {
     // than indices so that adding or retiring a tile never silently reshuffles someone's layout;
     // unknown ids are dropped on read. Empty means "never customised" — see QuickTiles.DEFAULT.
     QuickTileOrder(Pref(Location.UI, List::class, listOf<String>())),
+
+    // The search sheet is the same panel over a different catalogue; same storage shape.
+    SearchTileOrder(Pref(Location.UI, List::class, listOf<String>())),
     DiscordStatus(Pref(Location.Irrelevant, String::class, "online")),
     MalSyncLanguagePreferences(Pref(Location.Irrelevant, Set::class, setOf<String>())), // Stores "mediaId:language" pairs
     DiscordRPCModeAnime(Pref(Location.Irrelevant, String::class, "dantotsu")),

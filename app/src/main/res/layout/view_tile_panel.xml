@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+    A panel of tiles and everything needed to rearrange it: swipeable pages, the edit surface that
+    replaces them, and the footer carrying the page dots and the edit button.
+
+    Shared by the quick-settings and search sheets. Only the catalogue behind it differs, so the
+    chrome is one layout driven by TilePanelController rather than two that drift apart.
+-->
+<merge xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp">
+
+        <androidx.viewpager2.widget.ViewPager2
+            android:id="@+id/quickTilesPager"
+            android:layout_width="match_parent"
+            android:layout_height="320dp" />
+
+        <!-- Editing is one continuous surface instead of pages: the arrangement has to be
+             reorderable as a whole, with the catalogue shelf below it. -->
+        <LinearLayout
+            android:id="@+id/quickTilesEditContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone"
+            tools:visibility="gone">
+
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="48dp">
+
+                <ImageButton
+                    android:id="@+id/quickTilesEditDone"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_gravity="start|center_vertical"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="@string/quick_tiles_done"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_round_arrow_back_ios_new_24"
+                    app:tint="?attr/colorOnBackground" />
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="end|center_vertical"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <!-- Appears only once there is something to undo, as in the system panel. The
+                         arrangement saves as you go, so this is the way back from a mistaken
+                         removal. -->
+                    <ImageButton
+                        android:id="@+id/quickTilesUndo"
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:layout_marginEnd="4dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/quick_tiles_undo"
+                        android:padding="7dp"
+                        android:src="@drawable/ic_round_undo_24"
+                        android:visibility="gone"
+                        app:tint="?attr/colorOnBackground"
+                        tools:visibility="visible" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/quickTilesRemove"
+                        style="@style/Widget.Material3.Button"
+                        android:layout_width="wrap_content"
+                        android:layout_height="40dp"
+                        android:fontFamily="@font/poppins_bold"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:minWidth="0dp"
+                        android:paddingStart="20dp"
+                        android:paddingEnd="20dp"
+                        android:text="@string/quick_tiles_remove"
+                        android:textAllCaps="false"
+                        android:textSize="13sp"
+                        app:cornerRadius="20dp" />
+
+                </LinearLayout>
+
+            </FrameLayout>
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/quickTilesEditor"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:clipChildren="false"
+                android:nestedScrollingEnabled="false"
+                android:overScrollMode="never"
+                tools:itemCount="6"
+                tools:listitem="@layout/item_quick_tile" />
+
+            <!-- Below the whole catalogue rather than up in the toolbar, where the system panel
+                 puts it: throwing the arrangement away is the last thing on the screen, not
+                 something to brush past on the way in. -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/quickTilesReset"
+                style="@style/Widget.Material3.Button"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="8dp"
+                android:fontFamily="@font/poppins_bold"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minWidth="0dp"
+                android:paddingStart="24dp"
+                android:paddingEnd="24dp"
+                android:text="@string/quick_tiles_reset"
+                android:textAllCaps="false"
+                android:textSize="13sp"
+                app:cornerRadius="20dp" />
+
+        </LinearLayout>
+
+    </FrameLayout>
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:paddingStart="16dp"
+        android:paddingEnd="8dp">
+
+        <!-- Where the system panel puts its build number: quiet, on the same line as the page
+             dots, out of the way of everything that is actually a control. -->
+        <TextView
+            android:id="@+id/quickTilesVersion"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="start|center_vertical"
+            android:alpha="0.5"
+            android:ellipsize="end"
+            android:fontFamily="@font/poppins_family"
+            android:maxLines="1"
+            android:textSize="11sp"
+            android:visibility="gone"
+            tools:text="Dantotsu v4.9.1"
+            tools:visibility="visible" />
+
+        <ani.dantotsu.settings.quicktiles.QuickTilePageIndicator
+            android:id="@+id/quickTilesIndicator"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center" />
+
+        <ImageButton
+            android:id="@+id/quickTilesEdit"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_gravity="end|center_vertical"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/quick_tiles_edit"
+            android:padding="8dp"
+            android:src="@drawable/ic_round_edit_24"
+            app:tint="?attr/colorOnBackground" />
+
+    </FrameLayout>
+
+</merge>

@@ -44,7 +44,7 @@ sealed class QuickTile(
     val id: String,
     @DrawableRes val icon: Int,
     /** Which group the tile is filed under in the edit shelf. */
-    val category: QuickTileCategory,
+    val category: TileCategory,
     /** Hidden entirely from the live pages, rather than shown in a state that cannot work. */
     val needsNetwork: Boolean,
     /**
@@ -71,7 +71,7 @@ sealed class QuickTile(
         id: String,
         @StringRes val labelRes: Int,
         @DrawableRes icon: Int,
-        category: QuickTileCategory,
+        category: TileCategory,
         needsNetwork: Boolean = false,
         isAvailable: () -> Boolean = { true },
         unavailableReason: Int? = null,
@@ -88,7 +88,7 @@ sealed class QuickTile(
         id: String,
         @StringRes val labelRes: Int,
         @DrawableRes icon: Int,
-        category: QuickTileCategory,
+        category: TileCategory,
         needsNetwork: Boolean = false,
         isAvailable: () -> Boolean = { true },
         unavailableReason: Int? = null,
@@ -143,7 +143,7 @@ class QuickTileHost(
     val setOfflineMode: (Boolean) -> Unit,
 )
 
-object QuickTiles {
+object QuickTiles : TileCatalogue(PrefName.QuickTileOrder) {
 
     private fun QuickTileHost.open(target: Class<*>) {
         ContextCompat.startActivity(activity, Intent(activity, target), null)
@@ -161,7 +161,7 @@ object QuickTiles {
         labelRes: Int,
         icon: Int,
         pref: PrefName,
-        category: QuickTileCategory,
+        category: TileCategory,
         needsNetwork: Boolean = false,
         isAvailable: () -> Boolean = { true },
         unavailableReason: Int? = null,
@@ -301,89 +301,16 @@ object QuickTiles {
     }.getOrDefault(emptyList())
 
     /** The full catalogue for this moment: fixed tiles plus whatever extensions are installed. */
-    val all: List<QuickTile> get() = builtIn + extensionTiles()
+    override val all: List<QuickTile> get() = builtIn + extensionTiles()
 
     /** What the sheet held before it was customisable, so nobody's muscle memory breaks. */
-    private val defaultIds = listOf(
+    override val defaultIds = listOf(
         "incognito", "offline", "activity", "extensions", "downloads", "handoff", "settings",
     )
-
-    /** The user's tiles, in their order and at their sizes. Retired ids are simply skipped. */
-    fun placed(): List<PlacedTile> {
-        val catalogue = all.associateBy { it.id }
-        val saved = PrefManager.getVal<List<String>>(PrefName.QuickTileOrder)
-        if (saved.isEmpty()) return defaults()
-
-        return saved.mapNotNull { entry ->
-            // Extension ids carry colons of their own, so the size tag is the last one.
-            val size = if (entry.substringAfterLast(':', "") == SMALL_TAG) {
-                TileSize.SMALL
-            } else {
-                TileSize.LARGE
-            }
-            val id = entry.substringBeforeLast(':')
-            // Unavailable tiles stay on the panel, greyed out by the grid — dropping them would
-            // silently rewrite the arrangement the next time it was saved.
-            catalogue[id]?.let { PlacedTile(it, size) }
-        }
-    }
-
-    /** Everything the user has not placed, in catalogue order. Offered at large size. */
-    fun available(): List<PlacedTile> {
-        val chosen = placed().map { it.tile.id }.toSet()
-        return all.filterNot { it.id in chosen }.map { PlacedTile(it, TileSize.LARGE) }
-    }
-
-    /** The arrangement a fresh install would have, used by the editor's reset. */
-    fun defaults(): List<PlacedTile> {
-        val catalogue = all.associateBy { it.id }
-        return defaultIds.mapNotNull { catalogue[it] }
-            .filter { it.isAvailable() }
-            .map { PlacedTile(it, TileSize.LARGE) }
-    }
-
-    fun save(tiles: List<PlacedTile>) {
-        PrefManager.setVal(
-            PrefName.QuickTileOrder,
-            tiles.map { "${it.tile.id}:${if (it.size == TileSize.SMALL) SMALL_TAG else LARGE_TAG}" },
-        )
-    }
-
-    /**
-     * Splits tiles across pages the way the grid will lay them out: four columns, at most four
-     * rows, and a large tile never straddles a row boundary.
-     */
-    fun paginate(tiles: List<PlacedTile>, columns: Int, rows: Int): List<List<PlacedTile>> {
-        if (tiles.isEmpty()) return listOf(emptyList())
-        val pages = mutableListOf<MutableList<PlacedTile>>()
-        var page = mutableListOf<PlacedTile>()
-        var row = 0
-        var used = 0
-        for (placed in tiles) {
-            val width = placed.size.columns
-            if (used + width > columns) {
-                row++
-                used = 0
-            }
-            if (row >= rows) {
-                pages += page
-                page = mutableListOf()
-                row = 0
-                used = 0
-            }
-            page += placed
-            used += width
-        }
-        pages += page
-        return pages
-    }
-
-    private const val SMALL_TAG = "s"
-    private const val LARGE_TAG = "l"
 }
 
-/** Groups the edit shelf files tiles under, in the order they are shown. */
-enum class QuickTileCategory(@StringRes val label: Int) {
+/** Groups the quick-settings shelf files tiles under, in the order they are shown. */
+enum class QuickTileCategory(@StringRes override val label: Int) : TileCategory {
     MODES(R.string.quick_tiles_cat_modes),
     LIBRARY(R.string.quick_tiles_cat_library),
     CONNECTIONS(R.string.quick_tiles_cat_connections),
