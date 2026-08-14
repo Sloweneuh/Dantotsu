@@ -14,6 +14,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.GridLayoutManager
 import ani.dantotsu.BottomSheetDialogFragment
+import ani.dantotsu.BuildConfig
 import ani.dantotsu.MainActivity
 import ani.dantotsu.R
 import ani.dantotsu.connections.anilist.Anilist
@@ -80,6 +81,12 @@ class SettingsDialogFragment : BottomSheetDialogFragment() {
         // notifications, sync state, and opening the profile.
         binding.settingsCloudCard.isVisible = !offline
         binding.settingsNotificationContainer.isVisible = !offline
+
+        binding.quickTilesVersion.text = getString(
+            R.string.quick_tiles_version,
+            getString(R.string.app_name),
+            BuildConfig.VERSION_NAME,
+        )
 
         setupQuickTiles(offline)
 

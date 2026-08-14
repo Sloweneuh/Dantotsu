@@ -261,6 +261,20 @@
                 android:paddingStart="16dp"
                 android:paddingEnd="8dp">
 
+                <!-- Where the system panel puts its build number: quiet, on the same line as the
+                     page dots, out of the way of everything that is actually a control. -->
+                <TextView
+                    android:id="@+id/quickTilesVersion"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="start|center_vertical"
+                    android:alpha="0.5"
+                    android:ellipsize="end"
+                    android:fontFamily="@font/poppins_family"
+                    android:maxLines="1"
+                    android:textSize="11sp"
+                    tools:text="Dantotsu v4.9.1" />
+
                 <ani.dantotsu.settings.quicktiles.QuickTilePageIndicator
                     android:id="@+id/quickTilesIndicator"
                     android:layout_width="wrap_content"
