@@ -12,6 +12,7 @@ import ani.dantotsu.connections.discord.Discord
 import ani.dantotsu.connections.mal.MAL
 import ani.dantotsu.connections.mangabaka.MangaBaka
 import ani.dantotsu.download.DownloadActivity
+import ani.dantotsu.home.SearchBottomSheet
 import ani.dantotsu.incognitoNotification
 import ani.dantotsu.media.CalendarActivity
 import ani.dantotsu.profile.activity.FeedActivity
@@ -235,6 +236,16 @@ object QuickTiles {
             "activity", R.string.activities, R.drawable.inbox_empty,
             QuickTileCategory.LIBRARY, needsNetwork = true,
         ) { it.open(FeedActivity::class.java) },
+        QuickTile.Action(
+            "search", R.string.search, R.drawable.ic_round_search_24,
+            QuickTileCategory.LIBRARY, needsNetwork = true,
+        ) { host ->
+            // Same as the handoff tile: hand the sheet to the activity's manager before dismissing
+            // this one, so it is not torn down along with the sheet that opened it.
+            val fm = host.activity.supportFragmentManager
+            host.dismiss()
+            SearchBottomSheet.newInstance().show(fm, "search")
+        },
         QuickTile.Action(
             "calendar", R.string.release_calendar, R.drawable.ic_round_calendar_today_24,
             QuickTileCategory.LIBRARY, needsNetwork = true,
