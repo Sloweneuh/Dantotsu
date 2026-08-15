@@ -14,6 +14,7 @@ import ani.dantotsu.databinding.DialogUserAgentBinding
 import ani.dantotsu.databinding.FragmentLoginBinding
 import ani.dantotsu.openLinkInBrowser
 import ani.dantotsu.settings.saving.internal.PreferenceKeystore
+import ani.dantotsu.settings.saving.BackupArchive
 import ani.dantotsu.settings.saving.internal.PreferencePackager
 import ani.dantotsu.toast
 import ani.dantotsu.util.Logger
@@ -63,7 +64,7 @@ class LoginFragment : Fragment() {
                                         return@passwordAlertDialog
                                     }
                                     try {
-                                        if (PreferencePackager.unpack(decryptedJson))
+                                        if (BackupArchive.restore(requireContext(), decryptedJson))
                                             restartApp()
                                         else
                                             toast("Error importing settings")
@@ -77,7 +78,7 @@ class LoginFragment : Fragment() {
                             }
                         } else if (name.endsWith(".ani")) {
                             val decryptedJson = jsonString.toString(Charsets.UTF_8)
-                            if (PreferencePackager.unpack(decryptedJson))
+                            if (BackupArchive.restore(requireContext(), decryptedJson))
                                 restartApp()
                         } else {
                             toast("Invalid file type")

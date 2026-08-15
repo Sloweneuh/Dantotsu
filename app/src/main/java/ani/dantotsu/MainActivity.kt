@@ -59,6 +59,7 @@ import ani.dantotsu.settings.saving.PrefManager.asLiveBool
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.settings.saving.SharedPreferenceBooleanLiveData
 import ani.dantotsu.settings.saving.internal.PreferenceKeystore
+import ani.dantotsu.settings.saving.BackupArchive
 import ani.dantotsu.settings.saving.internal.PreferencePackager
 import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.util.AudioHelper
@@ -532,7 +533,7 @@ class MainActivity : AppCompatActivity() {
                             toast("Incorrect password")
                             return@passwordAlertDialog
                         }
-                        if (PreferencePackager.unpack(decryptedJson)) {
+                        if (BackupArchive.restore(this, decryptedJson)) {
                             val newIntent = Intent(this, this.javaClass)
                             this.finish()
                             startActivity(newIntent)
@@ -543,7 +544,7 @@ class MainActivity : AppCompatActivity() {
                 }
             } else if (name.endsWith(".ani")) {
                 val decryptedJson = jsonString.toString(Charsets.UTF_8)
-                if (PreferencePackager.unpack(decryptedJson)) {
+                if (BackupArchive.restore(this, decryptedJson)) {
                     val newIntent = Intent(this, this.javaClass)
                     this.finish()
                     startActivity(newIntent)
