@@ -18,6 +18,8 @@ import ani.dantotsu.R
 import ani.dantotsu.connections.anilist.AnilistSearch.SearchType
 import ani.dantotsu.connections.anilist.AnilistSearch.SearchType.Companion.toAnilistString
 import ani.dantotsu.connections.comick.ComickApi
+import ani.dantotsu.connections.comick.ComickEpisodes
+import ani.dantotsu.connections.comick.broadcastDisplayZone
 import ani.dantotsu.connections.comick.ComickResponse
 import ani.dantotsu.connections.comick.displayTitle
 import ani.dantotsu.connections.comick.hasCJK
@@ -44,12 +46,34 @@ import kotlinx.coroutines.withContext
 import com.xwray.groupie.GroupieAdapter
 
 class ComickInfoFragment : Fragment() {
+    private companion object {
+        /** How many of the newest episodes the info tab previews before deferring to the full list. */
+        const val EPISODE_PREVIEW_COUNT = 5
+    }
+
     private var _binding: FragmentMediaInfoBinding? = null
     private val binding
         get() = _binding!!
     private var loaded = false
 
     private val tripleTab = "\t\t\t"
+
+    /**
+     * Whether this tab is showing an anime. Comick keeps anime in a separate catalogue reached by
+     * `media_type=anime`, with its own site path and no chapters, so nearly every branch below
+     * keys off this. Set from the media before any fetch starts.
+     */
+    private var isAnimeMode = false
+
+    private val mediaType
+        get() = if (isAnimeMode) ComickApi.MEDIA_TYPE_ANIME else ComickApi.MEDIA_TYPE_MANGA
+
+    /**
+     * Pref key for a hand-picked slug. Anime and manga are stored apart so that linking one never
+     * clobbers the other for the same AniList id.
+     */
+    private fun slugKey(mediaId: Int) =
+        if (isAnimeMode) ComickEpisodes.savedSlugKey(mediaId) else "comick_slug_$mediaId"
 
     /**
      * Filter synonyms to likely English titles by checking for Latin characters and filtering out
@@ -111,6 +135,7 @@ class ComickInfoFragment : Fragment() {
 
         model.getMedia().observe(viewLifecycleOwner) { media ->
             val m = media ?: return@observe
+            isAnimeMode = m.anime != null
             if (!loaded) {
                 loadComickData(m, model)
             }
@@ -126,11 +151,15 @@ class ComickInfoFragment : Fragment() {
                 // Check if data was already preloaded by the ViewModel
                 var comickSlug = model.comickSlug.value
 
+                // The ViewModel only preloads slugs for manga, so an anime tab always resolves its
+                // own — and must ignore whatever a previously-viewed manga left in there.
+                if (isAnimeMode) comickSlug = null
+
                 if (comickSlug == null) {
                     // Check if user has manually saved a slug for this media
                     val savedSlug =
                             PrefManager.getNullableCustomVal<String>(
-                                    "comick_slug_${media.id}",
+                                    slugKey(media.id),
                                     null,
                                     String::class.java
                             )
@@ -186,9 +215,14 @@ class ComickInfoFragment : Fragment() {
                                         media.id,
                                         media.idMAL,
                                         malSyncSlugs.takeIf { it.isNotEmpty() },
-                                        externalLinkUrls.takeIf { it.isNotEmpty() }
+                                        externalLinkUrls.takeIf { it.isNotEmpty() },
+                                        mediaType
                                     )
                                 } else null
+                            }.also {
+                                // Share the result with the episode provider so the watch screen
+                                // doesn't pay for the same search again.
+                                if (isAnimeMode) ComickEpisodes.cacheAutoSlug(media.id, it)
                             }
                         }
                     }
@@ -210,7 +244,9 @@ class ComickInfoFragment : Fragment() {
                 // Store the slug in ViewModel so the tab can use it
                 model.comickSlug.postValue(comickSlug)
                 val comickData =
-                        withContext(Dispatchers.IO) { ComickApi.getComicDetails(comickSlug) }
+                        withContext(Dispatchers.IO) {
+                            ComickApi.getComicDetails(comickSlug, mediaType = mediaType)
+                        }
 
                 if (_binding == null) return@launch
 
@@ -225,8 +261,10 @@ class ComickInfoFragment : Fragment() {
 
 
                 // Store MangaUpdates link if available, but check for manual override first
-                // Only update MangaUpdates link if MangaUpdates integration is enabled
-                if (ani.dantotsu.settings.saving.PrefManager.getVal(ani.dantotsu.settings.saving.PrefName.MangaUpdatesEnabled)) {
+                // Only update MangaUpdates link if MangaUpdates integration is enabled.
+                // Anime entries never carry a MangaUpdates link, so skip the whole block for them
+                // rather than letting it publish a null over a manga tab's resolved link.
+                if (!isAnimeMode && ani.dantotsu.settings.saving.PrefManager.getVal(ani.dantotsu.settings.saving.PrefName.MangaUpdatesEnabled)) {
                     val savedMULink =
                             ani.dantotsu.settings.saving.PrefManager.getNullableCustomVal<String>(
                                     "mangaupdates_link_${media.id}",
@@ -424,7 +462,9 @@ class ComickInfoFragment : Fragment() {
 
                         val results =
                                 withContext(Dispatchers.IO) {
-                                    ComickApi.searchComics(query, allowAdult)
+                                    ComickApi.searchComics(
+                                        query, allowAdult, mediaType = mediaType
+                                    )
                                 }
 
                         withContext(Dispatchers.Main) {
@@ -534,7 +574,7 @@ class ComickInfoFragment : Fragment() {
         val model: MediaDetailsViewModel by activityViewModels()
 
         // Save the slug to preferences - user selected this, so we trust it
-        PrefManager.setCustomVal("comick_slug_${media.id}", slug)
+        PrefManager.setCustomVal(slugKey(media.id), slug)
 
         // Update ViewModel
         model.comickSlug.postValue(slug)
@@ -544,7 +584,9 @@ class ComickInfoFragment : Fragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
             try {
-                val comickData = withContext(Dispatchers.IO) { ComickApi.getComicDetails(slug) }
+                val comickData = withContext(Dispatchers.IO) {
+                    ComickApi.getComicDetails(slug, mediaType = mediaType)
+                }
 
                 withContext(Dispatchers.Main) {
                     if (_binding == null) return@withContext
@@ -559,19 +601,22 @@ class ComickInfoFragment : Fragment() {
                         return@withContext
                     }
 
-                    // Store MangaUpdates link if available, but check for manual override first
-                    val savedMULink =
-                            ani.dantotsu.settings.saving.PrefManager.getNullableCustomVal<String>(
-                                    "mangaupdates_link_${media.id}",
-                                    null,
-                                    String::class.java
-                            )
-                    if (savedMULink == null) {
-                        val muLink = comickData.comic?.links?.mu
-                        if (!muLink.isNullOrBlank()) {
-                            model.mangaUpdatesLink.postValue(
-                                    "https://www.mangaupdates.com/series/$muLink"
-                            )
+                    // Store MangaUpdates link if available, but check for manual override first.
+                    // Anime entries have no MangaUpdates counterpart, so this is manga-only.
+                    if (!isAnimeMode) {
+                        val savedMULink =
+                                ani.dantotsu.settings.saving.PrefManager.getNullableCustomVal<String>(
+                                        "mangaupdates_link_${media.id}",
+                                        null,
+                                        String::class.java
+                                )
+                        if (savedMULink == null) {
+                            val muLink = comickData.comic?.links?.mu
+                            if (!muLink.isNullOrBlank()) {
+                                model.mangaUpdatesLink.postValue(
+                                        "https://www.mangaupdates.com/series/$muLink"
+                                )
+                            }
                         }
                     }
 
@@ -624,8 +669,10 @@ class ComickInfoFragment : Fragment() {
 
         val model: MediaDetailsViewModel by activityViewModels()
 
-        // Remove the saved slug from preferences
-        PrefManager.removeCustomVal("comick_slug_${media.id}")
+        // Remove the saved slug from preferences. Also drop the remembered auto-match, so
+        // unlinking really does start over instead of falling back to a cached guess.
+        PrefManager.removeCustomVal(slugKey(media.id))
+        if (isAnimeMode) ComickEpisodes.clearAutoSlug(media.id)
 
         // Clear ViewModel
         model.comickSlug.postValue(null)
@@ -693,7 +740,11 @@ class ComickInfoFragment : Fragment() {
     ) {
         if (!isAdded) return
         val intent = Intent(requireContext(), SearchActivity::class.java)
-            .putExtra("type", SearchType.COMICK.toAnilistString())
+            // Tapping a genre on an anime entry should search anime, not comics.
+            .putExtra(
+                "type",
+                (if (isAnimeMode) SearchType.COMICK_ANIME else SearchType.COMICK).toAnilistString()
+            )
 
         if (!query.isNullOrBlank()) intent.putExtra("query", query)
         if (!genreSlug.isNullOrBlank()) {
@@ -788,49 +839,75 @@ class ComickInfoFragment : Fragment() {
         }
         binding.mediaInfoMeanScore.text = comic.bayesian_rating ?: getString(R.string.unknown_value)
 
-        // Status - Publication status only
+        val animeProfile = comic.anime_profiles
+
+        // Status - airing/publication status. The status codes are shared between catalogues; only
+        // the wording differs, since a show "airs" rather than being "ongoing".
         binding.mediaInfoStatus.text =
                 when (comic.status) {
-                    1 -> getString(R.string.comick_status_ongoing)
-                    2 -> getString(R.string.comick_status_completed)
+                    1 -> getString(
+                        if (isAnimeMode) R.string.comick_status_airing
+                        else R.string.comick_status_ongoing
+                    )
+                    2 -> getString(
+                        if (isAnimeMode) R.string.comick_status_finished
+                        else R.string.comick_status_completed
+                    )
                     3 -> getString(R.string.comick_status_cancelled)
                     4 -> getString(R.string.comick_status_hiatus)
                     else -> getString(R.string.unknown)
                 }
 
-        // Translation - Separate field for translation status
-        binding.mediaInfoTranslationContainer.visibility = View.VISIBLE
-        binding.mediaInfoTranslation.text =
-                if (comic.translation_completed == true) {
-                    getString(R.string.comick_status_completed)
-                } else {
-                    getString(R.string.comick_status_ongoing)
-                }
+        if (isAnimeMode) {
+            // No scanlation involved, so there is no translation status to report.
+            binding.mediaInfoTranslationContainer.visibility = View.GONE
 
-        // Change Format label to Demographic
-        binding.mediaInfoFormatLabel.text = getString(R.string.demographic)
+            // Format -> Type (TV / Movie / OVA / Special)
+            binding.mediaInfoFormatLabel.text = getString(R.string.comick_type)
+            binding.mediaInfoFormat.text =
+                    animeProfile?.anime_type?.takeIf { it.isNotBlank() }
+                            ?: getString(R.string.unknown)
 
-        // Demographic
-        binding.mediaInfoFormat.text =
-                when (comic.demographic) {
-                    1 -> getString(R.string.shounen)
-                    2 -> getString(R.string.shoujo)
-                    3 -> getString(R.string.seinen)
-                    4 -> getString(R.string.josei)
-                    else -> getString(R.string.unknown)
-                }
+            // Source keeps its own meaning here: what the adaptation is based on.
+            binding.mediaInfoSourceLabel.text = getString(R.string.source)
+            binding.mediaInfoSource.text =
+                    animeProfile?.source?.takeIf { it.isNotBlank() }
+                            ?: getString(R.string.unknown)
+        } else {
+            // Translation - Separate field for translation status
+            binding.mediaInfoTranslationContainer.visibility = View.VISIBLE
+            binding.mediaInfoTranslation.text =
+                    if (comic.translation_completed == true) {
+                        getString(R.string.comick_status_completed)
+                    } else {
+                        getString(R.string.comick_status_ongoing)
+                    }
 
-        // Change Source label to Format
-        binding.mediaInfoSourceLabel.text = getString(R.string.format)
+            // Change Format label to Demographic
+            binding.mediaInfoFormatLabel.text = getString(R.string.demographic)
 
-        // Source/Format - Country of origin (Manga/Manhwa/Manhua)
-        binding.mediaInfoSource.text =
-                when (comic.country?.lowercase()) {
-                    "jp" -> getString(R.string.manga)
-                    "kr" -> getString(R.string.manhwa)
-                    "cn" -> getString(R.string.manhua)
-                    else -> comic.country?.uppercase() ?: getString(R.string.unknown)
-                }
+            // Demographic
+            binding.mediaInfoFormat.text =
+                    when (comic.demographic) {
+                        1 -> getString(R.string.shounen)
+                        2 -> getString(R.string.shoujo)
+                        3 -> getString(R.string.seinen)
+                        4 -> getString(R.string.josei)
+                        else -> getString(R.string.unknown)
+                    }
+
+            // Change Source label to Format
+            binding.mediaInfoSourceLabel.text = getString(R.string.format)
+
+            // Source/Format - Country of origin (Manga/Manhwa/Manhua)
+            binding.mediaInfoSource.text =
+                    when (comic.country?.lowercase()) {
+                        "jp" -> getString(R.string.manga)
+                        "kr" -> getString(R.string.manhwa)
+                        "cn" -> getString(R.string.manhua)
+                        else -> comic.country?.uppercase() ?: getString(R.string.unknown)
+                    }
+        }
 
         // Content Rating (safe / suggestive / erotica / pornographic)
         val contentRating = comic.content_rating?.takeIf { it.isNotBlank() }
@@ -842,17 +919,30 @@ class ComickInfoFragment : Fragment() {
             binding.mediaInfoContentRatingContainer.visibility = View.GONE
         }
 
-        // Change Start Date label to Published
+        // Change Start Date label to Published (Aired, for anime)
         binding.mediaInfoStart.parent?.let { tableRow ->
             if (tableRow is ViewGroup && tableRow.childCount > 0) {
                 val label = tableRow.getChildAt(0)
                 if (label is android.widget.TextView) {
-                    label.text = getString(R.string.published)
+                    label.text = getString(
+                        if (isAnimeMode) R.string.comick_aired else R.string.published
+                    )
                 }
             }
         }
-        // Published (Year)
-        binding.mediaInfoStart.text = comic.year?.toString() ?: getString(R.string.unknown_value)
+        // Published (Year) / Aired (date range, falling back to the year alone)
+        binding.mediaInfoStart.text = if (isAnimeMode) {
+            val from = formatAiredDate(animeProfile?.aired_from)
+            val to = formatAiredDate(animeProfile?.aired_to)
+            when {
+                from.isNotBlank() && to.isNotBlank() ->
+                    getString(R.string.comick_aired_range_format, from, to)
+                from.isNotBlank() -> from
+                else -> comic.year?.toString() ?: getString(R.string.unknown_value)
+            }
+        } else {
+            comic.year?.toString() ?: getString(R.string.unknown_value)
+        }
 
         // Hide End Date field - Comick doesn't provide actual end dates
         binding.mediaInfoEnd.parent?.let { parent ->
@@ -910,49 +1000,76 @@ class ComickInfoFragment : Fragment() {
         // comickSlug is used throughout this function (covers, search links, latest chapter, etc.)
         val comickSlug = comic.slug
 
-        // Restore the chapter number in the stats table row
-        if (shouldHideLatestChapter) {
-            binding.mediaInfoTotal.parent?.let { if (it is ViewGroup) it.visibility = View.GONE }
-        } else {
+        if (isAnimeMode) {
+            // Episode count. anime_profiles.episodes is the *planned* total and is routinely null
+            // while a show is still airing; the episode section below overwrites this with the
+            // number actually listed once that fetch lands.
             binding.mediaInfoTotal.parent?.let { if (it is ViewGroup) it.visibility = View.VISIBLE }
-            binding.mediaInfoTotalTitle.setText(R.string.latest_chapter)
-            binding.mediaInfoTotal.text = lastChapter?.let {
-                if (it % 1.0 == 0.0) it.toInt().toString() else it.toString()
-            } ?: getString(R.string.unknown_value)
-        }
+            binding.mediaInfoTotalTitle.setText(R.string.comick_episodes)
+            binding.mediaInfoTotal.text =
+                    animeProfile?.episodes?.toString() ?: getString(R.string.unknown_value)
 
-
-        // Final Chapter (using duration container)
-        val finalVolume = comic.final_volume
-        if (finalChapterStr != null || finalVolume != null) {
-            binding.mediaInfoDurationContainer.visibility = View.VISIBLE
-
-            // Change the label to "Final Chapter"
-            binding.mediaInfoDurationContainer.let { container ->
-                if (container.childCount > 0) {
-                    val label = container.getChildAt(0)
-                    if (label is android.widget.TextView) {
-                        label.text = getString(ani.dantotsu.R.string.final_chapter)
+            // The duration row finally holds an actual duration.
+            val duration = animeProfile?.duration?.takeIf { it.isNotBlank() }
+            if (duration != null) {
+                binding.mediaInfoDurationContainer.visibility = View.VISIBLE
+                binding.mediaInfoDurationContainer.let { container ->
+                    if (container.childCount > 0) {
+                        val label = container.getChildAt(0)
+                        if (label is android.widget.TextView) {
+                            label.text = getString(R.string.comick_duration)
+                        }
                     }
                 }
+                binding.mediaInfoDuration.text = duration
+            } else {
+                binding.mediaInfoDurationContainer.visibility = View.GONE
+            }
+        } else {
+            // Restore the chapter number in the stats table row
+            if (shouldHideLatestChapter) {
+                binding.mediaInfoTotal.parent?.let { if (it is ViewGroup) it.visibility = View.GONE }
+            } else {
+                binding.mediaInfoTotal.parent?.let { if (it is ViewGroup) it.visibility = View.VISIBLE }
+                binding.mediaInfoTotalTitle.setText(R.string.latest_chapter)
+                binding.mediaInfoTotal.text = lastChapter?.let {
+                    if (it % 1.0 == 0.0) it.toInt().toString() else it.toString()
+                } ?: getString(R.string.unknown_value)
             }
 
-            // Format the text based on what's available
-            binding.mediaInfoDuration.text =
-                    when {
-                        finalVolume != null && finalChapterStr != null ->
-                                getString(
-                                        R.string.volume_chapter_format,
-                                        finalVolume,
-                                        finalChapterStr
-                                )
-                        finalChapterStr != null ->
-                                getString(R.string.chapter_format, finalChapterStr)
-                        finalVolume != null -> getString(R.string.volume_format, finalVolume)
-                        else -> getString(R.string.unknown_value)
+
+            // Final Chapter (using duration container)
+            val finalVolume = comic.final_volume
+            if (finalChapterStr != null || finalVolume != null) {
+                binding.mediaInfoDurationContainer.visibility = View.VISIBLE
+
+                // Change the label to "Final Chapter"
+                binding.mediaInfoDurationContainer.let { container ->
+                    if (container.childCount > 0) {
+                        val label = container.getChildAt(0)
+                        if (label is android.widget.TextView) {
+                            label.text = getString(ani.dantotsu.R.string.final_chapter)
+                        }
                     }
-        } else {
-            binding.mediaInfoDurationContainer.visibility = View.GONE
+                }
+
+                // Format the text based on what's available
+                binding.mediaInfoDuration.text =
+                        when {
+                            finalVolume != null && finalChapterStr != null ->
+                                    getString(
+                                            R.string.volume_chapter_format,
+                                            finalVolume,
+                                            finalChapterStr
+                                    )
+                            finalChapterStr != null ->
+                                    getString(R.string.chapter_format, finalChapterStr)
+                            finalVolume != null -> getString(R.string.volume_format, finalVolume)
+                            else -> getString(R.string.unknown_value)
+                        }
+            } else {
+                binding.mediaInfoDurationContainer.visibility = View.GONE
+            }
         }
 
         // Description
@@ -1091,8 +1208,13 @@ class ComickInfoFragment : Fragment() {
             }
         }
 
+        // Anime sections take the place of everything chapter-shaped below.
+        if (isAnimeMode) {
+            displayAnimeSections(parent, comic)
+        }
+
         // Latest chapter — shown after synonyms
-        if (!shouldHideLatestChapter && lastChapter != null &&
+        if (!isAnimeMode && !shouldHideLatestChapter && lastChapter != null &&
                 parent.findViewWithTag<View>("latest_chapter_comick") == null) {
             val chapText = "Ch." + if (lastChapter % 1.0 == 0.0) lastChapter.toInt().toString() else lastChapter.toString()
             val hid = comic.hid
@@ -1158,8 +1280,9 @@ class ComickInfoFragment : Fragment() {
         }
 
         // Add Covers section — placeholder is added synchronously so the position is reserved,
-        // then the coroutine fills it in once the network fetch completes.
-        if (!comickSlug.isNullOrBlank() &&
+        // then the coroutine fills it in once the network fetch completes. Anime entries have a
+        // single poster and no /cover page (it 404s), so there is no gallery to show.
+        if (!isAnimeMode && !comickSlug.isNullOrBlank() &&
                 parent.findViewWithTag<View>("covers_comick_placeholder") == null
         ) {
             val coversPlaceholder = android.widget.FrameLayout(requireContext()).apply {
@@ -1206,8 +1329,9 @@ class ComickInfoFragment : Fragment() {
             }
         }
 
-        // Add Anime Info if available
-        if (comic.has_anime == true && comic.anime != null) {
+        // Add Anime Info if available. This is the manga's "there is an adaptation" note — on an
+        // anime entry it would be describing itself, so it's manga-only.
+        if (!isAnimeMode && comic.has_anime == true && comic.anime != null) {
             val animeInfo = comic.anime
             if (parent.findViewWithTag<View>("anime_info_comick") == null) {
                 val bind = ItemTitleTextBinding.inflate(LayoutInflater.from(context), parent, false)
@@ -1329,6 +1453,51 @@ class ComickInfoFragment : Fragment() {
 
                 bind.root.tag = "genres_${groupType}_comick"
                 parent.addView(bind.root)
+            }
+        }
+
+        // Add Tags. The comic path uses the MangaUpdates categories embedded in the details
+        // response; anime entries carry no mu_comics at all, so theirs come from /comic-tags —
+        // a separate request, hence the placeholder-then-fill shape used elsewhere here.
+        val comicHid = comic.hid
+        if (isAnimeMode && !comicHid.isNullOrBlank() &&
+                parent.findViewWithTag<View>("tags_comick") == null) {
+            val tagsPlaceholder = android.widget.FrameLayout(requireContext()).apply {
+                tag = "tags_comick"
+                layoutParams = android.widget.LinearLayout.LayoutParams(
+                    android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+            }
+            parent.addView(tagsPlaceholder)
+
+            viewLifecycleOwner.lifecycleScope.launch {
+                val tags = withContext(Dispatchers.IO) { ComickApi.getComicTags(comicHid) }
+                if (_binding == null || tags.isEmpty() || tagsPlaceholder.childCount > 0) {
+                    return@launch
+                }
+                val bind = ani.dantotsu.databinding.ItemTitleChipgroupMultilineBinding.inflate(
+                    LayoutInflater.from(context), tagsPlaceholder, false
+                )
+                bind.itemTitle.text = getString(R.string.tags)
+                tags.forEach { tag ->
+                    val title = tag.title ?: return@forEach
+                    val slug = tag.slug ?: return@forEach
+                    val chip = ItemChipBinding.inflate(
+                        LayoutInflater.from(context), bind.itemChipGroup, false
+                    ).root
+                    chip.text = title
+                    chip.setOnClickListener {
+                        startComickSearchInApp(categorySlug = slug, categoryName = title)
+                    }
+                    chip.setOnLongClickListener {
+                        copyToClipboard(title)
+                        Toast.makeText(requireContext(), "Copied: $title", Toast.LENGTH_SHORT).show()
+                        true
+                    }
+                    bind.itemChipGroup.addView(chip)
+                }
+                tagsPlaceholder.addView(bind.root)
             }
         }
 
@@ -1679,6 +1848,261 @@ class ComickInfoFragment : Fragment() {
                 tag = "unlink_comick_button"
                 }
             parent.addView(unlinkButton)
+        }
+    }
+
+    /**
+     * Render the sections that only exist for anime: broadcast/MAL stats, the episode list, the
+     * studios, the legal streaming platforms, the trailer and the encyclopedia links. Everything
+     * here is additive — the caller has already suppressed the chapter-shaped sections.
+     */
+    @SuppressLint("SetTextI18n")
+    private fun displayAnimeSections(parent: ViewGroup, comic: ani.dantotsu.connections.comick.ComickComic) {
+        val profile = comic.anime_profiles
+        val slug = comic.slug
+
+        // --- Broadcast + MAL statistics -----------------------------------------------------
+        if (profile != null && parent.findViewWithTag<View>("broadcast_comick") == null) {
+            val lines = buildString {
+                val season = profile.season?.replaceFirstChar { it.uppercase() }
+                val seasonYear = profile.season_year
+                if (season != null && seasonYear != null) {
+                    append(getString(R.string.comick_season_format, season, seasonYear))
+                }
+                profile.broadcastIn(broadcastDisplayZone())?.let { slot ->
+                    if (isNotEmpty()) append("\n")
+                    append(
+                        if (slot.isConverted) getString(
+                            R.string.comick_broadcast_format, slot.day, slot.time, slot.zone
+                        ) else slot.raw
+                    )
+                }
+            }
+            // No MAL score/rank/members block here: it restated what the MAL tab already shows,
+            // for the same entry, on the same screen.
+            if (lines.isNotBlank()) {
+                val bind = ItemTitleTextBinding.inflate(LayoutInflater.from(context), parent, false)
+                bind.itemTitle.text = getString(R.string.comick_broadcast)
+                bind.itemText.text = lines
+                bind.itemText.setOnLongClickListener { copyToClipboard(lines); true }
+                bind.root.tag = "broadcast_comick"
+                parent.addView(bind.root)
+            }
+        }
+
+        // --- Episodes -----------------------------------------------------------------------
+        // Reserve the slot synchronously so it keeps its position, then fill it once the (page
+        // scrape) fetch returns. See ComickApi.getAnimePage for why this isn't a plain API call.
+        if (!slug.isNullOrBlank() && parent.findViewWithTag<View>("episodes_comick") == null) {
+            val placeholder = android.widget.LinearLayout(requireContext()).apply {
+                orientation = android.widget.LinearLayout.VERTICAL
+                tag = "episodes_comick"
+                layoutParams = android.widget.LinearLayout.LayoutParams(
+                    android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+            }
+            parent.addView(placeholder)
+
+            viewLifecycleOwner.lifecycleScope.launch {
+                val episodes = withContext(Dispatchers.IO) { ComickApi.getEpisodes(slug) }
+                if (_binding == null || placeholder.childCount > 0) return@launch
+
+                val header = ani.dantotsu.databinding.ItemTitleRecyclerBinding.inflate(
+                    layoutInflater, placeholder, false
+                )
+                header.itemTitle.text = getString(R.string.comick_episodes)
+                header.itemRecycler.visibility = View.GONE
+
+                if (episodes.isEmpty()) {
+                    // Episode lists are user-contributed; plenty of entries simply have none.
+                    header.itemMore.visibility = View.GONE
+                    placeholder.addView(header.root)
+                    val empty = ItemTitleTextBinding.inflate(
+                        LayoutInflater.from(context), placeholder, false
+                    )
+                    empty.itemTitle.visibility = View.GONE
+                    empty.itemText.text = getString(R.string.comick_no_episodes)
+                    placeholder.addView(empty.root)
+                    return@launch
+                }
+
+                // Now that the real count is known, correct the stats row: anime_profiles.episodes
+                // is a planned total and is often null or ahead of what actually exists.
+                binding.mediaInfoTotal.text = episodes.size.toString()
+
+                header.itemMore.visibility = View.VISIBLE
+                header.itemMore.setSafeOnClickListener {
+                    startActivity(
+                        Intent(requireContext(), ComickMediaActivity::class.java)
+                            .putExtra(ComickMediaActivity.EXTRA_SLUG, slug)
+                            .putExtra(
+                                ComickMediaActivity.EXTRA_MEDIA_TYPE,
+                                ComickApi.MEDIA_TYPE_ANIME
+                            )
+                            .putExtra(ComickMediaActivity.EXTRA_OPEN_CHAPTERS, true)
+                    )
+                }
+                placeholder.addView(header.root)
+
+                // Newest first here: for an airing show the last episode is what's wanted.
+                episodes.asReversed().take(EPISODE_PREVIEW_COUNT).forEach { episode ->
+                    val cb = ItemChapterListBinding.inflate(layoutInflater, placeholder, false)
+                    cb.itemDownload.visibility = View.GONE
+                    cb.itemChapterBrowser.visibility = View.GONE
+                    cb.itemEpisodeViewed.visibility = View.GONE
+                    cb.itemChapterDateLayout.layoutParams.height =
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+
+                    val number = episode.number()
+                    val title = episode.displayTitle()
+                    cb.itemChapterNumber.text = when {
+                        number != null && !title.isNullOrBlank() ->
+                            getString(R.string.comick_episode_titled_format, number, title)
+                        number != null -> getString(R.string.comick_episode_short_format, number)
+                        else -> title ?: ""
+                    }
+
+                    val aired = formatComickDate(episode.anime_episode_profiles?.aired_at)
+                    cb.itemChapterDateLayout.visibility =
+                        if (aired.isNotBlank()) View.VISIBLE else View.GONE
+                    cb.itemChapterDate.visibility =
+                        if (aired.isNotBlank()) View.VISIBLE else View.GONE
+                    cb.itemChapterDate.text = aired
+                    cb.itemChapterScan.visibility = View.GONE
+                    cb.itemChapterDateDivider.visibility = View.GONE
+
+                    (cb.root.layoutParams as? android.widget.LinearLayout.LayoutParams)?.apply {
+                        marginStart = 32f.px
+                        marginEnd = 16f.px
+                    }
+
+                    val synopsis = episode.anime_episode_profiles?.synopsis?.takeIf { it.isNotBlank() }
+                    if (synopsis != null) {
+                        cb.root.setSafeOnClickListener {
+                            androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                                .setTitle(cb.itemChapterNumber.text)
+                                .setMessage(synopsis)
+                                .setPositiveButton(R.string.close, null)
+                                .show()
+                        }
+                    } else {
+                        cb.root.isClickable = false
+                    }
+
+                    placeholder.addView(cb.root)
+                }
+            }
+        }
+
+        // --- Studios ------------------------------------------------------------------------
+        val companies = comic.anime_companies_to_md_comics
+        if (!companies.isNullOrEmpty() && parent.findViewWithTag<View>("studios_comick") == null) {
+            // "studio" is the interesting role; producers and licensors are long tails of
+            // committee members, so they only fill in when no studio is credited.
+            val studios = companies.filter { it.role.equals("studio", ignoreCase = true) }
+                .ifEmpty { companies }
+                .mapNotNull { it.anime_companies }
+                .distinctBy { it.name }
+
+            if (studios.isNotEmpty()) {
+                val bind = ani.dantotsu.databinding.ItemTitleChipgroupMultilineBinding.inflate(
+                    LayoutInflater.from(context), parent, false
+                )
+                bind.itemTitle.text = getString(R.string.studios)
+                studios.forEach { company ->
+                    val name = company.name ?: return@forEach
+                    val chip = ItemChipBinding.inflate(
+                        LayoutInflater.from(context), bind.itemChipGroup, false
+                    ).root
+                    chip.text = name
+                    company.url?.takeIf { it.isNotBlank() }?.let { url ->
+                        chip.setOnClickListener { openExternalUrl(url) }
+                    }
+                    chip.setOnLongClickListener { copyToClipboard(name); true }
+                    bind.itemChipGroup.addView(chip)
+                }
+                bind.root.tag = "studios_comick"
+                parent.addView(bind.root)
+            }
+        }
+
+        // --- Streaming platforms, official sites and encyclopedia links ---------------------
+        val malLinks = comic.links?.mal_external_links
+        addLinkChips(
+            parent, "streaming_comick", getString(R.string.comick_streaming),
+            malLinks?.streaming_platforms?.filter { it.available != false }
+        )
+        addLinkChips(
+            parent, "official_comick", getString(R.string.comick_official_site),
+            malLinks?.available_at
+        )
+        addLinkChips(
+            parent, "resources_comick", getString(R.string.comick_resources),
+            malLinks?.resources
+        )
+
+        // --- Trailer ------------------------------------------------------------------------
+        // The same click-to-play card the AniList tab uses, rather than a link out to YouTube.
+        val trailerId = comic.trailers?.firstNotNullOfOrNull { it.youtubeId() }
+        if (trailerId != null && parent.findViewWithTag<View>("trailer_comick") == null) {
+            val card = TrailerWebView.create(
+                requireActivity(), LayoutInflater.from(context), parent, trailerId
+            )
+            card.tag = "trailer_comick"
+            parent.addView(card)
+        }
+    }
+
+    /** Add a chip row of outbound links, skipping the section entirely when there are none. */
+    private fun addLinkChips(
+        parent: ViewGroup,
+        tag: String,
+        title: String,
+        links: List<ani.dantotsu.connections.comick.ComickExternalLink>?
+    ) {
+        val usable = links?.filter { !it.url.isNullOrBlank() && !it.name.isNullOrBlank() }
+        if (usable.isNullOrEmpty() || parent.findViewWithTag<View>(tag) != null) return
+
+        val bind = ani.dantotsu.databinding.ItemTitleChipgroupMultilineBinding.inflate(
+            LayoutInflater.from(context), parent, false
+        )
+        bind.itemTitle.text = title
+        usable.forEach { link ->
+            val chip = ItemChipBinding.inflate(
+                LayoutInflater.from(context), bind.itemChipGroup, false
+            ).root
+            chip.text = link.name
+            chip.setOnClickListener { openExternalUrl(link.url!!) }
+            chip.setOnLongClickListener { copyToClipboard(link.url!!); true }
+            bind.itemChipGroup.addView(chip)
+        }
+        bind.root.tag = tag
+        parent.addView(bind.root)
+    }
+
+    private fun openExternalUrl(url: String) {
+        if (!isAdded) return
+        try {
+            startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+        } catch (e: Exception) {
+            Toast.makeText(requireContext(), getString(R.string.error_message, e.message ?: ""), Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    /** ISO instant -> "3 Apr 2026". Blank when absent or unparseable. */
+    private fun formatAiredDate(isoDate: String?): String {
+        if (isoDate.isNullOrBlank()) return ""
+        return try {
+            val instant = try {
+                java.time.Instant.parse(isoDate)
+            } catch (_: java.time.format.DateTimeParseException) {
+                java.time.OffsetDateTime.parse(isoDate).toInstant()
+            }
+            java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault())
+                .format(java.util.Date(instant.toEpochMilli()))
+        } catch (_: Exception) {
+            ""
         }
     }
 

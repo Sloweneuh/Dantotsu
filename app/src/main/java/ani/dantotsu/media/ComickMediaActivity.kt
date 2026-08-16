@@ -18,12 +18,17 @@ import androidx.lifecycle.lifecycleScope
 import ani.dantotsu.R
 import ani.dantotsu.bindScrollToTop
 import ani.dantotsu.blurImage
+import ani.dantotsu.connections.anilist.AnilistSearch.SearchType
+import ani.dantotsu.connections.anilist.AnilistSearch.SearchType.Companion.toAnilistString
 import ani.dantotsu.connections.comick.ComickApi
 import ani.dantotsu.connections.comick.ComickChapter
 import ani.dantotsu.connections.comick.ComickComic
+import ani.dantotsu.connections.comick.ComickEpisode
 import ani.dantotsu.connections.comick.ComickListComic
+import ani.dantotsu.connections.comick.broadcastDisplayZone
 import ani.dantotsu.connections.comick.displayTitle
 import ani.dantotsu.connections.comick.hasCJK
+import ani.dantotsu.connections.comick.toChapter
 import ani.dantotsu.connections.comick.toComickReview
 import ani.dantotsu.connections.mangaupdates.AniListQuickSearchDialogFragment
 import ani.dantotsu.connections.mangaupdates.MUMediaDetailsActivity
@@ -70,14 +75,29 @@ class ComickMediaActivity : AppCompatActivity() {
     companion object {
         const val EXTRA_SLUG = "comick_slug"
         const val EXTRA_OPEN_CHAPTERS = "open_chapters"
+        const val EXTRA_MEDIA_TYPE = "comick_media_type"
         private const val HR_MARKER = ''
         private const val CHAPTER_GROUP_SIZE = 100
     }
 
     private lateinit var binding: ActivityComickMediaBinding
     private var allChapters: List<ComickChapter> = emptyList()
+
+    /**
+     * The episodes behind [allChapters] in anime mode, parallel by index. Episodes are rendered
+     * through the chapter list so the chip grouping, ranges and gap detection are shared, but the
+     * chapter shape can't carry a synopsis, duration or uploader — this keeps them reachable.
+     */
+    private var allEpisodes: List<ComickEpisode> = emptyList()
     private var chaptersLoaded = false
     private var currentTabIndex = 0
+
+    /** Anime entries use a different catalogue, list episodes instead of chapters, and have no
+     *  MangaUpdates counterpart. */
+    private var isAnimeMode = false
+    private val mediaType
+        get() = if (isAnimeMode) ComickApi.MEDIA_TYPE_ANIME else ComickApi.MEDIA_TYPE_MANGA
+    private var loadedSlug: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -102,20 +122,28 @@ class ComickMediaActivity : AppCompatActivity() {
         binding.quickSettings.bindQuickSettings(this)
         binding.comickMediaClose.setOnClickListener { finish() }
 
+        val segments = intent.data?.pathSegments
+        // A shared comick.dev link tells us which catalogue it is: /anime/{slug} vs /comic/{slug}.
+        isAnimeMode = intent.getStringExtra(EXTRA_MEDIA_TYPE) == ComickApi.MEDIA_TYPE_ANIME ||
+            (segments != null && segments.size >= 2 && segments[0] == "anime")
+
         val slug = intent.getStringExtra(EXTRA_SLUG)
             ?: run {
-                val segments = intent.data?.pathSegments
-                if (segments != null && segments.size >= 2 && segments[0] == "comic") segments[1]
-                else null
+                if (segments != null && segments.size >= 2 &&
+                    (segments[0] == "comic" || segments[0] == "anime")
+                ) segments[1] else null
             }
             ?: run { finish(); return }
+        loadedSlug = slug
 
         val openChapters = intent.getBooleanExtra(EXTRA_OPEN_CHAPTERS, false)
 
         setupBottomBar(openChapters)
 
         lifecycleScope.launch {
-            val comickData = withContext(Dispatchers.IO) { ComickApi.getComicDetails(slug) }
+            val comickData = withContext(Dispatchers.IO) {
+                ComickApi.getComicDetails(slug, mediaType = mediaType)
+            }
             val comic = comickData?.comic
             if (comic == null) {
                 binding.comickMediaProgress.visibility = View.GONE
@@ -134,7 +162,9 @@ class ComickMediaActivity : AppCompatActivity() {
                 binding.comickMediaInfoScroll.visibility = View.VISIBLE
             } else {
                 binding.comickMediaChaptersScroll.visibility = View.VISIBLE
-                comic.hid?.let { loadChapters(it) }
+                // Episodes key off the slug (page scrape), chapters off the hid (API).
+                if (isAnimeMode) loadChapters(comic.hid.orEmpty())
+                else comic.hid?.let { loadChapters(it) }
             }
         }
     }
@@ -142,7 +172,11 @@ class ComickMediaActivity : AppCompatActivity() {
     private fun setupBottomBar(startOnChapters: Boolean) {
         val navBar = binding.comickMediaBottomBar
         val infoTab = navBar.createTab(R.drawable.ic_round_info_24, R.string.info, R.id.info)
-        val chaptersTab = navBar.createTab(R.drawable.ic_round_import_contacts_24, R.string.read, R.id.read)
+        val chaptersTab = if (isAnimeMode) navBar.createTab(
+            R.drawable.ic_round_playlist_play_24, R.string.comick_episodes, R.id.read
+        ) else navBar.createTab(
+            R.drawable.ic_round_import_contacts_24, R.string.read, R.id.read
+        )
         navBar.addTab(infoTab)
         navBar.addTab(chaptersTab)
 
@@ -195,7 +229,21 @@ class ComickMediaActivity : AppCompatActivity() {
         loadedHid = hid
         binding.comickChaptersProgress.isVisible = true
         lifecycleScope.launch {
-            val chapters = withContext(Dispatchers.IO) { ComickApi.getChapters(hid) }
+            val chapters = withContext(Dispatchers.IO) {
+                if (isAnimeMode) {
+                    // Episodes are chapter rows the chapters endpoint filters out, so they come
+                    // from the page instead — then flow through the exact same rendering.
+                    val slug = loadedSlug
+                    if (slug.isNullOrBlank()) {
+                        emptyList()
+                    } else {
+                        allEpisodes = ComickApi.getEpisodes(slug)
+                        allEpisodes.map { it.toChapter() }
+                    }
+                } else {
+                    ComickApi.getChapters(hid)
+                }
+            }
             binding.comickChaptersProgress.isVisible = false
             allChapters = chapters
             chaptersLoaded = true
@@ -222,6 +270,9 @@ class ComickMediaActivity : AppCompatActivity() {
         if (allChapters.isEmpty()) {
             binding.comickChaptersChipScroll.visibility = View.GONE
             binding.comickChaptersHeader.isVisible = false
+            binding.comickChaptersEmpty.setText(
+                if (isAnimeMode) R.string.no_episode else R.string.no_chapter
+            )
             binding.comickChaptersEmpty.isVisible = true
             return
         }
@@ -253,9 +304,10 @@ class ComickMediaActivity : AppCompatActivity() {
 
             val startChap = allChapters[startIdx].chap?.toDoubleOrNull()
             val endChap = allChapters[endIdx].chap?.toDoubleOrNull()
+            val chipPrefix = if (isAnimeMode) "Ep." else "Ch."
             val chipText = when {
                 startChap != null && endChap != null ->
-                    "Ch.${formatChapNum(startChap)} - Ch.${formatChapNum(endChap)}"
+                    "$chipPrefix${formatChapNum(startChap)} - $chipPrefix${formatChapNum(endChap)}"
                 else -> "${startIdx + 1}-${endIdx + 1}"
             }
 
@@ -291,16 +343,28 @@ class ComickMediaActivity : AppCompatActivity() {
 
             val chapNum = chapter.chap
             val chapTitle = chapter.title
+            val prefix = if (isAnimeMode) "Ep." else "Ch."
             b.itemChapterNumber.text = when {
-                !chapNum.isNullOrBlank() && !chapTitle.isNullOrBlank() -> "Ch.$chapNum: $chapTitle"
-                !chapNum.isNullOrBlank() -> "Ch.$chapNum"
+                !chapNum.isNullOrBlank() && !chapTitle.isNullOrBlank() -> "$prefix$chapNum: $chapTitle"
+                !chapNum.isNullOrBlank() -> "$prefix$chapNum"
                 !chapTitle.isNullOrBlank() -> chapTitle
                 else -> getString(R.string.unknown)
             }
 
             val dateText = formatComickDate(chapter.created_at)
-            val scan = chapter.group_name?.filterNot { it.isBlank() }?.joinToString(", ")
-                ?.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() }
+            // The scanlator column carries the episode's own metadata instead: an episode has a
+            // runtime, a type and a submitter, but no translation group.
+            val episode = if (isAnimeMode) allEpisodes.getOrNull(i) else null
+            val scan = if (episode != null) {
+                // No uploader here: who submitted the metadata says nothing about the episode.
+                listOfNotNull(
+                    episode.specialTypeLabel(),
+                    episode.durationLabel(),
+                ).joinToString(" · ").takeIf { it.isNotBlank() }
+            } else {
+                chapter.group_name?.filterNot { it.isBlank() }?.joinToString(", ")
+                    ?.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString() }
+            }
             val hasDate = dateText.isNotBlank()
             val hasScan = !scan.isNullOrBlank()
             b.itemChapterDateLayout.isVisible = hasDate || hasScan
@@ -309,9 +373,29 @@ class ComickMediaActivity : AppCompatActivity() {
             b.itemChapterScan.isVisible = hasScan
             b.itemChapterScan.text = scan ?: ""
             b.itemChapterDateDivider.isVisible = hasDate && hasScan
-            // No click — Comick is info-only, not a reader source
-            b.root.isClickable = false
-            b.root.isFocusable = false
+
+            // Synopsis goes in the row's secondary line, clamped to two lines and expanded by
+            // tapping — most are a sentence or two, but some run long.
+            val synopsis = episode?.anime_episode_profiles?.synopsis?.takeIf { it.isNotBlank() }
+            if (synopsis != null) {
+                b.itemChapterTitle.isVisible = true
+                b.itemChapterTitle.text = synopsis
+                b.itemChapterTitle.maxLines = 2
+                b.root.isClickable = true
+                b.root.isFocusable = true
+                b.root.setOnClickListener {
+                    val collapsed = b.itemChapterTitle.maxLines == 2
+                    android.animation.ObjectAnimator
+                        .ofInt(b.itemChapterTitle, "maxLines", if (collapsed) 30 else 2)
+                        .setDuration(if (collapsed) 700 else 400)
+                        .start()
+                }
+            } else {
+                b.itemChapterTitle.isVisible = false
+                // No click — Comick is info-only, not a reader source
+                b.root.isClickable = false
+                b.root.isFocusable = false
+            }
             binding.comickChaptersList.addView(b.root)
 
             // Gap indicator between this chapter and the next
@@ -322,12 +406,19 @@ class ComickMediaActivity : AppCompatActivity() {
                 val gap = n.toInt() - c.toInt() - 1
                 if (gap > 0) {
                     val g = ItemChapterGapBinding.inflate(layoutInflater, binding.comickChaptersList, false)
-                    g.itemChapterGapText.text = if (gap == 1) getString(R.string.chapter_missing_single)
-                                                else getString(R.string.chapters_missing, gap)
+                    g.itemChapterGapText.text = missingLabel(gap)
                     binding.comickChaptersList.addView(g.root)
                 }
             }
         }
+    }
+
+    /** "3 missing chapters" / "3 missing episodes", matching the catalogue being shown. */
+    private fun missingLabel(missing: Int): String = when {
+        isAnimeMode && missing == 1 -> getString(R.string.comick_episode_missing_single)
+        isAnimeMode -> getString(R.string.comick_episodes_missing, missing)
+        missing == 1 -> getString(R.string.chapter_missing_single)
+        else -> getString(R.string.chapters_missing, missing)
     }
 
     private fun computeMissingChapters(chapters: List<ComickChapter>): Int {
@@ -343,13 +434,13 @@ class ComickMediaActivity : AppCompatActivity() {
     }
 
     private fun buildChaptersHeader(missing: Int): SpannableStringBuilder {
-        val ssb = SpannableStringBuilder(getString(R.string.chaps))
+        val ssb = SpannableStringBuilder(
+            getString(if (isAnimeMode) R.string.comick_episodes else R.string.chaps)
+        )
         if (missing > 0) {
             ssb.append("\n")
             val start = ssb.length
-            val label = if (missing == 1) getString(R.string.chapter_missing_single)
-                        else getString(R.string.chapters_missing, missing)
-            ssb.append(label)
+            ssb.append(missingLabel(missing))
             ssb.setSpan(RelativeSizeSpan(0.68f), start, ssb.length, 0)
         }
         return ssb
@@ -405,15 +496,29 @@ class ComickMediaActivity : AppCompatActivity() {
         if (anilistId != null) {
             binding.comickMediaAnilistBtn.setText(R.string.comick_open_anilist)
             binding.comickMediaAnilistBtn.setOnClickListener {
-                openOrCopyAnilistLink("https://anilist.co/manga/$anilistId")
+                // An anime entry's links.al is the AniList *anime* id, not its source manga's.
+                val path = if (isAnimeMode) "anime" else "manga"
+                openOrCopyAnilistLink("https://anilist.co/$path/$anilistId")
             }
         } else {
             binding.comickMediaAnilistBtn.setText(R.string.comick_search_anilist)
             binding.comickMediaAnilistBtn.setOnClickListener {
                 AniListQuickSearchDialogFragment
-                    .newInstance(titles = ArrayList(titles), type = AniListQuickSearchDialogFragment.TYPE_MANGA)
+                    .newInstance(
+                        titles = ArrayList(titles),
+                        type = if (isAnimeMode) AniListQuickSearchDialogFragment.TYPE_ANIME
+                        else AniListQuickSearchDialogFragment.TYPE_MANGA
+                    )
                     .show(supportFragmentManager, "comick_anilist_quick_search")
             }
+        }
+
+        // MangaUpdates only indexes comics — anime entries never carry a links.mu.
+        if (isAnimeMode) {
+            binding.comickMediaMuBtn.visibility = View.GONE
+            binding.comickMediaSourceButtons.visibility = View.VISIBLE
+            comic.hid?.takeIf { it.isNotBlank() }?.let { loadedHid = it }
+            return
         }
 
         binding.comickMediaMuBtn.visibility = View.VISIBLE
@@ -525,12 +630,13 @@ class ComickMediaActivity : AppCompatActivity() {
             parent.addView(bind.root)
         }
 
-        // Latest chapter — shown after synonyms
+        // Latest chapter — shown after synonyms. Anime has no chapters: last_chapter is null and
+        // the section is meaningless, so it's skipped entirely rather than left empty.
         val finalChapterNum = comic.final_chapter?.toDoubleOrNull()
         val lastChapter = comic.last_chapter
         val hideLatest = comic.status == 2 && comic.translation_completed == true &&
                 lastChapter != null && finalChapterNum != null && lastChapter >= finalChapterNum
-        if (!hideLatest && lastChapter != null) {
+        if (!isAnimeMode && !hideLatest && lastChapter != null) {
             val chapText = "Ch." + if (lastChapter % 1.0 == 0.0) lastChapter.toInt().toString() else lastChapter.toString()
 
             val latestHeader = ItemTitleRecyclerBinding.inflate(LayoutInflater.from(this), parent, false)
@@ -588,7 +694,7 @@ class ComickMediaActivity : AppCompatActivity() {
         }
 
         val comickSlug = comic.slug
-        if (!comickSlug.isNullOrBlank()) {
+        if (!isAnimeMode && !comickSlug.isNullOrBlank()) {
             val coversPlaceholder = android.widget.FrameLayout(this).apply {
                 layoutParams = android.widget.LinearLayout.LayoutParams(
                     android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
@@ -614,7 +720,9 @@ class ComickMediaActivity : AppCompatActivity() {
             }
         }
 
-        if (comic.has_anime == true && comic.anime != null) {
+        if (isAnimeMode) displayAnimeSections(parent, comic)
+
+        if (!isAnimeMode && comic.has_anime == true && comic.anime != null) {
             val animeInfo = comic.anime
             val infoText = buildString {
                 if (!animeInfo.start.isNullOrBlank()) append(getString(R.string.anime_start_format, animeInfo.start))
@@ -645,7 +753,7 @@ class ComickMediaActivity : AppCompatActivity() {
                     chip.setOnClickListener {
                         startActivity(
                             Intent(this, SearchActivity::class.java)
-                                .putExtra("type", "COMICK")
+                                .putExtra("type", searchTypeExtra())
                                 .putExtra("genre", slug)
                                 .putExtra("genreName", name)
                                 .putExtra("search", true)
@@ -670,7 +778,7 @@ class ComickMediaActivity : AppCompatActivity() {
                 chip.setOnClickListener {
                     startActivity(
                         Intent(this, SearchActivity::class.java)
-                            .putExtra("type", "COMICK")
+                            .putExtra("type", searchTypeExtra())
                             .putExtra("category", slug)
                             .putExtra("categoryName", title)
                             .putExtra("search", true)
@@ -680,6 +788,48 @@ class ComickMediaActivity : AppCompatActivity() {
                 bind.itemChipGroup.addView(chip)
             }
             parent.addView(bind.root)
+        }
+
+        // Anime entries carry no mu_comics, so their tags come from /comic-tags instead. The
+        // placeholder reserves the slot while that separate request is in flight.
+        val tagsHid = comic.hid
+        if (isAnimeMode && !tagsHid.isNullOrBlank()) {
+            val tagsPlaceholder = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+            }
+            parent.addView(tagsPlaceholder)
+            lifecycleScope.launch {
+                val tags = withContext(Dispatchers.IO) { ComickApi.getComicTags(tagsHid) }
+                if (tags.isEmpty() || tagsPlaceholder.childCount > 0) return@launch
+                val bind = ItemTitleChipgroupMultilineBinding.inflate(
+                    LayoutInflater.from(this@ComickMediaActivity), tagsPlaceholder, false
+                )
+                bind.itemTitle.text = getString(R.string.tags)
+                tags.forEach { tag ->
+                    val title = tag.title ?: return@forEach
+                    val slug = tag.slug ?: return@forEach
+                    val chip = ItemChipBinding.inflate(
+                        LayoutInflater.from(this@ComickMediaActivity), bind.itemChipGroup, false
+                    ).root
+                    chip.text = title
+                    chip.setOnClickListener {
+                        startActivity(
+                            Intent(this@ComickMediaActivity, SearchActivity::class.java)
+                                .putExtra("type", searchTypeExtra())
+                                .putExtra("category", slug)
+                                .putExtra("categoryName", title)
+                                .putExtra("search", true)
+                        )
+                    }
+                    chip.setOnLongClickListener { copyToClipboard(title); true }
+                    bind.itemChipGroup.addView(chip)
+                }
+                tagsPlaceholder.addView(bind.root)
+            }
         }
 
         val recommendations = comic.recommendations
@@ -757,6 +907,127 @@ class ComickMediaActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * Broadcast, MAL statistics, studios, streaming links and the trailer — the parts of an entry
+     * that only exist for anime. Mirrors the Comick tab on the AniList screen so the standalone
+     * page is not a poorer view of the same entry.
+     */
+    private fun displayAnimeSections(parent: ViewGroup, comic: ComickComic) {
+        val profile = comic.anime_profiles
+
+        if (profile != null) {
+            val lines = buildString {
+                val season = profile.season?.replaceFirstChar { it.uppercase() }
+                val seasonYear = profile.season_year
+                if (season != null && seasonYear != null) {
+                    append(getString(R.string.comick_season_format, season, seasonYear))
+                }
+                profile.broadcastIn(broadcastDisplayZone())?.let { slot ->
+                    if (isNotEmpty()) append("\n")
+                    append(
+                        if (slot.isConverted) getString(
+                            R.string.comick_broadcast_format, slot.day, slot.time, slot.zone
+                        ) else slot.raw
+                    )
+                }
+            }
+            if (lines.isNotBlank()) {
+                ItemTitleTextBinding.inflate(LayoutInflater.from(this), parent, false).apply {
+                    itemTitle.text = getString(R.string.comick_broadcast)
+                    itemText.text = lines
+                    itemText.setOnLongClickListener { copyToClipboard(lines); true }
+                    parent.addView(root)
+                }
+            }
+
+            // No MAL score/rank/members block: it restated what the MAL sources already provide,
+            // adding a second, staler copy of the same numbers.
+        }
+
+        // Studios. "studio" is the interesting role; producers and licensors are a long tail of
+        // committee members, so they only stand in when no studio is credited.
+        val companies = comic.anime_companies_to_md_comics
+        if (!companies.isNullOrEmpty()) {
+            val studios = companies.filter { it.role.equals("studio", ignoreCase = true) }
+                .ifEmpty { companies }
+                .mapNotNull { it.anime_companies }
+                .distinctBy { it.name }
+            if (studios.isNotEmpty()) {
+                val bind = ItemTitleChipgroupMultilineBinding.inflate(
+                    LayoutInflater.from(this), parent, false
+                )
+                bind.itemTitle.text = getString(R.string.studios)
+                studios.forEach { company ->
+                    val name = company.name ?: return@forEach
+                    val chip = ItemChipBinding.inflate(
+                        LayoutInflater.from(this), bind.itemChipGroup, false
+                    ).root
+                    chip.text = name
+                    company.url?.takeIf { it.isNotBlank() }?.let { url ->
+                        chip.setOnClickListener { openLinkInBrowser(url) }
+                    }
+                    chip.setOnLongClickListener { copyToClipboard(name); true }
+                    bind.itemChipGroup.addView(chip)
+                }
+                parent.addView(bind.root)
+            }
+        }
+
+        val malLinks = comic.links?.mal_external_links
+        addLinkChips(parent, getString(R.string.comick_streaming),
+            malLinks?.streaming_platforms?.filter { it.available != false })
+        addLinkChips(parent, getString(R.string.comick_official_site), malLinks?.available_at)
+        addLinkChips(parent, getString(R.string.comick_resources), malLinks?.resources)
+
+        // Trailer, as the same click-to-play card the info screens use.
+        comic.trailers?.firstNotNullOfOrNull { it.youtubeId() }?.let { id ->
+            parent.addView(TrailerWebView.create(this, LayoutInflater.from(this), parent, id))
+        }
+    }
+
+    /** Add a chip row of outbound links, skipping the section entirely when there are none. */
+    private fun addLinkChips(
+        parent: ViewGroup,
+        title: String,
+        links: List<ani.dantotsu.connections.comick.ComickExternalLink>?
+    ) {
+        val usable = links?.filter { !it.url.isNullOrBlank() && !it.name.isNullOrBlank() }
+        if (usable.isNullOrEmpty()) return
+        val bind = ItemTitleChipgroupMultilineBinding.inflate(
+            LayoutInflater.from(this), parent, false
+        )
+        bind.itemTitle.text = title
+        usable.forEach { link ->
+            val chip = ItemChipBinding.inflate(
+                LayoutInflater.from(this), bind.itemChipGroup, false
+            ).root
+            chip.text = link.name
+            chip.setOnClickListener { openLinkInBrowser(link.url!!) }
+            chip.setOnLongClickListener { copyToClipboard(link.url!!); true }
+            bind.itemChipGroup.addView(chip)
+        }
+        parent.addView(bind.root)
+    }
+
+    /** Which Comick search a chip on this page should open — the two catalogues are separate. */
+    private fun searchTypeExtra(): String =
+        (if (isAnimeMode) SearchType.COMICK_ANIME else SearchType.COMICK).toAnilistString()
+
+    /** ISO instant -> "3 Apr 2026". Blank when absent or unparseable. */
+    private fun formatAiredDate(isoDate: String?): String {
+        if (isoDate.isNullOrBlank()) return ""
+        return try {
+            val instant = try {
+                Instant.parse(isoDate)
+            } catch (_: DateTimeParseException) {
+                java.time.OffsetDateTime.parse(isoDate).toInstant()
+            }
+            SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(Date(instant.toEpochMilli()))
+        } catch (_: Exception) {
+            ""
+        }
+    }
+
     private fun buildStatsView(comic: ComickComic): LinearLayout {
         val b = FragmentMediaInfoBinding.inflate(layoutInflater)
 
@@ -767,58 +1038,92 @@ class ComickMediaActivity : AppCompatActivity() {
 
         b.mediaInfoMeanScore.text = comic.bayesian_rating ?: getString(R.string.unknown_value)
 
+        val profile = comic.anime_profiles
+
         b.mediaInfoStatus.text = when (comic.status) {
-            1 -> getString(R.string.comick_status_ongoing)
-            2 -> getString(R.string.comick_status_completed)
+            1 -> getString(
+                if (isAnimeMode) R.string.comick_status_airing else R.string.comick_status_ongoing
+            )
+            2 -> getString(
+                if (isAnimeMode) R.string.comick_status_finished else R.string.comick_status_completed
+            )
             3 -> getString(R.string.comick_status_cancelled)
             4 -> getString(R.string.comick_status_hiatus)
             else -> getString(R.string.unknown)
         }
 
-        b.mediaInfoTranslationContainer.visibility = View.VISIBLE
-        b.mediaInfoTranslation.text = if (comic.translation_completed == true)
-            getString(R.string.comick_status_completed) else getString(R.string.comick_status_ongoing)
+        if (isAnimeMode) {
+            // Nothing here is scanlated, numbered in chapters, or bounded by a final volume: the
+            // same rows carry the episode count and runtime instead.
+            b.mediaInfoTranslationContainer.visibility = View.GONE
 
-        val finalChapterNum = comic.final_chapter?.toDoubleOrNull()
-        val lastChapter = comic.last_chapter
-        val hideLatest = comic.status == 2 && comic.translation_completed == true &&
-                lastChapter != null && finalChapterNum != null && lastChapter >= finalChapterNum
-        if (hideLatest) {
-            b.mediaInfoTotal.parent?.let { if (it is ViewGroup) it.visibility = View.GONE }
-        } else {
-            b.mediaInfoTotalTitle.setText(R.string.latest_chapter)
-            b.mediaInfoTotal.text = lastChapter?.let {
-                if (it % 1.0 == 0.0) it.toInt().toString() else it.toString()
-            } ?: getString(R.string.unknown_value)
-        }
+            b.mediaInfoTotalTitle.setText(R.string.comick_episodes)
+            b.mediaInfoTotal.text =
+                profile?.episodes?.toString() ?: getString(R.string.unknown_value)
 
-        if (comic.final_chapter != null || comic.final_volume != null) {
-            b.mediaInfoDurationContainer.visibility = View.VISIBLE
-            (b.mediaInfoDurationContainer.getChildAt(0) as? TextView)
-                ?.text = getString(R.string.final_chapter)
-            b.mediaInfoDuration.text = when {
-                comic.final_volume != null && comic.final_chapter != null ->
-                    getString(R.string.volume_chapter_format, comic.final_volume, comic.final_chapter)
-                comic.final_chapter != null -> getString(R.string.chapter_format, comic.final_chapter)
-                else -> getString(R.string.volume_format, comic.final_volume)
+            val duration = profile?.duration?.takeIf { it.isNotBlank() }
+            if (duration != null) {
+                b.mediaInfoDurationContainer.visibility = View.VISIBLE
+                (b.mediaInfoDurationContainer.getChildAt(0) as? TextView)
+                    ?.text = getString(R.string.comick_duration)
+                b.mediaInfoDuration.text = duration
+            } else {
+                b.mediaInfoDurationContainer.visibility = View.GONE
             }
-        }
 
-        b.mediaInfoFormatLabel.text = getString(R.string.demographic)
-        b.mediaInfoFormat.text = when (comic.demographic) {
-            1 -> getString(R.string.shounen)
-            2 -> getString(R.string.shoujo)
-            3 -> getString(R.string.seinen)
-            4 -> getString(R.string.josei)
-            else -> getString(R.string.unknown)
-        }
+            b.mediaInfoFormatLabel.text = getString(R.string.comick_type)
+            b.mediaInfoFormat.text =
+                profile?.anime_type?.takeIf { it.isNotBlank() } ?: getString(R.string.unknown)
 
-        b.mediaInfoSourceLabel.text = getString(R.string.format)
-        b.mediaInfoSource.text = when (comic.country?.lowercase()) {
-            "jp" -> getString(R.string.manga)
-            "kr" -> getString(R.string.manhwa)
-            "cn" -> getString(R.string.manhua)
-            else -> comic.country?.uppercase() ?: getString(R.string.unknown)
+            b.mediaInfoSourceLabel.text = getString(R.string.source)
+            b.mediaInfoSource.text =
+                profile?.source?.takeIf { it.isNotBlank() } ?: getString(R.string.unknown)
+        } else {
+            b.mediaInfoTranslationContainer.visibility = View.VISIBLE
+            b.mediaInfoTranslation.text = if (comic.translation_completed == true)
+                getString(R.string.comick_status_completed) else getString(R.string.comick_status_ongoing)
+
+            val finalChapterNum = comic.final_chapter?.toDoubleOrNull()
+            val lastChapter = comic.last_chapter
+            val hideLatest = comic.status == 2 && comic.translation_completed == true &&
+                    lastChapter != null && finalChapterNum != null && lastChapter >= finalChapterNum
+            if (hideLatest) {
+                b.mediaInfoTotal.parent?.let { if (it is ViewGroup) it.visibility = View.GONE }
+            } else {
+                b.mediaInfoTotalTitle.setText(R.string.latest_chapter)
+                b.mediaInfoTotal.text = lastChapter?.let {
+                    if (it % 1.0 == 0.0) it.toInt().toString() else it.toString()
+                } ?: getString(R.string.unknown_value)
+            }
+
+            if (comic.final_chapter != null || comic.final_volume != null) {
+                b.mediaInfoDurationContainer.visibility = View.VISIBLE
+                (b.mediaInfoDurationContainer.getChildAt(0) as? TextView)
+                    ?.text = getString(R.string.final_chapter)
+                b.mediaInfoDuration.text = when {
+                    comic.final_volume != null && comic.final_chapter != null ->
+                        getString(R.string.volume_chapter_format, comic.final_volume, comic.final_chapter)
+                    comic.final_chapter != null -> getString(R.string.chapter_format, comic.final_chapter)
+                    else -> getString(R.string.volume_format, comic.final_volume)
+                }
+            }
+
+            b.mediaInfoFormatLabel.text = getString(R.string.demographic)
+            b.mediaInfoFormat.text = when (comic.demographic) {
+                1 -> getString(R.string.shounen)
+                2 -> getString(R.string.shoujo)
+                3 -> getString(R.string.seinen)
+                4 -> getString(R.string.josei)
+                else -> getString(R.string.unknown)
+            }
+
+            b.mediaInfoSourceLabel.text = getString(R.string.format)
+            b.mediaInfoSource.text = when (comic.country?.lowercase()) {
+                "jp" -> getString(R.string.manga)
+                "kr" -> getString(R.string.manhwa)
+                "cn" -> getString(R.string.manhua)
+                else -> comic.country?.uppercase() ?: getString(R.string.unknown)
+            }
         }
 
         val contentRating = comic.content_rating?.takeIf { it.isNotBlank() }
@@ -830,9 +1135,21 @@ class ComickMediaActivity : AppCompatActivity() {
         }
 
         b.mediaInfoStart.parent?.let { row ->
-            if (row is ViewGroup) (row.getChildAt(0) as? TextView)?.text = getString(R.string.published)
+            if (row is ViewGroup) (row.getChildAt(0) as? TextView)?.text =
+                getString(if (isAnimeMode) R.string.comick_aired else R.string.published)
         }
-        b.mediaInfoStart.text = comic.year?.toString() ?: getString(R.string.unknown_value)
+        b.mediaInfoStart.text = if (isAnimeMode) {
+            val from = formatAiredDate(profile?.aired_from)
+            val to = formatAiredDate(profile?.aired_to)
+            when {
+                from.isNotBlank() && to.isNotBlank() ->
+                    getString(R.string.comick_aired_range_format, from, to)
+                from.isNotBlank() -> from
+                else -> comic.year?.toString() ?: getString(R.string.unknown_value)
+            }
+        } else {
+            comic.year?.toString() ?: getString(R.string.unknown_value)
+        }
 
         b.mediaInfoEnd.parent?.let { if (it is ViewGroup) it.visibility = View.GONE }
 

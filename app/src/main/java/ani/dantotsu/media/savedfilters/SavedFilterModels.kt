@@ -220,11 +220,15 @@ data class SavedComickFilter(
         r.status = status
         r.sort = sort
         r.time = time
-        r.minimum = minimum
         r.minimumRating = minimumRating
         r.fromYear = fromYear
         r.toYear = toYear
-        r.completed = completed
+        // Saved filters are shared between Comick's two catalogues — the genre and tag
+        // vocabularies are the same — but these two are chapter/scanlation concepts. Applying a
+        // manga-made filter to an anime search must not silently zero the results through a
+        // control the anime filter sheet doesn't even show.
+        r.minimum = if (r.isAnime) null else minimum
+        r.completed = if (r.isAnime) null else completed
         r.showAll = showAll
         r.categories = categories?.toMutableList()
         r.excludedCategories = excludedCategories?.toMutableList()

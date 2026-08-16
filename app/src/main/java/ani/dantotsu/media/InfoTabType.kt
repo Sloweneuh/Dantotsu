@@ -35,7 +35,7 @@ enum class InfoTabContext(
 ) {
     ANILIST_ANIME(
         PrefName.InfoTabOrderAnilistAnime, PrefName.InfoTabVisibilityAnilistAnime,
-        listOf(InfoTabType.ANILIST, InfoTabType.MAL)
+        listOf(InfoTabType.ANILIST, InfoTabType.MAL, InfoTabType.COMICK)
     ),
     ANILIST_MANGA(
         PrefName.InfoTabOrderAnilistManga, PrefName.InfoTabVisibilityAnilistManga,

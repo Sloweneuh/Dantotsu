@@ -290,6 +290,17 @@ class ComickSearchFilterBottomSheet : BottomSheetDialogFragment() {
 
         setupSortButton(sortOptions)
 
+        // The layout nests each field in a TextInputLayout with no id of its own, so hiding a
+        // field means finding its wrapper rather than the input.
+        fun inputLayoutOf(view: View): View? {
+            var p = view.parent
+            while (p is View) {
+                if (p is com.google.android.material.textfield.TextInputLayout) return p
+                p = p.parent
+            }
+            return null
+        }
+
         // Bind dropdowns
         bindDropdown(binding.comickFilterStatus, statusOptions, selectedStatus) { selectedStatus = it as? Int }
         bindDropdown(binding.comickFilterContentRating, contentRatingOptions, selectedContentRating) { selectedContentRating = it as? String }
@@ -319,6 +330,19 @@ class ComickSearchFilterBottomSheet : BottomSheetDialogFragment() {
         // Numeric fields
         binding.comickFilterMinimum.setText(selectedMinimum?.toString().orEmpty())
         binding.comickFilterMinimumRating.setText(selectedMinimumRating?.toString().orEmpty())
+
+        // The anime catalogue has no chapters and no scanlation, which makes two of these
+        // controls dead ends rather than merely unhelpful: "translation completed" matches
+        // nothing at all, and a minimum chapter count is ignored outright. Hide both, and clear
+        // any value carried over from a manga search so it can't be applied invisibly.
+        if (activity.comickSearchResult.isAnime) {
+            selectedCompleted = null
+            selectedMinimum = null
+            binding.comickFilterCompleted.setText("", false)
+            binding.comickFilterMinimum.setText("")
+            inputLayoutOf(binding.comickFilterCompleted)?.visibility = View.GONE
+            inputLayoutOf(binding.comickFilterMinimum)?.visibility = View.GONE
+        }
 
         // Show all switch
         binding.comickFilterShowAll.isChecked = (activity.comickSearchResult.showAll == true)

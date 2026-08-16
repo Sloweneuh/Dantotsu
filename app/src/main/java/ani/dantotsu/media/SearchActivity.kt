@@ -231,7 +231,7 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
                 muSearchAdaptor = MUMediaAdapter(model.muSearchResults.results, type = supportStyle)
             }
 
-            SearchType.COMICK -> {
+            SearchType.COMICK, SearchType.COMICK_ANIME -> {
                 if (model.notSet) {
                     model.notSet = false
                     val genres = intent.getStringArrayListExtra("genres")
@@ -262,6 +262,8 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
                         excludeMyList = null,
                         showAll = if (intent.hasExtra("showAll")) intent.getBooleanExtra("showAll", false) else null,
                         categories = categories,
+                        mediaType = if (searchType == SearchType.COMICK_ANIME) ComickApi.MEDIA_TYPE_ANIME
+                            else ComickApi.MEDIA_TYPE_MANGA,
                     )
                     // Seed the genre/category display-name cache so chip labels are correct
                     // even when the filter bottom sheet has never been opened.
@@ -342,7 +344,8 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
                     concatAdapter.itemCount - 1 -> gridSize
                     else -> {
                         val currentStyle = when (searchType) {
-                            SearchType.MANGAUPDATES, SearchType.COMICK, SearchType.MANGABAKA -> supportStyle
+                            SearchType.MANGAUPDATES, SearchType.COMICK, SearchType.COMICK_ANIME,
+                            SearchType.MANGABAKA -> supportStyle
                             SearchType.ANIME, SearchType.MANGA -> style
                             else -> 0
                         }
@@ -380,7 +383,7 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
                 ConcatAdapter(muSearchAdaptor, progressAdapter)
             }
 
-            SearchType.COMICK -> {
+            SearchType.COMICK, SearchType.COMICK_ANIME -> {
                 ConcatAdapter(comickSearchAdaptor, progressAdapter)
             }
 
@@ -571,7 +574,7 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
                 }
             }
 
-            SearchType.COMICK -> {
+            SearchType.COMICK, SearchType.COMICK_ANIME -> {
                 model.getSearch<ComickSearchResults>(searchType).observe(this) {
                     if (it != null) {
                         model.comickSearchResults.apply {
@@ -717,7 +720,7 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
                 muSearchAdaptor.notifyDataSetChanged()
             }
 
-            SearchType.COMICK -> {
+            SearchType.COMICK, SearchType.COMICK_ANIME -> {
                 model.comickSearchResults.results.clear()
                 comickSearchAdaptor.notifyDataSetChanged()
             }
@@ -790,7 +793,7 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
                 muSearchResult.hasNextPage = false
             }
 
-            SearchType.COMICK -> {
+            SearchType.COMICK, SearchType.COMICK_ANIME -> {
                 comickSearchResult.page = 1
                 comickSearchResult.hasNextPage = false
             }
@@ -817,7 +820,7 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
                 muSearchAdaptor.type = supportStyle
                 muSearchAdaptor.notifyDataSetChanged()
             }
-            SearchType.COMICK -> {
+            SearchType.COMICK, SearchType.COMICK_ANIME -> {
                 comickSearchAdaptor.type = supportStyle
                 comickSearchAdaptor.notifyDataSetChanged()
             }
@@ -853,6 +856,12 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
         startActivity(
             Intent(this, ComickMediaActivity::class.java)
                 .putExtra(ComickMediaActivity.EXTRA_SLUG, slug)
+                // Without this the media page would fetch the slug from the comic catalogue,
+                // where it doesn't exist.
+                .putExtra(
+                    ComickMediaActivity.EXTRA_MEDIA_TYPE,
+                    if (comic.isAnime) ComickApi.MEDIA_TYPE_ANIME else ComickApi.MEDIA_TYPE_MANGA
+                )
         )
     }
 

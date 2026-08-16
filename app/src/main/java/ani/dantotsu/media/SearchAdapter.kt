@@ -78,7 +78,8 @@ class SearchAdapter(private val activity: SearchActivity, private val type: Sear
             }
         }
 
-        binding.searchBar.hint = activity.aniMangaResult.type
+        // Was aniMangaResult.type, the AniList wire value ("ANIME"/"MANGA") — untranslated.
+        binding.searchBar.hint = activity.searchType.hint(binding.root.context)
         if (PrefManager.getVal(PrefName.Incognito)) {
             val startIconDrawableRes = R.drawable.ic_incognito_24
             val startIconDrawable: Drawable? =
@@ -276,7 +277,8 @@ class SearchAdapter(private val activity: SearchActivity, private val type: Sear
             SearchType.STAFF -> R.drawable.ic_round_group_24
             SearchType.STUDIO -> R.drawable.ic_round_movie_edit_24
             SearchType.MANGAUPDATES -> R.drawable.ic_round_mangaupdates_24
-            SearchType.COMICK -> R.drawable.ic_round_comick_24
+            SearchType.COMICK -> R.drawable.ic_round_comick_manga_24
+            SearchType.COMICK_ANIME -> R.drawable.ic_round_comick_anime_24
             else -> R.drawable.ic_round_search_24
         }
     }

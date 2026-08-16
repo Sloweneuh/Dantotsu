@@ -362,6 +362,7 @@
                 <data android:scheme="https" />
                 <data android:host="comick.dev" />
                 <data android:pathPrefix="/comic/" />
+                <data android:pathPrefix="/anime/" />
             </intent-filter>
         </activity>
         <activity

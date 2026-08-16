@@ -689,6 +689,7 @@
     <string name="reset">Réinitialiser</string>
     <string name="close">Fermer</string>
     <string name="no_chapter">Aucun chapitre</string>
+    <string name="no_episode">Aucun épisode</string>
     <string name="content_18">Activez le contenu 18+ dans vos paramètres Anilist</string>
     <string name="available">Disponible</string>
     <string name="lets_go">C\'est parti</string>
@@ -1594,6 +1595,31 @@
     <string name="comick_status_completed">Complété</string>
     <string name="comick_status_cancelled">Annulé</string>
     <string name="comick_status_hiatus">Hiatus</string>
+
+    <!-- Comick anime -->
+    <string name="comick_status_airing">En diffusion</string>
+    <string name="comick_status_finished">Terminé</string>
+    <string name="comick_type">Type</string>
+    <string name="comick_duration">Durée</string>
+    <string name="comick_aired">Diffusion</string>
+    <string name="comick_broadcast">Diffusion</string>
+    <string name="comick_broadcast_format">%1$s à %2$s (%3$s)</string>
+    <string name="comick_episodes">Épisodes</string>
+    <string name="comick_latest_episode">Dernier épisode</string>
+    <string name="comick_no_episodes">Aucun épisode répertorié sur Comick pour le moment</string>
+    <string name="comick_streaming">Streaming</string>
+    <string name="comick_season_format">%1$s %2$d</string>
+    <string name="comick_aired_range_format">Du %1$s au %2$s</string>
+    <string name="comick_episode_short_format">Ép.%1$s</string>
+    <string name="comick_episode_titled_format">Ép.%1$s : %2$s</string>
+    <string name="comick_episode_count_format">%1$d répertoriés</string>
+    <string name="comick_trailer">Bande-annonce</string>
+    <string name="comick_episode_missing_single">1 épisode manquant</string>
+    <string name="comick_episodes_missing">%1$d épisodes manquants</string>
+    <string name="comick_resources">Ressources</string>
+    <string name="comick_official_site">Site officiel</string>
+    <string name="comick_manga_search">Comick Manga</string>
+    <string name="comick_anime_search">Comick Anime</string>
 
     <string name="volume_chapter_format">Volume %1$s, Chapitre %2$s</string>
     <string name="volume_format">Volume %1$s</string>

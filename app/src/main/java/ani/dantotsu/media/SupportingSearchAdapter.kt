@@ -17,7 +17,6 @@ import ani.dantotsu.App.Companion.context
 import ani.dantotsu.R
 import ani.dantotsu.connections.anilist.AniMangaSearchResults
 import ani.dantotsu.connections.anilist.AnilistSearch.SearchType
-import ani.dantotsu.connections.anilist.AnilistSearch.SearchType.Companion.toAnilistString
 import ani.dantotsu.connections.anilist.SearchResults
 import ani.dantotsu.databinding.ItemChipBinding
 import ani.dantotsu.settings.saving.PrefManager
@@ -35,7 +34,7 @@ class SupportingSearchAdapter(private val activity: SearchActivity, private val 
     private var mangaBakaChipAdapter: MangaBakaChipAdapter? = null
 
     private fun isSupportingList(t: SearchType) =
-        t == SearchType.MANGAUPDATES || t == SearchType.COMICK || t == SearchType.MANGABAKA
+        t == SearchType.MANGAUPDATES || t.isComick || t == SearchType.MANGABAKA
 
     @SuppressLint("ClickableViewAccessibility")
     override fun bind() {
@@ -94,7 +93,7 @@ class SupportingSearchAdapter(private val activity: SearchActivity, private val 
                     activity.updateMuChips = { muChipAdapter?.update() }
                     binding.searchChipRecycler.adapter = muChipAdapter
                 }
-                SearchType.COMICK -> {
+                SearchType.COMICK, SearchType.COMICK_ANIME -> {
                     comickChipAdapter = ComickChipAdapter(activity, this)
                     activity.updateComickChips = { comickChipAdapter?.update() }
                     binding.searchChipRecycler.adapter = comickChipAdapter
@@ -111,7 +110,7 @@ class SupportingSearchAdapter(private val activity: SearchActivity, private val 
                 when (type) {
                     SearchType.MANGAUPDATES -> MUSearchFilterBottomSheet.newInstance()
                         .show(activity.supportFragmentManager, "mu_filter")
-                    SearchType.COMICK -> ComickSearchFilterBottomSheet.newInstance()
+                    SearchType.COMICK, SearchType.COMICK_ANIME -> ComickSearchFilterBottomSheet.newInstance()
                         .show(activity.supportFragmentManager, "comick_filter")
                     else -> MangaBakaSearchFilterBottomSheet.newInstance()
                         .show(activity.supportFragmentManager, "mangabaka_filter")
@@ -122,7 +121,7 @@ class SupportingSearchAdapter(private val activity: SearchActivity, private val 
             binding.searchChipRecycler.visibility = View.GONE
         }
 
-        binding.searchBar.hint = activity.searchType.toAnilistString()
+        binding.searchBar.hint = activity.searchType.hint(binding.root.context)
         if (PrefManager.getVal(PrefName.Incognito)) {
             val startIconDrawableRes = R.drawable.ic_incognito_24
             val startIconDrawable: Drawable? =
@@ -155,7 +154,7 @@ class SupportingSearchAdapter(private val activity: SearchActivity, private val 
             SearchType.STAFF -> activity.staffResult
             SearchType.USER -> activity.userResult
             SearchType.MANGAUPDATES -> activity.muSearchResult
-            SearchType.COMICK -> activity.comickSearchResult
+            SearchType.COMICK, SearchType.COMICK_ANIME -> activity.comickSearchResult
             SearchType.MANGABAKA -> activity.mangaBakaSearchResult
             else -> throw IllegalArgumentException("Invalid search type")
         }
@@ -240,7 +239,8 @@ class SupportingSearchAdapter(private val activity: SearchActivity, private val 
             SearchType.STAFF -> R.drawable.ic_round_group_24
             SearchType.STUDIO -> R.drawable.ic_round_movie_edit_24
             SearchType.MANGAUPDATES -> R.drawable.ic_round_mangaupdates_24
-            SearchType.COMICK -> R.drawable.ic_round_comick_24
+            SearchType.COMICK -> R.drawable.ic_round_comick_manga_24
+            SearchType.COMICK_ANIME -> R.drawable.ic_round_comick_anime_24
             SearchType.MANGABAKA -> R.drawable.ic_round_mangabaka_24
             else -> R.drawable.ic_round_search_24
         }
@@ -262,7 +262,7 @@ class SupportingSearchAdapter(private val activity: SearchActivity, private val 
                 }
             }
 
-            SearchType.COMICK -> {
+            SearchType.COMICK, SearchType.COMICK_ANIME -> {
                 activity.comickSearchResult.run {
                     !genres.isNullOrEmpty() ||
                         !excludedGenres.isNullOrEmpty() ||

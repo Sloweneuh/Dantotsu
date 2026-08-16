@@ -36,6 +36,8 @@ class SearchHistoryAdapter(type: SearchType, private val searchClicked: (String)
         SearchType.USER -> PrefName.SortedUserSH
         SearchType.MANGAUPDATES -> PrefName.SortedMangaSH
         SearchType.COMICK -> PrefName.SortedMangaSH
+        // Comick's anime catalogue shares the anime history, not the manga one.
+        SearchType.COMICK_ANIME -> PrefName.SortedAnimeSH
         SearchType.MANGABAKA -> PrefName.SortedMangaSH
     }
 

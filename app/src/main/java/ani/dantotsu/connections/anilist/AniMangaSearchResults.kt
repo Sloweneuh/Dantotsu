@@ -293,7 +293,15 @@ data class ComickSearchResults(
     var showAll: Boolean? = null,
     var categories: MutableList<String>? = null,
     var excludedCategories: MutableList<String>? = null,
+    /**
+     * Which Comick catalogue to search — [ComickApi.MEDIA_TYPE_MANGA] or
+     * [ComickApi.MEDIA_TYPE_ANIME]. Carried on the results object rather than read from the
+     * screen's search type so that paging, restores and saved filters all stay on one catalogue.
+     */
+    var mediaType: String = ComickApi.MEDIA_TYPE_MANGA,
 ) : SearchResults<ComickComic>, Serializable {
+    val isAnime: Boolean get() = mediaType == ComickApi.MEDIA_TYPE_ANIME
+
     fun toChipList(): List<AniMangaSearchResults.SearchChip> {
         val list = mutableListOf<AniMangaSearchResults.SearchChip>()
         val context = currContext()!!

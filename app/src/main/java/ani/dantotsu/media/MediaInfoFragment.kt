@@ -104,13 +104,10 @@ class MediaInfoFragment : Fragment() {
             }
         }
 
-        // Observe data availability changes (only for manga)
+        // Observe data availability changes. Comick now backs an anime tab too, so unlike the
+        // MangaUpdates/MangaBaka observers below this one must not skip anime.
         model.comickSlug.observe(viewLifecycleOwner) {
-            currentMedia?.let { media ->
-                if (media.anime == null) {
-                    updateTabStates(model, media)
-                }
-            }
+            currentMedia?.let { media -> updateTabStates(model, media) }
         }
 
         model.mangaUpdatesLink.observe(viewLifecycleOwner) {
@@ -143,8 +140,6 @@ class MediaInfoFragment : Fragment() {
     }
 
     private fun setupTabs(model: MediaDetailsViewModel, media: Media) {
-        val isAnime = media.anime != null
-
         // Setup TabLayout - all tabs long-clickable
         TabLayoutMediator(binding.mediaInfoTabLayout, binding.mediaInfoViewPager) { tab, position ->
             val iconRes = (binding.mediaInfoViewPager.adapter as? androidx.viewpager2.adapter.FragmentStateAdapter)?.let {
@@ -180,10 +175,7 @@ class MediaInfoFragment : Fragment() {
                 }
         )
 
-        // Update initial tab states for manga
-        if (!isAnime) {
-            updateTabStates(model, media)
-        }
+        updateTabStates(model, media)
     }
 
     private fun createTabFragment(type: InfoTabType): Fragment = when (type) {
@@ -216,7 +208,12 @@ class MediaInfoFragment : Fragment() {
             InfoTabType.COMICK -> {
                 val comickSlug = model.comickSlug.value
                 if (comickSlug != null) {
-                    "https://comick.dev/comic/$comickSlug"
+                    // Anime entries live under /anime/, not /comic/ — the latter 404s for them.
+                    ani.dantotsu.connections.comick.ComickApi.webUrl(
+                        comickSlug,
+                        if (isAnime) ani.dantotsu.connections.comick.ComickApi.MEDIA_TYPE_ANIME
+                        else ani.dantotsu.connections.comick.ComickApi.MEDIA_TYPE_MANGA
+                    )
                 } else {
                     "https://comick.dev/search?q=${java.net.URLEncoder.encode(media.userPreferredName, "utf-8").replace("+", "%20") }"
                 }
@@ -245,10 +242,11 @@ class MediaInfoFragment : Fragment() {
 
     private fun updateTabStates(model: MediaDetailsViewModel, media: Media) {
         val isAnime = media.anime != null
-        if (isAnime) return
 
-        // Tab types in current display order to compute alpha states
-        val tabTypes = InfoTabContext.ANILIST_MANGA.visibleOrderedTabs()
+        // Tab types in current display order to compute alpha states. The MangaUpdates/MangaBaka
+        // branches below are unreachable for anime, which has no such tabs.
+        val tabTypes = (if (isAnime) InfoTabContext.ANILIST_ANIME else InfoTabContext.ANILIST_MANGA)
+            .visibleOrderedTabs()
 
         for (i in 0 until binding.mediaInfoTabLayout.tabCount) {
             val tab = binding.mediaInfoTabLayout.getTabAt(i) ?: continue

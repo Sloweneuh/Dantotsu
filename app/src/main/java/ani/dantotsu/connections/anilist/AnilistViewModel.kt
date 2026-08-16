@@ -26,6 +26,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.Locale
 
 suspend fun getUserId(context: Context, block: () -> Unit) {
     if (!Anilist.initialized && PrefManager.getVal<String>(PrefName.AnilistToken) != "") {
@@ -504,8 +505,28 @@ class AnilistMangaViewModel : ViewModel() {
 
 class AnilistSearch : ViewModel() {
 
-    enum class SearchType {
-        ANIME, MANGA, CHARACTER, STAFF, STUDIO, USER, MANGAUPDATES, COMICK, MANGABAKA;
+    /**
+     * A search source. [labelRes] is its display name — [toAnilistString] is a wire format
+     * (intent extras, saved filters, search history) and must never be shown to the user.
+     */
+    enum class SearchType(val labelRes: Int) {
+        ANIME(R.string.anime),
+        MANGA(R.string.manga),
+        CHARACTER(R.string.characters),
+        STAFF(R.string.staff),
+        STUDIO(R.string.studios),
+        USER(R.string.users),
+        MANGAUPDATES(R.string.mangaupdates),
+        COMICK(R.string.comick_manga_search),
+        COMICK_ANIME(R.string.comick_anime_search),
+        MANGABAKA(R.string.mangabaka);
+
+        /** Comick keeps anime in a separate catalogue, searched as two sources rather than one. */
+        val isComick: Boolean get() = this == COMICK || this == COMICK_ANIME
+
+        /** The search bar's hint: localized, and upper-cased the way the bar has always shown it. */
+        fun hint(context: Context): String =
+            context.getString(labelRes).uppercase(Locale.getDefault())
 
         companion object {
 
@@ -518,7 +539,10 @@ class AnilistSearch : ViewModel() {
                     STUDIO -> "STUDIO"
                     USER -> "USER"
                     MANGAUPDATES -> "MANGAUPDATES"
+                    // Left as plain "COMICK" so search history, saved filters and existing
+                    // intents from before the anime split keep resolving to the comic catalogue.
                     COMICK -> "COMICK"
+                    COMICK_ANIME -> "COMICK_ANIME"
                     MANGABAKA -> "MANGABAKA"
                 }
             }
@@ -533,6 +557,7 @@ class AnilistSearch : ViewModel() {
                     "USER" -> USER
                     "MANGAUPDATES" -> MANGAUPDATES
                     "COMICK" -> COMICK
+                    "COMICK_ANIME" -> COMICK_ANIME
                     "MANGABAKA" -> MANGABAKA
                     else -> throw IllegalArgumentException("Invalid search type")
                 }
@@ -578,7 +603,7 @@ class AnilistSearch : ViewModel() {
             SearchType.STAFF -> staffResult as MutableLiveData<T?>
             SearchType.USER -> userResult as MutableLiveData<T?>
             SearchType.MANGAUPDATES -> muResult as MutableLiveData<T?>
-            SearchType.COMICK -> comickResult as MutableLiveData<T?>
+            SearchType.COMICK, SearchType.COMICK_ANIME -> comickResult as MutableLiveData<T?>
             SearchType.MANGABAKA -> mangaBakaResult as MutableLiveData<T?>
         }
     }
@@ -591,7 +616,7 @@ class AnilistSearch : ViewModel() {
             SearchType.STAFF -> loadStaffSearch(staffSearchResults)
             SearchType.USER -> loadUserSearch(userSearchResults)
             SearchType.MANGAUPDATES -> loadMuSearch(muSearchResults)
-            SearchType.COMICK -> loadComickSearch(comickSearchResults)
+            SearchType.COMICK, SearchType.COMICK_ANIME -> loadComickSearch(comickSearchResults)
             SearchType.MANGABAKA -> loadMangaBakaSearch(mangaBakaSearchResults)
         }
     }
@@ -604,7 +629,7 @@ class AnilistSearch : ViewModel() {
             SearchType.STAFF -> loadNextStaffPage(staffSearchResults)
             SearchType.USER -> loadNextUserPage(userSearchResults)
             SearchType.MANGAUPDATES -> loadNextMuPage(muSearchResults)
-            SearchType.COMICK -> loadNextComickPage(comickSearchResults)
+            SearchType.COMICK, SearchType.COMICK_ANIME -> loadNextComickPage(comickSearchResults)
             SearchType.MANGABAKA -> loadNextMangaBakaPage(mangaBakaSearchResults)
         }
     }
@@ -617,7 +642,7 @@ class AnilistSearch : ViewModel() {
             SearchType.STAFF -> staffSearchResults.hasNextPage
             SearchType.USER -> userSearchResults.hasNextPage
             SearchType.MANGAUPDATES -> muSearchResults.hasNextPage
-            SearchType.COMICK -> comickSearchResults.hasNextPage
+            SearchType.COMICK, SearchType.COMICK_ANIME -> comickSearchResults.hasNextPage
             SearchType.MANGABAKA -> mangaBakaSearchResults.hasNextPage
         }
     }
@@ -630,7 +655,7 @@ class AnilistSearch : ViewModel() {
             SearchType.STAFF -> staffSearchResults.results.isNotEmpty()
             SearchType.USER -> userSearchResults.results.isNotEmpty()
             SearchType.MANGAUPDATES -> muSearchResults.results.isNotEmpty()
-            SearchType.COMICK -> comickSearchResults.results.isNotEmpty()
+            SearchType.COMICK, SearchType.COMICK_ANIME -> comickSearchResults.results.isNotEmpty()
             SearchType.MANGABAKA -> mangaBakaSearchResults.results.isNotEmpty()
         }
     }
@@ -643,7 +668,7 @@ class AnilistSearch : ViewModel() {
             SearchType.STAFF -> staffSearchResults.results.size
             SearchType.USER -> userSearchResults.results.size
             SearchType.MANGAUPDATES -> muSearchResults.results.size
-            SearchType.COMICK -> comickSearchResults.results.size
+            SearchType.COMICK, SearchType.COMICK_ANIME -> comickSearchResults.results.size
             SearchType.MANGABAKA -> mangaBakaSearchResults.results.size
         }
     }
@@ -656,7 +681,7 @@ class AnilistSearch : ViewModel() {
             SearchType.STAFF -> staffSearchResults.results.clear()
             SearchType.USER -> userSearchResults.results.clear()
             SearchType.MANGAUPDATES -> muSearchResults.results.clear()
-            SearchType.COMICK -> comickSearchResults.results.clear()
+            SearchType.COMICK, SearchType.COMICK_ANIME -> comickSearchResults.results.clear()
             SearchType.MANGABAKA -> mangaBakaSearchResults.results.clear()
         }
     }
@@ -803,6 +828,7 @@ class AnilistSearch : ViewModel() {
             showAll = r.showAll,
             categorySlugs = r.categories,
             allowAdult = PrefManager.getVal(PrefName.AdultOnly),
+            mediaType = r.mediaType,
         )
         comickResult.postValue(
             ComickSearchResults(
@@ -829,6 +855,7 @@ class AnilistSearch : ViewModel() {
                 showAll = r.showAll,
                 categories = r.categories,
                 excludedCategories = r.excludedCategories,
+                mediaType = r.mediaType,
             )
         )
     }
@@ -863,6 +890,7 @@ class AnilistSearch : ViewModel() {
             showAll = r.showAll,
             categorySlugs = r.categories,
             allowAdult = PrefManager.getVal(PrefName.AdultOnly),
+            mediaType = r.mediaType,
         )
         comickResult.postValue(
             ComickSearchResults(
@@ -889,6 +917,7 @@ class AnilistSearch : ViewModel() {
                 showAll = r.showAll,
                 categories = r.categories,
                 excludedCategories = r.excludedCategories,
+                mediaType = r.mediaType,
             )
         )
     }

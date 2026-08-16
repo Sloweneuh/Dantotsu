@@ -68,8 +68,13 @@ class ComickSearchAdapter(
 
     private fun openInBrowser(comic: ComickComic, view: View) {
         comic.slug?.let { slug ->
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://comick.io/comic/$slug"))
-            view.context.startActivity(intent)
+            // Anime entries live under /anime/; /comic/ 404s for them.
+            val url = ani.dantotsu.connections.comick.ComickApi.webUrl(
+                slug,
+                if (comic.isAnime) ani.dantotsu.connections.comick.ComickApi.MEDIA_TYPE_ANIME
+                else ani.dantotsu.connections.comick.ComickApi.MEDIA_TYPE_MANGA
+            )
+            view.context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
         }
     }
 

@@ -9,6 +9,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import ani.dantotsu.R
 import ani.dantotsu.connections.anilist.Anilist
+import ani.dantotsu.connections.comick.ComickEpisodes
 import ani.dantotsu.connections.mangaupdates.MUSeriesRecord
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.currContext
@@ -549,6 +550,17 @@ class MediaDetailsViewModel : ViewModel() {
     suspend fun loadAnifyEpisodes(s: Int) {
         tryWithSuspend {
             if (anifyEpisodes.value == null) anifyEpisodes.postValue(Anify.fetchAndParseMetadata(s))
+        }
+    }
+
+    private val comickEpisodes: MutableLiveData<Map<String, Episode>> =
+            MutableLiveData<Map<String, Episode>>(null)
+
+    fun getComickEpisodes(): LiveData<Map<String, Episode>> = comickEpisodes
+    suspend fun loadComickEpisodes(s: Media) {
+        tryWithSuspend {
+            if (comickEpisodes.value == null)
+                    comickEpisodes.postValue(ComickEpisodes.getEpisodeDetails(s))
         }
     }
 

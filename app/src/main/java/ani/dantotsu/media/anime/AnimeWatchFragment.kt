@@ -277,8 +277,9 @@ class AnimeWatchFragment : Fragment() {
                             val kitsuEpisodes = async { model.loadKitsuEpisodes(media) }
                             val anifyEpisodes = async { model.loadAnifyEpisodes(media.id) }
                             val fillerEpisodes = async { model.loadFillerEpisodes(media) }
+                            val comickEpisodes = async { model.loadComickEpisodes(media) }
 
-                            awaitAll(kitsuEpisodes, anifyEpisodes, fillerEpisodes)
+                            awaitAll(kitsuEpisodes, anifyEpisodes, fillerEpisodes, comickEpisodes)
                         }
                         // A handoff carries the exact source entry the sender matched: seed it so
                         // the episode list loads directly instead of re-searching by title.
@@ -303,6 +304,21 @@ class AnimeWatchFragment : Fragment() {
                 val episodes = loadedEpisodes[media.selected!!.sourceIndex]
                 if (episodes != null) {
                     episodes.forEach { (i, episode) ->
+                        // Comick goes first so the providers below can override it: it has no
+                        // thumbnails at all, and its titles/synopses are user-submitted, making it
+                        // the fallback rather than the preferred source.
+                        if (media.anime?.comickEpisodes != null) {
+                            if (media.anime!!.comickEpisodes!!.containsKey(i)) {
+                                episode.desc =
+                                    media.anime!!.comickEpisodes!![i]?.desc ?: episode.desc
+                                episode.title = if (MediaNameAdapter.removeEpisodeNumberCompletely(
+                                        episode.title ?: ""
+                                    ).isBlank()
+                                ) media.anime!!.comickEpisodes!![i]?.title
+                                    ?: episode.title else episode.title
+                                    ?: media.anime!!.comickEpisodes!![i]?.title ?: episode.title
+                            }
+                        }
                         if (media.anime?.anifyEpisodes != null) {
                             if (media.anime!!.anifyEpisodes!!.containsKey(i)) {
                                 episode.desc =
@@ -414,6 +430,10 @@ class AnimeWatchFragment : Fragment() {
         model.getFillerEpisodes().observe(viewLifecycleOwner) { i ->
             if (i != null)
                 media.anime?.fillerEpisodes = i
+        }
+        model.getComickEpisodes().observe(viewLifecycleOwner) { i ->
+            if (i != null)
+                media.anime?.comickEpisodes = i
         }
         model.getAnifyEpisodes().observe(viewLifecycleOwner) { i ->
             if (i != null)

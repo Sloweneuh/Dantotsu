@@ -1499,15 +1499,20 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
             linkOptions.add(Triple("MyAnimeList", malLink, R.drawable.ic_myanimelist))
         }
 
-        // For manga only: Comick and MangaUpdates
-        if (!isAnime) {
-            // Comick link
-            val comickSlug = model.comickSlug.value
-            if (comickSlug != null) {
-                val comickLink = "https://comick.io/comic/$comickSlug"
-                linkOptions.add(Triple("Comick", comickLink, R.drawable.ic_round_comick_24))
-            }
+        // Comick link — anime entries sit under /anime/ in a separate catalogue, so the path
+        // follows the media type rather than being hardcoded to /comic/.
+        val comickSlug = model.comickSlug.value
+        if (comickSlug != null) {
+            val comickLink = ani.dantotsu.connections.comick.ComickApi.webUrl(
+                comickSlug,
+                if (isAnime) ani.dantotsu.connections.comick.ComickApi.MEDIA_TYPE_ANIME
+                else ani.dantotsu.connections.comick.ComickApi.MEDIA_TYPE_MANGA
+            )
+            linkOptions.add(Triple("Comick", comickLink, R.drawable.ic_round_comick_24))
+        }
 
+        // For manga only: MangaUpdates and MangaBaka
+        if (!isAnime) {
             // MangaUpdates link - check ViewModel first
             var muLink = model.mangaUpdatesLink.value
 

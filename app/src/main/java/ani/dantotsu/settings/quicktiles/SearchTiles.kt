@@ -90,9 +90,17 @@ object SearchTiles : TileCatalogue(PrefName.SearchTileOrder) {
                 isAvailable = { MangaUpdates.token != null },
                 unavailableReason = R.string.search_needs_mangaupdates,
             ),
+            // Comick's two catalogues are separate searches: they take different filters and
+            // never return each other's entries, so one tile could not serve both.
             service(
-                "comick", R.string.comick, R.drawable.ic_round_comick_24,
+                "comick", R.string.comick_manga_search, R.drawable.ic_round_comick_manga_24,
                 SearchType.COMICK,
+                isAvailable = { PrefManager.getVal(PrefName.ComickEnabled) },
+                unavailableReason = R.string.search_needs_connection_enabled,
+            ),
+            service(
+                "comick_anime", R.string.comick_anime_search, R.drawable.ic_round_comick_anime_24,
+                SearchType.COMICK_ANIME,
                 isAvailable = { PrefManager.getVal(PrefName.ComickEnabled) },
                 unavailableReason = R.string.search_needs_connection_enabled,
             ),
@@ -107,6 +115,6 @@ object SearchTiles : TileCatalogue(PrefName.SearchTileOrder) {
     /** Everything, in the order the buttons used to run: nothing is hidden until the user hides it. */
     override val defaultIds = listOf(
         "anime", "manga", "users", "characters", "staff", "studios",
-        "mangaupdates", "comick", "mangabaka",
+        "mangaupdates", "comick", "comick_anime", "mangabaka",
     )
 }

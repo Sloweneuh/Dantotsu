@@ -23,8 +23,33 @@ object ComickApi {
 
     private val gson = Gson()
 
-    // Cache for merged comic data by slug
+    // Cache for merged comic data, keyed "$mediaType:$slug" — a slug is only unique within a
+    // catalogue, so anime and comic entries can share one.
     private val mergedComicCache = mutableMapOf<String, ComickComic>()
+
+    const val MEDIA_TYPE_MANGA = "manga"
+    const val MEDIA_TYPE_ANIME = "anime"
+
+    private const val BROWSER_UA =
+        "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 Chrome/120.0 Mobile Safari/537.36"
+
+    /**
+     * Everything under `/v1.0/` sits behind Cloudflare and answers a bare request with 403 — it
+     * needs to look like the web client. The legacy unversioned paths don't care, but sending the
+     * same headers there is harmless, so every request goes through this.
+     */
+    private fun request(url: String, accept: String = "application/json"): Request =
+        Request.Builder()
+            .url(url)
+            .header("User-Agent", BROWSER_UA)
+            .header("Accept", accept)
+            .header("Referer", "https://comick.dev/")
+            .build()
+
+    /** The site path for an entry: anime and comics live under different roots. */
+    fun webUrl(slug: String, mediaType: String = MEDIA_TYPE_MANGA): String =
+        if (mediaType == MEDIA_TYPE_ANIME) "https://comick.dev/anime/$slug"
+        else "https://comick.dev/comic/$slug"
 
     data class FilterOption(
         val slug: String,
@@ -147,7 +172,7 @@ object ComickApi {
 
     private fun fetchFilterOptions(url: String): List<FilterOption> {
         return try {
-            val request = Request.Builder().url(url).build()
+            val request = request(url)
             val response = client.newCall(request).execute()
             if (!response.isSuccessful) {
                 Logger.log("Comick filter API error: ${response.code}")
@@ -306,7 +331,16 @@ object ComickApi {
             recommendations = primary.recommendations?.takeIf { it.isNotEmpty() }
                 ?: allComics.firstNotNullOfOrNull { it.recommendations?.takeIf { list -> list.isNotEmpty() } },
             reviews = primary.reviews?.takeIf { it.isNotEmpty() }
-                ?: allComics.firstNotNullOfOrNull { it.reviews?.takeIf { list -> list.isNotEmpty() } }
+                ?: allComics.firstNotNullOfOrNull { it.reviews?.takeIf { list -> list.isNotEmpty() } },
+            media_type = primary.media_type ?: allComics.firstNotNullOfOrNull { it.media_type },
+            anime_profiles = primary.anime_profiles
+                ?: allComics.firstNotNullOfOrNull { it.anime_profiles },
+            trailers = primary.trailers?.takeIf { it.isNotEmpty() }
+                ?: allComics.firstNotNullOfOrNull { it.trailers?.takeIf { list -> list.isNotEmpty() } },
+            anime_companies_to_md_comics = primary.anime_companies_to_md_comics?.takeIf { it.isNotEmpty() }
+                ?: allComics.firstNotNullOfOrNull { it.anime_companies_to_md_comics?.takeIf { list -> list.isNotEmpty() } },
+            to_year = primary.to_year ?: allComics.firstNotNullOfOrNull { it.to_year },
+            rating = primary.rating ?: allComics.firstNotNullOfOrNull { it.rating },
         )
     }
 
@@ -317,19 +351,24 @@ object ComickApi {
      * @param useCache Whether to check the merged data cache (default: true)
      * @return ComickResponse or null on failure
      */
-    suspend fun getComicDetails(slug: String, lang: String = "en", useCache: Boolean = true): ComickResponse? = withContext(Dispatchers.IO) {
+    suspend fun getComicDetails(
+        slug: String,
+        lang: String = "en",
+        useCache: Boolean = true,
+        mediaType: String = MEDIA_TYPE_MANGA
+    ): ComickResponse? = withContext(Dispatchers.IO) {
         try {
             // Check cache first if requested
             if (useCache) {
-                val cachedMergedComic = mergedComicCache[slug]
+                val cachedMergedComic = mergedComicCache["$mediaType:$slug"]
                 if (cachedMergedComic != null) {
                     // Still need to fetch for firstChap data
-                    val response = fetchComicDetailsRaw(slug, lang)
+                    val response = fetchComicDetailsRaw(slug, lang, mediaType)
                     return@withContext ComickResponse(cachedMergedComic, response?.firstChap)
                 }
             }
 
-            return@withContext fetchComicDetailsRaw(slug, lang)
+            return@withContext fetchComicDetailsRaw(slug, lang, mediaType)
         } catch (e: Exception) {
             Logger.log("Error fetching Comick data: ${e.message}")
             null
@@ -337,14 +376,28 @@ object ComickApi {
     }
 
     /**
+     * Fetch an anime entry's full details. This must go through `/v1.0/` — the legacy
+     * `/comic/{slug}/` path answers 200 for an anime slug but drops `anime_profiles`, `trailers`,
+     * the studio list and the streaming links, i.e. everything that makes it an anime entry.
+     */
+    suspend fun getAnimeDetails(slug: String, useCache: Boolean = true): ComickResponse? =
+        getComicDetails(slug, useCache = useCache, mediaType = MEDIA_TYPE_ANIME)
+
+    /**
      * Internal function to fetch raw comic details from API without cache
      */
-    private suspend fun fetchComicDetailsRaw(slug: String, lang: String = "en"): ComickResponse? {
+    private suspend fun fetchComicDetailsRaw(
+        slug: String,
+        lang: String = "en",
+        mediaType: String = MEDIA_TYPE_MANGA
+    ): ComickResponse? {
         try {
-            val url = "https://api.comick.dev/comic/$slug/?lang=$lang"
-            val request = Request.Builder()
-                .url(url)
-                .build()
+            val url = if (mediaType == MEDIA_TYPE_ANIME) {
+                "https://api.comick.dev/v1.0/comic/$slug/?media_type=anime"
+            } else {
+                "https://api.comick.dev/comic/$slug/?lang=$lang"
+            }
+            val request = request(url)
 
             val response = client.newCall(request).execute()
             val body = response.body.string()
@@ -387,7 +440,8 @@ object ComickApi {
         anilistId: Int,
         malId: Int? = null,
         malSyncSlugs: List<String>? = null,
-        externalLinks: List<String>? = null
+        externalLinks: List<String>? = null,
+        mediaType: String = MEDIA_TYPE_MANGA
     ): String? = withContext(Dispatchers.IO) {
         // Collect all valid comics from both MalSync and search
         val allValidComics = mutableListOf<ComickComic>()
@@ -397,7 +451,7 @@ object ComickApi {
         // Step 1: Process MalSync slugs first
         if (!malSyncSlugs.isNullOrEmpty()) {
             for (slug in malSyncSlugs) {
-                val details = getComicDetails(slug, useCache = false)
+                val details = getComicDetails(slug, useCache = false, mediaType = mediaType)
                 val comic = details?.comic
                 val links = comic?.links
 
@@ -442,7 +496,7 @@ object ComickApi {
         for (title in titles) {
             if (title.isBlank()) continue
 
-            val searchResult = searchWithTitle(title, anilistId, malId, returnAllValid = true, existingValidMuIds = validMuIds, externalLinks = externalLinks)
+            val searchResult = searchWithTitle(title, anilistId, malId, returnAllValid = true, existingValidMuIds = validMuIds, externalLinks = externalLinks, mediaType = mediaType)
             if (searchResult is List<*>) {
                 @Suppress("UNCHECKED_CAST")
                 val searchComics = searchResult as List<ComickComic>
@@ -457,17 +511,35 @@ object ComickApi {
 
         // Step 3: If we have any valid comics, select the best one
         if (allValidComics.isNotEmpty()) {
-            return@withContext selectBestComic(allValidComics)
+            return@withContext selectBestComic(allValidComics, mediaType)
         }
 
         return@withContext null
     }
 
     /**
+     * Match an AniList *anime* entry to a Comick anime entry. Anime entries carry the AniList and
+     * MAL ids of the anime (not of its source manga) in `links.al`/`links.mal`, so the same
+     * id-validated matching used for comics applies unchanged — only the catalogue differs.
+     */
+    suspend fun searchAndMatchAnime(
+        titles: List<String>,
+        anilistId: Int,
+        malId: Int? = null,
+        malSyncSlugs: List<String>? = null,
+        externalLinks: List<String>? = null
+    ): String? = searchAndMatchComic(
+        titles, anilistId, malId, malSyncSlugs, externalLinks, MEDIA_TYPE_ANIME
+    )
+
+    /**
      * Select the best comic from a list of valid entries
      * Priority: most followers, then merge data from others
      */
-    private fun selectBestComic(validComics: List<ComickComic>): String? {
+    private fun selectBestComic(
+        validComics: List<ComickComic>,
+        mediaType: String = MEDIA_TYPE_MANGA
+    ): String? {
         // Take the one with most followers as the base
         val primaryComic = validComics.maxByOrNull { it.user_follow_count ?: 0 } ?: return null
         val primarySlug = primaryComic.slug ?: return null
@@ -486,7 +558,7 @@ object ComickApi {
             }
 
             // Cache the merged data
-            mergedComicCache[primarySlug] = mergedComic
+            mergedComicCache["$mediaType:$primarySlug"] = mergedComic
         }
 
         return primarySlug
@@ -504,14 +576,15 @@ object ComickApi {
         malId: Int? = null,
         returnAllValid: Boolean = false,
         existingValidMuIds: Set<String>? = null,
-        externalLinks: List<String>? = null
+        externalLinks: List<String>? = null,
+        mediaType: String = MEDIA_TYPE_MANGA
     ): Any? {
         try {
             val encodedTitle = URLEncoder.encode(title, "UTF-8")
-            val url = "https://api.comick.dev/v1.0/search/?type=comic&page=1&limit=5&showall=false&q=$encodedTitle&t=false"
-            val request = Request.Builder()
-                .url(url)
-                .build()
+            val mediaTypeParam =
+                if (mediaType == MEDIA_TYPE_ANIME) "&media_type=anime" else ""
+            val url = "https://api.comick.dev/v1.0/search/?type=comic&page=1&limit=5&showall=false&q=$encodedTitle&t=false$mediaTypeParam"
+            val request = request(url)
 
             val response = client.newCall(request).execute()
             val body = response.body.string()
@@ -539,7 +612,7 @@ object ComickApi {
             // First pass: Find entries that match by AniList or MAL ID
             for (result in searchResults) {
                 // Fetch full details WITHOUT cache to get raw follower counts
-                val details = getComicDetails(result.slug ?: continue, useCache = false)
+                val details = getComicDetails(result.slug ?: continue, useCache = false, mediaType = mediaType)
                 val links = details?.comic?.links
                 val comic = details?.comic
 
@@ -591,7 +664,7 @@ object ComickApi {
                 return if (returnAllValid) {
                     validComics // Return all for comparison
                 } else {
-                    selectBestComic(validComics) // Select and merge the best one
+                    selectBestComic(validComics, mediaType) // Select and merge the best one
                 }
             }
 
@@ -699,7 +772,7 @@ object ComickApi {
             urlBuilder.addQueryParameter("accept_erotic_content", allowAdult.toString())
             urlBuilder.addQueryParameter("accept_pornographic_content", allowAdult.toString())
             val url = urlBuilder.build().toString()
-            val request = Request.Builder().url(url).build()
+            val request = request(url)
             val response = client.newCall(request).execute()
             if (!response.isSuccessful) {
                 Logger.log("Comick lists API error: ${response.code} for $url")
@@ -729,7 +802,7 @@ object ComickApi {
         try {
             while (true) {
                 val url = "https://api.comick.dev/comic/$hid/chapters?lang=$lang&limit=$limit&page=$page&chap-order=0"
-                val request = Request.Builder().url(url).build()
+                val request = request(url)
                 val response = client.newCall(request).execute()
                 if (!response.isSuccessful) break
                 val body = response.body.string()
@@ -769,7 +842,7 @@ object ComickApi {
                 "&chap=${if (it % 1.0 == 0.0) it.toInt() else it}"
             } ?: ""
             val url = "https://api.comick.dev/comic/$hid/chapters?lang=$lang&limit=10$chapParam&chap-order=0"
-            val request = Request.Builder().url(url).build()
+            val request = request(url)
             val response = client.newCall(request).execute()
             if (!response.isSuccessful) return@withContext null
             val body = response.body.string()
@@ -795,7 +868,7 @@ object ComickApi {
     suspend fun getListComics(userId: String, listSlug: String): List<ComickListComic>? = withContext(Dispatchers.IO) {
         try {
             val url = "https://api.comick.dev/user/$userId/follows?custom_list=$listSlug"
-            val request = Request.Builder().url(url).build()
+            val request = request(url)
             val response = client.newCall(request).execute()
             if (!response.isSuccessful) {
                 Logger.log("Comick list comics API error: ${response.code} for $url")
@@ -819,7 +892,7 @@ object ComickApi {
     suspend fun getUserLists(userId: String): List<ComickCustomList>? = withContext(Dispatchers.IO) {
         try {
             val url = "https://api.comick.dev/list/list?user_id=$userId&limit=100"
-            val request = Request.Builder().url(url).build()
+            val request = request(url)
             val response = client.newCall(request).execute()
             if (!response.isSuccessful) {
                 Logger.log("Comick user lists API error: ${response.code} for $url")
@@ -850,7 +923,7 @@ object ComickApi {
             if (title.isBlank()) continue
             val encodedTitle = URLEncoder.encode(title, "UTF-8")
             val url = "https://api.comick.dev/v1.0/search/?type=comic&page=1&limit=5&showall=false&q=$encodedTitle&t=false"
-            val request = Request.Builder().url(url).build()
+            val request = request(url)
             val response = try { client.newCall(request).execute() } catch (e: Exception) { continue }
             val body = response.body.string()
             if (!response.isSuccessful || body.isNullOrEmpty() || body == "[]") continue
@@ -902,6 +975,7 @@ object ComickApi {
         excludeMyList: Boolean? = null,
         showAll: Boolean? = null,
         categorySlugs: List<String>? = null,
+        mediaType: String = MEDIA_TYPE_MANGA,
     ): List<ComickComic>? = withContext(Dispatchers.IO) {
         try {
             val urlBuilder: HttpUrl.Builder = "https://api.comick.dev/v1.0/search/"
@@ -910,6 +984,7 @@ object ComickApi {
                 ?: return@withContext null
 
             urlBuilder.addQueryParameter("type", "comic")
+            if (mediaType == MEDIA_TYPE_ANIME) urlBuilder.addQueryParameter("media_type", "anime")
             urlBuilder.addQueryParameter("page", page.toString())
             urlBuilder.addQueryParameter("limit", limit.toString())
             urlBuilder.addQueryParameter("showall", "false")
@@ -955,9 +1030,7 @@ object ComickApi {
             }
 
             val url = urlBuilder.build().toString()
-            val request = Request.Builder()
-                .url(url)
-                .build()
+            val request = request(url)
 
             val response = client.newCall(request).execute()
             val body = response.body.string()
@@ -986,6 +1059,275 @@ object ComickApi {
         } catch (e: Exception) {
             Logger.log("Error searching Comick: ${e.message}")
             return@withContext null
+        }
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // Anime
+    // ---------------------------------------------------------------------------------------
+
+    /**
+     * Next.js build id, needed for the lightweight episode route. Scraped from any page's
+     * `__NEXT_DATA__` and cached; it changes on every Comick deploy, at which point the data route
+     * starts answering 404 and [getAnimePage] re-scrapes it.
+     */
+    @Volatile
+    private var nextBuildId: String? = null
+
+    /**
+     * Fetch an anime's detail object together with its episode list.
+     *
+     * The episode list is deliberately *not* available from the public API: episodes are rows in
+     * the chapters table flagged `entry_type = "episode"`, and `/comic/{hid}/chapters` filters
+     * them out, returning an empty array for every anime. The only source is the page's
+     * server-rendered props, reachable two ways:
+     *
+     *  1. `/_next/data/{buildId}/anime/{slug}.json` — same payload, roughly a sixth of the size,
+     *     but tied to the current build id.
+     *  2. The `/anime/{slug}` HTML itself, parsing out `__NEXT_DATA__`. No build id needed, so
+     *     this is both the bootstrap for the id and the fallback when it goes stale.
+     *
+     * Note the payload carries every episode inline with no pagination and a server-side cap of
+     * 1000, so a long-running series is a genuinely large response (One Piece is ~1 MB).
+     *
+     * @return the page's anime entry and episodes (oldest first), or null if the page failed
+     */
+    suspend fun getAnimePage(slug: String): ComickAnimePage? = withContext(Dispatchers.IO) {
+        val cachedId = nextBuildId
+        if (cachedId != null) {
+            val viaData = runCatching { fetchAnimePageProps(dataRouteUrl(cachedId, slug)) }.getOrNull()
+            if (viaData != null) return@withContext parseAnimePage(viaData)
+            // Stale build id (404) — drop it so the HTML path below re-derives one.
+            nextBuildId = null
+        }
+
+        val html = try {
+            val response = client.newCall(
+                request(webUrl(slug, MEDIA_TYPE_ANIME), accept = "text/html")
+            ).execute()
+            if (!response.isSuccessful) {
+                Logger.log("Comick anime page: HTTP ${response.code} for slug=$slug")
+                return@withContext null
+            }
+            response.body.string()
+        } catch (e: Exception) {
+            Logger.log("Comick anime page error for slug=$slug: ${e.message}")
+            return@withContext null
+        }
+
+        val nextData = extractNextData(html) ?: run {
+            Logger.log("Comick anime page: no __NEXT_DATA__ for slug=$slug")
+            return@withContext null
+        }
+        nextData.get("buildId")?.takeIf { !it.isJsonNull }?.asString?.let { nextBuildId = it }
+        val props = nextData.getAsJsonObject("props")?.getAsJsonObject("pageProps")
+            ?: return@withContext null
+        parseAnimePage(props)
+    }
+
+    /** Episodes only. See [getAnimePage] for why this can't come from the API. */
+    suspend fun getEpisodes(slug: String): List<ComickEpisode> =
+        getAnimePage(slug)?.episodes ?: emptyList()
+
+    private fun dataRouteUrl(buildId: String, slug: String): String {
+        val encoded = URLEncoder.encode(slug, "UTF-8")
+        return "https://comick.dev/_next/data/$buildId/anime/$encoded.json?slug=$encoded"
+    }
+
+    /** GETs a `_next/data` URL and returns its `pageProps`, or null on any non-200 / bad shape. */
+    private fun fetchAnimePageProps(url: String): com.google.gson.JsonObject? {
+        val response = client.newCall(request(url)).execute()
+        if (!response.isSuccessful) return null
+        val body = response.body.string()
+        if (body.isBlank()) return null
+        return gson.fromJson(body, com.google.gson.JsonObject::class.java)
+            ?.getAsJsonObject("pageProps")
+    }
+
+    private fun extractNextData(html: String): com.google.gson.JsonObject? = try {
+        Jsoup.parse(html).selectFirst("script#__NEXT_DATA__")
+            ?.data()
+            ?.takeIf { it.isNotBlank() }
+            ?.let { gson.fromJson(it, com.google.gson.JsonObject::class.java) }
+    } catch (e: Exception) {
+        Logger.log("Comick: failed to parse __NEXT_DATA__: ${e.message}")
+        null
+    }
+
+    private fun parseAnimePage(props: com.google.gson.JsonObject): ComickAnimePage {
+        val anime = runCatching {
+            props.getAsJsonObject("anime")?.let { gson.fromJson(it, ComickComic::class.java) }
+        }.getOrNull()
+
+        val episodes = runCatching {
+            props.getAsJsonArray("episodes")
+                ?.let { gson.fromJson(it, Array<ComickEpisode>::class.java) }
+                ?.toList()
+                ?: emptyList()
+        }.getOrElse { emptyList() }
+
+        // The payload is newest-first; present episodes in viewing order instead. Entries without
+        // a parseable number sort last rather than being dropped — they're still real episodes.
+        val ordered = episodes.sortedBy { it.number()?.toDoubleOrNull() ?: Double.MAX_VALUE }
+        return ComickAnimePage(anime, ordered)
+    }
+
+    /**
+     * Fetch a single episode by its hid. Unlike the list, this *is* public.
+     * @return the episode, or null on failure
+     */
+    suspend fun getEpisode(hid: String): ComickEpisode? = withContext(Dispatchers.IO) {
+        try {
+            val response = client.newCall(request("https://api.comick.dev/chapter/$hid/")).execute()
+            if (!response.isSuccessful) {
+                Logger.log("Comick episode API error: ${response.code} for hid=$hid")
+                return@withContext null
+            }
+            val body = response.body.string()
+            if (body.isBlank()) return@withContext null
+            gson.fromJson(body, com.google.gson.JsonObject::class.java)
+                ?.getAsJsonObject("chapter")
+                ?.let { gson.fromJson(it, ComickEpisode::class.java) }
+        } catch (e: Exception) {
+            Logger.log("Error fetching Comick episode $hid: ${e.message}")
+            null
+        }
+    }
+
+    /**
+     * Community-submitted tags for an entry, most-endorsed first.
+     *
+     * The response also carries `minVisibleScore`, which is deliberately *not* applied as a
+     * filter: on the entries checked it sits above every tag's score, so honouring it would show
+     * nothing at all. It appears to gate something else (search indexing, most likely).
+     *
+     * @param hid The entry's HID
+     * @return tags, or empty on failure
+     */
+    suspend fun getComicTags(hid: String): List<ComickUserTag> = withContext(Dispatchers.IO) {
+        try {
+            val url = "https://api.comick.dev/comic-tags".toHttpUrlOrNull()?.newBuilder()
+                ?.addQueryParameter("hid", hid)?.build()?.toString()
+                ?: return@withContext emptyList()
+            val response = client.newCall(request(url)).execute()
+            if (!response.isSuccessful) {
+                Logger.log("Comick tags API error: ${response.code} for hid=$hid")
+                return@withContext emptyList()
+            }
+            val body = response.body.string()
+            if (body.isBlank()) return@withContext emptyList()
+            val arr = gson.fromJson(body, com.google.gson.JsonObject::class.java)
+                ?.getAsJsonArray("popularTags")
+                ?: return@withContext emptyList()
+            gson.fromJson(arr, Array<ComickUserTag>::class.java)
+                .toList()
+                .filter { !it.slug.isNullOrBlank() && !it.title.isNullOrBlank() }
+                .sortedByDescending { it.score ?: 0 }
+        } catch (e: Exception) {
+            Logger.log("Error fetching Comick tags for hid $hid: ${e.message}")
+            emptyList()
+        }
+    }
+
+    /**
+     * The current season's weekly broadcast schedule. Each entry carries a real UTC
+     * `occurrenceAt` timestamp alongside the JST weekday/time, so no timezone parsing is needed.
+     */
+    suspend fun getAnimeSchedule(): List<ComickScheduleEntry> = withContext(Dispatchers.IO) {
+        try {
+            val response = client.newCall(request("https://api.comick.dev/anime/schedule")).execute()
+            if (!response.isSuccessful) {
+                Logger.log("Comick schedule API error: ${response.code}")
+                return@withContext emptyList()
+            }
+            val body = response.body.string()
+            if (body.isBlank()) return@withContext emptyList()
+            val root = gson.fromJson(body, JsonElement::class.java) ?: return@withContext emptyList()
+            val arr = when {
+                root.isJsonArray -> root.asJsonArray
+                root.isJsonObject -> listOf("entries", "data", "results", "schedule")
+                    .firstNotNullOfOrNull { key ->
+                        root.asJsonObject.get(key)?.takeIf { it.isJsonArray }?.asJsonArray
+                    } ?: JsonArray()
+                else -> JsonArray()
+            }
+            gson.fromJson(arr, Array<ComickScheduleEntry>::class.java).toList()
+        } catch (e: Exception) {
+            Logger.log("Error fetching Comick anime schedule: ${e.message}")
+            emptyList()
+        }
+    }
+
+    /**
+     * Anime for one season.
+     * @param sort "popularity" or "score"
+     */
+    suspend fun getSeasonalAnime(
+        year: Int,
+        season: String,
+        sort: String? = null
+    ): List<ComickComic> = withContext(Dispatchers.IO) {
+        try {
+            val urlBuilder = "https://api.comick.dev/anime/seasonal".toHttpUrlOrNull()?.newBuilder()
+                ?: return@withContext emptyList()
+            urlBuilder.addQueryParameter("year", year.toString())
+            urlBuilder.addQueryParameter("season", season)
+            sort?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("sort", it) }
+
+            val response = client.newCall(request(urlBuilder.build().toString())).execute()
+            if (!response.isSuccessful) {
+                Logger.log("Comick seasonal API error: ${response.code}")
+                return@withContext emptyList()
+            }
+            val body = response.body.string()
+            if (body.isBlank() || body == "[]") return@withContext emptyList()
+            val root = gson.fromJson(body, JsonElement::class.java) ?: return@withContext emptyList()
+            // Documented as either an array or, with grouped=true, an object wrapping one.
+            val arr = when {
+                root.isJsonArray -> root.asJsonArray
+                root.isJsonObject -> listOf("data", "results")
+                    .firstNotNullOfOrNull { key ->
+                        root.asJsonObject.get(key)?.takeIf { it.isJsonArray }?.asJsonArray
+                    } ?: JsonArray()
+                else -> JsonArray()
+            }
+            gson.fromJson(arr, Array<ComickComic>::class.java).toList()
+        } catch (e: Exception) {
+            Logger.log("Error fetching Comick seasonal anime: ${e.message}")
+            emptyList()
+        }
+    }
+
+    /**
+     * Title search against the anime catalogue. Cheaper than [searchComics] with
+     * `media_type=anime` because it returns `anime_profiles` inline, saving a detail call per hit —
+     * but it is capped at 100 results and ignores `page`, so it can't back a paged browse.
+     */
+    suspend fun searchAnime(
+        query: String? = null,
+        year: Int? = null,
+        season: String? = null,
+        limit: Int = 30
+    ): List<ComickComic> = withContext(Dispatchers.IO) {
+        try {
+            val urlBuilder = "https://api.comick.dev/anime/".toHttpUrlOrNull()?.newBuilder()
+                ?: return@withContext emptyList()
+            query?.trim()?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("q", it) }
+            year?.let { urlBuilder.addQueryParameter("year", it.toString()) }
+            season?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("season", it) }
+            urlBuilder.addQueryParameter("limit", limit.coerceIn(1, 100).toString())
+
+            val response = client.newCall(request(urlBuilder.build().toString())).execute()
+            if (!response.isSuccessful) {
+                Logger.log("Comick anime search API error: ${response.code}")
+                return@withContext emptyList()
+            }
+            val body = response.body.string()
+            if (body.isBlank() || body == "[]") return@withContext emptyList()
+            gson.fromJson(body, Array<ComickComic>::class.java).toList()
+        } catch (e: Exception) {
+            Logger.log("Error searching Comick anime: ${e.message}")
+            emptyList()
         }
     }
 }
