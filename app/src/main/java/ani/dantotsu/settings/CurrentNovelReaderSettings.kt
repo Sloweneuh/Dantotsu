@@ -23,7 +23,9 @@ data class CurrentNovelReaderSettings(
     var maxBlockSize: Int = PrefManager.getVal(PrefName.MaxBlockSize),
     var horizontalScrollBar: Boolean = PrefManager.getVal(PrefName.HorizontalScrollBarNovel),
     var keepScreenOn: Boolean = PrefManager.getVal(PrefName.KeepScreenOnNovel),
-    var volumeButtons: Boolean = PrefManager.getVal(PrefName.VolumeButtonsNovel)
+    var volumeButtons: Boolean = PrefManager.getVal(PrefName.VolumeButtonsNovel),
+    var lockRotation: Boolean = PrefManager.getVal(PrefName.LockRotationNovel),
+    var hidePageNumbers: Boolean = PrefManager.getVal(PrefName.HidePageNumbersNovel)
 ) : Serializable {
 
     enum class Layouts(val string: String) {

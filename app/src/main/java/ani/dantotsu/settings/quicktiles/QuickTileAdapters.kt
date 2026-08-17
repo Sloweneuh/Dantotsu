@@ -15,6 +15,7 @@ import ani.dantotsu.databinding.ItemQuickTileBinding
 import ani.dantotsu.databinding.ItemQuickTileHeaderBinding
 import ani.dantotsu.databinding.ItemQuickTilePageBinding
 import ani.dantotsu.getThemeColor
+import ani.dantotsu.loadImage
 import ani.dantotsu.settings.saving.PrefManager
 
 const val QUICK_TILE_COLUMNS = 4
@@ -44,14 +45,21 @@ internal fun ItemQuickTileBinding.paintQuickTile(
     // since the handle is positioned against the cell and the ring follows this.
     quickTileRoot.updateLayoutParams { width = ViewGroup.LayoutParams.MATCH_PARENT }
 
-    val extensionIcon = (tile as? QuickTile.Extension)?.loadIcon(host)
-    if (extensionIcon != null) {
-        quickTileIcon.setImageDrawable(extensionIcon)
-    } else {
-        quickTileIcon.setImageResource(tile.icon)
+    val extension = tile as? QuickTile.Extension
+    val extensionIcon = extension?.loadIcon(host)
+    val remoteIcon = extension?.iconUrl?.takeIf { extensionIcon == null && it.isNotBlank() }
+    when {
+        extensionIcon != null -> quickTileIcon.setImageDrawable(extensionIcon)
+        // The generic glyph goes in first so a recycled view is never left showing the previous
+        // tile's icon while this one's fetch is in flight, or if it never arrives.
+        remoteIcon != null -> {
+            quickTileIcon.setImageResource(tile.icon)
+            quickTileIcon.loadImage(remoteIcon)
+        }
+        else -> quickTileIcon.setImageResource(tile.icon)
     }
 
-    sizeIcon(large, extensionIcon != null)
+    sizeIcon(large, extensionIcon != null || remoteIcon != null)
     quickTileText.isVisible = large
     quickTileRoot.gravity = if (large) Gravity.CENTER_VERTICAL else Gravity.CENTER
     if (large) {
@@ -77,9 +85,12 @@ internal fun ItemQuickTileBinding.paintQuickTile(
         else com.google.android.material.R.attr.colorOnSurfaceVariant
     )
     quickTileRoot.backgroundTintList = ColorStateList.valueOf(background)
-    // An extension's own icon is artwork, not a glyph, so it keeps its colours.
+    // An extension's own icon is artwork, not a glyph, so it keeps its colours — including a
+    // plugin's, which arrives from a URL rather than a package. Tinting it flattened the artwork
+    // into a solid block of the foreground colour, which reads as an icon that never loaded.
     quickTileIcon.imageTintList =
-        if (extensionIcon != null) null else ColorStateList.valueOf(foreground)
+        if (extensionIcon != null || remoteIcon != null) null
+        else ColorStateList.valueOf(foreground)
     quickTileLabel.setTextColor(foreground)
     quickTileState.setTextColor(foreground)
     // Already on the panel: the shelf shows it dimmed and inert so the catalogue stays complete.

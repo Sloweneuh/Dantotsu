@@ -25,6 +25,8 @@ import ani.dantotsu.parsers.AnimeSources
 import ani.dantotsu.parsers.MangaSources
 import ani.dantotsu.parsers.NovelSources
 import ani.dantotsu.parsers.novel.NovelExtensionManager
+import ani.dantotsu.parsers.novel.lnreader.LNReaderEpub
+import ani.dantotsu.parsers.novel.lnreader.LNReaderPluginManager
 import ani.dantotsu.settings.SettingsActivity
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
@@ -53,6 +55,7 @@ class App : MultiDexApplication() {
     private lateinit var animeExtensionManager: AnimeExtensionManager
     private lateinit var mangaExtensionManager: MangaExtensionManager
     private lateinit var novelExtensionManager: NovelExtensionManager
+    private lateinit var lnReaderPluginManager: LNReaderPluginManager
     private lateinit var torrentAddonManager: TorrentAddonManager
     private lateinit var downloadAddonManager: DownloadAddonManager
 
@@ -154,8 +157,23 @@ class App : MultiDexApplication() {
             launch {
                 novelExtensionManager.findAvailableExtensions()
             }
+            lnReaderPluginManager = Injekt.get()
+            // Books packaged for reading online are disposable — every one of them can be rebuilt
+            // from the plugin — and the multi-chapter reader writes one per window, so without
+            // this the directory grows for as long as the app is installed.
+            runCatching { LNReaderEpub.clearCache(this@App) }
+            launch {
+                // A restore or a cloud sync brings back the record of which plugins are installed,
+                // but not the bundles — those are files. Fetching them here covers every way the
+                // preference can arrive, and costs nothing when none is missing.
+                lnReaderPluginManager.restoreMissingSources()
+                lnReaderPluginManager.findAvailablePlugins()
+            }
             Logger.log("Novel Extensions: ${novelExtensionManager.installedExtensionsFlow.first()}")
-            NovelSources.init(novelExtensionManager.installedExtensionsFlow)
+            NovelSources.init(
+                novelExtensionManager.installedExtensionsFlow,
+                lnReaderPluginManager.installedPluginsFlow,
+            )
         }
         GlobalScope.launch {
             torrentAddonManager = Injekt.get()

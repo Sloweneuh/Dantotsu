@@ -11,6 +11,7 @@ import ani.dantotsu.addons.torrent.TorrentAddonManager
 import ani.dantotsu.download.DownloadsManager
 import ani.dantotsu.media.manga.MangaCache
 import ani.dantotsu.parsers.novel.NovelExtensionManager
+import ani.dantotsu.parsers.novel.lnreader.LNReaderPluginManager
 import eu.kanade.domain.base.BasePreferences
 import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.tachiyomi.core.preference.AndroidPreferenceStore
@@ -44,6 +45,7 @@ class AppModule(val app: Application) : InjektModule {
         addSingletonFactory { AnimeExtensionManager(app) }
         addSingletonFactory { MangaExtensionManager(app) }
         addSingletonFactory { NovelExtensionManager(app) }
+        addSingletonFactory { LNReaderPluginManager(app) }
         addSingletonFactory { TorrentAddonManager(app) }
         addSingletonFactory { DownloadAddonManager(app) }
 

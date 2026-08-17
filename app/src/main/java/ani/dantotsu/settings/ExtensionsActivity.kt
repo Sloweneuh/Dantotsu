@@ -7,6 +7,7 @@ import android.text.TextWatcher
 import android.view.View
 import android.view.ViewGroup
 import android.widget.AutoCompleteTextView
+import androidx.lifecycle.lifecycleScope
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.updateLayoutParams
@@ -23,6 +24,7 @@ import ani.dantotsu.navBarHeight
 import ani.dantotsu.others.AndroidBug5497Workaround
 import ani.dantotsu.others.LanguageMapper
 import ani.dantotsu.parsers.ParserTestActivity
+import ani.dantotsu.parsers.novel.lnreader.LNReaderPluginManager
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.statusBarHeight
@@ -36,6 +38,7 @@ import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import com.google.android.material.tabs.TabLayoutMediator
 import eu.kanade.domain.source.service.SourcePreferences
+import kotlinx.coroutines.launch
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.util.Locale
@@ -93,7 +96,9 @@ class ExtensionsActivity : AppCompatActivity() {
         // Check if there are any extension updates
         val preferences: SourcePreferences = Injekt.get()
         hasUpdates = preferences.animeExtensionUpdatesCount().get() > 0 ||
-                     preferences.mangaExtensionUpdatesCount().get() > 0
+                     preferences.mangaExtensionUpdatesCount().get() > 0 ||
+                     preferences.novelExtensionUpdatesCount().get() > 0 ||
+                     PrefManager.getVal<Int>(PrefName.LNReaderUpdatesCount) > 0
 
         setupExtensionsPager()
 
@@ -388,7 +393,8 @@ class ExtensionsActivity : AppCompatActivity() {
     fun onExtensionUpdatesFinished() {
         val preferences: SourcePreferences = Injekt.get()
         val stillHasUpdates = preferences.animeExtensionUpdatesCount().get() > 0 ||
-                preferences.mangaExtensionUpdatesCount().get() > 0
+                preferences.mangaExtensionUpdatesCount().get() > 0 ||
+                preferences.novelExtensionUpdatesCount().get() > 0
 
         if (hasUpdates != stillHasUpdates) {
             hasUpdates = stillHasUpdates
@@ -414,19 +420,60 @@ class ExtensionsActivity : AppCompatActivity() {
                     PrefManager.getVal(PrefName.MangaExtensionRepos)
                 }
 
+                // Novel sources come in two kinds and the user should not have to know which a
+                // URL is, so both lists are shown together and [addNovelRepo] sorts it out.
                 MediaType.NOVEL -> {
-                    PrefManager.getVal(PrefName.NovelExtensionRepos)
+                    PrefManager.getVal<Set<String>>(PrefName.NovelExtensionRepos) +
+                        PrefManager.getVal<Set<String>>(PrefName.LNReaderRepos)
                 }
             }
+            val onAdd: (String, MediaType) -> Unit =
+                if (type == MediaType.NOVEL) { url, _ -> addNovelRepo(url) }
+                else AddRepositoryBottomSheet::addRepo
+            val onRemove: (String, MediaType) -> Unit =
+                if (type == MediaType.NOVEL) { url, _ -> removeNovelRepo(url) }
+                else AddRepositoryBottomSheet::removeRepo
+
             AddRepositoryBottomSheet.newInstance(
                 type,
                 repos.toList(),
-                AddRepositoryBottomSheet::addRepo,
-                AddRepositoryBottomSheet::removeRepo
-
+                onAdd,
+                onRemove,
             ).show(supportFragmentManager, "add_repo")
         }
     }
+
+    /**
+     * Files a novel repository under whichever kind it turns out to be.
+     *
+     * An LNReader index is a JSON array of plugin records; an extension repository index is an
+     * object. Probing is worth the request: the two are indistinguishable by URL, and filing one
+     * under the wrong list means it silently lists nothing.
+     */
+    private fun addNovelRepo(url: String) {
+        lifecycleScope.launch {
+            val manager = Injekt.get<LNReaderPluginManager>()
+            val isPluginIndex = manager.looksLikePluginIndex(url)
+            if (isPluginIndex) {
+                val repos: Set<String> = PrefManager.getVal(PrefName.LNReaderRepos)
+                PrefManager.setVal(PrefName.LNReaderRepos, repos + url)
+                manager.findAvailablePlugins()
+            } else {
+                AddRepositoryBottomSheet.addRepo(url, MediaType.NOVEL)
+            }
+        }
+    }
+
+    private fun removeNovelRepo(url: String) {
+        val plugins: Set<String> = PrefManager.getVal(PrefName.LNReaderRepos)
+        if (url in plugins) {
+            PrefManager.setVal(PrefName.LNReaderRepos, plugins - url)
+            lifecycleScope.launch { Injekt.get<LNReaderPluginManager>().findAvailablePlugins() }
+        } else {
+            AddRepositoryBottomSheet.removeRepo(url, MediaType.NOVEL)
+        }
+    }
+
 }
 
 interface SearchQueryHandler {

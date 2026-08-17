@@ -5,8 +5,10 @@ import ani.dantotsu.parsers.AnimeSources
 import ani.dantotsu.parsers.DynamicAnimeParser
 import ani.dantotsu.parsers.DynamicMangaParser
 import ani.dantotsu.parsers.MangaSources
+import ani.dantotsu.parsers.NovelSources
 import ani.dantotsu.parsers.SavedShowResponse
 import ani.dantotsu.parsers.ShowResponse
+import ani.dantotsu.parsers.novel.lnreader.LNReaderPluginManager
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import eu.kanade.tachiyomi.animesource.model.SAnime
@@ -81,6 +83,36 @@ object ExtensionMediaLinker {
             sAnime = sAnime,
         )
         SavedShowResponse.save(mediaId, ext.name, response)
+        return true
+    }
+
+    /**
+     * Points a media at a novel found while browsing a plugin.
+     *
+     * No language index, since a plugin serves one language and has no per-language source list.
+     * The entry is saved under the parser's own save name, which the novel tab reads back — so the
+     * media opens straight to that novel's chapters instead of searching for it again.
+     */
+    fun linkNovelMedia(
+        mediaId: Int,
+        pluginId: String,
+        response: ShowResponse,
+    ): Boolean {
+        val mgr: LNReaderPluginManager = Injekt.get()
+        val plugin = mgr.installedPluginsFlow.value.find { it.id == pluginId } ?: return false
+        val sourceIndex = NovelSources.list.indexOfFirst { it.name == plugin.name }
+        if (sourceIndex < 0) return false
+
+        val selected = Selected().apply {
+            this.sourceIndex = sourceIndex
+            preferDub = PrefManager.getVal(PrefName.SettingsPreferDub)
+        }
+        PrefManager.setCustomVal("Selected-$mediaId", selected)
+        PrefManager.setCustomVal("SelectedSource-$mediaId", plugin.name)
+
+        // The novel tab reads this back and opens straight to that entry's chapters, so the match
+        // survives rather than being re-searched.
+        SavedShowResponse.save(mediaId, "lnreader_${plugin.id}", response)
         return true
     }
 }

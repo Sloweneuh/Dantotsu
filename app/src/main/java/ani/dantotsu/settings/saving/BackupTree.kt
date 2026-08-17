@@ -149,6 +149,10 @@ object BackupTree {
                         BackupItem(PrefName.AnimeExtensionRepos, R.string.backup_anime_extension_repos),
                         BackupItem(PrefName.MangaExtensionRepos, R.string.backup_manga_extension_repos),
                         BackupItem(PrefName.NovelExtensionRepos, R.string.backup_novel_extension_repos),
+                        // The plugin records, not the bundles: those are downloaded JavaScript
+                        // files, and a restore fetches them again from the URL each record keeps.
+                        BackupItem(PrefName.LNReaderRepos, R.string.backup_lnreader_repos),
+                        BackupItem(PrefName.LNReaderInstalled, R.string.backup_lnreader_installed),
                         BackupItem(PrefName.AnimeSourcesOrder, R.string.backup_anime_sources_order),
                         BackupItem(PrefName.MangaSourcesOrder, R.string.backup_manga_sources_order),
                         BackupItem(PrefName.NovelSourcesOrder, R.string.backup_novel_sources_order),
@@ -438,6 +442,16 @@ object BackupTree {
                         BackupItem(PrefName.HorizontalScrollBarNovel, R.string.backup_horizontal_scrollbar_novel),
                         BackupItem(PrefName.KeepScreenOnNovel, R.string.keep_screen_on),
                         BackupItem(PrefName.VolumeButtonsNovel, R.string.volume_buttons),
+                        BackupItem(PrefName.LockRotationNovel, R.string.lock_screen_rotation),
+                        BackupItem(PrefName.HidePageNumbersNovel, R.string.hide_page_numbers),
+                    )
+                ),
+                BackupSubCategory(
+                    "novel_downloads", R.string.backup_sub_novel_downloads,
+                    R.string.backup_sub_novel_downloads_desc,
+                    listOf(
+                        BackupItem(PrefName.NovelDownloadEpub, R.string.download_as_epub),
+                        BackupItem(PrefName.NovelDownloadOneFile, R.string.one_file_download_novel),
                     )
                 ),
             )
@@ -598,6 +612,10 @@ object BackupTree {
         PrefName.InfoTabVisibilityAnilistAnime.name to R.string.pref_info_tab_visibility_anime,
         PrefName.InfoTabVisibilityAnilistManga.name to R.string.pref_info_tab_visibility_manga,
         PrefName.InfoTabVisibilityMangaUpdates.name to R.string.pref_info_tab_visibility_mangaupdates,
+        PrefName.InfoTabOrderAnilistNovel.name to R.string.pref_info_tab_order_novel,
+        PrefName.InfoTabVisibilityAnilistNovel.name to R.string.pref_info_tab_visibility_novel,
+        PrefName.InfoTabOrderMangaUpdatesNovel.name to R.string.pref_info_tab_order_mangaupdates_novel,
+        PrefName.InfoTabVisibilityMangaUpdatesNovel.name to R.string.pref_info_tab_visibility_mangaupdates_novel,
         PrefName.LangSort.name to R.string.pref_lang_sort,
         PrefName.LockRotation.name to R.string.pref_lock_rotation,
         PrefName.MakeDefault.name to R.string.pref_make_default,

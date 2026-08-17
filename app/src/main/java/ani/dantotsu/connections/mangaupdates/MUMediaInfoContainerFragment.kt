@@ -67,7 +67,10 @@ class MUMediaInfoContainerFragment : Fragment() {
         // MangaUpdates tab (which renders the downloaded basics).
         val offline = PrefManager.getVal<Boolean>(PrefName.OfflineMode) ||
                 !isOnline(requireContext())
-        tabs = InfoTabContext.MANGAUPDATES_MANGA.visibleOrderedTabs()
+        // The synthetic media the activity builds carries the format it decided on, which is what
+        // picks between the manga and novel tab sets.
+        val isNovel = model.getMedia().value?.let { InfoTabContext.isNovel(it) } ?: false
+        tabs = InfoTabContext.forMangaUpdates(isNovel).visibleOrderedTabs()
             .filter { !offline || it == InfoTabType.MANGAUPDATES }
             .ifEmpty { listOf(InfoTabType.MANGAUPDATES) }
             .map { type -> TabInfo(type.key, createTabFragment(type), type.iconRes) }

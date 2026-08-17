@@ -89,6 +89,9 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         const val EXTRA_EXT_PKG = "ext_pkg"
         const val EXTRA_EXT_LANG = "ext_lang"
         const val EXTRA_EXT_MANGA = "ext_manga"
+
+        /** The matched entry when the extension is an LNReader plugin rather than an Aniyomi one. */
+        const val EXTRA_EXT_NOVEL = "ext_novel"
     }
 
     private lateinit var binding: ActivityMediaBinding
@@ -100,6 +103,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
     private var extensionPkg: String? = null
     private var extensionLangIndex: Int = 0
     private var extensionSManga: SManga? = null
+    private var extensionNovel: ani.dantotsu.parsers.ShowResponse? = null
 
     private var currentChapter: Int? = null
 
@@ -234,9 +238,12 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         AniListQuickSearchDialogFragment
             .newInstance(
                 titles = ArrayList(candidates),
+                type = if (useNovelReader) AniListQuickSearchDialogFragment.TYPE_NOVEL
+                else AniListQuickSearchDialogFragment.TYPE_MANGA,
                 extensionPkg = extensionPkg,
                 extensionLangIndex = extensionLangIndex,
                 sManga = extensionSManga,
+                novel = extensionNovel,
             )
             .show(supportFragmentManager, "mu_anilist_quick_results")
     }
@@ -369,6 +376,12 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
 
     private fun applyExtensionLink(aniListId: Int) {
         val pkg = extensionPkg ?: return
+        // A novel arrives with a matched entry instead of an SManga; the two extension kinds are
+        // never both set, since the screen was opened from one source or the other.
+        extensionNovel?.let {
+            ExtensionMediaLinker.linkNovelMedia(aniListId, pkg, it)
+            return
+        }
         val manga = extensionSManga ?: return
         ExtensionMediaLinker.linkMangaMedia(aniListId, pkg, extensionLangIndex, manga)
     }
@@ -520,6 +533,9 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         extensionLangIndex = intent.getIntExtra(EXTRA_EXT_LANG, 0)
         @Suppress("DEPRECATION")
         extensionSManga = intent.getSerializableExtra(EXTRA_EXT_MANGA) as? SManga
+        @Suppress("DEPRECATION")
+        extensionNovel =
+            intent.getSerializableExtra(EXTRA_EXT_NOVEL) as? ani.dantotsu.parsers.ShowResponse
         ThemeManager(this).applyTheme()
         initActivity(this)
 

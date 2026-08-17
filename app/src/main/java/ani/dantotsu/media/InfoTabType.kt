@@ -49,6 +49,21 @@ enum class InfoTabContext(
         listOf(
             InfoTabType.MANGAUPDATES, InfoTabType.MAL, InfoTabType.COMICK, InfoTabType.MANGABAKA
         )
+    ),
+
+    // Comick catalogues comics, not prose, so a novel's Comick tab could only ever be empty or —
+    // worse — the manga adaptation dressed as the novel. It is left out of both novel contexts
+    // rather than hidden by default, so nothing offers to turn it back on.
+    ANILIST_NOVEL(
+        PrefName.InfoTabOrderAnilistNovel, PrefName.InfoTabVisibilityAnilistNovel,
+        listOf(
+            InfoTabType.ANILIST, InfoTabType.MAL,
+            InfoTabType.MANGAUPDATES, InfoTabType.MANGABAKA
+        )
+    ),
+    MANGAUPDATES_NOVEL(
+        PrefName.InfoTabOrderMangaUpdatesNovel, PrefName.InfoTabVisibilityMangaUpdatesNovel,
+        listOf(InfoTabType.MANGAUPDATES, InfoTabType.MAL, InfoTabType.MANGABAKA)
     );
 
     /** User-saved tab order (indices into [tabs]), healed to the current [tabs] size if stale. */
@@ -78,5 +93,19 @@ enum class InfoTabContext(
             if (!type.fetchEnabled) return@mapNotNull null
             type
         }
+    }
+
+    companion object {
+        /** True when AniList calls this a light novel, which is a format rather than a media type. */
+        fun isNovel(media: Media): Boolean = media.format.equals("NOVEL", ignoreCase = true)
+
+        fun forAniList(media: Media): InfoTabContext = when {
+            media.anime != null -> ANILIST_ANIME
+            isNovel(media) -> ANILIST_NOVEL
+            else -> ANILIST_MANGA
+        }
+
+        fun forMangaUpdates(isNovel: Boolean): InfoTabContext =
+            if (isNovel) MANGAUPDATES_NOVEL else MANGAUPDATES_MANGA
     }
 }

@@ -23,10 +23,16 @@ import ani.dantotsu.databinding.ActivityExtensionBrowseBinding
 import ani.dantotsu.databinding.ItemChipBinding
 import ani.dantotsu.dismissKeyboard
 import ani.dantotsu.initActivity
+import ani.dantotsu.loadImage
 import ani.dantotsu.media.ActiveFilterChip
 import ani.dantotsu.media.ManageFiltersDialog
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.others.LanguageMapper.Companion.getLanguageName
+import ani.dantotsu.parsers.NovelParser
+import ani.dantotsu.parsers.ShowResponse
+import ani.dantotsu.parsers.novel.lnreader.LNReaderFilterSet
+import ani.dantotsu.parsers.novel.lnreader.LNReaderParser
+import ani.dantotsu.parsers.novel.lnreader.LNReaderPluginManager
 import ani.dantotsu.snackString
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.stripSpansOnPaste
@@ -68,6 +74,7 @@ class ExtensionBrowseActivity : AppCompatActivity() {
         const val EXTRA_TYPE = "type"
         const val TYPE_ANIME = "anime"
         const val TYPE_MANGA = "manga"
+        const val TYPE_NOVEL = "novel"
         private const val KEY_SOURCE_INDEX = "sourceIndex"
         private const val KEY_MODE = "mode"
         private const val KEY_QUERY = "query"
@@ -78,6 +85,10 @@ class ExtensionBrowseActivity : AppCompatActivity() {
     private lateinit var type: String
     private var animeExtension: AnimeExtension.Installed? = null
     private var mangaExtension: MangaExtension.Installed? = null
+    private var novelPlugin: ani.dantotsu.parsers.novel.lnreader.InstalledLNReaderPlugin? = null
+    // A plugin is one source in one language, so the browse screen keeps a parser rather than
+    // indexing into a per-language source list the way the Aniyomi-backed types do.
+    private var novelParser: LNReaderParser? = null
     private var sourceIndex = 0
 
     private val adapter = BrowseMediaAdapter(::openInfo, ::openInBrowser)
@@ -88,6 +99,12 @@ class ExtensionBrowseActivity : AppCompatActivity() {
     private var loadJob: Job? = null
     private var currentFilters: Any? = null // FilterList or AnimeFilterList
     private var defaultFilters: Any? = null // Snapshot of source defaults; FilterList or AnimeFilterList
+
+    // What the plugin can do, which only its evaluated bundle can answer — see
+    // [prepareNovelCapabilities]. Until it has, both chips stay hidden rather than being guessed at.
+    private var novelSupportsLatest = false
+    private var novelFilterDeclaration: String? = null
+    private var novelFilterSet: LNReaderFilterSet? = null
     private var currentQuery: String = ""
     private var searchBoxHasText = false // Tracks live text, even before it's submitted
     private var suppressQueryChange = false // True while we clear the box's text ourselves
@@ -121,15 +138,23 @@ class ExtensionBrowseActivity : AppCompatActivity() {
             return
         }
 
-        if (type == TYPE_ANIME) {
-            val mgr: AnimeExtensionManager = Injekt.get()
-            animeExtension = mgr.installedExtensionsFlow.value.find { it.pkgName == pkg }
-        } else {
-            val mgr: MangaExtensionManager = Injekt.get()
-            mangaExtension = mgr.installedExtensionsFlow.value.find { it.pkgName == pkg }
+        when (type) {
+            TYPE_ANIME -> {
+                val mgr: AnimeExtensionManager = Injekt.get()
+                animeExtension = mgr.installedExtensionsFlow.value.find { it.pkgName == pkg }
+            }
+            TYPE_NOVEL -> {
+                val mgr: LNReaderPluginManager = Injekt.get()
+                novelPlugin = mgr.installedPluginsFlow.value.find { it.id == pkg }
+                novelParser = novelPlugin?.let { LNReaderParser(applicationContext, it) }
+            }
+            else -> {
+                val mgr: MangaExtensionManager = Injekt.get()
+                mangaExtension = mgr.installedExtensionsFlow.value.find { it.pkgName == pkg }
+            }
         }
 
-        val name = animeExtension?.name ?: mangaExtension?.name
+        val name = animeExtension?.name ?: mangaExtension?.name ?: novelPlugin?.name
         val icon = animeExtension?.icon ?: mangaExtension?.icon
         if (name == null) {
             finish()
@@ -138,7 +163,10 @@ class ExtensionBrowseActivity : AppCompatActivity() {
         val restoredSourceIndex = savedInstanceState?.getInt(KEY_SOURCE_INDEX, -1)?.takeIf { it != -1 }
         if (restoredSourceIndex != null) sourceIndex = restoredSourceIndex
 
+        // An extension carries its launcher icon as a drawable; a plugin only names a URL, so its
+        // icon is fetched like any other remote image rather than read off the package.
         if (icon != null) binding.extensionBrowseIcon.setImageDrawable(icon)
+        else novelPlugin?.plugin?.iconUrl?.let { binding.extensionBrowseIcon.loadImage(it) }
         // show extension name in header; keep generic search hint
         binding.extensionBrowseTitle.text = name
         binding.extensionBrowseSearch.queryHint = getString(R.string.search)
@@ -218,6 +246,7 @@ class ExtensionBrowseActivity : AppCompatActivity() {
         configureLanguageSwitch(applyDefaultLanguage = restoredSourceIndex == null)
         configureChips()
         configureSearch()
+        prepareNovelCapabilities()
 
         val restoredMode = savedInstanceState?.getInt(KEY_MODE, -1)?.takeIf { it != -1 }
             ?.let { Mode.values().getOrNull(it) }
@@ -239,6 +268,8 @@ class ExtensionBrowseActivity : AppCompatActivity() {
         }
         load(restoredMode ?: Mode.POPULAR, null)
     }
+
+    private val isNovel: Boolean get() = novelParser != null
 
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
@@ -331,8 +362,7 @@ class ExtensionBrowseActivity : AppCompatActivity() {
     }
 
     private fun configureChips() {
-        binding.chipLatest.isVisible = supportsLatest()
-        binding.chipFilter.isVisible = hasFilters()
+        refreshChipVisibility()
 
         binding.chipPopular.setOnClickListener {
             if (currentMode == Mode.POPULAR) binding.chipPopular.isChecked = true
@@ -360,6 +390,51 @@ class ExtensionBrowseActivity : AppCompatActivity() {
             }
             openFilterSheet()
         }
+    }
+
+    private fun refreshChipVisibility() {
+        if (isNovel) {
+            binding.extensionBrowseChipGroup.isVisible = true
+            binding.chipLatest.isVisible = novelSupportsLatest
+            binding.chipFilter.isVisible = novelFilterSet != null
+        } else {
+            binding.chipLatest.isVisible = supportsLatest()
+            binding.chipFilter.isVisible = hasFilters()
+        }
+    }
+
+    /**
+     * Asks the plugin what it supports, then brings the chips that apply on screen.
+     *
+     * Both answers come from the evaluated bundle — the filter declaration is a property of the
+     * plugin object, and latest support can only be read off `popularNovels` itself — so this is a
+     * bundle load and cannot happen inline in `onCreate`.
+     */
+    private fun prepareNovelCapabilities() {
+        val parser = novelParser ?: return
+        lifecycleScope.launch {
+            val (latest, declaration) = withContext(Dispatchers.IO) {
+                parser.supportsLatest() to parser.filtersJson()
+            }
+            novelSupportsLatest = latest
+            novelFilterDeclaration = declaration
+            novelFilterSet = LNReaderFilterSet.from(declaration)
+            refreshChipVisibility()
+        }
+    }
+
+    /**
+     * The filter set to browse with.
+     *
+     * Rebuilt from the declaration whenever the active mode carries no filters, which mirrors
+     * `getFilterList()` on an Aniyomi source: switching back to Popular browses at the plugin's own
+     * defaults, not at whatever the sheet was last left holding.
+     */
+    private fun novelFilters(): LNReaderFilterSet? {
+        if (currentFilters !is FilterList) {
+            novelFilterSet = LNReaderFilterSet.from(novelFilterDeclaration)
+        }
+        return novelFilterSet
     }
 
     // Derive which mode should be active from the current query/filter state, so that
@@ -566,6 +641,7 @@ class ExtensionBrowseActivity : AppCompatActivity() {
             mangaExtension != null -> (currentFilters as? FilterList)
                 ?: (mangaExtension!!.sources.getOrNull(sourceIndex) as? CatalogueSource)
                     ?.getFilterList() ?: return
+            isNovel -> novelFilters()?.filterList ?: return
             else -> return
         }
         val sourceId: Long = when {
@@ -573,7 +649,8 @@ class ExtensionBrowseActivity : AppCompatActivity() {
                 animeExtension!!.sources.getOrNull(sourceIndex)?.id ?: 0L
             mangaExtension != null ->
                 mangaExtension!!.sources.getOrNull(sourceIndex)?.id ?: 0L
-            else -> 0L
+            // A plugin has no numeric id; presets only need a key that is stable per plugin.
+            else -> novelPlugin?.id?.hashCode()?.toLong() ?: 0L
         }
         val sheet = ExtensionFilterBottomSheet.newInstance(filters, sourceId) { applied ->
             currentFilters = applied
@@ -611,6 +688,9 @@ class ExtensionBrowseActivity : AppCompatActivity() {
             mangaExtension != null ->
                 (mangaExtension!!.sources.getOrNull(sourceIndex) as? CatalogueSource)
                     ?.getFilterList()
+            // A second set built from the same declaration, so the chips compare against the
+            // plugin's own defaults rather than against zero/empty.
+            isNovel -> LNReaderFilterSet.from(novelFilterDeclaration)?.filterList
             else -> null
         }
     }
@@ -961,6 +1041,19 @@ class ExtensionBrowseActivity : AppCompatActivity() {
                 }
             }
             res.mangas.map { BrowseItem.fromManga(it) } to res.hasNextPage
+        } else if (novelParser != null) {
+            val parser = novelParser!!
+            // `searchNovels` takes no filters, which is the plugin API's own limitation — a text
+            // search ignores them the same way it does in LNReader.
+            val filters = novelFilters()?.valuesJson()
+            val results = when (currentMode) {
+                Mode.SEARCH -> parser.searchPage(currentQuery, page)
+                Mode.LATEST -> parser.popular(page, showLatest = true, filtersJson = filters)
+                Mode.POPULAR, Mode.FILTER ->
+                    parser.popular(page, showLatest = false, filtersJson = filters)
+            }
+            // Plugins report no total and no "has more"; an empty page is the end of the listing.
+            results.map { BrowseItem.fromNovel(it) } to results.isNotEmpty()
         } else {
             emptyList<BrowseItem>() to false
         }
@@ -969,11 +1062,12 @@ class ExtensionBrowseActivity : AppCompatActivity() {
     private fun openInfo(item: BrowseItem) {
         val intent = Intent(this, ExtensionMediaInfoActivity::class.java).apply {
             putExtra(ExtensionMediaInfoActivity.EXTRA_PKG,
-                animeExtension?.pkgName ?: mangaExtension?.pkgName)
+                animeExtension?.pkgName ?: mangaExtension?.pkgName ?: novelPlugin?.id)
             putExtra(ExtensionMediaInfoActivity.EXTRA_TYPE, type)
             putExtra(ExtensionMediaInfoActivity.EXTRA_LANG_INDEX, sourceIndex)
             if (item.anime != null) putExtra(ExtensionMediaInfoActivity.EXTRA_ANIME, item.anime)
             if (item.manga != null) putExtra(ExtensionMediaInfoActivity.EXTRA_MANGA, item.manga)
+            if (item.novel != null) putExtra(ExtensionMediaInfoActivity.EXTRA_NOVEL, item.novel)
         }
         startActivity(intent)
     }
@@ -987,6 +1081,11 @@ class ExtensionBrowseActivity : AppCompatActivity() {
                 item.manga != null -> (mangaExtension?.sources?.getOrNull(sourceIndex)
                     as? eu.kanade.tachiyomi.source.online.HttpSource)
                     ?.getMangaUrl(item.manga)
+                // Novel sources have no base url to resolve against, so only an already-absolute
+                // link is worth handing to a browser.
+                item.novel != null -> item.novel.link.takeIf {
+                    it.startsWith("http://") || it.startsWith("https://")
+                }
                 else -> null
             }
             if (url.isNullOrBlank()) {
@@ -1005,9 +1104,11 @@ data class BrowseItem(
     val thumbnail: String?,
     val anime: SAnime? = null,
     val manga: SManga? = null,
+    val novel: ShowResponse? = null,
 ) {
     companion object {
         fun fromAnime(a: SAnime) = BrowseItem(a.title, a.thumbnail_url, anime = a)
         fun fromManga(m: SManga) = BrowseItem(m.title, m.thumbnail_url, manga = m)
+        fun fromNovel(n: ShowResponse) = BrowseItem(n.name, n.coverUrl.url, novel = n)
     }
 }

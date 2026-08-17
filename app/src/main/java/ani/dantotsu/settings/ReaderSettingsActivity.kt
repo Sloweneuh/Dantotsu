@@ -1,11 +1,15 @@
 package ani.dantotsu.settings
 
 import android.os.Bundle
+import android.view.View
 import android.view.ViewGroup
+import android.widget.AdapterView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.updateLayoutParams
+import ani.dantotsu.NoPaddingArrayAdapter
 import ani.dantotsu.R
 import ani.dantotsu.databinding.ActivityReaderSettingsBinding
+import ani.dantotsu.media.novel.novelreader.NovelReaderActivity
 import ani.dantotsu.initActivity
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.settings.saving.PrefManager
@@ -242,6 +246,29 @@ class ReaderSettingsActivity : AppCompatActivity() {
         }
 
         //LN settings
+        // The same picker the reader's own sheet shows, minus whatever theme the open book adds —
+        // there is no book here. Without it, a default set in the reader had no counterpart in
+        // settings, which is the one control the two screens did not share.
+        val themeNames = NovelReaderActivity.THEME_NAMES
+        binding.LNthemeSelect.adapter =
+            NoPaddingArrayAdapter(this, R.layout.item_dropdown, themeNames)
+        binding.LNthemeSelect.setSelection(
+            themeNames.indexOfFirst { it.equals(defaultSettingsLN.currentThemeName, true) }
+                .coerceAtLeast(0),
+            false
+        )
+        binding.LNthemeSelect.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(p: AdapterView<*>?, v: View?, position: Int, id: Long) {
+                // Fires once for the selection set above; re-applying then would overwrite a saved
+                // theme with whatever the list happened to start on.
+                if (themeNames[position] == defaultSettingsLN.currentThemeName) return
+                defaultSettingsLN.currentThemeName = themeNames[position]
+                PrefManager.setVal(PrefName.CurrentThemeName, themeNames[position])
+            }
+
+            override fun onNothingSelected(p: AdapterView<*>?) {}
+        }
+
         val layoutListLN = listOf(
             binding.LNpaged,
             binding.LNcontinuous
@@ -371,9 +398,9 @@ class ReaderSettingsActivity : AppCompatActivity() {
         }
         binding.LNincrementMaxBlockSize.setOnClickListener {
             val value = binding.LNmaxBlockSize.text.toString().toIntOrNull() ?: 720
-            defaultSettingsLN.maxInlineSize = value + 10
-            binding.LNmaxBlockSize.setText(defaultSettingsLN.maxInlineSize.toString())
-            PrefManager.setVal(PrefName.MaxBlockSize, defaultSettingsLN.maxInlineSize)
+            defaultSettingsLN.maxBlockSize = value + 10
+            binding.LNmaxBlockSize.setText(defaultSettingsLN.maxBlockSize.toString())
+            PrefManager.setVal(PrefName.MaxBlockSize, defaultSettingsLN.maxBlockSize)
         }
 
         binding.LNdecrementMaxBlockSize.setOnClickListener {
@@ -381,6 +408,18 @@ class ReaderSettingsActivity : AppCompatActivity() {
             defaultSettingsLN.maxBlockSize = value - 10
             binding.LNmaxBlockSize.setText(defaultSettingsLN.maxBlockSize.toString())
             PrefManager.setVal(PrefName.MaxBlockSize, defaultSettingsLN.maxBlockSize)
+        }
+
+        binding.LNjustify.isChecked = defaultSettingsLN.justify
+        binding.LNjustify.setOnCheckedChangeListener { _, isChecked ->
+            defaultSettingsLN.justify = isChecked
+            PrefManager.setVal(PrefName.Justify, isChecked)
+        }
+
+        binding.LNhyphenation.isChecked = defaultSettingsLN.hyphenation
+        binding.LNhyphenation.setOnCheckedChangeListener { _, isChecked ->
+            defaultSettingsLN.hyphenation = isChecked
+            PrefManager.setVal(PrefName.Hyphenation, isChecked)
         }
 
         binding.LNuseDarkTheme.isChecked = defaultSettingsLN.useDarkTheme
@@ -393,6 +432,18 @@ class ReaderSettingsActivity : AppCompatActivity() {
         binding.LNuseOledTheme.setOnCheckedChangeListener { _, isChecked ->
             defaultSettingsLN.useOledTheme = isChecked
             PrefManager.setVal(PrefName.UseOledThemeNovel, isChecked)
+        }
+
+        binding.LNlockRotation.isChecked = defaultSettingsLN.lockRotation
+        binding.LNlockRotation.setOnCheckedChangeListener { _, isChecked ->
+            defaultSettingsLN.lockRotation = isChecked
+            PrefManager.setVal(PrefName.LockRotationNovel, isChecked)
+        }
+
+        binding.LNhidePageNumbers.isChecked = defaultSettingsLN.hidePageNumbers
+        binding.LNhidePageNumbers.setOnCheckedChangeListener { _, isChecked ->
+            defaultSettingsLN.hidePageNumbers = isChecked
+            PrefManager.setVal(PrefName.HidePageNumbersNovel, isChecked)
         }
 
         binding.LNkeepScreenOn.isChecked = defaultSettingsLN.keepScreenOn

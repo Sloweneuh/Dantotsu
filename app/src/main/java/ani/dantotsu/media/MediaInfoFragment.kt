@@ -61,7 +61,7 @@ class MediaInfoFragment : Fragment() {
 
                 // Build list of tabs according to the user's saved order/visibility for this
                 // media context (falls back to fetch-enabled connections only)
-                val tabContext = if (isAnime) InfoTabContext.ANILIST_ANIME else InfoTabContext.ANILIST_MANGA
+                val tabContext = InfoTabContext.forAniList(media)
                 // Offline, the external source tabs (MAL/Comick/MangaUpdates/MangaBaka) can't fetch
                 // anything, so show only the AniList tab, whose info is stored with the download.
                 val offline = PrefManager.getVal<Boolean>(PrefName.OfflineMode) ||
@@ -192,7 +192,7 @@ class MediaInfoFragment : Fragment() {
             media: Media
     ): Boolean {
         val isAnime = media.anime != null
-        val tabContext = if (isAnime) InfoTabContext.ANILIST_ANIME else InfoTabContext.ANILIST_MANGA
+        val tabContext = InfoTabContext.forAniList(media)
         val type = tabContext.visibleOrderedTabs().getOrNull(position) ?: return false
 
         val url = when (type) {
@@ -245,8 +245,7 @@ class MediaInfoFragment : Fragment() {
 
         // Tab types in current display order to compute alpha states. The MangaUpdates/MangaBaka
         // branches below are unreachable for anime, which has no such tabs.
-        val tabTypes = (if (isAnime) InfoTabContext.ANILIST_ANIME else InfoTabContext.ANILIST_MANGA)
-            .visibleOrderedTabs()
+        val tabTypes = InfoTabContext.forAniList(media).visibleOrderedTabs()
 
         for (i in 0 until binding.mediaInfoTabLayout.tabCount) {
             val tab = binding.mediaInfoTabLayout.getTabAt(i) ?: continue

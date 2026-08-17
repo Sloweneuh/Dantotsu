@@ -319,6 +319,7 @@
     <string name="quick_tiles_cat_settings">Settings</string>
     <string name="quick_tiles_cat_anime_extensions">Anime extensions</string>
     <string name="quick_tiles_cat_manga_extensions">Manga extensions</string>
+    <string name="quick_tiles_cat_novel_extensions">Novel extensions</string>
     <string name="quick_tiles_resize">Resize tile</string>
     <string name="extensions">Extensions</string>
     <string name="extension_updates_available">Extension updates available</string>
@@ -1338,6 +1339,10 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="pref_info_tab_visibility_anime">Visible info tabs (anime)</string>
     <string name="pref_info_tab_visibility_manga">Visible info tabs (manga)</string>
     <string name="pref_info_tab_visibility_mangaupdates">Visible info tabs (MangaUpdates)</string>
+    <string name="pref_info_tab_order_novel">Info tab order (Novels)</string>
+    <string name="pref_info_tab_visibility_novel">Visible info tabs (Novels)</string>
+    <string name="pref_info_tab_order_mangaupdates_novel">Info tab order (MangaUpdates novels)</string>
+    <string name="pref_info_tab_visibility_mangaupdates_novel">Visible info tabs (MangaUpdates novels)</string>
     <string name="pref_lang_sort">Extension language order</string>
     <string name="pref_lock_rotation">Reader: lock rotation</string>
     <string name="pref_make_default">Remember the selected source</string>
@@ -1533,6 +1538,11 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="ping_error">Ping failed. Code: %1$s, Message: %2$s</string>
     <string name="test_not_supported">Test not supported for this extension</string>
     <string name="no_results_found">No results found. Extension may be broken</string>
+    <string name="last_chapter">Last chapter</string>
+    <string name="downloaded">Downloaded</string>
+    <string name="download_failed">Download failed</string>
+    <string name="download_chapters">Download chapters</string>
+    <string name="download_started">Download started</string>
     <string name="results_found">%1$s results found</string>
     <string name="title_search_test">Title Search Test: %1$s</string>
     <string name="episode_search_test">Episode Search Test: %1$s</string>
@@ -1620,6 +1630,9 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="download_as_pdf_desc">Download this chapter as a PDF file instead of images?</string>
     <string name="never_ask_again">Never ask again</string>
     <string name="one_file_download">One file download (all chapters in a single PDF)</string>
+    <string name="download_as_epub">Download as EPUB</string>
+    <string name="download_as_epub_desc">Download this chapter as an EPUB file instead of HTML?</string>
+    <string name="one_file_download_novel">One file download (all chapters in a single HTML file)</string>
     <string name="delete_one_file_warning_range">This chapter is bundled with %1$d chapters (%2$s) in a single file. Deleting it will remove all of them.</string>
     <string name="download_skipped_chapters">Skipped %1$d chapter(s) that couldn\'t be loaded</string>
     <string name="download_queue">Queue</string>
@@ -1852,6 +1865,12 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
         <item quantity="other">%d extensions have updates</item>
     </plurals>
 
+
+    <plurals name="novel_chapter_count">
+        <item quantity="one">%d chapter</item>
+        <item quantity="other">%d chapters</item>
+    </plurals>
+
     <plurals name="cloud_sync_conflict_items">
         <item quantity="one">%d item</item>
         <item quantity="other">%d items</item>
@@ -1937,6 +1956,8 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="backup_sub_novel_text_desc">Line height, margin, justify, hyphenation</string>
     <string name="backup_sub_novel_ui">Interface</string>
     <string name="backup_sub_novel_ui_desc">Scroll bar, screen on, volume keys</string>
+    <string name="backup_sub_novel_downloads">Downloads</string>
+    <string name="backup_sub_novel_downloads_desc">Saved format and file layout</string>
 
     <string name="backup_sub_extension_settings">Extension settings</string>
     <string name="backup_sub_extension_settings_desc">Each source\'s own preferences, which may include logins</string>
@@ -1974,6 +1995,8 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="backup_anime_extension_repos">Anime Extension Repos</string>
     <string name="backup_manga_extension_repos">Manga Extension Repos</string>
     <string name="backup_novel_extension_repos">Novel Extension Repos</string>
+    <string name="backup_lnreader_repos">LNReader Plugin Repos</string>
+    <string name="backup_lnreader_installed">Installed LNReader Plugins</string>
     <string name="backup_anime_sources_order">Anime Sources Order</string>
     <string name="backup_manga_sources_order">Manga Sources Order</string>
     <string name="backup_novel_sources_order">Novel Sources Order</string>
@@ -2009,6 +2032,8 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="backup_page_margin">Page Margin</string>
     <string name="backup_justify_text">Justify Text</string>
     <string name="backup_hyphenation">Hyphenation</string>
+    <string name="justify_text">Justify Text</string>
+    <string name="hyphenation">Hyphenation</string>
     <string name="backup_max_inline_size">Max Inline Size</string>
     <string name="backup_max_block_size">Max Block Size</string>
     <string name="backup_horizontal_scrollbar_novel">Horizontal Scroll Bar</string>
@@ -2265,6 +2290,13 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="search_kw_ask_update_progress_chapter_zero_2">progress chapter first zero</string>
     <string name="search_kw_ask_update_progress_doujin">progress doujin adult update</string>
     <string name="search_kw_use_dark_theme">novel light novel</string>
+    <string name="search_kw_novel_theme">novel light novel reader colour color palette</string>
+    <string name="search_kw_justify_text">novel light novel align text justified</string>
+    <string name="search_kw_hyphenation">novel light novel hyphen word break</string>
+    <string name="search_kw_novel_line_height">novel light novel line spacing leading</string>
+    <string name="search_kw_novel_margin">novel light novel page margin gap</string>
+    <string name="search_kw_novel_lock_rotation">novel light novel orientation portrait landscape rotate</string>
+    <string name="search_kw_novel_hide_page_numbers">novel light novel page counter indicator</string>
     <string name="search_kw_use_oled_theme">novel amoled</string>
     <string name="search_kw_keep_screen_on_2">novel light novel</string>
     <string name="search_kw_volume_buttons_2">novel light novel</string>

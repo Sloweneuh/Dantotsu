@@ -28,7 +28,9 @@ import ani.dantotsu.formatDownloadSpeed
 import ani.dantotsu.formatEta
 import ani.dantotsu.media.Media
 import ani.dantotsu.media.MediaType
-import ani.dantotsu.media.novel.NovelReadFragment
+import ani.dantotsu.parsers.novel.lnreader.LNReaderEpub
+import ani.dantotsu.parsers.novel.lnreader.LNReaderPluginManager
+import ani.dantotsu.parsers.novel.lnreader.LNReaderRuntime
 import ani.dantotsu.snackString
 import ani.dantotsu.util.Logger
 import com.anggrayudi.storage.file.forceDelete
@@ -214,8 +216,153 @@ class NovelDownloaderService : Service() {
         return urlString.contains("file://")
     }
 
+    /**
+     * Fetches a run of LNReader chapters and saves it, as EPUB or as HTML.
+     *
+     * Runs here rather than in the screen that started it so a long run survives leaving the page:
+     * a hundred chapters is a hundred requests, and the foreground notification is the only thing
+     * that keeps that alive. Progress is reported per chapter, since that is the unit of work —
+     * there is no content length to measure against.
+     */
+    private suspend fun downloadLNReaderRun(
+        task: DownloadTask,
+        run: LNReaderRun,
+        itemId: String,
+    ) {
+        try {
+            broadcastDownloadStarted(task.originalLink)
+            DownloadTracker.markDownloading(itemId)
+            notifyProgress(task, 0, run.chapterPaths.size)
+
+            val source = Injekt.get<LNReaderPluginManager>().sourceOf(run.pluginId)
+                ?: throw IllegalStateException("${run.novelName}: plugin is not installed")
+
+            val fetched = withContext(Dispatchers.IO) {
+                LNReaderRuntime.load(this@NovelDownloaderService, run.pluginId, source).use { rt ->
+                    run.chapterPaths.mapIndexedNotNull { index, path ->
+                        val raw = runCatching {
+                            rt.call("parseChapter", org.json.JSONArray().put(path).toString())
+                        }.getOrNull()
+                        val html = raw?.let {
+                            runCatching { org.json.JSONArray("[$it]").getString(0) }.getOrDefault(it)
+                        }
+
+                        DownloadTracker.updateProgress(
+                            itemId,
+                            ((index + 1) * 100) / run.chapterPaths.size,
+                            (index + 1).toLong(), run.chapterPaths.size.toLong(), 0, -1
+                        )
+                        withContext(Dispatchers.Main) {
+                            notifyProgress(task, index + 1, run.chapterPaths.size)
+                        }
+
+                        // One unavailable chapter should not throw away a long run.
+                        if (html.isNullOrBlank()) {
+                            Logger.log("LNReader download skipped '${run.chapterNames[index]}'")
+                            null
+                        } else {
+                            LNReaderEpub.Chapter(run.chapterNames.getOrElse(index) { path }, html)
+                        }
+                    }
+                }
+            }
+            if (fetched.isEmpty()) throw IllegalStateException("No chapters could be downloaded")
+
+            withContext(Dispatchers.IO) {
+                val directory = getSubDirectory(
+                    this@NovelDownloaderService, MediaType.NOVEL, false, task.title, task.chapter
+                ) ?: throw Exception("Directory not found")
+
+                // A re-download in the other format would otherwise leave the old files behind,
+                // and the run would then be read back as whichever one was found first.
+                listOf("0.epub", "0.html").forEach {
+                    directory.findFile(it)?.forceDelete(this@NovelDownloaderService)
+                }
+                directory.listFiles().filter { it.name?.endsWith(".html") == true }
+                    .forEach { it.forceDelete(this@NovelDownloaderService) }
+
+                val parts: List<Pair<String, ByteArray>> = when {
+                    run.asEpub -> listOf(
+                        "0.epub" to java.io.ByteArrayOutputStream().also { buffer ->
+                            LNReaderEpub.write(
+                                out = buffer,
+                                bookTitle = task.chapter,
+                                chapters = fetched,
+                                author = run.author ?: run.novelName,
+                                language = run.language,
+                            )
+                        }.toByteArray()
+                    )
+                    run.oneFile -> listOf(
+                        "0.html" to LNReaderEpub.htmlDocument(task.chapter, fetched)
+                            .toByteArray()
+                    )
+                    else -> fetched.mapIndexed { index, chapter ->
+                        "$index.html" to
+                                LNReaderEpub.htmlDocument(chapter.title, listOf(chapter))
+                                    .toByteArray()
+                    }
+                }
+
+                val mime = if (run.asEpub) "application/epub+zip" else "text/html"
+                var first = true
+                parts.forEach { (name, bytes) ->
+                    val file = directory.createFile(mime, name)
+                        ?: throw Exception("File not created")
+                    if (first) {
+                        first = false
+                        task.coverUrl?.let { cover ->
+                            file.parentFile?.let { downloadImage(cover, it, "cover.jpg") }
+                        }
+                    }
+                    contentResolver.openOutputStream(file.uri)?.use { it.write(bytes) }
+                        ?: throw Exception("Could not open OutputStream")
+                }
+            }
+
+            saveMediaInfo(
+                task,
+                getSubDirectory(this@NovelDownloaderService, MediaType.NOVEL, false, task.title)
+                    ?: throw Exception("Directory not found")
+            )
+            downloadsManager.addDownload(
+                DownloadedType(task.title, task.chapter, MediaType.NOVEL)
+            )
+            broadcastDownloadFinished(task.originalLink)
+            DownloadTracker.remove(itemId)
+            withContext(Dispatchers.Main) {
+                builder.setContentText("Saved ${task.title} - ${task.chapter}")
+                    .setProgress(0, 0, false)
+                notifyIfAllowed()
+            }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            DownloadTracker.remove(itemId)
+            throw e
+        } catch (e: Exception) {
+            Logger.log("LNReader run download failed: ${e.message}")
+            snackString("Novel download failed: ${e.message}")
+            broadcastDownloadFailed(task.originalLink)
+            DownloadTracker.remove(itemId)
+        }
+    }
+
+    private fun notifyProgress(task: DownloadTask, done: Int, total: Int) {
+        builder.setContentText("${task.title} - ${task.chapter} ($done/$total)")
+            .setProgress(total, done, false)
+        notifyIfAllowed()
+    }
+
+    private fun notifyIfAllowed() {
+        if (ActivityCompat.checkSelfPermission(
+                this, Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) return
+        notificationManager.notify(NOTIFICATION_ID, builder.build())
+    }
+
     suspend fun download(task: DownloadTask) {
         val itemId = DownloadTracker.idOf(MediaType.NOVEL, task.title, task.chapter)
+        task.lnReader?.let { return downloadLNReaderRun(task, it, itemId) }
         try {
             withContext(Dispatchers.Main) {
                 val notifi = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -486,22 +633,22 @@ class NovelDownloaderService : Service() {
         }
 
     private fun broadcastDownloadStarted(link: String) {
-        val intent = Intent(NovelReadFragment.ACTION_DOWNLOAD_STARTED).apply {
-            putExtra(NovelReadFragment.EXTRA_NOVEL_LINK, link)
+        val intent = Intent(ACTION_DOWNLOAD_STARTED).apply {
+            putExtra(EXTRA_NOVEL_LINK, link)
         }
         sendBroadcast(intent)
     }
 
     private fun broadcastDownloadFinished(link: String) {
-        val intent = Intent(NovelReadFragment.ACTION_DOWNLOAD_FINISHED).apply {
-            putExtra(NovelReadFragment.EXTRA_NOVEL_LINK, link)
+        val intent = Intent(ACTION_DOWNLOAD_FINISHED).apply {
+            putExtra(EXTRA_NOVEL_LINK, link)
         }
         sendBroadcast(intent)
     }
 
     private fun broadcastDownloadFailed(link: String) {
-        val intent = Intent(NovelReadFragment.ACTION_DOWNLOAD_FAILED).apply {
-            putExtra(NovelReadFragment.EXTRA_NOVEL_LINK, link)
+        val intent = Intent(ACTION_DOWNLOAD_FAILED).apply {
+            putExtra(EXTRA_NOVEL_LINK, link)
         }
         sendBroadcast(intent)
     }
@@ -514,8 +661,8 @@ class NovelDownloaderService : Service() {
         speed: Long = 0,
         eta: Long = -1
     ) {
-        val intent = Intent(NovelReadFragment.ACTION_DOWNLOAD_PROGRESS).apply {
-            putExtra(NovelReadFragment.EXTRA_NOVEL_LINK, link)
+        val intent = Intent(ACTION_DOWNLOAD_PROGRESS).apply {
+            putExtra(EXTRA_NOVEL_LINK, link)
             putExtra("progress", progress)
             putExtra("bytesDone", bytesDone)
             putExtra("bytesTotal", bytesTotal)
@@ -545,12 +692,50 @@ class NovelDownloaderService : Service() {
         val sourceMedia: Media? = null,
         val coverUrl: String? = null,
         val retries: Int = 2,
+        /**
+         * Set when the task is a run of LNReader chapters rather than a file to fetch.
+         *
+         * Those have no download link — the content is assembled from per-chapter HTML — so the
+         * service takes a different path for them, but they share this queue so the two kinds of
+         * novel download cannot run over each other and both report through one notification.
+         */
+        val lnReader: LNReaderRun? = null,
+    )
+
+    /** A run of chapters to fetch through a plugin and save as one book. */
+    data class LNReaderRun(
+        val pluginId: String,
+        val novelName: String,
+        val novelPath: String,
+        val author: String?,
+        val chapterNames: List<String>,
+        val chapterPaths: List<String>,
+        /** EPUB, which the reader opens directly, or HTML, which anything else can. */
+        val asEpub: Boolean = true,
+        /**
+         * BCP 47 code for the text, carried so a saved book hyphenates. The browser needs to know
+         * the language before `hyphens: auto` does anything at all.
+         */
+        val language: String = "en",
+        /**
+         * Whether an HTML run is written as one document or one file per chapter. An EPUB run is
+         * always one book — a spine is the whole point of the format — so this does not apply to it.
+         */
+        val oneFile: Boolean = false,
     )
 
     companion object {
         private const val NOTIFICATION_ID = 1103
         const val ACTION_CANCEL_DOWNLOAD = "action_cancel_download"
         const val EXTRA_CHAPTER = "extra_chapter"
+
+        // These broadcasts used to be declared on the novel tab, which is not where they are sent
+        // from and no longer where they are listened to.
+        const val ACTION_DOWNLOAD_STARTED = "ani.dantotsu.ACTION_DOWNLOAD_STARTED"
+        const val ACTION_DOWNLOAD_FINISHED = "ani.dantotsu.ACTION_DOWNLOAD_FINISHED"
+        const val ACTION_DOWNLOAD_FAILED = "ani.dantotsu.ACTION_DOWNLOAD_FAILED"
+        const val ACTION_DOWNLOAD_PROGRESS = "ani.dantotsu.ACTION_DOWNLOAD_PROGRESS"
+        const val EXTRA_NOVEL_LINK = "extra_novel_link"
     }
 }
 

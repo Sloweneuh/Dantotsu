@@ -28,6 +28,7 @@ import ani.dantotsu.settings.SettingsListSyncActivity
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.util.AppNotices
+import ani.dantotsu.parsers.novel.lnreader.LNReaderPluginManager
 import eu.kanade.tachiyomi.extension.anime.AnimeExtensionManager
 import eu.kanade.tachiyomi.extension.manga.MangaExtensionManager
 import uy.kohesive.injekt.Injekt
@@ -108,6 +109,14 @@ sealed class QuickTile(
         val pkgName: String,
         val type: String,
         private val name: String,
+        /**
+         * Where to fetch the icon from, for extensions that are not installed packages.
+         *
+         * An LNReader plugin is a JavaScript bundle, not an APK, so there is no launcher icon to
+         * read off the package manager — the plugin index names a URL instead. Without this the
+         * lookup below simply fails and every novel tile falls back to the generic extension glyph.
+         */
+        val iconUrl: String? = null,
     ) : QuickTile(
         idFor(pkgName, type), R.drawable.ic_extension,
         categoryFor(type), needsNetwork = true,
@@ -122,13 +131,12 @@ sealed class QuickTile(
         companion object {
             fun idFor(pkgName: String, type: String) = "$PREFIX$type:$pkgName"
 
-            /** Anime and manga extensions get a shelf section each; the lists are long. */
-            private fun categoryFor(type: String) =
-                if (type == ExtensionBrowseActivity.TYPE_ANIME) {
-                    QuickTileCategory.ANIME_EXTENSIONS
-                } else {
-                    QuickTileCategory.MANGA_EXTENSIONS
-                }
+            /** Each extension type gets a shelf section of its own; the lists are long. */
+            private fun categoryFor(type: String) = when (type) {
+                ExtensionBrowseActivity.TYPE_ANIME -> QuickTileCategory.ANIME_EXTENSIONS
+                ExtensionBrowseActivity.TYPE_NOVEL -> QuickTileCategory.NOVEL_EXTENSIONS
+                else -> QuickTileCategory.MANGA_EXTENSIONS
+            }
 
             const val PREFIX = "ext:"
         }
@@ -297,7 +305,14 @@ object QuickTiles : TileCatalogue(PrefName.QuickTileOrder) {
         val manga = Injekt.get<MangaExtensionManager>().installedExtensionsFlow.value
             .sortedBy { it.name.lowercase() }
             .map { QuickTile.Extension(it.pkgName, ExtensionBrowseActivity.TYPE_MANGA, it.name) }
-        anime + manga
+        val novel = Injekt.get<LNReaderPluginManager>().installedPluginsFlow.value
+            .sortedBy { it.name.lowercase() }
+            .map {
+                QuickTile.Extension(
+                    it.id, ExtensionBrowseActivity.TYPE_NOVEL, it.name, it.plugin.iconUrl
+                )
+            }
+        anime + manga + novel
     }.getOrDefault(emptyList())
 
     /** The full catalogue for this moment: fixed tiles plus whatever extensions are installed. */
@@ -317,6 +332,7 @@ enum class QuickTileCategory(@StringRes override val label: Int) : TileCategory 
     SETTINGS(R.string.quick_tiles_cat_settings),
     ANIME_EXTENSIONS(R.string.quick_tiles_cat_anime_extensions),
     MANGA_EXTENSIONS(R.string.quick_tiles_cat_manga_extensions),
+    NOVEL_EXTENSIONS(R.string.quick_tiles_cat_novel_extensions),
 }
 
 /** Android's two quick-tile shapes: icon only, or icon with a label and its state. */

@@ -5,6 +5,7 @@ import android.graphics.drawable.Drawable
 import ani.dantotsu.media.MediaType
 import ani.dantotsu.snackString
 import ani.dantotsu.util.Logger
+import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.tachiyomi.extension.InstallStep
 import eu.kanade.tachiyomi.extension.api.ExtensionGithubApi
 import eu.kanade.tachiyomi.extension.util.ExtensionInstallReceiver
@@ -14,8 +15,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import rx.Observable
 import tachiyomi.core.util.lang.withUIContext
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 
-class NovelExtensionManager(private val context: Context) {
+class NovelExtensionManager(
+    private val context: Context,
+    private val preferences: SourcePreferences = Injekt.get(),
+) {
     var isInitialized = false
         private set
 
@@ -85,6 +91,7 @@ class NovelExtensionManager(private val context: Context) {
 
     private fun updatedInstalledNovelExtensionsStatuses(availableNovelExtensions: List<NovelExtension.Available>) {
         if (availableNovelExtensions.isEmpty()) {
+            preferences.novelExtensionUpdatesCount().set(0)
             return
         }
 
@@ -110,6 +117,7 @@ class NovelExtensionManager(private val context: Context) {
         if (hasChanges) {
             _installedNovelExtensionsFlow.value = mutInstalledNovelExtensions
         }
+        updatePendingUpdatesCount()
     }
 
     /**
@@ -173,6 +181,7 @@ class NovelExtensionManager(private val context: Context) {
      */
     private fun registerNewExtension(extension: NovelExtension.Installed) {
         _installedNovelExtensionsFlow.value += extension
+        updatePendingUpdatesCount()
     }
 
     /**
@@ -189,6 +198,7 @@ class NovelExtensionManager(private val context: Context) {
         }
         mutInstalledNovelExtensions += extension
         _installedNovelExtensionsFlow.value = mutInstalledNovelExtensions
+        updatePendingUpdatesCount()
     }
 
     /**
@@ -202,6 +212,7 @@ class NovelExtensionManager(private val context: Context) {
             _installedNovelExtensionsFlow.value.find { it.pkgName == pkgName }
         if (installedNovelExtension != null) {
             _installedNovelExtensionsFlow.value -= installedNovelExtension
+            updatePendingUpdatesCount()
         }
     }
 
@@ -239,5 +250,10 @@ class NovelExtensionManager(private val context: Context) {
         if (availableExt == null) return false
 
         return (availableExt.versionCode > versionCode)
+    }
+
+    private fun updatePendingUpdatesCount() {
+        preferences.novelExtensionUpdatesCount()
+            .set(_installedNovelExtensionsFlow.value.count { it.hasUpdate })
     }
 }

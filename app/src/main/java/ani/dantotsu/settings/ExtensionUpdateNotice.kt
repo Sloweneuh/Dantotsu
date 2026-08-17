@@ -28,7 +28,9 @@ object ExtensionUpdateNotice {
 
     private fun updateCount(): Int = runCatching {
         val preferences: SourcePreferences = Injekt.get()
-        preferences.animeExtensionUpdatesCount().get() + preferences.mangaExtensionUpdatesCount().get()
+        preferences.animeExtensionUpdatesCount().get() +
+                preferences.mangaExtensionUpdatesCount().get() +
+                preferences.novelExtensionUpdatesCount().get()
     }.getOrDefault(0)
 
     fun isPending(): Boolean = !handled && updateCount() > 0

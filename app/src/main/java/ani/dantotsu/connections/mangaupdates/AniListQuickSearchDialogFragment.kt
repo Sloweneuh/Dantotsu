@@ -24,6 +24,7 @@ import ani.dantotsu.media.Media
 import ani.dantotsu.media.MediaDetailsActivity
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.px
+import ani.dantotsu.parsers.ShowResponse
 import ani.dantotsu.settings.ExtensionMediaLinker
 import ani.dantotsu.stripSpansOnPaste
 import ani.dantotsu.util.hideEmptyState
@@ -57,8 +58,16 @@ class AniListQuickSearchDialogFragment : BottomSheetDialogFragment() {
         private const val ARG_EXT_LANG = "ext_lang"
         private const val ARG_EXT_MANGA = "ext_manga"
         private const val ARG_EXT_ANIME = "ext_anime"
+        private const val ARG_EXT_NOVEL = "ext_novel"
         const val TYPE_MANGA = "MANGA"
         const val TYPE_ANIME = "ANIME"
+
+        /**
+         * Novels are manga on AniList — there is no separate media type, only `format: NOVEL`.
+         * So this queries MANGA and keeps the novel formats, which is what a light novel source
+         * is looking for; the manga volumes of the same series are noise here.
+         */
+        const val TYPE_NOVEL = "NOVEL"
 
         fun newInstance(
             titles: ArrayList<String>,
@@ -68,6 +77,7 @@ class AniListQuickSearchDialogFragment : BottomSheetDialogFragment() {
             extensionLangIndex: Int = 0,
             sManga: SManga? = null,
             sAnime: SAnime? = null,
+            novel: ShowResponse? = null,
         ): AniListQuickSearchDialogFragment {
             return AniListQuickSearchDialogFragment().apply {
                 arguments = Bundle().apply {
@@ -79,6 +89,7 @@ class AniListQuickSearchDialogFragment : BottomSheetDialogFragment() {
                         putInt(ARG_EXT_LANG, extensionLangIndex)
                         if (sManga != null) putSerializable(ARG_EXT_MANGA, sManga)
                         if (sAnime != null) putSerializable(ARG_EXT_ANIME, sAnime)
+                        if (novel != null) putSerializable(ARG_EXT_NOVEL, novel)
                     }
                 }
             }
@@ -115,8 +126,11 @@ class AniListQuickSearchDialogFragment : BottomSheetDialogFragment() {
         binding.searchBarText.setText(firstTitle)
 
         val requestKey = arguments?.getString(ARG_REQUEST_KEY)
-        val searchType = arguments?.getString(ARG_TYPE) ?: TYPE_MANGA
-        val isAnime = searchType == TYPE_ANIME
+        val requestedType = arguments?.getString(ARG_TYPE) ?: TYPE_MANGA
+        val isAnime = requestedType == TYPE_ANIME
+        val isNovel = requestedType == TYPE_NOVEL
+        // AniList only knows ANIME and MANGA; NOVEL is a format within MANGA.
+        val searchType = if (isNovel) TYPE_MANGA else requestedType
 
         fun search(queryOverride: String? = null) {
             if (searchJob?.isActive == true) return
@@ -164,6 +178,11 @@ class AniListQuickSearchDialogFragment : BottomSheetDialogFragment() {
                                 val isAnimeLike = media.anime != null || format == "TV" || format == "MOVIE" ||
                                         format == "OVA" || format == "ONA" || format == "SPECIAL" || format == "MUSIC"
                                 isAnimeLike && media.manga == null
+                            }
+                        } else if (isNovel) {
+                            response.results.filter { media ->
+                                val format = media.format?.uppercase(Locale.ROOT)
+                                (format == "NOVEL" || format == "LIGHT_NOVEL") && media.anime == null
                             }
                         } else {
                             response.results.filter { media ->
@@ -286,9 +305,11 @@ class AniListQuickSearchDialogFragment : BottomSheetDialogFragment() {
         val lang = args.getInt(ARG_EXT_LANG, 0)
         val sManga = args.getSerializable(ARG_EXT_MANGA) as? SManga
         val sAnime = args.getSerializable(ARG_EXT_ANIME) as? SAnime
+        val novel = args.getSerializable(ARG_EXT_NOVEL) as? ShowResponse
         when {
             sManga != null -> ExtensionMediaLinker.linkMangaMedia(mediaId, pkg, lang, sManga)
             sAnime != null -> ExtensionMediaLinker.linkAnimeMedia(mediaId, pkg, lang, sAnime)
+            novel != null -> ExtensionMediaLinker.linkNovelMedia(mediaId, pkg, novel)
         }
     }
 

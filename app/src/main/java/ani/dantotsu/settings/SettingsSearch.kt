@@ -444,6 +444,24 @@ object SettingsSearch {
 
         l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.dual_page, R.string.reader_settings, IC_READER, anchorViewId = R.id.LNdualPageText, keywordsRes = R.string.search_kw_dual_page_2)
 
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.theme, R.string.reader_settings, IC_READER, anchorViewId = R.id.LNthemeSelect, keywordsRes = R.string.search_kw_novel_theme)
+
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.justify_text, R.string.reader_settings, IC_READER, anchorViewId = R.id.LNjustify, keywordsRes = R.string.search_kw_justify_text)
+
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.hyphenation, R.string.reader_settings, IC_READER, anchorViewId = R.id.LNhyphenation, keywordsRes = R.string.search_kw_hyphenation)
+
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.backup_line_height, R.string.reader_settings, IC_READER, anchorViewId = R.id.LNlineHeight, keywordsRes = R.string.search_kw_novel_line_height)
+
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.backup_page_margin, R.string.reader_settings, IC_READER, anchorViewId = R.id.LNmargin, keywordsRes = R.string.search_kw_novel_margin)
+
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.backup_max_inline_size, R.string.reader_settings, IC_READER, anchorViewId = R.id.LNmaxInlineSize)
+
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.backup_max_block_size, R.string.reader_settings, IC_READER, anchorViewId = R.id.LNmaxBlockSize)
+
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.lock_screen_rotation, R.string.reader_settings, IC_READER, anchorViewId = R.id.LNlockRotation, keywordsRes = R.string.search_kw_novel_lock_rotation)
+
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.hide_page_numbers, R.string.reader_settings, IC_READER, anchorViewId = R.id.LNhidePageNumbers, keywordsRes = R.string.search_kw_novel_hide_page_numbers)
+
 
         // ---- Extensions ----
         l += SearchableSetting(SettingsExtensionsActivity::class.java, R.string.anime_add_repository, R.string.extensions, R.drawable.ic_round_github_anime_24, R.string.anime_add_repository_desc, keywordsRes = R.string.search_kw_anime_add_repository)

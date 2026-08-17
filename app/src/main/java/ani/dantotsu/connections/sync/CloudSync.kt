@@ -63,6 +63,11 @@ object CloudSync {
         // networking dead, with the cause buried in a submenu it never opened.
         PrefName.EnableSocks5Proxy,
         PrefName.ProxyAuthEnabled,
+        // How many plugin updates *this* device has noticed, which is a badge count derived from
+        // comparing what it has installed against what its repositories currently offer. The
+        // installed list itself does sync; this number is only ever true of the device that
+        // computed it, and carrying it across lights a badge on a device with nothing to update.
+        PrefName.LNReaderUpdatesCount,
     ).map { it.name }.toSet()
 
     // Everything written through PrefManager.setCustomVal lands in Location.Irrelevant, which mixes

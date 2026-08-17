@@ -34,7 +34,12 @@ class NovelReaderSettingsDialogFragment : BottomSheetDialogFragment() {
         val themeLabels = activity.themes.map { it.name }
         binding.themeSelect.adapter =
             NoPaddingArrayAdapter(activity, R.layout.item_dropdown, themeLabels)
-        binding.themeSelect.setSelection(themeLabels.indexOfFirst { it == settings.currentThemeName })
+        // A name from another book that this one does not offer would give -1, which a Spinner
+        // reads as "nothing selected" and then silently replaces with the first entry.
+        val selectedTheme = themeLabels
+            .indexOfFirst { it.equals(settings.currentThemeName, ignoreCase = true) }
+            .coerceAtLeast(0)
+        binding.themeSelect.setSelection(selectedTheme, false)
         binding.themeSelect.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(
                 parent: AdapterView<*>?,
@@ -42,6 +47,9 @@ class NovelReaderSettingsDialogFragment : BottomSheetDialogFragment() {
                 position: Int,
                 id: Long
             ) {
+                // Fires once for the selection set above; re-applying then would overwrite a saved
+                // theme with whatever the list happened to start on.
+                if (themeLabels[position] == settings.currentThemeName) return
                 settings.currentThemeName = themeLabels[position]
                 activity.applySettings()
             }
@@ -192,9 +200,33 @@ class NovelReaderSettingsDialogFragment : BottomSheetDialogFragment() {
             activity.applySettings()
         }
 
+        binding.justify.isChecked = settings.justify
+        binding.justify.setOnCheckedChangeListener { _, isChecked ->
+            settings.justify = isChecked
+            activity.applySettings()
+        }
+
+        binding.hyphenation.isChecked = settings.hyphenation
+        binding.hyphenation.setOnCheckedChangeListener { _, isChecked ->
+            settings.hyphenation = isChecked
+            activity.applySettings()
+        }
+
         binding.useDarkTheme.isChecked = settings.useDarkTheme
         binding.useDarkTheme.setOnCheckedChangeListener { _, isChecked ->
             settings.useDarkTheme = isChecked
+            activity.applySettings()
+        }
+
+        binding.lockRotation.isChecked = settings.lockRotation
+        binding.lockRotation.setOnCheckedChangeListener { _, isChecked ->
+            settings.lockRotation = isChecked
+            activity.applySettings()
+        }
+
+        binding.hidePageNumbers.isChecked = settings.hidePageNumbers
+        binding.hidePageNumbers.setOnCheckedChangeListener { _, isChecked ->
+            settings.hidePageNumbers = isChecked
             activity.applySettings()
         }
 

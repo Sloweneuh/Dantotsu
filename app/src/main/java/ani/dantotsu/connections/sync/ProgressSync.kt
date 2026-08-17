@@ -1,6 +1,7 @@
 package ani.dantotsu.connections.sync
 
 import ani.dantotsu.parsers.SavedShowResponse
+import ani.dantotsu.parsers.novel.lnreader.LNReaderReadState
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.util.Logger
@@ -50,19 +51,33 @@ object ProgressSync {
         Regex("""^(\d+)_(?:\d+(?:\.\d+)?(?:_max)?|current_chp|current_ep)$""")
 
     // Per-media user choices, keyed with the id as a suffix instead of a prefix.
-    private val SELECTION_RE = Regex("""^(?:Selected|SelectedSource|comick_slug|subLang)[-_](\d+)$""")
+    private val SELECTION_RE =
+        Regex("""^(?:Selected|SelectedSource|comick_slug|subLang)[-_](\d+)$|^(\d+)_novel_reversed$""")
 
     // The entry an extension was matched to, one per extension the media was searched on. The
     // trailing part is a free-form extension name, which is exactly why the id comes first.
     private val SHOW_RE = Regex("""^${SavedShowResponse.PREFIX}-(\d+)-.+$""")
 
+    /**
+     * Novel reading state: which chapters have been read (per plugin and novel), and where in a
+     * book the reader was left.
+     *
+     * A separate family from [PROGRESS_RE] because novels record both differently from manga —
+     * chapters are identified by their source path rather than a number, and a position inside one
+     * is a CFI rather than a page — and because a peer on an older build never writes either, so a
+     * payload from one must not be read as "this media has no novel state" (see [applyMedia]).
+     */
+    private val NOVEL_RE =
+        Regex("""^(?:${LNReaderReadState.PREFIX}|lnreader_pos)-(\d+)-.+$""")
+
     /** The families above, kept apart so a pull only prunes within one it can see (see [applyMedia]). */
-    private enum class Kind { PROGRESS, SELECTION, SHOW }
+    private enum class Kind { PROGRESS, SELECTION, SHOW, NOVEL }
 
     private fun kindOf(key: String): Kind? = when {
         PROGRESS_RE.matches(key) -> Kind.PROGRESS
         SELECTION_RE.matches(key) -> Kind.SELECTION
         SHOW_RE.matches(key) -> Kind.SHOW
+        NOVEL_RE.matches(key) -> Kind.NOVEL
         else -> null
     }
 
@@ -70,9 +85,12 @@ object ProgressSync {
      * The media id a custom-val key belongs to, or null if it isn't per-media syncable state.
      * Positive ids only — extension-only media with id < 0 can't be re-resolved on another device.
      */
-    private fun mediaIdOf(key: String): String? =
-        (PROGRESS_RE.matchEntire(key) ?: SELECTION_RE.matchEntire(key)
-            ?: SHOW_RE.matchEntire(key))?.groupValues?.get(1)
+    private fun mediaIdOf(key: String): String? {
+        val match = PROGRESS_RE.matchEntire(key) ?: SELECTION_RE.matchEntire(key)
+            ?: SHOW_RE.matchEntire(key) ?: NOVEL_RE.matchEntire(key) ?: return null
+        // SELECTION_RE is an alternation, so the id lands in whichever branch matched.
+        return match.groupValues.drop(1).firstOrNull { it.isNotEmpty() }
+    }
 
     private val gson = Gson()
     private val stateType = object : TypeToken<Map<String, MediaState>>() {}.type

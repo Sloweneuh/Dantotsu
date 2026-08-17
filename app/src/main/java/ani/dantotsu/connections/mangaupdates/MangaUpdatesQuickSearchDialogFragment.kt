@@ -20,6 +20,7 @@ import ani.dantotsu.R
 import ani.dantotsu.databinding.BottomSheetSourceSearchBinding
 import ani.dantotsu.media.MangaUpdatesSearchAdapter
 import ani.dantotsu.navBarHeight
+import ani.dantotsu.parsers.ShowResponse
 import ani.dantotsu.px
 import ani.dantotsu.stripSpansOnPaste
 import ani.dantotsu.util.hideEmptyState
@@ -48,12 +49,14 @@ class MangaUpdatesQuickSearchDialogFragment : BottomSheetDialogFragment() {
         private const val ARG_EXT_PKG = "ext_pkg"
         private const val ARG_EXT_LANG = "ext_lang"
         private const val ARG_EXT_MANGA = "ext_manga"
+        private const val ARG_EXT_NOVEL = "ext_novel"
 
         fun newInstance(
             titles: ArrayList<String>,
             extensionPkg: String? = null,
             extensionLangIndex: Int = 0,
             sManga: SManga? = null,
+            novel: ShowResponse? = null,
         ): MangaUpdatesQuickSearchDialogFragment {
             return MangaUpdatesQuickSearchDialogFragment().apply {
                 arguments = Bundle().apply {
@@ -62,6 +65,7 @@ class MangaUpdatesQuickSearchDialogFragment : BottomSheetDialogFragment() {
                         putString(ARG_EXT_PKG, extensionPkg)
                         putInt(ARG_EXT_LANG, extensionLangIndex)
                         if (sManga != null) putSerializable(ARG_EXT_MANGA, sManga)
+                        if (novel != null) putSerializable(ARG_EXT_NOVEL, novel)
                     }
                 }
             }
@@ -158,6 +162,9 @@ class MangaUpdatesQuickSearchDialogFragment : BottomSheetDialogFragment() {
                                     @Suppress("DEPRECATION")
                                     val sManga = args.getSerializable(ARG_EXT_MANGA) as? SManga
                                     if (sManga != null) intent.putExtra(MUMediaDetailsActivity.EXTRA_EXT_MANGA, sManga as Serializable)
+                                    @Suppress("DEPRECATION")
+                                    val novel = args.getSerializable(ARG_EXT_NOVEL) as? ShowResponse
+                                    if (novel != null) intent.putExtra(MUMediaDetailsActivity.EXTRA_EXT_NOVEL, novel as Serializable)
                                 }
                                 startActivity(intent)
                             }

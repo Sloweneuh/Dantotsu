@@ -18,70 +18,123 @@ import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
 import ani.dantotsu.connections.crashlytics.CrashlyticsInterface
 import ani.dantotsu.databinding.FragmentNovelExtensionsBinding
-import ani.dantotsu.others.LanguageMapper
+import ani.dantotsu.loadImage
 import ani.dantotsu.parsers.NovelSources
-import ani.dantotsu.parsers.novel.NovelExtension
 import ani.dantotsu.parsers.novel.NovelExtensionManager
+import ani.dantotsu.parsers.novel.lnreader.LNReaderPluginManager
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.snackString
 import ani.dantotsu.util.Logger
+import ani.dantotsu.util.customAlertDialog
 import ani.dantotsu.util.hideEmptyState
 import eu.kanade.tachiyomi.extension.InstallStep
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import rx.android.schedulers.AndroidSchedulers
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.util.Locale
 
+/**
+ * Installed novel sources: extension APKs and LNReader plugins in one list.
+ *
+ * They are shown together because a reader picking a source does not care which kind it is, and
+ * both are ordered by the same [PrefName.NovelSourcesOrder] preference. Everything that acts on a
+ * row — update, uninstall — branches, since the two have nothing in common underneath.
+ */
 class InstalledNovelExtensionsFragment : Fragment(), SearchQueryHandler {
     private var _binding: FragmentNovelExtensionsBinding? = null
     private val binding get() = _binding!!
     private lateinit var extensionsRecyclerView: RecyclerView
     private val skipIcons: Boolean = PrefManager.getVal(PrefName.SkipExtensionIcons)
     private val novelExtensionManager: NovelExtensionManager = Injekt.get()
+    private val pluginManager: LNReaderPluginManager = Injekt.get()
 
     private var searchQuery = ""
     private val uninstallConfirmation = UninstallConfirmation {
         snackString(getString(R.string.extension_uninstalled))
     }
-    // Explicit type: the update callback below references this property, which makes inference recurse.
-    private val extensionsAdapter: NovelExtensionsAdapter = NovelExtensionsAdapter(
-        { _ ->
+
+    private val extensionsAdapter: NovelSourcesAdapter = NovelSourcesAdapter(
+        onItemClicked = { item ->
+            // Only plugins can be browsed: the browse screen's novel path runs a plugin's popular
+            // and search listings, which an extension package has no equivalent of.
+            if (item is NovelSourceItem.Plugin) {
+                startActivity(
+                    android.content.Intent(requireContext(), ExtensionBrowseActivity::class.java)
+                        .putExtra(ExtensionBrowseActivity.EXTRA_PKG, item.plugin.id)
+                        .putExtra(
+                            ExtensionBrowseActivity.EXTRA_TYPE,
+                            ExtensionBrowseActivity.TYPE_NOVEL
+                        )
+                )
+            }
+        },
+        onSettingsClicked = {
             Toast.makeText(requireContext(), "Source is not configurable", Toast.LENGTH_SHORT)
                 .show()
         },
-        { pkg ->
-            if (isAdded) {
-                uninstallConfirmation.onUninstallRequested(pkg.pkgName)
-                novelExtensionManager.uninstallExtension(pkg.pkgName)
+        onUninstallClicked = { item ->
+            if (!isAdded) return@NovelSourcesAdapter
+            when (item) {
+                is NovelSourceItem.Extension -> {
+                    uninstallConfirmation.onUninstallRequested(item.extension.pkgName)
+                    novelExtensionManager.uninstallExtension(item.extension.pkgName)
+                }
+                // A plugin is a downloaded file, so removal is immediate and needs its own
+                // confirmation rather than the package manager's.
+                is NovelSourceItem.Plugin -> requireContext().customAlertDialog().apply {
+                    setTitle(getString(R.string.delete_item, item.name))
+                    setMessage(getString(R.string.are_you_sure_delete_item, item.name))
+                    setPosButton(R.string.yes) {
+                        pluginManager.uninstall(item.plugin.id)
+                        snackString(getString(R.string.extension_uninstalled))
+                    }
+                    setNegButton(R.string.no)
+                    show()
+                }
             }
         },
-        { pkg ->
-            if (isAdded) {
-                if (pkg.hasUpdate) {
+        onUpdateClicked = { item ->
+            if (!isAdded) return@NovelSourcesAdapter
+            if (!item.hasUpdate) {
+                snackString(getString(R.string.no_update_available))
+                return@NovelSourcesAdapter
+            }
+            when (item) {
+                is NovelSourceItem.Extension -> {
                     var lastStep: InstallStep? = null
-                    extensionsAdapter.setUpdating(pkg.pkgName, true)
-                    novelExtensionManager.updateExtension(pkg)
+                    extensionsAdapter.setUpdating(item.key, true)
+                    novelExtensionManager.updateExtension(item.extension)
                         .observeOn(AndroidSchedulers.mainThread())
                         .subscribe(
                             { step -> lastStep = step },
                             { error ->
                                 Injekt.get<CrashlyticsInterface>().logException(error)
                                 Logger.log(error)
-                                extensionsAdapter.setUpdating(pkg.pkgName, false)
+                                extensionsAdapter.setUpdating(item.key, false)
                                 snackString(getString(R.string.update_failed, error.message))
                             },
                             {
-                                extensionsAdapter.setUpdating(pkg.pkgName, false)
+                                extensionsAdapter.setUpdating(item.key, false)
                                 lastStep.updateResultMessage()?.let { snackString(getString(it)) }
                             }
                         )
-                } else {
-                    snackString(getString(R.string.no_update_available))
+                }
+
+                is NovelSourceItem.Plugin -> lifecycleScope.launch {
+                    extensionsAdapter.setUpdating(item.key, true)
+                    pluginManager.update(item.plugin)
+                        .onSuccess { snackString(getString(R.string.extension_installed)) }
+                        .onFailure {
+                            snackString(getString(R.string.update_failed, it.message.orEmpty()))
+                        }
+                    extensionsAdapter.setUpdating(item.key, false)
                 }
             }
-        }, skipIcons
+        },
+        skipIcons = skipIcons,
     )
 
     override fun onCreateView(
@@ -139,13 +192,16 @@ class InstalledNovelExtensionsFragment : Fragment(), SearchQueryHandler {
         }
         ItemTouchHelper(itemTouchHelperCallback).attachToRecyclerView(extensionsRecyclerView)
 
-
         lifecycleScope.launch {
-            novelExtensionManager.installedExtensionsFlow.collect { extensions ->
-                uninstallConfirmation.onInstalledPackagesChanged(extensions.map { it.pkgName })
-                if (isResumed) uninstallConfirmation.flush()
-                extensionsAdapter.updateData(sortToNovelSourcesList(extensions))
-            }
+            combine(
+                novelExtensionManager.installedExtensionsFlow,
+                pluginManager.installedPluginsFlow,
+            ) { extensions, plugins -> extensions to plugins }
+                .collect { (extensions, plugins) ->
+                    uninstallConfirmation.onInstalledPackagesChanged(extensions.map { it.pkgName })
+                    if (isResumed) uninstallConfirmation.flush()
+                    extensionsAdapter.updateData(sortToNovelSourcesList(combined(extensions, plugins)))
+                }
         }
         return binding.root
     }
@@ -156,10 +212,17 @@ class InstalledNovelExtensionsFragment : Fragment(), SearchQueryHandler {
         uninstallConfirmation.flush()
     }
 
+    private fun combined(
+        extensions: List<ani.dantotsu.parsers.novel.NovelExtension.Installed>,
+        plugins: List<ani.dantotsu.parsers.novel.lnreader.InstalledLNReaderPlugin>,
+    ): List<NovelSourceItem> =
+        extensions.map { NovelSourceItem.Extension(it) } +
+            plugins.map { NovelSourceItem.Plugin(it) }
+
     private fun updateEmptyState() {
         val b = _binding ?: return
         if (extensionsAdapter.itemCount == 0) {
-            // Installed extensions are never filtered by language, only by the search box.
+            // Installed sources are never filtered by language, only by the search box.
             b.extensionsEmptyState.showExtensionsEmpty(
                 filtered = searchQuery.isNotEmpty(),
                 installed = true,
@@ -167,14 +230,11 @@ class InstalledNovelExtensionsFragment : Fragment(), SearchQueryHandler {
         } else b.extensionsEmptyState.hideEmptyState()
     }
 
-    private fun sortToNovelSourcesList(inpt: List<NovelExtension.Installed>): List<NovelExtension.Installed> {
-        val sourcesMap = inpt.associateBy { it.name }
-        val orderedSources = NovelSources.pinnedNovelSources.mapNotNull { name ->
-            sourcesMap[name]
-        }
-        return orderedSources + inpt.filter { !NovelSources.pinnedNovelSources.contains(it.name) }
+    private fun sortToNovelSourcesList(input: List<NovelSourceItem>): List<NovelSourceItem> {
+        val sourcesMap = input.associateBy { it.name }
+        val orderedSources = NovelSources.pinnedNovelSources.mapNotNull { sourcesMap[it] }
+        return orderedSources + input.filter { !NovelSources.pinnedNovelSources.contains(it.name) }
     }
-
 
     override fun onDestroyView() {
         super.onDestroyView();_binding = null
@@ -185,32 +245,36 @@ class InstalledNovelExtensionsFragment : Fragment(), SearchQueryHandler {
         searchQuery = query.orEmpty()
         extensionsAdapter.filter(
             searchQuery,
-            sortToNovelSourcesList(novelExtensionManager.installedExtensionsFlow.value)
+            sortToNovelSourcesList(
+                combined(
+                    novelExtensionManager.installedExtensionsFlow.value,
+                    pluginManager.installedPluginsFlow.value,
+                )
+            )
         )
     }
 
-    override fun notifyDataChanged() { // do nothing
+    override fun notifyDataChanged() { // Do nothing
     }
 
-    private class NovelExtensionsAdapter(
-        private val onSettingsClicked: (NovelExtension.Installed) -> Unit,
-        private val onUninstallClicked: (NovelExtension.Installed) -> Unit,
-        private val onUpdateClicked: (NovelExtension.Installed) -> Unit,
+    private class NovelSourcesAdapter(
+        private val onItemClicked: (NovelSourceItem) -> Unit,
+        private val onSettingsClicked: (NovelSourceItem) -> Unit,
+        private val onUninstallClicked: (NovelSourceItem) -> Unit,
+        private val onUpdateClicked: (NovelSourceItem) -> Unit,
         val skipIcons: Boolean
-    ) : ListAdapter<NovelExtension.Installed, NovelExtensionsAdapter.ViewHolder>(
-        DIFF_CALLBACK_INSTALLED
-    ) {
+    ) : ListAdapter<NovelSourceItem, NovelSourcesAdapter.ViewHolder>(DIFF_CALLBACK_INSTALLED) {
 
-        private val updatingPkgs = mutableSetOf<String>()
+        private val updatingKeys = mutableSetOf<String>()
 
-        fun updateData(newExtensions: List<NovelExtension.Installed>) {
-            submitList(newExtensions)
+        fun updateData(newItems: List<NovelSourceItem>) {
+            submitList(newItems)
         }
 
         /** Spins the row's update button for as long as the update is in flight. */
-        fun setUpdating(pkgName: String, updating: Boolean) {
-            if (updating) updatingPkgs += pkgName else updatingPkgs -= pkgName
-            val pos = currentList.indexOfFirst { it.pkgName == pkgName }
+        fun setUpdating(key: String, updating: Boolean) {
+            if (updating) updatingKeys += key else updatingKeys -= key
+            val pos = currentList.indexOfFirst { it.key == key }
             if (pos != -1) notifyItemChanged(pos)
         }
 
@@ -224,45 +288,33 @@ class InstalledNovelExtensionsFragment : Fragment(), SearchQueryHandler {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
             val view = LayoutInflater.from(parent.context)
                 .inflate(R.layout.item_extension, parent, false)
-            Logger.log("onCreateViewHolder: $view")
             return ViewHolder(view)
         }
 
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-            val extension = getItem(position)  // Use getItem() from ListAdapter
-            val nsfw = ""
-            val lang = LanguageMapper.getLanguageName("all")
-            holder.extensionNameTextView.text = extension.name
-            val versionText = "$lang ${extension.versionName} $nsfw"
-            holder.extensionVersionTextView.text = versionText
+            val item = getItem(position)
+            holder.extensionNameTextView.text = item.name
+            holder.extensionVersionTextView.text = item.versionLabel
             if (!skipIcons) {
-                holder.extensionIconImageView.setImageDrawable(extension.icon)
-            }
-            if (extension.hasUpdate) {
-                holder.updateView.isVisible = true
-            } else {
-                holder.updateView.isVisible = false
-            }
-            holder.deleteView.setOnClickListener {
-                onUninstallClicked(extension)
-            }
-            holder.updateView.bindUpdateButton(extension.pkgName in updatingPkgs) {
-                onUpdateClicked(extension)
-            }
-            holder.settingsImageView.setOnClickListener {
-                onSettingsClicked(extension)
-            }
-        }
-
-        fun filter(query: String, currentList: List<NovelExtension.Installed>) {
-            val filteredList = ArrayList<NovelExtension.Installed>()
-            for (extension in currentList) {
-                if (extension.name.lowercase(Locale.ROOT).contains(query.lowercase(Locale.ROOT))) {
-                    filteredList.add(extension)
+                when (item) {
+                    is NovelSourceItem.Extension ->
+                        holder.extensionIconImageView.setImageDrawable(item.icon)
+                    is NovelSourceItem.Plugin ->
+                        item.iconUrl?.let { holder.extensionIconImageView.loadImage(it) }
                 }
             }
-            if (filteredList != currentList)
-                submitList(filteredList)
+            holder.updateView.isVisible = item.hasUpdate
+            holder.deleteView.setOnClickListener { onUninstallClicked(item) }
+            holder.updateView.bindUpdateButton(item.key in updatingKeys) { onUpdateClicked(item) }
+            holder.settingsImageView.setOnClickListener { onSettingsClicked(item) }
+            holder.itemView.setOnClickListener { onItemClicked(item) }
+        }
+
+        fun filter(query: String, currentList: List<NovelSourceItem>) {
+            val filtered = currentList.filter {
+                it.name.lowercase(Locale.ROOT).contains(query.lowercase(Locale.ROOT))
+            }
+            if (filtered != currentList) submitList(filtered)
         }
 
         inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -276,24 +328,10 @@ class InstalledNovelExtensionsFragment : Fragment(), SearchQueryHandler {
         }
 
         companion object {
-            val DIFF_CALLBACK_INSTALLED =
-                object : DiffUtil.ItemCallback<NovelExtension.Installed>() {
-                    override fun areItemsTheSame(
-                        oldItem: NovelExtension.Installed,
-                        newItem: NovelExtension.Installed
-                    ): Boolean {
-                        return oldItem.pkgName == newItem.pkgName
-                    }
-
-                    override fun areContentsTheSame(
-                        oldItem: NovelExtension.Installed,
-                        newItem: NovelExtension.Installed
-                    ): Boolean {
-                        return oldItem == newItem
-                    }
-                }
+            val DIFF_CALLBACK_INSTALLED = object : DiffUtil.ItemCallback<NovelSourceItem>() {
+                override fun areItemsTheSame(a: NovelSourceItem, b: NovelSourceItem) = a.key == b.key
+                override fun areContentsTheSame(a: NovelSourceItem, b: NovelSourceItem) = a == b
+            }
         }
     }
-
-
 }

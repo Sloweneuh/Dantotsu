@@ -12,6 +12,7 @@ import android.view.ViewGroup
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.FileProvider
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
@@ -27,6 +28,7 @@ import ani.dantotsu.databinding.ItemChapterGapBinding
 import ani.dantotsu.databinding.ItemChapterListBinding
 import ani.dantotsu.databinding.ItemChipBinding
 import ani.dantotsu.databinding.ItemEpisodeListBinding
+import ani.dantotsu.databinding.ItemUrlBinding
 import ani.dantotsu.bindScrollToTop
 import ani.dantotsu.buildMarkwon
 import ani.dantotsu.copyToClipboard
@@ -39,12 +41,24 @@ import ani.dantotsu.media.Selected
 import ani.dantotsu.media.manga.Manga
 import ani.dantotsu.media.manga.MangaChapter as MediaMangaChapter
 import ani.dantotsu.media.manga.mangareader.MangaReaderActivity
+import ani.dantotsu.media.novel.NovelChapterOpener
+import ani.dantotsu.media.novel.novelreader.NovelReaderActivity
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.openLinkInBrowser
 import ani.dantotsu.others.ImageViewDialog
 import nl.joery.animatedbottombar.AnimatedBottomBar
+import ani.dantotsu.parsers.Book
 import ani.dantotsu.parsers.DynamicMangaParser
+import ani.dantotsu.parsers.ShowResponse
+import ani.dantotsu.parsers.novel.lnreader.LNReaderDates
+import ani.dantotsu.parsers.novel.lnreader.LNReaderBook
+import ani.dantotsu.parsers.novel.lnreader.LNReaderNovel
+import ani.dantotsu.parsers.novel.lnreader.LNReaderParser
+import ani.dantotsu.parsers.novel.lnreader.LNReaderPluginManager
+import ani.dantotsu.parsers.novel.lnreader.LNReaderReadState
+import ani.dantotsu.parsers.novel.lnreader.LNReaderSession
 import ani.dantotsu.settings.saving.PrefManager
+import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.snackString
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
@@ -77,12 +91,25 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
         const val EXTRA_LANG_INDEX = "lang"
         const val EXTRA_MANGA = "manga"
         const val EXTRA_ANIME = "anime"
+        const val EXTRA_NOVEL = "novel"
+
+        /**
+         * How many novel chapters this screen lists.
+         *
+         * A novel can run to thousands, and this screen is for looking one up before adding it —
+         * the media page is where a full run is read, and it pages with range chips.
+         */
+        private const val NOVEL_CHAPTER_PREVIEW = 100
     }
 
     private lateinit var binding: ActivityExtensionMediaInfoBinding
     private var manga: SManga? = null
     private var anime: SAnime? = null
+    private var novel: ShowResponse? = null
+    private var lnNovel: LNReaderNovel? = null
+    private var novelParser: LNReaderParser? = null
     private var isManga: Boolean = true
+    private val isNovel: Boolean get() = novel != null
     private var latestChapter: SChapter? = null
     private var latestEpisode: SEpisode? = null
     private var latestHasSub: Boolean = false
@@ -118,20 +145,25 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
         binding.extensionInfoBack.enableSettingsLongPress()
         binding.extensionInfoBack.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
 
-        setupBottomBar()
-
         @Suppress("DEPRECATION")
         manga = intent.getSerializableExtra(EXTRA_MANGA) as? SManga
         @Suppress("DEPRECATION")
         anime = intent.getSerializableExtra(EXTRA_ANIME) as? SAnime
+        @Suppress("DEPRECATION")
+        novel = intent.getSerializableExtra(EXTRA_NOVEL) as? ShowResponse
         isManga = when {
             anime != null -> false
             manga != null -> true
+            novel != null -> false
             else -> intent.getStringExtra(EXTRA_TYPE) != ExtensionBrowseActivity.TYPE_ANIME
         }
         pkg = intent.getStringExtra(EXTRA_PKG)
         langIndex = intent.getIntExtra(EXTRA_LANG_INDEX, 0)
         sourceHeaders = if (pkg != null) computeSourceHeaders(pkg!!, langIndex) else emptyMap()
+
+        // After the extras are read: which second tab (if any) belongs on the bar depends on
+        // what was opened.
+        setupBottomBar()
 
         bindInitial()
         configureSearchButtons()
@@ -146,7 +178,9 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
         val infoTab = navBar.createTab(R.drawable.ic_round_info_24, R.string.info, R.id.info)
         val chaptersTab = navBar.createTab(R.drawable.ic_round_import_contacts_24, R.string.read, R.id.read)
         navBar.addTab(infoTab)
-        if (isManga) navBar.addTab(chaptersTab)
+        // Novels get the same second tab, listing the volume downloads the source offers rather
+        // than a chapter list.
+        if (isManga || isNovel) navBar.addTab(chaptersTab)
         navBar.selectTabAt(0)
         // Info is visible by default; chapters hidden
         binding.extensionInfoScroll.visibility = View.VISIBLE
@@ -179,11 +213,13 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
         // If switching to the chapters tab and data is already loaded, re-populate
         // using post{} so the view is measured at its final width first.
         if (to == 1 && chaptersDataLoaded) {
-            inView.post { populateChapterListWithChips() }
+            inView.post { if (isNovel) populateNovelChapters() else populateChapterListWithChips() }
         }
     }
 
     private fun computeSourceHeaders(pkg: String, langIndex: Int): Map<String, String> {
+        // Novel sources share one global request client and expose no per-source headers.
+        if (isNovel) return emptyMap()
         val headers = if (isManga) {
             val mgr: MangaExtensionManager = Injekt.get()
             val ext = mgr.installedExtensionsFlow.value.find { it.pkgName == pkg }
@@ -199,13 +235,15 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
     }
 
     private fun bindInitial() {
-        val title = manga?.title ?: anime?.title ?: ""
+        val title = manga?.title ?: anime?.title ?: lnNovel?.name?.takeIf { it.isNotBlank() }
+            ?: novel?.name ?: ""
         binding.extensionInfoTitle.text = title
         binding.extensionInfoTitle.setOnLongClickListener {
             copyToClipboard(title)
             true
         }
         val cover = manga?.thumbnail_url ?: anime?.thumbnail_url
+            ?: lnNovel?.cover?.takeIf { it.isNotBlank() } ?: novel?.coverUrl?.url
         if (!cover.isNullOrBlank() && sourceHeaders.isNotEmpty() && (cover.startsWith("http://") || cover.startsWith("https://"))) {
             binding.extensionInfoCover.loadImage(FileUrl(cover, sourceHeaders))
         } else {
@@ -232,6 +270,10 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
         val chapters: List<SChapter> = emptyList(),
     )
 
+    /** Mirrors [ani.dantotsu.parsers.novel.DynamicNovelParser]'s volume matching, anchored at the end. */
+    private val volumeSuffixRegex =
+        Regex("""[\s\-–—,:]*\b(?:vol\.?|volume|v)\s*\d+(?:\.\d+)?\s*$""", RegexOption.IGNORE_CASE)
+
     private val subRegex = Regex("""\b(sub|subbed)\b""", RegexOption.IGNORE_CASE)
     private val dubRegex = Regex("""\b(dub|dubbed)\b""", RegexOption.IGNORE_CASE)
 
@@ -255,7 +297,15 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val updated = runCatching {
                 withContext(Dispatchers.IO) {
-                    if (isManga) {
+                    if (isNovel) {
+                        val mgr: LNReaderPluginManager = Injekt.get()
+                        val installed = mgr.installedPluginsFlow.value.find { it.id == pkg }
+                            ?: return@withContext LoadedDetails(null, null)
+                        val parser = LNReaderParser(applicationContext, installed)
+                        novelParser = parser
+                        val loaded = novel?.let { n -> parser.loadNovel(n.link) }
+                        LoadedDetails(loaded, null)
+                    } else if (isManga) {
                         val mgr: MangaExtensionManager = Injekt.get()
                         val ext = mgr.installedExtensionsFlow.value.find { it.pkgName == pkg }
                             ?: return@withContext LoadedDetails(null, null)
@@ -310,6 +360,12 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
                     anime?.copyFrom(d)
                     if (anime?.title.isNullOrBlank()) anime?.title = d.title
                 }
+                is LNReaderNovel -> {
+                    lnNovel = d
+                    // The search result carried only a name and a cover; the loaded novel is
+                    // where a synopsis, author and a better title/cover come from.
+                    bindInitial()
+                }
             }
             latestChapter = result.latest as? SChapter
             latestEpisode = result.latest as? SEpisode
@@ -324,11 +380,15 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
     }
 
     private fun renderDetails() {
-        val author = manga?.author ?: anime?.author
-        val artist = manga?.artist ?: anime?.artist
-        val description = manga?.description ?: anime?.description
+        val author = manga?.author ?: anime?.author ?: lnNovel?.author
+        val artist = manga?.artist ?: anime?.artist ?: lnNovel?.artist
+        val description = manga?.description ?: anime?.description ?: lnNovel?.summary
         val genres = manga?.getGenres() ?: anime?.getGenres()
+            ?: lnNovel?.genreList()?.takeIf { it.isNotEmpty() }
         val status = manga?.status ?: anime?.status ?: SManga.UNKNOWN
+        // A plugin reports status as free text rather than one of SManga's constants, so it is
+        // shown as written instead of being mapped onto a set of labels it was never drawn from.
+        val novelStatus = lnNovel?.status?.takeIf { it.isNotBlank() }
 
         val authorLine = listOfNotNull(
             author?.takeIf { it.isNotBlank() },
@@ -337,8 +397,9 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
         binding.extensionInfoAuthor.text = authorLine
         binding.extensionInfoAuthor.isVisible = authorLine.isNotBlank()
 
-        binding.extensionInfoStatus.text = statusLabel(status)
-        binding.extensionInfoStatus.isVisible = status != SManga.UNKNOWN
+        val statusText = novelStatus ?: statusLabel(status)
+        binding.extensionInfoStatus.text = statusText
+        binding.extensionInfoStatus.isVisible = statusText.isNotBlank()
 
         val showSynopsis = !description.isNullOrBlank()
         binding.extensionInfoSynopsisTitle.isVisible = showSynopsis
@@ -461,9 +522,65 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
     }
 
     private fun renderChapterList() {
+        if (isNovel) {
+            binding.extensionChaptersScroll.post { populateNovelChapters() }
+            return
+        }
         if (!isManga) return
         // post{} so chips are built after the view has been laid out at real width
         binding.extensionChaptersScroll.post { populateChapterListWithChips() }
+    }
+
+    /**
+     * The novel chapter list.
+     *
+     * The same shape as the manga chapter list on this screen: tapping a chapter reads it, and
+     * there is no download button, because a download has to be filed under a tracked media. This
+     * screen is source browsing — the entry has not been matched to anything yet.
+     */
+    private fun populateNovelChapters() {
+        binding.extensionChaptersList.removeAllViews()
+        binding.extensionChaptersChipGroup.removeAllViews()
+        binding.extensionChaptersChipScroll.isVisible = false
+
+        val details = lnNovel
+        val chapters = details?.chapters.orEmpty()
+        binding.extensionChaptersEmpty.isVisible = chapters.isEmpty()
+        binding.extensionChaptersEmpty.setText(R.string.no_chapter)
+        binding.extensionChaptersHeader.isVisible = chapters.isNotEmpty()
+        binding.extensionChaptersHeader.text =
+            resources.getQuantityString(R.plurals.novel_chapter_count, chapters.size, chapters.size)
+        if (details == null) return
+
+        // Capped rather than paged: this screen is for looking a novel up before adding it, and
+        // the media page is where a full run gets read.
+        chapters.take(NOVEL_CHAPTER_PREVIEW).forEachIndexed { index, chapter ->
+            val b = ItemChapterListBinding.inflate(
+                layoutInflater, binding.extensionChaptersList, true
+            )
+            b.itemChapterNumber.text = chapter.name
+            b.itemChapterTitle.isVisible = false
+            b.itemEpisodeViewed.isVisible = false
+            b.itemChapterBrowser.isVisible = false
+            b.itemDownload.isVisible = false
+
+            val date = LNReaderDates.format(chapter.releaseTime)
+            b.itemChapterDateLayout.isVisible = date.isNotBlank()
+            b.itemChapterDate.isVisible = date.isNotBlank()
+            b.itemChapterDate.text = date
+            b.itemChapterScan.isVisible = false
+            b.itemChapterDateDivider.isVisible = false
+
+            b.root.setOnClickListener { openNovelChapter(details, index) }
+        }
+    }
+
+    /** Fetches a chapter, packages it as EPUB and opens the reader. */
+    private fun openNovelChapter(details: LNReaderNovel, index: Int) {
+        val parser = novelParser ?: return
+        // The same loading sheet the media page uses. No tracking question here: browsing a source
+        // is not reading a media, so there is nothing a list could be told about it.
+        NovelChapterOpener.open(this, parser, details, index, media = null)
     }
 
     private val nonSequentialKeywords = setOf(
@@ -822,8 +939,11 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
         binding.extensionInfoSearchAnilist.setOnClickListener {
             val titles = collectTitles()
             if (titles.isEmpty()) return@setOnClickListener
-            val type = if (isManga) AniListQuickSearchDialogFragment.TYPE_MANGA
-            else AniListQuickSearchDialogFragment.TYPE_ANIME
+            val type = when {
+                isNovel -> AniListQuickSearchDialogFragment.TYPE_NOVEL
+                isManga -> AniListQuickSearchDialogFragment.TYPE_MANGA
+                else -> AniListQuickSearchDialogFragment.TYPE_ANIME
+            }
             AniListQuickSearchDialogFragment
                 .newInstance(
                     titles = ArrayList(titles),
@@ -832,12 +952,15 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
                     extensionLangIndex = langIndex,
                     sManga = manga,
                     sAnime = anime,
+                    novel = novel,
                 )
                 .show(supportFragmentManager, "ext_anilist_quick_search")
         }
 
-        val muVisible = isManga && MangaUpdates.token != null
-        binding.extensionInfoSearchMu.isVisible = muVisible
+        // MangaUpdates catalogues light novels alongside manga, so a plugin entry can be matched
+        // there as readily as an Aniyomi one; only anime has nothing to look up.
+        binding.extensionInfoSearchMu.isVisible =
+            (isManga || isNovel) && MangaUpdates.token != null
         binding.extensionInfoSearchMu.setOnClickListener {
             val titles = collectTitles()
             if (titles.isEmpty()) return@setOnClickListener
@@ -847,6 +970,7 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
                     extensionPkg = pkg,
                     extensionLangIndex = langIndex,
                     sManga = manga,
+                    novel = novel,
                 )
                 .show(supportFragmentManager, "ext_mu_quick_search")
         }
@@ -854,8 +978,16 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
 
     private fun collectTitles(): List<String> {
         val list = mutableListOf<String>()
-        (manga?.title ?: anime?.title)?.takeIf { it.isNotBlank() }?.let { list.add(it.trim()) }
-        val description = manga?.description ?: anime?.description
+        val novelTitle = lnNovel?.name?.takeIf { it.isNotBlank() } ?: novel?.name
+        (manga?.title ?: anime?.title ?: novelTitle)?.takeIf { it.isNotBlank() }
+            ?.let { list.add(it.trim()) }
+        // A novel entry is usually one volume ("… Vol. 3"), but the AniList entry it should link
+        // to is the series, so offer the volume-stripped title as a second query.
+        if (novelTitle != null) {
+            novelTitle.replace(volumeSuffixRegex, "").trim().trim('-', '–', '—', ',', ':')
+                .takeIf { it.isNotBlank() }?.let { list.add(it) }
+        }
+        val description = manga?.description ?: anime?.description ?: lnNovel?.summary
         if (!description.isNullOrBlank()) list.addAll(extractAlternateTitles(description))
         return list
             .map { it.trim().trim('"', '\'', '“', '”', '‘', '’') }

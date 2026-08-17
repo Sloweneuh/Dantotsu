@@ -2297,4 +2297,41 @@
     <string name="widget_preview_subtitle_waiting_two">1 épisode sorti · Suivant : 8 ·</string>
     <string name="widget_preview_activity_one">Vous avez terminé Vinland Saga</string>
     <string name="widget_preview_activity_two">Ami a regardé l\'épisode 24 de Frieren: Beyond Journey\'s End</string>
+
+    <!-- Novels: LNReader plugins, reader settings and downloads -->
+    <string name="quick_tiles_cat_novel_extensions">Extensions de romans</string>
+    <string name="pref_info_tab_order_novel">Ordre des onglets d\'info (romans)</string>
+    <string name="pref_info_tab_visibility_novel">Onglets d\'info visibles (romans)</string>
+    <string name="pref_info_tab_order_mangaupdates_novel">Ordre des onglets d\'info (romans MangaUpdates)</string>
+    <string name="pref_info_tab_visibility_mangaupdates_novel">Onglets d\'info visibles (romans MangaUpdates)</string>
+    <string name="last_chapter">Dernier chapitre</string>
+    <string name="downloaded">Téléchargé</string>
+    <string name="download_failed">Échec du téléchargement</string>
+    <string name="download_chapters">Télécharger des chapitres</string>
+    <string name="download_started">Téléchargement démarré</string>
+    <string name="download_as_epub">Télécharger en EPUB</string>
+    <string name="download_as_epub_desc">Télécharger ce chapitre en EPUB plutôt qu\'en HTML ?</string>
+    <string name="one_file_download_novel">Téléchargement en un fichier (tous les chapitres dans un seul fichier HTML)</string>
+    <plurals name="novel_chapter_count">
+        <item quantity="one">%d chapitre</item>
+        <item quantity="other">%d chapitres</item>
+    </plurals>
+    <string name="backup_sub_novel_downloads">Téléchargements</string>
+    <string name="backup_sub_novel_downloads_desc">Format d\'enregistrement et découpage des fichiers</string>
+    <string name="backup_lnreader_repos">Dépôts de plugins LNReader</string>
+    <string name="backup_lnreader_installed">Plugins LNReader installés</string>
+    <string name="justify_text">Justifier le texte</string>
+    <string name="hyphenation">Césure</string>
+    <!--
+        Search keywords: the English terms are kept alongside the French ones. The settings search
+        matches on these, and the words users type for these settings are routinely English —
+        "novel", "margin" — whatever the app's language is.
+    -->
+    <string name="search_kw_novel_theme">roman novel thème couleur palette lecteur colour color</string>
+    <string name="search_kw_justify_text">roman novel justifier aligner texte justified align</string>
+    <string name="search_kw_hyphenation">roman novel césure coupure des mots hyphen word break</string>
+    <string name="search_kw_novel_line_height">roman novel interligne hauteur de ligne line spacing</string>
+    <string name="search_kw_novel_margin">roman novel marge espacement margin gap</string>
+    <string name="search_kw_novel_lock_rotation">roman novel orientation portrait paysage rotation rotate</string>
+    <string name="search_kw_novel_hide_page_numbers">roman novel numéro de page compteur indicateur counter</string>
 </resources>

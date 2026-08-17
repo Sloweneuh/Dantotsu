@@ -27,6 +27,11 @@ enum class PrefName(val data: Pref) {
     AllowMeteredDownloads(Pref(Location.General, Boolean::class, true)),
     MangaDownloadPdf(Pref(Location.General, Boolean::class, false)),
     AskDownloadPdf(Pref(Location.General, Boolean::class, true)),
+    // EPUB is the default because it is what the in-app reader opens directly; HTML is for
+    // getting the text out to something else.
+    NovelDownloadEpub(Pref(Location.General, Boolean::class, true)),
+    NovelDownloadOneFile(Pref(Location.General, Boolean::class, false)),
+    AskDownloadEpub(Pref(Location.General, Boolean::class, true)),
     NSFWExtension(Pref(Location.General, Boolean::class, true)),
     ContinueMedia(Pref(Location.General, Boolean::class, true)),
     SearchSources(Pref(Location.General, Boolean::class, false)),
@@ -49,6 +54,11 @@ enum class PrefName(val data: Pref) {
     AnimeExtensionRepos(Pref(Location.General, Set::class, setOf<String>())),
     MangaExtensionRepos(Pref(Location.General, Set::class, setOf<String>())),
     NovelExtensionRepos(Pref(Location.General, Set::class, setOf<String>())),
+    // LNReader plugins are JavaScript, not APKs, so they carry their own repository list and
+    // installed record rather than sharing the extension ones.
+    LNReaderRepos(Pref(Location.General, Set::class, setOf<String>())),
+    LNReaderInstalled(Pref(Location.General, Set::class, setOf<String>())),
+    LNReaderUpdatesCount(Pref(Location.General, Int::class, 0)),
     AnimeSourcesOrder(Pref(Location.General, List::class, listOf<String>())),
     MangaSourcesOrder(Pref(Location.General, List::class, listOf<String>())),
     SortedAnimeSH(Pref(Location.General, List::class, listOf<SearchHistory>())),
@@ -158,6 +168,12 @@ enum class PrefName(val data: Pref) {
     InfoTabVisibilityAnilistManga(Pref(Location.UI, List::class, listOf(true, true, true, true, true))),
     InfoTabOrderMangaUpdates(Pref(Location.UI, List::class, listOf(0, 1, 2, 3))),
     InfoTabVisibilityMangaUpdates(Pref(Location.UI, List::class, listOf(true, true, true, true))),
+    // Novels get their own contexts rather than sharing manga's: Comick has no novel catalogue, so
+    // its tab is not in their list at all, and the saved indices would not line up if it were.
+    InfoTabOrderAnilistNovel(Pref(Location.UI, List::class, listOf(0, 1, 2, 3))),
+    InfoTabVisibilityAnilistNovel(Pref(Location.UI, List::class, listOf(true, true, true, true))),
+    InfoTabOrderMangaUpdatesNovel(Pref(Location.UI, List::class, listOf(0, 1, 2))),
+    InfoTabVisibilityMangaUpdatesNovel(Pref(Location.UI, List::class, listOf(true, true, true))),
 
     //User Interface
     UseOLED(Pref(Location.UI, Boolean::class, false)),
@@ -295,6 +311,8 @@ enum class PrefName(val data: Pref) {
     HorizontalScrollBarNovel(Pref(Location.NovelReader, Boolean::class, true)),
     KeepScreenOnNovel(Pref(Location.NovelReader, Boolean::class, false)),
     VolumeButtonsNovel(Pref(Location.NovelReader, Boolean::class, false)),
+    LockRotationNovel(Pref(Location.NovelReader, Boolean::class, false)),
+    HidePageNumbersNovel(Pref(Location.NovelReader, Boolean::class, false)),
 
     //Irrelevant
     Incognito(Pref(Location.Irrelevant, Boolean::class, false)),

@@ -27,9 +27,21 @@ class TilePanelController(
     }
 
     /** Shown under the page dots; only the quick-settings sheet has anything to put here. */
+    private var footerText: CharSequence? = null
+
     fun setFooterText(text: CharSequence?) {
-        binding.quickTilesVersion.isVisible = text != null
+        footerText = text
         binding.quickTilesVersion.text = text
+        updateFooterVisibility()
+    }
+
+    /**
+     * The footer names the app and its version, which belongs under the panel rather than under
+     * the editor: while arranging tiles the space is the editor's, and a version number there is
+     * one more thing between the shelf and the grid it is dragged onto.
+     */
+    private fun updateFooterVisibility() {
+        binding.quickTilesVersion.isVisible = footerText != null && !editing
     }
 
     private fun showPages() {
@@ -50,6 +62,7 @@ class TilePanelController(
 
     private fun setEditing(value: Boolean) {
         editing = value
+        updateFooterVisibility()
         binding.quickTilesPager.isVisible = !value
         binding.quickTilesIndicator.isVisible =
             !value && (binding.quickTilesPager.adapter?.itemCount ?: 0) > 1

@@ -98,14 +98,13 @@
                         android:orientation="horizontal">
 
                         <ImageButton
-                            android:id="@+id/novelReaderDownload"
-                            android:layout_width="wrap_content"
+                            android:id="@+id/novelReaderMore"
+                            android:layout_width="48dp"
                             android:layout_height="48dp"
                             android:backgroundTint="#00FFFFFF"
-                            android:src="@drawable/ic_download_24"
-                            android:visibility="gone"
-                            app:layout_constraintBottom_toBottomOf="parent"
-                            app:layout_constraintEnd_toEndOf="parent"
+                            android:scaleType="fitCenter"
+                            android:src="@drawable/ic_round_dots_vertical_24"
+                            app:tint="#fff"
                             tools:ignore="ContentDescription,SpeakableTextPresentCheck,ImageContrastCheck" />
 
                         <ImageButton
@@ -295,6 +294,23 @@
             </LinearLayout>
         </FrameLayout>
     </LinearLayout>
+
+    <!--
+        Outside novelReaderCont, and so not tied to the controls: the page count stays on screen
+        while reading, the same way it does in the manga reader.
+    -->
+    <ani.dantotsu.others.OutlineTextView
+        android:id="@+id/novelReaderPageNumber"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center"
+        android:fontFamily="@font/poppins_bold"
+        android:padding="4dp"
+        android:textAlignment="center"
+        android:textColor="#FFFFFF"
+        app:outlineColor="#A9000000"
+        app:outlineWidth="1"
+        tools:text="1/10" />
 
     <ProgressBar
         android:id="@+id/progress"

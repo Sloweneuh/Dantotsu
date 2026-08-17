@@ -53,11 +53,16 @@ class ExtensionReconcileAdapter(
         } else {
             b.reconcileActionIcon.setImageResource(R.drawable.ic_minus)
             b.reconcileActionIcon.setColorFilter(RED)
-            // Installed extension: use its real app icon.
+            // Installed extension: use its real app icon. A novel source has no package to read
+            // one off — it is a downloaded plugin — so it falls back to the URL its record keeps.
             val icon = runCatching { ctx.packageManager.getApplicationIcon(item.pkgName) }.getOrNull()
             Glide.with(ctx).clear(b.reconcileExtIcon)
-            if (icon != null) b.reconcileExtIcon.setImageDrawable(icon)
-            else b.reconcileExtIcon.setImageResource(typeIcon)
+            when {
+                icon != null -> b.reconcileExtIcon.setImageDrawable(icon)
+                item.iconUrl != null -> Glide.with(ctx).load(item.iconUrl)
+                    .placeholder(typeIcon).error(typeIcon).into(b.reconcileExtIcon)
+                else -> b.reconcileExtIcon.setImageResource(typeIcon)
+            }
         }
 
         // Installs whose repo is missing can't be acted on.

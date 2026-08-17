@@ -1,6 +1,6 @@
 package ani.dantotsu.connections.sync
 
-import ani.dantotsu.parsers.novel.NovelExtensionManager
+import ani.dantotsu.parsers.novel.lnreader.LNReaderPluginManager
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.util.Logger
@@ -79,12 +79,20 @@ object ExtensionSync {
 
     private fun anime() = Injekt.get<AnimeExtensionManager>()
     private fun manga() = Injekt.get<MangaExtensionManager>()
-    private fun novel() = Injekt.get<NovelExtensionManager>()
+    /**
+     * Novel sources are LNReader plugins, not APKs.
+     *
+     * The `pkg` field carries a plugin id rather than a package name, which is what every other
+     * part of the app already keys them by. That is the only difference the payload sees, so a
+     * device on either side of this change still reads the other's list — it just no longer
+     * describes extensions nobody can install.
+     */
+    private fun novel() = Injekt.get<LNReaderPluginManager>()
 
     private fun localPayload(): Payload = Payload(
         anime = anime().installedExtensionsFlow.value.map { ExtRef(it.pkgName, it.name) }.sortedBy { it.pkg },
         manga = manga().installedExtensionsFlow.value.map { ExtRef(it.pkgName, it.name) }.sortedBy { it.pkg },
-        novel = novel().installedExtensionsFlow.value.map { ExtRef(it.pkgName, it.name) }.sortedBy { it.pkg },
+        novel = novel().installedPluginsFlow.value.map { ExtRef(it.id, it.name) }.sortedBy { it.pkg },
     )
 
     // ---- Firebase primitives ----
@@ -246,8 +254,8 @@ object ExtensionSync {
         fun reconcile(
             type: ExtType,
             remoteRefs: List<ExtRef>,
-            installed: Map<String, String>,       // pkgName -> name
-            available: Map<String, AvailInfo>,    // pkgName -> name + icon url
+            installed: Map<String, AvailInfo>,    // id -> name + icon url
+            available: Map<String, AvailInfo>,    // id -> name + icon url
         ) {
             remoteRefs.filter { it.pkg !in installed }.forEach { ref ->
                 val info = available[ref.pkg]
@@ -260,24 +268,29 @@ object ExtensionSync {
             }
             val remotePkgs = remoteRefs.map { it.pkg }
             installed.keys.filter { it !in remotePkgs }.forEach { pkg ->
-                toRemove += ExtItem(type, pkg, installed[pkg] ?: pkg, isInstall = false)
+                val info = installed[pkg]
+                // Carried for removals too, not just installs: an APK's icon can be read off the
+                // package, but a plugin has none to read — only the URL its record keeps.
+                toRemove += ExtItem(
+                    type, pkg, info?.name ?: pkg, isInstall = false, iconUrl = info?.iconUrl
+                )
             }
         }
 
         reconcile(
             ExtType.ANIME, remote.anime,
-            anime().installedExtensionsFlow.value.associate { it.pkgName to it.name },
+            anime().installedExtensionsFlow.value.associate { it.pkgName to AvailInfo(it.name, null) },
             anime().availableExtensionsFlow.value.associate { it.pkgName to AvailInfo(it.name, it.iconUrl) },
         )
         reconcile(
             ExtType.MANGA, remote.manga,
-            manga().installedExtensionsFlow.value.associate { it.pkgName to it.name },
+            manga().installedExtensionsFlow.value.associate { it.pkgName to AvailInfo(it.name, null) },
             manga().availableExtensionsFlow.value.associate { it.pkgName to AvailInfo(it.name, it.iconUrl) },
         )
         reconcile(
             ExtType.NOVEL, remote.novel,
-            novel().installedExtensionsFlow.value.associate { it.pkgName to it.name },
-            novel().availableExtensionsFlow.value.associate { it.pkgName to AvailInfo(it.name, it.iconUrl) },
+            novel().installedPluginsFlow.value.associate { it.id to AvailInfo(it.name, it.plugin.iconUrl) },
+            novel().availablePluginsFlow.value.associate { it.id to AvailInfo(it.name, it.iconUrl) },
         )
 
         return Diff(toInstall, toRemove)
@@ -298,10 +311,15 @@ object ExtensionSync {
                         .subscribe({}, { Logger.log("ExtensionSync: install error: ${it.message}") })
                 }
 
-            ExtType.NOVEL -> novel().availableExtensionsFlow.value.find { it.pkgName == item.pkgName }
-                ?.let { ext ->
-                    novel().installExtension(ext).observeOn(AndroidSchedulers.mainThread())
-                        .subscribe({}, { Logger.log("ExtensionSync: install error: ${it.message}") })
+            // No package installer to go through: a plugin is a file to download, so this
+            // completes on its own rather than handing the user a system prompt per source.
+            ExtType.NOVEL -> novel().availablePluginsFlow.value.find { it.id == item.pkgName }
+                ?.let { plugin ->
+                    scope.launch {
+                        novel().install(plugin).onFailure {
+                            Logger.log("ExtensionSync: install error: ${it.message}")
+                        }
+                    }
                 }
         }
     }
@@ -311,7 +329,7 @@ object ExtensionSync {
         when (item.type) {
             ExtType.ANIME -> anime().uninstallExtension(item.pkgName)
             ExtType.MANGA -> manga().uninstallExtension(item.pkgName)
-            ExtType.NOVEL -> novel().uninstallExtension(item.pkgName)
+            ExtType.NOVEL -> novel().uninstall(item.pkgName)
         }
     }
 }

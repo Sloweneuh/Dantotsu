@@ -815,6 +815,29 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:orientation="vertical"
+                    android:paddingStart="32dp"
+                    android:paddingEnd="32dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:alpha="0.58"
+                        android:fontFamily="@font/poppins_bold"
+                        android:text="@string/theme" />
+
+                    <ani.dantotsu.SpinnerNoSwipe
+                        android:id="@+id/LNthemeSelect"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:popupBackground="@drawable/round_corner"
+                        tools:ignore="SpeakableTextPresentCheck" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
                     android:layout_marginBottom="8dp"
                     android:gravity="center"
@@ -1290,6 +1313,48 @@
                     android:textSize="14sp" />
 
                 <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/LNjustify"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:checked="true"
+                    android:drawableStart="@drawable/format_align_center_24"
+                    android:drawablePadding="16dp"
+                    android:elegantTextHeight="true"
+                    android:fontFamily="@font/poppins_bold"
+                    android:minHeight="64dp"
+                    android:paddingStart="32dp"
+                    android:paddingEnd="32dp"
+                    android:text="@string/justify_text"
+                    android:textAlignment="viewStart"
+                    android:textColor="?attr/colorOnBackground"
+                    app:cornerRadius="0dp"
+                    app:drawableTint="?attr/colorPrimary"
+                    app:showText="false"
+                    app:thumbTint="@color/button_switch_track"
+                    tools:ignore="VisualLintButtonSize" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/LNhyphenation"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:checked="true"
+                    android:drawableStart="@drawable/ic_round_format_text_24"
+                    android:drawablePadding="16dp"
+                    android:elegantTextHeight="true"
+                    android:fontFamily="@font/poppins_bold"
+                    android:minHeight="64dp"
+                    android:paddingStart="32dp"
+                    android:paddingEnd="32dp"
+                    android:text="@string/hyphenation"
+                    android:textAlignment="viewStart"
+                    android:textColor="?attr/colorOnBackground"
+                    app:cornerRadius="0dp"
+                    app:drawableTint="?attr/colorPrimary"
+                    app:showText="false"
+                    app:thumbTint="@color/button_switch_track"
+                    tools:ignore="VisualLintButtonSize" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
                     android:id="@+id/LNuseDarkTheme"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -1323,6 +1388,48 @@
                     android:paddingStart="32dp"
                     android:paddingEnd="32dp"
                     android:text="@string/use_oled_theme"
+                    android:textAlignment="viewStart"
+                    android:textColor="?attr/colorOnBackground"
+                    app:cornerRadius="0dp"
+                    app:drawableTint="?attr/colorPrimary"
+                    app:showText="false"
+                    app:thumbTint="@color/button_switch_track"
+                    tools:ignore="VisualLintButtonSize" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/LNlockRotation"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:checked="false"
+                    android:drawableStart="@drawable/ic_round_screen_rotation_24"
+                    android:drawablePadding="16dp"
+                    android:elegantTextHeight="true"
+                    android:fontFamily="@font/poppins_bold"
+                    android:minHeight="64dp"
+                    android:paddingStart="32dp"
+                    android:paddingEnd="32dp"
+                    android:text="@string/lock_screen_rotation"
+                    android:textAlignment="viewStart"
+                    android:textColor="?attr/colorOnBackground"
+                    app:cornerRadius="0dp"
+                    app:drawableTint="?attr/colorPrimary"
+                    app:showText="false"
+                    app:thumbTint="@color/button_switch_track"
+                    tools:ignore="VisualLintButtonSize" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/LNhidePageNumbers"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:checked="false"
+                    android:drawableStart="@drawable/ic_page_numbering"
+                    android:drawablePadding="16dp"
+                    android:elegantTextHeight="true"
+                    android:fontFamily="@font/poppins_bold"
+                    android:minHeight="64dp"
+                    android:paddingStart="32dp"
+                    android:paddingEnd="32dp"
+                    android:text="@string/hide_page_numbers"
                     android:textAlignment="viewStart"
                     android:textColor="?attr/colorOnBackground"
                     app:cornerRadius="0dp"
