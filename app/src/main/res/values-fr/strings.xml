@@ -1460,6 +1460,34 @@
     <string name="continuous_multi_chapter_desc">Lire tous les chapitres sans interruption</string>
     <string name="chapter_transition_end">Fin de %1$s</string>
     <string name="chapter_transition_next">Suivant : %1$s</string>
+
+    <!-- Lecture audio des romans -->
+    <string name="novel_tts">Lecture audio</string>
+    <string name="novel_tts_desc">Faire lire les chapitres à haute voix par le lecteur de romans, et continuer écran éteint</string>
+    <string name="novel_tts_settings">Paramètres de lecture audio</string>
+    <string name="novel_tts_preparing">Préparation…</string>
+    <string name="novel_tts_not_ready">Attendez la fin du chargement du chapitre</string>
+    <string name="novel_tts_no_text">Aucun texte à lire dans ce chapitre</string>
+    <string name="novel_tts_next_sentence">Phrase suivante</string>
+    <string name="novel_tts_previous_sentence">Phrase précédente</string>
+    <string name="novel_tts_engine">Moteur de synthèse vocale</string>
+    <string name="novel_tts_engine_desc">Les voix proviennent du moteur de synthèse vocale installé sur votre appareil. Installer un autre moteur ajoute ses voix ici.</string>
+    <string name="novel_tts_voice">Voix</string>
+    <string name="novel_tts_system_default">Par défaut du système</string>
+    <string name="novel_tts_speed_value">Vitesse - %1$s×</string>
+    <string name="novel_tts_pitch">Hauteur</string>
+    <string name="novel_tts_pitch_value">Hauteur - %1$s</string>
+    <string name="novel_tts_auto_next_chapter">Continuer au chapitre suivant</string>
+    <string name="novel_tts_follow_text">Suivre le texte sur la page</string>
+    <string name="novel_tts_sleep_timer">Minuteur de veille</string>
+    <string name="novel_tts_sleep_off">Désactivé</string>
+    <string name="novel_tts_sleep_minutes">%1$d minutes</string>
+    <string name="novel_tts_quality_high">haute qualité</string>
+    <string name="novel_tts_quality_low">basse qualité</string>
+    <string name="novel_tts_online">en ligne</string>
+    <string name="play">Lire</string>
+    <string name="pause">Pause</string>
+    <string name="stop">Arrêter</string>
     <string name="no_previous_chapter">Pas de chapitre précédent</string>
     <string name="no_next_chapter">Plus de chapitres</string>
     <string name="purge_manga_downloads_desc">Supprimer tous les Manga téléchargés</string>
@@ -2330,6 +2358,7 @@
     <string name="search_kw_novel_theme">roman novel thème couleur palette lecteur colour color</string>
     <string name="search_kw_justify_text">roman novel justifier aligner texte justified align</string>
     <string name="search_kw_hyphenation">roman novel césure coupure des mots hyphen word break</string>
+    <string name="search_kw_novel_tts">roman novel tts synthèse vocale lecture audio voix narration écouter audiolivre lire à haute voix text to speech read aloud</string>
     <string name="search_kw_novel_line_height">roman novel interligne hauteur de ligne line spacing</string>
     <string name="search_kw_novel_margin">roman novel marge espacement margin gap</string>
     <string name="search_kw_novel_lock_rotation">roman novel orientation portrait paysage rotation rotate</string>

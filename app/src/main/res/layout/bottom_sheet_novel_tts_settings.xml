@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bottom_sheet_background">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="32dp"
+        android:layout_marginEnd="32dp"
+        android:orientation="vertical"
+        android:paddingBottom="32dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="16dp"
+            android:fontFamily="@font/poppins_semi_bold"
+            android:text="@string/novel_tts"
+            android:textAlignment="center"
+            android:textSize="16sp" />
+
+        <!--
+            Caption above the control, not beside it: a Spinner sized to its widest entry claims the
+            whole row, and LinearLayout settles the overflow by shrinking the weighted caption away.
+            The reader's own settings sheet learned this the hard way.
+        -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:alpha="0.58"
+                android:fontFamily="@font/poppins_bold"
+                android:text="@string/novel_tts_engine" />
+
+            <ani.dantotsu.SpinnerNoSwipe
+                android:id="@+id/ttsEngine"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:popupBackground="@drawable/round_corner"
+                tools:ignore="SpeakableTextPresentCheck" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:alpha="0.58"
+                android:fontFamily="@font/poppins_bold"
+                android:text="@string/novel_tts_voice" />
+
+            <ani.dantotsu.SpinnerNoSwipe
+                android:id="@+id/ttsVoice"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:popupBackground="@drawable/round_corner"
+                tools:ignore="SpeakableTextPresentCheck" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/ttsSpeedLabel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:alpha="0.58"
+                android:fontFamily="@font/poppins_bold"
+                android:text="@string/speed"
+                tools:text="Speed — 1.0x" />
+
+            <com.google.android.material.slider.Slider
+                android:id="@+id/ttsSpeed"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:stepSize="0.05"
+                android:value="1.0"
+                android:valueFrom="0.25"
+                android:valueTo="3.0"
+                app:labelBehavior="gone" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/ttsPitchLabel"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:alpha="0.58"
+                android:fontFamily="@font/poppins_bold"
+                android:text="@string/novel_tts_pitch"
+                tools:text="Pitch — 1.0" />
+
+            <com.google.android.material.slider.Slider
+                android:id="@+id/ttsPitch"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:stepSize="0.05"
+                android:value="1.0"
+                android:valueFrom="0.5"
+                android:valueTo="2.0"
+                app:labelBehavior="gone" />
+        </LinearLayout>
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/ttsAutoNextChapter"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:checked="true"
+            android:drawableStart="@drawable/ic_round_skip_next_24"
+            android:drawablePadding="16dp"
+            android:elegantTextHeight="true"
+            android:fontFamily="@font/poppins_bold"
+            android:minHeight="64dp"
+            android:text="@string/novel_tts_auto_next_chapter"
+            android:textAlignment="viewStart"
+            android:textColor="?attr/colorOnBackground"
+            app:cornerRadius="0dp"
+            app:drawableTint="?attr/colorPrimary"
+            app:showText="false"
+            app:thumbTint="@color/button_switch_track"
+            tools:ignore="VisualLintButtonSize" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/ttsFollowText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:checked="true"
+            android:drawableStart="@drawable/ic_round_menu_book_24"
+            android:drawablePadding="16dp"
+            android:elegantTextHeight="true"
+            android:fontFamily="@font/poppins_bold"
+            android:minHeight="64dp"
+            android:text="@string/novel_tts_follow_text"
+            android:textAlignment="viewStart"
+            android:textColor="?attr/colorOnBackground"
+            app:cornerRadius="0dp"
+            app:drawableTint="?attr/colorPrimary"
+            app:showText="false"
+            app:thumbTint="@color/button_switch_track"
+            tools:ignore="VisualLintButtonSize" />
+
+        <LinearLayout
+            android:id="@+id/ttsSleepTimerRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:alpha="0.58"
+                android:fontFamily="@font/poppins_bold"
+                android:text="@string/novel_tts_sleep_timer" />
+
+            <ani.dantotsu.SpinnerNoSwipe
+                android:id="@+id/ttsSleepTimer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:popupBackground="@drawable/round_corner"
+                tools:ignore="SpeakableTextPresentCheck" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:alpha="0.58"
+            android:fontFamily="@font/poppins"
+            android:text="@string/novel_tts_engine_desc"
+            android:textSize="12sp" />
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

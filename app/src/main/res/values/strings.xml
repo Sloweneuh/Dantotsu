@@ -1436,6 +1436,34 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="continuous_multi_chapter_desc">Read through all chapters seamlessly without stopping</string>
     <string name="chapter_transition_end">End of %1$s</string>
     <string name="chapter_transition_next">Next: %1$s</string>
+
+    <!-- Reading a novel aloud -->
+    <string name="novel_tts">Read Aloud</string>
+    <string name="novel_tts_desc">Have the novel reader read chapters out loud, and keep playing with the screen off</string>
+    <string name="novel_tts_settings">Read-aloud settings</string>
+    <string name="novel_tts_preparing">Preparing…</string>
+    <string name="novel_tts_not_ready">Wait for the chapter to finish loading</string>
+    <string name="novel_tts_no_text">No text to read in this chapter</string>
+    <string name="novel_tts_next_sentence">Next sentence</string>
+    <string name="novel_tts_previous_sentence">Previous sentence</string>
+    <string name="novel_tts_engine">Speech engine</string>
+    <string name="novel_tts_engine_desc">Voices come from the speech engine installed on your device. Installing another engine adds its voices here.</string>
+    <string name="novel_tts_voice">Voice</string>
+    <string name="novel_tts_system_default">System default</string>
+    <string name="novel_tts_speed_value">Speed — %1$s×</string>
+    <string name="novel_tts_pitch">Pitch</string>
+    <string name="novel_tts_pitch_value">Pitch — %1$s</string>
+    <string name="novel_tts_auto_next_chapter">Continue to next chapter</string>
+    <string name="novel_tts_follow_text">Follow along on the page</string>
+    <string name="novel_tts_sleep_timer">Sleep timer</string>
+    <string name="novel_tts_sleep_off">Off</string>
+    <string name="novel_tts_sleep_minutes">%1$d minutes</string>
+    <string name="novel_tts_quality_high">high quality</string>
+    <string name="novel_tts_quality_low">low quality</string>
+    <string name="novel_tts_online">online</string>
+    <string name="play">Play</string>
+    <string name="pause">Pause</string>
+    <string name="stop">Stop</string>
     <string name="no_previous_chapter">No previous chapter</string>
     <string name="no_next_chapter">No more chapters</string>
     <string name="purge_manga_downloads_desc">Delete all downloaded Manga</string>
@@ -2293,6 +2321,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="search_kw_novel_theme">novel light novel reader colour color palette</string>
     <string name="search_kw_justify_text">novel light novel align text justified</string>
     <string name="search_kw_hyphenation">novel light novel hyphen word break</string>
+    <string name="search_kw_novel_tts">novel light novel tts text to speech read aloud narration voice audio listen audiobook speak</string>
     <string name="search_kw_novel_line_height">novel light novel line spacing leading</string>
     <string name="search_kw_novel_margin">novel light novel page margin gap</string>
     <string name="search_kw_novel_lock_rotation">novel light novel orientation portrait landscape rotate</string>

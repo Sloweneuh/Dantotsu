@@ -46,6 +46,12 @@ object Notifications {
     const val CHANNEL_TORRENT_SERVER = "dantotsu_torrent_server"
 
     /**
+     * Notification channel and id used by the novel reader's text-to-speech playback.
+     */
+    const val CHANNEL_NOVEL_TTS = "novel_tts_channel"
+    const val ID_NOVEL_TTS = -1200
+
+    /**
      * Notification channel used for Incognito Mode
      */
     const val CHANNEL_INCOGNITO_MODE = "incognito_mode_channel"
@@ -171,6 +177,10 @@ object Notifications {
                 },
                 buildNotificationChannel(CHANNEL_TORRENT_SERVER, IMPORTANCE_LOW) {
                     setName("Torrent Server")
+                },
+                buildNotificationChannel(CHANNEL_NOVEL_TTS, IMPORTANCE_LOW) {
+                    setName("Novel Text-to-Speech")
+                    setShowBadge(false)
                 },
                 buildNotificationChannel(CHANNEL_COMMENTS, IMPORTANCE_HIGH) {
                     setName("Comments")

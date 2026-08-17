@@ -10,6 +10,7 @@ import ani.dantotsu.NoPaddingArrayAdapter
 import ani.dantotsu.R
 import ani.dantotsu.databinding.ActivityReaderSettingsBinding
 import ani.dantotsu.media.novel.novelreader.NovelReaderActivity
+import ani.dantotsu.media.novel.novelreader.NovelTtsSettingsBottomSheet
 import ani.dantotsu.initActivity
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.settings.saving.PrefManager
@@ -456,6 +457,11 @@ class ReaderSettingsActivity : AppCompatActivity() {
         binding.LNvolumeButton.setOnCheckedChangeListener { _, isChecked ->
             defaultSettingsLN.volumeButtons = isChecked
             PrefManager.setVal(PrefName.VolumeButtonsNovel, isChecked)
+        }
+
+        binding.LNtextToSpeech.setOnClickListener {
+            NovelTtsSettingsBottomSheet.newInstance()
+                .show(supportFragmentManager, NovelTtsSettingsBottomSheet.TAG)
         }
 
         //Update Progress

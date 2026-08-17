@@ -1480,6 +1480,31 @@
                     app:showText="false"
                     app:thumbTint="@color/button_switch_track"
                     tools:ignore="VisualLintButtonSize" />
+
+                <!--
+                    Opens the same sheet the reader's own playback bar does, rather than a second
+                    copy of these controls. The two novel-reader screens have drifted apart before
+                    by each growing their own version of a setting.
+                -->
+                <TextView
+                    android:id="@+id/LNtextToSpeech"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:drawableStart="@drawable/ic_round_headphones_24"
+                    android:drawablePadding="16dp"
+                    android:elegantTextHeight="true"
+                    android:focusable="true"
+                    android:fontFamily="@font/poppins_bold"
+                    android:gravity="center_vertical"
+                    android:minHeight="64dp"
+                    android:paddingStart="32dp"
+                    android:paddingEnd="32dp"
+                    android:text="@string/novel_tts"
+                    android:textAlignment="viewStart"
+                    android:textColor="?attr/colorOnBackground"
+                    app:drawableTint="?attr/colorPrimary" />
             </ani.dantotsu.others.Xpandable>
 
             <TextView

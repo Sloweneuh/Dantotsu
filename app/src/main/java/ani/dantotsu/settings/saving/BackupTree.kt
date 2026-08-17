@@ -447,6 +447,18 @@ object BackupTree {
                     )
                 ),
                 BackupSubCategory(
+                    "novel_tts", R.string.novel_tts,
+                    R.string.novel_tts_desc,
+                    listOf(
+                        BackupItem(PrefName.NovelTtsEngine, R.string.novel_tts_engine),
+                        BackupItem(PrefName.NovelTtsVoice, R.string.novel_tts_voice),
+                        BackupItem(PrefName.NovelTtsSpeed, R.string.speed),
+                        BackupItem(PrefName.NovelTtsPitch, R.string.novel_tts_pitch),
+                        BackupItem(PrefName.NovelTtsAutoNextChapter, R.string.novel_tts_auto_next_chapter),
+                        BackupItem(PrefName.NovelTtsFollowText, R.string.novel_tts_follow_text),
+                    )
+                ),
+                BackupSubCategory(
                     "novel_downloads", R.string.backup_sub_novel_downloads,
                     R.string.backup_sub_novel_downloads_desc,
                     listOf(

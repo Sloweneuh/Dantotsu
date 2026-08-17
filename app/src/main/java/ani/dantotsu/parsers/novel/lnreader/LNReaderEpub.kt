@@ -1,10 +1,16 @@
 package ani.dantotsu.parsers.novel.lnreader
 
 import android.content.Context
+import ani.dantotsu.media.novel.novelreader.NovelSentences
+import ani.dantotsu.util.Logger
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
+import org.jsoup.nodes.Element
+import org.jsoup.nodes.TextNode
+import org.jsoup.select.NodeTraversor
 import java.io.File
 import java.io.OutputStream
+import java.util.Locale
 import java.util.zip.CRC32
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
@@ -49,12 +55,20 @@ object LNReaderEpub {
         language: String = "en",
     ) {
         require(chapters.isNotEmpty()) { "an EPUB needs at least one chapter" }
+        // Sentence numbering runs across the whole book, so a marker identifies one sentence no
+        // matter which chapter document it lives in — the reader highlights by searching every
+        // section it has rendered, and duplicated numbers would light up two of them.
+        var marker = 0
         val prepared = chapters.mapIndexed { i, chapter ->
+            val (body, next) = markSentences(
+                sanitise(chapter.bodyHtml, baseUrl), Locale.forLanguageTag(language), marker
+            )
+            marker = next
             PreparedChapter(
                 fileName = "chapter${i + 1}.xhtml",
                 id = "chapter${i + 1}",
                 title = chapter.title,
-                body = sanitise(chapter.bodyHtml, baseUrl),
+                body = body,
             )
         }
 
@@ -116,14 +130,22 @@ object LNReaderEpub {
      * paragraph alignment and a rule on the element beats alignment inherited from a parent. No
      * colours of its own either — the page is painted from the user's chosen theme, and anything
      * fixed here would be invisible on half of them.
+     *
+     * Carries [TRANSITION_CLASS] so text-to-speech can leave it out: it is a signpost for the eye,
+     * and read aloud between two chapters it only says what the next chapter is about to say.
      */
     fun transitionFooter(endLabel: String, nextLabel: String): String = document(
+        """<div class="$TRANSITION_CLASS">""",
         """<hr style="width:64px; margin:3em auto 1.4em; border:0; border-top:1px solid currentColor; opacity:0.4" />""",
         """<p style="text-align:center; font-size:0.9em; opacity:0.6; margin:0">""" +
                 escape(endLabel) + "</p>",
         """<p style="text-align:center; font-size:1.15em; font-weight:bold; margin:0.4em 0 2em">""" +
                 escape(nextLabel) + "</p>",
+        "</div>",
     )
+
+    /** Marks the block written by [transitionFooter]; see [ani.dantotsu.media.novel.novelreader.NovelTtsText]. */
+    const val TRANSITION_CLASS = "ln-transition"
 
     /**
      * A whole book written to the cache, for reading a run that was downloaded as HTML.
@@ -231,6 +253,106 @@ object LNReaderEpub {
      * iframes, ads and site chrome that have no business in a book, so those are dropped and
      * relative sources are made absolute while the origin is still known.
      */
+    /** The attribute a sentence is tagged with, and what the reader highlights by. */
+    const val SENTENCE_ATTRIBUTE = "data-tts"
+
+    /** Blocks that read as their own paragraph, and so are split into sentences separately. */
+    private const val BLOCKS =
+        "p, h1, h2, h3, h4, h5, h6, li, blockquote, dd, dt, td, pre, figcaption"
+
+    /**
+     * Tags every sentence in [bodyHtml] so it can be highlighted while it is spoken.
+     *
+     * Done here, when the book is written, rather than by matching text at playback: the words on
+     * the page and the words in the voice then cannot disagree, because they are the same span.
+     * Matching spoken text back against the document would have to cope with a paragraph that lays
+     * its whitespace out differently from how it reads, and with a sentence the engine chunked.
+     *
+     * @return the marked-up body, and the first sentence number still free after it
+     */
+    private fun markSentences(
+        bodyHtml: String,
+        locale: Locale,
+        startIndex: Int,
+    ): Pair<String, Int> = runCatching {
+        val doc = Jsoup.parseBodyFragment(bodyHtml)
+        doc.outputSettings()
+            .syntax(Document.OutputSettings.Syntax.xml)
+            .escapeMode(org.jsoup.nodes.Entities.EscapeMode.xhtml)
+            .prettyPrint(false)
+
+        var next = startIndex
+        doc.body().select(BLOCKS)
+            // `select` matches the element it is called on as well as its descendants, so a block
+            // holds another only when something other than itself comes back. Getting this wrong
+            // discards every block, which is not obvious from the result: the text is still there,
+            // it has simply stopped being divided into paragraphs.
+            .filter { block -> block.select(BLOCKS).none { it !== block } }
+            // The end-of-chapter signpost is not read aloud, so it has nothing to highlight.
+            .filter { it.closest(".$TRANSITION_CLASS") == null }
+            .forEach { next = markBlock(it, locale, next) }
+
+        doc.body().html() to next
+    }.getOrElse {
+        // Marking is an enhancement; a book that cannot be marked is still a book to read.
+        Logger.log("LNReader: could not mark sentences for speech — ${it.message}")
+        bodyHtml to startIndex
+    }
+
+    /**
+     * Wraps each sentence of one paragraph in its own span.
+     *
+     * Works on the paragraph's text nodes rather than its text, because a sentence routinely runs
+     * through inline markup — emphasis, a link, a ruby annotation — and cutting the text alone
+     * would mean rebuilding that markup. Splitting the text nodes instead leaves the markup exactly
+     * where it was; a sentence spanning three of them simply becomes three spans sharing a number,
+     * which highlights as one because the reader selects them all.
+     */
+    private fun markBlock(block: Element, locale: Locale, startIndex: Int): Int {
+        val nodes = ArrayList<TextNode>()
+        NodeTraversor.traverse({ node, _ -> if (node is TextNode) nodes.add(node) }, block)
+        if (nodes.isEmpty()) return startIndex
+
+        val full = nodes.joinToString("") { it.wholeText }
+        if (full.isBlank()) return startIndex
+        val ranges = NovelSentences.boundaries(full, locale)
+        if (ranges.isEmpty()) return startIndex
+
+        var position = 0
+        // The ranges cover the paragraph end to end and the nodes are walked in order, so the
+        // sentence a given character belongs to only ever moves forwards.
+        var cursor = 0
+        nodes.forEach { node ->
+            val length = node.wholeText.length
+            val nodeStart = position
+            position += length
+            if (length == 0) return@forEach
+
+            var taken = 0
+            var current = node
+            while (taken < length) {
+                while (cursor < ranges.lastIndex && nodeStart + taken > ranges[cursor].last) cursor++
+                // Where this sentence stops inside this node, or the end of the node.
+                val stop = minOf(length, ranges[cursor].last + 1 - nodeStart)
+                val piece: TextNode
+                if (stop < length) {
+                    val tail = current.splitText(stop - taken)
+                    piece = current
+                    current = tail
+                } else {
+                    piece = current
+                }
+                // Whitespace between two paragraphs' markup belongs to no sentence worth marking,
+                // and wrapping it would put an empty highlight between them.
+                if (piece.wholeText.isNotBlank()) {
+                    piece.wrap("""<span $SENTENCE_ATTRIBUTE="${startIndex + cursor}"></span>""")
+                }
+                taken = stop
+            }
+        }
+        return startIndex + ranges.size
+    }
+
     private fun sanitise(fragment: String, baseUrl: String?): String {
         val doc = Jsoup.parseBodyFragment(fragment, baseUrl.orEmpty())
         doc.outputSettings()
@@ -343,6 +465,15 @@ object LNReaderEpub {
         h1 { font-size: 1.2em; margin: 1em 0; }
         img { max-width: 100%; height: auto; }
     """.trimIndent()
+
+    /**
+     * Marks the one sentence being spoken; see [SENTENCE_ATTRIBUTE].
+     *
+     * Only a handle for finding it again — the colour is applied inline by the reader, so that
+     * highlighting does not depend on this stylesheet having loaded. See
+     * [ani.dantotsu.media.novel.novelreader.NovelReaderActivity.highlightSentence].
+     */
+    const val CURRENT_SENTENCE_CLASS = "tts-current"
 
     private const val MIMETYPE = "application/epub+zip"
 

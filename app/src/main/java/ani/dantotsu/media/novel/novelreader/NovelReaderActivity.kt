@@ -45,6 +45,7 @@ import ani.dantotsu.media.Media
 import ani.dantotsu.media.MediaNameAdapter
 import ani.dantotsu.util.customAlertDialog
 import ani.dantotsu.parsers.novel.lnreader.LNReaderBook
+import ani.dantotsu.parsers.novel.lnreader.LNReaderEpub
 import ani.dantotsu.parsers.novel.lnreader.LNReaderReadState
 import ani.dantotsu.parsers.novel.lnreader.LNReaderSession
 import ani.dantotsu.util.Logger
@@ -84,6 +85,7 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
+import java.util.Locale
 import java.util.Timer
 import java.util.TimerTask
 import kotlin.math.roundToInt
@@ -143,6 +145,14 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
 
         /** How long to wait for the reader library to report a book open, or fail it. */
         private const val LOAD_TIMEOUT_MS = 25_000L
+
+        /**
+         * The wash behind the sentence being read aloud.
+         *
+         * Translucent, and the text keeps its own colour: the page is painted from whichever theme
+         * the user picked, and a fixed pair of colours would be unreadable on half of them.
+         */
+        private const val HIGHLIGHT_COLOUR = "rgba(255, 193, 7, 0.38)"
 
         /**
          * The themes that exist before a book is open.
@@ -215,6 +225,13 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
         // still loading when the reader is closed must not fire it at a dead window.
         loadWatchdog?.let { binding.bookReader.removeCallbacks(it) }
         loadWatchdog = null
+        // Both callbacks close over this activity, and speech deliberately outlives it: leaving
+        // them attached would keep a destroyed reader alive and send page moves to a dead window.
+        // Cleared rather than stopped, so listening carries on without them — [NovelTts] falls back
+        // to loading chapters itself once there is nothing on screen to do it.
+        if (NovelTts.onFollow === ttsFollow) NovelTts.onFollow = null
+        if (NovelTts.onRequestChapter === ttsRequestChapter) NovelTts.onRequestChapter = null
+        if (NovelTts.onHighlight === ttsHighlight) NovelTts.onHighlight = null
         super.onDestroy()
     }
 
@@ -322,13 +339,19 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
         }
 
         setUpMoreMenu()
+        setUpTts()
 
         binding.novelReaderSlider.addOnSliderTouchListener(object : Slider.OnSliderTouchListener {
             override fun onStartTrackingTouch(slider: Slider) {
             }
 
             override fun onStopTrackingTouch(slider: Slider) {
-                binding.bookReader.gotoFraction(slider.value.toDouble())
+                val fraction = slider.value.toDouble()
+                binding.bookReader.gotoFraction(fraction)
+                // While a chapter is being read aloud the bar is where the *voice* is, so dragging
+                // it has to move the voice. Moving only the page would leave the two in different
+                // places, and following along would drag the page straight back.
+                NovelTts.seekToFraction(fraction)
             }
         })
 
@@ -384,6 +407,244 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
             popup.show()
         }
     }
+
+    // region Text to speech
+
+    /** The book text speech is working from, so a reload can be told apart from a chapter change. */
+    private var ttsBookKey: String = ""
+
+    /** How far through the book the reader itself is, for speech to start from. */
+    private var lastFraction = 0.0
+
+    /**
+     * The callbacks this reader gave [NovelTts], so it only ever takes back its own.
+     *
+     * Reopening the reader from the playback notification can build a second one before the first
+     * is torn down, and clearing the field blindly would leave the reader that is actually on
+     * screen unable to follow the voice.
+     */
+    private var ttsFollow: ((Double) -> Unit)? = null
+    private var ttsRequestChapter: ((Int) -> Unit)? = null
+    private var ttsHighlight: ((Int?) -> Unit)? = null
+
+    /**
+     * Lights up the sentence being spoken, and puts out the one before it.
+     *
+     * The text is rendered inside the reader's page, so the change has to be made from script;
+     * there is no Kotlin-side handle on it. What is being marked was put there when the book was
+     * packaged — [ani.dantotsu.parsers.novel.lnreader.LNReaderEpub] tags every sentence — so this
+     * only has to name one.
+     *
+     * Reached through the reader's own `getContents()`, which hands back the document of each
+     * rendered section. Walking the page for frames instead finds nothing: the renderer keeps them
+     * in a shadow root opened in *closed* mode, which is unreachable from outside by design — not
+     * a permission problem, so there is no error to notice either. That was the first attempt, and
+     * it silently did nothing.
+     *
+     * The colour is set inline rather than through the linked stylesheet. Both would work, but the
+     * stylesheet route depends on the book's own CSS having loaded and on the renderer's injected
+     * styles not winning, and neither is something this can check. The class is kept only as the
+     * handle for finding what to put out again.
+     */
+    private fun highlightSentence(marker: Int?) {
+        if (!loaded) return
+        // An integer, so it cannot carry anything that needs escaping into the selector.
+        val selector =
+            if (marker == null) "null" else "'[${LNReaderEpub.SENTENCE_ATTRIBUTE}=\"$marker\"]'"
+        val css = LNReaderEpub.CURRENT_SENTENCE_CLASS
+        val script = """
+            (function (selector) {
+              try {
+                var contents = [];
+                try { contents = view.renderer.getContents() || []; } catch (e) { return; }
+                for (var i = 0; i < contents.length; i++) {
+                  var doc = contents[i] && contents[i].doc;
+                  if (!doc) continue;
+                  try {
+                    var lit = doc.getElementsByClassName('$css');
+                    while (lit.length) {
+                      lit[0].style.backgroundColor = '';
+                      lit[0].style.borderRadius = '';
+                      lit[0].classList.remove('$css');
+                    }
+                    if (!selector) continue;
+                    var now = doc.querySelectorAll(selector);
+                    for (var j = 0; j < now.length; j++) {
+                      now[j].classList.add('$css');
+                      now[j].style.backgroundColor = '$HIGHLIGHT_COLOUR';
+                      now[j].style.borderRadius = '2px';
+                    }
+                  } catch (e) {}
+                }
+              } catch (e) {}
+            })($selector);
+        """.trimIndent()
+        tryWith { binding.bookReader.evaluateJavascript(script, null) }
+    }
+
+    private fun setUpTts() {
+        binding.novelReaderTts.setSafeOnClickListener { toggleTts() }
+        binding.novelReaderTtsPlay.setOnClickListener { NovelTts.toggle() }
+        binding.novelReaderTtsNext.setOnClickListener { NovelTts.next() }
+        binding.novelReaderTtsPrevious.setOnClickListener { NovelTts.previous() }
+        binding.novelReaderTtsClose.setOnClickListener { NovelTts.stop() }
+        binding.novelReaderTtsSettings.setSafeOnClickListener {
+            NovelTtsSettingsBottomSheet.newInstance()
+                .show(supportFragmentManager, NovelTtsSettingsBottomSheet.TAG)
+        }
+
+        // Moving the page to keep up with the voice, and loading the chapter it moves on to. Both
+        // are set only while this reader is alive: with no window on screen, [NovelTts] does the
+        // same work quietly by itself, which is what keeps playback going after the reader is shut.
+        val follow: (Double) -> Unit = { fraction ->
+            runOnUiThread {
+                if (loaded && !chapterLoading) binding.bookReader.gotoFraction(fraction)
+            }
+        }
+        val request: (Int) -> Unit = { index -> runOnUiThread { changeChapter(index) } }
+        val highlight: (Int?) -> Unit = { marker -> runOnUiThread { highlightSentence(marker) } }
+        ttsFollow = follow
+        ttsRequestChapter = request
+        ttsHighlight = highlight
+        NovelTts.onFollow = follow
+        NovelTts.onRequestChapter = request
+        NovelTts.onHighlight = highlight
+
+        scope.launch {
+            NovelTts.state.collect { state -> renderTts(state) }
+        }
+    }
+
+    private fun renderTts(state: NovelTtsState) {
+        binding.novelReaderTtsBar.isVisible = state.active
+        binding.novelReaderTts.alpha = if (state.active) 1f else 0.6f
+        if (!state.active) return
+
+        binding.novelReaderTtsPlay.setImageResource(
+            if (state.playing) R.drawable.ic_round_pause_24 else R.drawable.ic_round_play_arrow_24
+        )
+        binding.novelReaderTtsPlay.contentDescription =
+            getString(if (state.playing) R.string.pause else R.string.play)
+        binding.novelReaderTtsSentence.text =
+            if (state.preparing) getString(R.string.novel_tts_preparing) else state.sentence
+        binding.novelReaderTtsStatus.text =
+            if (state.total > 0) "${state.index + 1} / ${state.total}" else ""
+    }
+
+    /**
+     * Starts reading aloud, or stops.
+     *
+     * Reading the text takes a moment — the book has to be unpacked and broken into sentences — so
+     * it happens off the main thread even though the file is local and small; a chapter is quick
+     * but a downloaded novel is a whole book.
+     */
+    private fun toggleTts() {
+        if (NovelTts.isActive) {
+            NovelTts.stop()
+            return
+        }
+        if (!loaded) {
+            snackString(getString(R.string.novel_tts_not_ready))
+            return
+        }
+        val source = intent.data ?: return
+        binding.progress.visibility = View.VISIBLE
+        scope.launch {
+            val locale = bookLocale()
+            val script = withContext(Dispatchers.IO) {
+                NovelTtsText.read(this@NovelReaderActivity, currentBookUri ?: source, locale)
+            }
+            binding.progress.visibility = View.GONE
+            if (script.isEmpty) {
+                snackString(getString(R.string.novel_tts_no_text))
+                return@launch
+            }
+            // Distinguishes the two ways highlighting can come to nothing: no tagged sentences in
+            // the book at all, or tagged sentences the reader could not reach.
+            Logger.log(
+                "Novel TTS: ${script.size} sentences, " +
+                        "${script.sentences.count { it.marker != null }} tagged for highlighting"
+            )
+            ttsBookKey = currentBookKey()
+            NovelTts.start(
+                context = this@NovelReaderActivity,
+                script = script,
+                bookKey = ttsBookKey,
+                bookUri = currentBookUri ?: intent.data,
+                locale = locale,
+                fraction = lastFraction,
+                chapterTitle = currentChapterTitle(),
+                novelTitle = LNReaderSession.media?.userPreferredName
+                    ?: LNReaderSession.novel?.name
+                    ?: book.title.orEmpty(),
+            )
+        }
+    }
+
+    /**
+     * Hands the newly opened book's text to speech, if it is running.
+     *
+     * Called for every book that loads. When speech asked for this chapter it already has the text
+     * and [NovelTts.adopt] ignores it; when the user moved somewhere else, this is what makes the
+     * voice follow rather than carry on reading a chapter that is no longer on screen.
+     */
+    private fun handOverToTts() {
+        if (!NovelTts.isActive) return
+        val source = currentBookUri ?: intent.data ?: return
+        val key = currentBookKey()
+        if (key == ttsBookKey) return
+        scope.launch {
+            val locale = bookLocale()
+            val script = withContext(Dispatchers.IO) {
+                NovelTtsText.read(this@NovelReaderActivity, source, locale)
+            }
+            ttsBookKey = key
+            NovelTts.adopt(
+                context = this@NovelReaderActivity,
+                key = key,
+                bookUri = source,
+                chapterTitle = currentChapterTitle(),
+                script = script,
+                locale = locale,
+            )
+        }
+    }
+
+    /**
+     * The language to break sentences and pick a voice by.
+     *
+     * A book states its own, and for one built here that is the plugin's language rather than a
+     * guess. Where it is missing or unusable the device's language is no worse than any other
+     * assumption.
+     */
+    private fun bookLocale(): Locale = runCatching {
+        // A book may declare several languages — a translation can carry both — and the first is
+        // the one the text is in.
+        val tag = book.language?.firstOrNull { it.isNotBlank() }
+            ?: return@runCatching Locale.getDefault()
+        Locale.forLanguageTag(tag).takeIf { it.language.isNotBlank() } ?: Locale.getDefault()
+    }.getOrDefault(Locale.getDefault())
+
+    private fun currentChapterTitle(): String =
+        LNReaderSession.chapterAt(LNReaderSession.currentIndex)?.name
+            ?: binding.novelReaderChapterSelect.selectedItem?.toString()
+            ?: book.title.orEmpty()
+
+    /**
+     * Identifies the open book for speech.
+     *
+     * The built chapter's path where there is one, because that is also what the notification needs
+     * to reopen the reader; otherwise whatever URI it was opened from, which at least distinguishes
+     * one book from another.
+     */
+    private fun currentBookKey(): String =
+        currentBookFile?.absolutePath ?: intent.data?.toString().orEmpty()
+
+    /** The chapter file this reader built, when it built one. */
+    private var currentBookFile: File? = null
+    private var currentBookUri: Uri? = null
+
+    // endregion Text to speech
 
     private fun takeScreenshot() {
         // The controls are drawn over the page, so they would end up in the capture.
@@ -509,6 +770,8 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
                 val uri = FileProvider.getUriForFile(
                     this@NovelReaderActivity, "$packageName.provider", epub
                 )
+                currentBookFile = epub
+                currentBookUri = uri
                 binding.bookReader.openBook(uri)
                 startLoadWatchdog()
                 markSessionChapterRead()
@@ -521,6 +784,9 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
                 chapterLoading = false
                 binding.progress.visibility = View.GONE
                 Logger.log("LNReader chapter switch failed: ${it.message}")
+                // Speech may be the reason this chapter was asked for, and it waits for the book to
+                // arrive before saying anything else. Without this it would wait forever.
+                NovelTts.chapterLoadFailed()
                 snackString(it.message ?: getString(R.string.failed_to_load))
             }
         }
@@ -615,6 +881,10 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
         binding.progress.visibility = View.GONE
         loaded = true
         chapterLoading = false
+        // After `loaded`, since reading the text is dispatched and comes back to a reader that has
+        // to be ready to be told where to go.
+        runCatching { handOverToTts() }
+            .onFailure { Logger.log("Novel TTS: could not pick up the new book — ${it.message}") }
     }
 
     private fun bindLoadedBook(book: Book) {
@@ -722,6 +992,11 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
         // Anything that actually moved means the end is no longer where it was thought to be.
         if (info.cfi != currentCfi) reachedEnd = false
         currentCfi = info.cfi
+        // Where speech would start from if it were switched on now — which is the only thing this
+        // is for, so it is left alone once speech is running. That also settles the feedback
+        // question: every move while reading aloud is either the voice's own or a seek that has
+        // already been sent to it, and neither should be mistaken for a new starting point.
+        if (!NovelTts.isActive) lastFraction = info.fraction
         binding.novelReaderSlider.value = info.fraction.toFloat()
         updatePageNumber(info)
         // During a session the picker tracks the novel's chapters, not this book's single-entry

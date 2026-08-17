@@ -458,6 +458,8 @@ object SettingsSearch {
 
         l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.backup_max_block_size, R.string.reader_settings, IC_READER, anchorViewId = R.id.LNmaxBlockSize)
 
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.novel_tts, R.string.reader_settings, IC_READER, R.string.novel_tts_desc, anchorViewId = R.id.LNtextToSpeech, keywordsRes = R.string.search_kw_novel_tts)
+
         l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.lock_screen_rotation, R.string.reader_settings, IC_READER, anchorViewId = R.id.LNlockRotation, keywordsRes = R.string.search_kw_novel_lock_rotation)
 
         l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.hide_page_numbers, R.string.reader_settings, IC_READER, anchorViewId = R.id.LNhidePageNumbers, keywordsRes = R.string.search_kw_novel_hide_page_numbers)

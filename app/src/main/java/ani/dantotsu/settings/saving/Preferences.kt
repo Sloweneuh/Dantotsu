@@ -314,6 +314,17 @@ enum class PrefName(val data: Pref) {
     LockRotationNovel(Pref(Location.NovelReader, Boolean::class, false)),
     HidePageNumbersNovel(Pref(Location.NovelReader, Boolean::class, false)),
 
+    // Text-to-speech, for reading a novel aloud. Speed and pitch are the engine's own scales, where
+    // 1 is the voice's natural rate. Voice and engine are stored by the identifiers the platform
+    // reports; a blank one means "whatever the device is set up with", which is what most people
+    // want and the only thing that can be assumed to exist.
+    NovelTtsSpeed(Pref(Location.NovelReader, Float::class, 1f)),
+    NovelTtsPitch(Pref(Location.NovelReader, Float::class, 1f)),
+    NovelTtsVoice(Pref(Location.NovelReader, String::class, "")),
+    NovelTtsEngine(Pref(Location.NovelReader, String::class, "")),
+    NovelTtsAutoNextChapter(Pref(Location.NovelReader, Boolean::class, true)),
+    NovelTtsFollowText(Pref(Location.NovelReader, Boolean::class, true)),
+
     //Irrelevant
     Incognito(Pref(Location.Irrelevant, Boolean::class, false)),
     OfflineMode(Pref(Location.Irrelevant, Boolean::class, false)),
