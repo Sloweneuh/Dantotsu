@@ -1482,6 +1482,8 @@
     <string name="novel_tts_sleep_timer">Minuteur de veille</string>
     <string name="novel_tts_sleep_off">Désactivé</string>
     <string name="novel_tts_sleep_minutes">%1$d minutes</string>
+    <string name="novel_tts_voice_female">Voix féminine</string>
+    <string name="novel_tts_voice_male">Voix masculine</string>
     <string name="novel_tts_quality_high">haute qualité</string>
     <string name="novel_tts_quality_low">basse qualité</string>
     <string name="novel_tts_online">en ligne</string>

@@ -181,9 +181,11 @@ class NovelTtsSettingsBottomSheet : BottomSheetDialogFragment() {
         val matching = all.filter { it.locale?.language == language.language }
         voices = (matching.ifEmpty { all })
             .filterNot { it.isNetworkConnectionRequired && it.features?.contains("notInstalled") == true }
-            .sortedBy { it.name }
+            // Grouped by the language they will be shown under, so the list reads in the order it
+            // is labelled rather than in the order the identifiers happen to sort.
+            .sortedWith(compareBy({ it.locale?.displayName.orEmpty() }, { it.name }))
 
-        val labels = listOf(getString(R.string.novel_tts_system_default)) + voices.map { label(it) }
+        val labels = listOf(getString(R.string.novel_tts_system_default)) + describe(voices)
         val saved = PrefManager.getVal<String>(PrefName.NovelTtsVoice)
         val selected = voices.indexOfFirst { it.name == saved }.let { if (it < 0) 0 else it + 1 }
 
@@ -202,20 +204,138 @@ class NovelTtsSettingsBottomSheet : BottomSheetDialogFragment() {
     }
 
     /**
-     * A voice's name is an identifier, not a label — "en-gb-x-gbb-local" and the like — so it is
-     * shown with its locale and quality in front to make the list navigable.
+     * Turns the platform's voice list into something a person can choose between.
+     *
+     * A voice's `name` is an identifier, not a label — "en-AU-language",
+     * "en-us-x-sfg#female_1-local", "en-US-JennyNeural" — and putting it on screen was barely
+     * better than showing nothing: it is the engine's internal handle, it is never localised, and
+     * its shape changes from one engine to the next. [persona] reads out of it whatever a person
+     * would actually recognise the voice by, and the rest is dropped.
+     *
+     * Numbering separates only what is left over. Two voices for one language with nothing to tell
+     * them apart become "1" and "2", which says no less than the identifiers did and can be read
+     * aloud by the person choosing. What gets stored is still the identifier, so relabelling a
+     * voice never silently changes which one is selected.
      */
-    private fun label(voice: Voice): String {
-        val locale = voice.locale?.displayName.orEmpty()
-        val quality = when {
-            voice.quality >= Voice.QUALITY_VERY_HIGH -> getString(R.string.novel_tts_quality_high)
-            voice.quality <= Voice.QUALITY_LOW -> getString(R.string.novel_tts_quality_low)
-            else -> ""
+    private fun describe(voices: List<Voice>): List<String> {
+        val bases = voices.map { base(it) }
+        val totals = bases.groupingBy { it }.eachCount()
+        val seen = HashMap<String, Int>()
+        return voices.mapIndexed { position, voice ->
+            val base = bases[position]
+            val name = if (totals.getValue(base) > 1) {
+                val nth = (seen[base] ?: 0) + 1
+                seen[base] = nth
+                "$base $nth"
+            } else base
+            val tags = listOfNotNull(
+                when {
+                    voice.quality >= Voice.QUALITY_VERY_HIGH ->
+                        getString(R.string.novel_tts_quality_high)
+                    voice.quality <= Voice.QUALITY_LOW ->
+                        getString(R.string.novel_tts_quality_low)
+                    else -> null
+                },
+                if (voice.isNetworkConnectionRequired) getString(R.string.novel_tts_online) else null,
+            )
+            if (tags.isEmpty()) name else "$name (${tags.joinToString(", ")})"
         }
-        val network = if (voice.isNetworkConnectionRequired) getString(R.string.novel_tts_online) else ""
-        val tags = listOf(quality, network).filter { it.isNotBlank() }
-        val suffix = if (tags.isEmpty()) "" else " (${tags.joinToString(", ")})"
-        return if (locale.isBlank()) "${voice.name}$suffix" else "$locale — ${voice.name}$suffix"
+    }
+
+    /**
+     * The language as a person would say it, plus whatever the identifier gives away.
+     *
+     * Falls back to the identifier only for a voice that declares no locale and yields no name,
+     * where there is genuinely nothing else to call it.
+     */
+    private fun base(voice: Voice): String {
+        val locale = voice.locale?.displayName?.takeIf { it.isNotBlank() }
+        val descriptor = persona(voice) ?: gender(voice)
+        return when {
+            locale == null -> descriptor ?: voice.name
+            descriptor == null -> locale
+            else -> "$locale · $descriptor"
+        }
+    }
+
+    /**
+     * The name a person would recognise a voice by, dug out of the identifier.
+     *
+     * Engines disagree completely about what they put in a voice's name. Microsoft's carry a
+     * persona - "en-US-JennyNeural", or that same name wrapped up as "Microsoft Server Speech Text
+     * to Speech Voice (en-US, JennyNeural)" - while Google's carry a locale, an opaque variant code
+     * and sometimes a gender, and eSpeak's carry nothing but a language tag.
+     *
+     * Numbering alone coped with the ones that say nothing and failed the ones that say something:
+     * a Microsoft engine offers a dozen named voices for a single language, and every one of them
+     * came out as "English (United States)" followed by a number.
+     *
+     * Null when the identifier really does hold no name, which is where numbering takes over.
+     */
+    private fun persona(voice: Voice): String? {
+        var raw = voice.name.trim()
+        if (raw.isEmpty()) return null
+        // Azure's long form puts the real name last inside brackets, after the locale.
+        Regex("[(]([^)]*)[)]").findAll(raw).lastOrNull()?.groupValues?.getOrNull(1)
+            ?.takeIf { it.contains(',') }
+            ?.let { raw = it.substringAfterLast(',').trim() }
+        val candidate =
+            if (raw.contains(' ')) raw.split(' ', '-', '_', ',', '(', ')').firstOrNull(::usable)
+            else fromSegments(raw)
+        return candidate?.let(::tidy)
+    }
+
+    /** Worth showing: a word long enough to be a name, that is not one of the engine's own. */
+    private fun usable(part: String) =
+        part.length >= 3 && part.all(Char::isLetter) && part.lowercase(Locale.ROOT) !in NOISE
+
+    /**
+     * Reads a hyphenated identifier, stepping over the language tag it opens with.
+     *
+     * The private-use subtag - "x" and the code following it, as in "en-au-x-aua-local" - is
+     * skipped as a pair: it names a voice to the engine and says nothing to anyone else.
+     */
+    private fun fromSegments(raw: String): String? {
+        val parts = raw.split('-', '_').filter { it.isNotEmpty() }
+        var index = 0
+        while (index < parts.size && parts[index].isLanguageTag()) index++
+        if (index < parts.size && parts[index].equals("x", ignoreCase = true)) index += 2
+        return parts.drop(index).firstOrNull(::usable)
+    }
+
+    private fun String.isLanguageTag() =
+        (length in 2..4 && all(Char::isLetter)) || (length == 3 && all(Char::isDigit))
+
+    /** Strips what an engine appends to a name to advertise its own technology. */
+    private fun tidy(candidate: String): String? {
+        var name = candidate.substringBefore('#').trim()
+        var trimmed = true
+        // Repeatedly, because they stack: "AvaMultilingualNeural" is a name with two of them.
+        while (trimmed) {
+            trimmed = false
+            SUFFIXES.forEach { suffix ->
+                if (name.length > suffix.length && name.endsWith(suffix, ignoreCase = true)) {
+                    name = name.dropLast(suffix.length)
+                    trimmed = true
+                }
+            }
+        }
+        return name.takeIf(::usable)?.replaceFirstChar { it.titlecase(Locale.ROOT) }
+    }
+
+    /**
+     * Gender, where the identifier offers that instead of a name.
+     *
+     * How Google tells its voices apart, and so the fallback rather than the rule.
+     */
+    private fun gender(voice: Voice): String? {
+        val raw = voice.name.lowercase(Locale.ROOT)
+        return when {
+            // "female" ends in "male", so testing for it first is the whole of this test.
+            raw.contains("female") -> getString(R.string.novel_tts_voice_female)
+            raw.contains("male") -> getString(R.string.novel_tts_voice_male)
+            else -> null
+        }
     }
 
     /**
@@ -264,6 +384,19 @@ class NovelTtsSettingsBottomSheet : BottomSheetDialogFragment() {
     }
 
     companion object {
+        /** Words an engine puts in a voice name that name the engine, not the voice. */
+        private val NOISE = setOf(
+            "language", "local", "network", "default", "standard", "desktop", "mobile",
+            "compact", "embedded", "microsoft", "google", "samsung", "acapela", "ivona",
+            "espeak", "vocalizer", "pico", "svox", "server", "speech", "text", "to",
+            "voice", "tts", "engine",
+        )
+
+        /** Technology labels appended to a name, longest first so the longer match wins. */
+        private val SUFFIXES = listOf(
+            "Multilingual", "Neural2", "Neural", "Standard", "Wavenet", "Desktop", "Voice",
+        )
+
         const val TAG = "NovelTtsSettingsBottomSheet"
         fun newInstance() = NovelTtsSettingsBottomSheet()
     }

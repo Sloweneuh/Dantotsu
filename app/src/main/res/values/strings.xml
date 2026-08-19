@@ -1458,6 +1458,8 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="novel_tts_sleep_timer">Sleep timer</string>
     <string name="novel_tts_sleep_off">Off</string>
     <string name="novel_tts_sleep_minutes">%1$d minutes</string>
+    <string name="novel_tts_voice_female">Female</string>
+    <string name="novel_tts_voice_male">Male</string>
     <string name="novel_tts_quality_high">high quality</string>
     <string name="novel_tts_quality_low">low quality</string>
     <string name="novel_tts_online">online</string>
