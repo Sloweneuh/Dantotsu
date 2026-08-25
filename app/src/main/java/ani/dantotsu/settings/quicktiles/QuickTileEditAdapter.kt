@@ -217,7 +217,10 @@ class QuickTileEditAdapter(
         // places instead of blinking there.
         val position = rows.indexOfFirst { it is Row.Placed && it.placed === target }
         rows = buildRows()
-        if (position >= 0) notifyItemChanged(position) else rebuild()
+        if (position >= 0) {
+            notifyItemChanged(position)
+            refreshDecorations()
+        } else rebuild()
     }
 
     override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
@@ -250,6 +253,18 @@ class QuickTileEditAdapter(
             add(Row.Category(category))
             tiles.forEach { add(Row.Shelf(it)) }
         }
+    }
+
+    /**
+     * Re-asks the border decoration for its insets.
+     *
+     * Only a rebind refreshes an item's cached decoration insets, and a move or a span change
+     * rebinds nothing — so the tile that used to open or close the arrangement kept the padding
+     * that belongs to the first and last rows, leaving a gap in the middle of the grid and none
+     * at its edge. A full [rebuild] rebinds everything and needs no help.
+     */
+    private fun refreshDecorations() {
+        recycler?.invalidateItemDecorations()
     }
 
     private fun rebuild() {
@@ -496,8 +511,10 @@ class QuickTileEditAdapter(
             // The pill's centre: the tile's trailing edge, halfway down.
             val centreX = view.right - GUTTER_DP.dpToPx(rv)
             val centreY = view.top + view.height / 2f
-            val reach = HANDLE_REACH_DP.dpToPx(rv)
-            if (abs(e.x - centreX) > reach || abs(e.y - centreY) > reach) return false
+            // Kept to the tile's own row: a reach past it would answer for touches on the row
+            // below, which owns those pixels.
+            if (abs(e.y - centreY) > view.height / 2f) return false
+            if (abs(e.x - centreX) > HANDLE_REACH_DP.dpToPx(rv)) return false
 
             target = chosen
             targetPosition = position
@@ -597,9 +614,16 @@ class QuickTileEditAdapter(
                 return false
             }
             dropOntoShelf = null
+            // Once per drag, before the first move: undo should step back over the whole gesture
+            // rather than each hop of it, and the arrangement is written out as the finger lifts.
+            if (!reorderRecorded) {
+                snapshot()
+                reorderRecorded = true
+            }
             placed.add(to, placed.removeAt(from))
             rows = buildRows()
             notifyItemMoved(from, to)
+            refreshDecorations()
             return true
         }
 
@@ -608,10 +632,20 @@ class QuickTileEditAdapter(
             val removed = dropOntoShelf
             dropOntoShelf = null
             if (removed != null && !reorderRecorded) snapshot()
+            val reordered = reorderRecorded
             reorderRecorded = false
             if (removed != null && placed.remove(removed)) {
                 viewHolder.itemView.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
                 if (selected === removed) select(null)
+                rebuild()
+            } else if (reordered) {
+                // Lay the grid out from scratch once the finger is up.
+                //
+                // Each hop of a drag is a notifyItemMoved, which leaves the row heights to be
+                // patched up from the previous layout rather than recomputed. A drag that crosses
+                // between two rows repeatedly compounds those patches, and the rows drift further
+                // apart the longer it goes on. A rebuild costs one relayout at the end of a
+                // gesture and puts the grid back on the geometry the arrangement actually implies.
                 rebuild()
             }
             onArrangementChanged(placed)
@@ -638,8 +672,12 @@ class QuickTileEditAdapter(
          * How far from the pill a touch still counts as grabbing it. Deliberately larger than the
          * pill and reaching past the tile into the gutter and the neighbour's edge, which is the
          * whole reason this is measured against the list rather than the handle view.
+         *
+         * It has to stop well short of the neighbour's middle, though: the list claims the whole
+         * gesture here, so anything this box covers can no longer be tapped to select or dragged
+         * to reorder. At 40dp it took most of the tile beside the selected one with it.
          */
-        const val HANDLE_REACH_DP = 40
+        const val HANDLE_REACH_DP = 22
 
         // Timed off a screen recording of the Android 17 panel resizing a tile: the bulk of the
         // motion runs ~300ms, followed by a long sub-pixel settle that gives away a spring. The

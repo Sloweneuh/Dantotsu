@@ -3,6 +3,8 @@ package ani.dantotsu.settings.quicktiles
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
 import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.ItemTouchHelper
+import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.databinding.ViewTilePanelBinding
 
 /**
@@ -19,6 +21,14 @@ class TilePanelController(
     private val offline: Boolean,
 ) {
     private var editing = false
+
+    // The editor is built fresh on every entry into edit mode, and its gesture handling lives on
+    // the RecyclerView rather than on the adapter. Held so the previous pass can be taken off:
+    // touch listeners, unlike the adapter and the decorations, stack up. A stale pair kept the
+    // first claim on every gesture and wrote its own out-of-date arrangement back to the
+    // catalogue, which is what made a second visit to the editor stop responding.
+    private var editTouchListener: RecyclerView.OnItemTouchListener? = null
+    private var editTouchHelper: ItemTouchHelper? = null
 
     fun attach() {
         showPages()
@@ -62,6 +72,7 @@ class TilePanelController(
 
     private fun setEditing(value: Boolean) {
         editing = value
+        detachEditor()
         updateFooterVisibility()
         binding.quickTilesPager.isVisible = !value
         binding.quickTilesIndicator.isVisible =
@@ -89,7 +100,13 @@ class TilePanelController(
         binding.quickTilesReset.setOnClickListener { editor.reset() }
         binding.quickTilesUndo.setOnClickListener { editor.undo() }
 
-        val manager = GridLayoutManager(binding.root.context, QUICK_TILE_COLUMNS)
+        // Predictive animations off: they run a pre-layout pass over the positions as they were
+        // before the change, and a tile whose position cannot be mapped back is assumed to span a
+        // single column. With tiles of two widths that guess puts the pre-layout row boundaries
+        // somewhere the real ones are not, and the grid is left holding rows it does not need.
+        val manager = object : GridLayoutManager(binding.root.context, QUICK_TILE_COLUMNS) {
+            override fun supportsPredictiveItemAnimations() = false
+        }
         manager.spanSizeLookup = editor.spanSizeLookup()
         binding.quickTilesEditor.layoutManager = manager
         binding.quickTilesEditor.adapter = editor
@@ -99,8 +116,20 @@ class TilePanelController(
         binding.quickTilesEditor.addItemDecoration(QuickTileArrangementBorder(editor))
         // Before the drag helper: the first listener to claim a gesture keeps it, and a touch on
         // the resize handle must not turn into a reorder drag.
-        binding.quickTilesEditor.addOnItemTouchListener(editor.handleTouchListener())
-        editor.touchHelper().attachToRecyclerView(binding.quickTilesEditor)
+        editTouchListener = editor.handleTouchListener().also {
+            binding.quickTilesEditor.addOnItemTouchListener(it)
+        }
+        editTouchHelper = editor.touchHelper().also {
+            it.attachToRecyclerView(binding.quickTilesEditor)
+        }
+    }
+
+    /** Unhooks the previous editor's gesture handling, so only the live one sees touches. */
+    private fun detachEditor() {
+        editTouchListener?.let { binding.quickTilesEditor.removeOnItemTouchListener(it) }
+        editTouchListener = null
+        editTouchHelper?.attachToRecyclerView(null)
+        editTouchHelper = null
     }
 }
 
