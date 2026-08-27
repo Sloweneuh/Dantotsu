@@ -329,18 +329,48 @@ abstract class AnimeHttpSource : AnimeCatalogueSource {
         return hosterListParse(response)
     }
 
-    private val supportsHosterApi: Boolean by lazy {
+    private val supportsHosterApi: Boolean by lazy { overridesResponseParser("hosterListParse") }
+
+    private val supportsVideoListParse: Boolean by lazy { overridesResponseParser("videoListParse") }
+
+    /**
+     * Whether the extension (rather than this base class) declares `name(Response)`. Walking the
+     * hierarchy matters: overrides often come from an intermediate template base class
+     * (AnimeStream, DooPlay), which `javaClass.declaredMethods` alone would miss.
+     */
+    private fun overridesResponseParser(name: String): Boolean =
         generateSequence(javaClass as Class<*>) { it.superclass }
             .takeWhile { it != AnimeHttpSource::class.java }
             .any { cls ->
                 try {
-                    cls.getDeclaredMethod("hosterListParse", Response::class.java)
+                    cls.getDeclaredMethod(name, Response::class.java)
                     true
                 } catch (_: NoSuchMethodException) {
                     false
                 }
             }
+
+    /**
+     * Resolves a lazy [Hoster] — one that carried no [Hoster.videoList] — into its videos.
+     * Extensions on the v16 API override this. The fallback covers hoster-API extensions that
+     * left video parsing to the older [videoListParse]; without it the base [AnimeSource]
+     * implementation just throws and the caller drops the hoster from the list entirely.
+     */
+    override suspend fun getVideoList(hoster: Hoster): List<Video> {
+        hoster.videoList?.let { return it }
+        if (!supportsVideoListParse || hoster.hosterUrl.isBlank()) {
+            throw IllegalStateException("Not used")
+        }
+        val response = client.newCall(GET(hoster.hosterUrl, headers)).awaitSuccess()
+        return videoListParse(response)
     }
+
+    /**
+     * Applies the extension's own [sort] to a video list obtained outside [getVideoList].
+     * The hoster API hands videos back through [getVideoList] (Hoster), which never runs [sort],
+     * so without this the source's ordering and filtering preferences are silently dropped.
+     */
+    fun sortVideos(videos: List<Video>): List<Video> = videos.sort()
 
     /**
      * Returns the request used to fetch the hoster list. Defaults to the same URL

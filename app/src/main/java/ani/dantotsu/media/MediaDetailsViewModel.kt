@@ -616,12 +616,14 @@ class MediaDetailsViewModel : ViewModel() {
             watchSources?.get(i)?.apply {
                 if (!post && !allowsPreloading) return@apply
                 ep.sEpisode?.let {
-                    loadByVideoServers(link, ep.extra, it) { extractor ->
-                        if (extractor.videos.isNotEmpty()) {
-                            list.add(extractor)
-                            ep.extractorCallback?.invoke(extractor)
-                        }
+                    // The servers load concurrently, so the callback fires in whatever order the
+                    // network answers in. Build the list from the ordered return value instead:
+                    // that order is the source's own server preference, and appending here is
+                    // what used to throw it away (fastest server first, different every load).
+                    val ordered = loadByVideoServers(link, ep.extra, it) { extractor ->
+                        if (extractor.videos.isNotEmpty()) ep.extractorCallback?.invoke(extractor)
                     }
+                    list.addAll(ordered.filter { extractor -> extractor.videos.isNotEmpty() })
                 }
                 ep.extractorCallback = null
                 if (list.isNotEmpty()) ep.allStreams = true

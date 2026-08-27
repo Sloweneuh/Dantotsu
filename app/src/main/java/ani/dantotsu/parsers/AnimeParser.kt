@@ -3,7 +3,7 @@ package ani.dantotsu.parsers
 import android.net.Uri
 import ani.dantotsu.FileUrl
 import ani.dantotsu.R
-import ani.dantotsu.asyncMap
+import ani.dantotsu.asyncMapNotNull
 import ani.dantotsu.currContext
 import ani.dantotsu.others.MalSyncBackup
 import ani.dantotsu.tryWithSuspend
@@ -106,6 +106,13 @@ abstract class AnimeParser : BaseParser() {
     /**
      * This Function used when there "isn't" a default Server set by the user, or when user wants to switch the Server
      *
+     * Returns the extractors in the order [loadVideoServers] handed the servers back. That order
+     * is the source's own preference (its "preferred server"/quality settings, and
+     * [eu.kanade.tachiyomi.animesource.model.Video.preferred]), so it has to survive the
+     * concurrent load: [callback] still fires as each server finishes, for progressive UI, but
+     * it fires in completion order. Callers that show or pick a server must build their list
+     * from the return value, never by appending in the callback.
+     *
      * Doesn't need to be overridden, if the parser is following the norm.
      * **/
     open suspend fun loadByVideoServers(
@@ -113,16 +120,22 @@ abstract class AnimeParser : BaseParser() {
         extra: Map<String, String>?,
         sEpisode: SEpisode,
         callback: (VideoExtractor) -> Unit
-    ) {
-        tryWithSuspend(true) {
-            loadVideoServers(episodeUrl, extra, sEpisode).asyncMap {
-                getVideoExtractor(it)?.apply {
+    ): List<VideoExtractor> {
+        val servers = tryWithSuspend(true) {
+            loadVideoServers(episodeUrl, extra, sEpisode)
+        } ?: return emptyList()
+        // Each server is guarded on its own: one that fails to build an extractor must not take
+        // the batch down with it, which a throw inside a shared coroutine scope would do.
+        return servers.asyncMapNotNull { server ->
+            val extractor = tryWithSuspend(true) {
+                getVideoExtractor(server)?.apply {
                     tryWithSuspend(true) {
                         load()
                     }
-                    callback.invoke(this)
                 }
-            }
+            } ?: return@asyncMapNotNull null
+            callback.invoke(extractor)
+            extractor
         }
     }
 

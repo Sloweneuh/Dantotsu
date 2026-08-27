@@ -155,10 +155,29 @@ class AnimeWatchAdapter(
         if (watchSources.names.isNotEmpty() && source in 0 until watchSources.names.size) {
             binding.mediaSource.setText(watchSources.names[source])
             watchSources[source].apply {
-                this.selectDub = media.selected!!.preferDub
                 binding.mediaSourceTitle.text = showUserText
                 showUserTextListener = { MainScope().launch { binding.mediaSourceTitle.text = it } }
-                binding.animeSourceDubbedCont.isVisible = isDubAvailableSeparately()
+                val dubSeparate = isDubAvailableSeparately()
+                binding.animeSourceDubbedCont.isVisible = dubSeparate
+                if (dubSeparate) {
+                    // Read, never write. For an Aniyomi extension `selectDub`'s setter rewrites
+                    // the source's own sub/dub preference, so assigning here would silently undo
+                    // whatever the user picked in the source's settings every time this screen
+                    // binds. The source is the authority; `preferDub` only mirrors it until the
+                    // user flips the toggle (which goes through `onDubClicked`).
+                    val sourceDub = selectDub
+                    media.selected!!.preferDub = sourceDub
+                    changing = true
+                    binding.animeSourceDubbed.isChecked = sourceDub
+                    changing = false
+                    binding.animeSourceDubbedText.text =
+                        if (sourceDub) currActivity()!!.getString(R.string.dubbed)
+                        else currActivity()!!.getString(R.string.subbed)
+                } else {
+                    // Parsers that keep `selectDub` in a plain field have nowhere else to
+                    // remember it, so they still get it pushed in from the saved selection.
+                    this.selectDub = media.selected!!.preferDub
+                }
             }
             setupBrowserButton(binding, source)
         }

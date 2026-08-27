@@ -260,14 +260,30 @@ class DynamicAnimeParser(extension: AnimeExtension.Installed) : AnimeParser() {
                     val videos = hoster.videoList ?: try {
                         httpSource.getVideoList(hoster)
                     } catch (e: IllegalStateException) {
+                        // The extension implements neither getVideoList(Hoster) nor
+                        // videoListParse, so this hoster can't be resolved. Say so: it
+                        // used to vanish from the server list with no trace.
+                        Logger.log("$name : no video resolver for hoster '${hoster.hosterName}'")
                         emptyList()
                     }
-                    videos.map { it.copy(videoTitle = "${hoster.hosterName} - ${it.videoTitle}") }
+                    // Sorted per hoster, not across the whole list: hoster order is the
+                    // source's server preference, and the extension's sort() is its quality
+                    // preference within a server. getVideoList(episode) applies sort() for
+                    // us on the legacy path; the hoster path never does.
+                    httpSource.sortVideos(videos)
+                        .map { it.copy(videoTitle = "${hoster.hosterName} - ${it.videoTitle}") }
                 }
             } else {
                 httpSource.getVideoList(sEpisode)
             }
-            allVideos.map { videoToVideoServer(it) }
+            // `Video.preferred` is the extension's explicit "play this one" marker. Stable
+            // partition so it lands first without otherwise disturbing the order above; a
+            // no-op for the extensions that never set it.
+            val ordered =
+                if (allVideos.any { it.preferred })
+                    allVideos.filter { it.preferred } + allVideos.filterNot { it.preferred }
+                else allVideos
+            ordered.map { videoToVideoServer(it) }
         } catch (e: Throwable) {
             Logger.log("Exception occurred: ${e.message}")
             emptyList()

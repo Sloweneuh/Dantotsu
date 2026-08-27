@@ -100,14 +100,16 @@ class OfflineAnimeParser : AnimeParser() {
         extra: Map<String, String>?,
         sEpisode: SEpisode,
         callback: (VideoExtractor) -> Unit
-    ) {
+    ): List<VideoExtractor> {
         val server = loadVideoServers(episodeUrl, extra, sEpisode).first()
-        OfflineVideoExtractor(server).apply {
-            tryWithSuspend {
-                load()
+        return listOf(
+            OfflineVideoExtractor(server).apply {
+                tryWithSuspend {
+                    load()
+                }
+                callback.invoke(this)
             }
-            callback.invoke(this)
-        }
+        )
     }
 
     override suspend fun getVideoExtractor(server: VideoServer): VideoExtractor {
