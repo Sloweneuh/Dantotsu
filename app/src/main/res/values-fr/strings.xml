@@ -195,6 +195,37 @@
         \n\n La connexion n\'est pas nécessaire pour l\'onglet d\'informations MangaBaka ni pour la liaison multi-sources entre Anilist, MangaUpdates et MyAnimeList — celles-ci fonctionnent via l\'API publique MangaBaka, connecté ou non (voir le bouton **MangaBaka** dans les paramètres **Connexions**).
         \n\n *Notez que la connexion à MangaBaka est optionnelle et n\'ajoute que la synchronisation et la comparaison de listes. Dantotsu continuera à fonctionner parfaitement sans connexion à MangaBaka.*
     </string>
+
+    <string name="anilist_account_help">Comment fonctionne AniList \?</string>
+    <string name="full_anilist_account_help">
+        AniList est le compte autour duquel Dantotsu est conçu. La connexion débloque vos listes, votre profil, votre fil d\'activité, vos notifications et l\'édition des listes, et c\'est la source à partir de laquelle tous les autres trackers se synchronisent.
+        \n\n*Tous les autres comptes de cet écran nécessitent qu\'AniList soit connecté d\'abord.*
+    </string>
+
+    <string name="kitsu_account_help">Comment fonctionne Kitsu \?</string>
+    <string name="full_kitsu_account_help">
+        Kitsu est un tracker d\'animés et de mangas. La connexion permet à Dantotsu d\'envoyer vos mises à jour de listes AniList (et MangaUpdates) vers votre bibliothèque Kitsu — statut, progression, note et dates, à sens unique.
+        \n\nActivez **Synchronisation des listes Kitsu** dans les paramètres **Synchronisation des listes**, et utilisez **Comparer les listes** pour réconcilier votre bibliothèque Kitsu existante avec AniList.
+        \n\n*Seules les nouvelles modifications sont envoyées automatiquement ; rien n\'est jamais récupéré depuis Kitsu. Le nombre de volumes n\'est pas synchronisé — Kitsu ne le suit pas par entrée.*
+    </string>
+
+    <string name="simkl_account_help">Comment fonctionne Simkl \?</string>
+    <string name="full_simkl_account_help">
+        Simkl est un tracker d\'animés et de séries. La connexion permet à Dantotsu d\'envoyer vos mises à jour de la liste d\'animés AniList vers Simkl — statut, épisodes vus et note, à sens unique. Simkl ne prend pas en charge les mangas.
+        \n\nActivez **Synchronisation des listes Simkl** dans les paramètres **Synchronisation des listes**, et utilisez **Comparer les listes** pour réconcilier votre liste d\'animés Simkl existante avec AniList.
+        \n\n*Seules les nouvelles modifications sont envoyées automatiquement ; rien n\'est jamais récupéré depuis Simkl.*
+    </string>
+
+    <string name="discord_account_help">Comment fonctionne Discord \?</string>
+    <string name="full_discord_account_help">
+        Connecter Discord permet à Dantotsu d\'afficher ce que vous regardez ou lisez dans votre Rich Presence Discord. Appuyez sur le point de statut de la tuile Discord pour basculer entre en ligne, inactif, ne pas déranger et invisible.
+        \n\n*Cela n\'a rien à voir avec la synchronisation des listes — cela ne contrôle que la Rich Presence.*
+    </string>
+
+    <string name="comick_account_help">Comment fonctionne Comick \?</string>
+    <string name="full_comick_account_help">
+        La prise en charge des comptes Comick arrivera dans une future mise à jour. Pour l\'instant, les données Comick sont utilisées de façon anonyme pour les informations sur les mangas et la liaison multi-sources — aucune connexion requise.
+    </string>
     <string name="connections_settings">Connexions</string>
     <string name="connections_desc">Activer ou désactiver les connexions externes et les onglets d\'information</string>
     <string name="disable_comick">Activer Comick</string>
@@ -472,10 +503,39 @@
     <string name="mangabaka_list_sync_desc">Envoyer les mises à jour de mangas AniList et MangaUpdates vers votre bibliothèque MangaBaka (à sens unique)</string>
     <string name="mal_list_sync">Synchronisation des listes MyAnimeList</string>
     <string name="mal_list_sync_desc">Envoyer les mises à jour de listes AniList et MangaUpdates vers votre compte MyAnimeList (à sens unique)</string>
+
+    <!-- Kitsu -->
+    <string name="kitsu">Kitsu</string>
+    <string name="login_to_kitsu">Se connecter à Kitsu</string>
+    <string name="kitsu_login_desc">Saisissez votre e-mail (ou nom d\'utilisateur) et votre mot de passe Kitsu. Dantotsu se connecte directement — votre mot de passe n\'est pas conservé après la connexion.</string>
+    <string name="kitsu_username_hint">E-mail ou nom d\'utilisateur</string>
+    <string name="kitsu_password_hint">Mot de passe</string>
+    <string name="kitsu_username_required">E-mail ou nom d\'utilisateur requis</string>
+    <string name="kitsu_password_required">Mot de passe requis</string>
+    <string name="kitsu_login_success">Connexion à Kitsu réussie</string>
+    <string name="kitsu_login_failed">Échec de la connexion. Vérifiez vos identifiants.</string>
+    <string name="kitsu_list_sync">Synchronisation des listes Kitsu</string>
+    <string name="kitsu_list_sync_desc">Envoyer les mises à jour de listes AniList et MangaUpdates vers votre bibliothèque Kitsu (à sens unique)</string>
+
+    <!-- Simkl -->
+    <string name="simkl">Simkl</string>
+    <string name="simkl_pin_title">Se connecter à Simkl</string>
+    <string name="simkl_pin_desc">Ouvrez simkl.com/pin dans votre navigateur et saisissez le code ci-dessous, puis approuvez la demande. Cet écran se ferme automatiquement.</string>
+    <string name="simkl_pin_open">Ouvrir simkl.com/pin</string>
+    <string name="simkl_pin_waiting">En attente d\'approbation…</string>
+    <string name="simkl_login_success">Connexion à Simkl réussie</string>
+    <string name="simkl_login_failed">Échec de la connexion à Simkl. Réessayez.</string>
+    <string name="simkl_not_configured">Simkl n\'est pas configuré dans cette version.</string>
+    <string name="simkl_list_sync">Synchronisation des listes Simkl</string>
+    <string name="simkl_list_sync_desc">Envoyer les mises à jour de la liste d\'animés AniList vers votre compte Simkl (à sens unique)</string>
+
+    <string name="coming_soon">Bientôt disponible</string>
+    <string name="account_open_profile">Ouvrir le profil</string>
+    <string name="discord">Discord</string>
     <string name="list_sync_settings">Synchronisation des listes</string>
     <string name="list_sync_settings_desc">Choisissez vers quels trackers vos mises à jour de listes sont envoyées</string>
     <string name="compare_lists">Comparer les listes</string>
-    <string name="compare_lists_desc">Comparez MyAnimeList et MangaBaka à vos listes source et synchronisez les différences</string>
+    <string name="compare_lists_desc">Comparez MyAnimeList, Kitsu, Simkl et MangaBaka à vos listes source et synchronisez les différences</string>
     <string name="auto_list_sync">Comparaison automatique</string>
     <string name="auto_list_sync_desc">Lancer la comparaison en arrière-plan et envoyer les différences automatiquement</string>
     <string name="auto_list_sync_frequency">Fréquence de la comparaison automatique</string>
@@ -513,7 +573,7 @@
     <string name="list_sync_up_to_date">La liste est à jour</string>
     <string name="list_compare_failed">Impossible de charger cette comparaison</string>
     <string name="list_compare_login_anilist">Connectez-vous à AniList pour comparer vos listes</string>
-    <string name="list_compare_login_trackers">Connectez-vous à MyAnimeList ou MangaBaka pour comparer les listes</string>
+    <string name="list_compare_login_trackers">Connectez-vous à MyAnimeList, Kitsu, Simkl ou MangaBaka pour comparer les listes</string>
     <string name="list_diff_status">Statut</string>
     <string name="list_diff_chapters">Chapitres</string>
     <string name="list_diff_episodes">Épisodes</string>
@@ -1855,6 +1915,10 @@
     <string name="backup_sub_mu_desc">Identifiants et jeton MangaUpdates</string>
     <string name="backup_sub_mangabaka">MangaBaka</string>
     <string name="backup_sub_mangabaka_desc">Jeton d\'accès et informations utilisateur MangaBaka</string>
+    <string name="backup_sub_kitsu">Kitsu</string>
+    <string name="backup_sub_kitsu_desc">Jeton d\'accès et informations utilisateur Kitsu</string>
+    <string name="backup_sub_simkl">Simkl</string>
+    <string name="backup_sub_simkl_desc">Jeton d\'accès et informations utilisateur Simkl</string>
     <string name="backup_sub_discord">Discord</string>
     <string name="backup_sub_app_lock">Verrouillage de l\'application</string>
     <string name="backup_sub_app_lock_desc">Mot de passe et jeton biométrique</string>
@@ -1917,6 +1981,15 @@
     <string name="backup_mangabaka_token">Jeton MangaBaka</string>
     <string name="backup_mangabaka_username">Nom d\'utilisateur MangaBaka</string>
     <string name="backup_mangabaka_user_id">Identifiant utilisateur MangaBaka</string>
+    <string name="backup_kitsu_token">Jeton Kitsu</string>
+    <string name="backup_kitsu_username">Nom d\'utilisateur Kitsu</string>
+    <string name="backup_kitsu_user_id">Identifiant utilisateur Kitsu</string>
+    <string name="backup_kitsu_slug">Identifiant d\'URL Kitsu</string>
+    <string name="backup_kitsu_avatar">Avatar Kitsu</string>
+    <string name="backup_simkl_token">Jeton Simkl</string>
+    <string name="backup_simkl_username">Nom d\'utilisateur Simkl</string>
+    <string name="backup_simkl_user_id">Identifiant utilisateur Simkl</string>
+    <string name="backup_simkl_avatar">Avatar Simkl</string>
     <string name="backup_discord_token">Jeton Discord</string>
     <string name="backup_discord_id">Identifiant utilisateur Discord</string>
     <string name="backup_discord_username">Nom d\'utilisateur Discord</string>
@@ -2049,7 +2122,7 @@
 
     <!-- Recherche dans les paramètres : termes supplémentaires par entrée, absents du libellé
          visible. Les clés correspondent à celles de values/strings.xml. -->
-    <string name="search_kw_accounts">connexion profil anilist myanimelist mangaupdates mangabaka connexions</string>
+    <string name="search_kw_accounts">connexion profil anilist myanimelist kitsu simkl mangaupdates mangabaka comick discord connexions</string>
     <string name="search_kw_theme">apparence couleur sombre clair</string>
     <string name="search_kw_common">général préférences</string>
     <string name="search_kw_anime">vidéo regarder streaming épisode</string>
@@ -2061,7 +2134,7 @@
     <string name="search_kw_enable_rpc">discord présence</string>
     <string name="search_kw_anilist_settings">anilist compte profil activité</string>
     <string name="search_kw_connections_settings">mal myanimelist malsync comick sync synchronisation suivi</string>
-    <string name="search_kw_list_sync_settings">liste sync synchronisation suivi envoyer pousser myanimelist mal mangabaka anilist mangaupdates</string>
+    <string name="search_kw_list_sync_settings">liste sync synchronisation suivi envoyer pousser myanimelist mal kitsu simkl mangabaka anilist mangaupdates</string>
     <string name="search_kw_login_to_mangabaka">mangabaka mb jeton token connexion déconnexion compte suivi</string>
     <string name="search_kw_comments_button">commentaire réponse social discussion</string>
     <string name="search_kw_airing_notifications">diffusion anime animé épisode nouveau sortie parution</string>
@@ -2077,11 +2150,13 @@
     <string name="search_kw_malsync_exclude_manage">exclure filtre filtrer non lus chapitre épisode notifications malsync</string>
     <string name="search_kw_unread_sort_label">non lus chapitres accueil tri trier ordre récent dernier mis à jour malsync mangaupdates</string>
     <string name="search_kw_customize_info_tabs">anilist anime animé manga mangaupdates info informations onglet ordre réordonner visibilité mal comick mangabaka</string>
-    <string name="search_kw_compare_lists">comparer comparaison audit différence diff différences sortie de date myanimelist mal mangabaka anilist mangaupdates sync synchronisation</string>
+    <string name="search_kw_compare_lists">comparer comparaison audit différence diff différences sortie de date myanimelist mal kitsu simkl mangabaka anilist mangaupdates sync synchronisation</string>
     <string name="search_kw_auto_list_sync">automatique auto comparer comparaison planification programmer intervalle fréquence arrière-plan fond périodique liste sync synchronisation envoyer pousser myanimelist mal mangabaka</string>
     <string name="search_kw_auto_list_sync_removals">automatique auto comparer comparaison supprimer retirer suppressions entrées tracker suivi liste sync synchronisation</string>
     <string name="search_kw_mal_list_sync">myanimelist mal liste sync synchronisation suivi anilist envoyer pousser</string>
     <string name="search_kw_mangabaka_list_sync">mangabaka mb liste sync synchronisation suivi anilist mangaupdates envoyer pousser</string>
+    <string name="search_kw_kitsu_list_sync">kitsu liste sync synchronisation suivi anilist mangaupdates envoyer pousser</string>
+    <string name="search_kw_simkl_list_sync">simkl liste sync synchronisation suivi anilist animé envoyer pousser</string>
     <string name="search_kw_theme_2">couleur schéma palette sombre clair oled auto apparence</string>
     <string name="search_kw_oled_theme_variant">amoled noir</string>
     <string name="search_kw_use_material_you">monet dynamique</string>

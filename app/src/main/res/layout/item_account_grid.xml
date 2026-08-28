@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_horizontal"
+    android:orientation="vertical"
+    android:paddingHorizontal="2dp"
+    android:paddingVertical="10dp">
+
+    <FrameLayout
+        android:id="@+id/accountAvatarFrame"
+        android:layout_width="58dp"
+        android:layout_height="58dp">
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="54dp"
+            android:layout_height="54dp"
+            android:layout_gravity="center"
+            app:cardBackgroundColor="?attr/colorSurfaceVariant"
+            app:cardCornerRadius="27dp"
+            app:cardElevation="0dp">
+
+            <!-- User photo: fills the circle. Hidden while a provider logo is shown. -->
+            <com.google.android.material.imageview.ShapeableImageView
+                android:id="@+id/accountAvatar"
+                style="@style/CircularImageView"
+                android:layout_width="54dp"
+                android:layout_height="54dp"
+                android:scaleType="centerCrop"
+                android:visibility="gone"
+                tools:ignore="ContentDescription,ImageContrastCheck" />
+
+            <!-- Provider logo: contained, no circular mask (that would clip square logos). -->
+            <ImageView
+                android:id="@+id/accountLogo"
+                android:layout_width="54dp"
+                android:layout_height="54dp"
+                android:padding="15dp"
+                android:scaleType="fitCenter"
+                app:srcCompat="@drawable/ic_round_person_24"
+                app:tint="?attr/colorPrimary"
+                tools:ignore="ContentDescription,ImageContrastCheck" />
+
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/accountBadgeCard"
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:layout_gravity="bottom|end"
+            android:visibility="gone"
+            app:cardBackgroundColor="?attr/colorSurface"
+            app:cardCornerRadius="11dp"
+            app:cardElevation="2dp">
+
+            <ImageView
+                android:id="@+id/accountBadge"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:padding="3dp"
+                app:tint="?attr/colorPrimary"
+                tools:ignore="ContentDescription"
+                tools:src="@drawable/ic_anilist" />
+
+        </com.google.android.material.card.MaterialCardView>
+
+    </FrameLayout>
+
+    <TextView
+        android:id="@+id/accountName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:ellipsize="end"
+        android:fontFamily="@font/poppins_bold"
+        android:gravity="center"
+        android:maxLines="1"
+        android:textSize="11sp"
+        tools:text="AniList" />
+
+    <TextView
+        android:id="@+id/accountAction"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:maxLines="1"
+        android:paddingVertical="2dp"
+        android:textColor="?attr/colorPrimary"
+        android:textSize="11sp"
+        tools:text="@string/login" />
+
+</LinearLayout>

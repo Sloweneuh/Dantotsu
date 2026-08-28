@@ -605,10 +605,39 @@
     <string name="mangabaka_list_sync_desc">Push AniList and MangaUpdates manga updates to your MangaBaka library (one way)</string>
     <string name="mal_list_sync">MyAnimeList list sync</string>
     <string name="mal_list_sync_desc">Push AniList and MangaUpdates list updates to your MyAnimeList account (one way)</string>
+
+    <!-- Kitsu -->
+    <string name="kitsu">Kitsu</string>
+    <string name="login_to_kitsu">Login to Kitsu</string>
+    <string name="kitsu_login_desc">Enter your Kitsu email (or username) and password. Dantotsu signs in directly — your password is not stored after login.</string>
+    <string name="kitsu_username_hint">Email or username</string>
+    <string name="kitsu_password_hint">Password</string>
+    <string name="kitsu_username_required">Email or username required</string>
+    <string name="kitsu_password_required">Password required</string>
+    <string name="kitsu_login_success">Successfully logged into Kitsu</string>
+    <string name="kitsu_login_failed">Login failed. Check your credentials.</string>
+    <string name="kitsu_list_sync">Kitsu list sync</string>
+    <string name="kitsu_list_sync_desc">Push AniList and MangaUpdates list updates to your Kitsu library (one way)</string>
+
+    <!-- Simkl -->
+    <string name="simkl">Simkl</string>
+    <string name="simkl_pin_title">Login to Simkl</string>
+    <string name="simkl_pin_desc">Open simkl.com/pin in your browser and enter the code below, then approve the request. This screen finishes automatically.</string>
+    <string name="simkl_pin_open">Open simkl.com/pin</string>
+    <string name="simkl_pin_waiting">Waiting for approval…</string>
+    <string name="simkl_login_success">Successfully logged into Simkl</string>
+    <string name="simkl_login_failed">Simkl login failed. Try again.</string>
+    <string name="simkl_not_configured">Simkl isn\'t configured in this build.</string>
+    <string name="simkl_list_sync">Simkl list sync</string>
+    <string name="simkl_list_sync_desc">Push AniList anime list updates to your Simkl account (one way)</string>
+
+    <string name="coming_soon">Coming soon</string>
+    <string name="account_open_profile">Open profile</string>
+    <string name="discord">Discord</string>
     <string name="list_sync_settings">List sync settings</string>
     <string name="list_sync_settings_desc">Choose which trackers your list updates are pushed to</string>
     <string name="compare_lists">Compare lists</string>
-    <string name="compare_lists_desc">Check MyAnimeList and MangaBaka against your source lists and sync differences</string>
+    <string name="compare_lists_desc">Check MyAnimeList, Kitsu, Simkl and MangaBaka against your source lists and sync differences</string>
     <string name="auto_list_sync">Automatic compare</string>
     <string name="auto_list_sync_desc">Run the comparison in the background and push the differences by itself</string>
     <string name="auto_list_sync_frequency">Automatic compare frequency</string>
@@ -647,7 +676,7 @@
     <string name="list_sync_up_to_date">List is up to date</string>
     <string name="list_compare_failed">Couldn\'t load this comparison</string>
     <string name="list_compare_login_anilist">Log in to AniList to compare your lists</string>
-    <string name="list_compare_login_trackers">Log in to MyAnimeList or MangaBaka to compare lists</string>
+    <string name="list_compare_login_trackers">Log in to MyAnimeList, Kitsu, Simkl or MangaBaka to compare lists</string>
     <string name="list_diff_status">Status</string>
     <string name="list_diff_chapters">Chapters</string>
     <string name="list_diff_episodes">Episodes</string>
@@ -704,6 +733,37 @@
         \n- [How to sync MAL data with Anilist](https://anilist.co/forum/thread/3393)
 
         \n\n_Connecting a MAL account is entirely optional — the MAL info tab works without it, and it is not required to sync both MAL and Anilist accounts._
+    </string>
+
+    <string name="anilist_account_help">How does AniList work\?</string>
+    <string name="full_anilist_account_help">
+        AniList is the account Dantotsu is built around. Signing in unlocks your lists, profile, activity feed, notifications and list editing, and it is the source every other tracker syncs from.
+        \n\n*Every other account on this screen needs AniList connected first.*
+    </string>
+
+    <string name="kitsu_account_help">How does Kitsu work\?</string>
+    <string name="full_kitsu_account_help">
+        Kitsu is an anime and manga tracker. Logging in lets Dantotsu push your AniList (and MangaUpdates) list changes to your Kitsu library — status, progress, score and dates, one way.
+        \n\nEnable **Kitsu list sync** in **List Sync** settings, and use **Compare lists** to reconcile your existing Kitsu library with AniList.
+        \n\n*Only new changes are pushed automatically; nothing is ever pulled back from Kitsu. Volume counts aren\'t synced — Kitsu doesn\'t track them per entry.*
+    </string>
+
+    <string name="simkl_account_help">How does Simkl work\?</string>
+    <string name="full_simkl_account_help">
+        Simkl is an anime and TV tracker. Logging in lets Dantotsu push your AniList anime list changes to Simkl — status, watched episodes and score, one way. Simkl has no manga support.
+        \n\nEnable **Simkl list sync** in **List Sync** settings, and use **Compare lists** to reconcile your existing Simkl anime list with AniList.
+        \n\n*Only new changes are pushed automatically; nothing is ever pulled back from Simkl.*
+    </string>
+
+    <string name="discord_account_help">How does Discord work\?</string>
+    <string name="full_discord_account_help">
+        Connecting Discord lets Dantotsu show what you\'re watching or reading as your Discord Rich Presence. Tap the status dot on the Discord tile to switch between online, idle, do-not-disturb and invisible.
+        \n\n*This has nothing to do with list syncing — it only controls Rich Presence.*
+    </string>
+
+    <string name="comick_account_help">How does Comick work\?</string>
+    <string name="full_comick_account_help">
+        Comick account support is coming in a future update. For now Comick data is used anonymously for manga info and cross-source linking — no login required.
     </string>
     <string name="notification_for_checking_subscriptions">Checking Subscriptions notification</string>
     <string name="use_alarm_manager">Use Alarm Manager</string>
@@ -2009,6 +2069,10 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="backup_sub_mu_desc">MangaUpdates credentials and token</string>
     <string name="backup_sub_mangabaka">MangaBaka</string>
     <string name="backup_sub_mangabaka_desc">MangaBaka access token and user info</string>
+    <string name="backup_sub_kitsu">Kitsu</string>
+    <string name="backup_sub_kitsu_desc">Kitsu access token and user info</string>
+    <string name="backup_sub_simkl">Simkl</string>
+    <string name="backup_sub_simkl_desc">Simkl access token and user info</string>
     <string name="backup_sub_discord">Discord</string>
     <string name="backup_sub_discord_desc">Discord RPC token, profile and presence settings</string>
     <string name="discord_rpc_show_icon_anime">Show Icon (Anime)</string>
@@ -2090,6 +2154,15 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="backup_mangabaka_token">MangaBaka Token</string>
     <string name="backup_mangabaka_username">MangaBaka Username</string>
     <string name="backup_mangabaka_user_id">MangaBaka User ID</string>
+    <string name="backup_kitsu_token">Kitsu Token</string>
+    <string name="backup_kitsu_username">Kitsu Username</string>
+    <string name="backup_kitsu_user_id">Kitsu User ID</string>
+    <string name="backup_kitsu_slug">Kitsu Slug</string>
+    <string name="backup_kitsu_avatar">Kitsu Avatar</string>
+    <string name="backup_simkl_token">Simkl Token</string>
+    <string name="backup_simkl_username">Simkl Username</string>
+    <string name="backup_simkl_user_id">Simkl User ID</string>
+    <string name="backup_simkl_avatar">Simkl Avatar</string>
     <string name="backup_discord_token">Discord Token</string>
     <string name="backup_discord_id">Discord User ID</string>
     <string name="backup_discord_username">Discord Username</string>
@@ -2174,7 +2247,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <!-- Settings search: extra terms per entry that are not part of the visible label.
          Translatable so a localized app searches in its own language; an untranslated one falls
          back to these. Keys match the entry titles in SettingsSearch.kt. -->
-    <string name="search_kw_accounts">login profile anilist myanimelist mangaupdates mangabaka connections</string>
+    <string name="search_kw_accounts">login profile anilist myanimelist kitsu simkl mangaupdates mangabaka comick discord connections</string>
     <string name="search_kw_theme">appearance color dark light</string>
     <string name="search_kw_common">general preferences</string>
     <string name="search_kw_anime">video watch streaming episode</string>
@@ -2186,7 +2259,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="search_kw_enable_rpc">discord presence</string>
     <string name="search_kw_anilist_settings">anilist account profile activity</string>
     <string name="search_kw_connections_settings">mal myanimelist malsync comick sync tracking</string>
-    <string name="search_kw_list_sync_settings">list sync tracking push myanimelist mal mangabaka anilist mangaupdates</string>
+    <string name="search_kw_list_sync_settings">list sync tracking push myanimelist mal kitsu simkl mangabaka anilist mangaupdates</string>
     <string name="search_kw_login_to_mangabaka">mangabaka mb token login logout account tracking</string>
     <string name="search_kw_comments_button">comment reply social discussion</string>
     <string name="search_kw_airing_notifications">airing anime episode new release</string>
@@ -2202,11 +2275,13 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="search_kw_malsync_exclude_manage">exclude filter unread chapter episode notifications malsync</string>
     <string name="search_kw_unread_sort_label">unread chapters home sort order sorting recent latest updated malsync mangaupdates</string>
     <string name="search_kw_customize_info_tabs">anilist anime manga mangaupdates info tab order reorder visibility mal comick mangabaka</string>
-    <string name="search_kw_compare_lists">compare audit diff differences out of date myanimelist mal mangabaka anilist mangaupdates sync</string>
+    <string name="search_kw_compare_lists">compare audit diff differences out of date myanimelist mal kitsu simkl mangabaka anilist mangaupdates sync</string>
     <string name="search_kw_auto_list_sync">automatic auto compare schedule interval frequency background periodic list sync push myanimelist mal mangabaka</string>
     <string name="search_kw_auto_list_sync_removals">automatic auto compare remove removals delete entries tracker list sync</string>
     <string name="search_kw_mal_list_sync">myanimelist mal list sync tracking anilist push</string>
     <string name="search_kw_mangabaka_list_sync">mangabaka mb list sync tracking anilist mangaupdates push</string>
+    <string name="search_kw_kitsu_list_sync">kitsu list sync tracking anilist mangaupdates push</string>
+    <string name="search_kw_simkl_list_sync">simkl list sync tracking anilist anime push</string>
     <string name="search_kw_theme_2">color scheme palette dark light oled auto appearance</string>
     <string name="search_kw_oled_theme_variant">amoled black</string>
     <string name="search_kw_use_material_you">monet dynamic</string>

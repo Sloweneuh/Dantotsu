@@ -130,6 +130,13 @@ enum class PrefName(val data: Pref) {
     /** Index into [ani.dantotsu.media.MangaBakaTagWeights.options] — where the tag list starts out. */
     MangaBakaTagWeightFilter(Pref(Location.General, Int::class, 1)),
     MalListSyncEnabled(Pref(Location.General, Boolean::class, true)),
+    KitsuListSyncEnabled(Pref(Location.General, Boolean::class, true)),
+    SimklListSyncEnabled(Pref(Location.General, Boolean::class, true)),
+    // Kitsu/Simkl search + info tabs are not built yet; scaffolded off until they are.
+    KitsuInfoEnabled(Pref(Location.General, Boolean::class, false)),
+    KitsuSearchEnabled(Pref(Location.General, Boolean::class, false)),
+    SimklInfoEnabled(Pref(Location.General, Boolean::class, false)),
+    SimklSearchEnabled(Pref(Location.General, Boolean::class, false)),
 
     /**
      * How often the list comparison runs by itself and pushes what it finds, in minutes. 0 is off,
@@ -405,6 +412,15 @@ enum class PrefName(val data: Pref) {
     MangaBakaToken(Pref(Location.Protected, String::class, "")),
     MangaBakaUserName(Pref(Location.Protected, String::class, "")),
     MangaBakaUserId(Pref(Location.Protected, String::class, "")),
+    KitsuToken(Pref(Location.Protected, ani.dantotsu.connections.kitsu.Kitsu.ResponseToken::class, "")),
+    KitsuUserName(Pref(Location.Protected, String::class, "")),
+    KitsuUserId(Pref(Location.Protected, String::class, "")),
+    KitsuSlug(Pref(Location.Protected, String::class, "")),
+    KitsuAvatar(Pref(Location.Protected, String::class, "")),
+    SimklToken(Pref(Location.Protected, String::class, "")),
+    SimklUserName(Pref(Location.Protected, String::class, "")),
+    SimklUserId(Pref(Location.Protected, String::class, "")),
+    SimklAvatar(Pref(Location.Protected, String::class, "")),
     AppPassword(Pref(Location.Protected, String::class, "")),
     BiometricToken(Pref(Location.Protected, String::class, "")),
     OverridePassword(Pref(Location.Protected, Boolean::class, false)),

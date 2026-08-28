@@ -3,9 +3,15 @@ package ani.dantotsu.connections.sync
 import ani.dantotsu.asyncMap
 import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.anilist.api.FuzzyDate
+import ani.dantotsu.connections.kitsu.Kitsu
+import ani.dantotsu.connections.kitsu.KitsuApi
+import ani.dantotsu.connections.kitsu.KitsuSync
 import ani.dantotsu.connections.mal.MAL
 import ani.dantotsu.connections.mal.MALListNode
 import ani.dantotsu.connections.mal.MALListStatus
+import ani.dantotsu.connections.simkl.Simkl
+import ani.dantotsu.connections.simkl.SimklApi
+import ani.dantotsu.connections.simkl.SimklSync
 import ani.dantotsu.connections.mangabaka.MangaBaka
 import ani.dantotsu.connections.mangabaka.MangaBakaApi
 import ani.dantotsu.connections.mangabaka.MangaBakaSync
@@ -47,7 +53,7 @@ import kotlinx.coroutines.sync.withPermit
 object ListCompare {
 
     /** Which destination a [DiffEntry] targets. */
-    enum class Tracker { MAL, MANGABAKA }
+    enum class Tracker { MAL, MANGABAKA, KITSU, SIMKL }
 
     /** A single field that differs between source and destination. */
     enum class DiffField { STATUS, PROGRESS, VOLUME, SCORE, START_DATE, END_DATE }
@@ -77,6 +83,9 @@ object ListCompare {
         val muSeriesId: Long?,
         val muListId: Int?,
         val mangaBakaSeriesId: Long?,
+        val kitsuMediaId: String? = null,
+        val kitsuEntryId: String? = null,
+        val simklId: Long? = null,
         val status: String?,   // AniList-style status ("CURRENT", "PLANNING", ...)
         val progress: Int?,
         val volume: Int?,
@@ -103,7 +112,7 @@ object ListCompare {
     )
 
     /** One comparison the screen can show, in display order. */
-    enum class Section { MAL_ANIME, MAL_MANGA, MANGABAKA }
+    enum class Section { MAL_ANIME, MAL_MANGA, KITSU_ANIME, KITSU_MANGA, SIMKL_ANIME, MANGABAKA }
 
     /** Both sides' totals for one section, published ahead of its (much slower) diff pass. */
     data class SectionStats(val source: SideStats, val dest: SideStats)
@@ -127,6 +136,11 @@ object ListCompare {
                 add(Section.MAL_ANIME)
                 add(Section.MAL_MANGA)
             }
+            if (Kitsu.token != null) {
+                add(Section.KITSU_ANIME)
+                add(Section.KITSU_MANGA)
+            }
+            if (Simkl.token != null) add(Section.SIMKL_ANIME)
             if (MangaBaka.token != null) add(Section.MANGABAKA)
         }
     }
@@ -155,15 +169,19 @@ object ListCompare {
         // trackers whose sync switch is off, and fetching their lists anyway would be paying for a
         // comparison nobody is going to be shown or act on.
         val onMal = Section.MAL_ANIME in sections || Section.MAL_MANGA in sections
+        val onKitsu = Section.KITSU_ANIME in sections || Section.KITSU_MANGA in sections
+        val onSimkl = Section.SIMKL_ANIME in sections
         val onMangaBaka = Section.MANGABAKA in sections
         val muActive = muActive()
 
-        val anilistAnime = async { runCatching { if (onMal) anilistList(true, userId) else emptyList() } }
+        val needAnime = onMal || onKitsu || onSimkl
+        val needManga = onMal || onKitsu || onMangaBaka
+        val anilistAnime = async { runCatching { if (needAnime) anilistList(true, userId) else emptyList() } }
         val anilistManga =
-            async { runCatching { if (onMal || onMangaBaka) anilistList(false, userId) else emptyList() } }
+            async { runCatching { if (needManga) anilistList(false, userId) else emptyList() } }
         val muMedia = async {
             runCatching {
-                if (muActive && (onMal || onMangaBaka)) MangaUpdates.getAllUserLists().values.flatten()
+                if (muActive && needManga) MangaUpdates.getAllUserLists().values.flatten()
                 else emptyList()
             }
         }
@@ -184,6 +202,15 @@ object ListCompare {
         }
         if (Section.MAL_MANGA in sections) section(Section.MAL_MANGA) {
             compareMal(false, anilistManga, muMedia) { onStats(Section.MAL_MANGA, it) }
+        }
+        if (Section.KITSU_ANIME in sections) section(Section.KITSU_ANIME) {
+            compareKitsu(true, anilistAnime, null) { onStats(Section.KITSU_ANIME, it) }
+        }
+        if (Section.KITSU_MANGA in sections) section(Section.KITSU_MANGA) {
+            compareKitsu(false, anilistManga, muMedia) { onStats(Section.KITSU_MANGA, it) }
+        }
+        if (onSimkl) section(Section.SIMKL_ANIME) {
+            compareSimkl(anilistAnime) { onStats(Section.SIMKL_ANIME, it) }
         }
         if (onMangaBaka) section(Section.MANGABAKA) {
             compareMangaBaka(anilistManga, muMedia) { onStats(Section.MANGABAKA, it) }
@@ -677,6 +704,407 @@ object ListCompare {
         MangaBakaApi.getSeriesFromSource(MangaBakaApi.Source.MANGAUPDATES, muSeriesId)
             ?.let { it.title to it.cover?.thumbUrl() }
 
+    // ---- Kitsu vs AniList (+ MangaUpdates for manga) ----
+
+    /** [muList] is null for anime and whenever MangaUpdates isn't contributing. */
+    private suspend fun compareKitsu(
+        isAnime: Boolean,
+        sourceList: Deferred<Result<List<Media>>>,
+        muList: Deferred<Result<List<MUMedia>>>?,
+        onStats: suspend (SectionStats) -> Unit,
+    ): SubsectionResult = coroutineScope {
+        val snapshotAsync = async { KitsuSync.getLibrarySnapshot(isAnime) }
+        val source = sourceList.await().getOrThrow()
+        val snapshot = snapshotAsync.await()
+        val muMedia = muList?.await()?.getOrThrow().orEmpty()
+        val byMediaId = snapshot.entries.associateBy { it.mediaId }
+        // Everything in the library resolved (and its total) is now in the KitsuApi cache (see
+        // getLibrarySnapshot's seeding). Batch-resolve only what's left, in ~20-id requests, so a
+        // 1000-entry list is a handful of calls rather than a thousand.
+        run {
+            val libIds = snapshot.entries.mapNotNull { it.anilistId }.toHashSet()
+            val libMalIds = snapshot.entries.mapNotNull { it.malId }.toHashSet()
+            val alNeed = source.mapNotNull { it.id.takeIf { id -> id !in libIds } }
+            val malNeed = source.mapNotNull { m -> m.idMAL?.takeIf { it !in libMalIds } }
+            KitsuApi.resolveMediaIdsBatch(isAnime, "anilist", alNeed)
+            KitsuApi.resolveMediaIdsBatch(isAnime, "myanimelist", malNeed)
+            if (!isAnime) KitsuApi.resolveMangaUpdatesBatch(muMedia.map { it.id })
+        }
+
+        val destPerStatus = LinkedHashMap<String, Int>()
+        var destTotal = 0
+        for ((key, count) in snapshot.counts) {
+            val canon = KitsuSync.countKeyToCanon(key)
+            destPerStatus[canon] = (destPerStatus[canon] ?: 0) + count
+            destTotal += count
+        }
+        // Fall back to counting the enumerated entries when the response carried no statusCounts.
+        val destStats = if (destTotal > 0) SideStats(destTotal, destPerStatus)
+        else statsOf(snapshot.entries.map { KitsuSync.toCanon(it.status, it.reconsuming) })
+        val sourceStats = statsOf(
+            source.map { it.userStatus ?: "CURRENT" } + muMedia.map { muListToCanon(it.listId) }
+        )
+        onStats(SectionStats(sourceStats, destStats))
+
+        val alResolved = source.asyncMap { media ->
+            media to KitsuApi.resolveMediaId(isAnime, media.id, media.idMAL)
+        }
+        val diffs = alResolved.mapNotNull { (media, mediaId) ->
+            mediaId?.let { buildKitsuDiff(media, isAnime, it, byMediaId[it]) }
+        }
+
+        val alMediaIds = alResolved.mapNotNull { it.second }.toHashSet()
+        val muResolved = if (isAnime) emptyList() else muMedia
+            .asyncMap { mu -> mu to KitsuSync.resolveMangaFromMu(mu.id) }
+            .filter { (_, id) -> id != null && id !in alMediaIds }
+            .distinctBy { (_, id) -> id }
+        val muDiffs = muResolved.mapNotNull { (mu, mediaId) ->
+            mediaId?.let { buildKitsuMuDiff(mu, it, byMediaId[it]) }
+        }
+
+        val sourceMediaIds = alMediaIds + muResolved.mapNotNull { it.second }
+        val sourceAnilistIds = source.map { it.id }.toHashSet()
+        val sourceMalIds = source.mapNotNull { it.idMAL }.toHashSet()
+        val deletions = snapshot.entries.mapNotNull { entry ->
+            val inSource = entry.mediaId in sourceMediaIds ||
+                (entry.anilistId != null && entry.anilistId in sourceAnilistIds) ||
+                (entry.malId != null && entry.malId in sourceMalIds)
+            if (inSource) null else buildKitsuDeleteDiff(entry, isAnime)
+        }
+
+        SubsectionResult(sourceStats, destStats, diffs + muDiffs + deletions)
+    }
+
+    private fun buildKitsuDiff(
+        media: Media,
+        isAnime: Boolean,
+        mediaId: String,
+        current: KitsuSync.LibraryEntry?,
+    ): DiffEntry? {
+        val expectedCanon = media.userStatus ?: "CURRENT"
+        val actualCanon = current?.let { KitsuSync.toCanon(it.status, it.reconsuming) }
+        val completed = expectedCanon == "COMPLETED"
+        val rawProgress = media.userProgress ?: 0
+        val aniTotal = (if (isAnime) media.anime?.totalEpisodes else media.manga?.totalChapters)
+            ?.takeIf { it > 0 }
+        var expectedProgress = if (completed && rawProgress == 0 && aniTotal != null) aniTotal else rawProgress
+        // Clamp to Kitsu's own total (its episode/chapter counting can differ from AniList's) so a
+        // count it will never accept doesn't show as a permanent diff.
+        val kitsuTotal = current?.total?.takeIf { it > 0 }
+        if (kitsuTotal != null) expectedProgress = expectedProgress.coerceAtMost(kitsuTotal)
+        val actualProgress = current?.progress ?: 0
+
+        // Kitsu auto-completes an entry when its progress reaches the media total. So a Kitsu entry
+        // that's "completed" only because progress hit the total, while AniList still has it
+        // "current", isn't a real disagreement to push — don't flag the status. (Only suppressed
+        // this one direction, and only when Kitsu really is at its total.)
+        val kitsuAutoCompleted = actualCanon == "COMPLETED" && expectedCanon == "CURRENT" &&
+            kitsuTotal != null && actualProgress >= kitsuTotal
+        // Between two effectively-complete entries the exact count is meaningless (each service
+        // counts chapters its own way), so don't raise a progress diff there.
+        val progressIrrelevant = (expectedCanon == "COMPLETED" && actualCanon == "COMPLETED") ||
+            (kitsuAutoCompleted && kitsuTotal != null && expectedProgress >= kitsuTotal)
+
+        val expectedScore = media.userScore
+        val actualScore = KitsuSync.ratingTwentyTo100(current?.ratingTwenty)
+        // Compare in Kitsu's own (even) rating-twenty buckets — the 0..100 round-trip quantises, so
+        // comparing there would raise a SCORE diff we could never actually close.
+        val scoreDiffers = expectedScore > 0 &&
+            KitsuSync.toRatingTwenty(expectedScore) != KitsuSync.normalizeRatingTwenty(current?.ratingTwenty)
+
+        val fieldDiffs = mutableListOf<FieldDiff>()
+        if (current == null) {
+            fieldDiffs += FieldDiff(DiffField.STATUS, DASH, formatStatus(expectedCanon) ?: DASH)
+            if (expectedProgress > 0)
+                fieldDiffs += FieldDiff(DiffField.PROGRESS, DASH, expectedProgress.toString())
+        } else {
+            if (actualCanon != expectedCanon && !kitsuAutoCompleted)
+                fieldDiffs += FieldDiff(DiffField.STATUS, formatStatus(actualCanon) ?: DASH, formatStatus(expectedCanon) ?: DASH)
+            if (actualProgress != expectedProgress && !progressIrrelevant)
+                fieldDiffs += FieldDiff(DiffField.PROGRESS, actualProgress.toString(), expectedProgress.toString())
+            if (scoreDiffers)
+                fieldDiffs += FieldDiff(DiffField.SCORE, formatScore(actualScore) ?: DASH, formatScore(expectedScore) ?: DASH)
+        }
+        // Only flag a date Kitsu already holds a (different) value for. Kitsu quietly normalises
+        // library-entry dates (and doesn't always keep them for manga), so diffing against an empty
+        // dest side produces a diff that re-pushing never closes.
+        kitsuDateDiff(DiffField.START_DATE, media.userStartedAt, current?.startedAt)?.let { fieldDiffs += it }
+        kitsuDateDiff(DiffField.END_DATE, media.userCompletedAt, current?.finishedAt)?.let { fieldDiffs += it }
+        if (fieldDiffs.isEmpty()) return null
+
+        val detail = buildDetail(
+            isAnime, fieldDiffs.mapTo(HashSet()) { it.field }, onDest = current != null,
+            status = expectedCanon to actualCanon,
+            progress = expectedProgress to actualProgress,
+            volume = null,
+            score = expectedScore to actualScore,
+            start = media.userStartedAt to parseDestDate(current?.startedAt),
+            end = media.userCompletedAt to parseDestDate(current?.finishedAt),
+        )
+        return DiffEntry(
+            title = media.userPreferredName,
+            coverUrl = media.cover ?: current?.coverUrl,
+            isAnime = isAnime,
+            tracker = Tracker.KITSU,
+            diffs = fieldDiffs,
+            anilistId = media.id,
+            malId = media.idMAL,
+            muSeriesId = null,
+            muListId = null,
+            mangaBakaSeriesId = null,
+            kitsuMediaId = mediaId,
+            kitsuEntryId = current?.entryId,
+            status = expectedCanon,
+            progress = expectedProgress,
+            volume = null,
+            score = media.userScore.takeIf { it > 0 },
+            startDate = media.userStartedAt.takeIf { !it.isEmpty() },
+            endDate = media.userCompletedAt.takeIf { !it.isEmpty() },
+            detail = detail,
+            fromStatusCanon = actualCanon,
+            toStatusCanon = expectedCanon,
+        )
+    }
+
+    private fun buildKitsuMuDiff(mu: MUMedia, mediaId: String, current: KitsuSync.LibraryEntry?): DiffEntry? {
+        val canonStatus = muStandardListStatus(mu.listId) ?: return null
+        val actualCanon = current?.let { KitsuSync.toCanon(it.status, it.reconsuming) }
+        var expectedProgress = mu.userChapter ?: 0
+        val kitsuTotal = current?.total?.takeIf { it > 0 }
+        if (kitsuTotal != null) expectedProgress = expectedProgress.coerceAtMost(kitsuTotal)
+        val actualProgress = current?.progress ?: 0
+        // See buildKitsuDiff.
+        val kitsuAutoCompleted = actualCanon == "COMPLETED" && canonStatus == "CURRENT" &&
+            kitsuTotal != null && actualProgress >= kitsuTotal
+        val progressIrrelevant = (canonStatus == "COMPLETED" && actualCanon == "COMPLETED") ||
+            (kitsuAutoCompleted && kitsuTotal != null && expectedProgress >= kitsuTotal)
+
+        val fieldDiffs = mutableListOf<FieldDiff>()
+        if (current == null) {
+            fieldDiffs += FieldDiff(DiffField.STATUS, DASH, formatStatus(canonStatus) ?: DASH)
+            if (expectedProgress > 0)
+                fieldDiffs += FieldDiff(DiffField.PROGRESS, DASH, expectedProgress.toString())
+        } else {
+            if (actualCanon != canonStatus && !kitsuAutoCompleted)
+                fieldDiffs += FieldDiff(DiffField.STATUS, formatStatus(actualCanon) ?: DASH, formatStatus(canonStatus) ?: DASH)
+            if (actualProgress != expectedProgress && !progressIrrelevant)
+                fieldDiffs += FieldDiff(DiffField.PROGRESS, actualProgress.toString(), expectedProgress.toString())
+        }
+        val expectedStart = muStartDate(mu.listId, mu.addedAt)
+        expectedStart?.let { kitsuDateDiff(DiffField.START_DATE, it, current?.startedAt) }?.let { fieldDiffs += it }
+        if (fieldDiffs.isEmpty()) return null
+
+        val detail = buildDetail(
+            isAnime = false, fieldDiffs.mapTo(HashSet()) { it.field }, onDest = current != null,
+            status = canonStatus to actualCanon,
+            progress = expectedProgress to actualProgress,
+            volume = null,
+            score = (null as Int?) to KitsuSync.ratingTwentyTo100(current?.ratingTwenty),
+            start = expectedStart to parseDestDate(current?.startedAt),
+            end = (null as FuzzyDate?) to parseDestDate(current?.finishedAt),
+        )
+        return DiffEntry(
+            title = mu.title ?: "",
+            coverUrl = mu.coverUrl ?: current?.coverUrl,
+            isAnime = false,
+            tracker = Tracker.KITSU,
+            diffs = fieldDiffs,
+            anilistId = null,
+            malId = null,
+            muSeriesId = mu.id,
+            muListId = mu.listId,
+            mangaBakaSeriesId = null,
+            kitsuMediaId = mediaId,
+            kitsuEntryId = current?.entryId,
+            status = canonStatus,
+            progress = expectedProgress,
+            volume = null,
+            score = null,
+            startDate = expectedStart,
+            detail = detail,
+            fromStatusCanon = actualCanon,
+            toStatusCanon = canonStatus,
+        )
+    }
+
+    private fun buildKitsuDeleteDiff(entry: KitsuSync.LibraryEntry, isAnime: Boolean): DiffEntry = DiffEntry(
+        title = entry.title ?: "",
+        coverUrl = entry.coverUrl,
+        isAnime = isAnime,
+        tracker = Tracker.KITSU,
+        diffs = emptyList(),
+        anilistId = null,
+        malId = null,
+        muSeriesId = null,
+        muListId = null,
+        mangaBakaSeriesId = null,
+        kitsuMediaId = entry.mediaId,
+        kitsuEntryId = entry.entryId,
+        status = null,
+        progress = null,
+        volume = null,
+        score = null,
+        fromStatusCanon = KitsuSync.toCanon(entry.status, entry.reconsuming),
+        toStatusCanon = null,
+        delete = true,
+    )
+
+    // ---- Simkl vs AniList (anime only) ----
+
+    private suspend fun compareSimkl(
+        sourceList: Deferred<Result<List<Media>>>,
+        onStats: suspend (SectionStats) -> Unit,
+    ): SubsectionResult = coroutineScope {
+        val libAsync = async { SimklSync.getLibrary() }
+        val source = sourceList.await().getOrThrow()
+        val lib = libAsync.await()
+        val byAnilist = HashMap<Int, SimklSync.LibraryEntry>()
+        val byMal = HashMap<Int, SimklSync.LibraryEntry>()
+        val bySimkl = HashMap<Long, SimklSync.LibraryEntry>()
+        lib.forEach { e ->
+            e.anilistId?.let { byAnilist[it] = e }
+            e.malId?.let { byMal[it] = e }
+            e.simklId?.let { bySimkl[it] = e }
+        }
+
+        val destStats = statsOf(lib.map { SimklSync.toCanon(it.status) })
+        val sourceStats = statsOf(source.map { it.userStatus ?: "CURRENT" })
+        onStats(SectionStats(sourceStats, destStats))
+
+        // Resolve every source anime to its Simkl record. Simkl frequently folds several AniList
+        // entries (a season + its recap "special" + a "plan" cut) into one record, so when a group
+        // of source entries share a Simkl id only the "primary" (a real TV entry, most episodes)
+        // is allowed to diff against it — the rest would fight over the same Simkl entry.
+        val resolved = source.asyncMap { media -> media to SimklApi.resolve(media.id, media.idMAL) }
+        val primaryIds = HashSet<Int>()
+        resolved.filter { it.second != null }
+            .groupBy { it.second!!.simklId }
+            .forEach { (_, group) ->
+                group.maxByOrNull { (m, _) ->
+                    val fmt = when (m.format) { "TV" -> 3; "TV_SHORT", "MOVIE" -> 2; "SPECIAL" -> 0; else -> 1 }
+                    fmt * 100_000 + (m.anime?.totalEpisodes ?: 0)
+                }?.let { primaryIds.add(it.first.id) }
+            }
+
+        val resolvedSimklIds = HashSet<Long>()
+        val diffs = resolved.mapNotNull { (media, match) ->
+            val simklId = match?.simklId
+            simklId?.let { resolvedSimklIds.add(it) }
+            // Non-primary member of a collision group: skip entirely.
+            if (simklId != null && media.id !in primaryIds) return@mapNotNull null
+            val current = simklId?.let { bySimkl[it] }
+                ?: byAnilist[media.id] ?: media.idMAL?.let { byMal[it] }
+            buildSimklDiff(media, current, simklId, match?.totalEpisodes)
+        }
+
+        val sourceAnilistIds = source.map { it.id }.toHashSet()
+        val sourceMalIds = source.mapNotNull { it.idMAL }.toHashSet()
+        val deletions = lib.mapNotNull { e ->
+            val inSource = (e.simklId != null && e.simklId in resolvedSimklIds) ||
+                (e.anilistId != null && e.anilistId in sourceAnilistIds) ||
+                (e.malId != null && e.malId in sourceMalIds)
+            if (inSource) null else buildSimklDeleteDiff(e)
+        }
+
+        SubsectionResult(sourceStats, destStats, diffs + deletions)
+    }
+
+    /** AniList formats Simkl folds into the parent season rather than tracking as their own entry. */
+    private val SIMKL_NON_DISTINCT_FORMATS = setOf("SPECIAL", "OVA", "ONA", "MUSIC")
+
+    private fun buildSimklDiff(
+        media: Media,
+        current: SimklSync.LibraryEntry?,
+        simklId: Long?,
+        resolvedTotalEps: Int?,
+    ): DiffEntry? {
+        // A special/OVA that isn't already a distinct Simkl entry can't become one — pushing its id
+        // resolves to the parent season (which is usually already synced), so the "diff" would never
+        // close. Skip it. One that *does* exist on Simkl (current != null) is diffed normally.
+        if (current == null && simklId == null && media.format in SIMKL_NON_DISTINCT_FORMATS) return null
+
+        val expectedCanon = media.userStatus ?: "CURRENT"
+        val actualCanon = current?.let { SimklSync.toCanon(it.status) }
+        val completed = expectedCanon == "COMPLETED"
+        val rawProgress = media.userProgress ?: 0
+        val aniTotal = media.anime?.totalEpisodes?.takeIf { it > 0 }
+        var expectedProgress = if (completed && rawProgress == 0 && aniTotal != null) aniTotal else rawProgress
+        // Simkl refuses a count beyond its own episode total (its counting can differ from AniList's,
+        // e.g. a season split differently). Clamp to Simkl's total so the count converges instead of
+        // showing a diff that can never be closed.
+        val simklTotal = (current?.totalEpisodes ?: resolvedTotalEps)?.takeIf { it > 0 }
+        if (simklTotal != null) expectedProgress = expectedProgress.coerceAtMost(simklTotal)
+        val actualProgress = current?.watchedEpisodes ?: 0
+        val expectedScore = media.userScore
+        val actualScore = SimklSync.ratingTo100(current?.userRating)
+
+        val fieldDiffs = mutableListOf<FieldDiff>()
+        if (current == null) {
+            fieldDiffs += FieldDiff(DiffField.STATUS, DASH, formatStatus(expectedCanon) ?: DASH)
+            if (expectedProgress > 0)
+                fieldDiffs += FieldDiff(DiffField.PROGRESS, DASH, expectedProgress.toString())
+        } else {
+            if (actualCanon != expectedCanon)
+                fieldDiffs += FieldDiff(DiffField.STATUS, formatStatus(actualCanon) ?: DASH, formatStatus(expectedCanon) ?: DASH)
+            if (actualProgress != expectedProgress)
+                fieldDiffs += FieldDiff(DiffField.PROGRESS, actualProgress.toString(), expectedProgress.toString())
+            if (expectedScore > 0 && actualScore != expectedScore)
+                fieldDiffs += FieldDiff(DiffField.SCORE, formatScore(actualScore) ?: DASH, formatScore(expectedScore) ?: DASH)
+        }
+        if (fieldDiffs.isEmpty()) return null
+
+        val detail = buildDetail(
+            isAnime = true, fieldDiffs.mapTo(HashSet()) { it.field }, onDest = current != null,
+            status = expectedCanon to actualCanon,
+            progress = expectedProgress to actualProgress,
+            volume = null,
+            score = expectedScore to actualScore,
+            start = (null as FuzzyDate?) to null,
+            end = (null as FuzzyDate?) to null,
+        )
+        return DiffEntry(
+            title = media.userPreferredName,
+            coverUrl = media.cover ?: current?.coverUrl,
+            isAnime = true,
+            tracker = Tracker.SIMKL,
+            diffs = fieldDiffs,
+            anilistId = media.id,
+            malId = media.idMAL,
+            muSeriesId = null,
+            muListId = null,
+            mangaBakaSeriesId = null,
+            simklId = simklId,
+            status = expectedCanon,
+            progress = expectedProgress,
+            volume = null,
+            score = media.userScore.takeIf { it > 0 },
+            detail = detail,
+            fromStatusCanon = actualCanon,
+            toStatusCanon = expectedCanon,
+        )
+    }
+
+    private fun buildSimklDeleteDiff(entry: SimklSync.LibraryEntry): DiffEntry = DiffEntry(
+        title = entry.title ?: "",
+        coverUrl = entry.coverUrl,
+        isAnime = true,
+        tracker = Tracker.SIMKL,
+        diffs = emptyList(),
+        anilistId = entry.anilistId,
+        malId = entry.malId,
+        muSeriesId = null,
+        muListId = null,
+        mangaBakaSeriesId = null,
+        simklId = entry.simklId,
+        status = null,
+        progress = null,
+        volume = null,
+        score = null,
+        fromStatusCanon = SimklSync.toCanon(entry.status),
+        toStatusCanon = null,
+        delete = true,
+    )
+
     // ---- Sync (explicit user action → force past the on/off toggle) ----
 
     /**
@@ -709,6 +1137,8 @@ object ListCompare {
                 true
             }
             Tracker.MANGABAKA -> MangaBakaSync.deleteById(entry.mangaBakaSeriesId, force = true)
+            Tracker.KITSU -> KitsuSync.deleteByEntryId(entry.kitsuEntryId, force = true)
+            Tracker.SIMKL -> SimklSync.deleteFromAnilist(entry.anilistId, entry.malId, entry.simklId, force = true)
         }
         return when (entry.tracker) {
             Tracker.MAL -> {
@@ -719,6 +1149,22 @@ object ListCompare {
                 )
                 true
             }
+            Tracker.KITSU -> if (entry.anilistId != null || entry.malId != null) {
+                KitsuSync.syncFromAnilist(
+                    isAnime = entry.isAnime, anilistId = entry.anilistId, malId = entry.malId,
+                    status = entry.status, progress = entry.progress, score = entry.score,
+                    startDate = entry.startDate, finishDate = entry.endDate, force = true,
+                )
+            } else {
+                KitsuSync.syncFromMangaUpdates(
+                    muSeriesId = entry.muSeriesId, muListId = entry.muListId,
+                    progress = entry.progress, startDate = entry.startDate, force = true,
+                )
+            }
+            Tracker.SIMKL -> SimklSync.syncFromAnilist(
+                anilistId = entry.anilistId, malId = entry.malId, status = entry.status,
+                progress = entry.progress, score = entry.score, simklId = entry.simklId, force = true,
+            )
             // No status on the destination means the entry isn't in the library, so create it
             // outright instead of paying for a PATCH that can only 404 first.
             Tracker.MANGABAKA -> if (entry.anilistId != null || entry.malId != null) {
@@ -768,6 +1214,10 @@ object ListCompare {
         if (source.toMALString() == (destDate?.toMALString() ?: "")) return null
         return FieldDiff(field, destDate.display() ?: DASH, source.toStringOrEmpty())
     }
+
+    /** As [dateDiff], but only when the destination already holds a date — see [buildKitsuDiff]. */
+    private fun kitsuDateDiff(field: DiffField, source: FuzzyDate, dest: String?): FieldDiff? =
+        if (dest.isNullOrBlank()) null else dateDiff(field, source, dest)
 
     /**
      * Formats a POINT_100 score (0..100) in the viewer's AniList scoring system, so scores read the

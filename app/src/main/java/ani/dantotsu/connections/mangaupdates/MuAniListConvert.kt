@@ -132,5 +132,15 @@ private fun mirrorConvertedEntry(
                 finishDate = null,
             )
         }
+        launch {
+            ani.dantotsu.connections.sync.ListSyncMirror.pushFromAnilist(
+                isAnime = false,
+                anilistId = anilistId,
+                malId = null,
+                status = status,
+                progress = chapter,
+                startDate = startedAt,
+            )
+        }
     }
 }

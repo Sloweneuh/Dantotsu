@@ -80,6 +80,14 @@ fun updateProgress(media: Media, number: String) {
                             startDate = muStart,
                         )
                     }
+                    launch {
+                        ani.dantotsu.connections.sync.ListSyncMirror.pushMangaFromMangaUpdates(
+                            muSeriesId = muSeriesId,
+                            muListId = muListId,
+                            progress = a,
+                            startDate = muStart,
+                        )
+                    }
                     if (muListId != null) launch {
                         syncMuToMal(
                             muSeriesId = muSeriesId,
@@ -145,8 +153,8 @@ fun updateProgress(media: Media, number: String) {
                         mirroredEnd
                     )
                 }
+                val mirroredScore = media.userScore.takeIf { it > 0 }
                 if (media.manga != null) {
-                    val score = media.userScore.takeIf { it > 0 }
                     val isPrivate = media.isListPrivate
                     launch {
                         MangaBakaSync.syncFromAnilist(
@@ -155,13 +163,25 @@ fun updateProgress(media: Media, number: String) {
                             status = mirroredStatus,
                             progressChapter = a,
                             progressVolume = volume,
-                            score = score,
+                            score = mirroredScore,
                             rereads = null,
                             isPrivate = isPrivate,
                             startDate = mirroredStart,
                             finishDate = mirroredEnd,
                         )
                     }
+                }
+                launch {
+                    ani.dantotsu.connections.sync.ListSyncMirror.pushFromAnilist(
+                        isAnime = media.anime != null,
+                        anilistId = media.id,
+                        malId = media.idMAL,
+                        status = mirroredStatus,
+                        progress = a,
+                        score = mirroredScore,
+                        startDate = mirroredStart,
+                        finishDate = mirroredEnd,
+                    )
                 }
             }
             media.userProgress = a

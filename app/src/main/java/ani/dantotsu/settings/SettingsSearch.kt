@@ -120,7 +120,7 @@ object SettingsSearch {
 
         l += SearchableSetting(SettingsListSyncActivity::class.java, R.string.list_sync_settings, R.string.accounts, R.drawable.ic_round_sync_24, R.string.list_sync_settings_desc, keywordsRes = R.string.search_kw_list_sync_settings)
 
-        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.login_to_mangabaka, R.string.accounts, IC_ACCOUNT, R.string.mangabaka_login_desc, anchorViewId = R.id.settingsMangaBakaLogin, keywordsRes = R.string.search_kw_login_to_mangabaka)
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.login_to_mangabaka, R.string.accounts, IC_ACCOUNT, R.string.mangabaka_login_desc, anchorViewId = R.id.accountGrid, keywordsRes = R.string.search_kw_login_to_mangabaka)
 
         l += SearchableSetting(SettingsAccountActivity::class.java, R.string.comments_button, R.string.accounts, R.drawable.ic_round_comment_24, R.string.comments_button_desc, keywordsRes = R.string.search_kw_comments_button)
 
@@ -171,6 +171,10 @@ object SettingsSearch {
         l += SearchableSetting(SettingsListSyncActivity::class.java, R.string.mal_list_sync, R.string.list_sync_settings, R.drawable.ic_round_mal_sync_24, R.string.mal_list_sync_desc, keywordsRes = R.string.search_kw_mal_list_sync)
 
         l += SearchableSetting(SettingsListSyncActivity::class.java, R.string.mangabaka_list_sync, R.string.list_sync_settings, R.drawable.ic_round_mangabaka_sync_24, R.string.mangabaka_list_sync_desc, keywordsRes = R.string.search_kw_mangabaka_list_sync)
+
+        l += SearchableSetting(SettingsListSyncActivity::class.java, R.string.kitsu_list_sync, R.string.list_sync_settings, R.drawable.ic_kitsu, R.string.kitsu_list_sync_desc, keywordsRes = R.string.search_kw_kitsu_list_sync)
+
+        l += SearchableSetting(SettingsListSyncActivity::class.java, R.string.simkl_list_sync, R.string.list_sync_settings, R.drawable.ic_simkl, R.string.simkl_list_sync_desc, keywordsRes = R.string.search_kw_simkl_list_sync)
 
 
         // ---- Theme ----

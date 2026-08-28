@@ -253,6 +253,12 @@ class MUListEditorFragment : BottomSheetDialogFragment() {
                         progressVolume = newVolume,
                         startDate = startDate,
                     )
+                    ani.dantotsu.connections.sync.ListSyncMirror.pushMangaFromMangaUpdates(
+                        muSeriesId = muMedia.id,
+                        muListId = newListId,
+                        progress = newChapter,
+                        startDate = startDate,
+                    )
                     syncMuToMal(
                         muSeriesId = muMedia.id,
                         muListId = newListId,
@@ -291,6 +297,7 @@ class MUListEditorFragment : BottomSheetDialogFragment() {
                 withContext(Dispatchers.IO) {
                     MangaUpdates.removeFromList(muMedia.id)
                     ani.dantotsu.connections.mangabaka.MangaBakaSync.deleteFromMangaUpdates(muMedia.id)
+                    ani.dantotsu.connections.sync.ListSyncMirror.deleteMangaFromMangaUpdates(muMedia.id)
                     // Mirrored to MAL the same way saving is, so the two directions match. The
                     // removal is skipped for an entry the user's AniList list also covers — see
                     // [deleteMuFromMal], which makes that call.

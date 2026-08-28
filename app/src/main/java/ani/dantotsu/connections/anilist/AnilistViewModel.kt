@@ -292,6 +292,8 @@ class AnilistHomeViewModel : ViewModel() {
         Discord.getSavedToken()
         ani.dantotsu.connections.mangaupdates.MangaUpdates.getSavedToken()
         ani.dantotsu.connections.mangabaka.MangaBaka.getSavedToken()
+        ani.dantotsu.connections.kitsu.Kitsu.getSavedToken()
+        ani.dantotsu.connections.simkl.Simkl.getSavedToken()
         val ret = Anilist.query.getGenresAndTags()
         withContext(Dispatchers.Main) {
             genres.value = ret

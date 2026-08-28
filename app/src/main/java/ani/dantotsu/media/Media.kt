@@ -220,6 +220,9 @@ fun Media?.deleteFromList(
                                 media.id, media.idMAL
                             )
                         }
+                        ani.dantotsu.connections.sync.ListSyncMirror.deleteFromAnilist(
+                            media.anime != null, media.id, media.idMAL
+                        )
 
                         val removeList = PrefManager.getVal<Set<String>>(PrefName.HiddenFromLists)
                         PrefManager.setVal(

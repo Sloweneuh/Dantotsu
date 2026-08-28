@@ -3,9 +3,11 @@ package ani.dantotsu.connections.sync
 import android.content.Context
 import ani.dantotsu.App
 import ani.dantotsu.connections.anilist.Anilist
+import ani.dantotsu.connections.kitsu.Kitsu
 import ani.dantotsu.connections.mal.MAL
 import ani.dantotsu.connections.mangabaka.MangaBaka
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
+import ani.dantotsu.connections.simkl.Simkl
 import ani.dantotsu.isOnline
 import ani.dantotsu.notifications.Task
 import ani.dantotsu.settings.saving.PrefManager
@@ -69,6 +71,8 @@ class AutoListSyncTask : Task {
                 return@withContext true
             }
             MAL.getSavedToken()
+            Kitsu.getSavedToken()
+            Simkl.getSavedToken()
             MangaBaka.getSavedToken()
             if (PrefManager.getVal<Boolean>(PrefName.MangaUpdatesListEnabled)) {
                 MangaUpdates.getSavedToken()
@@ -126,6 +130,12 @@ class AutoListSyncTask : Task {
     private fun allowed(section: ListCompare.Section): Boolean = when (section) {
         ListCompare.Section.MAL_ANIME, ListCompare.Section.MAL_MANGA ->
             PrefManager.getVal(PrefName.MalListSyncEnabled)
+
+        ListCompare.Section.KITSU_ANIME, ListCompare.Section.KITSU_MANGA ->
+            PrefManager.getVal(PrefName.KitsuListSyncEnabled)
+
+        ListCompare.Section.SIMKL_ANIME ->
+            PrefManager.getVal(PrefName.SimklListSyncEnabled)
 
         ListCompare.Section.MANGABAKA ->
             PrefManager.getVal(PrefName.MangaBakaListSyncEnabled)

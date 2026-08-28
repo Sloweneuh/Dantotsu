@@ -11,8 +11,10 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.updateLayoutParams
 import androidx.recyclerview.widget.LinearLayoutManager
 import ani.dantotsu.R
+import ani.dantotsu.connections.kitsu.Kitsu
 import ani.dantotsu.connections.mal.MAL
 import ani.dantotsu.connections.mangabaka.MangaBaka
+import ani.dantotsu.connections.simkl.Simkl
 import ani.dantotsu.databinding.ActivitySettingsListSyncBinding
 import ani.dantotsu.initActivity
 import ani.dantotsu.navBarHeight
@@ -70,6 +72,8 @@ class SettingsListSyncActivity : AppCompatActivity() {
      */
     private fun hasSyncTargets(): Boolean =
         (MAL.token != null && PrefManager.getVal(PrefName.MalListSyncEnabled)) ||
+            (Kitsu.token != null && PrefManager.getVal(PrefName.KitsuListSyncEnabled)) ||
+            (Simkl.token != null && PrefManager.getVal(PrefName.SimklListSyncEnabled)) ||
             (MangaBaka.token != null && PrefManager.getVal(PrefName.MangaBakaListSyncEnabled))
 
     /**
@@ -107,6 +111,30 @@ class SettingsListSyncActivity : AppCompatActivity() {
             ),
             Settings(
                 type = 2,
+                name = getString(R.string.kitsu_list_sync),
+                desc = getString(R.string.kitsu_list_sync_desc),
+                icon = R.drawable.ic_kitsu,
+                isChecked = PrefManager.getVal(PrefName.KitsuListSyncEnabled),
+                switch = { isChecked, _ ->
+                    PrefManager.setVal(PrefName.KitsuListSyncEnabled, isChecked)
+                    onTargetToggled()
+                },
+                isVisible = Kitsu.token != null,
+            ),
+            Settings(
+                type = 2,
+                name = getString(R.string.simkl_list_sync),
+                desc = getString(R.string.simkl_list_sync_desc),
+                icon = R.drawable.ic_simkl,
+                isChecked = PrefManager.getVal(PrefName.SimklListSyncEnabled),
+                switch = { isChecked, _ ->
+                    PrefManager.setVal(PrefName.SimklListSyncEnabled, isChecked)
+                    onTargetToggled()
+                },
+                isVisible = Simkl.token != null,
+            ),
+            Settings(
+                type = 2,
                 name = getString(R.string.mangabaka_list_sync),
                 desc = getString(R.string.mangabaka_list_sync_desc),
                 icon = R.drawable.ic_round_mangabaka_sync_24,
@@ -126,7 +154,8 @@ class SettingsListSyncActivity : AppCompatActivity() {
                     startActivity(Intent(this, ListSyncCompareActivity::class.java))
                 },
                 isActivity = true,
-                isVisible = MAL.token != null || MangaBaka.token != null,
+                isVisible = MAL.token != null || Kitsu.token != null ||
+                    Simkl.token != null || MangaBaka.token != null,
             ),
             Settings(
                 type = 1,

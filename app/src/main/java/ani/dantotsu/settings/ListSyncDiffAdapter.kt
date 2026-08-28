@@ -83,9 +83,7 @@ class ListSyncDiffAdapter(
         b.diffSync.setIconSpinning(false)
 
         if (entry.delete) {
-            val trackerName = context.getString(
-                if (entry.tracker == ListCompare.Tracker.MAL) R.string.myanimelist else R.string.mangabaka
-            )
+            val trackerName = context.getString(trackerNameRes(entry.tracker))
             b.diffChanges.text = context.getString(R.string.list_diff_only_on, trackerName)
             b.diffSync.setIconResource(R.drawable.ic_round_delete_24)
             b.diffSync.contentDescription = context.getString(R.string.remove)
@@ -151,9 +149,19 @@ class ListSyncDiffAdapter(
     private fun sourceIcon(entry: ListCompare.DiffEntry): Int =
         if (entry.muSeriesId != null) R.drawable.ic_round_mangaupdates_24 else R.drawable.ic_anilist
 
-    private fun destIcon(entry: ListCompare.DiffEntry): Int =
-        if (entry.tracker == ListCompare.Tracker.MAL) R.drawable.ic_myanimelist
-        else R.drawable.ic_round_mangabaka_24
+    private fun destIcon(entry: ListCompare.DiffEntry): Int = when (entry.tracker) {
+        ListCompare.Tracker.MAL -> R.drawable.ic_myanimelist
+        ListCompare.Tracker.KITSU -> R.drawable.ic_kitsu
+        ListCompare.Tracker.SIMKL -> R.drawable.ic_simkl
+        ListCompare.Tracker.MANGABAKA -> R.drawable.ic_round_mangabaka_24
+    }
+
+    private fun trackerNameRes(tracker: ListCompare.Tracker): Int = when (tracker) {
+        ListCompare.Tracker.MAL -> R.string.myanimelist
+        ListCompare.Tracker.KITSU -> R.string.kitsu
+        ListCompare.Tracker.SIMKL -> R.string.simkl
+        ListCompare.Tracker.MANGABAKA -> R.string.mangabaka
+    }
 
     private fun iconHeader(ctx: Context, iconRes: Int): ImageView {
         val size = dp(ctx, 18)

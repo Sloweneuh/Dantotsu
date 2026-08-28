@@ -424,6 +424,18 @@ class MediaListDialogSmallFragment : BottomSheetDialogFragment() {
                                             finishDate = mirroredEnd,
                                         )
                                     }
+                                    launch {
+                                        ani.dantotsu.connections.sync.ListSyncMirror.pushFromAnilist(
+                                            isAnime = isAnime,
+                                            anilistId = id,
+                                            malId = idMAL,
+                                            status = status,
+                                            progress = progress,
+                                            score = score,
+                                            startDate = mirroredStart,
+                                            finishDate = mirroredEnd,
+                                        )
+                                    }
                                 }
                                 media.userVolume = volume
                             }

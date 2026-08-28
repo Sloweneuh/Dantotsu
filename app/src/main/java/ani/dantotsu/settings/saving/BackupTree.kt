@@ -132,6 +132,8 @@ object BackupTree {
                         BackupItem(PrefName.MangaBakaListSyncEnabled, R.string.mangabaka_list_sync),
                         BackupItem(PrefName.MangaBakaTagWeightFilter, R.string.mangabaka_tag_weight),
                         BackupItem(PrefName.MalListSyncEnabled, R.string.mal_list_sync),
+                        BackupItem(PrefName.KitsuListSyncEnabled, R.string.kitsu_list_sync),
+                        BackupItem(PrefName.SimklListSyncEnabled, R.string.simkl_list_sync),
                         BackupItem(PrefName.AutoListSyncInterval, R.string.auto_list_sync_frequency),
                         BackupItem(PrefName.AutoListSyncRemovals, R.string.auto_list_sync_removals_label),
                         BackupItem(PrefName.MalSyncInfoEnabled, R.string.disable_malsync),
@@ -508,6 +510,27 @@ object BackupTree {
                         BackupItem(PrefName.MangaBakaToken, R.string.backup_mangabaka_token),
                         BackupItem(PrefName.MangaBakaUserName, R.string.backup_mangabaka_username),
                         BackupItem(PrefName.MangaBakaUserId, R.string.backup_mangabaka_user_id),
+                    )
+                ),
+                BackupSubCategory(
+                    "accounts_kitsu", R.string.backup_sub_kitsu,
+                    R.string.backup_sub_kitsu_desc,
+                    listOf(
+                        BackupItem(PrefName.KitsuToken, R.string.backup_kitsu_token),
+                        BackupItem(PrefName.KitsuUserName, R.string.backup_kitsu_username),
+                        BackupItem(PrefName.KitsuUserId, R.string.backup_kitsu_user_id),
+                        BackupItem(PrefName.KitsuSlug, R.string.backup_kitsu_slug),
+                        BackupItem(PrefName.KitsuAvatar, R.string.backup_kitsu_avatar),
+                    )
+                ),
+                BackupSubCategory(
+                    "accounts_simkl", R.string.backup_sub_simkl,
+                    R.string.backup_sub_simkl_desc,
+                    listOf(
+                        BackupItem(PrefName.SimklToken, R.string.backup_simkl_token),
+                        BackupItem(PrefName.SimklUserName, R.string.backup_simkl_username),
+                        BackupItem(PrefName.SimklUserId, R.string.backup_simkl_user_id),
+                        BackupItem(PrefName.SimklAvatar, R.string.backup_simkl_avatar),
                     )
                 ),
                 BackupSubCategory(
