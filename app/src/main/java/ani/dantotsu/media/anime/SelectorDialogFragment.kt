@@ -77,6 +77,7 @@ import tachiyomi.core.util.lang.launchIO
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.text.DecimalFormat
+import java.util.Locale
 
 
 class SelectorDialogFragment : BottomSheetDialogFragment() {
@@ -864,9 +865,29 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
                 )
                 binding.urlSize.text = sizeText
             }
-            binding.urlNote.visibility = View.VISIBLE
-            binding.urlNote.text = video.format.name
-            binding.urlQuality.text = extractor.server.name
+            val serverName = extractor.server.name
+            binding.urlQuality.text = serverName
+            val serverLabel = serverName.lowercase(Locale.ROOT)
+            val subDub = when {
+                Regex("\\bsoft[ -]?(sub|subbed)\\b").containsMatchIn(serverLabel) -> "Soft Sub"
+                Regex("\\bhard[ -]?(sub|subbed)\\b").containsMatchIn(serverLabel) -> "Hard Sub"
+                Regex("\\b(dub|dubbed)\\b").containsMatchIn(serverLabel) -> "Dub"
+                Regex("\\b(sub|subbed)\\b").containsMatchIn(serverLabel) -> "Sub"
+                else -> media?.selected?.sourceIndex?.let { sourceIndex ->
+                    model.watchSources?.get(sourceIndex)?.let { parser ->
+                        if (parser.isDubAvailableSeparately()) {
+                            if (parser.selectDub) "Dub" else "Sub"
+                        } else null
+                    }
+                }
+            }
+            val resolution = video.quality?.let { "${it}p" }
+            val details = listOf(resolution, subDub)
+                .filterNotNull()
+                .distinct()
+                .joinToString(" • ")
+            binding.urlNote.text = details
+            binding.urlNote.visibility = if (details.isEmpty()) View.GONE else View.VISIBLE
         }
 
         override fun getItemCount(): Int = extractor.videos.size
