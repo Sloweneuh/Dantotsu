@@ -326,9 +326,7 @@
                         style="@style/ExoMediaButton.Pause"
                         android:layout_width="72dp"
                         android:layout_height="72dp"
-                        android:scaleX="1.5"
-                        android:scaleY="1.5"
-                        android:src="@drawable/ic_round_fast_rewind_24"
+                        android:src="@drawable/ic_round_replay_10_24"
                         tools:ignore="ContentDescription,DuplicateSpeakableTextCheck" />
 
                 </androidx.cardview.widget.CardView>
@@ -367,9 +365,7 @@
                         android:layout_width="72dp"
                         android:layout_height="72dp"
                         android:layout_gravity="center"
-                        android:scaleX="1.5"
-                        android:scaleY="1.5"
-                        android:src="@drawable/ic_round_fast_forward_24"
+                        android:src="@drawable/ic_round_forward_10_24"
                         tools:ignore="ContentDescription,DuplicateSpeakableTextCheck" />
 
                 </androidx.cardview.widget.CardView>

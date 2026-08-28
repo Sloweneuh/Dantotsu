@@ -415,6 +415,8 @@
     <string name="gestures">Volume &amp; Brightness Gestures</string>
     <string name="double_tap">Double tap to Seek</string>
     <string name="fast_forward">Fast Forward</string>
+    <string name="replay_10_seconds">Replay 10 seconds</string>
+    <string name="forward_10_seconds">Forward 10 seconds</string>
     <string name="double_tap_info">Turning off will show fast forward &amp; rewind buttons</string>
     <string name="seek_time">Seek Time</string>
     <string name="seek_time_info">Amount of time in seconds for fast forward &amp; rewind.</string>

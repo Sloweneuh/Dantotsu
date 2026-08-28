@@ -329,6 +329,8 @@
     <string name="gestures">Gestes de volume &amp; luminosité</string>
     <string name="double_tap">Double tap pour avancer</string>
     <string name="fast_forward">Avance rapide</string>
+    <string name="replay_10_seconds">Revenir 10 secondes</string>
+    <string name="forward_10_seconds">Avancer de 10 secondes</string>
     <string name="seek_time">Temps de saut</string>
     <string name="skip_time">Temps de saut</string>
     <string name="show_cast_button">Afficher le bouton Cast</string>

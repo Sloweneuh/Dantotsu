@@ -5,9 +5,14 @@ import android.annotation.SuppressLint
 import android.app.Dialog
 import android.app.PictureInPictureParams
 import android.app.PictureInPictureUiState
+import android.app.PendingIntent
+import android.app.RemoteAction
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.content.BroadcastReceiver
+import android.graphics.drawable.Icon
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.content.res.Configuration
@@ -50,6 +55,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.math.MathUtils.clamp
 import androidx.core.view.isVisible
@@ -85,6 +91,7 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MergingMediaSource
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.exoplayer.util.EventLogger
+import androidx.media3.session.CommandButton
 import androidx.media3.session.MediaSession
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.CaptionStyleCompat
@@ -273,6 +280,7 @@ class ExoplayerView :
         private const val DEFAULT_MAX_BUFFER_MS = 600000
         private const val BUFFER_FOR_PLAYBACK_MS = 2500
         private const val BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS = 5000
+        private const val PIP_SEEK_INCREMENT_MS = 10_000L
 
         /** How far back the subtitle cue buffer keeps history — the longest clip anyone can ask for. */
         private const val CLIP_CUE_WINDOW_MS = 5 * 60 * 1000L
@@ -282,6 +290,9 @@ class ExoplayerView :
 
         /** How long a chooser hand-off keeps picture-in-picture suppressed. */
         private const val PIP_SUPPRESS_MS = 2000L
+        private const val PIP_PLAY_PAUSE_ACTION = "ani.dantotsu.action.PIP_PLAY_PAUSE"
+        private const val PIP_REPLAY_ACTION = "ani.dantotsu.action.PIP_REPLAY"
+        private const val PIP_FORWARD_ACTION = "ani.dantotsu.action.PIP_FORWARD"
 
         /**
          * Resolves `localhost` to both loopback addresses instead of whichever one the system
@@ -332,6 +343,18 @@ class ExoplayerView :
     private var aspectRatio = Rational(16, 9)
     private var pipExitTimestamp: Long = 0
     private var pendingPiPExit: Boolean = false
+
+    private val pipActionReceiver =
+        object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                if (!isInitialized) return
+                when (intent?.action) {
+                    PIP_PLAY_PAUSE_ACTION -> if (exoPlayer.isPlaying) exoPlayer.pause() else exoPlayer.play()
+                    PIP_REPLAY_ACTION -> exoPlayer.seekBack()
+                    PIP_FORWARD_ACTION -> exoPlayer.seekForward()
+                }
+            }
+        }
 
     private val handler = Handler(Looper.getMainLooper())
     val model: MediaDetailsViewModel by viewModels()
@@ -569,6 +592,17 @@ class ExoplayerView :
         ThemeManager(this).applyTheme()
         binding = ActivityExoplayerBinding.inflate(layoutInflater)
         setContentView(binding.root)
+
+        ContextCompat.registerReceiver(
+            this,
+            pipActionReceiver,
+            IntentFilter().apply {
+                addAction(PIP_PLAY_PAUSE_ACTION)
+                addAction(PIP_REPLAY_ACTION)
+                addAction(PIP_FORWARD_ACTION)
+            },
+            ContextCompat.RECEIVER_NOT_EXPORTED,
+        )
 
         // Renders from a previous session are done being shared by now; a new playback session is
         // the safe point to drop them, rather than on dismiss while a share may still be reading.
@@ -1060,20 +1094,16 @@ class ExoplayerView :
             }
         }
 
-        if (!PrefManager.getVal<Boolean>(PrefName.DoubleTap)) {
-            playerView.findViewById<View>(R.id.exo_fast_forward_button_cont).visibility =
-                View.VISIBLE
-            playerView.findViewById<View>(R.id.exo_fast_rewind_button_cont).visibility =
-                View.VISIBLE
-            playerView.findViewById<ImageButton>(R.id.exo_fast_forward_button).setOnClickListener {
-                if (isInitialized) {
-                    seek(true)
-                }
+        playerView.findViewById<View>(R.id.exo_fast_forward_button_cont).visibility = View.VISIBLE
+        playerView.findViewById<View>(R.id.exo_fast_rewind_button_cont).visibility = View.VISIBLE
+        playerView.findViewById<ImageButton>(R.id.exo_fast_forward_button).setOnClickListener {
+            if (isInitialized) {
+                exoPlayer.seekForward()
             }
-            playerView.findViewById<ImageButton>(R.id.exo_fast_rewind_button).setOnClickListener {
-                if (isInitialized) {
-                    seek(false)
-                }
+        }
+        playerView.findViewById<ImageButton>(R.id.exo_fast_rewind_button).setOnClickListener {
+            if (isInitialized) {
+                exoPlayer.seekBack()
             }
         }
 
@@ -2178,6 +2208,8 @@ class ExoplayerView :
                 .setMediaSourceFactory(assMediaSourceFactory)
                 .setTrackSelector(trackSelector)
                 .setLoadControl(loadControl)
+                .setSeekBackIncrementMs(PIP_SEEK_INCREMENT_MS)
+                .setSeekForwardIncrementMs(PIP_SEEK_INCREMENT_MS)
                 .build()
         playerView.player = exoPlayer
 
@@ -2277,6 +2309,20 @@ class ExoplayerView :
                 MediaSession
                     .Builder(this, exoPlayer)
                     .setId(rightNow.timeInMillis.toString())
+                    .setMediaButtonPreferences(
+                        listOf(
+                            CommandButton
+                                .Builder(CommandButton.ICON_SKIP_BACK)
+                                .setPlayerCommand(Player.COMMAND_SEEK_BACK)
+                                .setCustomIconResId(R.drawable.ic_round_replay_10_24)
+                                .build(),
+                            CommandButton
+                                .Builder(CommandButton.ICON_SKIP_FORWARD)
+                                .setPlayerCommand(Player.COMMAND_SEEK_FORWARD)
+                                .setCustomIconResId(R.drawable.ic_round_forward_10_24)
+                                .build(),
+                        ),
+                    )
                     .build()
         } catch (e: Exception) {
             toast(e.toString())
@@ -2453,6 +2499,15 @@ class ExoplayerView :
         if (!isBuffering) {
             isPlayerPlaying = isPlaying
             playerView.keepScreenOn = isPlaying
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && isInPictureInPictureMode) {
+                setPictureInPictureParams(
+                    PictureInPictureParams
+                        .Builder()
+                        .setAspectRatio(aspectRatio)
+                        .setActions(pipActions())
+                        .build(),
+                )
+            }
             (exoPlay.drawable as Animatable?)?.start()
             if (!this.isDestroyed) {
                 Glide
@@ -2859,6 +2914,7 @@ class ExoplayerView :
     }
 
     override fun onDestroy() {
+        unregisterReceiver(pipActionReceiver)
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
 
         CoroutineScope(Dispatchers.IO).launch {
@@ -2910,6 +2966,47 @@ class ExoplayerView :
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun pipActions(): List<RemoteAction> =
+        listOf(
+            RemoteAction(
+                Icon.createWithResource(this, R.drawable.ic_round_replay_10_24),
+                getString(R.string.replay_10_seconds),
+                getString(R.string.replay_10_seconds),
+                PendingIntent.getBroadcast(
+                    this,
+                    13,
+                    Intent(PIP_REPLAY_ACTION).setPackage(packageName),
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                ),
+            ),
+            RemoteAction(
+                Icon.createWithResource(
+                    this,
+                    if (exoPlayer.isPlaying) R.drawable.ic_round_pause_24 else R.drawable.ic_round_play_arrow_24,
+                ),
+                getString(if (exoPlayer.isPlaying) R.string.pause else R.string.play),
+                getString(if (exoPlayer.isPlaying) R.string.pause else R.string.play),
+                PendingIntent.getBroadcast(
+                    this,
+                    12,
+                    Intent(PIP_PLAY_PAUSE_ACTION).setPackage(packageName),
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                ),
+            ),
+            RemoteAction(
+                Icon.createWithResource(this, R.drawable.ic_round_forward_10_24),
+                getString(R.string.forward_10_seconds),
+                getString(R.string.forward_10_seconds),
+                PendingIntent.getBroadcast(
+                    this,
+                    14,
+                    Intent(PIP_FORWARD_ACTION).setPackage(packageName),
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                ),
+            ),
+        )
+
     // Enter PiP Mode
     @Suppress("DEPRECATION")
     private fun enterPipMode() {
@@ -2922,6 +3019,7 @@ class ExoplayerView :
                     PictureInPictureParams
                         .Builder()
                         .setAspectRatio(aspectRatio)
+                        .setActions(pipActions())
                         .build(),
                 )
             } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
