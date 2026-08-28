@@ -8,6 +8,7 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import ani.dantotsu.R
 import ani.dantotsu.connections.handoff.HandoffBottomSheet
+import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.discord.Discord
 import ani.dantotsu.connections.mal.MAL
 import ani.dantotsu.connections.mangabaka.MangaBaka
@@ -15,6 +16,7 @@ import ani.dantotsu.download.DownloadActivity
 import ani.dantotsu.home.SearchBottomSheet
 import ani.dantotsu.incognitoNotification
 import ani.dantotsu.media.CalendarActivity
+import ani.dantotsu.media.user.ListActivity
 import ani.dantotsu.profile.activity.FeedActivity
 import ani.dantotsu.settings.DiscordDialogFragment
 import ani.dantotsu.settings.ExtensionBrowseActivity
@@ -255,6 +257,20 @@ object QuickTiles : TileCatalogue(PrefName.QuickTileOrder) {
             SearchBottomSheet.newInstance().show(fm, "search")
         },
         QuickTile.Action(
+            "user_anime_list", R.string.anime_list, R.drawable.ic_round_movie_filter_24,
+            QuickTileCategory.LIBRARY, needsNetwork = true,
+            isAvailable = { Anilist.token != null },
+        ) { host ->
+            host.openUserList(anime = true)
+        },
+        QuickTile.Action(
+            "user_manga_list", R.string.manga_list, R.drawable.ic_round_menu_book_24,
+            QuickTileCategory.LIBRARY, needsNetwork = true,
+            isAvailable = { Anilist.token != null },
+        ) { host ->
+            host.openUserList(anime = false)
+        },
+        QuickTile.Action(
             "calendar", R.string.release_calendar, R.drawable.ic_round_calendar_today_24,
             QuickTileCategory.LIBRARY, needsNetwork = true,
         ) { it.open(CalendarActivity::class.java) },
@@ -294,6 +310,18 @@ object QuickTiles : TileCatalogue(PrefName.QuickTileOrder) {
             QuickTileCategory.SETTINGS,
         ) { it.open(SettingsActivity::class.java) },
     )
+
+    private fun QuickTileHost.openUserList(anime: Boolean) {
+        ContextCompat.startActivity(
+            activity,
+            Intent(activity, ListActivity::class.java)
+                .putExtra("anime", anime)
+                .putExtra("userId", Anilist.userid)
+                .putExtra("username", Anilist.username),
+            null,
+        )
+        dismiss()
+    }
 
     /** One shortcut per installed extension, rebuilt each time the sheet opens. */
     private fun extensionTiles(): List<QuickTile> = runCatching {
