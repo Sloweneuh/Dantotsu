@@ -95,6 +95,11 @@ sealed class QuickTile(
         needsNetwork: Boolean = false,
         isAvailable: () -> Boolean = { true },
         unavailableReason: Int? = null,
+        /**
+         * A long press does this instead of falling through to the panel editor, mirroring
+         * [Toggle.onLongClick] — a search tile uses it to offer "pin to home screen".
+         */
+        val onLongClick: ((QuickTileHost) -> Unit)? = null,
         val onClick: (QuickTileHost) -> Unit,
     ) : QuickTile(id, icon, category, needsNetwork, isAvailable, unavailableReason) {
         override fun label(host: QuickTileHost): CharSequence = host.activity.getString(labelRes)

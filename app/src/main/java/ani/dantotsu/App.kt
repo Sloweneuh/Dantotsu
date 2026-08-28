@@ -19,6 +19,7 @@ import ani.dantotsu.notifications.TaskScheduler
 import ani.dantotsu.notifications.WorkManagerScheduler
 import ani.dantotsu.notifications.AlarmManagerScheduler
 import ani.dantotsu.notifications.firebase.FirebaseBackgroundScheduler
+import ani.dantotsu.others.AppShortcuts
 import ani.dantotsu.others.DisabledReports
 import ani.dantotsu.others.AppUpdater
 import ani.dantotsu.parsers.AnimeSources
@@ -123,6 +124,7 @@ class App : MultiDexApplication() {
         initializeNetwork()
 
         setupNotificationChannels()
+        AppShortcuts.publish(this)
         if (!LogcatLogger.isInstalled) {
             LogcatLogger.install(AndroidLogcatLogger(LogPriority.VERBOSE))
         }

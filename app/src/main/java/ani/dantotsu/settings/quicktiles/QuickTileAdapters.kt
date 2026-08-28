@@ -189,11 +189,15 @@ class QuickTileGridAdapter(
         }
         holder.binding.quickTileRoot.setOnLongClickListener { view ->
             view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-            // A toggle with somewhere to configure it opens that, like Android's tiles; anything
-            // else falls through to rearranging the panel. Rearranging works either way, so an
-            // unusable tile still answers a long press.
-            val settings = (placed.tile as? QuickTile.Toggle)?.onLongClick?.takeIf { usable }
-            if (settings != null) settings(host) else onLongPress()
+            // A tile with its own long-press action — a toggle's config screen, a search tile's
+            // "pin to home screen" — runs that; anything else falls through to rearranging the
+            // panel. Rearranging works either way, so an unusable tile still answers a long press.
+            val custom = when (val tile = placed.tile) {
+                is QuickTile.Toggle -> tile.onLongClick
+                is QuickTile.Action -> tile.onLongClick
+                else -> null
+            }?.takeIf { usable }
+            if (custom != null) custom(host) else onLongPress()
             true
         }
     }

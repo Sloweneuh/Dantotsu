@@ -27,6 +27,10 @@
     <string name="search_results">Résultats de recherche</string>
     <string name="search_settings">Rechercher dans les paramètres</string>
     <string name="settings_search_no_results">Aucun paramètre correspondant</string>
+    <!-- Raccourcis du lanceur : appui long sur une tuile de recherche pour l\'épingler à l\'écran d\'accueil -->
+    <string name="shortcut_search_type">Rechercher : %1$s</string>
+    <string name="shortcut_pin_unsupported">Votre lanceur ne peut pas ajouter de raccourcis à l\'écran d\'accueil</string>
+    <string name="shortcut_search_pin_hint">Appui long sur un type de recherche pour l\'ajouter à l\'écran d\'accueil</string>
     <string name="sort_by">Trier par</string>
     <string name="top_score">Meilleur score</string>
     <string name="updated">Récemment mis à jour</string>

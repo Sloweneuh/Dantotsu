@@ -336,6 +336,11 @@ enum class PrefName(val data: Pref) {
 
     // The search sheet is the same panel over a different catalogue; same storage shape.
     SearchTileOrder(Pref(Location.UI, List::class, listOf<String>())),
+
+    // Times the "long-press a search to pin it" tip has been shown at the top of the search sheet
+    // when it was opened from the launcher's Search shortcut. Capped low — a few looks is enough,
+    // then it never appears again.
+    SearchPinHintShown(Pref(Location.Irrelevant, Int::class, 0)),
     DiscordStatus(Pref(Location.Irrelevant, String::class, "online")),
     MalSyncLanguagePreferences(Pref(Location.Irrelevant, Set::class, setOf<String>())), // Stores "mediaId:language" pairs
     DiscordRPCModeAnime(Pref(Location.Irrelevant, String::class, "dantotsu")),

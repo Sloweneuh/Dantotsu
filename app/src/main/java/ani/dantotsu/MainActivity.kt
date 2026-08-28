@@ -41,13 +41,16 @@ import ani.dantotsu.connections.anilist.AnilistHomeViewModel
 import ani.dantotsu.databinding.ActivityMainBinding
 import ani.dantotsu.databinding.DialogUserAgentBinding
 import ani.dantotsu.databinding.SplashScreenBinding
+import ani.dantotsu.download.DownloadActivity
 import ani.dantotsu.home.AnimeFragment
 import ani.dantotsu.home.HomeFragment
 import ani.dantotsu.home.LoginFragment
 import ani.dantotsu.home.MangaFragment
 import ani.dantotsu.home.NoInternet
+import ani.dantotsu.home.SearchBottomSheet
 import ani.dantotsu.media.MediaDetailsActivity
 import ani.dantotsu.notifications.TaskScheduler
+import ani.dantotsu.others.AppShortcuts
 import ani.dantotsu.others.CustomBottomDialog
 import ani.dantotsu.others.calc.CalcActivity
 import ani.dantotsu.profile.ProfileActivity
@@ -104,6 +107,18 @@ class MainActivity : AppCompatActivity() {
 
         //get FRAGMENT_CLASS_NAME from intent
         val fragment = intent.getStringExtra("FRAGMENT_CLASS_NAME")
+
+        // A launcher shortcut (see AppShortcuts) arrives as an action on the intent. Only the first
+        // creation acts on it — a rotation or a restored instance keeps the same intent and must
+        // not re-enter a mode or re-open the search sheet. The two modes are applied here, before
+        // the code that reads them: the incognito banner observer and the offline redirect both
+        // run further down this same onCreate.
+        val shortcutAction =
+            if (savedInstanceState == null) intent.getStringExtra(AppShortcuts.EXTRA_ACTION) else null
+        when (shortcutAction) {
+            AppShortcuts.ACTION_INCOGNITO -> PrefManager.setVal(PrefName.Incognito, true)
+            AppShortcuts.ACTION_OFFLINE -> PrefManager.setVal(PrefName.OfflineMode, true)
+        }
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -355,6 +370,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
         val offlineMode: Boolean = PrefManager.getVal(PrefName.OfflineMode)
+
         if (!isOnline(this)) {
             snackString(this@MainActivity.getString(R.string.no_internet_connection))
             startActivity(Intent(this, NoInternet::class.java))
@@ -450,6 +466,24 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+
+        // A launcher shortcut (see AppShortcuts) that opens a screen, run after the online/offline
+        // routing above so it lands on top of whatever that put up — the home page, or the offline
+        // screen. The two mode shortcuts are handled far earlier, before their prefs are read.
+        when (shortcutAction) {
+            AppShortcuts.ACTION_DOWNLOADS ->
+                startActivity(Intent(this, DownloadActivity::class.java))
+
+            AppShortcuts.ACTION_SEARCH -> if (!offlineMode && isOnline(this)) {
+                binding.root.post {
+                    if (!supportFragmentManager.isStateSaved && !isFinishing) {
+                        SearchBottomSheet.newInstance(fromShortcut = true)
+                            .show(supportFragmentManager, "search")
+                    }
+                }
+            }
+        }
+
         if (PrefManager.getVal(PrefName.OC)) {
             AudioHelper.run(this, R.raw.audio)
             PrefManager.setVal(PrefName.OC, false)

@@ -3,6 +3,7 @@
     nine buttons became tiles that can be reordered, resized and taken off.
 -->
 <androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="@drawable/bottom_sheet_background">
@@ -21,6 +22,22 @@
             android:paddingBottom="8dp"
             android:text="@string/search"
             android:textSize="17sp" />
+
+        <!-- Only shown, and only a few times, when the sheet was opened from the launcher's Search
+             shortcut: the per-type search shortcuts it can lead to are reached by long-pressing a
+             tile, a gesture nothing else on the sheet advertises. -->
+        <TextView
+            android:id="@+id/searchPinHint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:alpha="0.7"
+            android:gravity="center"
+            android:paddingHorizontal="24dp"
+            android:paddingBottom="10dp"
+            android:text="@string/shortcut_search_pin_hint"
+            android:textSize="12sp"
+            android:visibility="gone"
+            tools:visibility="visible" />
 
         <include layout="@layout/view_tile_panel" />
 

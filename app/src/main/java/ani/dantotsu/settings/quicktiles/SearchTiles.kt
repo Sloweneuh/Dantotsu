@@ -1,6 +1,7 @@
 package ani.dantotsu.settings.quicktiles
 
 import android.content.Intent
+import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.core.content.ContextCompat
 import ani.dantotsu.R
@@ -8,6 +9,7 @@ import ani.dantotsu.connections.anilist.AnilistSearch.SearchType
 import ani.dantotsu.connections.anilist.AnilistSearch.SearchType.Companion.toAnilistString
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.media.SearchActivity
+import ani.dantotsu.others.AppShortcuts
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 
@@ -38,22 +40,32 @@ object SearchTiles : TileCatalogue(PrefName.SearchTileOrder) {
      */
     var pendingQuery: String? = null
 
-    private fun search(id: String, @StringRes label: Int, icon: Int, type: SearchType) =
-        QuickTile.Action(id, label, icon, SearchTileCategory.ANILIST, needsNetwork = true) { host ->
-            open(host, type)
-        }
+    private fun search(id: String, @StringRes label: Int, @DrawableRes icon: Int, type: SearchType) =
+        QuickTile.Action(
+            id, label, icon, SearchTileCategory.ANILIST, needsNetwork = true,
+            onLongClick = pinToHome(label, icon, type),
+        ) { host -> open(host, type) }
 
     private fun service(
         id: String,
         @StringRes label: Int,
-        icon: Int,
+        @DrawableRes icon: Int,
         type: SearchType,
         isAvailable: () -> Boolean,
         @StringRes unavailableReason: Int,
     ) = QuickTile.Action(
         id, label, icon, SearchTileCategory.SERVICES, needsNetwork = true,
         isAvailable = isAvailable, unavailableReason = unavailableReason,
+        onLongClick = pinToHome(label, icon, type),
     ) { host -> open(host, type) }
+
+    /** Long-press a search tile to drop a standalone icon for that search on the home screen. */
+    private fun pinToHome(@StringRes label: Int, @DrawableRes icon: Int, type: SearchType):
+            (QuickTileHost) -> Unit = { host ->
+        AppShortcuts.pinSearch(
+            host.activity, type.toAnilistString(), host.activity.getString(label), icon,
+        )
+    }
 
     private fun open(host: QuickTileHost, type: SearchType) {
         val activity = host.activity

@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.view.isVisible
 import ani.dantotsu.BottomSheetDialogFragment
 import ani.dantotsu.databinding.BottomSheetSearchBinding
 import ani.dantotsu.databinding.ViewTilePanelBinding
@@ -24,16 +25,18 @@ class SearchBottomSheet : BottomSheetDialogFragment() {
 
     companion object {
         private const val ARG_QUERY = "query"
+        private const val ARG_FROM_SHORTCUT = "fromShortcut"
 
-        fun newInstance(query: String?): SearchBottomSheet {
-            val f = SearchBottomSheet()
-            val args = Bundle()
-            args.putString(ARG_QUERY, query)
-            f.arguments = args
-            return f
-        }
+        /** After this many looks the pin tip has done its job and stops appearing. */
+        private const val PIN_HINT_LIMIT = 3
 
-        fun newInstance(): SearchBottomSheet = newInstance(null)
+        fun newInstance(query: String? = null, fromShortcut: Boolean = false): SearchBottomSheet =
+            SearchBottomSheet().apply {
+                arguments = Bundle().apply {
+                    putString(ARG_QUERY, query)
+                    putBoolean(ARG_FROM_SHORTCUT, fromShortcut)
+                }
+            }
     }
 
     override fun onCreateView(
@@ -50,6 +53,16 @@ class SearchBottomSheet : BottomSheetDialogFragment() {
 
         // Read by whichever tile is tapped; see SearchTiles.pendingQuery.
         SearchTiles.pendingQuery = arguments?.getString(ARG_QUERY)
+
+        // Opened from the launcher's Search shortcut: point out the long-press-to-pin gesture the
+        // per-type shortcuts depend on. Shown a handful of times, then never again.
+        if (arguments?.getBoolean(ARG_FROM_SHORTCUT) == true) {
+            val shown = PrefManager.getVal<Int>(PrefName.SearchPinHintShown)
+            if (shown < PIN_HINT_LIMIT) {
+                binding.searchPinHint.isVisible = true
+                PrefManager.setVal(PrefName.SearchPinHintShown, shown + 1)
+            }
+        }
 
         val offline = !isOnline(requireContext()) ||
                 PrefManager.getVal<Boolean>(PrefName.OfflineMode)

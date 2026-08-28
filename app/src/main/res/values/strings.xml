@@ -38,6 +38,10 @@
     <string name="search_results">Search Results</string>
     <string name="search_settings">Search settings</string>
     <string name="settings_search_no_results">No matching settings found</string>
+    <!-- Launcher shortcuts: long-press a search tile to pin one of these to the home screen -->
+    <string name="shortcut_search_type">Search %1$s</string>
+    <string name="shortcut_pin_unsupported">Your launcher can\'t add shortcuts to the home screen</string>
+    <string name="shortcut_search_pin_hint">Long-press a search type to add it to your home screen</string>
     <string name="sort_by">Sort By</string>
     <string name="top_score">Top Score</string>
     <string name="updated">Recently Updated</string>
