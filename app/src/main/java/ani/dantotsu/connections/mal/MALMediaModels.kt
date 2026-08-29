@@ -211,6 +211,35 @@ data class MALListStatus(
     @SerialName("finish_date") val finishDate: String? = null,
 )
 
+// ---- Search (GET /{anime|manga}?q=...) — official API, no filters beyond q/limit/offset ----
+
+@Serializable
+data class MALSearchResponse(
+    val data: List<MALSearchEdge> = emptyList(),
+    val paging: MALPaging? = null,
+)
+
+@Serializable
+data class MALSearchEdge(val node: MALSearchNode)
+
+@Serializable
+data class MALSearchNode(
+    val id: Int,
+    val title: String,
+    @SerialName("main_picture") val mainPicture: MALPicture? = null,
+    val synopsis: String? = null,
+    val mean: Double? = null,
+    @SerialName("media_type") val mediaType: String? = null,
+    val status: String? = null,
+    @SerialName("num_episodes") val numEpisodes: Int? = null,
+    @SerialName("num_chapters") val numChapters: Int? = null,
+    @SerialName("start_season") val startSeason: MALSeason? = null,
+) : java.io.Serializable
+
+/** One search-result row, carrying the media kind alongside the node (a single results list mixes
+ * anime and manga searches depending on which catalogue the user is browsing). */
+data class MALSearchItem(val isAnime: Boolean, val node: MALSearchNode) : java.io.Serializable
+
 @Serializable
 data class MALStack(
     val url: String,

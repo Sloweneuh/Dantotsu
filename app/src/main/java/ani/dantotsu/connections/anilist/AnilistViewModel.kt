@@ -10,6 +10,7 @@ import ani.dantotsu.BuildConfig
 import ani.dantotsu.R
 import ani.dantotsu.connections.comick.ComickApi
 import ani.dantotsu.connections.kitsu.KitsuApi
+import ani.dantotsu.connections.mal.MALSearchItem
 import ani.dantotsu.connections.simkl.SimklApi
 import ani.dantotsu.connections.mangabaka.MangaBakaApi
 import ani.dantotsu.connections.discord.Discord
@@ -526,13 +527,18 @@ class AnilistSearch : ViewModel() {
         MANGABAKA(R.string.mangabaka),
         KITSU(R.string.kitsu_manga_search),
         KITSU_ANIME(R.string.kitsu_anime_search),
-        SIMKL(R.string.simkl_search);
+        SIMKL(R.string.simkl_search),
+        MAL(R.string.mal_manga_search),
+        MAL_ANIME(R.string.mal_anime_search);
 
         /** Comick keeps anime in a separate catalogue, searched as two sources rather than one. */
         val isComick: Boolean get() = this == COMICK || this == COMICK_ANIME
 
         /** Kitsu, likewise — a manga and an anime catalogue searched as two sources. */
         val isKitsu: Boolean get() = this == KITSU || this == KITSU_ANIME
+
+        /** MAL (Jikan), likewise — a manga and an anime catalogue searched as two sources. */
+        val isMal: Boolean get() = this == MAL || this == MAL_ANIME
 
         /** The search bar's hint: localized, and upper-cased the way the bar has always shown it. */
         fun hint(context: Context): String =
@@ -557,6 +563,8 @@ class AnilistSearch : ViewModel() {
                     KITSU -> "KITSU"
                     KITSU_ANIME -> "KITSU_ANIME"
                     SIMKL -> "SIMKL"
+                    MAL -> "MAL"
+                    MAL_ANIME -> "MAL_ANIME"
                 }
             }
 
@@ -575,6 +583,8 @@ class AnilistSearch : ViewModel() {
                     "KITSU" -> KITSU
                     "KITSU_ANIME" -> KITSU_ANIME
                     "SIMKL" -> SIMKL
+                    "MAL" -> MAL
+                    "MAL_ANIME" -> MAL_ANIME
                     else -> throw IllegalArgumentException("Invalid search type")
                 }
             }
@@ -617,6 +627,9 @@ class AnilistSearch : ViewModel() {
     lateinit var simklSearchResults: SimklSearchResults
     private val simklResult: MutableLiveData<SimklSearchResults?> = MutableLiveData()
 
+    lateinit var malSearchResults: MalSearchResults
+    private val malResult: MutableLiveData<MalSearchResults?> = MutableLiveData()
+
     fun <T> getSearch(type: SearchType): MutableLiveData<T?> {
         return when (type) {
             SearchType.ANIME, SearchType.MANGA -> aniMangaResult as MutableLiveData<T?>
@@ -629,6 +642,7 @@ class AnilistSearch : ViewModel() {
             SearchType.MANGABAKA -> mangaBakaResult as MutableLiveData<T?>
             SearchType.KITSU, SearchType.KITSU_ANIME -> kitsuResult as MutableLiveData<T?>
             SearchType.SIMKL -> simklResult as MutableLiveData<T?>
+            SearchType.MAL, SearchType.MAL_ANIME -> malResult as MutableLiveData<T?>
         }
     }
 
@@ -644,6 +658,7 @@ class AnilistSearch : ViewModel() {
             SearchType.MANGABAKA -> loadMangaBakaSearch(mangaBakaSearchResults)
             SearchType.KITSU, SearchType.KITSU_ANIME -> loadKitsuSearch(kitsuSearchResults)
             SearchType.SIMKL -> loadSimklSearch(simklSearchResults)
+            SearchType.MAL, SearchType.MAL_ANIME -> loadMalSearch(malSearchResults)
         }
     }
 
@@ -659,6 +674,7 @@ class AnilistSearch : ViewModel() {
             SearchType.MANGABAKA -> loadNextMangaBakaPage(mangaBakaSearchResults)
             SearchType.KITSU, SearchType.KITSU_ANIME -> loadNextKitsuPage(kitsuSearchResults)
             SearchType.SIMKL -> loadNextSimklPage(simklSearchResults)
+            SearchType.MAL, SearchType.MAL_ANIME -> loadNextMalPage(malSearchResults)
         }
     }
 
@@ -674,6 +690,7 @@ class AnilistSearch : ViewModel() {
             SearchType.MANGABAKA -> mangaBakaSearchResults.hasNextPage
             SearchType.KITSU, SearchType.KITSU_ANIME -> kitsuSearchResults.hasNextPage
             SearchType.SIMKL -> simklSearchResults.hasNextPage
+            SearchType.MAL, SearchType.MAL_ANIME -> malSearchResults.hasNextPage
         }
     }
 
@@ -689,6 +706,7 @@ class AnilistSearch : ViewModel() {
             SearchType.MANGABAKA -> mangaBakaSearchResults.results.isNotEmpty()
             SearchType.KITSU, SearchType.KITSU_ANIME -> kitsuSearchResults.results.isNotEmpty()
             SearchType.SIMKL -> simklSearchResults.results.isNotEmpty()
+            SearchType.MAL, SearchType.MAL_ANIME -> malSearchResults.results.isNotEmpty()
         }
     }
 
@@ -704,6 +722,7 @@ class AnilistSearch : ViewModel() {
             SearchType.MANGABAKA -> mangaBakaSearchResults.results.size
             SearchType.KITSU, SearchType.KITSU_ANIME -> kitsuSearchResults.results.size
             SearchType.SIMKL -> simklSearchResults.results.size
+            SearchType.MAL, SearchType.MAL_ANIME -> malSearchResults.results.size
         }
     }
 
@@ -719,6 +738,7 @@ class AnilistSearch : ViewModel() {
             SearchType.MANGABAKA -> mangaBakaSearchResults.results.clear()
             SearchType.KITSU, SearchType.KITSU_ANIME -> kitsuSearchResults.results.clear()
             SearchType.SIMKL -> simklSearchResults.results.clear()
+            SearchType.MAL, SearchType.MAL_ANIME -> malSearchResults.results.clear()
         }
     }
 
@@ -1057,6 +1077,23 @@ class AnilistSearch : ViewModel() {
             page = page,
             results = result.toMutableList(),
             hasNextPage = result.size >= perPage,
+        )
+    }
+
+    private suspend fun loadMalSearch(r: MalSearchResults) =
+        malResult.postValue(runMalSearch(r, 1))
+
+    private suspend fun loadNextMalPage(r: MalSearchResults) =
+        malResult.postValue(runMalSearch(r, r.page + 1))
+
+    private suspend fun runMalSearch(r: MalSearchResults, page: Int): MalSearchResults {
+        val result = MAL.query.search(r.isAnime, r.search, page)
+        return MalSearchResults(
+            search = r.search,
+            page = page,
+            results = result?.data.orEmpty().map { MALSearchItem(r.isAnime, it.node) }.toMutableList(),
+            hasNextPage = result?.paging?.next != null,
+            isAnime = r.isAnime,
         )
     }
 }

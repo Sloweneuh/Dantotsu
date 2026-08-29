@@ -410,6 +410,14 @@
                 <data android:pathPrefix="/anime/" />
             </intent-filter>
         </activity>
+        <!--
+            No deep-link intent-filter here (unlike Kitsu/Simkl): CookieCatcher already claims
+            myanimelist.net (pathPrefix /anime and /manga, see its "read/watch_on_dantotsu" filters
+            below) — adding another exported activity matching the same host+path would make every
+            myanimelist.net link resolution ambiguous (a disambiguation chooser) system-wide, not
+            just inside this app. Reached only from in-app search (SearchActivity) instead.
+        -->
+        <activity android:name=".media.MalMediaActivity" />
         <activity
             android:name=".connections.handoff.HandoffDeepLinkActivity"
             android:excludeFromRecents="true"

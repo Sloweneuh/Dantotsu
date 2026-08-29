@@ -31,6 +31,16 @@ class MALQueries {
             return mapOf("Authorization" to "Bearer ${MAL.token ?: return null}")
         }
 
+    /**
+     * Every MAL v2 request needs either a user token or the app's own client-id — this is for the
+     * public, no-login browsing (search + the standalone media page): falls back to the client-id
+     * header when nobody's signed in. Never used for user-list endpoints (those still gate on
+     * [authHeader] being non-null and skip the request entirely when it's not, rather than firing
+     * an anonymous request that MAL would just reject).
+     */
+    private val publicHeader: Map<String, String>
+        get() = authHeader ?: mapOf("X-MAL-CLIENT-ID" to MAL.clientId)
+
     @Serializable
     data class MalUser(
         val id: Int,
@@ -161,7 +171,7 @@ class MALQueries {
 
             client.get(
                 "$apiUrl/anime/$malId?fields=$fields",
-                authHeader ?: emptyMap()
+                publicHeader, cacheTime = 0,
             ).parsed<MALAnimeResponse>()
         }
     }
@@ -175,8 +185,34 @@ class MALQueries {
 
             client.get(
                 "$apiUrl/manga/$malId?fields=$fields",
-                authHeader ?: emptyMap()
+                publicHeader, cacheTime = 0,
             ).parsed<MALMangaResponse>()
+        }
+    }
+
+    /**
+     * Anime/manga search via the official v2 API — public (client-id fallback), no login needed.
+     * Unlike Jikan, this endpoint supports only `q`/`limit`/`offset` — no genre, status, rating or
+     * sort filters exist server-side, so the MAL search screen doesn't offer a filter sheet.
+     *
+     * A blank [query] falls back to `/{anime|manga}/ranking` (`ranking_type=all`) — the search
+     * endpoint itself rejects an empty `q` with a 400, but the website shows a default ranked
+     * listing rather than nothing when you land on the search page without typing, so this does
+     * too. Each ranked edge carries an extra `ranking` object [MALSearchResponse] doesn't declare;
+     * `ignoreUnknownKeys` just drops it, so the one response model serves both shapes.
+     */
+    suspend fun search(isAnime: Boolean, query: String?, page: Int, limit: Int = 20): MALSearchResponse? {
+        val q = query?.trim()?.takeIf { it.isNotBlank() }
+        val kind = if (isAnime) "anime" else "manga"
+        val fields = "id,title,main_picture,synopsis,mean,media_type,status,num_episodes,num_chapters,start_season"
+        val offset = (page - 1) * limit
+        val url = if (q != null) {
+            "$apiUrl/$kind?q=${java.net.URLEncoder.encode(q, "UTF-8")}&limit=$limit&offset=$offset&fields=$fields"
+        } else {
+            "$apiUrl/$kind/ranking?ranking_type=all&limit=$limit&offset=$offset&fields=$fields"
+        }
+        return tryWithSuspend {
+            client.get(url, publicHeader, cacheTime = 0).parsed<MALSearchResponse>()
         }
     }
 

@@ -1928,10 +1928,13 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="kitsu_manga_search">Kitsu Manga</string>
     <string name="kitsu_anime_search">Kitsu Anime</string>
     <string name="simkl_search">Simkl</string>
+    <string name="mal_manga_search">MAL Manga</string>
+    <string name="mal_anime_search">MAL Anime</string>
     <string name="kitsu_no_data_title">No Kitsu data</string>
     <string name="kitsu_no_data_desc">This entry couldn\'t be matched to a Kitsu media</string>
     <string name="simkl_no_data_title">No Simkl data</string>
     <string name="simkl_no_data_desc">This entry couldn\'t be matched to a Simkl anime</string>
+    <string name="mal_no_data_title">No MyAnimeList data</string>
     <string name="open_on_kitsu">Open on Kitsu</string>
     <string name="open_on_simkl">Open on Simkl</string>
     <string name="disable_kitsu">Enable Kitsu</string>

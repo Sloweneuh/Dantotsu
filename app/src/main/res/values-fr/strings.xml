@@ -1720,10 +1720,13 @@
     <string name="kitsu_manga_search">Kitsu Manga</string>
     <string name="kitsu_anime_search">Kitsu Anime</string>
     <string name="simkl_search">Simkl</string>
+    <string name="mal_manga_search">MAL Manga</string>
+    <string name="mal_anime_search">MAL Anime</string>
     <string name="kitsu_no_data_title">Aucune donnée Kitsu</string>
     <string name="kitsu_no_data_desc">Cette entrée n\'a pas pu être associée à un média Kitsu</string>
     <string name="simkl_no_data_title">Aucune donnée Simkl</string>
     <string name="simkl_no_data_desc">Cette entrée n\'a pas pu être associée à un anime Simkl</string>
+    <string name="mal_no_data_title">Aucune donnée MyAnimeList</string>
     <string name="open_on_kitsu">Ouvrir sur Kitsu</string>
     <string name="open_on_simkl">Ouvrir sur Simkl</string>
     <string name="disable_kitsu">Activer Kitsu</string>

@@ -2,6 +2,7 @@ package ani.dantotsu.connections.anilist
 
 import ani.dantotsu.R
 import ani.dantotsu.connections.kitsu.KitsuApi
+import ani.dantotsu.connections.mal.MALSearchItem
 import ani.dantotsu.connections.simkl.SimklApi
 import ani.dantotsu.currContext
 import java.io.Serializable
@@ -94,3 +95,16 @@ data class SimklSearchResults(
     override var results: MutableList<SimklApi.SimklMedia>,
     override var hasNextPage: Boolean,
 ) : SearchResults<SimklApi.SimklMedia>, Serializable
+
+/**
+ * MAL search state — query only. The official v2 API's search endpoint (unlike Jikan's) takes no
+ * genre/status/rating/sort filters, only `q`/`limit`/`offset`, so there's no filter sheet or chip
+ * strip for MAL — same shape as [SimklSearchResults].
+ */
+data class MalSearchResults(
+    override var search: String?,
+    override var page: Int = 1,
+    override var results: MutableList<MALSearchItem>,
+    override var hasNextPage: Boolean,
+    var isAnime: Boolean = false,
+) : SearchResults<MALSearchItem>, Serializable

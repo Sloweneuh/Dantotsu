@@ -37,9 +37,10 @@ class SupportingSearchAdapter(private val activity: SearchActivity, private val 
     // The grid/list style toggle applies to every "media card" tracker source.
     private fun isSupportingList(t: SearchType) =
         t == SearchType.MANGAUPDATES || t.isComick || t == SearchType.MANGABAKA ||
-            t.isKitsu || t == SearchType.SIMKL
+            t.isKitsu || t == SearchType.SIMKL || t.isMal
 
-    // Simkl's /search/anime takes no filter params, so it gets the style toggle but no filter sheet.
+    // Simkl's and MAL's search endpoints take no filter params, so they get the style toggle but
+    // no filter sheet (MAL's official-API search only supports q/limit/offset).
     private fun hasFilterSheet(t: SearchType) =
         t == SearchType.MANGAUPDATES || t.isComick || t == SearchType.MANGABAKA || t.isKitsu
 
@@ -172,6 +173,7 @@ class SupportingSearchAdapter(private val activity: SearchActivity, private val 
             SearchType.MANGABAKA -> activity.mangaBakaSearchResult
             SearchType.KITSU, SearchType.KITSU_ANIME -> activity.kitsuSearchResult
             SearchType.SIMKL -> activity.simklSearchResult
+            SearchType.MAL, SearchType.MAL_ANIME -> activity.malSearchResult
             else -> throw IllegalArgumentException("Invalid search type")
         }
 
@@ -261,6 +263,8 @@ class SupportingSearchAdapter(private val activity: SearchActivity, private val 
             SearchType.KITSU -> R.drawable.ic_kitsu_manga
             SearchType.KITSU_ANIME -> R.drawable.ic_kitsu_anime
             SearchType.SIMKL -> R.drawable.ic_simkl
+            SearchType.MAL -> R.drawable.ic_myanimelist_manga
+            SearchType.MAL_ANIME -> R.drawable.ic_myanimelist_anime
             else -> R.drawable.ic_round_search_24
         }
     }

@@ -23,11 +23,13 @@ import ani.dantotsu.connections.anilist.CharacterSearchResults
 import ani.dantotsu.connections.anilist.ComickSearchResults
 import ani.dantotsu.connections.anilist.KitsuSearchResults
 import ani.dantotsu.connections.anilist.MUSearchResults
+import ani.dantotsu.connections.anilist.MalSearchResults
 import ani.dantotsu.connections.anilist.MangaBakaSearchResults
 import ani.dantotsu.connections.anilist.SimklSearchResults
 import ani.dantotsu.connections.comick.ComickApi
 import ani.dantotsu.connections.comick.ComickComic
 import ani.dantotsu.connections.kitsu.KitsuApi
+import ani.dantotsu.connections.mal.MALSearchItem
 import ani.dantotsu.connections.mangabaka.MangaBakaApi
 import ani.dantotsu.connections.simkl.SimklApi
 import ani.dantotsu.connections.anilist.StaffSearchResults
@@ -74,6 +76,7 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
     private lateinit var mangaBakaSearchAdaptor: MangaBakaSearchAdapter
     private lateinit var kitsuSearchAdaptor: KitsuSearchAdapter
     private lateinit var simklSearchAdaptor: SimklSearchAdapter
+    private lateinit var malSearchAdaptor: MalSearchAdapter
 
     private lateinit var progressAdapter: ProgressAdapter
     private lateinit var concatAdapter: ConcatAdapter
@@ -89,6 +92,7 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
     lateinit var mangaBakaSearchResult: MangaBakaSearchResults
     lateinit var kitsuSearchResult: KitsuSearchResults
     lateinit var simklSearchResult: SimklSearchResults
+    lateinit var malSearchResult: MalSearchResults
 
     override lateinit var updateChips: (() -> Unit)
     var updateMuChips: (() -> Unit)? = null
@@ -380,6 +384,23 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
                     onSimklResultClicked(media)
                 }
             }
+
+            SearchType.MAL, SearchType.MAL_ANIME -> {
+                val isAnime = searchType == SearchType.MAL_ANIME
+                if (model.notSet) {
+                    model.notSet = false
+                    model.malSearchResults = MalSearchResults(
+                        search = intent.getStringExtra("query"),
+                        results = mutableListOf(),
+                        hasNextPage = false,
+                        isAnime = isAnime,
+                    )
+                }
+                malSearchResult = model.malSearchResults
+                malSearchAdaptor = MalSearchAdapter(model.malSearchResults.results, isAnime, supportStyle) { item ->
+                    onMalResultClicked(item)
+                }
+            }
         }
 
         progressAdapter = ProgressAdapter(searched = model.searched)
@@ -405,7 +426,7 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
                         val currentStyle = when (searchType) {
                             SearchType.MANGAUPDATES, SearchType.COMICK, SearchType.COMICK_ANIME,
                             SearchType.MANGABAKA, SearchType.KITSU, SearchType.KITSU_ANIME,
-                            SearchType.SIMKL -> supportStyle
+                            SearchType.SIMKL, SearchType.MAL, SearchType.MAL_ANIME -> supportStyle
                             SearchType.ANIME, SearchType.MANGA -> style
                             else -> 0
                         }
@@ -457,6 +478,10 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
 
             SearchType.SIMKL -> {
                 ConcatAdapter(simklSearchAdaptor, progressAdapter)
+            }
+
+            SearchType.MAL, SearchType.MAL_ANIME -> {
+                ConcatAdapter(malSearchAdaptor, progressAdapter)
             }
         }
 
@@ -753,19 +778,52 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
                     }
                 }
             }
+
+            SearchType.MAL, SearchType.MAL_ANIME -> {
+                model.getSearch<MalSearchResults>(searchType).observe(this) {
+                    if (it != null) {
+                        model.malSearchResults.apply {
+                            search = it.search
+                            page = it.page
+                            hasNextPage = it.hasNextPage
+                            isAnime = it.isAnime
+                        }
+
+                        val prev = model.malSearchResults.results.size
+                        model.malSearchResults.results.addAll(it.results)
+                        malSearchAdaptor.notifyItemRangeInserted(prev, it.results.size)
+                        if (prev == 0) binding.searchRecyclerView.scrollToPosition(0)
+                        progressAdapter.bar?.isVisible = it.hasNextPage
+                        updateSearchEmptyState(false)
+                    } else {
+                        progressAdapter.bar?.isVisible = false
+                        updateSearchEmptyState(true)
+                    }
+                }
+            }
         }
 
         headerAdaptor.ready.observe(this) {
             if (it == true) {
+                val hasQueryIntent = intent.getBooleanExtra("search", false)
                 if (!notSet) {
                     if (!model.searched) {
                         model.searched = true
                         headerAdaptor.search?.run()
                     }
-                } else
+                } else {
                     headerAdaptor.requestFocus?.run()
+                    // MAL's own search needs no query text (a blank one falls back to a ranked
+                    // listing, same as landing on MAL's own search page with nothing typed) — start
+                    // that browse right away instead of leaving the screen blank until the user
+                    // types something. Only when nothing else is about to trigger a search already.
+                    if (searchType.isMal && !hasQueryIntent && !model.searched) {
+                        model.searched = true
+                        search()
+                    }
+                }
 
-                if (intent.getBooleanExtra("search", false)) {
+                if (hasQueryIntent) {
                     window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_UNCHANGED)
                     search()
                 }
@@ -860,6 +918,11 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
                 model.simklSearchResults.results.clear()
                 simklSearchAdaptor.notifyDataSetChanged()
             }
+
+            SearchType.MAL, SearchType.MAL_ANIME -> {
+                model.malSearchResults.results.clear()
+                malSearchAdaptor.notifyDataSetChanged()
+            }
         }
     }
 
@@ -943,6 +1006,11 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
                 simklSearchResult.page = 1
                 simklSearchResult.hasNextPage = false
             }
+
+            SearchType.MAL, SearchType.MAL_ANIME -> {
+                malSearchResult.page = 1
+                malSearchResult.hasNextPage = false
+            }
         }
     }
 
@@ -976,6 +1044,10 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
             SearchType.SIMKL -> {
                 simklSearchAdaptor.type = supportStyle
                 simklSearchAdaptor.notifyDataSetChanged()
+            }
+            SearchType.MAL, SearchType.MAL_ANIME -> {
+                malSearchAdaptor.type = supportStyle
+                malSearchAdaptor.notifyDataSetChanged()
             }
             else -> Unit
         }
@@ -1034,6 +1106,14 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
         startActivity(
             Intent(this, SimklMediaActivity::class.java)
                 .putExtra(SimklMediaActivity.EXTRA_SIMKL_ID, id)
+        )
+    }
+
+    private fun onMalResultClicked(item: MALSearchItem) {
+        startActivity(
+            Intent(this, MalMediaActivity::class.java)
+                .putExtra(MalMediaActivity.EXTRA_MEDIA_ID, item.node.id)
+                .putExtra(MalMediaActivity.EXTRA_IS_ANIME, item.isAnime)
         )
     }
 

@@ -142,6 +142,19 @@ object SearchTiles : TileCatalogue(PrefName.SearchTileOrder) {
                 isAvailable = { true },
                 unavailableReason = R.string.search_needs_connection_enabled,
             ),
+            // MAL (Jikan) search needs no login either — same off-panel-by-default treatment.
+            service(
+                "mal", R.string.mal_manga_search, R.drawable.ic_myanimelist_manga,
+                SearchType.MAL,
+                isAvailable = { true },
+                unavailableReason = R.string.search_needs_connection_enabled,
+            ),
+            service(
+                "mal_anime", R.string.mal_anime_search, R.drawable.ic_myanimelist_anime,
+                SearchType.MAL_ANIME,
+                isAvailable = { true },
+                unavailableReason = R.string.search_needs_connection_enabled,
+            ),
         )
 
     /** Everything, in the order the buttons used to run: nothing is hidden until the user hides it. */
