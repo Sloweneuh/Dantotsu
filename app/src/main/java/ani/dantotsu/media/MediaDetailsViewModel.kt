@@ -10,6 +10,7 @@ import androidx.lifecycle.ViewModel
 import ani.dantotsu.R
 import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.comick.ComickEpisodes
+import ani.dantotsu.connections.simkl.SimklApi
 import ani.dantotsu.connections.mangaupdates.MUSeriesRecord
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.currContext
@@ -561,6 +562,17 @@ class MediaDetailsViewModel : ViewModel() {
         tryWithSuspend {
             if (comickEpisodes.value == null)
                     comickEpisodes.postValue(ComickEpisodes.getEpisodeDetails(s))
+        }
+    }
+
+    private val simklEpisodes: MutableLiveData<Map<String, Episode>> =
+            MutableLiveData<Map<String, Episode>>(null)
+
+    fun getSimklEpisodes(): LiveData<Map<String, Episode>> = simklEpisodes
+    suspend fun loadSimklEpisodes(s: Media) {
+        tryWithSuspend {
+            if (simklEpisodes.value == null)
+                    simklEpisodes.postValue(SimklApi.getEpisodesMeta(s.id, s.idMAL))
         }
     }
 

@@ -6,6 +6,7 @@ import ani.dantotsu.connections.mal.MAL
 import ani.dantotsu.media.SearchHistory
 import ani.dantotsu.media.savedfilters.SavedAniMangaFilter
 import ani.dantotsu.media.savedfilters.SavedComickFilter
+import ani.dantotsu.media.savedfilters.SavedKitsuFilter
 import ani.dantotsu.media.savedfilters.SavedMangaBakaFilter
 import ani.dantotsu.media.savedfilters.SavedComickListFilter
 import ani.dantotsu.media.savedfilters.SavedExtensionFilterBundle
@@ -132,11 +133,10 @@ enum class PrefName(val data: Pref) {
     MalListSyncEnabled(Pref(Location.General, Boolean::class, true)),
     KitsuListSyncEnabled(Pref(Location.General, Boolean::class, true)),
     SimklListSyncEnabled(Pref(Location.General, Boolean::class, true)),
-    // Kitsu/Simkl search + info tabs are not built yet; scaffolded off until they are.
+    // Kitsu/Simkl info tabs are not built yet; scaffolded off until they are.
     KitsuInfoEnabled(Pref(Location.General, Boolean::class, false)),
-    KitsuSearchEnabled(Pref(Location.General, Boolean::class, false)),
     SimklInfoEnabled(Pref(Location.General, Boolean::class, false)),
-    SimklSearchEnabled(Pref(Location.General, Boolean::class, false)),
+    SavedKitsuFilters(Pref(Location.General, List::class, listOf<SavedKitsuFilter>())),
 
     /**
      * How often the list comparison runs by itself and pushes what it finds, in minutes. 0 is off,

@@ -278,8 +278,12 @@ class AnimeWatchFragment : Fragment() {
                             val anifyEpisodes = async { model.loadAnifyEpisodes(media.id) }
                             val fillerEpisodes = async { model.loadFillerEpisodes(media) }
                             val comickEpisodes = async { model.loadComickEpisodes(media) }
+                            val simklEpisodes = async { model.loadSimklEpisodes(media) }
 
-                            awaitAll(kitsuEpisodes, anifyEpisodes, fillerEpisodes, comickEpisodes)
+                            awaitAll(
+                                kitsuEpisodes, anifyEpisodes, fillerEpisodes, comickEpisodes,
+                                simklEpisodes,
+                            )
                         }
                         // A handoff carries the exact source entry the sender matched: seed it so
                         // the episode list loads directly instead of re-searching by title.
@@ -353,6 +357,19 @@ class AnimeWatchFragment : Fragment() {
                                     ?: media.anime!!.kitsuEpisodes!![i]?.title ?: episode.title
                                 episode.thumb =
                                     media.anime!!.kitsuEpisodes!![i]?.thumb ?: episode.thumb
+                            }
+                        }
+                        // Simkl last: same non-destructive fill, so it only supplies what the
+                        // providers above left blank (title, synopsis, thumbnail).
+                        if (media.anime?.simklEpisodes != null) {
+                            media.anime!!.simklEpisodes!![i]?.let { simkl ->
+                                episode.desc = episode.desc ?: simkl.desc
+                                episode.title = if (MediaNameAdapter.removeEpisodeNumberCompletely(
+                                        episode.title ?: ""
+                                    ).isBlank()
+                                ) simkl.title ?: episode.title
+                                else episode.title ?: simkl.title
+                                episode.thumb = episode.thumb ?: simkl.thumb
                             }
                         }
                     }
@@ -438,6 +455,10 @@ class AnimeWatchFragment : Fragment() {
         model.getAnifyEpisodes().observe(viewLifecycleOwner) { i ->
             if (i != null)
                 media.anime?.anifyEpisodes = i
+        }
+        model.getSimklEpisodes().observe(viewLifecycleOwner) { i ->
+            if (i != null)
+                media.anime?.simklEpisodes = i
         }
     }
 

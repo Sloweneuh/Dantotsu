@@ -231,4 +231,287 @@ object KitsuApi {
 
     @Serializable
     data class ResourceRef(val type: String? = null, val id: String? = null)
+
+    // =============================================================================================
+    // Search + media detail  (public routes, no auth)
+    // =============================================================================================
+
+    const val WEB_URL = "https://kitsu.io"
+
+    private val ACCEPT = mapOf("Accept" to "application/vnd.api+json")
+
+    /** All the media attributes the search results and the media page read. */
+    @Serializable
+    data class KitsuMedia(
+        val slug: String? = null,
+        val canonicalTitle: String? = null,
+        val titles: Map<String, String?>? = null,
+        val abbreviatedTitles: List<String>? = null,
+        val synopsis: String? = null,
+        val description: String? = null,
+        val posterImage: KitsuSync.PosterImage? = null,
+        val coverImage: KitsuSync.PosterImage? = null,
+        val subtype: String? = null,
+        val status: String? = null,
+        val tba: String? = null,
+        val startDate: String? = null,
+        val endDate: String? = null,
+        val nextRelease: String? = null,
+        val season: String? = null,
+        val ageRating: String? = null,
+        val ageRatingGuide: String? = null,
+        val nsfw: Boolean? = null,
+        val averageRating: String? = null,
+        val userCount: Int? = null,
+        val favoritesCount: Int? = null,
+        val popularityRank: Int? = null,
+        val ratingRank: Int? = null,
+        val youtubeVideoId: String? = null,
+        // anime
+        val episodeCount: Int? = null,
+        val episodeLength: Int? = null,
+        val totalLength: Int? = null,
+        val showType: String? = null,
+        // manga
+        val chapterCount: Int? = null,
+        val volumeCount: Int? = null,
+        val serialization: String? = null,
+        val mangaType: String? = null,
+    ) : java.io.Serializable
+
+    @Serializable
+    data class MediaResource(val id: String, val type: String? = null, val attributes: KitsuMedia? = null)
+
+    @Serializable
+    data class MediaResponse(val data: MediaResource? = null)
+
+    @Serializable
+    data class ListResponse(val data: List<MediaResource>? = null, val links: Links? = null)
+
+    @Serializable
+    data class Links(val next: String? = null)
+
+    /** One search-result / related-media item: the media plus the id needed to open its page. */
+    data class Item(val id: String, val media: KitsuMedia) : java.io.Serializable
+
+    data class SearchPage(val results: List<Item>, val hasNextPage: Boolean)
+
+    private const val PAGE = 20
+
+    suspend fun search(
+        isAnime: Boolean,
+        query: String?,
+        page: Int,
+        categories: List<String>? = null,
+        subtypes: List<String>? = null,
+        statuses: List<String>? = null,
+        ageRatings: List<String>? = null,
+        season: String? = null,
+        yearFrom: Int? = null,
+        yearTo: Int? = null,
+        sort: String? = null,
+    ): SearchPage? = tryWithSuspend {
+        val kind = if (isAnime) "anime" else "manga"
+        val url = StringBuilder("${Kitsu.API_URL}/$kind?page%5Blimit%5D=$PAGE&page%5Boffset%5D=${(page - 1) * PAGE}")
+        query?.trim()?.takeIf { it.isNotBlank() }?.let { url.append("&filter%5Btext%5D=").append(enc(it)) }
+        categories?.filter { it.isNotBlank() }?.takeIf { it.isNotEmpty() }
+            ?.let { url.append("&filter%5Bcategories%5D=").append(enc(it.joinToString(","))) }
+        subtypes?.takeIf { it.isNotEmpty() }?.let { url.append("&filter%5Bsubtype%5D=").append(enc(it.joinToString(","))) }
+        statuses?.takeIf { it.isNotEmpty() }?.let { url.append("&filter%5Bstatus%5D=").append(enc(it.joinToString(","))) }
+        ageRatings?.takeIf { it.isNotEmpty() }?.let { url.append("&filter%5BageRating%5D=").append(enc(it.joinToString(","))) }
+        season?.takeIf { it.isNotBlank() }?.let { url.append("&filter%5Bseason%5D=").append(it) }
+        if (yearFrom != null || yearTo != null) {
+            url.append("&filter%5Byear%5D=").append(enc("${yearFrom ?: 1900}..${yearTo ?: 2100}"))
+        }
+        sort?.takeIf { it.isNotBlank() }?.let { url.append("&sort=").append(enc(it)) }
+
+        val res = rateLimiter.withPermit {
+            KitsuSync.json.decodeFromString<ListResponse>(client.get(url.toString(), ACCEPT).text)
+        }
+        SearchPage(
+            res.data.orEmpty().mapNotNull { r -> r.attributes?.let { Item(r.id, it) } },
+            res.links?.next != null,
+        )
+    }
+
+    /** One related media entry (sequel, adaptation, side story, …). */
+    data class Relation(
+        val role: String,
+        val id: String,
+        val isAnime: Boolean,
+        val media: KitsuMedia,
+    ) : java.io.Serializable
+
+    /** The media plus everything the detail page shows. */
+    data class KitsuMediaFull(
+        val id: String,
+        val media: KitsuMedia,
+        val categories: List<Pair<String, String>>,   // slug to title
+        val anilistId: Int?,
+        val malId: Int?,
+        val muId: String?,                            // MangaUpdates series id (manga only)
+        val relations: List<Relation>,
+        val streamers: List<Pair<String, String>>,    // name to url
+    )
+
+    /** External ids Kitsu holds for a media, from its own `/mappings`. */
+    data class CrossIds(val anilistId: Int?, val malId: Int?, val muId: String?)
+
+    suspend fun getMediaFull(isAnime: Boolean, id: String): KitsuMediaFull? {
+        val kind = if (isAnime) "anime" else "manga"
+        val mediaAsync = tryWithSuspend {
+            rateLimiter.withPermit {
+                KitsuSync.json.decodeFromString<MediaResponse>(
+                    client.get("${Kitsu.API_URL}/$kind/$id?include=categories", ACCEPT).text
+                )
+            }
+        }
+        val media = mediaAsync?.data?.attributes ?: return null
+        val cats = tryWithSuspend {
+            rateLimiter.withPermit {
+                KitsuSync.json.decodeFromString<CategoriesResponse>(
+                    client.get("${Kitsu.API_URL}/$kind/$id/categories?page%5Blimit%5D=20", ACCEPT).text
+                ).data.orEmpty().mapNotNull { c ->
+                    val s = c.attributes?.slug; val t = c.attributes?.title
+                    if (s != null && t != null) s to t else null
+                }
+            }
+        }.orEmpty()
+        val ids = crossIds(isAnime, id)
+        val relations = tryWithSuspend {
+            rateLimiter.withPermit {
+                val r = KitsuSync.json.decodeFromString<RelationshipsResponse>(
+                    client.get(
+                        "${Kitsu.API_URL}/$kind/$id/media-relationships?include=destination&page%5Blimit%5D=20",
+                        ACCEPT,
+                    ).text
+                )
+                val byId = r.included.orEmpty().associateBy { it.id }
+                r.data.orEmpty().mapNotNull { row ->
+                    val role = row.attributes?.role ?: return@mapNotNull null
+                    val destId = row.relationships?.destination?.data?.id ?: return@mapNotNull null
+                    val dest = byId[destId] ?: return@mapNotNull null
+                    dest.attributes?.let { Relation(role, destId, dest.type == "anime", it) }
+                }
+            }
+        }.orEmpty()
+        val streamers = if (!isAnime) emptyList() else tryWithSuspend {
+            rateLimiter.withPermit {
+                val r = KitsuSync.json.decodeFromString<StreamingResponse>(
+                    client.get("${Kitsu.API_URL}/anime/$id/streaming-links?include=streamer", ACCEPT).text
+                )
+                val byId = r.included.orEmpty().associateBy { it.id }
+                r.data.orEmpty().mapNotNull { row ->
+                    val streamerId = row.relationships?.streamer?.data?.id
+                    val name = byId[streamerId]?.attributes?.siteName ?: return@mapNotNull null
+                    val link = row.attributes?.url ?: return@mapNotNull null
+                    name to link
+                }
+            }
+        }.orEmpty()
+        return KitsuMediaFull(id, media, cats, ids.anilistId, ids.malId, ids.muId, relations, streamers)
+    }
+
+    /** AniList / MAL / MangaUpdates ids Kitsu holds for a media, from its own `/mappings`. */
+    private suspend fun crossIds(isAnime: Boolean, mediaId: String): CrossIds = tryWithSuspend {
+        rateLimiter.withPermit {
+            val kind = if (isAnime) "anime" else "manga"
+            val res = KitsuSync.json.decodeFromString<MappingsResponse>(
+                client.get("${Kitsu.API_URL}/$kind/$mediaId/mappings?page%5Blimit%5D=20", ACCEPT).text
+            )
+            var al: Int? = null; var mal: Int? = null; var mu: String? = null
+            res.data.orEmpty().forEach { m ->
+                val site = m.attributes?.externalSite ?: return@forEach
+                val ext = m.attributes.externalId ?: return@forEach
+                when {
+                    site.startsWith("anilist") -> al = ext.toIntOrNull()
+                    site.startsWith("myanimelist") -> mal = ext.toIntOrNull()
+                    site.startsWith("mangaupdates") -> mu = ext
+                }
+            }
+            CrossIds(al, mal, mu)
+        }
+    } ?: CrossIds(null, null, null)
+
+    // ---- filter categories ----
+
+    private var categoryOptions: List<Pair<String, String>>? = null
+    private val categoryNames = HashMap<String, String>()
+
+    /** Top ~200 Kitsu categories (slug to title), by media count. Cached after the first fetch. */
+    suspend fun getCategories(): List<Pair<String, String>> {
+        categoryOptions?.let { return it }
+        val out = mutableListOf<Pair<String, String>>()
+        var url: String? = "${Kitsu.API_URL}/categories?sort=-totalMediaCount&page%5Blimit%5D=20"
+        var guard = 0
+        while (url != null && guard++ < 12) {
+            val page = tryWithSuspend {
+                rateLimiter.withPermit {
+                    KitsuSync.json.decodeFromString<CategoriesResponse>(client.get(url!!, ACCEPT).text)
+                }
+            } ?: break
+            page.data.orEmpty().forEach { c ->
+                val s = c.attributes?.slug ?: return@forEach
+                val t = c.attributes.title ?: return@forEach
+                out += s to t
+                categoryNames[s] = t
+            }
+            url = page.links?.next
+        }
+        if (out.isNotEmpty()) categoryOptions = out
+        return out
+    }
+
+    fun seedCategoryName(slug: String, label: String) { categoryNames[slug] = label }
+
+    fun resolveCategoryName(slug: String): String =
+        categoryNames[slug] ?: slug.split('-').filter { it.isNotBlank() }
+            .joinToString(" ") { p -> p.replaceFirstChar { it.uppercase() } }
+
+    private fun enc(s: String): String = java.net.URLEncoder.encode(s, "UTF-8")
+
+    @Serializable
+    data class CategoriesResponse(val data: List<CategoryResource>? = null, val links: Links? = null)
+
+    @Serializable
+    data class CategoryResource(val id: String, val attributes: CategoryAttributes? = null)
+
+    @Serializable
+    data class CategoryAttributes(val slug: String? = null, val title: String? = null)
+
+    @Serializable
+    data class RelationshipsResponse(
+        val data: List<RelRow>? = null,
+        val included: List<MediaResource>? = null,
+    )
+
+    @Serializable
+    data class RelRow(val attributes: RelRowAttributes? = null, val relationships: RelRowRelationships? = null)
+
+    @Serializable
+    data class RelRowAttributes(val role: String? = null)
+
+    @Serializable
+    data class RelRowRelationships(val destination: RelationshipRef? = null)
+
+    @Serializable
+    data class StreamingResponse(
+        val data: List<StreamRow>? = null,
+        val included: List<StreamerResource>? = null,
+    )
+
+    @Serializable
+    data class StreamRow(val attributes: StreamAttributes? = null, val relationships: StreamRelationships? = null)
+
+    @Serializable
+    data class StreamAttributes(val url: String? = null)
+
+    @Serializable
+    data class StreamRelationships(val streamer: RelationshipRef? = null)
+
+    @Serializable
+    data class StreamerResource(val id: String, val attributes: StreamerAttributes? = null)
+
+    @Serializable
+    data class StreamerAttributes(val siteName: String? = null)
 }

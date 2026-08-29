@@ -1,0 +1,57 @@
+<!-- Generated composite: ic_kitsu badged with a film (anime) glyph.
+     24dp box · 19.0dp base · badge in a 6.0dp knockout at (17.0, 17.0).
+     The knockout is a clip so the badge reads against the base under a single tint. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <group>
+        <clip-path
+            android:pathData="M0,0 H24 V24 H0 Z M11,17 a6,6 0 1,0 12,0 a6,6 0 1,0 -12,0 Z"
+            android:fillType="evenOdd" />
+        <group
+            android:scaleX="0.037109375"
+            android:scaleY="0.037109375"
+            android:translateX="0.0"
+            android:translateY="0.0">
+            <path
+                android:fillColor="#fff"
+                android:pathData="M281.1,441.5v16.9c0,4 -3.3,7.3 -7.3,7.3h-35.7c-4,0 -7.3,-3.3 -7.3,-7.3v-16.9c0,-3.2 2.1,-6.1 5.3,-7l17.9,-5.2c1.3,-0.4 2.7,-0.4 4,0l17.9,5.2c3.1,1 5.2,3.8 5.2,7m-93,-166.5c-8.6,0 -15.6,7 -15.6,15.6s7,15.6 15.6,15.6 15.6,-6.9 15.6,-15.5c0,-8.7 -6.9,-15.7 -15.6,-15.7m151.3,15.7s0,-0.1 0,0c0,-8.7 -7,-15.7 -15.6,-15.7s-15.6,7 -15.6,15.6 7,15.6 15.6,15.6 15.6,-6.9 15.6,-15.5m141.7,80.4 l-142.4,135c-4.1,3.8 -9.5,5.9 -15,5.9H188.3c-5.6,0 -10.9,-2.1 -15,-5.9l-142.4,-135c-7,-6.6 -8.8,-17.1 -4.4,-25.7l44.3,-87.6V44.5c0,-7.7 4.1,-14.9 10.7,-18.8l38,-22.6c10.4,-6.2 23.8,-2.7 29.9,7.6 0.1,0.2 0.3,0.5 0.4,0.7l51.4,94.3h109.4L362,11.4c5.8,-10.6 19,-14.5 29.6,-8.7 0.2,0.1 0.5,0.3 0.7,0.4l38.1,22.6c6.6,3.9 10.7,11.1 10.7,18.8v213.3l44.3,87.6c4.5,8.6 2.7,19 -4.3,25.7M466,355.2 L419.4,263l-95.8,159.6L419.4,263V44.5l-38.1,-22.6 -57.6,105.7H188.3L130.6,21.9 92.5,44.5V263l-46.6,92.2 142.3,134.9h135.3z" />
+            <path
+                android:fillAlpha="0.5"
+                android:fillColor="#fff"
+                android:pathData="m323.6,127.5 l95.8,-83.1v155.8zM188.3,127.5 L92.5,44.5v155.8z"
+                android:strokeAlpha="0.5" />
+            <path
+                android:fillAlpha="0.1"
+                android:fillColor="#fff"
+                android:pathData="M260,404.2c-2.7,-0.8 -5.5,-0.8 -8.1,0l-63.6,18.4v67.5h135.3v-67.5zM281.1,458.4c0,4 -3.3,7.3 -7.3,7.3h-35.7c-4,0 -7.3,-3.3 -7.3,-7.3v-16.9c0,-3.2 2.1,-6.1 5.3,-7l17.9,-5.2c1.3,-0.4 2.7,-0.4 4,0l17.9,5.2c3.1,0.9 5.3,3.8 5.3,7z"
+                android:strokeAlpha="0.1" />
+            <path
+                android:fillAlpha="0.7"
+                android:fillColor="#fff"
+                android:pathData="m381.3,21.9 l-57.6,105.7H188.3L130.6,21.9 92.5,44.5V263l95.8,159.6 63.6,-18.4c2.7,-0.8 5.5,-0.8 8.1,0l63.6,18.4L419.4,263V44.5zM203.7,290.7c0,8.6 -7,15.6 -15.6,15.5 -8.6,0 -15.6,-7 -15.6,-15.6s7,-15.6 15.6,-15.6c8.7,0 15.6,7 15.6,15.7m135.7,0c0,8.6 -7,15.5 -15.6,15.5s-15.6,-7 -15.6,-15.6 7,-15.6 15.6,-15.6 15.6,7 15.6,15.7c0,-0.1 0,0 0,0"
+                android:strokeAlpha="0.7" />
+            <path
+                android:fillAlpha="0.4"
+                android:fillColor="#fff"
+                android:pathData="m260,404.2 l63.6,18.4 -39.3,-116.4c-1.8,-6.2 -7.5,-10.6 -14,-10.6h-28.8c-6.5,0 -12.2,4.3 -14,10.6l-39.3,116.4 63.6,-18.4c2.7,-0.8 5.6,-0.8 8.2,0"
+                android:strokeAlpha="0.4" />
+            <path
+                android:fillAlpha="0.25"
+                android:fillColor="#fff"
+                android:pathData="M188.3,422.6v67.5L45.9,355.2 92.5,263zM323.6,422.6v67.5L466,355.2 419.4,263z"
+                android:strokeAlpha="0.25" />
+        </group>
+    </group>
+    <group
+        android:scaleX="0.395833"
+        android:scaleY="0.395833"
+        android:translateX="12.2500"
+        android:translateY="12.2500">
+        <path
+            android:pathData="M21.5,4L18,4l1.74,2.61c0.11,0.17 -0.01,0.39 -0.21,0.39h-2c-0.33,0 -0.65,-0.17 -0.83,-0.45L15,4h-2l1.74,2.61c0.11,0.17 -0.01,0.39 -0.21,0.39h-2c-0.33,0 -0.65,-0.17 -0.83,-0.45L10,4L8,4l1.74,2.61c0.11,0.17 -0.01,0.39 -0.21,0.39h-2c-0.33,0 -0.64,-0.17 -0.83,-0.45L5,4L4,4c-1.1,0 -1.99,0.9 -1.99,2L2,18c0,1.1 0.9,2 2,2h16c1.1,0 2,-0.9 2,-2L22,4.5c0,-0.28 -0.22,-0.5 -0.5,-0.5zM11.25,15.25L10,18l-1.25,-2.75L6,14l2.75,-1.25L10,10l1.25,2.75L14,14l-2.75,1.25zM16.94,11.94L16,14l-0.94,-2.06L13,11l2.06,-0.94L16,8l0.94,2.06L19,11l-2.06,0.94z"
+            android:fillColor="@android:color/white" />
+    </group>
+</vector>

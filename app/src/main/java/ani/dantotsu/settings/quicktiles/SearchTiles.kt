@@ -122,6 +122,26 @@ object SearchTiles : TileCatalogue(PrefName.SearchTileOrder) {
                 isAvailable = { PrefManager.getVal(PrefName.MangaBakaInfoEnabled) },
                 unavailableReason = R.string.search_needs_connection_enabled,
             ),
+            // Kitsu / Simkl search need no login (public / api-key). Off the panel by default —
+            // they sit in the shelf until the user drags them on.
+            service(
+                "kitsu", R.string.kitsu_manga_search, R.drawable.ic_kitsu_manga,
+                SearchType.KITSU,
+                isAvailable = { true },
+                unavailableReason = R.string.search_needs_connection_enabled,
+            ),
+            service(
+                "kitsu_anime", R.string.kitsu_anime_search, R.drawable.ic_kitsu_anime,
+                SearchType.KITSU_ANIME,
+                isAvailable = { true },
+                unavailableReason = R.string.search_needs_connection_enabled,
+            ),
+            service(
+                "simkl", R.string.simkl_search, R.drawable.ic_simkl,
+                SearchType.SIMKL,
+                isAvailable = { true },
+                unavailableReason = R.string.search_needs_connection_enabled,
+            ),
         )
 
     /** Everything, in the order the buttons used to run: nothing is hidden until the user hides it. */

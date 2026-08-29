@@ -21,11 +21,15 @@ import ani.dantotsu.connections.anilist.AnilistSearch
 import ani.dantotsu.connections.anilist.AnilistSearch.SearchType
 import ani.dantotsu.connections.anilist.CharacterSearchResults
 import ani.dantotsu.connections.anilist.ComickSearchResults
+import ani.dantotsu.connections.anilist.KitsuSearchResults
 import ani.dantotsu.connections.anilist.MUSearchResults
 import ani.dantotsu.connections.anilist.MangaBakaSearchResults
+import ani.dantotsu.connections.anilist.SimklSearchResults
 import ani.dantotsu.connections.comick.ComickApi
 import ani.dantotsu.connections.comick.ComickComic
+import ani.dantotsu.connections.kitsu.KitsuApi
 import ani.dantotsu.connections.mangabaka.MangaBakaApi
+import ani.dantotsu.connections.simkl.SimklApi
 import ani.dantotsu.connections.anilist.StaffSearchResults
 import ani.dantotsu.connections.anilist.StudioSearchResults
 import ani.dantotsu.connections.anilist.UserSearchResults
@@ -68,6 +72,8 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
     private lateinit var muSearchAdaptor: MUMediaAdapter
     private lateinit var comickSearchAdaptor: ComickSearchAdapter
     private lateinit var mangaBakaSearchAdaptor: MangaBakaSearchAdapter
+    private lateinit var kitsuSearchAdaptor: KitsuSearchAdapter
+    private lateinit var simklSearchAdaptor: SimklSearchAdapter
 
     private lateinit var progressAdapter: ProgressAdapter
     private lateinit var concatAdapter: ConcatAdapter
@@ -81,11 +87,14 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
     lateinit var muSearchResult: MUSearchResults
     lateinit var comickSearchResult: ComickSearchResults
     lateinit var mangaBakaSearchResult: MangaBakaSearchResults
+    lateinit var kitsuSearchResult: KitsuSearchResults
+    lateinit var simklSearchResult: SimklSearchResults
 
     override lateinit var updateChips: (() -> Unit)
     var updateMuChips: (() -> Unit)? = null
     var updateComickChips: (() -> Unit)? = null
     var updateMangaBakaChips: (() -> Unit)? = null
+    var updateKitsuChips: (() -> Unit)? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -321,6 +330,56 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
                     onMangaBakaResultClicked(series)
                 }
             }
+
+            SearchType.KITSU, SearchType.KITSU_ANIME -> {
+                val isAnime = searchType == SearchType.KITSU_ANIME
+                if (model.notSet) {
+                    model.notSet = false
+                    val categories = intent.getStringArrayListExtra("categories")
+                        ?.toMutableList()
+                        ?: intent.getStringExtra("category")?.let { mutableListOf(it) }
+                    model.kitsuSearchResults = KitsuSearchResults(
+                        search = intent.getStringExtra("query"),
+                        results = mutableListOf(),
+                        hasNextPage = false,
+                        isAnime = isAnime,
+                        categories = categories,
+                        subtypes = intent.getStringArrayListExtra("subtypes")?.toMutableList(),
+                        statuses = intent.getStringArrayListExtra("statuses")?.toMutableList(),
+                        ageRatings = intent.getStringArrayListExtra("ageRatings")?.toMutableList(),
+                        season = intent.getStringExtra("season"),
+                        fromYear = intent.getIntExtra("fromYear", Int.MIN_VALUE).takeIf { it != Int.MIN_VALUE },
+                        toYear = intent.getIntExtra("toYear", Int.MIN_VALUE).takeIf { it != Int.MIN_VALUE },
+                        sort = intent.getStringExtra("sort"),
+                    )
+                    // Seed the category display-name cache so chip labels are correct even before
+                    // the filter sheet (which fetches the full category list) has been opened.
+                    intent.getStringExtra("category")?.let { slug ->
+                        intent.getStringExtra("categoryName")?.let { name ->
+                            KitsuApi.seedCategoryName(slug, name)
+                        }
+                    }
+                }
+                kitsuSearchResult = model.kitsuSearchResults
+                kitsuSearchAdaptor = KitsuSearchAdapter(model.kitsuSearchResults.results, isAnime, supportStyle) { item ->
+                    onKitsuResultClicked(item, isAnime)
+                }
+            }
+
+            SearchType.SIMKL -> {
+                if (model.notSet) {
+                    model.notSet = false
+                    model.simklSearchResults = SimklSearchResults(
+                        search = intent.getStringExtra("query"),
+                        results = mutableListOf(),
+                        hasNextPage = false,
+                    )
+                }
+                simklSearchResult = model.simklSearchResults
+                simklSearchAdaptor = SimklSearchAdapter(model.simklSearchResults.results, supportStyle) { media ->
+                    onSimklResultClicked(media)
+                }
+            }
         }
 
         progressAdapter = ProgressAdapter(searched = model.searched)
@@ -345,7 +404,8 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
                     else -> {
                         val currentStyle = when (searchType) {
                             SearchType.MANGAUPDATES, SearchType.COMICK, SearchType.COMICK_ANIME,
-                            SearchType.MANGABAKA -> supportStyle
+                            SearchType.MANGABAKA, SearchType.KITSU, SearchType.KITSU_ANIME,
+                            SearchType.SIMKL -> supportStyle
                             SearchType.ANIME, SearchType.MANGA -> style
                             else -> 0
                         }
@@ -389,6 +449,14 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
 
             SearchType.MANGABAKA -> {
                 ConcatAdapter(mangaBakaSearchAdaptor, progressAdapter)
+            }
+
+            SearchType.KITSU, SearchType.KITSU_ANIME -> {
+                ConcatAdapter(kitsuSearchAdaptor, progressAdapter)
+            }
+
+            SearchType.SIMKL -> {
+                ConcatAdapter(simklSearchAdaptor, progressAdapter)
             }
         }
 
@@ -632,6 +700,59 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
                     }
                 }
             }
+
+            SearchType.KITSU, SearchType.KITSU_ANIME -> {
+                model.getSearch<KitsuSearchResults>(searchType).observe(this) {
+                    if (it != null) {
+                        model.kitsuSearchResults.apply {
+                            search = it.search
+                            page = it.page
+                            hasNextPage = it.hasNextPage
+                            isAnime = it.isAnime
+                            categories = it.categories
+                            subtypes = it.subtypes
+                            statuses = it.statuses
+                            ageRatings = it.ageRatings
+                            season = it.season
+                            fromYear = it.fromYear
+                            toYear = it.toYear
+                            sort = it.sort
+                        }
+
+                        val prev = model.kitsuSearchResults.results.size
+                        model.kitsuSearchResults.results.addAll(it.results)
+                        kitsuSearchAdaptor.notifyItemRangeInserted(prev, it.results.size)
+                        if (prev == 0) binding.searchRecyclerView.scrollToPosition(0)
+                        progressAdapter.bar?.isVisible = it.hasNextPage
+                        updateSearchEmptyState(false)
+                    } else {
+                        progressAdapter.bar?.isVisible = false
+                        updateSearchEmptyState(true)
+                    }
+                }
+            }
+
+            SearchType.SIMKL -> {
+                model.getSearch<SimklSearchResults>(searchType).observe(this) {
+                    if (it != null) {
+                        model.simklSearchResults.apply {
+                            search = it.search
+                            page = it.page
+                            hasNextPage = it.hasNextPage
+                        }
+
+                        val prev = model.simklSearchResults.results.size
+                        model.simklSearchResults.results.addAll(it.results)
+                        simklSearchAdaptor.notifyItemRangeInserted(prev, it.results.size)
+                        if (prev == 0) binding.searchRecyclerView.scrollToPosition(0)
+                        progressAdapter.bar?.isVisible = it.hasNextPage
+                        updateSearchEmptyState(false)
+                    } else {
+                        progressAdapter.bar?.isVisible = false
+                        updateSearchEmptyState(true)
+                    }
+                }
+            }
         }
 
         headerAdaptor.ready.observe(this) {
@@ -729,6 +850,16 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
                 model.mangaBakaSearchResults.results.clear()
                 mangaBakaSearchAdaptor.notifyDataSetChanged()
             }
+
+            SearchType.KITSU, SearchType.KITSU_ANIME -> {
+                model.kitsuSearchResults.results.clear()
+                kitsuSearchAdaptor.notifyDataSetChanged()
+            }
+
+            SearchType.SIMKL -> {
+                model.simklSearchResults.results.clear()
+                simklSearchAdaptor.notifyDataSetChanged()
+            }
         }
     }
 
@@ -802,6 +933,16 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
                 mangaBakaSearchResult.page = 1
                 mangaBakaSearchResult.hasNextPage = false
             }
+
+            SearchType.KITSU, SearchType.KITSU_ANIME -> {
+                kitsuSearchResult.page = 1
+                kitsuSearchResult.hasNextPage = false
+            }
+
+            SearchType.SIMKL -> {
+                simklSearchResult.page = 1
+                simklSearchResult.hasNextPage = false
+            }
         }
     }
 
@@ -827,6 +968,14 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
             SearchType.MANGABAKA -> {
                 mangaBakaSearchAdaptor.type = supportStyle
                 mangaBakaSearchAdaptor.notifyDataSetChanged()
+            }
+            SearchType.KITSU, SearchType.KITSU_ANIME -> {
+                kitsuSearchAdaptor.type = supportStyle
+                kitsuSearchAdaptor.notifyDataSetChanged()
+            }
+            SearchType.SIMKL -> {
+                simklSearchAdaptor.type = supportStyle
+                simklSearchAdaptor.notifyDataSetChanged()
             }
             else -> Unit
         }
@@ -869,6 +1018,22 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
         startActivity(
             Intent(this, MangaBakaMediaActivity::class.java)
                 .putExtra(MangaBakaMediaActivity.EXTRA_SERIES_ID, series.id)
+        )
+    }
+
+    private fun onKitsuResultClicked(item: KitsuApi.Item, isAnime: Boolean) {
+        startActivity(
+            Intent(this, KitsuMediaActivity::class.java)
+                .putExtra(KitsuMediaActivity.EXTRA_MEDIA_ID, item.id)
+                .putExtra(KitsuMediaActivity.EXTRA_IS_ANIME, isAnime)
+        )
+    }
+
+    private fun onSimklResultClicked(media: SimklApi.SimklMedia) {
+        val id = media.simklId ?: return
+        startActivity(
+            Intent(this, SimklMediaActivity::class.java)
+                .putExtra(SimklMediaActivity.EXTRA_SIMKL_ID, id)
         )
     }
 

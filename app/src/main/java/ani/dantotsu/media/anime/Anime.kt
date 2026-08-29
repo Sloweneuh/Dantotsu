@@ -28,6 +28,7 @@ data class Anime(
     var fillerEpisodes: Map<String, Episode>? = null,
     var anifyEpisodes: Map<String, Episode>? = null,
     var comickEpisodes: Map<String, Episode>? = null,
+    var simklEpisodes: Map<String, Episode>? = null,
 ) : Serializable {
     val displayReleaseProgress: Int?
         get() {

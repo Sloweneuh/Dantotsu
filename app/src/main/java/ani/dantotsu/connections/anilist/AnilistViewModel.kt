@@ -9,6 +9,8 @@ import androidx.lifecycle.lifecycleScope
 import ani.dantotsu.BuildConfig
 import ani.dantotsu.R
 import ani.dantotsu.connections.comick.ComickApi
+import ani.dantotsu.connections.kitsu.KitsuApi
+import ani.dantotsu.connections.simkl.SimklApi
 import ani.dantotsu.connections.mangabaka.MangaBakaApi
 import ani.dantotsu.connections.discord.Discord
 import ani.dantotsu.connections.mal.MAL
@@ -521,10 +523,16 @@ class AnilistSearch : ViewModel() {
         MANGAUPDATES(R.string.mangaupdates),
         COMICK(R.string.comick_manga_search),
         COMICK_ANIME(R.string.comick_anime_search),
-        MANGABAKA(R.string.mangabaka);
+        MANGABAKA(R.string.mangabaka),
+        KITSU(R.string.kitsu_manga_search),
+        KITSU_ANIME(R.string.kitsu_anime_search),
+        SIMKL(R.string.simkl_search);
 
         /** Comick keeps anime in a separate catalogue, searched as two sources rather than one. */
         val isComick: Boolean get() = this == COMICK || this == COMICK_ANIME
+
+        /** Kitsu, likewise — a manga and an anime catalogue searched as two sources. */
+        val isKitsu: Boolean get() = this == KITSU || this == KITSU_ANIME
 
         /** The search bar's hint: localized, and upper-cased the way the bar has always shown it. */
         fun hint(context: Context): String =
@@ -546,6 +554,9 @@ class AnilistSearch : ViewModel() {
                     COMICK -> "COMICK"
                     COMICK_ANIME -> "COMICK_ANIME"
                     MANGABAKA -> "MANGABAKA"
+                    KITSU -> "KITSU"
+                    KITSU_ANIME -> "KITSU_ANIME"
+                    SIMKL -> "SIMKL"
                 }
             }
 
@@ -561,6 +572,9 @@ class AnilistSearch : ViewModel() {
                     "COMICK" -> COMICK
                     "COMICK_ANIME" -> COMICK_ANIME
                     "MANGABAKA" -> MANGABAKA
+                    "KITSU" -> KITSU
+                    "KITSU_ANIME" -> KITSU_ANIME
+                    "SIMKL" -> SIMKL
                     else -> throw IllegalArgumentException("Invalid search type")
                 }
             }
@@ -597,6 +611,12 @@ class AnilistSearch : ViewModel() {
     lateinit var mangaBakaSearchResults: MangaBakaSearchResults
     private val mangaBakaResult: MutableLiveData<MangaBakaSearchResults?> = MutableLiveData()
 
+    lateinit var kitsuSearchResults: KitsuSearchResults
+    private val kitsuResult: MutableLiveData<KitsuSearchResults?> = MutableLiveData()
+
+    lateinit var simklSearchResults: SimklSearchResults
+    private val simklResult: MutableLiveData<SimklSearchResults?> = MutableLiveData()
+
     fun <T> getSearch(type: SearchType): MutableLiveData<T?> {
         return when (type) {
             SearchType.ANIME, SearchType.MANGA -> aniMangaResult as MutableLiveData<T?>
@@ -607,6 +627,8 @@ class AnilistSearch : ViewModel() {
             SearchType.MANGAUPDATES -> muResult as MutableLiveData<T?>
             SearchType.COMICK, SearchType.COMICK_ANIME -> comickResult as MutableLiveData<T?>
             SearchType.MANGABAKA -> mangaBakaResult as MutableLiveData<T?>
+            SearchType.KITSU, SearchType.KITSU_ANIME -> kitsuResult as MutableLiveData<T?>
+            SearchType.SIMKL -> simklResult as MutableLiveData<T?>
         }
     }
 
@@ -620,6 +642,8 @@ class AnilistSearch : ViewModel() {
             SearchType.MANGAUPDATES -> loadMuSearch(muSearchResults)
             SearchType.COMICK, SearchType.COMICK_ANIME -> loadComickSearch(comickSearchResults)
             SearchType.MANGABAKA -> loadMangaBakaSearch(mangaBakaSearchResults)
+            SearchType.KITSU, SearchType.KITSU_ANIME -> loadKitsuSearch(kitsuSearchResults)
+            SearchType.SIMKL -> loadSimklSearch(simklSearchResults)
         }
     }
 
@@ -633,6 +657,8 @@ class AnilistSearch : ViewModel() {
             SearchType.MANGAUPDATES -> loadNextMuPage(muSearchResults)
             SearchType.COMICK, SearchType.COMICK_ANIME -> loadNextComickPage(comickSearchResults)
             SearchType.MANGABAKA -> loadNextMangaBakaPage(mangaBakaSearchResults)
+            SearchType.KITSU, SearchType.KITSU_ANIME -> loadNextKitsuPage(kitsuSearchResults)
+            SearchType.SIMKL -> loadNextSimklPage(simklSearchResults)
         }
     }
 
@@ -646,6 +672,8 @@ class AnilistSearch : ViewModel() {
             SearchType.MANGAUPDATES -> muSearchResults.hasNextPage
             SearchType.COMICK, SearchType.COMICK_ANIME -> comickSearchResults.hasNextPage
             SearchType.MANGABAKA -> mangaBakaSearchResults.hasNextPage
+            SearchType.KITSU, SearchType.KITSU_ANIME -> kitsuSearchResults.hasNextPage
+            SearchType.SIMKL -> simklSearchResults.hasNextPage
         }
     }
 
@@ -659,6 +687,8 @@ class AnilistSearch : ViewModel() {
             SearchType.MANGAUPDATES -> muSearchResults.results.isNotEmpty()
             SearchType.COMICK, SearchType.COMICK_ANIME -> comickSearchResults.results.isNotEmpty()
             SearchType.MANGABAKA -> mangaBakaSearchResults.results.isNotEmpty()
+            SearchType.KITSU, SearchType.KITSU_ANIME -> kitsuSearchResults.results.isNotEmpty()
+            SearchType.SIMKL -> simklSearchResults.results.isNotEmpty()
         }
     }
 
@@ -672,6 +702,8 @@ class AnilistSearch : ViewModel() {
             SearchType.MANGAUPDATES -> muSearchResults.results.size
             SearchType.COMICK, SearchType.COMICK_ANIME -> comickSearchResults.results.size
             SearchType.MANGABAKA -> mangaBakaSearchResults.results.size
+            SearchType.KITSU, SearchType.KITSU_ANIME -> kitsuSearchResults.results.size
+            SearchType.SIMKL -> simklSearchResults.results.size
         }
     }
 
@@ -685,6 +717,8 @@ class AnilistSearch : ViewModel() {
             SearchType.MANGAUPDATES -> muSearchResults.results.clear()
             SearchType.COMICK, SearchType.COMICK_ANIME -> comickSearchResults.results.clear()
             SearchType.MANGABAKA -> mangaBakaSearchResults.results.clear()
+            SearchType.KITSU, SearchType.KITSU_ANIME -> kitsuSearchResults.results.clear()
+            SearchType.SIMKL -> simklSearchResults.results.clear()
         }
     }
 
@@ -969,6 +1003,60 @@ class AnilistSearch : ViewModel() {
             fromYear = r.fromYear,
             toYear = r.toYear,
             sort = r.sort,
+        )
+    }
+
+    private suspend fun loadKitsuSearch(r: KitsuSearchResults) =
+        kitsuResult.postValue(runKitsuSearch(r, 1))
+
+    private suspend fun loadNextKitsuPage(r: KitsuSearchResults) =
+        kitsuResult.postValue(runKitsuSearch(r, r.page + 1))
+
+    private suspend fun runKitsuSearch(r: KitsuSearchResults, page: Int): KitsuSearchResults {
+        val result = KitsuApi.search(
+            isAnime = r.isAnime,
+            query = r.search,
+            page = page,
+            categories = r.categories,
+            subtypes = r.subtypes,
+            statuses = r.statuses,
+            ageRatings = r.ageRatings,
+            season = r.season,
+            yearFrom = r.fromYear,
+            yearTo = r.toYear,
+            sort = r.sort,
+        )
+        return KitsuSearchResults(
+            search = r.search,
+            page = page,
+            results = (result?.results ?: emptyList()).toMutableList(),
+            hasNextPage = result?.hasNextPage ?: false,
+            isAnime = r.isAnime,
+            categories = r.categories,
+            subtypes = r.subtypes,
+            statuses = r.statuses,
+            ageRatings = r.ageRatings,
+            season = r.season,
+            fromYear = r.fromYear,
+            toYear = r.toYear,
+            sort = r.sort,
+        )
+    }
+
+    private suspend fun loadSimklSearch(r: SimklSearchResults) =
+        simklResult.postValue(runSimklSearch(r, 1))
+
+    private suspend fun loadNextSimklPage(r: SimklSearchResults) =
+        simklResult.postValue(runSimklSearch(r, r.page + 1))
+
+    private suspend fun runSimklSearch(r: SimklSearchResults, page: Int): SimklSearchResults {
+        val perPage = 20
+        val result = SimklApi.search(r.search, page)
+        return SimklSearchResults(
+            search = r.search,
+            page = page,
+            results = result.toMutableList(),
+            hasNextPage = result.size >= perPage,
         )
     }
 }

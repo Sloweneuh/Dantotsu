@@ -39,6 +39,10 @@ class SearchHistoryAdapter(type: SearchType, private val searchClicked: (String)
         // Comick's anime catalogue shares the anime history, not the manga one.
         SearchType.COMICK_ANIME -> PrefName.SortedAnimeSH
         SearchType.MANGABAKA -> PrefName.SortedMangaSH
+        SearchType.KITSU -> PrefName.SortedMangaSH
+        // Kitsu's anime catalogue shares the anime history, not the manga one.
+        SearchType.KITSU_ANIME -> PrefName.SortedAnimeSH
+        SearchType.SIMKL -> PrefName.SortedAnimeSH
     }
 
     private fun MutableList<SearchHistory>?.sorted(): List<String>? =

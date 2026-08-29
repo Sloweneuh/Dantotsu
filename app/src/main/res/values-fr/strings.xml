@@ -1717,6 +1717,27 @@
     <string name="comick_manga_search">Comick Manga</string>
     <string name="comick_anime_search">Comick Anime</string>
 
+    <string name="kitsu_manga_search">Kitsu Manga</string>
+    <string name="kitsu_anime_search">Kitsu Anime</string>
+    <string name="simkl_search">Simkl</string>
+    <string name="kitsu_no_data_title">Aucune donnée Kitsu</string>
+    <string name="simkl_no_data_title">Aucune donnée Simkl</string>
+    <string name="kitsu_filter_categories">Catégories</string>
+    <string name="kitsu_filter_subtype">Format</string>
+    <string name="kitsu_filter_status">Statut</string>
+    <string name="kitsu_filter_age_rating">Classification d\'âge</string>
+    <string name="kitsu_filter_season">Saison</string>
+    <string name="kitsu_age_g">G · Tous publics</string>
+    <string name="kitsu_age_pg">PG · Adolescents</string>
+    <string name="kitsu_age_r">R · 17+</string>
+    <string name="kitsu_age_r18">R18 · Explicite</string>
+    <string name="pref_saved_kitsu_filters">Filtres Kitsu enregistrés</string>
+    <string name="search_kw_saved_kitsu_filters">kitsu filtres enregistrés préréglages recherche catégories</string>
+    <string name="volumes">Volumes</string>
+    <string name="network">Réseau</string>
+    <string name="episode_number">EP %1$s</string>
+    <string name="episode_range_format">Ép. %1$d – %2$d</string>
+
     <string name="volume_chapter_format">Volume %1$s, Chapitre %2$s</string>
     <string name="volume_format">Volume %1$s</string>
     <string name="chapter_format">Chapitre %1$s</string>

@@ -117,6 +117,32 @@ object SavedFiltersStore {
         PrefManager.setVal(PrefName.SavedMangaBakaFilters, all.toList())
     }
 
+    // ---- Kitsu presets ----
+
+    fun loadKitsu(): List<SavedKitsuFilter> =
+        PrefManager.getVal<List<SavedKitsuFilter>>(PrefName.SavedKitsuFilters)
+
+    fun saveKitsu(preset: SavedKitsuFilter) {
+        val all = loadKitsu().toMutableList()
+        all.removeAll { it.name == preset.name }
+        all.add(preset)
+        PrefManager.setVal(PrefName.SavedKitsuFilters, all.toList())
+    }
+
+    fun deleteKitsu(name: String) {
+        val all = loadKitsu().toMutableList()
+        all.removeAll { it.name == name }
+        PrefManager.setVal(PrefName.SavedKitsuFilters, all.toList())
+    }
+
+    fun renameKitsu(oldName: String, newName: String) {
+        val all = loadKitsu().toMutableList()
+        val idx = all.indexOfFirst { it.name == oldName }
+        if (idx < 0) return
+        all[idx] = all[idx].copy(name = newName)
+        PrefManager.setVal(PrefName.SavedKitsuFilters, all.toList())
+    }
+
     // ---- Comick custom-list filter presets ----
 
     fun loadComickList(): List<SavedComickListFilter> =

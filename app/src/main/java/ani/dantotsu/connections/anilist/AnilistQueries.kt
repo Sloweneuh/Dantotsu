@@ -44,6 +44,19 @@ import kotlin.system.measureTimeMillis
 import ani.dantotsu.util.Logger
 
 class AnilistQueries {
+
+    /**
+     * Just the AniList tag list for one media — used to enrich tracker pages (Simkl, …) that map to
+     * an AniList id but have no rich tag data of their own.
+     */
+    suspend fun getMediaTags(anilistId: Int): List<ani.dantotsu.connections.anilist.api.MediaTag>? {
+        val response = executeQuery<Query.Media>(
+            """{Media(id:$anilistId){tags{id name rank category isMediaSpoiler}}}""",
+            force = true,
+        )
+        return response?.data?.media?.tags
+    }
+
     /**
      * Batch fetch AniList media by a list of AniList IDs (for recommendations, etc.)
      */

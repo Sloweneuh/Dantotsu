@@ -4,9 +4,11 @@ import ani.dantotsu.R
 import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.anilist.AniMangaSearchResults
 import ani.dantotsu.connections.anilist.ComickSearchResults
+import ani.dantotsu.connections.anilist.KitsuSearchResults
 import ani.dantotsu.connections.anilist.MUSearchResults
 import ani.dantotsu.connections.anilist.MangaBakaSearchResults
 import ani.dantotsu.connections.comick.ComickApi
+import ani.dantotsu.connections.kitsu.KitsuApi
 import ani.dantotsu.connections.mangabaka.MangaBakaApi
 import ani.dantotsu.currContext
 import ani.dantotsu.media.user.ListFilters
@@ -339,6 +341,61 @@ data class SavedMangaBakaFilter(
         excludedGenres?.forEach { out += excludeLabel(MangaBakaApi.resolveGenreName(it)) }
         tags?.forEach { out += it }
         excludedTags?.forEach { out += excludeLabel(it) }
+        return out
+    }
+}
+
+data class SavedKitsuFilter(
+    val name: String,
+    val isAnime: Boolean = false,
+    val categories: List<String>? = null,
+    val subtypes: List<String>? = null,
+    val statuses: List<String>? = null,
+    val ageRatings: List<String>? = null,
+    val season: String? = null,
+    val fromYear: Int? = null,
+    val toYear: Int? = null,
+    val sort: String? = null,
+) : Serializable {
+    companion object {
+        private const val serialVersionUID: Long = 1L
+
+        fun from(name: String, r: KitsuSearchResults) = SavedKitsuFilter(
+            name = name,
+            isAnime = r.isAnime,
+            categories = r.categories?.toList(),
+            subtypes = r.subtypes?.toList(),
+            statuses = r.statuses?.toList(),
+            ageRatings = r.ageRatings?.toList(),
+            season = r.season,
+            fromYear = r.fromYear,
+            toYear = r.toYear,
+            sort = r.sort,
+        )
+    }
+
+    fun applyTo(r: KitsuSearchResults) {
+        r.categories = categories?.toMutableList()
+        r.subtypes = subtypes?.toMutableList()
+        r.statuses = statuses?.toMutableList()
+        r.ageRatings = ageRatings?.toMutableList()
+        r.season = season
+        r.fromYear = fromYear
+        r.toYear = toYear
+        r.sort = sort
+    }
+
+    fun chips(): List<String> {
+        val out = mutableListOf<String>()
+        sort?.takeIf { it.isNotBlank() }?.let { out += "Sort : ${it.replace('-', ' ').trim()}" }
+        subtypes?.forEach { out += "Format: $it" }
+        statuses?.forEach { out += "Status: $it" }
+        ageRatings?.forEach { out += "Rating: $it" }
+        season?.takeIf { it.isNotBlank() }?.let { out += it }
+        if (fromYear != null || toYear != null) {
+            out += "Year: ${fromYear ?: "?"}-${toYear ?: "?"}"
+        }
+        categories?.forEach { out += KitsuApi.resolveCategoryName(it) }
         return out
     }
 }

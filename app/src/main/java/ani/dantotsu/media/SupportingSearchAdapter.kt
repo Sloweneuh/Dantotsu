@@ -32,9 +32,16 @@ class SupportingSearchAdapter(private val activity: SearchActivity, private val 
     private var muChipAdapter: MUChipAdapter? = null
     private var comickChipAdapter: ComickChipAdapter? = null
     private var mangaBakaChipAdapter: MangaBakaChipAdapter? = null
+    private var kitsuChipAdapter: KitsuChipAdapter? = null
 
+    // The grid/list style toggle applies to every "media card" tracker source.
     private fun isSupportingList(t: SearchType) =
-        t == SearchType.MANGAUPDATES || t.isComick || t == SearchType.MANGABAKA
+        t == SearchType.MANGAUPDATES || t.isComick || t == SearchType.MANGABAKA ||
+            t.isKitsu || t == SearchType.SIMKL
+
+    // Simkl's /search/anime takes no filter params, so it gets the style toggle but no filter sheet.
+    private fun hasFilterSheet(t: SearchType) =
+        t == SearchType.MANGAUPDATES || t.isComick || t == SearchType.MANGABAKA || t.isKitsu
 
     @SuppressLint("ClickableViewAccessibility")
     override fun bind() {
@@ -84,19 +91,24 @@ class SupportingSearchAdapter(private val activity: SearchActivity, private val 
             binding.searchResultList.visibility = View.GONE
         }
 
-        if (isSupportingList(type)) {
+        if (hasFilterSheet(type)) {
             binding.searchFilter.visibility = View.VISIBLE
             binding.searchChipRecycler.visibility = View.VISIBLE
-            when (type) {
-                SearchType.MANGAUPDATES -> {
+            when {
+                type == SearchType.MANGAUPDATES -> {
                     muChipAdapter = MUChipAdapter(activity, this)
                     activity.updateMuChips = { muChipAdapter?.update() }
                     binding.searchChipRecycler.adapter = muChipAdapter
                 }
-                SearchType.COMICK, SearchType.COMICK_ANIME -> {
+                type.isComick -> {
                     comickChipAdapter = ComickChipAdapter(activity, this)
                     activity.updateComickChips = { comickChipAdapter?.update() }
                     binding.searchChipRecycler.adapter = comickChipAdapter
+                }
+                type.isKitsu -> {
+                    kitsuChipAdapter = KitsuChipAdapter(activity, this)
+                    activity.updateKitsuChips = { kitsuChipAdapter?.update() }
+                    binding.searchChipRecycler.adapter = kitsuChipAdapter
                 }
                 else -> {
                     mangaBakaChipAdapter = MangaBakaChipAdapter(activity, this)
@@ -107,11 +119,13 @@ class SupportingSearchAdapter(private val activity: SearchActivity, private val 
             binding.searchChipRecycler.layoutManager =
                 LinearLayoutManager(binding.root.context, RecyclerView.HORIZONTAL, false)
             binding.searchFilter.setOnClickListener {
-                when (type) {
-                    SearchType.MANGAUPDATES -> MUSearchFilterBottomSheet.newInstance()
+                when {
+                    type == SearchType.MANGAUPDATES -> MUSearchFilterBottomSheet.newInstance()
                         .show(activity.supportFragmentManager, "mu_filter")
-                    SearchType.COMICK, SearchType.COMICK_ANIME -> ComickSearchFilterBottomSheet.newInstance()
+                    type.isComick -> ComickSearchFilterBottomSheet.newInstance()
                         .show(activity.supportFragmentManager, "comick_filter")
+                    type.isKitsu -> KitsuSearchFilterBottomSheet.newInstance()
+                        .show(activity.supportFragmentManager, "kitsu_filter")
                     else -> MangaBakaSearchFilterBottomSheet.newInstance()
                         .show(activity.supportFragmentManager, "mangabaka_filter")
                 }
@@ -156,6 +170,8 @@ class SupportingSearchAdapter(private val activity: SearchActivity, private val 
             SearchType.MANGAUPDATES -> activity.muSearchResult
             SearchType.COMICK, SearchType.COMICK_ANIME -> activity.comickSearchResult
             SearchType.MANGABAKA -> activity.mangaBakaSearchResult
+            SearchType.KITSU, SearchType.KITSU_ANIME -> activity.kitsuSearchResult
+            SearchType.SIMKL -> activity.simklSearchResult
             else -> throw IllegalArgumentException("Invalid search type")
         }
 
@@ -242,6 +258,9 @@ class SupportingSearchAdapter(private val activity: SearchActivity, private val 
             SearchType.COMICK -> R.drawable.ic_round_comick_manga_24
             SearchType.COMICK_ANIME -> R.drawable.ic_round_comick_anime_24
             SearchType.MANGABAKA -> R.drawable.ic_round_mangabaka_24
+            SearchType.KITSU -> R.drawable.ic_kitsu_manga
+            SearchType.KITSU_ANIME -> R.drawable.ic_kitsu_anime
+            SearchType.SIMKL -> R.drawable.ic_simkl
             else -> R.drawable.ic_round_search_24
         }
     }
@@ -295,6 +314,19 @@ class SupportingSearchAdapter(private val activity: SearchActivity, private val 
                         !types.isNullOrEmpty() ||
                         !statuses.isNullOrEmpty() ||
                         !contentRatings.isNullOrEmpty() ||
+                        fromYear != null ||
+                        toYear != null ||
+                        !sort.isNullOrBlank()
+                }
+            }
+
+            SearchType.KITSU, SearchType.KITSU_ANIME -> {
+                activity.kitsuSearchResult.run {
+                    !categories.isNullOrEmpty() ||
+                        !subtypes.isNullOrEmpty() ||
+                        !statuses.isNullOrEmpty() ||
+                        !ageRatings.isNullOrEmpty() ||
+                        !season.isNullOrBlank() ||
                         fromYear != null ||
                         toYear != null ||
                         !sort.isNullOrBlank()
@@ -435,6 +467,49 @@ class SupportingSearchAdapter(private val activity: SearchActivity, private val 
         @SuppressLint("NotifyDataSetChanged")
         fun update() {
             chips = activity.mangaBakaSearchResult.toChipList()
+            notifyDataSetChanged()
+        }
+
+        override fun getItemCount(): Int = chips.size
+    }
+
+    class KitsuChipAdapter(
+        private val activity: SearchActivity,
+        private val adapter: SupportingSearchAdapter,
+    ) : RecyclerView.Adapter<KitsuChipAdapter.KitsuChipViewHolder>() {
+
+        private var chips = activity.kitsuSearchResult.toChipList()
+
+        inner class KitsuChipViewHolder(val binding: ItemChipBinding) :
+            RecyclerView.ViewHolder(binding.root)
+
+        override fun onCreateViewHolder(
+            parent: android.view.ViewGroup,
+            viewType: Int,
+        ): KitsuChipViewHolder {
+            val binding = ItemChipBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+            return KitsuChipViewHolder(binding)
+        }
+
+        override fun onBindViewHolder(holder: KitsuChipViewHolder, position: Int) {
+            val chip = chips[position]
+            holder.binding.root.apply {
+                text = chip.text.replace("_", " ")
+                isCloseIconVisible = true
+                setOnClickListener { removeAndSearch(chip) }
+                setOnCloseIconClickListener { removeAndSearch(chip) }
+            }
+        }
+
+        private fun removeAndSearch(chip: ani.dantotsu.connections.anilist.AniMangaSearchResults.SearchChip) {
+            activity.kitsuSearchResult.removeChip(chip)
+            update()
+            activity.search()
+        }
+
+        @SuppressLint("NotifyDataSetChanged")
+        fun update() {
+            chips = activity.kitsuSearchResult.toChipList()
             notifyDataSetChanged()
         }
 
