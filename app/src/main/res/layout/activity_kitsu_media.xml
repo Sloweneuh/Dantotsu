@@ -103,6 +103,7 @@
         android:id="@+id/kitsuMediaPages"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:layout_marginBottom="72dp"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
         <ProgressBar
@@ -174,7 +175,97 @@
 
             </LinearLayout>
         </androidx.core.widget.NestedScrollView>
+
+        <androidx.core.widget.NestedScrollView
+            android:id="@+id/kitsuMediaEpisodesScroll"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingBottom="16dp">
+
+                <TextView
+                    android:id="@+id/kitsuEpisodesEmpty"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/poppins_bold"
+                    android:gravity="center"
+                    android:padding="32dp"
+                    android:text="@string/no_episode"
+                    android:textSize="16sp"
+                    android:visibility="gone" />
+
+                <HorizontalScrollView
+                    android:id="@+id/kitsuEpisodesChipScroll"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:clipToPadding="false"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:scrollbars="none"
+                    android:visibility="gone">
+
+                    <com.google.android.material.chip.ChipGroup
+                        android:id="@+id/kitsuEpisodesChipGroup"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        app:singleSelection="true" />
+                </HorizontalScrollView>
+
+                <LinearLayout
+                    android:id="@+id/kitsuMediaEpisodesContent"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+
+            </LinearLayout>
+        </androidx.core.widget.NestedScrollView>
+
+        <androidx.cardview.widget.CardView
+            android:id="@+id/kitsuEpisodesScrollTop"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="bottom|center_horizontal"
+            android:layout_marginBottom="16dp"
+            android:visibility="gone"
+            app:cardBackgroundColor="?android:colorBackground"
+            app:cardCornerRadius="24dp"
+            app:contentPadding="12dp">
+
+            <ImageView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:rotation="90"
+                app:srcCompat="@drawable/ic_round_arrow_back_ios_new_24"
+                app:tint="?attr/colorOnSurface"
+                tools:ignore="ContentDescription" />
+        </androidx.cardview.widget.CardView>
     </FrameLayout>
+
+    <nl.joery.animatedbottombar.AnimatedBottomBar
+        android:id="@+id/kitsuMediaBottomBar"
+        android:layout_width="match_parent"
+        android:layout_height="72dp"
+        android:layout_gravity="bottom"
+        android:background="?attr/colorSurface"
+        android:elevation="8dp"
+        android:padding="0dp"
+        app:abb_animationInterpolator="@anim/over_shoot"
+        app:abb_indicatorAppearance="round"
+        app:abb_indicatorLocation="top"
+        app:abb_selectedTabType="text"
+        app:abb_textAppearance="@style/NavBarText"
+        app:itemActiveIndicatorStyle="@style/BottomNavBar"
+        app:itemIconTint="@color/tab_layout_icon"
+        app:itemRippleColor="#00000000"
+        app:itemTextAppearanceActive="@style/NavBarText"
+        app:itemTextAppearanceInactive="@style/NavBarText"
+        app:itemTextColor="@color/tab_layout_icon" />
 
     <androidx.cardview.widget.CardView
         android:id="@+id/kitsuMediaClose"

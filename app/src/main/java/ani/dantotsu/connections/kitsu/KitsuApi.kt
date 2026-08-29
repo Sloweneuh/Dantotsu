@@ -19,8 +19,10 @@ import kotlinx.serialization.Serializable
  * so a whole-list comparison doesn't re-query the same series.
  */
 object KitsuApi {
-    // v2: v1 could cache a wrong-type / over-broad mapping result; bump to drop those.
-    private const val CACHE_PREFIX = "kitsu_media2_"
+    // v3: v2 could cache whichever of several duplicate mapping rows (e.g. a companion "Break Time"
+    // entry sharing the real season's AniList id) happened to be seen last; bump to drop those —
+    // see the createdAt tie-break in lookup()/batchLookup().
+    private const val CACHE_PREFIX = "kitsu_media3_"
 
     private val negativeCache = HashSet<String>()
 
@@ -84,6 +86,10 @@ object KitsuApi {
         if (toFetch.isEmpty()) return out
         val want = expectedItemType(externalSite)
         val requested = toFetch.toHashSet()
+        // Same "prefer the oldest mapping row" rule as [lookup], applied per external id: a chunk
+        // can carry more than one row for the same id when Kitsu has a duplicate/erroneous mapping
+        // (e.g. a companion "Break Time" entry mapped onto the real season's AniList id).
+        val bestCreatedAt = HashMap<String, String>()
 
         // Kitsu caps page size at 20; keep the chunk under that so a title with a couple of
         // mappings for the same site can't push wanted rows off the page.
@@ -104,8 +110,14 @@ object KitsuApi {
                 // Only trust a row whose id we actually asked for and whose item is the right kind —
                 // guards against a filter that came back over-broad.
                 if (ext !in requested || (want != null && type != want)) return@forEach
-                synchronized(out) { out[ext] = mediaId }
-                seedMediaId(externalSite, ext, mediaId)
+                val createdAt = m.attributes?.createdAt ?: ""
+                synchronized(out) {
+                    if (ext !in bestCreatedAt || createdAt < bestCreatedAt.getValue(ext)) {
+                        bestCreatedAt[ext] = createdAt
+                        out[ext] = mediaId
+                        seedMediaId(externalSite, ext, mediaId)
+                    }
+                }
             }
         }
         toFetch.filter { it !in out }.forEach { negativeCache.add("$CACHE_PREFIX${externalSite}_$it") }
@@ -190,10 +202,13 @@ object KitsuApi {
                 client.get(url, mapOf("Accept" to "application/vnd.api+json"))
                     .parsed<MappingsResponse>()
                     .data.orEmpty()
-                    .firstOrNull { m ->
+                    .filter { m ->
                         m.attributes?.externalId == externalId &&
                             (want == null || m.relationships?.item?.data?.type == want)
                     }
+                    // More than one row can legitimately match (see MappingAttributes.createdAt) —
+                    // the oldest mapping is the one to trust.
+                    .minByOrNull { it.attributes?.createdAt ?: "" }
                     ?.relationships?.item?.data?.id
             }
         }
@@ -221,6 +236,12 @@ object KitsuApi {
     data class MappingAttributes(
         @SerialName("externalSite") val externalSite: String? = null,
         @SerialName("externalId") val externalId: String? = null,
+        // Kitsu occasionally carries more than one mapping row for the same external id — e.g. a
+        // companion/recap "Break Time" entry gets mapped to the same AniList id as the actual
+        // season. Those spinoff entries are near-always mapped *after* the real one already has a
+        // well-established mapping, so preferring the oldest mapping row (see [lookup]) reliably
+        // picks the real show over a newer duplicate/erroneous mapping.
+        @SerialName("createdAt") val createdAt: String? = null,
     )
 
     @Serializable
@@ -410,6 +431,59 @@ object KitsuApi {
             }
         }.orEmpty()
         return KitsuMediaFull(id, media, cats, ids.anilistId, ids.malId, ids.muId, relations, streamers)
+    }
+
+    // ---- episodes (anime) ----
+
+    data class KitsuEpisode(
+        val number: Int?,
+        val title: String?,
+        val synopsis: String?,
+        val thumb: String?,
+        val airdate: String?,
+    ) : java.io.Serializable
+
+    @Serializable
+    private data class EpisodesResponse(val data: List<EpisodeResource>? = null, val links: Links? = null)
+
+    @Serializable
+    private data class EpisodeResource(val attributes: EpisodeAttributes? = null)
+
+    @Serializable
+    private data class EpisodeAttributes(
+        val number: Int? = null,
+        val canonicalTitle: String? = null,
+        val titles: Map<String, String?>? = null,
+        val synopsis: String? = null,
+        val description: String? = null,
+        val airdate: String? = null,
+        val thumbnail: KitsuSync.PosterImage? = null,
+    )
+
+    /** Every episode of a Kitsu anime, ordered by number. Public route, no auth. */
+    suspend fun getEpisodes(id: String): List<KitsuEpisode> {
+        val out = mutableListOf<KitsuEpisode>()
+        var url: String? = "${Kitsu.API_URL}/anime/$id/episodes?sort=number&page%5Blimit%5D=20"
+        var guard = 0
+        while (url != null && guard++ < 60) {
+            val page = tryWithSuspend {
+                rateLimiter.withPermit {
+                    KitsuSync.json.decodeFromString<EpisodesResponse>(client.get(url!!, ACCEPT).text)
+                }
+            } ?: break
+            page.data.orEmpty().forEach { r ->
+                val a = r.attributes ?: return@forEach
+                out += KitsuEpisode(
+                    number = a.number,
+                    title = a.canonicalTitle ?: a.titles?.values?.firstOrNull { !it.isNullOrBlank() },
+                    synopsis = a.synopsis ?: a.description,
+                    thumb = a.thumbnail?.original ?: a.thumbnail?.medium ?: a.thumbnail?.small,
+                    airdate = a.airdate,
+                )
+            }
+            url = page.links?.next
+        }
+        return out
     }
 
     /** AniList / MAL / MangaUpdates ids Kitsu holds for a media, from its own `/mappings`. */

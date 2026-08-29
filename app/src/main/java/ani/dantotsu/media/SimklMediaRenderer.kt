@@ -18,11 +18,10 @@ import ani.dantotsu.copyToClipboard
 import ani.dantotsu.databinding.FragmentMediaInfoBinding
 import ani.dantotsu.databinding.ItemChipBinding
 import ani.dantotsu.databinding.ItemChipSynonymBinding
-import ani.dantotsu.databinding.ItemEpisodeListBinding
 import ani.dantotsu.databinding.ItemTitleChipgroupBinding
 import ani.dantotsu.databinding.ItemTitleRecyclerBinding
-import ani.dantotsu.loadImage
 import ani.dantotsu.openLinkInBrowser
+import ani.dantotsu.setSafeOnClickListener
 import java.util.Locale
 
 /**
@@ -42,6 +41,9 @@ object SimklMediaRenderer {
         anilistTags: List<MediaTag>?,
         onGenreClick: (String) -> Unit,
         onSimklMediaClick: (Long) -> Unit,
+        /** Info-tab only: Simkl's recommendations pre-resolved to AniList media (tap → in-app page). */
+        anilistRecs: List<Media>? = null,
+        recSource: Media? = null,
     ) {
         val container = info.mediaInfoContainer
         container.visibility = View.VISIBLE
@@ -156,8 +158,12 @@ object SimklMediaRenderer {
                 .setDuration(if (target == 100) 950 else 400).start()
         }
 
-        (container.parent as? ViewGroup)?.removeView(container)
-        contentHost.addView(container)
+        // Standalone page: reparent the stats table into the activity's scroll. Info tab: the
+        // binding is the fragment view, so the container stays where it is — just append after it.
+        if (contentHost !== container) {
+            (container.parent as? ViewGroup)?.removeView(container)
+            contentHost.addView(container)
+        }
 
         addSynonyms(activity, contentHost, full, primary)
         addRatings(activity, contentHost, full.ratings)
@@ -165,54 +171,42 @@ object SimklMediaRenderer {
         addTags(activity, contentHost, anilistTags)
         addTrailers(activity, contentHost, full.trailers)
         addRelations(activity, contentHost, full.relations, onSimklMediaClick)
-        addRecommendations(activity, contentHost, full.recommendations, onSimklMediaClick)
+        if (anilistRecs != null) addAniListRecommendations(activity, contentHost, anilistRecs, recSource)
+        else addRecommendations(activity, contentHost, full.recommendations, onSimklMediaClick)
     }
 
-    /**
-     * The Episodes tab — an `item_episode_list` row per episode, inflated straight into [parent].
-     * [firstNumber] is the episode number the first row would carry if Simkl didn't give one
-     * (so a paged range still numbers correctly).
-     */
-    fun renderEpisodes(
-        activity: AppCompatActivity,
-        parent: ViewGroup,
-        episodes: List<SimklApi.SimklEpisode>,
-        firstNumber: Int = 1,
+    private fun addAniListRecommendations(
+        activity: AppCompatActivity, parent: ViewGroup, recs: List<Media>, source: Media?,
     ) {
-        episodes.forEachIndexed { i, ep ->
-            val row = ItemEpisodeListBinding.inflate(activity.layoutInflater, parent, false)
-            SimklApi.episodeImageUrl(ep.img)?.let { row.itemMediaImage.loadImage(it) }
-
-            val num = ep.episode?.toString() ?: (firstNumber + i).toString()
-            row.itemEpisodeNumber.text = if (ep.type != null && !ep.type.equals("episode", true)) {
-                ep.type.take(1).uppercase() + num
-            } else num
-            row.itemEpisodeTitle.text = SimklApi.cleanText(ep.title)
-                ?: activity.getString(R.string.episode_number, num)
-
-            val desc = SimklApi.cleanText(ep.description)
-            row.itemEpisodeDesc.visibility = if (desc == null) View.GONE else View.VISIBLE
-            row.itemEpisodeDesc.text = desc.orEmpty()
-
-            row.itemDownload.visibility = View.GONE
-            row.itemEpisodeViewed.visibility = View.GONE
-            row.itemEpisodeBrowser.visibility = View.GONE
-            row.itemDownloadStatus.visibility = View.GONE
-            row.itemMediaProgressCont.visibility = View.GONE
-            row.itemEpisodeFiller.visibility = View.GONE
-            row.itemEpisodeFillerView.visibility = View.GONE
-            row.itemEpisodeViewedCover.visibility = View.GONE
-
-            row.root.setOnClickListener {
-                row.itemEpisodeDesc.maxLines = if (row.itemEpisodeDesc.maxLines == 3) 100 else 3
-            }
-            row.root.setOnLongClickListener {
-                copyToClipboard("${row.itemEpisodeTitle.text}\n\n${desc.orEmpty()}".trim())
-                true
-            }
-            parent.addView(row.root)
+        if (recs.isEmpty()) return
+        val bind = ItemTitleRecyclerBinding.inflate(activity.layoutInflater, parent, false)
+        bind.itemTitle.setText(R.string.recommended)
+        bind.itemRecycler.adapter = MediaAdaptor(0, ArrayList(recs), activity, currentMedia = source)
+        bind.itemRecycler.layoutManager =
+            LinearLayoutManager(activity, LinearLayoutManager.HORIZONTAL, false)
+        bind.itemMore.visibility = View.VISIBLE
+        bind.itemMore.setSafeOnClickListener {
+            MediaListViewActivity.passedMedia = ArrayList(recs)
+            source?.let { MediaListViewActivity.passedRecommendationSource = it }
+            activity.startActivity(
+                android.content.Intent(activity, MediaListViewActivity::class.java)
+                    .putExtra("title", activity.getString(R.string.recommended))
+            )
         }
+        parent.addView(bind.root)
     }
+
+    fun toEpisodeRows(episodes: List<SimklApi.SimklEpisode>): List<TrackerEpisodeRenderer.EpisodeRow> =
+        episodes.mapIndexed { i, ep ->
+            TrackerEpisodeRenderer.EpisodeRow(
+                number = ep.episode?.toString() ?: (i + 1).toString(),
+                title = SimklApi.cleanText(ep.title),
+                desc = SimklApi.cleanText(ep.description),
+                thumbUrl = SimklApi.episodeImageUrl(ep.img),
+                date = ep.date,
+                numberPrefix = ep.type?.takeIf { !it.equals("episode", true) }?.take(1)?.uppercase(),
+            )
+        }
 
     private fun addRelations(
         activity: AppCompatActivity,

@@ -57,7 +57,9 @@ class MUMediaInfoContainerFragment : Fragment() {
         InfoTabType.MAL -> ani.dantotsu.media.MALInfoFragment()
         InfoTabType.COMICK -> ComickInfoFragment()
         InfoTabType.MANGABAKA -> ani.dantotsu.media.MangaBakaInfoFragment()
-        InfoTabType.ANILIST -> error("$type is not a MangaUpdates info tab")
+        InfoTabType.KITSU -> ani.dantotsu.media.KitsuInfoFragment()
+        InfoTabType.ANILIST, InfoTabType.SIMKL ->
+            error("$type is not a MangaUpdates info tab")
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -183,6 +185,11 @@ class MUMediaInfoContainerFragment : Fragment() {
                         if (id != null && id > 0) "https://mangabaka.org/$id"
                         else "https://mangabaka.org/search?q=$encoded"
                     }
+                    "kitsu" -> {
+                        val id = model.kitsuId.value
+                        if (!id.isNullOrBlank()) "https://kitsu.io/manga/$id"
+                        else "https://kitsu.io/search?query=$encoded"
+                    }
                     else -> return@setOnLongClickListener false
                 }
                 startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
@@ -197,6 +204,8 @@ class MUMediaInfoContainerFragment : Fragment() {
         model.mangaBakaLoaded.observe(viewLifecycleOwner) { applyTabAlpha(model) }
         model.muMalId.observe(viewLifecycleOwner) { applyTabAlpha(model) }
         model.muMalLoaded.observe(viewLifecycleOwner) { applyTabAlpha(model) }
+        model.kitsuId.observe(viewLifecycleOwner) { applyTabAlpha(model) }
+        model.kitsuLoaded.observe(viewLifecycleOwner) { applyTabAlpha(model) }
     }
 
     private fun showAnilistEquivalentDialog(anilistId: Int) {
@@ -231,6 +240,11 @@ class MUMediaInfoContainerFragment : Fragment() {
                 "mal" -> when {
                     model.muMalId.value != null -> 1.0f
                     model.muMalLoaded.value == true -> 0.4f
+                    else -> 0.6f
+                }
+                "kitsu" -> when {
+                    !model.kitsuId.value.isNullOrBlank() -> 1.0f
+                    model.kitsuLoaded.value == true -> 0.4f
                     else -> 0.6f
                 }
                 else -> 1.0f

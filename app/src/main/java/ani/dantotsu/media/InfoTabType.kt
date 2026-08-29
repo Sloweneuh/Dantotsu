@@ -4,13 +4,25 @@ import ani.dantotsu.R
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 
-/** One kind of info tab that can appear on a media details screen. */
-enum class InfoTabType(val key: String, val iconRes: Int, val labelRes: Int) {
+/**
+ * One kind of info tab that can appear on a media details screen.
+ *
+ * [defaultVisible] is the visibility a context falls back to before the user has touched the
+ * reorder popup — Kitsu and Simkl ship hidden even once their connection is enabled.
+ */
+enum class InfoTabType(
+    val key: String,
+    val iconRes: Int,
+    val labelRes: Int,
+    val defaultVisible: Boolean = true,
+) {
     ANILIST("anilist", R.drawable.ic_anilist, R.string.anilist),
     MAL("mal", R.drawable.ic_myanimelist, R.string.myanimelist),
     COMICK("comick", R.drawable.ic_round_comick_24, R.string.comick),
     MANGAUPDATES("mangaupdates", R.drawable.ic_round_mangaupdates_24, R.string.mangaupdates),
-    MANGABAKA("mangabaka", R.drawable.ic_round_mangabaka_24, R.string.mangabaka);
+    MANGABAKA("mangabaka", R.drawable.ic_round_mangabaka_24, R.string.mangabaka),
+    KITSU("kitsu", R.drawable.ic_kitsu, R.string.kitsu, defaultVisible = false),
+    SIMKL("simkl", R.drawable.ic_simkl, R.string.simkl, defaultVisible = false);
 
     /**
      * Whether this connection's data fetching is enabled. This is intentionally independent from
@@ -24,6 +36,8 @@ enum class InfoTabType(val key: String, val iconRes: Int, val labelRes: Int) {
             COMICK -> PrefManager.getVal(PrefName.ComickEnabled)
             MANGAUPDATES -> PrefManager.getVal(PrefName.MangaUpdatesEnabled)
             MANGABAKA -> PrefManager.getVal(PrefName.MangaBakaInfoEnabled)
+            KITSU -> PrefManager.getVal(PrefName.KitsuInfoEnabled)
+            SIMKL -> PrefManager.getVal(PrefName.SimklInfoEnabled)
         }
 }
 
@@ -35,19 +49,23 @@ enum class InfoTabContext(
 ) {
     ANILIST_ANIME(
         PrefName.InfoTabOrderAnilistAnime, PrefName.InfoTabVisibilityAnilistAnime,
-        listOf(InfoTabType.ANILIST, InfoTabType.MAL, InfoTabType.COMICK)
+        listOf(
+            InfoTabType.ANILIST, InfoTabType.MAL, InfoTabType.COMICK,
+            InfoTabType.KITSU, InfoTabType.SIMKL
+        )
     ),
     ANILIST_MANGA(
         PrefName.InfoTabOrderAnilistManga, PrefName.InfoTabVisibilityAnilistManga,
         listOf(
             InfoTabType.ANILIST, InfoTabType.MAL, InfoTabType.COMICK,
-            InfoTabType.MANGAUPDATES, InfoTabType.MANGABAKA
+            InfoTabType.MANGAUPDATES, InfoTabType.MANGABAKA, InfoTabType.KITSU
         )
     ),
     MANGAUPDATES_MANGA(
         PrefName.InfoTabOrderMangaUpdates, PrefName.InfoTabVisibilityMangaUpdates,
         listOf(
-            InfoTabType.MANGAUPDATES, InfoTabType.MAL, InfoTabType.COMICK, InfoTabType.MANGABAKA
+            InfoTabType.MANGAUPDATES, InfoTabType.MAL, InfoTabType.COMICK,
+            InfoTabType.MANGABAKA, InfoTabType.KITSU
         )
     ),
 
@@ -58,12 +76,12 @@ enum class InfoTabContext(
         PrefName.InfoTabOrderAnilistNovel, PrefName.InfoTabVisibilityAnilistNovel,
         listOf(
             InfoTabType.ANILIST, InfoTabType.MAL,
-            InfoTabType.MANGAUPDATES, InfoTabType.MANGABAKA
+            InfoTabType.MANGAUPDATES, InfoTabType.MANGABAKA, InfoTabType.KITSU
         )
     ),
     MANGAUPDATES_NOVEL(
         PrefName.InfoTabOrderMangaUpdatesNovel, PrefName.InfoTabVisibilityMangaUpdatesNovel,
-        listOf(InfoTabType.MANGAUPDATES, InfoTabType.MAL, InfoTabType.MANGABAKA)
+        listOf(InfoTabType.MANGAUPDATES, InfoTabType.MAL, InfoTabType.MANGABAKA, InfoTabType.KITSU)
     );
 
     /** User-saved tab order (indices into [tabs]), healed to the current [tabs] size if stale. */
@@ -73,10 +91,10 @@ enum class InfoTabContext(
         else tabs.indices.toList()
     }
 
-    /** User-saved per-tab visibility (aligned to [tabs] indices), healed if stale. */
+    /** User-saved per-tab visibility (aligned to [tabs] indices), healed to each tab's default. */
     fun savedVisibility(): List<Boolean> {
         val saved = PrefManager.getVal<List<Boolean>>(visibilityPref)
-        return if (saved.size == tabs.size) saved else tabs.indices.map { true }
+        return if (saved.size == tabs.size) saved else tabs.map { it.defaultVisible }
     }
 
     /**

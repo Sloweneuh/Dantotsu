@@ -657,8 +657,10 @@ object BackupTree {
         PrefName.MakeDefault.name to R.string.pref_make_default,
         PrefName.MalSyncExcludeList.name to R.string.pref_malsync_exclude_list,
         PrefName.MalSyncLanguagePreferences.name to R.string.pref_malsync_languages,
-        // Named "disable_mangabaka" but worded "Enable MangaBaka", which is what the pref stores.
+        // Named "disable_*" but worded "Enable *", which is what the pref stores.
         PrefName.MangaBakaInfoEnabled.name to R.string.disable_mangabaka,
+        PrefName.KitsuInfoEnabled.name to R.string.disable_kitsu,
+        PrefName.SimklInfoEnabled.name to R.string.disable_simkl,
         PrefName.MangaDownloadPdf.name to R.string.download_as_pdf,
         PrefName.MangaUpdatesNotificationInterval.name to R.string.mu_notification_interval_title,
         PrefName.MangaUpdatesNotificationsEnabled.name to R.string.pref_mu_notifications,

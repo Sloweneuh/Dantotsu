@@ -1721,7 +1721,17 @@
     <string name="kitsu_anime_search">Kitsu Anime</string>
     <string name="simkl_search">Simkl</string>
     <string name="kitsu_no_data_title">Aucune donnée Kitsu</string>
+    <string name="kitsu_no_data_desc">Cette entrée n\'a pas pu être associée à un média Kitsu</string>
     <string name="simkl_no_data_title">Aucune donnée Simkl</string>
+    <string name="simkl_no_data_desc">Cette entrée n\'a pas pu être associée à un anime Simkl</string>
+    <string name="open_on_kitsu">Ouvrir sur Kitsu</string>
+    <string name="open_on_simkl">Ouvrir sur Simkl</string>
+    <string name="disable_kitsu">Activer Kitsu</string>
+    <string name="disable_kitsu_desc">Activer la récupération des données Kitsu et l\'onglet Kitsu</string>
+    <string name="disable_simkl">Activer Simkl</string>
+    <string name="disable_simkl_desc">Activer la récupération des données Simkl et l\'onglet Simkl</string>
+    <string name="kitsu_requires_internet">Les données Kitsu nécessitent une connexion Internet</string>
+    <string name="simkl_requires_internet">Les données Simkl nécessitent une connexion Internet</string>
     <string name="kitsu_filter_categories">Catégories</string>
     <string name="kitsu_filter_subtype">Format</string>
     <string name="kitsu_filter_status">Statut</string>
@@ -1736,7 +1746,7 @@
     <string name="volumes">Volumes</string>
     <string name="network">Réseau</string>
     <string name="episode_number">EP %1$s</string>
-    <string name="episode_range_format">Ép. %1$d – %2$d</string>
+    <string name="episode_range_format">Ép. %1$s – %2$s</string>
 
     <string name="volume_chapter_format">Volume %1$s, Chapitre %2$s</string>
     <string name="volume_format">Volume %1$s</string>

@@ -44,10 +44,12 @@ class KitsuMediaActivity : AppCompatActivity() {
     companion object {
         const val EXTRA_MEDIA_ID = "kitsu_media_id"
         const val EXTRA_IS_ANIME = "kitsu_is_anime"
+        const val EXTRA_OPEN_EPISODES = "kitsu_open_episodes"
     }
 
     private lateinit var binding: ActivityKitsuMediaBinding
     private var isAnime = false
+    private var episodes: TrackerEpisodesController? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,6 +58,10 @@ class KitsuMediaActivity : AppCompatActivity() {
         setContentView(binding.root)
         initActivity(this)
 
+        binding.kitsuMediaBottomBar.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+            height += navBarHeight
+        }
+        binding.kitsuMediaBottomBar.setPadding(0, 0, 0, navBarHeight)
         binding.kitsuMediaPages.updateLayoutParams<ViewGroup.MarginLayoutParams> {
             bottomMargin += navBarHeight
         }
@@ -73,6 +79,26 @@ class KitsuMediaActivity : AppCompatActivity() {
             ?: intent.data?.pathSegments?.getOrNull(1)
             ?: run { finish(); return }
 
+        // Episodes tab only makes sense for anime — Kitsu manga has no episode list.
+        if (isAnime) {
+            episodes = TrackerEpisodesController(
+                activity = this,
+                bottomBar = binding.kitsuMediaBottomBar,
+                infoScroll = binding.kitsuMediaInfoScroll,
+                episodesScroll = binding.kitsuMediaEpisodesScroll,
+                episodesContent = binding.kitsuMediaEpisodesContent,
+                episodesEmpty = binding.kitsuEpisodesEmpty,
+                chipScroll = binding.kitsuEpisodesChipScroll,
+                chipGroup = binding.kitsuEpisodesChipGroup,
+                scrollTopButton = binding.kitsuEpisodesScrollTop,
+                pagesWidthSource = binding.kitsuMediaPages,
+                startOnEpisodes = intent.getBooleanExtra(EXTRA_OPEN_EPISODES, false),
+            ).also { it.setup() }
+        } else {
+            binding.kitsuMediaBottomBar.visibility = View.GONE
+            binding.kitsuMediaPages.updateLayoutParams<ViewGroup.MarginLayoutParams> { bottomMargin = navBarHeight }
+        }
+
         lifecycleScope.launch {
             val full = withContext(Dispatchers.IO) { KitsuApi.getMediaFull(isAnime, mediaId) }
             if (full == null) {
@@ -81,10 +107,10 @@ class KitsuMediaActivity : AppCompatActivity() {
                 finish()
                 return@launch
             }
+            val episodeList = if (isAnime) withContext(Dispatchers.IO) { KitsuApi.getEpisodes(mediaId) } else emptyList()
             setupHeader(full)
             setupSourceButtons(full)
             binding.kitsuMediaProgress.visibility = View.GONE
-            binding.kitsuMediaInfoScroll.visibility = View.VISIBLE
 
             val info = FragmentMediaInfoBinding.inflate(layoutInflater)
             KitsuMediaRenderer.render(
@@ -102,6 +128,16 @@ class KitsuMediaActivity : AppCompatActivity() {
                     )
                 },
             )
+
+            val ctrl = episodes
+            if (ctrl != null) {
+                val media = full.media
+                ctrl.coverUrl = media.posterImage?.original ?: media.posterImage?.medium ?: media.posterImage?.small
+                ctrl.setEpisodes(KitsuMediaRenderer.toEpisodeRows(episodeList))
+                ctrl.revealCurrentTab()
+            } else {
+                binding.kitsuMediaInfoScroll.visibility = View.VISIBLE
+            }
         }
     }
 

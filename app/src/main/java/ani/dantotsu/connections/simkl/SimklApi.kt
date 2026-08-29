@@ -7,6 +7,9 @@ import ani.dantotsu.media.anime.Episode
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.tryWithSuspend
 import ani.dantotsu.util.Logger
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.serialization.SerialName
@@ -23,8 +26,12 @@ import kotlinx.serialization.Serializable
  * Hits and misses are cached in [PrefManager] custom vals plus an in-memory negative set.
  */
 object SimklApi {
-    private const val CACHE_PREFIX = "simkl_id_"
-    private const val EP_CACHE_PREFIX = "simkl_eps_"
+    // v2: the info tab resolves by AniList/MAL id through this cache, while the standalone media
+    // page gets its id directly from search results — a franchise with several AniList entries
+    // (season re-releases, recuts) could have cached a stale/wrong id here from before this cache
+    // had any info-tab reader to notice. Bump to drop anything cached under v1.
+    private const val CACHE_PREFIX = "simkl_id2_"
+    private const val EP_CACHE_PREFIX = "simkl_eps2_"
 
     private val negativeCache = HashSet<String>()
     private val rateLimiter = Semaphore(4)
@@ -253,6 +260,33 @@ object SimklApi {
             if (raw.startsWith("[")) Mapper.json.decodeFromString<List<SimklEpisode>>(raw) else emptyList()
         }
     }.orEmpty()
+
+    @Serializable
+    private data class IdsWrapper(val ids: FullIds? = null)
+
+    /**
+     * `simkl id → AniList id` for a batch of records — used to turn a Simkl recommendation list
+     * into AniList media on an AniList info screen. One lean `/anime/{id}` call per id, four in
+     * flight at a time (the shared [rateLimiter]).
+     */
+    suspend fun resolveAniListIds(simklIds: List<Long>): Map<Long, Int> = coroutineScope {
+        simklIds.distinct().map { id ->
+            async {
+                id to tryWithSuspend {
+                    rateLimiter.withPermit {
+                        Mapper.json.decodeFromString<IdsWrapper>(
+                            client.get(
+                                "${Simkl.API_URL}/anime/$id?client_id=${Simkl.CLIENT_ID}",
+                                headers, cacheTime = 0,
+                            ).text
+                        ).ids?.anilist?.toIntOrNull()
+                    }
+                }
+            }
+        }.awaitAll()
+            .mapNotNull { (k, v) -> v?.let { k to it } }
+            .toMap()
+    }
 
     /**
      * Simkl episode titles / synopses / thumbnails keyed by episode number, for the AniList watch

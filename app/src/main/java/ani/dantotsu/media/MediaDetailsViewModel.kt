@@ -71,6 +71,16 @@ class MediaDetailsViewModel : ViewModel() {
     // is hidden, so it's only offered once per details screen instance.
     var mangaBakaEquivalentPromptShown = false
 
+    // Kitsu / Simkl info tabs — resolved id + "resolved" flag (dims the tab until a match is known)
+    // + a one-time cache of the full model so tab re-entry doesn't refetch. Populated lazily by
+    // the fragments themselves, like the Comick *anime* tab.
+    val kitsuId = MutableLiveData<String?>(null)
+    val kitsuLoaded = MutableLiveData(false)
+    val kitsuFull = MutableLiveData<ani.dantotsu.connections.kitsu.KitsuApi.KitsuMediaFull?>(null)
+    val simklId = MutableLiveData<Long?>(null)
+    val simklLoaded = MutableLiveData(false)
+    val simklFull = MutableLiveData<ani.dantotsu.connections.simkl.SimklApi.SimklAnimeFull?>(null)
+
     // MAL info tab on MangaUpdates media: MangaUpdates carries no MAL id, so it's resolved through
     // MangaBaka (Comick fallback) and published here. The "loaded" flag is what lets the tab tell
     // "still resolving" from "this series has no MAL entry" — see

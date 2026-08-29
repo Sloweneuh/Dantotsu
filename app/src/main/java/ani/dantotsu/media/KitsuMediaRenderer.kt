@@ -167,9 +167,13 @@ object KitsuMediaRenderer {
                 .setDuration(if (target == 100) 950 else 400).start()
         }
 
-        // Move the stats container into the host scroll, then append the dynamic sections.
-        (container.parent as? ViewGroup)?.removeView(container)
-        contentHost.addView(container)
+        // Standalone page: reparent the stats table into the activity's own scroll before appending
+        // the dynamic sections. Info tab: the binding *is* the fragment view, so the container is
+        // already in place — just append after it.
+        if (contentHost !== container) {
+            (container.parent as? ViewGroup)?.removeView(container)
+            contentHost.addView(container)
+        }
 
         addSynonyms(activity, contentHost, media, canonical)
         addCategories(activity, contentHost, full.categories, onCategoryClick)
@@ -177,6 +181,17 @@ object KitsuMediaRenderer {
         addRelations(activity, contentHost, full.relations, onRelationClick)
         addTrailer(activity, contentHost, media.youtubeVideoId)
     }
+
+    fun toEpisodeRows(episodes: List<KitsuApi.KitsuEpisode>): List<TrackerEpisodeRenderer.EpisodeRow> =
+        episodes.mapIndexed { i, ep ->
+            TrackerEpisodeRenderer.EpisodeRow(
+                number = ep.number?.toString() ?: (i + 1).toString(),
+                title = ep.title,
+                desc = ep.synopsis,
+                thumbUrl = ep.thumb,
+                date = ep.airdate,
+            )
+        }
 
     private fun addSynonyms(
         activity: AppCompatActivity,

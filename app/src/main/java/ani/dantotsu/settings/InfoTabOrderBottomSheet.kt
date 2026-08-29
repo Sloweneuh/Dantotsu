@@ -161,7 +161,9 @@ class InfoTabOrderBottomSheet : BottomSheetDialogFragment() {
         PrefManager.setVal(context.orderPref, visibleIds + hiddenIds)
         PrefManager.setVal(
             context.visibilityPref,
-            MutableList(context.tabs.size) { i -> finalItems.find { it.id == i }?.visible ?: true }
+            MutableList(context.tabs.size) { i ->
+                finalItems.find { it.id == i }?.visible ?: context.tabs[i].defaultVisible
+            }
         )
     }
 

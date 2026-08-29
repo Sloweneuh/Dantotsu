@@ -137,6 +137,19 @@ class MediaInfoFragment : Fragment() {
                 if (media.anime == null) updateTabStates(model, media)
             }
         }
+
+        model.kitsuLoaded.observe(viewLifecycleOwner) {
+            currentMedia?.let { media -> updateTabStates(model, media) }
+        }
+        model.kitsuId.observe(viewLifecycleOwner) {
+            currentMedia?.let { media -> updateTabStates(model, media) }
+        }
+        model.simklLoaded.observe(viewLifecycleOwner) {
+            currentMedia?.let { media -> updateTabStates(model, media) }
+        }
+        model.simklId.observe(viewLifecycleOwner) {
+            currentMedia?.let { media -> updateTabStates(model, media) }
+        }
     }
 
     private fun setupTabs(model: MediaDetailsViewModel, media: Media) {
@@ -184,6 +197,8 @@ class MediaInfoFragment : Fragment() {
         InfoTabType.COMICK -> ComickInfoFragment()
         InfoTabType.MANGAUPDATES -> MangaUpdatesInfoFragment()
         InfoTabType.MANGABAKA -> MangaBakaInfoFragment()
+        InfoTabType.KITSU -> KitsuInfoFragment()
+        InfoTabType.SIMKL -> SimklInfoFragment()
     }
 
     private fun handleTabLongClick(
@@ -234,6 +249,17 @@ class MediaInfoFragment : Fragment() {
                     "https://mangabaka.org/search?q=$encoded"
                 }
             }
+            InfoTabType.KITSU -> {
+                val id = model.kitsuId.value
+                val kind = if (isAnime) "anime" else "manga"
+                if (!id.isNullOrBlank()) "https://kitsu.io/$kind/$id"
+                else "https://kitsu.io/search?query=${java.net.URLEncoder.encode(media.userPreferredName, "utf-8")}"
+            }
+            InfoTabType.SIMKL -> {
+                val id = model.simklId.value
+                if (id != null && id > 0) "https://simkl.com/anime/$id"
+                else "https://simkl.com/search/?type=anime&q=${java.net.URLEncoder.encode(media.userPreferredName, "utf-8")}"
+            }
         }
 
         startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
@@ -271,6 +297,16 @@ class MediaInfoFragment : Fragment() {
                         resolved -> 0.4f
                         else -> 0.6f
                     }
+                }
+                InfoTabType.KITSU -> when {
+                    !model.kitsuId.value.isNullOrBlank() -> 1.0f
+                    model.kitsuLoaded.value == true -> 0.4f
+                    else -> 0.6f
+                }
+                InfoTabType.SIMKL -> when {
+                    (model.simklId.value ?: 0L) > 0L -> 1.0f
+                    model.simklLoaded.value == true -> 0.4f
+                    else -> 0.6f
                 }
                 null -> 0.4f
             }

@@ -1929,7 +1929,17 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="kitsu_anime_search">Kitsu Anime</string>
     <string name="simkl_search">Simkl</string>
     <string name="kitsu_no_data_title">No Kitsu data</string>
+    <string name="kitsu_no_data_desc">This entry couldn\'t be matched to a Kitsu media</string>
     <string name="simkl_no_data_title">No Simkl data</string>
+    <string name="simkl_no_data_desc">This entry couldn\'t be matched to a Simkl anime</string>
+    <string name="open_on_kitsu">Open on Kitsu</string>
+    <string name="open_on_simkl">Open on Simkl</string>
+    <string name="disable_kitsu">Enable Kitsu</string>
+    <string name="disable_kitsu_desc">Toggle fetching Kitsu data and the Kitsu info tab</string>
+    <string name="disable_simkl">Enable Simkl</string>
+    <string name="disable_simkl_desc">Toggle fetching Simkl data and the Simkl info tab</string>
+    <string name="kitsu_requires_internet">Kitsu data requires an internet connection</string>
+    <string name="simkl_requires_internet">Simkl data requires an internet connection</string>
     <string name="kitsu_filter_categories">Categories</string>
     <string name="kitsu_filter_subtype">Format</string>
     <string name="kitsu_filter_status">Status</string>
@@ -1944,7 +1954,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="volumes">Volumes</string>
     <string name="network">Network</string>
     <string name="episode_number">EP %1$s</string>
-    <string name="episode_range_format">Ep. %1$d – %2$d</string>
+    <string name="episode_range_format">Ep. %1$s – %2$s</string>
 
     <string name="volume_chapter_format">Volume %1$s, Chapter %2$s</string>
     <string name="volume_format">Volume %1$s</string>

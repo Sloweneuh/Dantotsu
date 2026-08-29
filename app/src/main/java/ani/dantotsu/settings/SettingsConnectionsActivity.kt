@@ -160,6 +160,22 @@ class SettingsConnectionsActivity : AppCompatActivity() {
             // account at all.
             Settings(
                 type = 2,
+                name = getString(R.string.disable_kitsu),
+                desc = getString(R.string.disable_kitsu_desc),
+                icon = R.drawable.ic_kitsu,
+                isChecked = PrefManager.getVal<Boolean>(PrefName.KitsuInfoEnabled),
+                switch = { isChecked, _ -> PrefManager.setVal(PrefName.KitsuInfoEnabled, isChecked) },
+            ),
+            Settings(
+                type = 2,
+                name = getString(R.string.disable_simkl),
+                desc = getString(R.string.disable_simkl_desc),
+                icon = R.drawable.ic_simkl,
+                isChecked = PrefManager.getVal<Boolean>(PrefName.SimklInfoEnabled),
+                switch = { isChecked, _ -> PrefManager.setVal(PrefName.SimklInfoEnabled, isChecked) },
+            ),
+            Settings(
+                type = 2,
                 name = getString(R.string.disable_mangaupdates),
                 desc = getString(R.string.disable_mangaupdates_desc),
                 icon = R.drawable.ic_round_mangaupdates_24,
