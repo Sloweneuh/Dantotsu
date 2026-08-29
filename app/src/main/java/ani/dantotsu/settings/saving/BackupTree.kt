@@ -508,6 +508,7 @@ object BackupTree {
                     R.string.backup_sub_mangabaka_desc,
                     listOf(
                         BackupItem(PrefName.MangaBakaToken, R.string.backup_mangabaka_token),
+                        BackupItem(PrefName.MangaBakaOAuthToken, R.string.backup_mangabaka_token),
                         BackupItem(PrefName.MangaBakaUserName, R.string.backup_mangabaka_username),
                         BackupItem(PrefName.MangaBakaUserId, R.string.backup_mangabaka_user_id),
                     )

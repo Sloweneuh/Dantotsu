@@ -498,6 +498,27 @@
             </intent-filter>
         </activity>
         <activity
+            android:name=".connections.mangabaka.MangaBakaOAuthActivity"
+            android:configChanges="orientation|screenSize|layoutDirection"
+            android:exported="false" />
+        <activity
+            android:name=".connections.mangabaka.Login"
+            android:configChanges="orientation|screenSize|layoutDirection"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:launchMode="singleTask">
+            <intent-filter android:label="MangaBaka Login for Dantotsu">
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:host="mangabaka"
+                    android:scheme="dantotsu" />
+            </intent-filter>
+        </activity>
+        <activity
             android:name=".connections.discord.Login"
             android:configChanges="orientation|screenSize|layoutDirection"
             android:excludeFromRecents="true"
@@ -509,25 +530,23 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
 
-                <data android:scheme="dantotsu" />
-                <data android:host="discord" />
+                <data
+                    android:host="discord"
+                    android:scheme="dantotsu" />
             </intent-filter>
         </activity>
         <activity
             android:name=".others.webview.CookieCatcher"
             android:configChanges="orientation|screenSize|layoutDirection"
             android:excludeFromRecents="true"
-            android:exported="true"
-            android:launchMode="singleTask">
-            <intent-filter android:label="Discord Login for Dantotsu">
-                <action android:name="android.intent.action.VIEW" />
-
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <data android:scheme="dantotsu" />
-            </intent-filter>
-        </activity>
+            android:exported="false"
+            android:launchMode="singleTask" />
+        <!--
+            CookieCatcher is only ever started explicitly (Intent(context, CookieCatcher::class))
+            from the extension source screens. Its old catch-all `dantotsu://` intent-filter (a
+            copy-paste from Discord Login) had no purpose but to hijack every OAuth redirect
+            (dantotsu://mangabaka, …) into this WebView — so it's removed.
+        -->
         <activity
             android:name=".connections.anilist.UrlMedia"
             android:configChanges="orientation|screenSize|layoutDirection"

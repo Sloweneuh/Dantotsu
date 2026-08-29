@@ -172,11 +172,10 @@ object MangaBakaSync {
             code
         }
 
-    private fun authedRequest(seriesId: Long): Request.Builder {
-        val token = MangaBaka.token ?: ""
-        return Request.Builder()
-            .url("$API_URL/v1/my/library/$seriesId")
-            .addHeader("x-api-key", token)
+    private suspend fun authedRequest(seriesId: Long): Request.Builder {
+        val builder = Request.Builder().url("$API_URL/v1/my/library/$seriesId")
+        MangaBaka.authHeaders()?.forEach { (k, v) -> builder.addHeader(k, v) }
+        return builder
     }
 
     /** Every possible MangaBaka library state (mirrors the `state` enum in the API docs). */
@@ -199,8 +198,8 @@ object MangaBakaSync {
      * for totals even if a huge state can't be fully enumerated.
      */
     suspend fun getLibrarySnapshot(): LibrarySnapshot {
-        val token = MangaBaka.token ?: return LibrarySnapshot(emptyList(), emptyMap())
-        val perState = LIBRARY_STATES.asyncMap { state -> state to fetchState(token, state) }
+        val headers = MangaBaka.authHeaders() ?: return LibrarySnapshot(emptyList(), emptyMap())
+        val perState = LIBRARY_STATES.asyncMap { state -> state to fetchState(headers, state) }
         return LibrarySnapshot(
             entries = perState.flatMap { it.second.first },
             counts = perState.associate { it.first to it.second.second },
@@ -208,7 +207,10 @@ object MangaBakaSync {
     }
 
     /** Pages through a single state; returns (entries fetched, total count reported by the server). */
-    private suspend fun fetchState(token: String, state: String): Pair<List<LibraryStateEntry>, Int> {
+    private suspend fun fetchState(
+        headers: Map<String, String>,
+        state: String,
+    ): Pair<List<LibraryStateEntry>, Int> {
         val entries = mutableListOf<LibraryStateEntry>()
         var count = 0
         var page = 1
@@ -216,7 +218,7 @@ object MangaBakaSync {
             val resp = tryWithSuspend {
                 val request = Request.Builder()
                     .url("$API_URL/v1/my/library?state=$state&limit=100&page=$page")
-                    .addHeader("x-api-key", token)
+                    .apply { headers.forEach { (k, v) -> addHeader(k, v) } }
                     .get()
                     .build()
                 val response = MangaBakaApi.execute(request)

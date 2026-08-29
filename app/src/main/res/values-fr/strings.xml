@@ -492,7 +492,7 @@
     <string name="mangabaka">MangaBaka</string>
     <string name="logged_in">Connecté</string>
     <string name="login_to_mangabaka">Se connecter à MangaBaka</string>
-    <string name="mangabaka_login_desc">Saisissez un jeton d\'accès personnel MangaBaka (commençant par « mb- »). Générez-en un depuis les paramètres de votre compte MangaBaka.</string>
+    <string name="mangabaka_login_desc">Connectez-vous à MangaBaka dans votre navigateur pour lier votre compte.</string>
     <string name="mangabaka_access_token">Jeton d\'accès personnel</string>
     <string name="mangabaka_get_token">Obtenir un jeton depuis MangaBaka</string>
     <string name="mangabaka_token_required">Jeton requis</string>

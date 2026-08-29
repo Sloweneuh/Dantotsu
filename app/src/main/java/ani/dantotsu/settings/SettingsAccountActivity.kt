@@ -17,7 +17,6 @@ import ani.dantotsu.connections.kitsu.Kitsu
 import ani.dantotsu.connections.kitsu.KitsuLoginDialog
 import ani.dantotsu.connections.mal.MAL
 import ani.dantotsu.connections.mangabaka.MangaBaka
-import ani.dantotsu.connections.mangabaka.MangaBakaLoginDialog
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.connections.mangaupdates.MangaUpdatesLoginDialog
 import ani.dantotsu.connections.simkl.Simkl
@@ -75,17 +74,37 @@ class SettingsAccountActivity : AppCompatActivity() {
         reload()
     }
 
+    private var firstResume = true
+    private var lastMangaBakaSignedIn = MangaBaka.token != null
+    override fun onResume() {
+        super.onResume()
+        // Refresh when returning from a login flow that runs in its own activity (MangaBaka OAuth).
+        if (firstResume) {
+            firstResume = false
+            return
+        }
+        val nowSignedIn = MangaBaka.token != null
+        if (nowSignedIn != lastMangaBakaSignedIn) {
+            lastMangaBakaSignedIn = nowSignedIn
+            restartMainActivity.isEnabled = true
+        }
+        reload()
+    }
+
     // ---- grid ----
 
     private fun reload() {
         gridAdapter.submit(buildTiles())
         buildSettingsList()
-        // MAL caches its profile lazily; fetch it once so the tile isn't left blank after login.
-        if (MAL.token != null && (MAL.username == null || MAL.avatar == null)) {
-            lifecycleScope.launch {
-                MAL.query.getUserData()
-                gridAdapter.submit(buildTiles())
-            }
+        // Refresh the profiles whose name/avatar the app caches, so opening this screen picks up a
+        // changed avatar or username rather than showing the stale cached one indefinitely.
+        lifecycleScope.launch {
+            var changed = false
+            if (MAL.token != null) changed = MAL.query.getUserData() || changed
+            if (Kitsu.token != null) changed = Kitsu.getUserData() || changed
+            if (Simkl.token != null) changed = Simkl.getUserData() || changed
+            if (MangaBaka.token != null) changed = MangaBaka.getUserData() || changed
+            if (changed) gridAdapter.submit(buildTiles())
         }
     }
 
@@ -164,9 +183,7 @@ class SettingsAccountActivity : AppCompatActivity() {
             AccountProvider.MANGAUPDATES -> MangaUpdatesLoginDialog().apply {
                 setOnLoginSuccessListener { onLoggedIn() }
             }.show(supportFragmentManager, "mangaupdates_login")
-            AccountProvider.MANGABAKA -> MangaBakaLoginDialog().apply {
-                setOnLoginSuccessListener { onLoggedIn() }
-            }.show(supportFragmentManager, "mangabaka_login")
+            AccountProvider.MANGABAKA -> MangaBaka.loginIntent(this)
             AccountProvider.DISCORD -> Discord.warning(this).show(supportFragmentManager, "dialog")
             AccountProvider.COMICK -> showInfoSheet(p)
         }

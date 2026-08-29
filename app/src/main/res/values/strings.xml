@@ -594,7 +594,7 @@
     <string name="mangabaka">MangaBaka</string>
     <string name="logged_in">Logged In</string>
     <string name="login_to_mangabaka">Login to MangaBaka</string>
-    <string name="mangabaka_login_desc">Enter a MangaBaka Personal Access Token (starts with \"mb-\"). Generate one from your MangaBaka account settings.</string>
+    <string name="mangabaka_login_desc">Sign in to MangaBaka in your browser to link your account.</string>
     <string name="mangabaka_access_token">Personal Access Token</string>
     <string name="mangabaka_get_token">Get a token from MangaBaka</string>
     <string name="mangabaka_token_required">Token required</string>

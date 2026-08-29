@@ -77,15 +77,26 @@ class AccountGridAdapter(
         // Photo and logo are separate views: the photo gets the circular mask (fills the circle),
         // the logo is a plain padded ImageView (a circular mask clips square logos like MangaBaka's).
         val state = tile.state
-        if (state is AccountState.SignedIn && !state.avatarUrl.isNullOrBlank()) {
-            b.accountAvatar.isVisible = true
-            b.accountLogo.isVisible = false
-            b.accountAvatar.loadImage(state.avatarUrl)
-        } else {
-            b.accountAvatar.isVisible = false
-            b.accountLogo.isVisible = true
-            b.accountLogo.setImageResource(tile.logoRes)
-            b.accountLogo.setColorFilter(themeAccent(ctx))
+        when {
+            state is AccountState.SignedIn && !state.avatarUrl.isNullOrBlank() -> {
+                b.accountAvatar.isVisible = true
+                b.accountLogo.isVisible = false
+                b.accountAvatar.loadImage(state.avatarUrl)
+            }
+            // Signed in but the service has no avatar for this user — show the generic person, not
+            // the brand logo (which is already on the badge).
+            state is AccountState.SignedIn -> {
+                b.accountAvatar.isVisible = false
+                b.accountLogo.isVisible = true
+                b.accountLogo.setImageResource(R.drawable.ic_round_person_24)
+                b.accountLogo.setColorFilter(themeAccent(ctx))
+            }
+            else -> {
+                b.accountAvatar.isVisible = false
+                b.accountLogo.isVisible = true
+                b.accountLogo.setImageResource(tile.logoRes)
+                b.accountLogo.setColorFilter(themeAccent(ctx))
+            }
         }
 
         // ---- badge ----
@@ -93,8 +104,18 @@ class AccountGridAdapter(
         when {
             tile.provider == AccountProvider.DISCORD && state is AccountState.SignedIn && discordStatus != null -> {
                 b.accountBadgeCard.isVisible = true
-                b.accountBadge.clearColorFilter()
+                // The vectors' own `android:tint` isn't reliably applied through AppCompat, so colour
+                // the dot explicitly instead of leaving it white.
+                b.accountBadge.imageTintList = null
                 b.accountBadge.setImageResource(discordStatus)
+                b.accountBadge.setColorFilter(
+                    when (discordStatus) {
+                        R.drawable.discord_status_online -> 0xFF3BA55D.toInt()
+                        R.drawable.discord_status_idle -> 0xFFFAA61A.toInt()
+                        R.drawable.discord_status_dnd -> 0xFFED4245.toInt()
+                        else -> 0xFF81848F.toInt() // invisible
+                    }
+                )
                 b.accountBadgeCard.setOnClickListener {
                     it.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
                     it.startAnimation(AnimationUtils.loadAnimation(ctx, R.anim.bounce_zoom))
@@ -104,6 +125,7 @@ class AccountGridAdapter(
             state is AccountState.SignedIn -> {
                 b.accountBadgeCard.isVisible = true
                 b.accountBadgeCard.isClickable = false
+                b.accountBadge.imageTintList = null
                 b.accountBadge.setImageResource(tile.logoRes)
                 b.accountBadge.setColorFilter(themeAccent(ctx))
             }

@@ -410,6 +410,8 @@ enum class PrefName(val data: Pref) {
     MangaUpdatesPassword(Pref(Location.Protected, String::class, "")),
     MangaUpdatesToken(Pref(Location.Protected, String::class, "")),
     MangaBakaToken(Pref(Location.Protected, String::class, "")),
+    MangaBakaOAuthToken(Pref(Location.Protected, ani.dantotsu.connections.mangabaka.MangaBaka.ResponseToken::class, "")),
+    MangaBakaCodeVerifier(Pref(Location.Protected, String::class, "")),
     MangaBakaUserName(Pref(Location.Protected, String::class, "")),
     MangaBakaUserId(Pref(Location.Protected, String::class, "")),
     KitsuToken(Pref(Location.Protected, ani.dantotsu.connections.kitsu.Kitsu.ResponseToken::class, "")),
