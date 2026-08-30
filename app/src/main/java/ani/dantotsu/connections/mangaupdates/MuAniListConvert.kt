@@ -54,6 +54,11 @@ fun muStartDate(muListId: Int, addedAt: Long?): FuzzyDate? =
  * status, progress and — when known — the "added to list" date as the AniList start date), then
  * removes the series from the MangaUpdates lists. One-way conversion.
  *
+ * A first-time AniList entry is landed on chapter 1 before its real progress is written, the same
+ * clean-start [ani.dantotsu.connections.anilist.AnilistMutations.primeActivity] does for the
+ * reader/player — so the activity feed reads "read chapters 1 - N" instead of a brand-new entry
+ * that opens at N.
+ *
  * The entry becomes AniList-driven from here on, so the usual AniList list-sync mirrors (MAL and
  * MangaBaka) run too — otherwise the trackers would keep mirroring the MangaUpdates entry we just
  * deleted and drift permanently. They're best-effort and their own toggles gate them, so they run
@@ -75,6 +80,17 @@ suspend fun convertMuToAnilist(
 ): Boolean {
     val status = muListIdToAnilistStatus(muListId)
     val startedAt = muStartDate(muListId, addedAt)
+    // Land a first-time entry on chapter 1 before the real write below, so AniList's activity feed
+    // shows a normal start rather than a first-ever entry jumping straight to a high number.
+    // primeActivity no-ops unless a merge window is set and there's a jump to hide, so the "is it
+    // already on the user's list?" lookup is only worth making then. A null result means the lookup
+    // failed, not that the entry is absent — skip priming in that case rather than risk writing
+    // progress 1 over an entry that already has real progress.
+    if (Anilist.activityMergeTime != 0 && (chapter ?: 0) > 1) {
+        Anilist.query.getMedia(anilistId, type = "MANGA")?.let {
+            Anilist.mutation.primeActivity(anilistId, it.userStatus == null, chapter, status, startedAt)
+        }
+    }
     val added = Anilist.mutation.editList(
         mediaID = anilistId,
         progress = chapter,
