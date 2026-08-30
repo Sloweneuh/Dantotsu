@@ -596,7 +596,7 @@ class MALInfoFragment : Fragment() {
                         parent,
                         false
                     )
-                    bind.itemTitle.text = "Stacks"
+                    bind.itemTitle.setText(R.string.interest_stacks)
                     bind.itemRecycler.adapter = StackAdapter(stacks, true)
                     bind.itemRecycler.layoutManager = LinearLayoutManager(
                         ctx,
@@ -608,7 +608,7 @@ class MALInfoFragment : Fragment() {
                         StackListViewActivity.passedStacks = ArrayList(stacks)
                         startActivity(
                             Intent(ctx, StackListViewActivity::class.java)
-                                .putExtra("title", "Interest Stacks")
+                                .putExtra("title", getString(R.string.interest_stacks))
                                 .putExtra("isAnime", true)
                         )
                     }
@@ -882,7 +882,7 @@ class MALInfoFragment : Fragment() {
                         parent,
                         false
                     )
-                    bind.itemTitle.text = "Stacks"
+                    bind.itemTitle.setText(R.string.interest_stacks)
                     bind.itemRecycler.adapter = StackAdapter(stacks, false)
                     bind.itemRecycler.layoutManager = LinearLayoutManager(
                         ctx,
@@ -894,7 +894,7 @@ class MALInfoFragment : Fragment() {
                         StackListViewActivity.passedStacks = ArrayList(stacks)
                         startActivity(
                             Intent(ctx, StackListViewActivity::class.java)
-                                .putExtra("title", "Interest Stacks")
+                                .putExtra("title", getString(R.string.interest_stacks))
                                 .putExtra("isAnime", false)
                         )
                     }

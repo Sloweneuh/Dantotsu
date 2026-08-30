@@ -108,6 +108,14 @@ class MalMediaActivity : AppCompatActivity() {
             setupSourceButtons(anime, manga, anilistDeferred.await()?.id, muDeferred?.await())
             binding.malMediaProgress.visibility = View.GONE
 
+            // Interest stacks aren't in the official API — scrape them from the MAL page (the same
+            // source MALInfoFragment's tab uses). Kicked off here so the multi-page scrape runs
+            // alongside the recommendations resolve and the render below, then appended once it
+            // lands rather than holding the whole info section on it.
+            val stacksDeferred = async(Dispatchers.IO) {
+                runCatching { MAL.query.getStacks(malId, isAnime) }.getOrDefault(emptyList())
+            }
+
             // Turn MAL's recommendation list into in-app AniList media, same as the Simkl page —
             // batch-resolve by MAL id, dropping any that don't map to AniList.
             val recMalIds = (anime?.recommendations ?: manga?.recommendations).orEmpty()
@@ -142,6 +150,13 @@ class MalMediaActivity : AppCompatActivity() {
             }
 
             binding.malMediaInfoScroll.visibility = View.VISIBLE
+
+            launch {
+                val stacks = stacksDeferred.await()
+                if (!isDestroyed && !isFinishing && stacks.isNotEmpty()) {
+                    MalMediaRenderer.addStacks(this@MalMediaActivity, binding.malMediaContent, stacks, isAnime)
+                }
+            }
         }
     }
 

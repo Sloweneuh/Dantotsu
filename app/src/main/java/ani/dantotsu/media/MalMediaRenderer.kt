@@ -15,6 +15,7 @@ import ani.dantotsu.connections.mal.MALGenre
 import ani.dantotsu.connections.mal.MALMangaResponse
 import ani.dantotsu.connections.mal.MALRelatedNode
 import ani.dantotsu.connections.mal.MALRelation
+import ani.dantotsu.connections.mal.MALStack
 import ani.dantotsu.copyToClipboard
 import ani.dantotsu.databinding.FragmentMediaInfoBinding
 import ani.dantotsu.databinding.ItemChipBinding
@@ -358,6 +359,31 @@ object MalMediaRenderer {
             activity.startActivity(
                 android.content.Intent(activity, MediaListViewActivity::class.java)
                     .putExtra("title", activity.getString(R.string.recommended))
+            )
+        }
+        parent.addView(bind.root)
+    }
+
+    /**
+     * Interest stacks aren't in the official API — [MalMediaActivity] scrapes them from the MAL
+     * page after the first render, then appends the row here, the same way [MALInfoFragment]'s tab
+     * does. Public (unlike the other section builders) so the activity can call it once that
+     * multi-page scrape lands; a no-op for an empty list. Sits after recommendations, matching the
+     * tab's ordering.
+     */
+    fun addStacks(activity: AppCompatActivity, parent: ViewGroup, stacks: List<MALStack>, isAnime: Boolean) {
+        if (stacks.isEmpty()) return
+        val bind = ItemTitleRecyclerBinding.inflate(activity.layoutInflater, parent, false)
+        bind.itemTitle.setText(R.string.interest_stacks)
+        bind.itemRecycler.adapter = StackAdapter(stacks, isAnime)
+        bind.itemRecycler.layoutManager = LinearLayoutManager(activity, LinearLayoutManager.HORIZONTAL, false)
+        bind.itemMore.visibility = View.VISIBLE
+        bind.itemMore.setSafeOnClickListener {
+            StackListViewActivity.passedStacks = ArrayList(stacks)
+            activity.startActivity(
+                android.content.Intent(activity, StackListViewActivity::class.java)
+                    .putExtra("title", activity.getString(R.string.interest_stacks))
+                    .putExtra("isAnime", isAnime)
             )
         }
         parent.addView(bind.root)

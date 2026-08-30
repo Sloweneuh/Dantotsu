@@ -8,6 +8,12 @@ import ani.dantotsu.tryWithSuspend
 import ani.dantotsu.util.Logger
 import kotlinx.serialization.Serializable
 
+/**
+ * How many pages (20 stacks each) [MALQueries.getStacks] will walk. Enough to fill a preview row
+ * and the "see all" grid without turning a heavily-stacked title into dozens of sequential requests.
+ */
+private const val MAX_STACK_PAGES = 3
+
 class MALQueries {
 
         /**
@@ -219,9 +225,16 @@ class MALQueries {
     /**
      * Scrape interest stacks from the MAL media page since the public API does not expose stacks.
      * Returns a list of MALStack containing URL, covers, name and number of entries.
+     *
+     * The scrape is capped at [MAX_STACK_PAGES]. A popular title carries hundreds of community
+     * stacks (Frieren: 600+), and chasing every page meant ~30 sequential requests where any one
+     * failing dropped the whole result on the floor — so the section just showed nothing. A preview
+     * row plus the "see all" grid don't need more than a page or two, and a page that fails
+     * mid-scrape now keeps the earlier ones instead of aborting.
      */
     suspend fun getStacks(malId: Int, isAnime: Boolean): List<MALStack> {
-        return try {
+        val stacks = mutableListOf<MALStack>()
+        try {
             val headers = mapOf(
                 "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36"
             )
@@ -242,16 +255,22 @@ class MALQueries {
                 else if (!href.startsWith("http")) href = "https://myanimelist.net/$href"
                 baseStacksUrl = href
             }
-            val stacks = mutableListOf<MALStack>()
             var offset = 0
             val perPage = 20
             var totalCount: Int? = null
-            var safetyCounter = 0
+            var pagesFetched = 0
 
             while (true) {
                 // build page URL (include offset param when > 0)
                 val url = if (offset == 0) baseStacksUrl else "$baseStacksUrl?offset=$offset"
-                val doc = client.get(url, headers).document
+                val doc = try {
+                    client.get(url, headers).document
+                } catch (e: Exception) {
+                    // A page failed mid-scrape — keep whatever the earlier pages returned rather
+                    // than letting the whole section come back empty.
+                    break
+                }
+                pagesFetched++
 
                 // try to read total count from page (if present)
                 if (totalCount == null) {
@@ -271,7 +290,8 @@ class MALQueries {
                     stacks.add(MALStack(url = link, covers = covers, name = name, entries = entries, description = description))
                 }
 
-                // stop if we've got all known stacks
+                // stop once we've pulled enough, or have all of them
+                if (pagesFetched >= MAX_STACK_PAGES) break
                 if (totalCount != null && stacks.size >= totalCount) break
 
                 // if there's a next page link use its offset, else try to detect via rel=next
@@ -281,16 +301,11 @@ class MALQueries {
                 val href = nextLink.attr("href")
                 val nextOffset = Regex("[?&]offset=(\\d+)").find(href)?.groups?.get(1)?.value?.toIntOrNull()
                 offset = if (nextOffset != null && nextOffset > offset) nextOffset else offset + perPage
-
-                // safety guard to prevent infinite loops
-                safetyCounter++
-                if (safetyCounter > 100) break
             }
-
-            stacks
         } catch (e: Exception) {
-            emptyList()
+            // fall through and return whatever was collected before the failure
         }
+        return stacks
     }
 
     /**
