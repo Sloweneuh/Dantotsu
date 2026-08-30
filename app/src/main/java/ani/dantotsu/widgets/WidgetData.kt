@@ -630,5 +630,14 @@ object WidgetData {
      * populated by the time the widget draws.
      */
     fun loadBlocking(context: Context, dataset: Dataset, force: Boolean = false): Boolean =
-        runBlocking(Dispatchers.IO) { load(context, dataset, force) }
+        try {
+            runBlocking(Dispatchers.IO) { load(context, dataset, force) }
+        } catch (e: InterruptedException) {
+            // The widget host can give up waiting on onDataSetChanged() and interrupt this thread;
+            // that surfaces as an InterruptedException from runBlocking's own join, not from inside
+            // load()'s coroutine body, so its catch (Throwable) above never sees it. Restore the flag
+            // and bail quietly rather than crash — the cache stays whatever it already was.
+            Thread.currentThread().interrupt()
+            false
+        }
 }
