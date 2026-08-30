@@ -406,7 +406,6 @@
     <string name="ask_update_progress_chapter_zero">Update Progress for Chapter 0</string>
     <string name="ask_update_progress_info_zero">Turning on will add newly started items to Anilist with progress set to chapter 0.</string>
     <string name="ask_update_progress_hentai">Update Progress for Hentai</string>
-    <string name="ask_update_progress_doujin">Update Progress for Doujins</string>
     <string name="track_progress">Track Progress</string>
     <string name="track_progress_enabled">Progress tracking enabled for this manga</string>
     <string name="track_progress_disabled">Progress tracking disabled for this manga</string>
@@ -2468,7 +2467,6 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="search_kw_show_system_bars">status bar navigation reader manga</string>
     <string name="search_kw_ask_update_progress_manga">progress update prompt confirm</string>
     <string name="search_kw_ask_update_progress_chapter_zero_2">progress chapter first zero</string>
-    <string name="search_kw_ask_update_progress_doujin">progress doujin adult update</string>
     <string name="search_kw_use_dark_theme">novel light novel</string>
     <string name="search_kw_novel_theme">novel light novel reader colour color palette</string>
     <string name="search_kw_justify_text">novel light novel align text justified</string>

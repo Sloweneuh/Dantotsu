@@ -384,7 +384,7 @@ object BackupTree {
                     listOf(
                         BackupItem(PrefName.AskIndividualReader, R.string.ask_update_progress_manga),
                         BackupItem(PrefName.ChapterZeroReader, R.string.ask_update_progress_chapter_zero),
-                        BackupItem(PrefName.UpdateForHReader, R.string.ask_update_progress_doujin),
+                        BackupItem(PrefName.UpdateForHReader, R.string.ask_update_progress_hentai),
                         BackupItem(PrefName.AutoDetectWebtoon, R.string.auto_detect_webtoon),
                         BackupItem(PrefName.VolumeButtonsReader, R.string.volume_buttons),
                         BackupItem(PrefName.LongClickImage, R.string.image_long_clicking),

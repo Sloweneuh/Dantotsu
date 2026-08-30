@@ -478,9 +478,9 @@ class ReaderSettingsActivity : AppCompatActivity() {
         binding.readerSettingsAskChapterZero.setOnCheckedChangeListener { _, isChecked ->
             PrefManager.setVal(PrefName.ChapterZeroReader, isChecked)
         }
-        binding.readerSettingsAskUpdateDoujins.isChecked =
+        binding.readerSettingsAskUpdateHentai.isChecked =
             PrefManager.getVal(PrefName.UpdateForHReader)
-        binding.readerSettingsAskUpdateDoujins.setOnCheckedChangeListener { _, isChecked ->
+        binding.readerSettingsAskUpdateHentai.setOnCheckedChangeListener { _, isChecked ->
             PrefManager.setVal(PrefName.UpdateForHReader, isChecked)
             if (isChecked) snackString(getString(R.string.very_bold))
         }

@@ -237,6 +237,10 @@ object PrefManager {
         }
     }
 
+    /** Whether a custom (irrelevant-location) key has ever been written. Lets callers tell an
+     *  explicit stored choice apart from a getter falling back to its default. */
+    fun customValExists(key: String): Boolean = irrelevantPreferences?.contains(key) ?: false
+
     /**
      * Batched form of [setCustomVal]/[removeCustomVal]: writes every entry through a single
      * [SharedPreferences.Editor] and one `apply()` call.

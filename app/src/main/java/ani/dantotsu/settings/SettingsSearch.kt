@@ -467,7 +467,7 @@ object SettingsSearch {
 
         l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.ask_update_progress_chapter_zero, R.string.reader_settings, IC_READER, anchorViewId = R.id.readerSettingsAskChapterZero, keywordsRes = R.string.search_kw_ask_update_progress_chapter_zero_2)
 
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.ask_update_progress_doujin, R.string.reader_settings, IC_READER, anchorViewId = R.id.readerSettingsAskUpdateDoujins, keywordsRes = R.string.search_kw_ask_update_progress_doujin)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.ask_update_progress_hentai, R.string.reader_settings, IC_READER, anchorViewId = R.id.readerSettingsAskUpdateHentai, keywordsRes = R.string.search_kw_ask_update_progress_hentai)
 
         // Novel reader sub-section
         l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.use_dark_theme, R.string.reader_settings, IC_READER, anchorViewId = R.id.LNuseDarkTheme, keywordsRes = R.string.search_kw_use_dark_theme)

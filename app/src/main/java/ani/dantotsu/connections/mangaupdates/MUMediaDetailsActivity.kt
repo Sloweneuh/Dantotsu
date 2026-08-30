@@ -410,7 +410,14 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         if (enriched.description.isNullOrBlank()) enriched.description = details.description
         details.year?.toIntOrNull()?.let { enriched.startDate = FuzzyDate(year = it) }
         details.genres?.mapNotNull { it.genre?.trim() }?.filter { it.isNotEmpty() }
-            ?.takeIf { it.isNotEmpty() }?.let { enriched.genres = ArrayList(it) }
+            ?.takeIf { it.isNotEmpty() }?.let { genreList ->
+                enriched.genres = ArrayList(genreList)
+                // MangaUpdates carries no isAdult flag, so derive one from its own 18+ genre
+                // markers. This is what gates progress updates behind the "Update Progress for
+                // Hentai" setting — without it, adult MU series would always be tracked.
+                if (genreList.any { it.equals("Hentai", true) || it.equals("Adult", true) })
+                    enriched.isAdult = true
+            }
         details.categories?.mapNotNull { it.category?.trim() }?.filter { it.isNotEmpty() }
             ?.takeIf { it.isNotEmpty() }?.let { enriched.tags = ArrayList(it) }
         details.associated?.mapNotNull { it.title?.trim() }?.filter { it.isNotEmpty() }

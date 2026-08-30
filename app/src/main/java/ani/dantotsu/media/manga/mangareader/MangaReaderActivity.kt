@@ -348,9 +348,11 @@ class MangaReaderActivity : AppCompatActivity() {
             if (chapter == "0.0" && PrefManager.getVal(PrefName.ChapterZeroReader)
                 // Not asking individually or incognito
                 && !showProgressDialog && !PrefManager.getVal<Boolean>(PrefName.Incognito)
+                // A tracking choice is actually on record (or "ask individually" is off)
+                && mayTrackProgressSilently()
                 // Not ...opted out ...already? Somehow?
                 && PrefManager.getCustomVal("${media.id}_save_progress", true)
-                //  Allowing Doujin updates or not one
+                //  Allowing adult (Hentai) updates, or not an adult title
                 && if (media.isAdult) PrefManager.getVal(PrefName.UpdateForHReader) else true
             ) {
                 updateProgress(media, chapter)
@@ -1822,6 +1824,22 @@ class MangaReaderActivity : AppCompatActivity() {
         return if (diff > 1.1f) (diff - 0.99f).toInt() else 0
     }
 
+    /**
+     * Whether progress may be written for this media without a prompt.
+     *
+     * `AskIndividualReader` off means the setting itself has opted into always auto-updating.
+     * Otherwise the user must have actually answered the "update progress?" question at some point
+     * — both Yes and No write `_save_progress`, so the key existing is the record of a choice.
+     * When asking is on and that key is absent the prompt was skipped rather than answered (an
+     * adult title with H-updates off, a stale "don't ask again" flag, an entry path that bypassed
+     * [ChapterLoaderDialog.showProgressPopupIfNecessary]); silently tracking there is exactly the
+     * "never asked but tracked anyway" case, so don't.
+     */
+    private fun mayTrackProgressSilently(): Boolean {
+        if (!PrefManager.getVal<Boolean>(PrefName.AskIndividualReader)) return true
+        return PrefManager.customValExists("${media.id}_save_progress")
+    }
+
     private fun progress(runnable: Runnable) {
         if (media.id < 0) { runnable.run(); return }
         if (maxChapterPage - currentChapterPage <= 1 && Anilist.userid != null) {
@@ -1869,7 +1887,7 @@ class MangaReaderActivity : AppCompatActivity() {
 
                 }
             } else {
-                if (!incognito && PrefManager.getCustomVal(
+                if (!incognito && mayTrackProgressSilently() && PrefManager.getCustomVal(
                         "${media.id}_save_progress",
                         true
                     ) && if (media.isAdult) PrefManager.getVal(PrefName.UpdateForHReader) else true
@@ -1891,8 +1909,10 @@ class MangaReaderActivity : AppCompatActivity() {
      * Silently updates progress when crossing a chapter boundary in continuous multi-chapter
      * mode. The user's choice is collected once up front by
      * [ChapterLoaderDialog.showProgressPopupIfNecessary] when a chapter is tapped in the list,
-     * so each transition only consults the stored `_save_progress` decision. Fires at most once per
-     * chapter per session — see [progressedChapterIndices].
+     * so each transition only consults the stored `_save_progress` decision — and only when a
+     * decision is actually on record ([mayTrackProgressSilently]), so a prompt that was skipped
+     * rather than answered doesn't turn into silent tracking. Fires at most once per chapter per
+     * session — see [progressedChapterIndices].
      */
     private fun updateMultiChapterProgressSilently(completedChapter: MangaChapter, chapterIndex: Int) {
         if (media.id < 0) return
@@ -1904,7 +1924,7 @@ class MangaReaderActivity : AppCompatActivity() {
 
         val chapterNum = MediaNameAdapter.findChapterNumber(completedChapter.number)?.toString() ?: return
 
-        if (PrefManager.getCustomVal("${media.id}_save_progress", true)) {
+        if (mayTrackProgressSilently() && PrefManager.getCustomVal("${media.id}_save_progress", true)) {
             updateProgress(media, chapterNum)
         }
     }
