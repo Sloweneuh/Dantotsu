@@ -57,6 +57,7 @@ object BackupTree {
                         BackupItem(PrefName.HidePrivate, R.string.hide_private),
                         BackupItem(PrefName.SettingsPreferDub, R.string.prefer_dub),
                         BackupItem(PrefName.SharedUserID, R.string.backup_shared_user_id),
+                        BackupItem(PrefName.CommentsEnabled, R.string.comments_button),
                     )
                 ),
                 BackupSubCategory(
@@ -98,6 +99,8 @@ object BackupTree {
                         BackupItem(PrefName.UnreadChapterNotificationInterval, R.string.unread_chapter_notification_frequency),
                         BackupItem(PrefName.SubscriptionCheckingNotifications, R.string.checking_subscriptions),
                         BackupItem(PrefName.UnreadChapterCheckingNotifications, R.string.unread_chapter_notifications),
+                        BackupItem(PrefName.UnreadMangaNotificationsEnabled, R.string.unread_manga_notifications),
+                        BackupItem(PrefName.UnreadEpisodeNotificationsEnabled, R.string.unread_episode_notifications),
                         BackupItem(PrefName.AnilistFilteredTypes, R.string.anilist_notification_filters),
                         BackupItem(PrefName.UseAlarmManager, R.string.use_alarm_manager_reliable),
                     )
@@ -139,7 +142,6 @@ object BackupTree {
                         BackupItem(PrefName.MalSyncInfoEnabled, R.string.disable_malsync),
                         BackupItem(PrefName.MalSyncCheckMode, R.string.malsync_checks_dialog_title),
                         BackupItem(PrefName.UnreadChaptersSort, R.string.unread_sort_label),
-                        BackupItem(PrefName.CommentsEnabled, R.string.comments_button),
                         BackupItem(PrefName.MuCustomListMapping, R.string.mu_custom_list_mapping),
                         BackupItem(PrefName.MuCustomListTitles, R.string.backup_mu_custom_list_titles),
                     )

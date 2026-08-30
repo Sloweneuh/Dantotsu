@@ -172,10 +172,11 @@ class NotificationFragment : Fragment() {
             .map {
                 // Format with HTML for better styling - each on separate line
                 val title = "<b>${it.mediaName}</b>"
+                val unit = if (it.type == "UnreadEpisode") "Episode" else "Chapter"
                 val chapter = if (it.unreadCount == 1) {
-                    "Chapter ${it.lastChapter}"
+                    "$unit ${it.lastChapter}"
                 } else {
-                    "Chapter ${it.lastChapter} <i>(${it.unreadCount} unread)</i>"
+                    "$unit ${it.lastChapter} <i>(${it.unreadCount} unread)</i>"
                 }
                 val source = if (it.source.isNotBlank()) {
                     "<small>Source: ${it.source}</small>"

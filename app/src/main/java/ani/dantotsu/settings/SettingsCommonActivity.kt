@@ -232,6 +232,17 @@ class SettingsCommonActivity : AppCompatActivity() {
                         ),
                         Settings(
                             type = 2,
+                            name = getString(R.string.comments_button),
+                            desc = getString(R.string.comments_button_desc),
+                            icon = R.drawable.ic_round_comment_24,
+                            isChecked = PrefManager.getVal<Int>(PrefName.CommentsEnabled) == 1,
+                            switch = { isChecked, _ ->
+                                PrefManager.setVal(PrefName.CommentsEnabled, if (isChecked) 1 else 2)
+                            },
+                            isVisible = Anilist.token != null,
+                        ),
+                        Settings(
+                            type = 2,
                             name = getString(R.string.handoff_discovery_setting),
                             desc = getString(R.string.handoff_discovery_setting_desc),
                             icon = R.drawable.ic_round_cast_24,

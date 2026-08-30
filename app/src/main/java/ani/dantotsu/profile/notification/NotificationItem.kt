@@ -389,8 +389,8 @@ class NotificationItem(
                 binding.notificationCover.visibility = View.GONE
             }
 
-            NotificationType.UNREAD_CHAPTER, NotificationType.UnreadChapter -> {
-                // Use notification.image/banner fields directly for UnreadChapter notifications
+            NotificationType.UNREAD_CHAPTER, NotificationType.UnreadChapter, NotificationType.UnreadEpisode -> {
+                // Use notification.image/banner fields directly for UnreadChapter/UnreadEpisode notifications
                 val coverImage = notification.image
                 if (coverImage != null) {
                     binding.notificationCover.loadImage(coverImage)
@@ -398,8 +398,15 @@ class NotificationItem(
                     binding.notificationCoverUser.visibility = View.VISIBLE
                     binding.notificationCoverUserContainer.visibility = View.GONE
                 } else {
-                    // Use placeholder image when image is not available
-                    binding.notificationCover.setImageResource(R.drawable.ic_round_import_contacts_24)
+                    // Use a placeholder that matches what this notification is about when no
+                    // cover image is available — a book for a manga chapter, a clapperboard for
+                    // an anime episode.
+                    val placeholder = if (notificationType == NotificationType.UnreadEpisode) {
+                        R.drawable.ic_round_movie_filter_24
+                    } else {
+                        R.drawable.ic_round_import_contacts_24
+                    }
+                    binding.notificationCover.setImageResource(placeholder)
                     binding.notificationCover.visibility = View.VISIBLE
                     binding.notificationCoverUser.visibility = View.VISIBLE
                     binding.notificationCoverUserContainer.visibility = View.GONE

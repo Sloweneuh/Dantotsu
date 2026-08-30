@@ -6,15 +6,29 @@ import android.view.ViewGroup
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.databinding.ItemSettingsBinding
+import ani.dantotsu.databinding.ItemSettingsHeaderBinding
 import ani.dantotsu.databinding.ItemSettingsSwitchBinding
+import ani.dantotsu.px
 import ani.dantotsu.setAnimation
+
+/** Row spacing used by [Settings.compact] rows — tighter than the 24dp a full settings screen uses,
+ *  since a card already frames its own body. */
+private val COMPACT_TOP_MARGIN get() = 10f.px
 
 class SettingsAdapter(private val settings: ArrayList<Settings>) :
     RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     inner class SettingsViewHolder(val binding: ItemSettingsBinding) :
-        RecyclerView.ViewHolder(binding.root)
+        RecyclerView.ViewHolder(binding.root) {
+        // Captured once at inflation, before any row can override it (the account cards' Discord
+        // status row shows the icon's own baked-in colour instead) — restored on every bind so a
+        // recycled holder doesn't carry a previous row's override.
+        val defaultIconTint = binding.settingsIcon.imageTintList
+    }
 
     inner class SettingsSwitchViewHolder(val binding: ItemSettingsSwitchBinding) :
+        RecyclerView.ViewHolder(binding.root)
+
+    inner class SettingsHeaderViewHolder(val binding: ItemSettingsHeaderBinding) :
         RecyclerView.ViewHolder(binding.root)
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
@@ -27,6 +41,13 @@ class SettingsAdapter(private val settings: ArrayList<Settings>) :
 
             2 -> SettingsSwitchViewHolder(
                 ItemSettingsSwitchBinding.inflate(
+                    LayoutInflater.from(parent.context), parent, false
+                )
+            )
+
+            // A plain section sub-header, used inside the account cards.
+            3 -> SettingsHeaderViewHolder(
+                ItemSettingsHeaderBinding.inflate(
                     LayoutInflater.from(parent.context), parent, false
                 )
             )
@@ -44,15 +65,23 @@ class SettingsAdapter(private val settings: ArrayList<Settings>) :
         holder.itemView.visibility = if (settings.isVisible) View.VISIBLE else View.GONE
         holder.itemView.layoutParams = holder.itemView.layoutParams?.apply {
             height = if (settings.isVisible) ViewGroup.LayoutParams.WRAP_CONTENT else 0
+            if (settings.compact && this is ViewGroup.MarginLayoutParams) {
+                topMargin = COMPACT_TOP_MARGIN
+            }
         }
         holder.itemView.alpha = if (settings.isEnabled) 1f else 0.5f
         when (settings.type) {
             1 -> {
-                val b = (holder as SettingsViewHolder).binding
+                val h = holder as SettingsViewHolder
+                val b = h.binding
                 setAnimation(b.root.context, b.root)
 
                 b.settingsTitle.text = settings.name
                 b.settingsDesc.text = settings.desc
+                // Reset any per-row colour override a recycled holder may carry; `attach` re-applies
+                // one where a row wants it (the account cards' Discord status row).
+                b.settingsIcon.clearColorFilter()
+                b.settingsIcon.imageTintList = h.defaultIconTint
                 b.settingsIcon.setImageDrawable(
                     ContextCompat.getDrawable(
                         b.root.context, settings.icon
@@ -99,6 +128,10 @@ class SettingsAdapter(private val settings: ArrayList<Settings>) :
                 }
                 settings.attachToSwitch?.invoke(b)
             }
+
+            3 -> {
+                (holder as SettingsHeaderViewHolder).binding.settingsHeader.text = settings.name
+            }
         }
     }
 
@@ -121,4 +154,8 @@ class SettingsAdapter(private val settings: ArrayList<Settings>) :
         settings.indexOfFirst { it.isVisible && it.name == title }
             .takeIf { it >= 0 }
             ?: settings.indexOfFirst { it.isVisible && it.name.startsWith(title) }
+
+    /** Where the row tagged [key] sits (see [Settings.anchorKey]), or -1 if there is none. */
+    fun indexOfKey(key: String): Int =
+        settings.indexOfFirst { it.isVisible && it.anchorKey == key }
 }

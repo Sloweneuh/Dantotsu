@@ -40,6 +40,8 @@ enum class PrefName(val data: Pref) {
     SettingsPreferDub(Pref(Location.General, Boolean::class, false)),
     SubscriptionCheckingNotifications(Pref(Location.General, Boolean::class, true)),
     UnreadChapterCheckingNotifications(Pref(Location.General, Boolean::class, true)),
+    UnreadMangaNotificationsEnabled(Pref(Location.General, Boolean::class, true)),
+    UnreadEpisodeNotificationsEnabled(Pref(Location.General, Boolean::class, true)),
     CheckUpdate(Pref(Location.General, Boolean::class, true)),
     VerboseLogging(Pref(Location.General, Boolean::class, false)),
     DohProvider(Pref(Location.General, Int::class, 0)),

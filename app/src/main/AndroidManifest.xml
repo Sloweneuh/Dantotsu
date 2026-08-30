@@ -246,9 +246,6 @@
             android:name=".settings.SettingsAccountActivity"
             android:parentActivityName=".MainActivity" />
         <activity
-            android:name=".settings.SettingsConnectionsActivity"
-            android:parentActivityName=".MainActivity" />
-        <activity
             android:name=".settings.SettingsListSyncActivity"
             android:parentActivityName=".MainActivity" />
         <!-- configChanges so a rotation doesn't throw away a comparison that took a while to build -->

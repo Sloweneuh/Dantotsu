@@ -35,6 +35,7 @@ import kotlinx.coroutines.withContext
 import uy.kohesive.injekt.api.get
 import java.io.File
 import java.security.MessageDigest
+import kotlin.math.sqrt
 
 abstract class BaseImageAdapter(
     val activity: MangaReaderActivity,
@@ -267,8 +268,9 @@ abstract class BaseImageAdapter(
                             ?.let { return@withContext it }
 
                         ani.dantotsu.util.Logger.log("Using extension client for: ${link.url}")
-                        val rawBitmap = imageData.fetchAndProcessImage(imageData.page, imageData.source)
-                            ?: return@withContext null
+                        val rawBitmap =
+                            imageData.fetchAndProcessImage(imageData.page, imageData.source, maxW, maxH)
+                                ?: return@withContext null
 
                         // Downsample before transforms so we never hold a full-res bitmap in memory.
                         val downsampledBitmap = downsampleBitmap(rawBitmap, maxW, maxH)
@@ -306,14 +308,23 @@ abstract class BaseImageAdapter(
         }
 
         private fun downsampleBitmap(bitmap: Bitmap, maxWidth: Int, maxHeight: Int): Bitmap {
-            // Only constrain by width; tall images (e.g. long-strip pages) must not have their
-            // width crushed by the height limit, as SSIV handles scrolling within the page.
-            if (bitmap.width <= maxWidth) return bitmap
-            val scale = minOf(maxWidth.toFloat() / bitmap.width, maxHeight.toFloat() / bitmap.height)
+            // Only constrain by width on its own — tall images (e.g. long-strip pages) must not
+            // have their width crushed just because they're tall, as SSIV handles scrolling within
+            // the page. The total pixel count is still bounded against the same maxWidth ×
+            // maxHeight budget, which is what actually caps memory (bytes ≈ width × height × 4)
+            // regardless of aspect ratio — a plain width-or-height box would let an extremely tall
+            // narrow strip through unconstrained. In practice ImageData.decodeImage already
+            // presamples close to this budget, so this is mostly a defensive fallback for a bitmap
+            // that reaches here some other way, already at full resolution.
+            val maxPixels = maxWidth.toLong() * maxHeight.toLong()
+            val widthScale = maxWidth.toFloat() / bitmap.width
+            val pixelScale = sqrt(maxPixels.toFloat() / (bitmap.width.toFloat() * bitmap.height.toFloat()))
+            val scale = minOf(1f, widthScale, pixelScale)
+            if (scale >= 1f) return bitmap
             return Bitmap.createScaledBitmap(
                 bitmap,
-                (bitmap.width * scale).toInt(),
-                (bitmap.height * scale).toInt(),
+                (bitmap.width * scale).toInt().coerceAtLeast(1),
+                (bitmap.height * scale).toInt().coerceAtLeast(1),
                 true
             )
         }

@@ -17,4 +17,11 @@ data class Settings(
     val isActivity: Boolean = false,
     var isChecked: Boolean = false,
     val isEnabled: Boolean = true,
+    /** Tighter row spacing, for rows nested inside a container that already has its own padding
+     *  (the account cards) rather than sitting directly on a full settings screen. */
+    val compact: Boolean = false,
+    /** A stable id for [SettingsAdapter.indexOfKey] to find this row by — independent of its
+     *  (possibly parameterised, possibly retitled) display name. Used to land a settings-search
+     *  result on a row nested inside an account card. */
+    val anchorKey: String? = null,
 )

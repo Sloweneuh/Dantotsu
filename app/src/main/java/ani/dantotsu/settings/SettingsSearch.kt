@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
+import android.graphics.drawable.GradientDrawable
 import android.os.Handler
 import android.os.Looper
 import android.view.View
@@ -60,6 +61,12 @@ import com.google.android.material.color.MaterialColors
  *                     backup/restore stays usable, the cloud rows don't) — a section that's
  *                     entirely one or the other, like Accounts, is filtered by [sectionRes]
  *                     instead, in [query].
+ * @param anchorProvider for [SettingsAccountActivity]: which provider card to land on. The card
+ *                     is scrolled to and flashed collapsed when [anchorRowKey] is null (a setting
+ *                     that lives on the card header itself, like signing in), or expanded and the
+ *                     matching row flashed instead when it isn't.
+ * @param anchorRowKey the [Settings.anchorKey] of the row inside [anchorProvider]'s card to land
+ *                     on, once it's expanded. Ignored unless [anchorProvider] is set.
  */
 data class SearchableSetting(
     val dest: Class<out Activity>,
@@ -72,6 +79,8 @@ data class SearchableSetting(
     val keywordsRes: Int = 0,
     val intentTab: Int = -1,
     val requiresOnline: Boolean = false,
+    val anchorProvider: AccountProvider? = null,
+    val anchorRowKey: String? = null,
 )
 
 object SettingsSearch {
@@ -112,17 +121,37 @@ object SettingsSearch {
 
 
         // ---- Accounts ----
-        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.enable_rpc, R.string.accounts, R.drawable.ic_discord, R.string.enable_rpc_desc, keywordsRes = R.string.search_kw_enable_rpc)
+        // One entry per provider card, so searching its name jumps straight to it (collapsed —
+        // there's no one setting to flash, just the card itself).
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.anilist, R.string.accounts, R.drawable.ic_anilist, anchorProvider = AccountProvider.ANILIST)
+
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.mangaupdates, R.string.accounts, R.drawable.ic_round_mangaupdates_24, anchorProvider = AccountProvider.MANGAUPDATES)
+
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.myanimelist, R.string.accounts, R.drawable.ic_myanimelist, anchorProvider = AccountProvider.MAL)
+
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.mangabaka, R.string.accounts, R.drawable.ic_round_mangabaka_24, anchorProvider = AccountProvider.MANGABAKA)
+
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.kitsu, R.string.accounts, R.drawable.ic_kitsu, anchorProvider = AccountProvider.KITSU)
+
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.simkl, R.string.accounts, R.drawable.ic_simkl, anchorProvider = AccountProvider.SIMKL)
+
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.discord, R.string.accounts, R.drawable.ic_discord, anchorProvider = AccountProvider.DISCORD)
+
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.comick, R.string.accounts, R.drawable.ic_round_comick_24, anchorProvider = AccountProvider.COMICK)
+
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.malsync, R.string.accounts, R.drawable.ic_malsync, anchorProvider = AccountProvider.MALSYNC)
+
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.enable_rpc, R.string.accounts, R.drawable.ic_round_sports_esports_24, R.string.enable_rpc_desc, anchorProvider = AccountProvider.DISCORD, anchorRowKey = "rpcEnable", keywordsRes = R.string.search_kw_enable_rpc)
+
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.discord_rpc_settings, R.string.accounts, R.drawable.ic_round_discord_settings_24, R.string.discord_rpc_settings_desc, anchorProvider = AccountProvider.DISCORD, anchorRowKey = "rpcSettings")
+
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.discord_status_title, R.string.accounts, R.drawable.ic_round_discord_status_24, anchorProvider = AccountProvider.DISCORD, anchorRowKey = "status")
 
         l += SearchableSetting(AnilistSettingsActivity::class.java, R.string.anilist_settings, R.string.accounts, R.drawable.ic_anilist, R.string.alsettings_desc, keywordsRes = R.string.search_kw_anilist_settings)
 
-        l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.connections_settings, R.string.accounts, R.drawable.network_node_24, R.string.connections_desc, keywordsRes = R.string.search_kw_connections_settings)
+        l += SearchableSetting(SettingsListSyncActivity::class.java, R.string.list_comparison_title, R.string.accounts, R.drawable.ic_round_sync_24, R.string.list_sync_settings_desc, keywordsRes = R.string.search_kw_list_sync_settings)
 
-        l += SearchableSetting(SettingsListSyncActivity::class.java, R.string.list_sync_settings, R.string.accounts, R.drawable.ic_round_sync_24, R.string.list_sync_settings_desc, keywordsRes = R.string.search_kw_list_sync_settings)
-
-        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.login_to_mangabaka, R.string.accounts, IC_ACCOUNT, R.string.mangabaka_login_desc, anchorViewId = R.id.accountGrid, keywordsRes = R.string.search_kw_login_to_mangabaka)
-
-        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.comments_button, R.string.accounts, R.drawable.ic_round_comment_24, R.string.comments_button_desc, keywordsRes = R.string.search_kw_comments_button)
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.login_to_mangabaka, R.string.accounts, IC_ACCOUNT, R.string.mangabaka_login_desc, anchorProvider = AccountProvider.MANGABAKA, keywordsRes = R.string.search_kw_login_to_mangabaka)
 
 
         // ---- Anilist account settings ----
@@ -133,48 +162,51 @@ object SettingsSearch {
         l += SearchableSetting(AnilistSettingsActivity::class.java, R.string.restrict_messages, R.string.anilist_settings, R.drawable.ic_round_comments_disabled_24, R.string.restrict_messages_desc, keywordsRes = R.string.search_kw_restrict_messages)
 
 
-        // MangaUpdates had a screen of its own holding only these three rows; they now sit with the
-        // other services in Connections. The old "MangaUpdates tab" wording is gone with it — the
-        // row it named writes the same enable-the-service preference as its four neighbours.
-        l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.disable_mangaupdates, R.string.connections_settings, R.drawable.ic_round_mangaupdates_24, R.string.disable_mangaupdates_desc, keywordsRes = R.string.search_kw_disable_mangaupdates)
+        // ---- Per-provider info-source / sync toggles (each expands its own card and flashes the row) ----
+        // The "Show <provider> info" master switch shares one description everywhere (infoRow() in
+        // SettingsAccountActivity) — only the title, which bakes in the provider name, differs.
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.disable_mangaupdates, R.string.accounts, R.drawable.ic_round_mangaupdates_info_24, R.string.account_show_info_desc, anchorProvider = AccountProvider.MANGAUPDATES, anchorRowKey = "info", keywordsRes = R.string.search_kw_disable_mangaupdates)
 
-        l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.mu_list_fetch_enabled, R.string.connections_settings, R.drawable.ic_round_mangaupdates_list_24, R.string.mu_list_fetch_enabled_desc, keywordsRes = R.string.search_kw_mu_list_fetch_enabled)
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.mu_list_fetch_enabled, R.string.accounts, R.drawable.ic_round_mangaupdates_list_24, R.string.mu_list_fetch_enabled_desc, anchorProvider = AccountProvider.MANGAUPDATES, anchorRowKey = "muListFetch", keywordsRes = R.string.search_kw_mu_list_fetch_enabled)
 
-        l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.mu_custom_list_mapping, R.string.connections_settings, R.drawable.ic_round_mangaupdates_mapping_24, R.string.mu_custom_list_mapping_desc, keywordsRes = R.string.search_kw_mu_custom_list_mapping)
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.mu_custom_list_mapping, R.string.accounts, R.drawable.ic_round_mangaupdates_mapping_24, R.string.mu_custom_list_mapping_desc, anchorProvider = AccountProvider.MANGAUPDATES, anchorRowKey = "muMapping", keywordsRes = R.string.search_kw_mu_custom_list_mapping)
+
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.mangabaka_tag_weight, R.string.accounts, R.drawable.ic_label_24, R.string.mangabaka_tag_weight_desc, anchorProvider = AccountProvider.MANGABAKA, anchorRowKey = "tagWeight", keywordsRes = R.string.search_kw_mangabaka_tag_weight)
+
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.disable_comick, R.string.accounts, R.drawable.ic_round_comick_info_24, R.string.account_show_info_desc, anchorProvider = AccountProvider.COMICK, anchorRowKey = "info", keywordsRes = R.string.search_kw_disable_comick)
+
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.disable_mal, R.string.accounts, R.drawable.ic_round_mal_info_24, R.string.account_show_info_desc, anchorProvider = AccountProvider.MAL, anchorRowKey = "info", keywordsRes = R.string.search_kw_disable_mal)
+
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.disable_kitsu, R.string.accounts, R.drawable.ic_round_kitsu_info_24, R.string.account_show_info_desc, anchorProvider = AccountProvider.KITSU, anchorRowKey = "info", keywordsRes = R.string.search_kw_disable_kitsu)
+
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.disable_simkl, R.string.accounts, R.drawable.ic_round_simkl_info_24, R.string.account_show_info_desc, anchorProvider = AccountProvider.SIMKL, anchorRowKey = "info", keywordsRes = R.string.search_kw_disable_simkl)
+
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.disable_mangabaka, R.string.accounts, R.drawable.ic_round_mangabaka_info_24, R.string.account_show_info_desc, anchorProvider = AccountProvider.MANGABAKA, anchorRowKey = "info", keywordsRes = R.string.search_kw_disable_mangabaka)
+
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.disable_malsync, R.string.accounts, R.drawable.ic_round_malsync_info_24, R.string.disable_malsync_desc, anchorProvider = AccountProvider.MALSYNC, anchorRowKey = "info", keywordsRes = R.string.search_kw_disable_malsync)
+
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.malsync_checks_dialog_title, R.string.accounts, R.drawable.ic_round_malsync_settings_24, anchorProvider = AccountProvider.MALSYNC, anchorRowKey = "malsyncChecks", keywordsRes = R.string.search_kw_malsync_checks_dialog_title)
+
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.malsync_exclude_manage, R.string.accounts, R.drawable.ic_round_malsync_exclude_24, R.string.malsync_exclude_manage_desc, anchorProvider = AccountProvider.MALSYNC, anchorRowKey = "malsyncExclude", keywordsRes = R.string.search_kw_malsync_exclude_manage)
+
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.customize_info_tabs, R.string.accounts, R.drawable.ic_round_view_array_24, R.string.customize_info_tabs_desc, keywordsRes = R.string.search_kw_customize_info_tabs)
 
 
-        // ---- Connections ----
-        l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.mangabaka_tag_weight, R.string.connections_settings, R.drawable.ic_label_24, R.string.mangabaka_tag_weight_desc, keywordsRes = R.string.search_kw_mangabaka_tag_weight)
+        // ---- List comparison ----
+        l += SearchableSetting(ListSyncCompareActivity::class.java, R.string.compare_lists, R.string.list_comparison_title, R.drawable.ic_round_compare_arrows_24, R.string.compare_lists_desc, keywordsRes = R.string.search_kw_compare_lists)
 
-        l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.disable_comick, R.string.connections_settings, R.drawable.ic_round_comick_24, R.string.disable_comick_desc, keywordsRes = R.string.search_kw_disable_comick)
+        l += SearchableSetting(SettingsListSyncActivity::class.java, R.string.auto_list_sync, R.string.list_comparison_title, R.drawable.ic_round_compare_schedule_24, R.string.auto_list_sync_desc, keywordsRes = R.string.search_kw_auto_list_sync)
 
-        l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.disable_mal, R.string.connections_settings, R.drawable.ic_myanimelist, R.string.disable_mal_desc, keywordsRes = R.string.search_kw_disable_mal)
+        l += SearchableSetting(SettingsListSyncActivity::class.java, R.string.auto_list_sync_removals, R.string.list_comparison_title, R.drawable.ic_round_delete_sweep_24, R.string.auto_list_sync_removals_desc, keywordsRes = R.string.search_kw_auto_list_sync_removals)
 
-        l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.disable_malsync, R.string.connections_settings, R.drawable.ic_malsync, R.string.disable_malsync_desc, keywordsRes = R.string.search_kw_disable_malsync)
+        // The per-tracker "sync to me" switches moved onto the provider cards.
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.mal_list_sync, R.string.accounts, R.drawable.ic_round_mal_sync_24, R.string.mal_list_sync_desc, anchorProvider = AccountProvider.MAL, anchorRowKey = "sync", keywordsRes = R.string.search_kw_mal_list_sync)
 
-        l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.malsync_exclude_manage, R.string.connections_settings, R.drawable.ic_round_malsync_exclude_24, R.string.malsync_exclude_manage_desc, keywordsRes = R.string.search_kw_malsync_exclude_manage)
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.mangabaka_list_sync, R.string.accounts, R.drawable.ic_round_mangabaka_sync_24, R.string.mangabaka_list_sync_desc, anchorProvider = AccountProvider.MANGABAKA, anchorRowKey = "sync", keywordsRes = R.string.search_kw_mangabaka_list_sync)
 
-        // Lives in the dialog behind the MALSync row's settings icon, so that row is what gets
-        // flashed — there is no row of its own to land on.
-        l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.unread_sort_label, R.string.connections_settings, IC_ACCOUNT, R.string.unread_sort_desc, rowTitleRes = R.string.disable_malsync, keywordsRes = R.string.search_kw_unread_sort_label)
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.kitsu_list_sync, R.string.accounts, R.drawable.ic_round_kitsu_sync_24, R.string.kitsu_list_sync_desc, anchorProvider = AccountProvider.KITSU, anchorRowKey = "sync", keywordsRes = R.string.search_kw_kitsu_list_sync)
 
-        l += SearchableSetting(SettingsConnectionsActivity::class.java, R.string.customize_info_tabs, R.string.connections_settings, R.drawable.ic_round_view_array_24, R.string.customize_info_tabs_desc, keywordsRes = R.string.search_kw_customize_info_tabs)
-
-
-        // ---- List sync ----
-        l += SearchableSetting(ListSyncCompareActivity::class.java, R.string.compare_lists, R.string.list_sync_settings, R.drawable.ic_round_compare_arrows_24, R.string.compare_lists_desc, keywordsRes = R.string.search_kw_compare_lists)
-
-        l += SearchableSetting(SettingsListSyncActivity::class.java, R.string.auto_list_sync, R.string.list_sync_settings, R.drawable.ic_round_compare_schedule_24, R.string.auto_list_sync_desc, keywordsRes = R.string.search_kw_auto_list_sync)
-
-        l += SearchableSetting(SettingsListSyncActivity::class.java, R.string.auto_list_sync_removals, R.string.list_sync_settings, R.drawable.ic_round_delete_sweep_24, R.string.auto_list_sync_removals_desc, keywordsRes = R.string.search_kw_auto_list_sync_removals)
-
-        l += SearchableSetting(SettingsListSyncActivity::class.java, R.string.mal_list_sync, R.string.list_sync_settings, R.drawable.ic_round_mal_sync_24, R.string.mal_list_sync_desc, keywordsRes = R.string.search_kw_mal_list_sync)
-
-        l += SearchableSetting(SettingsListSyncActivity::class.java, R.string.mangabaka_list_sync, R.string.list_sync_settings, R.drawable.ic_round_mangabaka_sync_24, R.string.mangabaka_list_sync_desc, keywordsRes = R.string.search_kw_mangabaka_list_sync)
-
-        l += SearchableSetting(SettingsListSyncActivity::class.java, R.string.kitsu_list_sync, R.string.list_sync_settings, R.drawable.ic_kitsu, R.string.kitsu_list_sync_desc, keywordsRes = R.string.search_kw_kitsu_list_sync)
-
-        l += SearchableSetting(SettingsListSyncActivity::class.java, R.string.simkl_list_sync, R.string.list_sync_settings, R.drawable.ic_simkl, R.string.simkl_list_sync_desc, keywordsRes = R.string.search_kw_simkl_list_sync)
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.simkl_list_sync, R.string.accounts, R.drawable.ic_round_simkl_sync_24, R.string.simkl_list_sync_desc, anchorProvider = AccountProvider.SIMKL, anchorRowKey = "sync", keywordsRes = R.string.search_kw_simkl_list_sync)
 
 
         // ---- Theme ----
@@ -201,6 +233,8 @@ object SettingsSearch {
         l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.backup_sync, R.string.common, R.drawable.backup_restore, R.string.backup_sync_desc, keywordsRes = R.string.search_kw_backup_sync)
 
         l += SearchableSetting(SettingsCommonActivity::class.java, R.string.always_continue_content, R.string.common, R.drawable.ic_round_resume_24, R.string.always_continue_content_desc, keywordsRes = R.string.search_kw_always_continue_content)
+
+        l += SearchableSetting(SettingsCommonActivity::class.java, R.string.comments_button, R.string.common, R.drawable.ic_round_comment_24, R.string.comments_button_desc, keywordsRes = R.string.search_kw_comments_button)
 
         l += SearchableSetting(SettingsCommonActivity::class.java, R.string.handoff_discovery_setting, R.string.common, R.drawable.ic_round_cast_24, R.string.handoff_discovery_setting_desc, keywordsRes = R.string.search_kw_handoff_discovery_setting)
 
@@ -502,7 +536,7 @@ object SettingsSearch {
         // ---- Notifications ----
         l += SearchableSetting(SettingsSubscriptionNotificationActivity::class.java, R.string.subscription_notifications, R.string.notifications, R.drawable.ic_round_notif_subscriptions_24, R.string.subscription_notifications_desc, keywordsRes = R.string.search_kw_subscription_notifications)
 
-        l += SearchableSetting(SettingsUnreadChapterNotificationActivity::class.java, R.string.unread_chapter_notifications, R.string.notifications, R.drawable.ic_round_notif_unread_24, R.string.unread_chapter_notifications_desc, keywordsRes = R.string.search_kw_unread_chapter_notifications)
+        l += SearchableSetting(SettingsUnreadChapterNotificationActivity::class.java, R.string.unread_chapter_notifications, R.string.notifications, R.drawable.ic_round_malsync_notifications_24, R.string.unread_chapter_notifications_desc, keywordsRes = R.string.search_kw_unread_chapter_notifications)
 
         l += SearchableSetting(SettingsAnilistNotificationActivity::class.java, R.string.anilist_notifications, R.string.notifications, R.drawable.ic_round_notif_anilist_24, R.string.anilist_notifications_desc, keywordsRes = R.string.search_kw_anilist_notifications)
 
@@ -530,6 +564,10 @@ object SettingsSearch {
         l += SearchableSetting(SettingsSubscriptionNotificationActivity::class.java, R.string.notification_for_checking_subscriptions, R.string.subscription_notifications, R.drawable.ic_round_notif_progress_24, R.string.notification_for_checking_subscriptions_desc, keywordsRes = R.string.search_kw_notification_for_checking_subscriptions)
 
         l += SearchableSetting(SettingsSubscriptionNotificationActivity::class.java, R.string.view_subscriptions, R.string.subscription_notifications, R.drawable.ic_round_subscriptions_24, R.string.view_subscriptions_desc, keywordsRes = R.string.search_kw_view_subscriptions)
+
+        l += SearchableSetting(SettingsUnreadChapterNotificationActivity::class.java, R.string.unread_manga_notifications, R.string.unread_chapter_notifications, R.drawable.ic_round_import_contacts_24, R.string.unread_manga_notifications_desc)
+
+        l += SearchableSetting(SettingsUnreadChapterNotificationActivity::class.java, R.string.unread_episode_notifications, R.string.unread_chapter_notifications, R.drawable.ic_round_movie_filter_24, R.string.unread_episode_notifications_desc)
 
         l += SearchableSetting(SettingsUnreadChapterNotificationActivity::class.java, R.string.unread_chapter_check_progress_notification, R.string.unread_chapter_notifications, R.drawable.ic_round_notif_progress_24, R.string.unread_chapter_check_progress_notification_desc, keywordsRes = R.string.search_kw_unread_chapter_check_progress_notification)
 
@@ -610,10 +648,17 @@ object SettingsRouter {
     const val EXTRA_ANCHOR_VIEW = "ani.dantotsu.settings.ANCHOR_VIEW"
     const val EXTRA_ANCHOR_TITLE = "ani.dantotsu.settings.ANCHOR_TITLE"
     const val EXTRA_ANCHOR_TITLE_ALT = "ani.dantotsu.settings.ANCHOR_TITLE_ALT"
+    const val EXTRA_ANCHOR_PROVIDER = "ani.dantotsu.settings.ANCHOR_PROVIDER"
+    const val EXTRA_ANCHOR_ROW_KEY = "ani.dantotsu.settings.ANCHOR_ROW_KEY"
 
     fun open(context: Context, setting: SearchableSetting) {
         val intent = Intent(context, setting.dest)
-        if (setting.anchorViewId != 0) {
+        if (setting.anchorProvider != null) {
+            // Handled by SettingsAccountActivity itself — landing here can mean expanding a
+            // collapsed card first, which the generic view/title paths below know nothing about.
+            intent.putExtra(EXTRA_ANCHOR_PROVIDER, setting.anchorProvider.name)
+            if (setting.anchorRowKey != null) intent.putExtra(EXTRA_ANCHOR_ROW_KEY, setting.anchorRowKey)
+        } else if (setting.anchorViewId != 0) {
             intent.putExtra(EXTRA_ANCHOR_VIEW, setting.anchorViewId)
         } else {
             intent.putExtra(EXTRA_ANCHOR_TITLE, setting.titleRes)
@@ -654,15 +699,48 @@ object SettingsRouter {
         }
     }
 
-    private fun scrollToAndFlash(target: View) {
-        val scroll = findScrollParent(target)
-        if (scroll != null) {
-            val y = (relativeTop(target, scroll) - dp(target, 80)).coerceAtLeast(0)
-            scroll.smoothScrollTo(0, y)
-        }
+    /** Scrolls [target]'s nearest [NestedScrollView] to bring it into view and briefly flashes it —
+     *  exposed (not just used by [handleHighlight]) so [SettingsAccountActivity] can reuse it once
+     *  it has expanded the right card and located the right row itself. */
+    internal fun scrollToAndFlash(target: View) {
+        scrollTo(target)
         val views = groupToFlash(target)
         // Delay the flash slightly so it is seen after the scroll settles.
         Handler(Looper.getMainLooper()).postDelayed({ flashGroup(views) }, 350)
+    }
+
+    /**
+     * Same as [scrollToAndFlash], but flashes [target] on the window's own root overlay — positioned
+     * by its absolute on-screen location — instead of a parent's overlay or the view's own foreground.
+     * The account cards nest a row several ViewGroups deep (a switch row inside the card's own nested
+     * [RecyclerView] inside a [MaterialCardView] inside the outer [RecyclerView]), and both the shared-
+     * parent overlay and a view's own foreground get clipped or painted over somewhere in that stack —
+     * the root overlay sits above all of it. [SettingsAccountActivity] uses this one for both a card
+     * header and a row inside its expanded body.
+     *
+     * The scroll itself also has to be a jump, not [scrollToAndFlash]'s animated one: the account
+     * list can be a full screen taller than the viewport (the MALSync/Discord cards can sit a
+     * smooth-scroll's-worth below the fold), and a fixed post-scroll delay has no way to know when
+     * that animation actually finishes — sampling the target's location before it lands flashes
+     * wherever the scroll happened to be at that instant instead of where the target actually is.
+     * A jump has nothing to race: the location is final the moment it's applied.
+     *
+     * @param cornerRadiusPx rounds the highlight to match a container's own corners — pass the
+     *                       account card's radius when [target] IS the (collapsed) card, so the
+     *                       highlight doesn't draw square corners over the card's rounded ones.
+     *                       0 (a plain rectangle) is right for a row, which has none of its own.
+     */
+    internal fun scrollToAndFlashSingle(target: View, cornerRadiusPx: Float = 0f) {
+        scrollTo(target, smooth = false)
+        target.post { flashSingle(target, cornerRadiusPx) }
+    }
+
+    private fun scrollTo(target: View, smooth: Boolean = true) {
+        val scroll = findScrollParent(target)
+        if (scroll != null) {
+            val y = (relativeTop(target, scroll) - dp(target, 80)).coerceAtLeast(0)
+            if (smooth) scroll.smoothScrollTo(0, y) else scroll.scrollTo(0, y)
+        }
     }
 
     /**
@@ -783,19 +861,29 @@ object SettingsRouter {
         }
     }
 
-    private fun flashSingle(view: View) {
+    private fun flashSingle(view: View, cornerRadiusPx: Float = 0f) {
+        val root = view.rootView as? ViewGroup
+        if (root == null || !view.isAttachedToWindow) return
+        val anchorLoc = IntArray(2).also { view.getLocationInWindow(it) }
+        val rootLoc = IntArray(2).also { root.getLocationInWindow(it) }
+        val left = anchorLoc[0] - rootLoc[0]
+        val top = anchorLoc[1] - rootLoc[1]
         val color = MaterialColors.getColor(
             view, com.google.android.material.R.attr.colorPrimary, Color.CYAN
         )
-        val overlay = ColorDrawable(color)
-        val previousForeground = view.foreground
-        view.foreground = overlay
+        val highlight = GradientDrawable().apply {
+            setColor(color)
+            cornerRadius = cornerRadiusPx
+            setBounds(left, top, left + view.width, top + view.height)
+        }
+        val overlay = root.overlay
+        overlay.add(highlight)
         ValueAnimator.ofInt(0, 110, 0, 110, 0).apply {
             duration = 1500
-            addUpdateListener { overlay.alpha = it.animatedValue as Int }
+            addUpdateListener { highlight.alpha = it.animatedValue as Int }
             addListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: Animator) {
-                    view.foreground = previousForeground
+                    overlay.remove(highlight)
                 }
             })
             start()

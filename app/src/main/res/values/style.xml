@@ -104,6 +104,18 @@
         <item name="cornerSize">50%</item>
     </style>
 
+    <!-- Matches the account card avatar's own frame (13dp corner radius) instead of a full circle,
+         so a photo fills the same rounded-square tile the provider mark sits in when signed out. -->
+    <style name="RoundedFrameImageView" parent="">
+        <item name="shapeAppearanceOverlay">@style/ShapeAppearanceOverlay.App.RoundedFrameImageView
+        </item>
+    </style>
+
+    <style name="ShapeAppearanceOverlay.App.RoundedFrameImageView" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">13dp</item>
+    </style>
+
 
     <!--
       One box of a segmented code field — the sync code's groups of four, the handoff sharing code's

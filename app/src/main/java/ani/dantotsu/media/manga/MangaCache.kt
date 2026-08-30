@@ -26,16 +26,25 @@ data class ImageData(
     val page: Page,
     val source: HttpSource
 ) {
+    /**
+     * @param maxWidth bounds the decoded bitmap's memory footprint together with [maxHeight] —
+     *                  pass both to presample during decode instead of decoding at native
+     *                  resolution first. Left null (as the manga downloader does) to keep a
+     *                  full-resolution decode for saved files.
+     * @param maxHeight see [maxWidth].
+     */
     suspend fun fetchAndProcessImage(
         page: Page,
-        httpSource: HttpSource
+        httpSource: HttpSource,
+        maxWidth: Int? = null,
+        maxHeight: Int? = null,
     ): Bitmap? {
         return withContext(Dispatchers.IO) {
             try {
                 val response = httpSource.getImage(page)
                 Logger.log("Response: ${response.code} - ${response.message}")
                 val bytes = response.body.bytes()
-                return@withContext decodeImage(bytes)
+                return@withContext decodeImage(bytes, maxWidth, maxHeight)
             } catch (e: CancellationException) {
                 // Must propagate, not be treated as a failed page fetch — swallowing this here
                 // breaks structured concurrency: the retry loop below would keep retrying (and
@@ -51,8 +60,24 @@ data class ImageData(
     }
 
     // Some devices (e.g. WSA) ship an incomplete HEIF codec that can't decode AVIF/HEIF stills via BitmapFactory, so fall back to Mihon's native decoder.
-    private fun decodeImage(bytes: ByteArray): Bitmap? {
-        BitmapFactory.decodeStream(ByteArrayInputStream(bytes))?.let { return it }
+    //
+    // When maxWidth/maxHeight are given, the bounds are read first (inJustDecodeBounds) and the
+    // real decode is presampled to them via inSampleSize, instead of decoding at native resolution
+    // and shrinking afterward — some source images (particularly long webtoon-strip pages some
+    // extensions serve unresized) are large enough at native resolution to exhaust the heap on
+    // their own decoding a single page, well before any cache or eviction logic gets a say.
+    private fun decodeImage(bytes: ByteArray, maxWidth: Int? = null, maxHeight: Int? = null): Bitmap? {
+        val options = BitmapFactory.Options()
+        if (maxWidth != null && maxHeight != null) {
+            options.inJustDecodeBounds = true
+            BitmapFactory.decodeStream(ByteArrayInputStream(bytes), null, options)
+            if (options.outWidth > 0 && options.outHeight > 0) {
+                options.inSampleSize =
+                    calculateInSampleSize(options.outWidth, options.outHeight, maxWidth, maxHeight)
+            }
+            options.inJustDecodeBounds = false
+        }
+        BitmapFactory.decodeStream(ByteArrayInputStream(bytes), null, options)?.let { return it }
         return try {
             val decoder = ImageDecoder.newInstance(ByteArrayInputStream(bytes)) ?: return null
             val bitmap = decoder.decode()
@@ -62,6 +87,24 @@ data class ImageData(
             Logger.log("Fallback image decode failed: ${e.message}")
             null
         }
+    }
+
+    /**
+     * The largest power-of-2 [BitmapFactory.Options.inSampleSize] that still fits [rawWidth] within
+     * [maxWidth] on its own, and — beyond that — keeps the total pixel count within the same budget
+     * a maxWidth × maxHeight image would use. Pixel count, not either dimension alone, is what
+     * actually bounds memory (bytes ≈ width × height × 4 for ARGB_8888), and checking it this way
+     * — rather than fitting both width and height individually — is what lets a tall, narrow
+     * webtoon-strip page keep its width instead of being crushed by a plain height cap.
+     */
+    private fun calculateInSampleSize(rawWidth: Int, rawHeight: Int, maxWidth: Int, maxHeight: Int): Int {
+        var inSampleSize = 1
+        while (rawWidth / inSampleSize > maxWidth) inSampleSize *= 2
+        val maxPixels = maxWidth.toLong() * maxHeight.toLong()
+        while ((rawWidth.toLong() / inSampleSize) * (rawHeight.toLong() / inSampleSize) > maxPixels) {
+            inSampleSize *= 2
+        }
+        return inSampleSize
     }
 }
 

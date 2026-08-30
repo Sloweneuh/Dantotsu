@@ -94,57 +94,9 @@ class SettingsListSyncActivity : AppCompatActivity() {
     private fun render() {
         val autoInterval = PrefManager.getVal<Long>(PrefName.AutoListSyncInterval)
         val canAutoSync = hasSyncTargets()
+        // The per-tracker "may be written to" switches live on each provider's card on the Accounts
+        // screen now; this screen is just the comparison itself, manual and automatic.
         val settingsList = arrayListOf(
-            // Which trackers may be written to at all comes first: the comparison rows below are
-            // scoped by these, and the automatic pass skips a tracker whose switch is off.
-            Settings(
-                type = 2,
-                name = getString(R.string.mal_list_sync),
-                desc = getString(R.string.mal_list_sync_desc),
-                icon = R.drawable.ic_round_mal_sync_24,
-                isChecked = PrefManager.getVal(PrefName.MalListSyncEnabled),
-                switch = { isChecked, _ ->
-                    PrefManager.setVal(PrefName.MalListSyncEnabled, isChecked)
-                    onTargetToggled()
-                },
-                isVisible = MAL.token != null,
-            ),
-            Settings(
-                type = 2,
-                name = getString(R.string.kitsu_list_sync),
-                desc = getString(R.string.kitsu_list_sync_desc),
-                icon = R.drawable.ic_kitsu,
-                isChecked = PrefManager.getVal(PrefName.KitsuListSyncEnabled),
-                switch = { isChecked, _ ->
-                    PrefManager.setVal(PrefName.KitsuListSyncEnabled, isChecked)
-                    onTargetToggled()
-                },
-                isVisible = Kitsu.token != null,
-            ),
-            Settings(
-                type = 2,
-                name = getString(R.string.simkl_list_sync),
-                desc = getString(R.string.simkl_list_sync_desc),
-                icon = R.drawable.ic_simkl,
-                isChecked = PrefManager.getVal(PrefName.SimklListSyncEnabled),
-                switch = { isChecked, _ ->
-                    PrefManager.setVal(PrefName.SimklListSyncEnabled, isChecked)
-                    onTargetToggled()
-                },
-                isVisible = Simkl.token != null,
-            ),
-            Settings(
-                type = 2,
-                name = getString(R.string.mangabaka_list_sync),
-                desc = getString(R.string.mangabaka_list_sync_desc),
-                icon = R.drawable.ic_round_mangabaka_sync_24,
-                isChecked = PrefManager.getVal(PrefName.MangaBakaListSyncEnabled),
-                switch = { isChecked, _ ->
-                    PrefManager.setVal(PrefName.MangaBakaListSyncEnabled, isChecked)
-                    onTargetToggled()
-                },
-                isVisible = MangaBaka.token != null,
-            ),
             Settings(
                 type = 1,
                 name = getString(R.string.compare_lists),

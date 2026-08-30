@@ -53,8 +53,8 @@ class SettingsUnreadChapterNotificationActivity : AppCompatActivity() {
                             desc = getString(R.string.disable_malsync_desc),
                             icon = R.drawable.ic_malsync,
                             onClick = {
-                                // Open Connections settings so the user can enable MALSync
-                                val intent = android.content.Intent(context, SettingsConnectionsActivity::class.java)
+                                // Open the Accounts screen; MALSync's toggle lives on its card there.
+                                val intent = android.content.Intent(context, SettingsAccountActivity::class.java)
                                 context.startActivity(intent)
                             }
                         )
@@ -140,6 +140,26 @@ class SettingsUnreadChapterNotificationActivity : AppCompatActivity() {
                     ),
                     Settings(
                         type = 2,
+                        name = getString(R.string.unread_manga_notifications),
+                        desc = getString(R.string.unread_manga_notifications_desc),
+                        icon = R.drawable.ic_round_import_contacts_24,
+                        isChecked = PrefManager.getVal(PrefName.UnreadMangaNotificationsEnabled),
+                        switch = { isChecked, _ ->
+                            PrefManager.setVal(PrefName.UnreadMangaNotificationsEnabled, isChecked)
+                        },
+                    ),
+                    Settings(
+                        type = 2,
+                        name = getString(R.string.unread_episode_notifications),
+                        desc = getString(R.string.unread_episode_notifications_desc),
+                        icon = R.drawable.ic_round_movie_filter_24,
+                        isChecked = PrefManager.getVal(PrefName.UnreadEpisodeNotificationsEnabled),
+                        switch = { isChecked, _ ->
+                            PrefManager.setVal(PrefName.UnreadEpisodeNotificationsEnabled, isChecked)
+                        },
+                    ),
+                    Settings(
+                        type = 2,
                         name = getString(R.string.unread_chapter_check_progress_notification),
                         desc = getString(R.string.unread_chapter_check_progress_notification_desc),
                         icon = R.drawable.ic_round_notif_progress_24,
@@ -170,9 +190,12 @@ class SettingsUnreadChapterNotificationActivity : AppCompatActivity() {
                                         listOf<ani.dantotsu.notifications.unread.UnreadChapterStore>()
                                     )
                                     
-                                    // Clear the notified chapters tracking (prevents duplicates)
+                                    // Clear the notified chapters/episodes tracking (prevents duplicates)
                                     val prefs = context.getSharedPreferences("unread_notifications", android.content.Context.MODE_PRIVATE)
-                                    prefs.edit().remove("notified_unread_chapters").apply()
+                                    prefs.edit()
+                                        .remove("notified_unread_chapters")
+                                        .remove("notified_unread_episodes")
+                                        .apply()
                                     
                                     android.widget.Toast.makeText(
                                         context,

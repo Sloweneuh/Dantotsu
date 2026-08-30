@@ -58,7 +58,7 @@ class SettingsNotificationActivity : AppCompatActivity() {
                         type = 1,
                         name = getString(R.string.unread_chapter_notifications),
                         desc = getString(R.string.unread_chapter_notifications_desc),
-                        icon = R.drawable.ic_round_notif_unread_24,
+                        icon = R.drawable.ic_round_malsync_notifications_24,
                         onClick = {
                             startActivity(Intent(context, SettingsUnreadChapterNotificationActivity::class.java))
                         }

@@ -24,6 +24,7 @@ enum class NotificationType(val value: String) {
     MEDIA_DELETION("MEDIA_DELETION"),
     UNREAD_CHAPTER("UNREAD_CHAPTER"),
     UnreadChapter("UnreadChapter"), // AniList sends this in PascalCase
+    UnreadEpisode("UnreadEpisode"), // local-only, mirrors UnreadChapter for MALSync anime notifications
 
     //custom
     COMMENT_REPLY("COMMENT_REPLY"),

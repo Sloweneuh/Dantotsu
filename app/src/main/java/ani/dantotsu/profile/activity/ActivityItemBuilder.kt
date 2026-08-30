@@ -86,6 +86,10 @@ class ActivityItemBuilder {
                     notification.context ?: "New chapter available"
                 }
 
+                NotificationType.UnreadEpisode -> {
+                    notification.context ?: "New episode available"
+                }
+
                 NotificationType.COMMENT_REPLY -> {
                     notification.context ?: "You should not see this"
                 }

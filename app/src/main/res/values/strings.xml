@@ -62,11 +62,12 @@
     <string name="unread_chapters">Unread Chapters</string>
     <string name="no_unread_chapters">No unread chapters</string>
     <string name="error_fetching_unread_chapters">Couldn\'t fetch unread chapters</string>
-    <string name="malsync_disabled_home">MALSync disabled — enable MALSync in Connections to see unread chapters</string>
-    <string name="malsync_anime_only_home">MALSync set to anime-only — enable manga checks in Connections to see unread chapters</string>
+    <string name="malsync_disabled_home">MALSync disabled — enable MALSync in Accounts to see unread chapters</string>
+    <string name="malsync_anime_only_home">MALSync set to anime-only — enable manga checks in Accounts to see unread chapters</string>
 
     <!-- Notification strings for unread chapters -->
     <string name="notification_new_chapter_title">New Chapter Available</string>
+    <string name="notification_new_episode_title">New Episode Available</string>
     <string name="notification_unknown_source">Unknown source</string>
     <string name="notification_source_subtext">Source: %1$s</string>
 
@@ -209,17 +210,17 @@
     </string>
     <string name="connections_settings">Connections</string>
     <string name="connections_desc">Enable or disable external connections and info tabs</string>
-    <string name="disable_comick">Enable Comick</string>
+    <string name="disable_comick">Show Comick info</string>
     <string name="disable_comick_desc">Toggle fetching Comick data and Comick tab</string>
-    <string name="disable_mal">Enable MyAnimeList (MAL)</string>
+    <string name="disable_mal">Show MyAnimeList info</string>
     <string name="disable_mal_desc">Toggle fetching MAL data and MAL tab</string>
     <string name="mal_connections_help">How does the MAL toggle work\?</string>
     <string name="full_mal_connections_help">
         Enabling MAL adds a **MAL tab** — an extra info tab in media details with MAL-specific data (scores, genres, staff, recommendations, reviews, etc.), fetched anonymously from the public Jikan API.
-        \n\n No MAL account is required for this tab. **Disabling MAL stops all Jikan API calls and removes MAL from the info tab picker (Connections \> Info Tab Order). It does NOT disable progress syncing.**
-        \n\n Progress syncing to your MAL account is controlled separately — connect your MAL account in **Accounts** settings, then enable **MyAnimeList list sync** in **List Sync** settings to push your Anilist list updates to MAL.
+        \n\n No MAL account is required for this tab. **Disabling MAL stops all Jikan API calls and removes MAL from the info tab picker (Accounts \> ⋮ \> Info tab order). It does NOT disable progress syncing.**
+        \n\n Progress syncing to your MAL account is controlled separately — connect your MAL account on its card in **Accounts**, then enable **MAL list sync** on the same card to push your Anilist list updates to MAL.
     </string>
-    <string name="disable_mangaupdates">Enable MangaUpdates</string>
+    <string name="disable_mangaupdates">Show MangaUpdates info</string>
     <string name="disable_mangaupdates_desc">Toggle fetching MangaUpdates data and tab</string>
     <string name="mu_list_fetch_enabled">MangaUpdates lists</string>
     <string name="mu_list_fetch_enabled_desc">Fetch and show MangaUpdates reading lists on home screen and in list view</string>
@@ -234,14 +235,14 @@
     <string name="mu_notification_interval_title">MangaUpdates Notification Frequency</string>
     <string name="mu_notification_interval">Notification interval: %1$s</string>
     <string name="mu_notification_interval_label">Notification interval</string>
-    <string name="mu_notification_interval_desc">How often to check for new chapters (only applies when unread chapter checks are disabled)</string>
-    <string name="mu_notification_interval_linked">Notification interval: same as unread chapter checks (%1$s)</string>
-    <string name="mu_notification_interval_linked_desc">Change the interval in Unread Chapter Notification settings, or disable unread chapter checks to set a separate interval here</string>
+    <string name="mu_notification_interval_desc">How often to check for new chapters (only applies when the MALSync Notifications interval is set to Off)</string>
+    <string name="mu_notification_interval_linked">Notification interval: same as MALSync Notifications (%1$s)</string>
+    <string name="mu_notification_interval_linked_desc">Change the interval in MALSync Notifications settings, or set it to Off there to use a separate interval here</string>
     <string name="mu_filter_categories">Categories</string>
     <string name="mu_filter_licensed">Licensed</string>
     <string name="mu_filter_sort">Sort By</string>
     <string name="mu_filter_status_filters">Filters</string>
-    <string name="disable_malsync">Enable MALSync Info</string>
+    <string name="disable_malsync">Use MALSync</string>
     <string name="disable_malsync_desc">Toggle fetching MALSync info and related display</string>
     <string name="comick_connections_help">How does Comick work\?</string>
     <string name="full_comick_connections_help">
@@ -251,8 +252,8 @@
         \n - **MangaUpdates linking fallback** — MangaBaka\'s cross-source mapping is tried first; if it has no MangaUpdates match, Comick data is used instead to find and link the matching MangaUpdates series
         \n - **Cover images** — higher-resolution or alternative covers may be sourced from Comick
         \n - **Quick search shortcut** — a Comick search button in the quick search sheet
-        \n\n No Comick account is required. All data is fetched anonymously from the public Comick API. **The Comick API doesn\'t support account operations.**
-        \n\n *Disabling Comick stops all related data fetching and removes it from the info tab picker (Connections \> Info Tab Order). The MangaUpdates linking fallback described above will also be disabled.*
+        \n\n All data is fetched anonymously from the public Comick API. **Comick account login and list sync are planned** — they will arrive once Comick\'s developers ship the account API routes they have announced.
+        \n\n *Disabling Comick stops all related data fetching and removes it from the info tab picker (Accounts \> ⋮ \> Info tab order). The MangaUpdates linking fallback described above will also be disabled.*
     </string>
     <string name="mangabaka_connections_help">How does MangaBaka work\?</string>
     <string name="full_mangabaka_connections_help">
@@ -262,8 +263,8 @@
         \n - **Cross-source linking** — MangaBaka\'s id mapping links AniList, MangaUpdates and MyAnimeList entries to the same series
         \n - **AniList match alerts** — when viewing a MangaUpdates entry, if MangaBaka finds a matching AniList entry you\'ll be offered to open it there, even if the MangaBaka tab itself is hidden
         \n - **Quick search shortcut** — a MangaBaka search button in the quick search sheet
-        \n\n No MangaBaka account is required for any of this — data is fetched anonymously from the public MangaBaka API. Logging into a MangaBaka account for list syncing is configured separately in **List Sync** settings.
-        \n\n *Disabling MangaBaka hides the MangaBaka tab, stops all related lookups and cross-source linking, removes it from the info tab picker (Connections \> Info Tab Order), and disables the AniList match alert on MangaUpdates media.*
+        \n\n No MangaBaka account is required for any of this — data is fetched anonymously from the public MangaBaka API. Logging into a MangaBaka account for list syncing is done on its card in **Accounts**.
+        \n\n *Disabling MangaBaka hides the MangaBaka tab, stops all related lookups and cross-source linking, removes it from the info tab picker (Accounts \> ⋮ \> Info tab order), and disables the AniList match alert on MangaUpdates media.*
     </string>
         <string name="switch_to_anilist_title">AniList media found</string>
         <string name="switch_to_anilist_message">This MangaUpdates media has an Anilist counterpart. Would you like to open the AniList media instead?</string>
@@ -311,7 +312,7 @@
     <string name="search_cat_anilist">AniList</string>
     <string name="search_cat_services">Other services</string>
     <string name="search_needs_mangaupdates">Sign in to MangaUpdates</string>
-    <string name="search_needs_connection_enabled">Enabled in Connections</string>
+    <string name="search_needs_connection_enabled">Enabled in Accounts</string>
     <string name="backup_search_tiles">Search tiles layout</string>
     <string name="quick_tile_list_sync">List Sync</string>
     <string name="quick_tile_discord_rpc">Discord RPC</string>
@@ -634,8 +635,32 @@
     <string name="coming_soon">Coming soon</string>
     <string name="account_open_profile">Open profile</string>
     <string name="discord">Discord</string>
+    <string name="malsync">MALSync</string>
     <string name="list_sync_settings">List sync settings</string>
     <string name="list_sync_settings_desc">Choose which trackers your list updates are pushed to</string>
+    <string name="list_comparison_title">List comparison</string>
+
+    <!-- Accounts screen (provider cards) -->
+    <string name="account_info_source">Info source</string>
+    <string name="account_needs_anilist">Connect AniList first</string>
+    <string name="account_not_connected">Not connected</string>
+    <string name="account_show_info">Show %1$s info</string>
+    <string name="account_show_info_desc">Fetch its data and show its info tab</string>
+    <string name="account_use_malsync">Use MALSync</string>
+    <string name="account_group_info">Info</string>
+    <string name="account_group_sync">Sync</string>
+    <string name="account_group_options">Options</string>
+    <string name="account_group_notifications">Notifications</string>
+    <string name="account_group_presence">Presence</string>
+    <string name="logout_confirm_title">Log out of %1$s?</string>
+    <string name="logout_confirm_message">You\'ll need to sign in again to sync with %1$s.</string>
+    <string name="discord_status_title">Status</string>
+    <string name="discord_status_online">Online</string>
+    <string name="discord_status_idle">Idle</string>
+    <string name="discord_status_dnd">Do not disturb</string>
+    <string name="discord_status_invisible">Invisible</string>
+    <string name="discord_rpc_settings">RPC settings</string>
+    <string name="discord_rpc_settings_desc">Presence text, buttons and images</string>
     <string name="compare_lists">Compare lists</string>
     <string name="compare_lists_desc">Check MyAnimeList, Kitsu, Simkl and MangaBaka against your source lists and sync differences</string>
     <string name="auto_list_sync">Automatic compare</string>
@@ -685,7 +710,7 @@
     <string name="list_diff_start_date">Start date</string>
     <string name="list_diff_end_date">End date</string>
     <string name="list_diff_not_set">Not set</string>
-    <string name="disable_mangabaka">Enable MangaBaka</string>
+    <string name="disable_mangabaka">Show MangaBaka info</string>
     <string name="disable_mangabaka_desc">Toggle fetching MangaBaka data and the MangaBaka info tab</string>
     <string name="mangabaka_requires_internet">MangaBaka data requires an internet connection</string>
     <string name="mangabaka_no_data_title">No MangaBaka match</string>
@@ -763,7 +788,8 @@
 
     <string name="comick_account_help">How does Comick work\?</string>
     <string name="full_comick_account_help">
-        Comick account support is coming in a future update. For now Comick data is used anonymously for manga info and cross-source linking — no login required.
+        Comick supplies info, chapter data and cross-source linking on media pages, fetched anonymously — no login needed for that.
+        \n\n **Account login and list sync are planned.** They will arrive once Comick\'s developers ship the account API routes they have announced.
     </string>
     <string name="notification_for_checking_subscriptions">Checking Subscriptions notification</string>
     <string name="use_alarm_manager">Use Alarm Manager</string>
@@ -777,7 +803,7 @@
     <string name="subscriptions_checking_time">Subscriptions Update Frequency</string>
     <string name="comment_notification_frequency">Comment Notification Frequency</string>
     <string name="anilist_notification_frequency">AniList Notification Frequency</string>
-    <string name="unread_chapter_notification_frequency">Unread Chapter Check Frequency</string>
+    <string name="unread_chapter_notification_frequency">Notification Check Frequency</string>
     <string name="subscriptions_info">Amount of time for Dantotsu to periodically check for new Episodes/Chapters for your subscriptions</string>
     <string name="do_not_update">Don\'t Update</string>
     <string name="loading_chap_number">Loading Chapter %1$s</string>
@@ -1236,18 +1262,18 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="anilist_notification_filters">Filter Notifications</string>
     <string name="anilist_notifications_checking_time">Anilist notifications update frequency : %1$s</string>
     <string name="comment_notification_checking_time">Comment notifications update frequency : %1$s</string>
-    <string name="unread_chapter_notification_checking_time">Unread chapter check interval : %1$s</string>
+    <string name="unread_chapter_notification_checking_time">Notification check interval : %1$s</string>
     <!-- Value-less forms of the three above, for the settings search: a row that carries its
          current setting in its title has no fixed string for a search result to show or match on. -->
     <string name="anilist_notifications_checking_time_label">Anilist notifications update frequency</string>
     <string name="comment_notification_checking_time_label">Comment notifications update frequency</string>
-    <string name="unread_chapter_notification_checking_time_label">Unread chapter check interval</string>
+    <string name="unread_chapter_notification_checking_time_label">Notification check interval</string>
     <string name="custom">Custom…</string>
     <string name="custom_interval_title">Custom Interval</string>
     <string name="custom_interval_desc">Enter the interval in minutes (1–1440)</string>
     <string name="activities">Activities</string>
     <string name="enable_rpc">Enable Discord RPC</string>
-    <string name="enable_rpc_desc">Display your taste to plebs on Discord! Tap the settings icon to configure.</string>
+    <string name="enable_rpc_desc">Display your taste to plebs on Discord!</string>
 
     <string name="incorrect_password">Incorrect password</string>
     <string name="password_cannot_be_empty">Password cannot be empty</string>
@@ -1541,17 +1567,21 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="anilist_notification_filters_desc">Choose category to Ignore</string>
     <string name="anilist_notifications_checking_time_desc">Set the frequency you want the app to check for Anilist notifications</string>
     <string name="comment_notification_checking_time_desc">Set the frequency you want the app to check for Comment notifications</string>
-    <string name="unread_chapter_notification_checking_time_desc">Set how often to check for new unread chapters in your manga list</string>
-    <string name="unread_chapter_check_progress_notification">Show unread chapter check progress</string>
-    <string name="unread_chapter_check_progress_notification_desc">Display a notification showing progress during unread chapter checks</string>
+    <string name="unread_chapter_notification_checking_time_desc">Set how often to check for new unread manga chapters and anime episodes</string>
+    <string name="unread_manga_notifications">Manga chapter notifications</string>
+    <string name="unread_manga_notifications_desc">Notify about new manga chapters via MALSync, alongside anime episodes</string>
+    <string name="unread_episode_notifications">Anime episode notifications</string>
+    <string name="unread_episode_notifications_desc">Notify about new anime episodes via MALSync, alongside manga chapters</string>
+    <string name="unread_chapter_check_progress_notification">Show check progress</string>
+    <string name="unread_chapter_check_progress_notification_desc">Display a notification showing progress while checking for new manga chapters and anime episodes</string>
     <string name="notification_for_checking_subscriptions_desc">Show notification for checking Subscriptions</string>
     <string name="subscription_notifications">Subscription Notifications</string>
     <string name="subscription_notifications_desc">Configure notification settings for subscribed anime and manga updates</string>
-    <string name="unread_chapter_notifications">Unread Chapter Notifications</string>
-    <string name="unread_chapter_notifications_desc">Configure automatic checks for new unread chapters in your manga list</string>
+    <string name="unread_chapter_notifications">MALSync Notifications</string>
+    <string name="unread_chapter_notifications_desc">Configure automatic checks for new unread manga chapters and anime episodes via MALSync</string>
     <string name="clear_unread_chapter_history">Clear Notification History</string>
-    <string name="clear_unread_chapter_history_desc">Delete all unread chapter notification history. This will allow previously notified chapters to trigger notifications again.</string>
-    <string name="clear_unread_chapter_history_confirm">Are you sure you want to clear all unread chapter notification history? This will reset the notification tracking and previously notified chapters may appear again.</string>
+    <string name="clear_unread_chapter_history_desc">Delete all notification history. This will allow previously notified chapters and episodes to trigger notifications again.</string>
+    <string name="clear_unread_chapter_history_confirm">Are you sure you want to clear all notification history? This will reset the notification tracking and previously notified chapters and episodes may appear again.</string>
     <string name="clear_unread_chapter_history_success">Notification history cleared successfully</string>
     <string name="anilist_notifications">AniList Notifications</string>
     <string name="anilist_notifications_desc">Configure AniList activity notifications and filters</string>
@@ -1938,9 +1968,9 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="mal_no_data_title">No MyAnimeList data</string>
     <string name="open_on_kitsu">Open on Kitsu</string>
     <string name="open_on_simkl">Open on Simkl</string>
-    <string name="disable_kitsu">Enable Kitsu</string>
+    <string name="disable_kitsu">Show Kitsu info</string>
     <string name="disable_kitsu_desc">Toggle fetching Kitsu data and the Kitsu info tab</string>
-    <string name="disable_simkl">Enable Simkl</string>
+    <string name="disable_simkl">Show Simkl info</string>
     <string name="disable_simkl_desc">Toggle fetching Simkl data and the Simkl info tab</string>
     <string name="kitsu_requires_internet">Kitsu data requires an internet connection</string>
     <string name="simkl_requires_internet">Simkl data requires an internet connection</string>
@@ -2037,8 +2067,8 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="backup_sub_network_desc">DNS, user agent, proxy toggle</string>
     <string name="backup_sub_updates">Updates &amp; diagnostics</string>
     <string name="backup_sub_updates_desc">Update checks, logging, crash reports</string>
-    <string name="backup_sub_connections">Connections</string>
-    <string name="backup_sub_connections_desc">Comick, MAL, MangaUpdates, comments</string>
+    <string name="backup_sub_connections">Trackers &amp; info sources</string>
+    <string name="backup_sub_connections_desc">Comick, MAL, MangaUpdates, MALSync, list-sync and tag options</string>
     <string name="backup_sub_sources">Extension repos &amp; sources</string>
     <string name="backup_sub_sources_desc">Repository URLs and source ordering</string>
     <string name="backup_sub_search_history">Search history</string>
@@ -2307,8 +2337,12 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="search_kw_disable_comick">comick source manga</string>
     <string name="search_kw_disable_mal">myanimelist mal account tracking</string>
     <string name="search_kw_disable_malsync">malsync sync tracking progress</string>
+    <string name="search_kw_disable_kitsu">kitsu tab browse info source</string>
+    <string name="search_kw_disable_simkl">simkl tab browse info source</string>
+    <string name="search_kw_disable_mangabaka">mangabaka tab browse info source</string>
     <string name="search_kw_malsync_exclude_manage">exclude filter unread chapter episode notifications malsync</string>
     <string name="search_kw_unread_sort_label">unread chapters home sort order sorting recent latest updated malsync mangaupdates</string>
+    <string name="search_kw_malsync_checks_dialog_title">malsync checks mode manga anime both what</string>
     <string name="search_kw_customize_info_tabs">anilist anime manga mangaupdates info tab order reorder visibility mal comick mangabaka</string>
     <string name="search_kw_compare_lists">compare audit diff differences out of date myanimelist mal kitsu simkl mangabaka anilist mangaupdates sync</string>
     <string name="search_kw_auto_list_sync">automatic auto compare schedule interval frequency background periodic list sync push myanimelist mal mangabaka</string>
@@ -2471,12 +2505,12 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="search_kw_anilist_notifications_checking_time_label">interval frequency how often schedule period every hours background check anilist</string>
     <string name="search_kw_comment_notification_checking_time_label">interval frequency how often schedule period every hours background check comment</string>
     <string name="search_kw_subscriptions_checking_time">interval frequency how often schedule period every hours background check subscription update</string>
-    <string name="search_kw_unread_chapter_notification_checking_time_label">interval frequency how often schedule period every hours background check unread chapter manga</string>
+    <string name="search_kw_unread_chapter_notification_checking_time_label">interval frequency how often schedule period every hours background check unread chapter manga episode anime</string>
     <string name="search_kw_mu_notification_interval_label">interval frequency how often schedule period every hours background check mangaupdates mu</string>
     <string name="search_kw_anilist_notification_filters">filter type activity follow message</string>
     <string name="search_kw_notification_for_checking_subscriptions">background check periodic schedule</string>
     <string name="search_kw_view_subscriptions">list subscribed sources manage</string>
-    <string name="search_kw_unread_chapter_check_progress_notification">background service check progress</string>
+    <string name="search_kw_unread_chapter_check_progress_notification">background service check progress chapter episode</string>
     <string name="search_kw_clear_unread_chapter_history">clear reset history unread</string>
     <string name="search_kw_mu_notifications_enabled">mangaupdates notify chapter release enable</string>
     <string name="search_kw_faq">help frequently asked questions</string>

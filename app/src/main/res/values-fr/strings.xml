@@ -70,10 +70,11 @@
     <string name="customize_info_tabs_desc">Réorganiser et afficher/masquer les onglets d\'infos pour AniList anime, AniList manga et MangaUpdates manga</string>
     <string name="anilist_equivalent_found_title">Correspondance AniList trouvée</string>
     <string name="anilist_equivalent_found_desc">Ce manga possède également une entrée correspondante sur AniList. Souhaitez-vous plutôt la consulter là-bas ?</string>
-    <string name="malsync_disabled_home">MALSync désactivé — activez MALSync dans Connexions pour voir les chapitres non lus</string>
-    <string name="malsync_anime_only_home">MALSync configuré en mode anime uniquement — activez les vérifications manga dans Connexions pour voir les chapitres non lus</string>
+    <string name="malsync_disabled_home">MALSync désactivé — activez MALSync dans Comptes pour voir les chapitres non lus</string>
+    <string name="malsync_anime_only_home">MALSync configuré en mode anime uniquement — activez les vérifications manga dans Comptes pour voir les chapitres non lus</string>
 
     <string name="notification_new_chapter_title">Nouveau chapitre disponible</string>
+    <string name="notification_new_episode_title">Nouvel épisode disponible</string>
     <string name="notification_unknown_source">Source inconnue</string>
     <string name="notification_source_subtext">Source : %1$s</string>
 
@@ -224,21 +225,22 @@
 
     <string name="comick_account_help">Comment fonctionne Comick \?</string>
     <string name="full_comick_account_help">
-        La prise en charge des comptes Comick arrivera dans une future mise à jour. Pour l\'instant, les données Comick sont utilisées de façon anonyme pour les informations sur les mangas et la liaison multi-sources — aucune connexion requise.
+        Comick fournit des informations, des données de chapitres et la liaison multi-sources sur les pages de médias, récupérées anonymement — aucune connexion requise pour cela.
+        \n\n **La connexion au compte et la synchronisation des listes sont prévues.** Elles arriveront une fois que les développeurs de Comick auront publié les routes d\'API de compte qu\'ils ont annoncées.
     </string>
     <string name="connections_settings">Connexions</string>
     <string name="connections_desc">Activer ou désactiver les connexions externes et les onglets d\'information</string>
-    <string name="disable_comick">Activer Comick</string>
+    <string name="disable_comick">Afficher les infos Comick</string>
     <string name="disable_comick_desc">Activer ou désactiver la récupération des données Comick et l\'onglet Comick</string>
-    <string name="disable_mal">Activer MyAnimeList (MAL)</string>
+    <string name="disable_mal">Afficher les infos MyAnimeList</string>
     <string name="disable_mal_desc">Activer ou désactiver la récupération des données MAL et l\'onglet MAL</string>
     <string name="mal_connections_help">Comment fonctionne le bouton MAL ?</string>
     <string name="full_mal_connections_help">
         Activer MAL ajoute un **onglet MAL** — un onglet d\'informations supplémentaire dans les détails du contenu avec des données propres à MAL (scores, genres, staff, recommandations, avis, etc.), récupérées anonymement via l\'API publique Jikan.
-        \n\n Aucun compte MAL n\'est requis pour cet onglet. **Désactiver MAL arrête tous les appels à l\'API Jikan et retire MAL du sélecteur d\'onglets (Connexions \> Ordre des onglets d\'infos). Cela ne désactive PAS la synchronisation de la progression.**
-        \n\n La synchronisation de la progression vers votre compte MAL est contrôlée séparément — connectez votre compte MAL dans les paramètres **Comptes**, puis activez la **Synchronisation des listes MyAnimeList** dans les paramètres **Synchronisation des listes** pour envoyer vos mises à jour de liste Anilist vers MAL.
+        \n\n Aucun compte MAL n\'est requis pour cet onglet. **Désactiver MAL arrête tous les appels à l\'API Jikan et retire MAL du sélecteur d\'onglets (Comptes \> ⋮ \> Ordre des onglets d\'infos). Cela ne désactive PAS la synchronisation de la progression.**
+        \n\n La synchronisation de la progression vers votre compte MAL est contrôlée séparément — connectez votre compte MAL sur sa carte dans **Comptes**, puis activez la **Synchronisation des listes MAL** sur la même carte pour envoyer vos mises à jour de liste Anilist vers MAL.
     </string>
-    <string name="disable_mangaupdates">Activer MangaUpdates</string>
+    <string name="disable_mangaupdates">Afficher les infos MangaUpdates</string>
     <string name="disable_mangaupdates_desc">Activer ou désactiver la récupération des données MangaUpdates et l\'onglet MangaUpdates</string>
     <string name="mu_filter_categories">Catégories</string>
     <string name="mu_filter_licensed">Sous licence</string>
@@ -249,7 +251,7 @@
     <string name="mu_custom_list_mapping_desc">Configurer la récupération des listes MangaUpdates personnalisées</string>
     <string name="mu_custom_list_mapping_hint">Choisir comment chaque liste personnalisée correspond à une catégorie de lecture. \u201cSéparé\u201d l\'affiche comme une section distincte dans la liste de lecture.</string>
     <string name="mu_custom_list_mapping_empty">Aucune liste personnalisée trouvée sur votre compte MangaUpdates</string>
-    <string name="disable_malsync">Activer les infos MALSync</string>
+    <string name="disable_malsync">Utiliser MALSync</string>
     <string name="disable_malsync_desc">Activer ou désactiver la récupération des infos MALSync et leur affichage associé</string>
     <string name="comick_connections_help">Comment fonctionne Comick ?</string>
     <string name="full_comick_connections_help">
@@ -259,8 +261,8 @@
         \n - **Liaison MangaUpdates de secours** — la correspondance croisée de MangaBaka est essayée en premier ; si elle ne trouve pas de correspondance MangaUpdates, les données Comick sont utilisées à la place pour trouver et lier la série MangaUpdates correspondante
         \n - **Images de couverture** — des couvertures alternatives ou en haute résolution peuvent être récupérées depuis Comick
         \n - **Raccourci de recherche rapide** — un bouton de recherche Comick dans la fiche de recherche rapide
-        \n\n Aucun compte Comick n\'est requis. Toutes les données sont récupérées anonymement via l\'API publique de Comick. **L\'API de Comick ne prend pas en charge les opérations de compte.**
-        \n\n *Désactiver Comick arrête toute récupération de données associée et retire Comick du sélecteur d\'onglets (Connexions \> Ordre des onglets d\'infos). La liaison MangaUpdates de secours décrite ci-dessus sera également désactivée.*
+        \n\n Toutes les données sont récupérées anonymement via l\'API publique de Comick. **La connexion au compte et la synchronisation des listes Comick sont prévues** — elles arriveront une fois que les développeurs de Comick auront publié les routes d\'API de compte qu\'ils ont annoncées.
+        \n\n *Désactiver Comick arrête toute récupération de données associée et retire Comick du sélecteur d\'onglets (Comptes \> ⋮ \> Ordre des onglets d\'infos). La liaison MangaUpdates de secours décrite ci-dessus sera également désactivée.*
     </string>
     <string name="mangabaka_connections_help">Comment fonctionne MangaBaka ?</string>
     <string name="full_mangabaka_connections_help">
@@ -270,8 +272,8 @@
         \n - **Liaison multi-sources** — la correspondance d\'identifiants de MangaBaka relie les entrées AniList, MangaUpdates et MyAnimeList à la même série
         \n - **Alertes de correspondance AniList** — en consultant une entrée MangaUpdates, si MangaBaka trouve une entrée AniList correspondante, il vous sera proposé de l\'ouvrir, même si l\'onglet MangaBaka lui-même est masqué
         \n - **Raccourci de recherche rapide** — un bouton de recherche MangaBaka dans la fiche de recherche rapide
-        \n\n Aucun compte MangaBaka n\'est requis pour tout cela — les données sont récupérées anonymement via l\'API publique de MangaBaka. La connexion à un compte MangaBaka pour la synchronisation des listes se configure séparément dans les paramètres **Synchronisation des listes**.
-        \n\n *Désactiver MangaBaka masque l\'onglet MangaBaka, arrête toutes les recherches et liaisons multi-sources associées, le retire du sélecteur d\'onglets (Connexions \> Ordre des onglets d\'infos), et désactive l\'alerte de correspondance AniList sur les médias MangaUpdates.*
+        \n\n Aucun compte MangaBaka n\'est requis pour tout cela — les données sont récupérées anonymement via l\'API publique de MangaBaka. La connexion à un compte MangaBaka pour la synchronisation des listes se fait sur sa carte dans **Comptes**.
+        \n\n *Désactiver MangaBaka masque l\'onglet MangaBaka, arrête toutes les recherches et liaisons multi-sources associées, le retire du sélecteur d\'onglets (Comptes \> ⋮ \> Ordre des onglets d\'infos), et désactive l\'alerte de correspondance AniList sur les médias MangaUpdates.*
     </string>
     <string name="switch_to_anilist_message">Ce média MangaUpdates a un équivalent sur Anilist. Voulez-vous ouvrir le média ?</string>
     <string name="malsync_connections_help">Comment fonctionne MALSync ?</string>
@@ -299,7 +301,7 @@
     <string name="search_cat_anilist">AniList</string>
     <string name="search_cat_services">Autres services</string>
     <string name="search_needs_mangaupdates">Connectez-vous à MangaUpdates</string>
-    <string name="search_needs_connection_enabled">À activer dans Connexions</string>
+    <string name="search_needs_connection_enabled">À activer dans Comptes</string>
     <string name="backup_search_tiles">Disposition des tuiles de recherche</string>
     <string name="quick_tile_list_sync">Synchro des listes</string>
     <string name="quick_tile_discord_rpc">Discord RPC</string>
@@ -532,8 +534,32 @@
     <string name="coming_soon">Bientôt disponible</string>
     <string name="account_open_profile">Ouvrir le profil</string>
     <string name="discord">Discord</string>
+    <string name="malsync">MALSync</string>
     <string name="list_sync_settings">Synchronisation des listes</string>
     <string name="list_sync_settings_desc">Choisissez vers quels trackers vos mises à jour de listes sont envoyées</string>
+    <string name="list_comparison_title">Comparaison des listes</string>
+
+    <!-- Écran Comptes (cartes de fournisseurs) -->
+    <string name="account_info_source">Source d\'infos</string>
+    <string name="account_needs_anilist">Connectez d\'abord AniList</string>
+    <string name="account_not_connected">Non connecté</string>
+    <string name="account_show_info">Afficher les infos %1$s</string>
+    <string name="account_show_info_desc">Récupérer ses données et afficher son onglet d\'infos</string>
+    <string name="account_use_malsync">Utiliser MALSync</string>
+    <string name="account_group_info">Infos</string>
+    <string name="account_group_sync">Synchronisation</string>
+    <string name="account_group_options">Options</string>
+    <string name="account_group_notifications">Notifications</string>
+    <string name="account_group_presence">Présence</string>
+    <string name="logout_confirm_title">Se déconnecter de %1$s ?</string>
+    <string name="logout_confirm_message">Vous devrez vous reconnecter pour synchroniser avec %1$s.</string>
+    <string name="discord_status_title">Statut</string>
+    <string name="discord_status_online">En ligne</string>
+    <string name="discord_status_idle">Inactif</string>
+    <string name="discord_status_dnd">Ne pas déranger</string>
+    <string name="discord_status_invisible">Invisible</string>
+    <string name="discord_rpc_settings">Paramètres RPC</string>
+    <string name="discord_rpc_settings_desc">Texte de présence, boutons et images</string>
     <string name="compare_lists">Comparer les listes</string>
     <string name="compare_lists_desc">Comparez MyAnimeList, Kitsu, Simkl et MangaBaka à vos listes source et synchronisez les différences</string>
     <string name="auto_list_sync">Comparaison automatique</string>
@@ -582,7 +608,7 @@
     <string name="list_diff_start_date">Date de début</string>
     <string name="list_diff_end_date">Date de fin</string>
     <string name="list_diff_not_set">Non défini</string>
-    <string name="disable_mangabaka">Activer MangaBaka</string>
+    <string name="disable_mangabaka">Afficher les infos MangaBaka</string>
     <string name="disable_mangabaka_desc">Activer ou désactiver la récupération des données MangaBaka et l\'onglet MangaBaka</string>
     <string name="mangabaka_requires_internet">MangaBaka requiert une connexion internet</string>
     <string name="mangabaka_no_data_title">Aucune correspondance MangaBaka</string>
@@ -627,7 +653,7 @@
     <string name="subscriptions_checking_time">Fréquence de mise à jour des abonnements</string>
     <string name="comment_notification_frequency">Fréquence des notifications de commentaires</string>
     <string name="anilist_notification_frequency">Fréquence des notifications AniList</string>
-    <string name="unread_chapter_notification_frequency">Fréquence de vérification des chapitres non lus</string>
+    <string name="unread_chapter_notification_frequency">Fréquence de vérification des notifications</string>
     <string name="do_not_update">Ne pas mettre à jour</string>
     <string name="loading_chap_number">Chargement du chapitre %1$s</string>
     <string name="sort_by_release_date">Trier par date de sortie</string>
@@ -973,7 +999,7 @@
     <string name="ui_settings_desc">Tous les paramètres liés à l\'interface</string>
     <string name="reader_settings_desc">Tous les paramètres liés au lecteur</string>
     <string name="subscription_notifications">Notifications d\'abonnement</string>
-    <string name="unread_chapter_notifications">Notifications de chapitres non lus</string>
+    <string name="unread_chapter_notifications">Notifications MALSync</string>
     <string name="anilist_notifications">Notifications AniList</string>
     <string name="comment_notifications">Notifications de commentaires</string>
     <string name="torrent_addon">Add-on Torrent</string>
@@ -1360,14 +1386,14 @@
     <string name="logging_warning">La journalisation dans un fichier ralentira l\'application. Activez uniquement si vous rencontrez des problèmes.</string>
     <string name="anilist_notifications_checking_time">Fréquence de mise à jour des notifications Anilist : %1$s</string>
     <string name="comment_notification_checking_time">Fréquence de mise à jour des notifications de commentaires : %1$s</string>
-    <string name="unread_chapter_notification_checking_time">Intervalle de vérification des chapitres non lus : %1$s</string>
+    <string name="unread_chapter_notification_checking_time">Intervalle de vérification des notifications : %1$s</string>
     <string name="anilist_notifications_checking_time_label">Fréquence de mise à jour des notifications Anilist</string>
     <string name="comment_notification_checking_time_label">Fréquence de mise à jour des notifications de commentaires</string>
-    <string name="unread_chapter_notification_checking_time_label">Intervalle de vérification des chapitres non lus</string>
+    <string name="unread_chapter_notification_checking_time_label">Intervalle de vérification des notifications</string>
     <string name="custom">Personnalisé…</string>
     <string name="custom_interval_title">Intervalle personnalisé</string>
     <string name="custom_interval_desc">Entrez l\'intervalle en minutes (1–1440)</string>
-    <string name="enable_rpc_desc">Affichez vos goûts aux plébéiens sur Discord ! Appuyez sur l\'icône des paramètres pour configurer.</string>
+    <string name="enable_rpc_desc">Affichez vos goûts aux plébéiens sur Discord !</string>
     <string name="purge_confirm">Êtes-vous sûr de vouloir supprimer tous les téléchargements %1$s ?</string>
     <string name="delete_fail_reason">Échec de la suppression à cause de… %1$s</string>
     <string name="delete_comment_confirm">Êtes-vous sûr de vouloir supprimer ce commentaire ?</string>
@@ -1565,15 +1591,19 @@
     <string name="anilist_notification_filters_desc">Choisir la catégorie à Ignorer</string>
     <string name="anilist_notifications_checking_time_desc">Définir la fréquence à laquelle vous voulez que l\'app vérifie les notifications Anilist</string>
     <string name="comment_notification_checking_time_desc">Définir la fréquence à laquelle vous voulez que l\'app vérifie les notifications de commentaires</string>
-    <string name="unread_chapter_notification_checking_time_desc">Définir la fréquence de vérification des nouveaux chapitres non lus dans votre liste manga</string>
-    <string name="unread_chapter_check_progress_notification">Afficher la progression de la vérification des chapitres non lus</string>
-    <string name="unread_chapter_check_progress_notification_desc">Afficher une notification montrant la progression pendant les vérifications de chapitres non lus</string>
+    <string name="unread_chapter_notification_checking_time_desc">Définir la fréquence de vérification des nouveaux chapitres de manga et épisodes d\'anime non lus</string>
+    <string name="unread_manga_notifications">Notifications de chapitres de manga</string>
+    <string name="unread_manga_notifications_desc">Notifier des nouveaux chapitres de manga via MALSync, en plus des épisodes d\'anime</string>
+    <string name="unread_episode_notifications">Notifications d\'épisodes d\'anime</string>
+    <string name="unread_episode_notifications_desc">Notifier des nouveaux épisodes d\'anime via MALSync, en plus des chapitres de manga</string>
+    <string name="unread_chapter_check_progress_notification">Afficher la progression de la vérification</string>
+    <string name="unread_chapter_check_progress_notification_desc">Afficher une notification montrant la progression pendant la vérification des nouveaux chapitres de manga et épisodes d\'anime</string>
     <string name="notification_for_checking_subscriptions_desc">Afficher la notification pour la vérification des Abonnements</string>
     <string name="subscription_notifications_desc">Configurer les paramètres de notification pour les mises à jour d\'anime et manga abonnés</string>
-    <string name="unread_chapter_notifications_desc">Configurer les vérifications automatiques pour les nouveaux chapitres non lus dans votre liste manga</string>
+    <string name="unread_chapter_notifications_desc">Configurer les vérifications automatiques des nouveaux chapitres de manga et épisodes d\'anime non lus via MALSync</string>
     <string name="clear_unread_chapter_history">Effacer l\'historique des notifications</string>
-    <string name="clear_unread_chapter_history_desc">Supprimer tout l\'historique des notifications de chapitres non lus. Cela permettra aux chapitres précédemment notifiés de déclencher à nouveau des notifications.</string>
-    <string name="clear_unread_chapter_history_confirm">Êtes-vous sûr de vouloir effacer tout l\'historique des notifications de chapitres non lus ? Cela réinitialisera le suivi des notifications et les chapitres précédemment notifiés peuvent apparaître à nouveau.</string>
+    <string name="clear_unread_chapter_history_desc">Supprimer tout l\'historique des notifications. Cela permettra aux chapitres et épisodes précédemment notifiés de déclencher à nouveau des notifications.</string>
+    <string name="clear_unread_chapter_history_confirm">Êtes-vous sûr de vouloir effacer tout l\'historique des notifications ? Cela réinitialisera le suivi des notifications et les chapitres et épisodes précédemment notifiés peuvent apparaître à nouveau.</string>
     <string name="clear_unread_chapter_history_success">Historique des notifications effacé avec succès</string>
     <string name="anilist_notifications_desc">Configurer les notifications et filtres d\'activité AniList</string>
     <string name="comment_notifications_desc">Configurer les notifications pour les nouveaux commentaires et réponses</string>
@@ -1730,9 +1760,9 @@
     <string name="mal_no_data_title">Aucune donnée MyAnimeList</string>
     <string name="open_on_kitsu">Ouvrir sur Kitsu</string>
     <string name="open_on_simkl">Ouvrir sur Simkl</string>
-    <string name="disable_kitsu">Activer Kitsu</string>
+    <string name="disable_kitsu">Afficher les infos Kitsu</string>
     <string name="disable_kitsu_desc">Activer la récupération des données Kitsu et l\'onglet Kitsu</string>
-    <string name="disable_simkl">Activer Simkl</string>
+    <string name="disable_simkl">Afficher les infos Simkl</string>
     <string name="disable_simkl_desc">Activer la récupération des données Simkl et l\'onglet Simkl</string>
     <string name="kitsu_requires_internet">Les données Kitsu nécessitent une connexion Internet</string>
     <string name="simkl_requires_internet">Les données Simkl nécessitent une connexion Internet</string>
@@ -1776,9 +1806,9 @@
     <string name="mu_notification_interval_title">Fréquence des notifications MangaUpdates</string>
     <string name="mu_notification_interval">Intervalle de notification : %1$s</string>
     <string name="mu_notification_interval_label">Intervalle de notification</string>
-    <string name="mu_notification_interval_desc">Fréquence de vérification des nouveaux chapitres (s\'applique uniquement si les vérifications de chapitres non lus sont désactivées)</string>
-    <string name="mu_notification_interval_linked">Intervalle de notification : identique aux chapitres non lus (%1$s)</string>
-    <string name="mu_notification_interval_linked_desc">Modifiez l\'intervalle dans les paramètres des notifications de chapitres non lus, ou désactivez ces vérifications pour définir un intervalle séparé ici</string>
+    <string name="mu_notification_interval_desc">Fréquence de vérification des nouveaux chapitres (s\'applique uniquement si l\'intervalle des notifications MALSync est réglé sur Désactivé)</string>
+    <string name="mu_notification_interval_linked">Intervalle de notification : identique aux notifications MALSync (%1$s)</string>
+    <string name="mu_notification_interval_linked_desc">Modifiez l\'intervalle dans les paramètres des notifications MALSync, ou réglez-le sur Désactivé là-bas pour définir un intervalle séparé ici</string>
     <string name="volume">Volume</string>
     <string name="screenshot">Capture d\'écran</string>
     <string name="screenshot_preview">Aperçu de la capture</string>
@@ -1885,8 +1915,8 @@
     <string name="backup_sub_network_desc">DNS, user agent, activation du proxy</string>
     <string name="backup_sub_updates">Mises à jour et diagnostics</string>
     <string name="backup_sub_updates_desc">Mises à jour, journalisation, rapports de plantage</string>
-    <string name="backup_sub_connections">Connexions</string>
-    <string name="backup_sub_connections_desc">Comick, MAL, MangaUpdates, commentaires</string>
+    <string name="backup_sub_connections">Trackers et sources d\'infos</string>
+    <string name="backup_sub_connections_desc">Comick, MAL, MangaUpdates, MALSync, options de synchronisation et de tags</string>
     <string name="backup_sub_sources">Dépôts d\'extensions et sources</string>
     <string name="backup_sub_sources_desc">URLs des dépôts et ordre des sources</string>
     <string name="backup_sub_search_history">Historique de recherche</string>
@@ -2182,8 +2212,12 @@
     <string name="search_kw_disable_comick">comick source manga</string>
     <string name="search_kw_disable_mal">myanimelist mal compte suivi</string>
     <string name="search_kw_disable_malsync">malsync sync synchronisation suivi progression</string>
+    <string name="search_kw_disable_kitsu">kitsu onglet parcourir explorer info informations source</string>
+    <string name="search_kw_disable_simkl">simkl onglet parcourir explorer info informations source</string>
+    <string name="search_kw_disable_mangabaka">mangabaka onglet parcourir explorer info informations source</string>
     <string name="search_kw_malsync_exclude_manage">exclure filtre filtrer non lus chapitre épisode notifications malsync</string>
     <string name="search_kw_unread_sort_label">non lus chapitres accueil tri trier ordre récent dernier mis à jour malsync mangaupdates</string>
+    <string name="search_kw_malsync_checks_dialog_title">malsync vérifications mode manga anime les deux quoi</string>
     <string name="search_kw_customize_info_tabs">anilist anime animé manga mangaupdates info informations onglet ordre réordonner visibilité mal comick mangabaka</string>
     <string name="search_kw_compare_lists">comparer comparaison audit différence diff différences sortie de date myanimelist mal kitsu simkl mangabaka anilist mangaupdates sync synchronisation</string>
     <string name="search_kw_auto_list_sync">automatique auto comparer comparaison planification programmer intervalle fréquence arrière-plan fond périodique liste sync synchronisation envoyer pousser myanimelist mal mangabaka</string>
@@ -2338,12 +2372,12 @@
     <string name="search_kw_anilist_notifications_checking_time_label">intervalle fréquence comment souvent planification programmer période chaque toutes heures arrière-plan fond vérification vérifier anilist</string>
     <string name="search_kw_comment_notification_checking_time_label">intervalle fréquence comment souvent planification programmer période chaque toutes heures arrière-plan fond vérification vérifier commentaire</string>
     <string name="search_kw_subscriptions_checking_time">intervalle fréquence comment souvent planification programmer période chaque toutes heures arrière-plan fond vérification vérifier abonnement mise à jour mettre</string>
-    <string name="search_kw_unread_chapter_notification_checking_time_label">intervalle fréquence comment souvent planification programmer période chaque toutes heures arrière-plan fond vérification vérifier non lus chapitre manga</string>
+    <string name="search_kw_unread_chapter_notification_checking_time_label">intervalle fréquence comment souvent planification programmer période chaque toutes heures arrière-plan fond vérification vérifier non lus chapitre manga épisode anime</string>
     <string name="search_kw_mu_notification_interval_label">intervalle fréquence comment souvent planification programmer période chaque toutes heures arrière-plan fond vérification vérifier mangaupdates mu</string>
     <string name="search_kw_anilist_notification_filters">filtre filtrer type activité suivre abonnement message</string>
     <string name="search_kw_notification_for_checking_subscriptions">arrière-plan fond vérification vérifier périodique planification programmer</string>
     <string name="search_kw_view_subscriptions">liste abonné sources gérer gestion</string>
-    <string name="search_kw_unread_chapter_check_progress_notification">arrière-plan fond service vérification vérifier progression</string>
+    <string name="search_kw_unread_chapter_check_progress_notification">arrière-plan fond service vérification vérifier progression chapitre épisode</string>
     <string name="search_kw_clear_unread_chapter_history">effacer vider réinitialiser historique non lus</string>
     <string name="search_kw_mu_notifications_enabled">mangaupdates notifier chapitre sortie parution activer</string>
     <string name="search_kw_faq">aide fréquemment demandé questions</string>

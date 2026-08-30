@@ -11,13 +11,13 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
-        android:paddingStart="32dp"
-        android:paddingEnd="32dp">
+        android:paddingStart="24dp"
+        android:paddingEnd="24dp">
 
         <androidx.cardview.widget.CardView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="-16dp"
+            android:layout_marginStart="-8dp"
             android:layout_marginTop="32dp"
             app:cardBackgroundColor="@color/nav_bg_inv"
             app:cardCornerRadius="16dp"
@@ -61,23 +61,24 @@
         </LinearLayout>
 
         <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/accountGrid"
+            android:id="@+id/accountList"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="16dp"
+            android:layout_marginTop="4dp"
+            android:layout_marginBottom="8dp"
             android:nestedScrollingEnabled="false"
             android:overScrollMode="never"
-            tools:itemCount="8"
-            tools:listitem="@layout/item_account_grid" />
+            tools:itemCount="4"
+            tools:listitem="@layout/item_account_card" />
 
+        <!-- Cross-provider tools that don't belong to any single card. -->
         <ani.dantotsu.FadingEdgeRecyclerView
             android:id="@+id/settingsRecyclerView"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:nestedScrollingEnabled="false"
             android:requiresFadingEdge="vertical"
-            tools:itemCount="1"
+            tools:itemCount="2"
             tools:listitem="@layout/item_settings" />
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>

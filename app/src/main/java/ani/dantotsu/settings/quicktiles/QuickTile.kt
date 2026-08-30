@@ -25,7 +25,7 @@ import ani.dantotsu.settings.PlayerSettingsActivity
 import ani.dantotsu.settings.ReaderSettingsActivity
 import ani.dantotsu.settings.SettingsActivity
 import ani.dantotsu.settings.SettingsBackupSyncActivity
-import ani.dantotsu.settings.SettingsConnectionsActivity
+import ani.dantotsu.settings.SettingsAccountActivity
 import ani.dantotsu.settings.SettingsListSyncActivity
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
@@ -294,9 +294,9 @@ object QuickTiles : TileCatalogue(PrefName.QuickTileOrder) {
             HandoffBottomSheet.receive().show(fm, "handoff")
         },
         QuickTile.Action(
-            "connections", R.string.connections_settings, R.drawable.network_node_24,
+            "accounts", R.string.accounts, R.drawable.ic_round_manage_accounts_24,
             QuickTileCategory.CONNECTIONS, needsNetwork = true,
-        ) { it.open(SettingsConnectionsActivity::class.java) },
+        ) { it.open(SettingsAccountActivity::class.java) },
 
         QuickTile.Action(
             "extensions", R.string.extension_settings, R.drawable.ic_extension,

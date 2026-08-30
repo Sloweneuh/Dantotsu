@@ -72,6 +72,11 @@ class UnreadChapterNotificationTask : Task {
                     }
 
                     if (!Anilist.token.isNullOrEmpty() && Anilist.userid != null) {
+                        if (!PrefManager.getVal<Boolean>(PrefName.UnreadMangaNotificationsEnabled)) {
+                            Logger.log("UnreadChapterNotificationTask: manga chapter notifications disabled; skipping manga check")
+                            return@anilistCheck
+                        }
+
                         val mangaList: List<Media> = try {
                             val homePageData = Anilist.query.initHomePage()
                             homePageData["currentManga"] ?: emptyList()
@@ -218,6 +223,68 @@ class UnreadChapterNotificationTask : Task {
                     }
                 }
 
+                // === AniList + MALSync anime episode check ===
+                // Shares the credentials the manga check above already loaded into Anilist.token /
+                // Anilist.userid — those are set unconditionally before that block's own early
+                // returns, so they reflect stored credentials here regardless of why it stopped.
+                run animeCheck@{
+                    if (Anilist.token.isNullOrEmpty() || Anilist.userid == null) return@animeCheck
+
+                    if (!PrefManager.getVal<Boolean>(PrefName.UnreadEpisodeNotificationsEnabled)) {
+                        Logger.log("UnreadChapterNotificationTask: anime episode notifications disabled; skipping anime check")
+                        return@animeCheck
+                    }
+
+                    val malMode = PrefManager.getVal<String>(PrefName.MalSyncCheckMode) ?: "both"
+                    if (!PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled) || malMode == "manga") {
+                        Logger.log("UnreadChapterNotificationTask: MALSync disabled or set to manga-only; skipping anime check")
+                        return@animeCheck
+                    }
+
+                    val animeList: List<Media> = try {
+                        val homePageData = Anilist.query.initHomePage()
+                        homePageData["currentAnime"] ?: emptyList()
+                    } catch (e: Exception) {
+                        Logger.log("UnreadChapterNotificationTask: error fetching anime list: ${e.message}")
+                        emptyList()
+                    }
+
+                    if (animeList.isEmpty()) {
+                        Logger.log("UnreadChapterNotificationTask: no anime in watching list")
+                        return@animeCheck
+                    }
+
+                    Logger.log("UnreadChapterNotificationTask: found ${animeList.size} anime")
+
+                    val mediaIds = animeList.map { Pair(it.id, it.idMAL) }
+                    // getBatchAnimeEpisodes already looks up each anime's own MALSync dub/sub
+                    // preference (MalSyncLanguageHelper) — nothing extra to do to "follow" it here.
+                    val batchResults = MalSyncApi.getBatchAnimeEpisodes(mediaIds)
+
+                    Logger.log("UnreadChapterNotificationTask: anime batch completed, got ${batchResults.size} results")
+
+                    val unreadInfo = mutableMapOf<Int, UnreadChapterInfo>()
+                    for (media in animeList) {
+                        val result = batchResults[media.id]
+                        if (result != null && result.lastEp != null) {
+                            val userProgress = media.userProgress ?: 0
+                            val lastEpisode = result.lastEp.total
+                            if (lastEpisode > userProgress) {
+                                unreadInfo[media.id] = UnreadChapterInfo(
+                                    mediaId = media.id,
+                                    lastChapter = lastEpisode,
+                                    source = result.source,
+                                    userProgress = userProgress,
+                                    latestChapterAt = result.lastEp.timestampMillis()
+                                )
+                            }
+                        }
+                    }
+
+                    Logger.log("UnreadChapterNotificationTask: found ${unreadInfo.size} anime with unread episodes")
+                    handleUnreadResult(context, unreadInfo, animeList, isAnime = true)
+                }
+
                 // === MangaUpdates unread check ===
                 MuUnreadNotificationTask().checkMangaUpdatesUnread(context)
 
@@ -253,11 +320,17 @@ class UnreadChapterNotificationTask : Task {
         }.toMap()
     }
 
-    /** Caches the result, broadcasts the update, and fires notifications for newly-unread chapters. */
+    /**
+     * Caches the result, broadcasts the update, and fires notifications for newly-unread
+     * chapters/episodes. [isAnime] picks the episode wording and keeps the anime run's tracking
+     * (notified set, notification-center store) separate from the manga one's — and skips
+     * [UnreadCache], which only ever fed the home screen's manga-chapter row.
+     */
     private suspend fun handleUnreadResult(
         context: Context,
         unreadInfo: Map<Int, UnreadChapterInfo>,
-        mangaList: List<Media>,
+        mediaList: List<Media>,
+        isAnime: Boolean = false,
     ) {
         // The map passed in may have come from another device via UnreadSync (a cached result
         // computed under that device's exclude list at that time), so re-filter against this
@@ -265,21 +338,23 @@ class UnreadChapterNotificationTask : Task {
         val excludeList = PrefManager.getVal<Set<String>>(PrefName.MalSyncExcludeList)
         val filteredUnreadInfo = unreadInfo.filterKeys { !excludeList.containsMediaId(it.toString()) }
 
-        try {
-            UnreadCache.save(context, filteredUnreadInfo, mangaList)
-            UnreadCache.broadcastUpdate(context)
-        } catch (e: Exception) {
-            Logger.log("UnreadChapterNotificationTask: Failed to cache/broadcast unread results: ${e.message}")
+        if (!isAnime) {
+            try {
+                UnreadCache.save(context, filteredUnreadInfo, mediaList)
+                UnreadCache.broadcastUpdate(context)
+            } catch (e: Exception) {
+                Logger.log("UnreadChapterNotificationTask: Failed to cache/broadcast unread results: ${e.message}")
+            }
         }
 
-        val notifiedKey = "notified_unread_chapters"
+        val notifiedKey = if (isAnime) "notified_unread_episodes" else "notified_unread_chapters"
         val notified = getNotifiedSet(context, notifiedKey)
         val newNotifications = mutableListOf<Pair<Media, UnreadChapterInfo>>()
 
         filteredUnreadInfo.forEach { (mediaId, info) ->
             val key = "$mediaId:${info.lastChapter}"
             if (!notified.contains(key)) {
-                val media = mangaList.find { it.id == mediaId }
+                val media = mediaList.find { it.id == mediaId }
                 if (media != null) {
                     newNotifications.add(media to info)
                     notified.add(key)
@@ -289,12 +364,12 @@ class UnreadChapterNotificationTask : Task {
 
         saveNotifiedSet(context, notifiedKey, notified)
 
-        Logger.log("UnreadChapterNotificationTask: ${newNotifications.size} new chapters to notify")
+        Logger.log("UnreadChapterNotificationTask: ${newNotifications.size} new ${if (isAnime) "episodes" else "chapters"} to notify")
 
         if (newNotifications.isNotEmpty()) {
             withContext(Dispatchers.Main) {
-                sendNotifications(context, newNotifications)
-                storeNotifications(newNotifications)
+                sendNotifications(context, newNotifications, isAnime)
+                storeNotifications(newNotifications, isAnime)
             }
         }
     }
@@ -302,18 +377,22 @@ class UnreadChapterNotificationTask : Task {
     @SuppressLint("MissingPermission")
     private fun sendNotifications(
         context: Context,
-        newChapters: List<Pair<Media, UnreadChapterInfo>>
+        newChapters: List<Pair<Media, UnreadChapterInfo>>,
+        isAnime: Boolean = false,
     ) {
         val notificationManager = NotificationManagerCompat.from(context)
+        val unitLabel = if (isAnime) "Episode" else "Chapter"
 
         newChapters.forEach { (media, info) ->
             val unreadCount = info.lastChapter - info.userProgress
-            val title = context.getString(R.string.notification_new_chapter_title)
+            val title = context.getString(
+                if (isAnime) R.string.notification_new_episode_title else R.string.notification_new_chapter_title
+            )
             val sourceDisplay = if (info.source.isBlank()) context.getString(R.string.notification_unknown_source) else info.source
             val text = if (unreadCount == 1) {
-                "${media.userPreferredName}: Chapter ${info.lastChapter}"
+                "${media.userPreferredName}: $unitLabel ${info.lastChapter}"
             } else {
-                "${media.userPreferredName}: Chapter ${info.lastChapter} ($unreadCount unread)"
+                "${media.userPreferredName}: $unitLabel ${info.lastChapter} ($unreadCount unread)"
             }
             val subText = context.getString(R.string.notification_source_subtext, sourceDisplay)
 
@@ -392,7 +471,10 @@ class UnreadChapterNotificationTask : Task {
         prefs.edit().putStringSet(key, notified).apply()
     }
 
-    private fun storeNotifications(newChapters: List<Pair<Media, UnreadChapterInfo>>) {
+    private fun storeNotifications(
+        newChapters: List<Pair<Media, UnreadChapterInfo>>,
+        isAnime: Boolean = false,
+    ) {
         val notificationStore = PrefManager.getNullableVal<List<UnreadChapterStore>>(
             PrefName.UnreadChapterNotificationStore,
             null
@@ -417,7 +499,8 @@ class UnreadChapterNotificationTask : Task {
                         source = info.source,
                         image = media.cover,
                         banner = media.banner,
-                        time = System.currentTimeMillis()
+                        time = System.currentTimeMillis(),
+                        type = if (isAnime) "UnreadEpisode" else "UnreadChapter"
                     )
                 )
             }
