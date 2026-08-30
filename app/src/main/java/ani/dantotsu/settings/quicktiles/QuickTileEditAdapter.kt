@@ -333,8 +333,10 @@ class QuickTileEditAdapter(
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         when (val row = rows[position]) {
-            is Row.Category -> (holder as HeaderHolder).binding.quickTileHeader
-                .setText(row.category.label)
+            is Row.Category -> with((holder as HeaderHolder).binding) {
+                quickTileHeader.setText(row.category.label)
+                quickTileHeaderIcon.setImageResource(row.category.icon)
+            }
 
             is Row.Placed -> (holder as TileHolder).bindPlaced(row.placed)
             is Row.Shelf -> (holder as TileHolder).bindShelf(row.tile)

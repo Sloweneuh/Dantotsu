@@ -358,14 +358,21 @@ object QuickTiles : TileCatalogue(PrefName.QuickTileOrder) {
 }
 
 /** Groups the quick-settings shelf files tiles under, in the order they are shown. */
-enum class QuickTileCategory(@StringRes override val label: Int) : TileCategory {
-    MODES(R.string.quick_tiles_cat_modes),
-    LIBRARY(R.string.quick_tiles_cat_library),
-    CONNECTIONS(R.string.quick_tiles_cat_connections),
-    SETTINGS(R.string.quick_tiles_cat_settings),
-    ANIME_EXTENSIONS(R.string.quick_tiles_cat_anime_extensions),
-    MANGA_EXTENSIONS(R.string.quick_tiles_cat_manga_extensions),
-    NOVEL_EXTENSIONS(R.string.quick_tiles_cat_novel_extensions),
+enum class QuickTileCategory(
+    @StringRes override val label: Int,
+    @DrawableRes override val icon: Int,
+) : TileCategory {
+    MODES(R.string.quick_tiles_cat_modes, R.drawable.ic_round_tune_24),
+    LIBRARY(R.string.quick_tiles_cat_library, R.drawable.ic_round_library_books_24),
+    CONNECTIONS(R.string.quick_tiles_cat_connections, R.drawable.network_node_24),
+    SETTINGS(R.string.quick_tiles_cat_settings, R.drawable.ic_round_settings_24),
+    ANIME_EXTENSIONS(
+        R.string.quick_tiles_cat_anime_extensions, R.drawable.ic_round_movie_filter_24
+    ),
+    MANGA_EXTENSIONS(R.string.quick_tiles_cat_manga_extensions, R.drawable.ic_round_menu_book_24),
+    NOVEL_EXTENSIONS(
+        R.string.quick_tiles_cat_novel_extensions, R.drawable.ic_round_import_contacts_24
+    ),
 }
 
 /** Android's two quick-tile shapes: icon only, or icon with a label and its state. */

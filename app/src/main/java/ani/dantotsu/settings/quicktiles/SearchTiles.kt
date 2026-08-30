@@ -14,9 +14,12 @@ import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 
 /** The search sheet's shelf headings. */
-enum class SearchTileCategory(@StringRes override val label: Int) : TileCategory {
-    ANILIST(R.string.search_cat_anilist),
-    SERVICES(R.string.search_cat_services),
+enum class SearchTileCategory(
+    @StringRes override val label: Int,
+    @DrawableRes override val icon: Int,
+) : TileCategory {
+    ANILIST(R.string.search_cat_anilist, R.drawable.ic_anilist),
+    SERVICES(R.string.search_cat_services, R.drawable.ic_round_dns_24),
 }
 
 /**

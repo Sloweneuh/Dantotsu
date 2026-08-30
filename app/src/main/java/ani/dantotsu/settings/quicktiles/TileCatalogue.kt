@@ -1,5 +1,6 @@
 package ani.dantotsu.settings.quicktiles
 
+import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
@@ -8,6 +9,9 @@ import ani.dantotsu.settings.saving.PrefName
 interface TileCategory {
     @get:StringRes
     val label: Int
+
+    @get:DrawableRes
+    val icon: Int
 }
 
 /**
