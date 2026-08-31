@@ -17,6 +17,9 @@ import com.google.android.material.color.DynamicColorsOptions
 
 class ThemeManager(private val context: Activity) {
     fun applyTheme(fromImage: Bitmap? = null) {
+        // Before anything inflates: the font swap works through this activity's LayoutInflater,
+        // and applyTheme is the one call every activity makes ahead of setContentView.
+        AppFont.install(context)
         val useOLED = PrefManager.getVal(PrefName.UseOLED) && isDarkThemeActive(context)
         val useCustomTheme: Boolean = PrefManager.getVal(PrefName.UseCustomTheme)
         val customTheme: Int = PrefManager.getVal(PrefName.CustomThemeInt)

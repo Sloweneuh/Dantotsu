@@ -377,13 +377,24 @@
     <string name="network_desc">User agent, DNS and proxy</string>
     <string name="selected_dns_s">Selected DNS : %1$s</string>
     <string name="selected_dns_desc">DNS-over-HTTPS provider used for all requests</string>
+    <string name="text_group">Text</string>
+    <string name="text_group_desc">Font used throughout the app</string>
+    <string name="app_font">App font</string>
+    <string name="app_font_desc">The typeface the whole app is drawn in</string>
+    <string name="font_follow_system">Follow system font</string>
+    <string name="font_default">Poppins (default)</string>
+    <string name="font_choose_file">Choose a font file2026</string>
+    <string name="font_installed_header">Fonts on this device</string>
+    <string name="font_bundled_header">Bundled</string>
+    <string name="font_no_latin">That font can0027t draw ordinary text, so it wasn0027t applied</string>
+    <string name="font_load_failed">That font couldn0027t be read</string>
     <string name="colors">Colors</string>
     <string name="colors_desc">OLED, Material You and custom colours</string>
     <string name="home_screen">Home screen</string>
-    <string name="home_screen_desc">What the home tab shows, and which tabs exist</string>
+    <string name="home_screen_desc">What Home shows, which tabs exist and the notification dot</string>
     <string name="animations_desc">Banner and layout motion</string>
     <string name="system_bars">System bars</string>
-    <string name="system_bars_desc">Status bar, navigation bar and the notification dot</string>
+    <string name="system_bars_desc">Status bar and navigation bar</string>
     <string name="blur_desc">Banner blur and its quality</string>
     <!-- These rows were switches in the old UI Settings layout, which had nowhere to put a
          description. They are list rows now, so each one gets the line it always wanted. -->
@@ -400,7 +411,7 @@
     <string name="blur_radius_desc">How strong the blur is</string>
     <string name="blur_sampling_desc">Higher is faster but coarser</string>
     <string name="ui_show_system_bars_desc">Keep the status and navigation bars visible</string>
-    <string name="hide_notification_dot_desc">Hide the red dot on the notifications icon</string>
+    <string name="hide_notification_dot_desc">Hide the unread count on your avatar. The settings sheet always shows it.</string>
     <string name="about">About</string>
     <string name="devs">Developers/Helpers</string>
     <string name="disclaimer">Disclaimer</string>

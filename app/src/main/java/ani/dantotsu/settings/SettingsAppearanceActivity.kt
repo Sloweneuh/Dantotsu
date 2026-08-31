@@ -2,6 +2,8 @@ package ani.dantotsu.settings
 
 import android.content.ComponentName
 import android.content.Intent
+import android.net.Uri
+import android.provider.OpenableColumns
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -11,6 +13,7 @@ import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
 import androidx.activity.addCallback
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.updateLayoutParams
 import androidx.recyclerview.widget.ConcatAdapter
@@ -27,11 +30,15 @@ import ani.dantotsu.restartApp
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.statusBarHeight
+import ani.dantotsu.themes.AppFont
+import ani.dantotsu.themes.DeviceFonts
 import ani.dantotsu.themes.ThemeManager
+import ani.dantotsu.toast
 import ani.dantotsu.util.Logger
 import ani.dantotsu.util.customAlertDialog
 import eltos.simpledialogfragment.SimpleDialog
 import eltos.simpledialogfragment.color.SimpleColorDialog
+import java.io.File
 
 /**
  * Everything that answers "how does the app look?".
@@ -52,6 +59,7 @@ class SettingsAppearanceActivity : AppCompatActivity(), SimpleDialog.OnDialogRes
     /** Section keys, also the search anchors — see [SettingsSection.key]. */
     object Section {
         const val COLORS = "appearance_colors"
+        const val TEXT = "appearance_text"
         const val HOME = "appearance_home"
         const val ANIMATIONS = "appearance_animations"
         const val BLUR = "appearance_blur"
@@ -105,6 +113,13 @@ class SettingsAppearanceActivity : AppCompatActivity(), SimpleDialog.OnDialogRes
                     icon = R.drawable.ic_round_color_24,
                     summary = { getString(R.string.colors_desc) },
                     rows = { themeRows() },
+                ),
+                SettingsSection(
+                    key = Section.TEXT,
+                    title = getString(R.string.text_group),
+                    icon = R.drawable.ic_round_format_text_24,
+                    summary = { getString(R.string.text_group_desc) },
+                    rows = { textRows() },
                 ),
                 SettingsSection(
                     key = Section.HOME,
@@ -334,12 +349,39 @@ class SettingsAppearanceActivity : AppCompatActivity(), SimpleDialog.OnDialogRes
         ),
     )
 
+    /** A font is not a colour, so it gets its own group rather than sitting among the palette
+     *  options. Room here for anything else about type if it is wanted later. */
+    private fun textRows(): List<Settings> = listOf(
+        Settings(
+            type = 1,
+            name = getString(R.string.app_font),
+            desc = currentFontLabel(),
+            icon = R.drawable.ic_round_format_text_24,
+            compact = true,
+            anchorKey = "app_font",
+            onClick = { showFontDialog() },
+        ),
+    )
+
     // -----------------------------------------------------------------------------------------
     // Home screen
     // -----------------------------------------------------------------------------------------
 
     private fun homeRows(): List<Settings> = listOf(
         startUpTabRow(),
+        Settings(
+            type = 2,
+            name = getString(R.string.hide_notification_dot),
+            desc = getString(R.string.hide_notification_dot_desc),
+            icon = R.drawable.ic_round_app_badging_24,
+            compact = true,
+            anchorKey = "hide_notification_dot",
+            // Stored as "show", shown as "hide" — the label is the negation of the preference.
+            isChecked = !PrefManager.getVal<Boolean>(PrefName.ShowNotificationRedDot),
+            switch = { isChecked, _ ->
+                PrefManager.setVal(PrefName.ShowNotificationRedDot, !isChecked)
+            }
+        ),
         Settings(
             type = 1,
             name = getString(R.string.home_layout_show),
@@ -565,19 +607,6 @@ class SettingsAppearanceActivity : AppCompatActivity(), SimpleDialog.OnDialogRes
                 PrefManager.setVal(PrefName.ShowSystemBarsUI, isChecked)
             }
         ),
-        Settings(
-            type = 2,
-            name = getString(R.string.hide_notification_dot),
-            desc = getString(R.string.hide_notification_dot_desc),
-            icon = R.drawable.ic_round_notifications_unread_24,
-            compact = true,
-            anchorKey = "hide_notification_dot",
-            // Stored as "show", shown as "hide" — the label is the negation of the preference.
-            isChecked = !PrefManager.getVal<Boolean>(PrefName.ShowNotificationRedDot),
-            switch = { isChecked, _ ->
-                PrefManager.setVal(PrefName.ShowNotificationRedDot, !isChecked)
-            }
-        ),
     )
 
     // -----------------------------------------------------------------------------------------
@@ -712,5 +741,111 @@ class SettingsAppearanceActivity : AppCompatActivity(), SimpleDialog.OnDialogRes
             reloadActivity()
             finishAndRemoveTask()
         }, 100)
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // App font
+    // -----------------------------------------------------------------------------------------
+
+    /** Picks a font file the device does not expose through [DeviceFonts]. */
+    private val pickFontFile = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri -> if (uri != null) importFont(uri) }
+
+    /** What the App font row reads as: the chosen font's own name. */
+    private fun currentFontLabel(): String {
+        val key = AppFont.current()
+        return when {
+            key == AppFont.SYSTEM -> getString(R.string.font_follow_system)
+            key == AppFont.DEFAULT -> getString(R.string.font_default)
+            key.startsWith("res:") -> key.removePrefix("res:")
+                .replace('_', ' ').replaceFirstChar { it.uppercase() }
+
+            key.startsWith("file:") ->
+                File(key.removePrefix("file:")).nameWithoutExtension.replace('_', ' ')
+
+            else -> getString(R.string.font_default)
+        }
+    }
+
+    private fun showFontDialog() {
+        val device = DeviceFonts.list()
+        // Order matters: the two that always work first, then what is bundled, then what the device
+        // happens to have, then the escape hatch for everything those miss.
+        val keys = buildList {
+            add(AppFont.SYSTEM)
+            add(AppFont.DEFAULT)
+            AppFont.bundled.forEach { add("res:${it.first}") }
+            device.forEach { add("file:${it.path}") }
+            add(PICK_FILE)
+        }
+        val labels = buildList {
+            add(getString(R.string.font_follow_system))
+            add(getString(R.string.font_default))
+            AppFont.bundled.forEach {
+                add(it.first.replace('_', ' ').replaceFirstChar { c -> c.uppercase() })
+            }
+            device.forEach { add(it.label) }
+            add(getString(R.string.font_choose_file))
+        }.toTypedArray()
+
+        customAlertDialog().apply {
+            setTitle(R.string.app_font)
+            singleChoiceItems(labels, keys.indexOf(AppFont.current()).coerceAtLeast(0)) { i ->
+                if (keys[i] == PICK_FILE) {
+                    pickFontFile.launch(arrayOf("font/*", "application/x-font-ttf", "application/octet-stream"))
+                } else {
+                    applyFont(keys[i])
+                }
+            }
+            show()
+        }
+    }
+
+    /**
+     * Copies a picked font into app storage and selects it.
+     *
+     * Copied rather than referenced: a content URI is a grant that does not survive a reboot, and a
+     * font the app cannot re-open on next launch would silently fall back with nothing to explain it.
+     */
+    private fun importFont(uri: Uri) {
+        try {
+            val dir = File(filesDir, "fonts").apply { mkdirs() }
+            val name = contentResolver.query(uri, null, null, null, null)?.use { c ->
+                val idx = c.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (idx >= 0 && c.moveToFirst()) c.getString(idx) else null
+            } ?: "imported.ttf"
+            val dest = File(dir, name)
+            contentResolver.openInputStream(uri)?.use { input ->
+                dest.outputStream().use { input.copyTo(it) }
+            } ?: return toast(getString(R.string.font_load_failed))
+            applyFont("file:${dest.absolutePath}")
+        } catch (e: Exception) {
+            Logger.log("AppFont: import failed - ${e.message}")
+            toast(getString(R.string.font_load_failed))
+        }
+    }
+
+    /** Checks the font can actually draw text before committing to it. */
+    private fun applyFont(key: String) {
+        val previous = AppFont.current()
+        AppFont.set(key)
+        AppFont.invalidate()
+        val face = runCatching { AppFont.probe(this) }.getOrNull()
+        if (key != AppFont.SYSTEM && key != AppFont.DEFAULT && face == null) {
+            AppFont.set(previous)
+            AppFont.invalidate()
+            return toast(getString(R.string.font_load_failed))
+        }
+        if (face != null && !AppFont.hasLatinCoverage(face)) {
+            AppFont.set(previous)
+            AppFont.invalidate()
+            return toast(getString(R.string.font_no_latin))
+        }
+        reload()
+    }
+
+    private companion object {
+        const val PICK_FILE = "__pick_file__"
     }
 }

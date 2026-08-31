@@ -314,7 +314,9 @@ object SettingsSearch {
 
         l += SearchableSetting(SettingsAppearanceActivity::class.java, R.string.ui_show_system_bars, R.string.appearance, IC_UI, R.string.ui_show_system_bars_desc, keywordsRes = R.string.search_kw_ui_show_system_bars, anchorSection = SettingsAppearanceActivity.Section.SYSTEM_BARS, anchorRowKey = "ui_show_system_bars")
 
-        l += SearchableSetting(SettingsAppearanceActivity::class.java, R.string.hide_notification_dot, R.string.appearance, IC_UI, R.string.hide_notification_dot_desc, keywordsRes = R.string.search_kw_hide_notification_dot, anchorSection = SettingsAppearanceActivity.Section.SYSTEM_BARS, anchorRowKey = "hide_notification_dot")
+        l += SearchableSetting(SettingsAppearanceActivity::class.java, R.string.hide_notification_dot, R.string.appearance, IC_UI, R.string.hide_notification_dot_desc, keywordsRes = R.string.search_kw_hide_notification_dot, anchorSection = SettingsAppearanceActivity.Section.HOME, anchorRowKey = "hide_notification_dot")
+
+        l += SearchableSetting(SettingsAppearanceActivity::class.java, R.string.app_font, R.string.appearance, IC_UI, R.string.app_font_desc, anchorSection = SettingsAppearanceActivity.Section.TEXT, anchorRowKey = "app_font")
 
         l += SearchableSetting(SettingsAppearanceActivity::class.java, R.string.home_layout_show, R.string.appearance, IC_UI, R.string.home_layout_show_desc, keywordsRes = R.string.search_kw_home_layout_show, anchorSection = SettingsAppearanceActivity.Section.HOME, anchorRowKey = "home_layout")
 

@@ -22,6 +22,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:fontFamily="@font/poppins_thin"
+            android:tag="keepFont"
             android:text="@string/sad"
             android:textColor="?attr/colorPrimary"
             android:textSize="64sp" />
