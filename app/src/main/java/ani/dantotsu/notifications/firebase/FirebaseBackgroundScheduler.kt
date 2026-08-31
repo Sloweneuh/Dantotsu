@@ -61,8 +61,13 @@ object FirebaseBackgroundScheduler {
                 Logger.log("Firebase: Unsubscribed from unread chapters topic")
             }
 
-            // Check if subscription notifications are enabled
-            val subscriptionInterval = PrefManager.getVal<Int>(PrefName.SubscriptionNotificationInterval)
+            // Check if subscription notifications are enabled. Read the same pref the settings
+            // screen writes, as the unread check above does: the legacy index-based
+            // SubscriptionNotificationInterval is never written any more and sits at its non-zero
+            // default forever, so gating on it kept the topic subscribed even after the user had
+            // turned subscription notifications off.
+            val subscriptionInterval =
+                PrefManager.getVal<Long>(PrefName.SubscriptionNotificationIntervalMinutes)
             if (subscriptionInterval > 0) {
                 DantotsuFirebaseMessagingService.subscribeToTopic(SUBSCRIPTIONS_TOPIC)
                 Logger.log("Firebase: Subscribed to subscriptions topic")

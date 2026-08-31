@@ -265,8 +265,8 @@ class FirebaseTestActivity : AppCompatActivity() {
             }
         }
 
-        val subInterval = PrefManager.getVal<Int>(PrefName.SubscriptionNotificationInterval)
-        sb.append("\n• Subscriptions: ${subInterval}")
+        val subInterval = PrefManager.getVal<Long>(PrefName.SubscriptionNotificationIntervalMinutes)
+        sb.append("\n• Subscriptions: ${subInterval}min")
 
         // Show recent logs from SharedPreferences
         sb.append("\n\n📝 Recent Background Activity:")
