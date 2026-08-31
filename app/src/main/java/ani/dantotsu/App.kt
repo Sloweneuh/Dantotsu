@@ -2,6 +2,7 @@ package ani.dantotsu
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.content.ComponentCallbacks2
 import android.content.Context
 import android.os.Bundle
 import android.util.Log
@@ -15,6 +16,7 @@ import ani.dantotsu.aniyomi.anime.custom.PreferenceModule
 import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.comments.CommentsAPI
 import ani.dantotsu.connections.crashlytics.CrashlyticsInterface
+import ani.dantotsu.media.manga.MangaCache
 import ani.dantotsu.notifications.TaskScheduler
 import ani.dantotsu.notifications.WorkManagerScheduler
 import ani.dantotsu.notifications.AlarmManagerScheduler
@@ -32,6 +34,7 @@ import ani.dantotsu.settings.SettingsActivity
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.util.FinalExceptionHandler
+import ani.dantotsu.util.BitmapUtil
 import ani.dantotsu.util.Logger
 import com.google.android.material.color.DynamicColors
 import eu.kanade.tachiyomi.data.notification.Notifications
@@ -72,6 +75,35 @@ class App : MultiDexApplication() {
     }
 
     val mFTActivityLifecycleCallbacks = FTActivityLifecycleCallbacks()
+
+    /**
+     * Hands the bitmap caches back when the system says memory is tight, and — via UI_HIDDEN — when
+     * the app simply goes to the background.
+     *
+     * There was no handler here at all, so nothing in the process ever responded to pressure. That
+     * matters most for [MangaCache], whose pixel half is budgeted at a quarter of the heap and, being
+     * an application-scoped singleton, held that quarter indefinitely once a reader had filled it.
+     * Both caches evicted here are recoverable — a redecode, not lost state — so giving them up is
+     * always cheaper than being killed for them.
+     *
+     * Deliberately from RUNNING_LOW upward rather than the usual `>= TRIM_MEMORY_UI_HIDDEN`: the
+     * running-* levels are numerically *below* UI_HIDDEN, so that comparison silently skips the
+     * foreground warnings, which are exactly the ones these crashes arrived as.
+     */
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) releaseBitmapCaches()
+    }
+
+    override fun onLowMemory() {
+        super.onLowMemory()
+        releaseBitmapCaches()
+    }
+
+    private fun releaseBitmapCaches() {
+        runCatching { Injekt.get<MangaCache>().evictBitmaps() }
+        runCatching { BitmapUtil.evictAll() }
+    }
 
     @OptIn(DelicateCoroutinesApi::class)
     override fun onCreate() {

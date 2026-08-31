@@ -314,8 +314,13 @@ class MangaReaderActivity : AppCompatActivity() {
         autoscrollTimer?.cancel()
         prefetcher?.cancel()
         prefetcher = null
-        // Don't clear cache on destroy - let LRU manage it and preserve cache for reloads
-        // mangaCache.clear()
+        // The reader is the only thing that fills MangaCache, but the cache outlives it: it is an
+        // application-scoped singleton budgeted at a quarter of the heap, so left alone it holds that
+        // quarter until the process dies and the OOM lands on whatever the user browses next.
+        // Pixels only, and only on a real finish - on a config change the activity is coming straight
+        // back and would only redecode, and the ImageData half is what the reload path the old
+        // mangaCache.clear() here was removed to protect actually reads.
+        if (isFinishing) mangaCache.evictBitmaps()
         RPCManager.clearPresence(this)
         super.onDestroy()
     }

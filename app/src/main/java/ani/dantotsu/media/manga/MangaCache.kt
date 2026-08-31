@@ -183,6 +183,25 @@ class MangaCache {
         bitmapCache.remove(key)
     }
 
+    /**
+     * Drops the decoded pixels but keeps [imageDataCache].
+     *
+     * [bitmapCache] is budgeted at a quarter of the heap, and because this is an application-scoped
+     * singleton it goes on holding that quarter for the life of the process — long after the reader
+     * that filled it has been destroyed. That is what leaves the app a couple of hundred MB down
+     * while the user is browsing somewhere else entirely, until some unrelated allocation on some
+     * unrelated thread is the one that finally fails.
+     *
+     * Everything dropped here is recoverable: the [ImageData] kept alongside each bitmap is exactly
+     * what `BaseImageAdapter.loadBitmap` re-decodes from, so this costs a redecode on a revisit
+     * rather than breaking the reload path the reader deliberately keeps this cache warm for.
+     * [clear] drops both halves and is for when neither is wanted.
+     */
+    @Synchronized
+    fun evictBitmaps() {
+        bitmapCache.evictAll()
+    }
+
     @Synchronized
     fun clear() {
         imageDataCache.evictAll()
