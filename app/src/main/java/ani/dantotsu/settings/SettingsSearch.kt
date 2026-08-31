@@ -149,7 +149,7 @@ object SettingsSearch {
 
         l += SearchableSetting(AnilistSettingsActivity::class.java, R.string.anilist_settings, R.string.accounts, R.drawable.ic_anilist, R.string.alsettings_desc, keywordsRes = R.string.search_kw_anilist_settings)
 
-        l += SearchableSetting(SettingsListSyncActivity::class.java, R.string.list_comparison_title, R.string.accounts, R.drawable.ic_round_sync_24, R.string.list_sync_settings_desc, keywordsRes = R.string.search_kw_list_sync_settings)
+        l += SearchableSetting(SettingsListSyncActivity::class.java, R.string.list_comparison_title, R.string.accounts, R.drawable.ic_round_sync_24, R.string.list_comparison_desc, keywordsRes = R.string.search_kw_list_sync_settings)
 
         l += SearchableSetting(SettingsAccountActivity::class.java, R.string.login_to_mangabaka, R.string.accounts, IC_ACCOUNT, R.string.mangabaka_login_desc, anchorProvider = AccountProvider.MANGABAKA, keywordsRes = R.string.search_kw_login_to_mangabaka)
 

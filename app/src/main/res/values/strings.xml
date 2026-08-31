@@ -635,9 +635,8 @@
     <string name="account_open_profile">Open profile</string>
     <string name="discord">Discord</string>
     <string name="malsync">MALSync</string>
-    <string name="list_sync_settings">List sync settings</string>
-    <string name="list_sync_settings_desc">Choose which trackers your list updates are pushed to</string>
     <string name="list_comparison_title">List comparison</string>
+    <string name="list_comparison_desc">Check your trackers against your source lists and push the differences, manually or on a schedule</string>
 
     <!-- Accounts screen (provider cards) -->
     <string name="account_info_source">Info source</string>

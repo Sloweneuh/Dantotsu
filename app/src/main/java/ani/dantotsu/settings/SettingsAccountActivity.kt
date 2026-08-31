@@ -157,7 +157,7 @@ class SettingsAccountActivity : AppCompatActivity() {
                 Settings(
                     type = 1,
                     name = getString(R.string.list_comparison_title),
-                    desc = getString(R.string.list_sync_settings_desc),
+                    desc = getString(R.string.list_comparison_desc),
                     icon = R.drawable.ic_round_compare_arrows_24,
                     isActivity = true,
                     onClick = {

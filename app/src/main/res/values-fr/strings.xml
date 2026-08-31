@@ -534,9 +534,8 @@
     <string name="account_open_profile">Ouvrir le profil</string>
     <string name="discord">Discord</string>
     <string name="malsync">MALSync</string>
-    <string name="list_sync_settings">Synchronisation des listes</string>
-    <string name="list_sync_settings_desc">Choisissez vers quels trackers vos mises à jour de listes sont envoyées</string>
     <string name="list_comparison_title">Comparaison des listes</string>
+    <string name="list_comparison_desc">Comparez vos trackers à vos listes source et envoyez les différences, manuellement ou automatiquement</string>
 
     <!-- Écran Comptes (cartes de fournisseurs) -->
     <string name="account_info_source">Source d\'infos</string>
