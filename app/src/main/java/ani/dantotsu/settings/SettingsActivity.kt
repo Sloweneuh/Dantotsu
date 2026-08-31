@@ -122,21 +122,21 @@ class SettingsActivity : AppCompatActivity() {
                     ),
                     Settings(
                         type = 1,
-                        name = getString(R.string.anime),
-                        desc = getString(R.string.anime_desc),
+                        name = getString(R.string.anime_and_player),
+                        desc = getString(R.string.anime_and_player_desc),
                         icon = R.drawable.ic_round_movie_filter_24,
                         onClick = {
-                            startActivity(Intent(context, SettingsAnimeActivity::class.java))
+                            startActivity(Intent(context, PlayerSettingsActivity::class.java))
                         },
                         isActivity = true
                     ),
                     Settings(
                         type = 1,
-                        name = getString(R.string.manga),
-                        desc = getString(R.string.manga_desc),
+                        name = getString(R.string.manga_and_reader),
+                        desc = getString(R.string.manga_and_reader_desc),
                         icon = R.drawable.ic_round_import_contacts_24,
                         onClick = {
-                            startActivity(Intent(context, SettingsMangaActivity::class.java))
+                            startActivity(Intent(context, ReaderSettingsActivity::class.java))
                         },
                         isActivity = true
                     ),

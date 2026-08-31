@@ -152,45 +152,45 @@ class SettingsAccountActivity : AppCompatActivity() {
 
     /** Cross-provider tools that don't belong to any single card. */
     private fun buildBottomRows() {
-        binding.settingsRecyclerView.adapter = SettingsAdapter(
-            arrayListOf(
-                Settings(
-                    type = 1,
-                    name = getString(R.string.list_comparison_title),
-                    desc = getString(R.string.list_comparison_desc),
-                    icon = R.drawable.ic_round_compare_arrows_24,
-                    isActivity = true,
-                    onClick = {
-                        startActivity(Intent(this, SettingsListSyncActivity::class.java))
-                    },
-                ),
-                Settings(
-                    type = 1,
-                    name = getString(R.string.customize_info_tabs),
-                    desc = getString(R.string.customize_info_tabs_desc),
-                    icon = R.drawable.ic_round_view_array_24,
-                    onClick = {
-                        InfoTabOrderBottomSheet.newInstance()
-                            .show(supportFragmentManager, InfoTabOrderBottomSheet.TAG)
-                    },
-                ),
-                // Came from Common, which described none of it. Backup and cloud sync answer the
-                // same question as the cards above — where your data lives and what it is tied to —
-                // and the sync code is itself an account of a kind.
-                Settings(
-                    type = 1,
-                    name = getString(R.string.backup_sync),
-                    desc = getString(R.string.backup_sync_desc),
-                    icon = R.drawable.backup_restore,
-                    isActivity = true,
-                    anchorKey = "backup_sync",
-                    onClick = {
-                        startActivity(Intent(this, SettingsBackupSyncActivity::class.java))
-                    },
-                ),
-            )
-        )
+        binding.settingsRecyclerView.adapter = SettingsAdapter(ArrayList(bottomRows()))
     }
+
+    private fun bottomRows(): List<Settings> = listOf(
+        Settings(
+            type = 1,
+            name = getString(R.string.list_comparison_title),
+            desc = getString(R.string.list_comparison_desc),
+            icon = R.drawable.ic_round_compare_arrows_24,
+            isActivity = true,
+            onClick = {
+                startActivity(Intent(this, SettingsListSyncActivity::class.java))
+            },
+        ),
+        Settings(
+            type = 1,
+            name = getString(R.string.customize_info_tabs),
+            desc = getString(R.string.customize_info_tabs_desc),
+            icon = R.drawable.ic_round_view_array_24,
+            onClick = {
+                InfoTabOrderBottomSheet.newInstance()
+                    .show(supportFragmentManager, InfoTabOrderBottomSheet.TAG)
+            },
+        ),
+        // Came from Common, which described none of it. Backup and cloud sync answer the
+        // same question as the cards above — where your data lives and what it is tied to —
+        // and the sync code is itself an account of a kind.
+        Settings(
+            type = 1,
+            name = getString(R.string.backup_sync),
+            desc = getString(R.string.backup_sync_desc),
+            icon = R.drawable.backup_restore,
+            isActivity = true,
+            anchorKey = "backup_sync",
+            onClick = {
+                startActivity(Intent(this, SettingsBackupSyncActivity::class.java))
+            },
+        ),
+    )
 
     // ---- cards ----
 

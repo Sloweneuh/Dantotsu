@@ -7,12 +7,15 @@ import android.widget.AdapterView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.updateLayoutParams
 import ani.dantotsu.NoPaddingArrayAdapter
+import androidx.recyclerview.widget.LinearLayoutManager
 import ani.dantotsu.R
+import ani.dantotsu.restartApp
 import ani.dantotsu.databinding.ActivityReaderSettingsBinding
 import ani.dantotsu.media.novel.novelreader.NovelReaderActivity
 import ani.dantotsu.media.novel.novelreader.NovelTtsSettingsBottomSheet
 import ani.dantotsu.initActivity
 import ani.dantotsu.navBarHeight
+import ani.dantotsu.others.Xpandable
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.snackString
@@ -29,7 +32,9 @@ class ReaderSettingsActivity : AppCompatActivity() {
         ThemeManager(this).applyTheme()
         binding = ActivityReaderSettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        SettingsRouter.handleHighlight(this)
+        SettingsRouter.handleHighlight(this, binding.settingsRecyclerView)
+        bindLibraryRows()
+        Xpandable.consumeRelaunch(Xpandable.SCOPE_READER)
 
         initActivity(this)
         binding.readerSettingsContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> {
@@ -484,6 +489,51 @@ class ReaderSettingsActivity : AppCompatActivity() {
             PrefManager.setVal(PrefName.UpdateForHReader, isChecked)
             if (isChecked) snackString(getString(R.string.very_bold))
         }
+    }
 
+
+    /**
+     * What used to be the Manga screen.
+     *
+     * That screen held two rows, one of which was a link to this one. These apply before a chapter
+     * is opened rather than while reading it, so they sit above the reader's own groups.
+     */
+    private fun bindLibraryRows() {
+        binding.settingsRecyclerView.adapter = SettingsAdapter(
+            arrayListOf(
+                Settings(
+                    type = 2,
+                    name = getString(R.string.include_list),
+                    desc = getString(R.string.include_list_desc),
+                    icon = R.drawable.view_list_24,
+                    anchorKey = "include_manga_list",
+                    isChecked = PrefManager.getVal(PrefName.IncludeMangaList),
+                    switch = { isChecked, _ ->
+                        PrefManager.setVal(PrefName.IncludeMangaList, isChecked)
+                        Xpandable.markRelaunch(Xpandable.SCOPE_READER)
+                        restartApp()
+                    }
+                ),
+                // Was a bare tri-toggle in the Manga layout with no label of its own; as a choice
+                // row it keeps the buttons and gains the title and description it lacked.
+                Settings(
+                    type = 5,
+                    name = getString(R.string.default_chp_view),
+                    desc = getString(R.string.default_chp_view_desc),
+                    icon = R.drawable.ic_round_view_list_24,
+                    anchorKey = "default_chp_view",
+                    choice = ChoiceConfig(
+                        options = listOf(
+                            ChoiceOption(R.drawable.ic_round_view_list_24, getString(R.string.list)),
+                            ChoiceOption(R.drawable.ic_round_view_comfy_24, getString(R.string.compact)),
+                        ),
+                        selected = PrefManager.getVal(PrefName.MangaDefaultView),
+                        onSelect = { PrefManager.setVal(PrefName.MangaDefaultView, it) },
+                    ),
+                ),
+            )
+        )
+        binding.settingsRecyclerView.layoutManager =
+            LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false)
     }
 }

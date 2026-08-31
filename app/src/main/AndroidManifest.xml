@@ -253,9 +253,6 @@
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize"
             android:parentActivityName=".MainActivity" />
         <activity
-            android:name=".settings.SettingsAnimeActivity"
-            android:parentActivityName=".MainActivity" />
-        <activity
             android:name=".settings.SettingsGeneralActivity"
             android:parentActivityName=".MainActivity" />
         <activity
@@ -265,9 +262,6 @@
             android:name=".settings.SettingsSourcesActivity"
             android:parentActivityName=".MainActivity"
             android:windowSoftInputMode="adjustPan" />
-        <activity
-            android:name=".settings.SettingsMangaActivity"
-            android:parentActivityName=".MainActivity" />
         <activity
             android:name=".settings.SettingsNotificationActivity"
             android:parentActivityName=".MainActivity" />

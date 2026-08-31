@@ -98,52 +98,53 @@ class SettingsNotificationActivity : AppCompatActivity() {
             keepExpanded = SettingsRouter.hasAnchor(this),
         )
 
-        // The one genuinely global control, which used to sit loose below the five links.
-        val globalAdapter = SettingsAdapter(
-            arrayListOf(
-                Settings(
-                    type = 2,
-                    name = getString(R.string.use_alarm_manager_reliable),
-                    desc = getString(R.string.use_alarm_manager_reliable_desc),
-                    icon = R.drawable.ic_round_alarm_24,
-                    isChecked = PrefManager.getVal(PrefName.UseAlarmManager),
-                    switch = { isChecked, view ->
-                        if (isChecked) {
-                            context.customAlertDialog().apply {
-                                setTitle(R.string.use_alarm_manager)
-                                setMessage(R.string.use_alarm_manager_confirm)
-                                setPosButton(R.string.use) {
-                                    PrefManager.setVal(PrefName.UseAlarmManager, true)
-                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                        if (!(getSystemService(Context.ALARM_SERVICE) as AlarmManager).canScheduleExactAlarms()) {
-                                            startActivity(Intent("android.settings.REQUEST_SCHEDULE_EXACT_ALARM"))
-                                            view.settingsButton.isChecked = true
-                                        }
-                                    }
-                                }
-                                setNegButton(R.string.cancel) {
-                                    view.settingsButton.isChecked = false
-                                    PrefManager.setVal(PrefName.UseAlarmManager, false)
-                                }
-                                show()
-                            }
-                        } else {
-                            PrefManager.setVal(PrefName.UseAlarmManager, false)
-                            TaskScheduler.create(context, true).cancelAllTasks()
-                            TaskScheduler.create(context, false).scheduleAllTasks(context)
-                        }
-                    },
-                ),
-            )
-        )
-
         binding.settingsRecyclerView.apply {
-            adapter = ConcatAdapter(sectionAdapter, globalAdapter)
+            adapter = ConcatAdapter(sectionAdapter, SettingsAdapter(ArrayList(globalRows())))
             layoutManager = LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false)
         }
 
         SettingsRouter.handleHighlight(this, binding.settingsRecyclerView)
         SettingsRouter.handleSectionAnchor(this, sectionAdapter)
+    }
+
+    /** The one genuinely global control, below the per-source groups. */
+    private fun globalRows(): List<Settings> {
+        val context = this
+        return listOf(
+            Settings(
+                type = 2,
+                name = getString(R.string.use_alarm_manager_reliable),
+                desc = getString(R.string.use_alarm_manager_reliable_desc),
+                icon = R.drawable.ic_round_alarm_24,
+                isChecked = PrefManager.getVal(PrefName.UseAlarmManager),
+                switch = { isChecked, view ->
+                    if (isChecked) {
+                        context.customAlertDialog().apply {
+                            setTitle(R.string.use_alarm_manager)
+                            setMessage(R.string.use_alarm_manager_confirm)
+                            setPosButton(R.string.use) {
+                                PrefManager.setVal(PrefName.UseAlarmManager, true)
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                    if (!(getSystemService(Context.ALARM_SERVICE) as AlarmManager).canScheduleExactAlarms()) {
+                                        startActivity(Intent("android.settings.REQUEST_SCHEDULE_EXACT_ALARM"))
+                                        view.settingsButton.isChecked = true
+                                    }
+                                }
+                            }
+                            setNegButton(R.string.cancel) {
+                                view.settingsButton.isChecked = false
+                                PrefManager.setVal(PrefName.UseAlarmManager, false)
+                            }
+                            show()
+                        }
+                    } else {
+                        PrefManager.setVal(PrefName.UseAlarmManager, false)
+                        TaskScheduler.create(context, true).cancelAllTasks()
+                        TaskScheduler.create(context, false).scheduleAllTasks(context)
+                    }
+                },
+            ),
+        )
     }
 
     override fun onResume() {

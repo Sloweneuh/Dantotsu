@@ -115,9 +115,9 @@ object SettingsSearch {
 
         l += SearchableSetting(SettingsGeneralActivity::class.java, R.string.general, R.string.settings, R.drawable.ic_round_settings_24, R.string.general_desc, keywordsRes = R.string.search_kw_common)
 
-        l += SearchableSetting(SettingsAnimeActivity::class.java, R.string.anime, R.string.settings, R.drawable.ic_round_movie_filter_24, R.string.anime_desc, keywordsRes = R.string.search_kw_anime)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.anime_and_player, R.string.settings, R.drawable.ic_round_movie_filter_24, R.string.anime_and_player_desc, keywordsRes = R.string.search_kw_anime)
 
-        l += SearchableSetting(SettingsMangaActivity::class.java, R.string.manga, R.string.settings, R.drawable.ic_round_import_contacts_24, R.string.manga_desc, keywordsRes = R.string.search_kw_manga)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.manga_and_reader, R.string.settings, R.drawable.ic_round_import_contacts_24, R.string.manga_and_reader_desc, keywordsRes = R.string.search_kw_manga)
 
         l += SearchableSetting(SettingsSourcesActivity::class.java, R.string.sources_and_downloads, R.string.settings, R.drawable.ic_extension, R.string.sources_and_downloads_desc, keywordsRes = R.string.search_kw_extensions)
 
@@ -342,184 +342,184 @@ object SettingsSearch {
 
 
         // ---- Anime ----
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.player_settings, R.string.anime, R.drawable.ic_round_video_settings_24, R.string.player_settings_desc, keywordsRes = R.string.search_kw_player_settings)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.player_settings, R.string.anime_and_player, R.drawable.ic_round_video_settings_24, R.string.player_settings_desc, keywordsRes = R.string.search_kw_player_settings)
 
-        l += SearchableSetting(SettingsAnimeActivity::class.java, R.string.prefer_dub, R.string.anime, R.drawable.ic_anime_dub_24, R.string.prefer_dub_desc, keywordsRes = R.string.search_kw_prefer_dub)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.prefer_dub, R.string.anime_and_player, R.drawable.ic_anime_dub_24, R.string.prefer_dub_desc, keywordsRes = R.string.search_kw_prefer_dub)
 
-        l += SearchableSetting(SettingsAnimeActivity::class.java, R.string.show_yt, R.string.anime, R.drawable.format_youtube_24, R.string.show_yt_desc, keywordsRes = R.string.search_kw_show_yt)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.show_yt, R.string.anime_and_player, R.drawable.format_youtube_24, R.string.show_yt_desc, keywordsRes = R.string.search_kw_show_yt)
 
-        l += SearchableSetting(SettingsAnimeActivity::class.java, R.string.include_list, R.string.anime, R.drawable.view_list_24, R.string.include_list_anime_desc, keywordsRes = R.string.search_kw_include_list)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.include_list, R.string.anime_and_player, R.drawable.view_list_24, R.string.include_list_anime_desc, keywordsRes = R.string.search_kw_include_list)
 
-        l += SearchableSetting(SettingsAnimeActivity::class.java, R.string.default_ep_view, R.string.anime, IC_ANIME, anchorViewId = R.id.settingsEpList, keywordsRes = R.string.search_kw_default_ep_view)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.default_ep_view, R.string.anime_and_player, IC_ANIME, R.string.default_ep_view_desc, keywordsRes = R.string.search_kw_default_ep_view)
 
 
         // ---- Manga ----
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.reader_settings, R.string.manga, R.drawable.ic_round_reader_settings, R.string.reader_settings_desc, keywordsRes = R.string.search_kw_reader_settings)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.reader_settings, R.string.manga_and_reader, R.drawable.ic_round_reader_settings, R.string.reader_settings_desc, keywordsRes = R.string.search_kw_reader_settings)
 
-        l += SearchableSetting(SettingsMangaActivity::class.java, R.string.include_list, R.string.manga, R.drawable.view_list_24, R.string.include_list_desc, keywordsRes = R.string.search_kw_include_list_2)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.include_list, R.string.manga_and_reader, R.drawable.view_list_24, R.string.include_list_desc, keywordsRes = R.string.search_kw_include_list_2)
 
-        l += SearchableSetting(SettingsMangaActivity::class.java, R.string.default_chp_view, R.string.manga, IC_MANGA, anchorViewId = R.id.settingsChpList, keywordsRes = R.string.search_kw_default_chp_view)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.default_chp_view, R.string.manga_and_reader, IC_MANGA, R.string.default_chp_view_desc, keywordsRes = R.string.search_kw_default_chp_view)
 
 
         // ---- Player settings (XML) ----
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.default_playback_speed, R.string.player_settings, IC_PLAYER, anchorViewId = R.id.playerSettingsSpeed, keywordsRes = R.string.search_kw_default_playback_speed)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.default_playback_speed, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.playerSettingsSpeed, keywordsRes = R.string.search_kw_default_playback_speed)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.cursed_speeds, R.string.player_settings, IC_PLAYER, anchorViewId = R.id.playerSettingsCursedSpeeds, keywordsRes = R.string.search_kw_cursed_speeds)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.cursed_speeds, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.playerSettingsCursedSpeeds, keywordsRes = R.string.search_kw_cursed_speeds)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.resize_mode_button, R.string.player_settings, IC_PLAYER, anchorViewId = R.id.playerResizeMode, keywordsRes = R.string.search_kw_resize_mode_button)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.resize_mode_button, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.playerResizeMode, keywordsRes = R.string.search_kw_resize_mode_button)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.subtitle_toggle, R.string.player_settings, IC_PLAYER, anchorViewId = R.id.subSwitch, keywordsRes = R.string.search_kw_subtitle_toggle)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.subtitle_toggle, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.subSwitch, keywordsRes = R.string.search_kw_subtitle_toggle)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.primary_sub_color_select, R.string.player_settings, IC_PLAYER, anchorViewId = R.id.videoSubColorPrimary, keywordsRes = R.string.search_kw_primary_sub_color_select)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.primary_sub_color_select, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.videoSubColorPrimary, keywordsRes = R.string.search_kw_primary_sub_color_select)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.secondary_sub_color_select, R.string.player_settings, IC_PLAYER, anchorViewId = R.id.videoSubColorSecondary, keywordsRes = R.string.search_kw_secondary_sub_color_select)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.secondary_sub_color_select, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.videoSubColorSecondary, keywordsRes = R.string.search_kw_secondary_sub_color_select)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.secondary_sub_outline_type_select, R.string.player_settings, IC_PLAYER, anchorViewId = R.id.videoSubOutline, keywordsRes = R.string.search_kw_secondary_sub_outline_type_select)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.secondary_sub_outline_type_select, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.videoSubOutline, keywordsRes = R.string.search_kw_secondary_sub_outline_type_select)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.sub_background_color_select, R.string.player_settings, IC_PLAYER, anchorViewId = R.id.videoSubColorBackground, keywordsRes = R.string.search_kw_sub_background_color_select)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.sub_background_color_select, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.videoSubColorBackground, keywordsRes = R.string.search_kw_sub_background_color_select)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.sub_window_color_select, R.string.player_settings, IC_PLAYER, anchorViewId = R.id.videoSubColorWindow, keywordsRes = R.string.search_kw_sub_window_color_select)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.sub_window_color_select, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.videoSubColorWindow, keywordsRes = R.string.search_kw_sub_window_color_select)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.sub_alpha, R.string.player_settings, IC_PLAYER, anchorViewId = R.id.videoSubAlphaButton, keywordsRes = R.string.search_kw_sub_alpha)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.sub_alpha, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.videoSubAlphaButton, keywordsRes = R.string.search_kw_sub_alpha)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.textview_sub, R.string.player_settings, IC_PLAYER, anchorViewId = R.id.subTextSwitch, keywordsRes = R.string.search_kw_textview_sub)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.textview_sub, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.subTextSwitch, keywordsRes = R.string.search_kw_textview_sub)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.textview_sub_stroke, R.string.player_settings, IC_PLAYER, anchorViewId = R.id.videoSubStrokeButton, keywordsRes = R.string.search_kw_textview_sub_stroke)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.textview_sub_stroke, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.videoSubStrokeButton, keywordsRes = R.string.search_kw_textview_sub_stroke)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.textview_sub_bottom_margin, R.string.player_settings, IC_PLAYER, anchorViewId = R.id.videoSubBottomMarginButton, keywordsRes = R.string.search_kw_textview_sub_bottom_margin)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.textview_sub_bottom_margin, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.videoSubBottomMarginButton, keywordsRes = R.string.search_kw_textview_sub_bottom_margin)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.sub_font_select, R.string.player_settings, IC_PLAYER, anchorViewId = R.id.videoSubFont, keywordsRes = R.string.search_kw_sub_font_select)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.sub_font_select, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.videoSubFont, keywordsRes = R.string.search_kw_sub_font_select)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.subtitle_font_size, R.string.player_settings, IC_PLAYER, anchorViewId = R.id.subtitle_font_size_text, keywordsRes = R.string.search_kw_subtitle_font_size)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.subtitle_font_size, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.subtitle_font_size_text, keywordsRes = R.string.search_kw_subtitle_font_size)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.subtitle_langauge, R.string.player_settings, IC_PLAYER, anchorViewId = R.id.videoSubLanguage, keywordsRes = R.string.search_kw_subtitle_langauge)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.subtitle_langauge, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.videoSubLanguage, keywordsRes = R.string.search_kw_subtitle_langauge)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.always_load_time_stamps, R.string.player_settings, IC_PLAYER, anchorViewId = R.id.playerSettingsTimeStamps, keywordsRes = R.string.search_kw_always_load_time_stamps)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.always_load_time_stamps, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.playerSettingsTimeStamps, keywordsRes = R.string.search_kw_always_load_time_stamps)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.timestamp_proxy, R.string.player_settings, IC_PLAYER, anchorViewId = R.id.playerSettingsTimeStampsProxy, keywordsRes = R.string.search_kw_timestamp_proxy)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.timestamp_proxy, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.playerSettingsTimeStampsProxy, keywordsRes = R.string.search_kw_timestamp_proxy)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.show_skip_time_stamp_button, R.string.player_settings, IC_PLAYER, anchorViewId = R.id.playerSettingsShowTimeStamp, keywordsRes = R.string.search_kw_show_skip_time_stamp_button)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.show_skip_time_stamp_button, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.playerSettingsShowTimeStamp, keywordsRes = R.string.search_kw_show_skip_time_stamp_button)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.auto_hide_time_stamps, R.string.player_settings, IC_PLAYER, anchorViewId = R.id.playerSettingsTimeStampsAutoHide, keywordsRes = R.string.search_kw_auto_hide_time_stamps)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.auto_hide_time_stamps, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.playerSettingsTimeStampsAutoHide, keywordsRes = R.string.search_kw_auto_hide_time_stamps)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.auto_skip_op_ed, R.string.player_settings, IC_PLAYER, anchorViewId = R.id.playerSettingsAutoSkipOpEd, keywordsRes = R.string.search_kw_auto_skip_op_ed)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.auto_skip_op_ed, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.playerSettingsAutoSkipOpEd, keywordsRes = R.string.search_kw_auto_skip_op_ed)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.auto_skip_recap, R.string.player_settings, IC_PLAYER, anchorViewId = R.id.playerSettingsAutoSkipRecap, keywordsRes = R.string.search_kw_auto_skip_recap)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.auto_skip_recap, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.playerSettingsAutoSkipRecap, keywordsRes = R.string.search_kw_auto_skip_recap)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.auto_play_next_episode, R.string.player_settings, IC_PLAYER, anchorViewId = R.id.playerSettingsAutoPlay, keywordsRes = R.string.search_kw_auto_play_next_episode)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.auto_play_next_episode, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.playerSettingsAutoPlay, keywordsRes = R.string.search_kw_auto_play_next_episode)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.auto_skip_fillers, R.string.player_settings, IC_PLAYER, anchorViewId = R.id.playerSettingsAutoSkip, keywordsRes = R.string.search_kw_auto_skip_fillers)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.auto_skip_fillers, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.playerSettingsAutoSkip, keywordsRes = R.string.search_kw_auto_skip_fillers)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.ask_update_progress_anime, R.string.player_settings, IC_PLAYER, anchorViewId = R.id.playerSettingsAskUpdateProgress, keywordsRes = R.string.search_kw_ask_update_progress_anime)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.ask_update_progress_anime, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.playerSettingsAskUpdateProgress, keywordsRes = R.string.search_kw_ask_update_progress_anime)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.ask_update_progress_chapter_zero, R.string.player_settings, IC_PLAYER, anchorViewId = R.id.playerSettingsAskChapterZero, keywordsRes = R.string.search_kw_ask_update_progress_chapter_zero)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.ask_update_progress_episode_zero, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.playerSettingsAskChapterZero, keywordsRes = R.string.search_kw_ask_update_progress_chapter_zero)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.ask_update_progress_hentai, R.string.player_settings, IC_PLAYER, anchorViewId = R.id.playerSettingsAskUpdateHentai, keywordsRes = R.string.search_kw_ask_update_progress_hentai)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.ask_update_progress_hentai_anime, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.playerSettingsAskUpdateHentai, keywordsRes = R.string.search_kw_ask_update_progress_hentai)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.always_continue, R.string.player_settings, IC_PLAYER, anchorViewId = R.id.playerSettingsAlwaysContinue, keywordsRes = R.string.search_kw_always_continue)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.always_continue, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.playerSettingsAlwaysContinue, keywordsRes = R.string.search_kw_always_continue)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.pause_video_focus, R.string.player_settings, IC_PLAYER, anchorViewId = R.id.playerSettingsPauseVideo, keywordsRes = R.string.search_kw_pause_video_focus)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.pause_video_focus, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.playerSettingsPauseVideo, keywordsRes = R.string.search_kw_pause_video_focus)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.gestures, R.string.player_settings, IC_PLAYER, anchorViewId = R.id.playerSettingsVerticalGestures, keywordsRes = R.string.search_kw_gestures)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.gestures, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.playerSettingsVerticalGestures, keywordsRes = R.string.search_kw_gestures)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.fast_forward, R.string.player_settings, IC_PLAYER, anchorViewId = R.id.playerSettingsFastForward, keywordsRes = R.string.search_kw_fast_forward)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.fast_forward, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.playerSettingsFastForward, keywordsRes = R.string.search_kw_fast_forward)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.double_tap, R.string.player_settings, IC_PLAYER, anchorViewId = R.id.playerSettingsDoubleTap, keywordsRes = R.string.search_kw_double_tap)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.double_tap, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.playerSettingsDoubleTap, keywordsRes = R.string.search_kw_double_tap)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.picture_in_picture, R.string.player_settings, IC_PLAYER, anchorViewId = R.id.playerSettingsPiP, keywordsRes = R.string.search_kw_picture_in_picture)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.picture_in_picture, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.playerSettingsPiP, keywordsRes = R.string.search_kw_picture_in_picture)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.show_cast_button, R.string.player_settings, IC_PLAYER, anchorViewId = R.id.playerSettingsCast, keywordsRes = R.string.search_kw_show_cast_button)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.show_cast_button, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.playerSettingsCast, keywordsRes = R.string.search_kw_show_cast_button)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.show_rotate_button, R.string.player_settings, IC_PLAYER, anchorViewId = R.id.playerSettingsRotate, keywordsRes = R.string.search_kw_show_rotate_button)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.show_rotate_button, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.playerSettingsRotate, keywordsRes = R.string.search_kw_show_rotate_button)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.try_internal_cast_experimental, R.string.player_settings, IC_PLAYER, anchorViewId = R.id.playerSettingsInternalCast, keywordsRes = R.string.search_kw_try_internal_cast_experimental)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.try_internal_cast_experimental, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.playerSettingsInternalCast, keywordsRes = R.string.search_kw_try_internal_cast_experimental)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.use_additional_codec, R.string.player_settings, IC_PLAYER, anchorViewId = R.id.playerSettingsAdditionalCodec, keywordsRes = R.string.search_kw_use_additional_codec)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.use_additional_codec, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.playerSettingsAdditionalCodec, keywordsRes = R.string.search_kw_use_additional_codec)
 
 
         // ---- Reader settings (XML) ----
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.auto_detect_webtoon, R.string.reader_settings, IC_READER, anchorViewId = R.id.readerSettingsAutoWebToon, keywordsRes = R.string.search_kw_auto_detect_webtoon)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.auto_detect_webtoon, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.readerSettingsAutoWebToon, keywordsRes = R.string.search_kw_auto_detect_webtoon)
 
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.over_scroll, R.string.reader_settings, IC_READER, anchorViewId = R.id.readerSettingsOverscroll, keywordsRes = R.string.search_kw_over_scroll)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.over_scroll, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.readerSettingsOverscroll, keywordsRes = R.string.search_kw_over_scroll)
 
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.true_colors, R.string.reader_settings, IC_READER, anchorViewId = R.id.readerSettingsTrueColors, keywordsRes = R.string.search_kw_true_colors)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.true_colors, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.readerSettingsTrueColors, keywordsRes = R.string.search_kw_true_colors)
 
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.image_rotation, R.string.reader_settings, IC_READER, anchorViewId = R.id.readerSettingsImageRotation, keywordsRes = R.string.search_kw_image_rotation)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.image_rotation, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.readerSettingsImageRotation, keywordsRes = R.string.search_kw_image_rotation)
 
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.crop_borders, R.string.reader_settings, IC_READER, anchorViewId = R.id.readerSettingsCropBorders, keywordsRes = R.string.search_kw_crop_borders)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.crop_borders, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.readerSettingsCropBorders, keywordsRes = R.string.search_kw_crop_borders)
 
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.spaced_pages, R.string.reader_settings, IC_READER, anchorViewId = R.id.readerSettingsPadding, keywordsRes = R.string.search_kw_spaced_pages)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.spaced_pages, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.readerSettingsPadding, keywordsRes = R.string.search_kw_spaced_pages)
 
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.hide_scroll_bar, R.string.reader_settings, IC_READER, anchorViewId = R.id.readerSettingsHideScrollBar, keywordsRes = R.string.search_kw_hide_scroll_bar)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.hide_scroll_bar, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.readerSettingsHideScrollBar, keywordsRes = R.string.search_kw_hide_scroll_bar)
 
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.hide_page_numbers, R.string.reader_settings, IC_READER, anchorViewId = R.id.readerSettingsHidePageNumbers, keywordsRes = R.string.search_kw_hide_page_numbers)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.hide_page_numbers, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.readerSettingsHidePageNumbers, keywordsRes = R.string.search_kw_hide_page_numbers)
 
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.horizontal_scroll_bar, R.string.reader_settings, IC_READER, anchorViewId = R.id.readerSettingsHorizontalScrollBar, keywordsRes = R.string.search_kw_horizontal_scroll_bar)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.horizontal_scroll_bar, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.readerSettingsHorizontalScrollBar, keywordsRes = R.string.search_kw_horizontal_scroll_bar)
 
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.keep_screen_on, R.string.reader_settings, IC_READER, anchorViewId = R.id.readerSettingsKeepScreenOn, keywordsRes = R.string.search_kw_keep_screen_on)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.keep_screen_on, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.readerSettingsKeepScreenOn, keywordsRes = R.string.search_kw_keep_screen_on)
 
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.lock_screen_rotation, R.string.reader_settings, IC_READER, anchorViewId = R.id.readerSettingsLockRotation, keywordsRes = R.string.search_kw_lock_screen_rotation)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.lock_screen_rotation, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.readerSettingsLockRotation, keywordsRes = R.string.search_kw_lock_screen_rotation)
 
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.autoscroll, R.string.reader_settings, IC_READER, anchorViewId = R.id.readerSettingsAutoscrollEnabled, keywordsRes = R.string.search_kw_autoscroll)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.autoscroll, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.readerSettingsAutoscrollEnabled, keywordsRes = R.string.search_kw_autoscroll)
 
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.volume_buttons, R.string.reader_settings, IC_READER, anchorViewId = R.id.readerSettingsVolumeButton, keywordsRes = R.string.search_kw_volume_buttons)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.volume_buttons, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.readerSettingsVolumeButton, keywordsRes = R.string.search_kw_volume_buttons)
 
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.wrap_images, R.string.reader_settings, IC_READER, anchorViewId = R.id.readerSettingsWrapImages, keywordsRes = R.string.search_kw_wrap_images)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.wrap_images, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.readerSettingsWrapImages, keywordsRes = R.string.search_kw_wrap_images)
 
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.image_long_clicking, R.string.reader_settings, IC_READER, anchorViewId = R.id.readerSettingsLongClickImage, keywordsRes = R.string.search_kw_image_long_clicking)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.image_long_clicking, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.readerSettingsLongClickImage, keywordsRes = R.string.search_kw_image_long_clicking)
 
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.preload_amount, R.string.reader_settings, IC_READER, anchorViewId = R.id.readerSettingsPreloadAmount, keywordsRes = R.string.search_kw_preload_amount)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.preload_amount, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.readerSettingsPreloadAmount, keywordsRes = R.string.search_kw_preload_amount)
 
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.layout, R.string.reader_settings, IC_READER, anchorViewId = R.id.readerSettingsLayoutText, keywordsRes = R.string.search_kw_layout)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.layout, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.readerSettingsLayoutText, keywordsRes = R.string.search_kw_layout)
 
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.direction, R.string.reader_settings, IC_READER, anchorViewId = R.id.readerSettingsDirectionText, keywordsRes = R.string.search_kw_direction)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.direction, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.readerSettingsDirectionText, keywordsRes = R.string.search_kw_direction)
 
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.dual_page, R.string.reader_settings, IC_READER, anchorViewId = R.id.readerSettingsDualPageText, keywordsRes = R.string.search_kw_dual_page)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.dual_page, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.readerSettingsDualPageText, keywordsRes = R.string.search_kw_dual_page)
 
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.source_info, R.string.reader_settings, IC_READER, anchorViewId = R.id.readerSettingsSourceName, keywordsRes = R.string.search_kw_source_info)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.source_info, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.readerSettingsSourceName, keywordsRes = R.string.search_kw_source_info)
 
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.continuous_multi_chapter, R.string.reader_settings, IC_READER, anchorViewId = R.id.readerSettingsContinuousMultiChapter, keywordsRes = R.string.search_kw_continuous_multi_chapter)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.continuous_multi_chapter, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.readerSettingsContinuousMultiChapter, keywordsRes = R.string.search_kw_continuous_multi_chapter)
 
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.show_system_bars, R.string.reader_settings, IC_READER, anchorViewId = R.id.readerSettingsSystemBars, keywordsRes = R.string.search_kw_show_system_bars)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.show_system_bars, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.readerSettingsSystemBars, keywordsRes = R.string.search_kw_show_system_bars)
 
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.ask_update_progress_manga, R.string.reader_settings, IC_READER, anchorViewId = R.id.readerSettingsAskUpdateProgress, keywordsRes = R.string.search_kw_ask_update_progress_manga)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.ask_update_progress_manga, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.readerSettingsAskUpdateProgress, keywordsRes = R.string.search_kw_ask_update_progress_manga)
 
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.ask_update_progress_chapter_zero, R.string.reader_settings, IC_READER, anchorViewId = R.id.readerSettingsAskChapterZero, keywordsRes = R.string.search_kw_ask_update_progress_chapter_zero_2)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.ask_update_progress_chapter_zero, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.readerSettingsAskChapterZero, keywordsRes = R.string.search_kw_ask_update_progress_chapter_zero_2)
 
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.ask_update_progress_hentai, R.string.reader_settings, IC_READER, anchorViewId = R.id.readerSettingsAskUpdateHentai, keywordsRes = R.string.search_kw_ask_update_progress_hentai)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.ask_update_progress_hentai_manga, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.readerSettingsAskUpdateHentai, keywordsRes = R.string.search_kw_ask_update_progress_hentai)
 
         // Novel reader sub-section
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.use_dark_theme, R.string.reader_settings, IC_READER, anchorViewId = R.id.LNuseDarkTheme, keywordsRes = R.string.search_kw_use_dark_theme)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.use_dark_theme, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.LNuseDarkTheme, keywordsRes = R.string.search_kw_use_dark_theme)
 
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.use_oled_theme, R.string.reader_settings, IC_READER, anchorViewId = R.id.LNuseOledTheme, keywordsRes = R.string.search_kw_use_oled_theme)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.use_oled_theme, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.LNuseOledTheme, keywordsRes = R.string.search_kw_use_oled_theme)
 
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.keep_screen_on, R.string.reader_settings, IC_READER, anchorViewId = R.id.LNkeepScreenOn, keywordsRes = R.string.search_kw_keep_screen_on_2)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.keep_screen_on, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.LNkeepScreenOn, keywordsRes = R.string.search_kw_keep_screen_on_2)
 
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.volume_buttons, R.string.reader_settings, IC_READER, anchorViewId = R.id.LNvolumeButton, keywordsRes = R.string.search_kw_volume_buttons_2)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.volume_buttons, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.LNvolumeButton, keywordsRes = R.string.search_kw_volume_buttons_2)
 
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.layout, R.string.reader_settings, IC_READER, anchorViewId = R.id.LNlayoutText, keywordsRes = R.string.search_kw_layout_2)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.layout, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.LNlayoutText, keywordsRes = R.string.search_kw_layout_2)
 
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.dual_page, R.string.reader_settings, IC_READER, anchorViewId = R.id.LNdualPageText, keywordsRes = R.string.search_kw_dual_page_2)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.dual_page, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.LNdualPageText, keywordsRes = R.string.search_kw_dual_page_2)
 
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.theme, R.string.reader_settings, IC_READER, anchorViewId = R.id.LNthemeSelect, keywordsRes = R.string.search_kw_novel_theme)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.theme, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.LNthemeSelect, keywordsRes = R.string.search_kw_novel_theme)
 
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.justify_text, R.string.reader_settings, IC_READER, anchorViewId = R.id.LNjustify, keywordsRes = R.string.search_kw_justify_text)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.justify_text, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.LNjustify, keywordsRes = R.string.search_kw_justify_text)
 
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.hyphenation, R.string.reader_settings, IC_READER, anchorViewId = R.id.LNhyphenation, keywordsRes = R.string.search_kw_hyphenation)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.hyphenation, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.LNhyphenation, keywordsRes = R.string.search_kw_hyphenation)
 
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.backup_line_height, R.string.reader_settings, IC_READER, anchorViewId = R.id.LNlineHeight, keywordsRes = R.string.search_kw_novel_line_height)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.backup_line_height, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.LNlineHeight, keywordsRes = R.string.search_kw_novel_line_height)
 
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.backup_page_margin, R.string.reader_settings, IC_READER, anchorViewId = R.id.LNmargin, keywordsRes = R.string.search_kw_novel_margin)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.backup_page_margin, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.LNmargin, keywordsRes = R.string.search_kw_novel_margin)
 
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.backup_max_inline_size, R.string.reader_settings, IC_READER, anchorViewId = R.id.LNmaxInlineSize)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.backup_max_inline_size, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.LNmaxInlineSize)
 
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.backup_max_block_size, R.string.reader_settings, IC_READER, anchorViewId = R.id.LNmaxBlockSize)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.backup_max_block_size, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.LNmaxBlockSize)
 
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.novel_tts, R.string.reader_settings, IC_READER, R.string.novel_tts_desc, anchorViewId = R.id.LNtextToSpeech, keywordsRes = R.string.search_kw_novel_tts)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.novel_tts, R.string.manga_and_reader, IC_READER, R.string.novel_tts_desc, anchorViewId = R.id.LNtextToSpeech, keywordsRes = R.string.search_kw_novel_tts)
 
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.lock_screen_rotation, R.string.reader_settings, IC_READER, anchorViewId = R.id.LNlockRotation, keywordsRes = R.string.search_kw_novel_lock_rotation)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.lock_screen_rotation, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.LNlockRotation, keywordsRes = R.string.search_kw_novel_lock_rotation)
 
-        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.hide_page_numbers, R.string.reader_settings, IC_READER, anchorViewId = R.id.LNhidePageNumbers, keywordsRes = R.string.search_kw_novel_hide_page_numbers)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.hide_page_numbers, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.LNhidePageNumbers, keywordsRes = R.string.search_kw_novel_hide_page_numbers)
 
 
         // ---- Extensions ----

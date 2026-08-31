@@ -50,7 +50,7 @@
                     android:layout_margin="32dp"
                     android:layout_weight="1"
                     android:fontFamily="@font/poppins_bold"
-                    android:text="@string/reader_settings"
+                    android:text="@string/manga_and_reader"
                     android:textSize="28sp" />
 
                 <ImageView
@@ -67,6 +67,30 @@
 
         </LinearLayout>
 
+        <!-- The library rows that were the whole of the Manga screen. First because they apply
+             before a chapter is opened. -->
+        <ani.dantotsu.others.Xpandable
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            app:stateKey="reader_library"
+            app:stateScope="reader"
+            app:title="@string/library"
+            app:summary="@string/library_manga_group_desc"
+            app:icon="@drawable/ic_round_library_books_24">
+
+            <ani.dantotsu.FadingEdgeRecyclerView
+                android:id="@+id/settingsRecyclerView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="8dp"
+                android:layout_marginBottom="8dp"
+                android:nestedScrollingEnabled="false"
+                android:requiresFadingEdge="vertical"
+                tools:itemCount="2"
+                tools:listitem="@layout/item_settings" />
+        </ani.dantotsu.others.Xpandable>
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -77,20 +101,13 @@
             <ani.dantotsu.others.Xpandable
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical">
+                android:orientation="vertical"
+                app:stateKey="reader_manga"
+                app:stateScope="reader"
+                app:title="@string/default_manga_settings"
+                app:summary="@string/manga_reader_group_desc"
+                app:icon="@drawable/ic_round_import_contacts_24">
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="64dp"
-                    android:layout_marginTop="8dp"
-                    android:fontFamily="@font/poppins_bold"
-                    android:gravity="center_vertical"
-                    android:paddingStart="32dp"
-                    android:paddingEnd="32dp"
-                    android:text="@string/default_manga_settings"
-                    android:textColor="?attr/colorSecondary"
-                    app:drawableEndCompat="@drawable/ic_round_arrow_drop_down_24"
-                    tools:ignore="TextContrastCheck" />
 
                 <com.google.android.material.materialswitch.MaterialSwitch
                     android:id="@+id/readerSettingsAutoWebToon"
@@ -797,20 +814,13 @@
             <ani.dantotsu.others.Xpandable
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical">
+                android:orientation="vertical"
+                app:stateKey="reader_novel"
+                app:stateScope="reader"
+                app:title="@string/default_novel_settings"
+                app:summary="@string/novel_reader_group_desc"
+                app:icon="@drawable/ic_round_menu_book_24">
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="64dp"
-                    android:layout_marginTop="8dp"
-                    android:fontFamily="@font/poppins_bold"
-                    android:gravity="center_vertical"
-                    android:paddingStart="32dp"
-                    android:paddingEnd="32dp"
-                    android:text="Default Novel Settings"
-                    android:textColor="?attr/colorSecondary"
-                    app:drawableEndCompat="@drawable/ic_round_arrow_drop_down_24"
-                    tools:ignore="TextContrastCheck" />
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -1507,17 +1517,15 @@
                     app:drawableTint="?attr/colorPrimary" />
             </ani.dantotsu.others.Xpandable>
 
-            <TextView
+            <ani.dantotsu.others.Xpandable
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:fontFamily="@font/poppins_bold"
-                android:paddingStart="32dp"
-                android:paddingTop="20dp"
-                android:paddingEnd="32dp"
-                android:text="@string/general"
-                android:textColor="?attr/colorSecondary"
-                tools:ignore="TextContrastCheck" />
+                android:orientation="vertical"
+                app:stateKey="reader_general"
+                app:stateScope="reader"
+                app:title="@string/general"
+                app:summary="@string/general_group_desc"
+                app:icon="@drawable/ic_round_tune_24">
 
             <com.google.android.material.materialswitch.MaterialSwitch
                 android:id="@+id/readerSettingsSourceName"
@@ -1597,16 +1605,17 @@
 
             </com.google.android.material.materialswitch.MaterialSwitch>
 
-            <TextView
+            </ani.dantotsu.others.Xpandable>
+
+            <ani.dantotsu.others.Xpandable
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:fontFamily="@font/poppins_bold"
-                android:paddingStart="32dp"
-                android:paddingEnd="32dp"
-                android:text="@string/update_progress"
-                android:textColor="?attr/colorSecondary"
-                tools:ignore="TextContrastCheck" />
+                android:orientation="vertical"
+                app:stateKey="reader_progress"
+                app:stateScope="reader"
+                app:title="@string/update_progress"
+                app:summary="@string/update_progress_reader_group_desc"
+                app:icon="@drawable/ic_round_sync_24">
 
             <com.google.android.material.materialswitch.MaterialSwitch
                 android:id="@+id/readerSettingsAskUpdateProgress"
@@ -1691,7 +1700,7 @@
                 android:minHeight="64dp"
                 android:paddingStart="32dp"
                 android:paddingEnd="32dp"
-                android:text="@string/ask_update_progress_hentai"
+                android:text="@string/ask_update_progress_hentai_manga"
                 android:textAlignment="viewStart"
                 android:textColor="?attr/colorOnBackground"
                 app:cornerRadius="0dp"
@@ -1700,6 +1709,8 @@
                 app:thumbTint="@color/button_switch_track">
 
             </com.google.android.material.materialswitch.MaterialSwitch>
+
+            </ani.dantotsu.others.Xpandable>
 
         </LinearLayout>
     </LinearLayout>

@@ -12,6 +12,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.view.updateLayoutParams
 import androidx.core.widget.addTextChangedListener
+import androidx.recyclerview.widget.LinearLayoutManager
 import ani.dantotsu.R
 import ani.dantotsu.databinding.ActivityPlayerSettingsBinding
 import ani.dantotsu.initActivity
@@ -20,6 +21,7 @@ import ani.dantotsu.navBarHeight
 import ani.dantotsu.others.Xpandable
 import ani.dantotsu.others.getSerialized
 import ani.dantotsu.parsers.Subtitle
+import ani.dantotsu.restartApp
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.snackString
@@ -61,7 +63,10 @@ class PlayerSettingsActivity :
         ThemeManager(this).applyTheme()
         binding = ActivityPlayerSettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        SettingsRouter.handleHighlight(this)
+        SettingsRouter.handleHighlight(this, binding.settingsRecyclerView)
+        bindLibraryRows()
+        // Every group has now read the relaunch marker; consume it so one restart restores once.
+        Xpandable.consumeRelaunch(Xpandable.SCOPE_PLAYER)
 
         initActivity(this)
 
@@ -633,5 +638,74 @@ class PlayerSettingsActivity :
 
             setBackgroundColor(PrefManager.getVal<Int>(PrefName.SubBackground))
         }
+    }
+
+    /**
+     * What used to be the Anime screen.
+     *
+     * That screen held four rows, one of which was a link to this one — so the label "Anime"
+     * promised a section and delivered a near-empty list with a door in it. These rows apply before
+     * playback rather than during it, so they sit above the player's own groups.
+     */
+    private fun bindLibraryRows() {
+        binding.settingsRecyclerView.adapter = SettingsAdapter(
+            arrayListOf(
+                Settings(
+                    type = 2,
+                    name = getString(R.string.prefer_dub),
+                    desc = getString(R.string.prefer_dub_desc),
+                    icon = R.drawable.ic_anime_dub_24,
+                    anchorKey = "prefer_dub",
+                    isChecked = PrefManager.getVal(PrefName.SettingsPreferDub),
+                    switch = { isChecked, _ ->
+                        PrefManager.setVal(PrefName.SettingsPreferDub, isChecked)
+                    }
+                ),
+                Settings(
+                    type = 2,
+                    name = getString(R.string.show_yt),
+                    desc = getString(R.string.show_yt_desc),
+                    icon = R.drawable.format_youtube_24,
+                    anchorKey = "show_yt",
+                    isChecked = PrefManager.getVal(PrefName.ShowYtButton),
+                    switch = { isChecked, _ ->
+                        PrefManager.setVal(PrefName.ShowYtButton, isChecked)
+                    }
+                ),
+                Settings(
+                    type = 2,
+                    name = getString(R.string.include_list),
+                    desc = getString(R.string.include_list_anime_desc),
+                    icon = R.drawable.view_list_24,
+                    anchorKey = "include_anime_list",
+                    isChecked = PrefManager.getVal(PrefName.IncludeAnimeList),
+                    switch = { isChecked, _ ->
+                        PrefManager.setVal(PrefName.IncludeAnimeList, isChecked)
+                        Xpandable.markRelaunch(Xpandable.SCOPE_PLAYER)
+                        restartApp()
+                    }
+                ),
+                // Was a bare tri-toggle in the Anime layout with no label of its own; as a choice
+                // row it keeps the three buttons and gains the title and description it lacked.
+                Settings(
+                    type = 5,
+                    name = getString(R.string.default_ep_view),
+                    desc = getString(R.string.default_ep_view_desc),
+                    icon = R.drawable.ic_round_view_list_24,
+                    anchorKey = "default_ep_view",
+                    choice = ChoiceConfig(
+                        options = listOf(
+                            ChoiceOption(R.drawable.ic_round_view_list_24, getString(R.string.list)),
+                            ChoiceOption(R.drawable.ic_round_grid_view_24, getString(R.string.grid)),
+                            ChoiceOption(R.drawable.ic_round_view_comfy_24, getString(R.string.compact)),
+                        ),
+                        selected = PrefManager.getVal(PrefName.AnimeDefaultView),
+                        onSelect = { PrefManager.setVal(PrefName.AnimeDefaultView, it) },
+                    ),
+                ),
+            )
+        )
+        binding.settingsRecyclerView.layoutManager =
+            LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false)
     }
 }

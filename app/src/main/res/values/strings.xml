@@ -342,6 +342,27 @@
     <string name="appearance_desc">Theme, colours, home screen and animations</string>
     <string name="startUpTab_desc">Which tab the app opens on</string>
     <string name="general_desc">Language, lock, privacy and behaviour</string>
+    <string name="manga_and_reader">Manga &amp; Reader</string>
+    <string name="manga_and_reader_desc">Library, manga reader and novel reader</string>
+    <string name="default_chp_view_desc">How chapters are laid out on a media page</string>
+    <!-- One-line summaries on the collapsible group headers of the Player and Reader screens. -->
+    <string name="default_novel_settings">Default Novel Settings</string>
+    <string name="library">Library</string>
+    <string name="library_anime_group_desc">Dub preference, list inclusion and episode layout</string>
+    <string name="library_manga_group_desc">List inclusion and chapter layout</string>
+    <string name="other_group_desc">Picture in picture, casting and codecs</string>
+    <string name="general_group_desc">Source name, multi-chapter reading and system bars</string>
+    <string name="update_progress_reader_group_desc">When reading counts as progress</string>
+    <string name="video_group_desc">Playback speed and resize mode</string>
+    <string name="subtitles_group_desc">Colours, font, size and language</string>
+    <string name="timestamps_group_desc">Skipping openings, endings and fillers</string>
+    <string name="update_progress_group_desc">When watching counts as progress</string>
+    <string name="behaviour_group_desc">Gestures, seeking and resuming</string>
+    <string name="manga_reader_group_desc">Layout, direction and page handling</string>
+    <string name="novel_reader_group_desc">Theme, text and read-aloud</string>
+    <string name="anime_and_player">Anime &amp; Player</string>
+    <string name="anime_and_player_desc">Library, video, subtitles and playback</string>
+    <string name="default_ep_view_desc">How episodes are laid out on a media page</string>
     <string name="accounts_and_sync">Accounts &amp; Sync</string>
     <string name="accounts_and_sync_desc">Trackers, list sync, backup and cloud sync</string>
     <string name="sources_and_downloads">Sources &amp; Downloads</string>
@@ -442,9 +463,17 @@
     <string name="ask_update_progress_manga">Ask for each Manga \"Individually\"</string>
     <string name="ask_update_progress_info_ep">Turning off will always automatically update progress when the episode is watched.</string>
     <string name="ask_update_progress_info_chap">Turning off will always automatically update progress when the chapter is read.</string>
+    <!-- The player and the reader each have their own copy of these three settings, backed by
+         separate preferences (ChapterZeroPlayer/ChapterZeroReader, UpdateForHPlayer/
+         UpdateForHReader). They used to share one label apiece, so a user had no way to tell which
+         of the two they were changing — and "chapter 0" was simply wrong in the player, where the
+         preference governs episodes. -->
     <string name="ask_update_progress_chapter_zero">Update Progress for Chapter 0</string>
+    <string name="ask_update_progress_episode_zero">Update Progress for Episode 0</string>
     <string name="ask_update_progress_info_zero">Turning on will add newly started items to Anilist with progress set to chapter 0.</string>
-    <string name="ask_update_progress_hentai">Update Progress for Hentai</string>
+    <string name="ask_update_progress_info_zero_ep">Turning on will add newly started items to Anilist with progress set to episode 0.</string>
+    <string name="ask_update_progress_hentai_anime">Update Progress for Hentai Anime</string>
+    <string name="ask_update_progress_hentai_manga">Update Progress for Hentai Manga</string>
     <string name="track_progress">Track Progress</string>
     <string name="track_progress_enabled">Progress tracking enabled for this manga</string>
     <string name="track_progress_disabled">Progress tracking disabled for this manga</string>

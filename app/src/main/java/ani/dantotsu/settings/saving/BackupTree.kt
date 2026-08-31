@@ -285,8 +285,8 @@ object BackupTree {
                         BackupItem(PrefName.FocusPause, R.string.pause_video_focus),
                         BackupItem(PrefName.WatchPercentage, R.string.watch_complete_percentage),
                         BackupItem(PrefName.AskIndividualPlayer, R.string.ask_update_progress_anime),
-                        BackupItem(PrefName.ChapterZeroPlayer, R.string.ask_update_progress_chapter_zero),
-                        BackupItem(PrefName.UpdateForHPlayer, R.string.ask_update_progress_hentai),
+                        BackupItem(PrefName.ChapterZeroPlayer, R.string.ask_update_progress_episode_zero),
+                        BackupItem(PrefName.UpdateForHPlayer, R.string.ask_update_progress_hentai_anime),
                     )
                 ),
                 BackupSubCategory(
@@ -384,7 +384,7 @@ object BackupTree {
                     listOf(
                         BackupItem(PrefName.AskIndividualReader, R.string.ask_update_progress_manga),
                         BackupItem(PrefName.ChapterZeroReader, R.string.ask_update_progress_chapter_zero),
-                        BackupItem(PrefName.UpdateForHReader, R.string.ask_update_progress_hentai),
+                        BackupItem(PrefName.UpdateForHReader, R.string.ask_update_progress_hentai_manga),
                         BackupItem(PrefName.AutoDetectWebtoon, R.string.auto_detect_webtoon),
                         BackupItem(PrefName.VolumeButtonsReader, R.string.volume_buttons),
                         BackupItem(PrefName.LongClickImage, R.string.image_long_clicking),

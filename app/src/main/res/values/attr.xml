@@ -7,5 +7,22 @@
 
     <declare-styleable name="Xpandable">
         <attr name="isExpanded" format="boolean" />
+        <!-- Remembers whether this group is open, under "settings_expanded_<stateKey>" — the same
+             preference scheme SettingsSectionAdapter uses. Without one the group reverts to
+             isExpanded on every entry, and the Player and Reader screens restart the activity for
+             several of their settings, so that meant collapsing everything mid-adjustment. -->
+        <attr name="stateKey" format="string" />
+        <!-- The screen these groups belong to. Expansion is restored only when the launch is one
+             that should keep it — a search landing on a setting, or a restart the screen triggered
+             itself. A plain entry resets every group to isExpanded, matching how the collapsible
+             cards built by SettingsSectionAdapter behave. -->
+        <attr name="stateScope" format="string" />
+        <!-- The header Xpandable builds for itself. Given a title it inflates
+             item_settings_section_header, so a group matches a SettingsSectionAdapter card without
+             every screen repeating the markup; without one it keeps whatever header the layout
+             supplies as its first child. -->
+        <attr name="title" format="string" />
+        <attr name="summary" format="string" />
+        <attr name="icon" format="reference" />
     </declare-styleable>
 </resources>

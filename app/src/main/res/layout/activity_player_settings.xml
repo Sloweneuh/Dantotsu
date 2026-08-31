@@ -50,7 +50,7 @@
                     android:layout_margin="32dp"
                     android:layout_weight="1"
                     android:fontFamily="@font/poppins_bold"
-                    android:text="@string/player_settings"
+                    android:text="@string/anime_and_player"
                     android:textSize="28sp" />
 
                 <ImageView
@@ -67,6 +67,32 @@
 
         </LinearLayout>
 
+        <!-- The library rows that were the whole of the Anime screen: what it prefers, what it
+             shows, how episodes are laid out. First because they apply before playback starts.
+             Carded like every other group — Xpandable collapses whatever children follow its
+             header, and a RecyclerView is as good a child as a switch. -->
+        <ani.dantotsu.others.Xpandable
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            app:stateKey="player_library"
+            app:stateScope="player"
+            app:title="@string/library"
+            app:summary="@string/library_anime_group_desc"
+            app:icon="@drawable/ic_round_library_books_24">
+
+            <ani.dantotsu.FadingEdgeRecyclerView
+                android:id="@+id/settingsRecyclerView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="8dp"
+                android:layout_marginBottom="8dp"
+                android:nestedScrollingEnabled="false"
+                android:requiresFadingEdge="vertical"
+                tools:itemCount="4"
+                tools:listitem="@layout/item_settings" />
+        </ani.dantotsu.others.Xpandable>
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -77,18 +103,13 @@
             <ani.dantotsu.others.Xpandable
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical">
+                android:orientation="vertical"
+                app:stateKey="player_video"
+                app:stateScope="player"
+                app:title="@string/video"
+                app:summary="@string/video_group_desc"
+                app:icon="@drawable/ic_round_video_settings_24">
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="64dp"
-                    android:fontFamily="@font/poppins_bold"
-                    android:gravity="center_vertical"
-                    android:paddingHorizontal="32dp"
-                    android:text="@string/video"
-                    android:textColor="?attr/colorSecondary"
-                    app:drawableEndCompat="@drawable/ic_round_arrow_drop_down_24"
-                    tools:ignore="TextContrastCheck" />
 
                 <Button
                     android:id="@+id/playerSettingsSpeed"
@@ -154,18 +175,13 @@
             <ani.dantotsu.others.Xpandable
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical">
+                android:orientation="vertical"
+                app:stateKey="player_subtitles"
+                app:stateScope="player"
+                app:title="@string/subtitles"
+                app:summary="@string/subtitles_group_desc"
+                app:icon="@drawable/ic_round_subtitles_24">
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="64dp"
-                    android:fontFamily="@font/poppins_bold"
-                    android:gravity="center_vertical"
-                    android:paddingHorizontal="32dp"
-                    android:text="@string/subtitles"
-                    android:textColor="?attr/colorSecondary"
-                    app:drawableEndCompat="@drawable/ic_round_arrow_drop_down_24"
-                    tools:ignore="TextContrastCheck" />
 
                 <ani.dantotsu.others.Xpandable
                     android:id="@+id/subtitleTest"
@@ -560,18 +576,13 @@
             <ani.dantotsu.others.Xpandable
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical">
+                android:orientation="vertical"
+                app:stateKey="player_timestamps"
+                app:stateScope="player"
+                app:title="@string/timestamps"
+                app:summary="@string/timestamps_group_desc"
+                app:icon="@drawable/ic_round_notif_schedule_24">
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="64dp"
-                    android:fontFamily="@font/poppins_bold"
-                    android:gravity="center_vertical"
-                    android:paddingHorizontal="32dp"
-                    android:text="@string/timestamps"
-                    android:textColor="?attr/colorSecondary"
-                    app:drawableEndCompat="@drawable/ic_round_arrow_drop_down_24"
-                    tools:ignore="TextContrastCheck" />
 
                 <com.google.android.material.materialswitch.MaterialSwitch
                     android:id="@+id/playerSettingsTimeStamps"
@@ -811,18 +822,13 @@
             <ani.dantotsu.others.Xpandable
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical">
+                android:orientation="vertical"
+                app:stateKey="player_progress"
+                app:stateScope="player"
+                app:title="@string/update_progress"
+                app:summary="@string/update_progress_group_desc"
+                app:icon="@drawable/ic_round_sync_24">
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="64dp"
-                    android:fontFamily="@font/poppins_bold"
-                    android:gravity="center_vertical"
-                    android:paddingHorizontal="32dp"
-                    android:text="@string/update_progress"
-                    android:textColor="?attr/colorSecondary"
-                    app:drawableEndCompat="@drawable/ic_round_arrow_drop_down_24"
-                    tools:ignore="TextContrastCheck" />
 
                 <com.google.android.material.materialswitch.MaterialSwitch
                     android:id="@+id/playerSettingsAskUpdateProgress"
@@ -869,7 +875,7 @@
                     android:fontFamily="@font/poppins_bold"
                     android:minHeight="64dp"
                     android:paddingHorizontal="32dp"
-                    android:text="@string/ask_update_progress_chapter_zero"
+                    android:text="@string/ask_update_progress_episode_zero"
                     android:textAlignment="viewStart"
                     android:textColor="?attr/colorOnBackground"
                     app:cornerRadius="0dp"
@@ -887,7 +893,7 @@
                     android:alpha="0.58"
                     android:fontFamily="@font/poppins_family"
                     android:paddingHorizontal="32dp"
-                    android:text="@string/ask_update_progress_info_zero"
+                    android:text="@string/ask_update_progress_info_zero_ep"
                     android:textSize="14sp" />
 
                 <com.google.android.material.materialswitch.MaterialSwitch
@@ -902,7 +908,7 @@
                     android:fontFamily="@font/poppins_bold"
                     android:minHeight="64dp"
                     android:paddingHorizontal="32dp"
-                    android:text="@string/ask_update_progress_hentai"
+                    android:text="@string/ask_update_progress_hentai_anime"
                     android:textAlignment="viewStart"
                     android:textColor="@color/bg_opp"
                     app:cornerRadius="0dp"
@@ -954,18 +960,13 @@
             <ani.dantotsu.others.Xpandable
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical">
+                android:orientation="vertical"
+                app:stateKey="player_behaviour"
+                app:stateScope="player"
+                app:title="@string/behaviour"
+                app:summary="@string/behaviour_group_desc"
+                app:icon="@drawable/ic_round_touch_app_24">
 
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="64dp"
-                    android:fontFamily="@font/poppins_bold"
-                    android:gravity="center_vertical"
-                    android:paddingHorizontal="32dp"
-                    android:text="@string/behaviour"
-                    android:textColor="?attr/colorSecondary"
-                    app:drawableEndCompat="@drawable/ic_round_arrow_drop_down_24"
-                    tools:ignore="TextContrastCheck" />
 
                 <com.google.android.material.materialswitch.MaterialSwitch
                     android:id="@+id/playerSettingsAlwaysContinue"
@@ -1217,16 +1218,15 @@
             </ani.dantotsu.others.Xpandable>
 
 
-            <TextView
+            <ani.dantotsu.others.Xpandable
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/poppins_bold"
-                android:gravity="center_vertical"
-                android:paddingHorizontal="32dp"
-                android:paddingTop="20dp"
-                android:text="@string/other"
-                android:textColor="?attr/colorSecondary"
-                tools:ignore="TextContrastCheck" />
+                android:orientation="vertical"
+                app:stateKey="player_other"
+                app:stateScope="player"
+                app:title="@string/other"
+                app:summary="@string/other_group_desc"
+                app:icon="@drawable/ic_round_tune_24">
 
             <com.google.android.material.materialswitch.MaterialSwitch
                 android:id="@+id/playerSettingsPiP"
@@ -1345,6 +1345,8 @@
                 android:paddingHorizontal="32dp"
                 android:text=""
                 android:textSize="14sp" />
+
+            </ani.dantotsu.others.Xpandable>
 
 
         </LinearLayout>
