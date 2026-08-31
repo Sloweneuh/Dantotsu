@@ -21,10 +21,8 @@ import ani.dantotsu.profile.notification.NotificationFragment.Companion.Notifica
 import ani.dantotsu.profile.notification.NotificationFragment.Companion.NotificationType.UNREAD_CHAPTER
 import ani.dantotsu.profile.notification.NotificationFragment.Companion.NotificationType.USER
 import ani.dantotsu.profile.notification.NotificationFragment.Companion.newInstance
-import ani.dantotsu.settings.SettingsAnilistNotificationActivity
-import ani.dantotsu.settings.SettingsCommentNotificationActivity
-import ani.dantotsu.settings.SettingsSubscriptionNotificationActivity
-import ani.dantotsu.settings.SettingsUnreadChapterNotificationActivity
+import ani.dantotsu.settings.NotificationSection
+import ani.dantotsu.settings.notificationSettingsIntent
 import ani.dantotsu.settings.bindQuickSettings
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
@@ -104,15 +102,14 @@ class NotificationActivity : AppCompatActivity() {
     }
 
     private fun openSettingsForCurrentTab() {
-        val intent = when (selected) {
-            0 -> Intent(this, SettingsAnilistNotificationActivity::class.java) // User tab
-            1 -> Intent(this, SettingsAnilistNotificationActivity::class.java) // Media tab
-            2 -> Intent(this, SettingsSubscriptionNotificationActivity::class.java) // Subscription tab
-            3 -> Intent(this, SettingsUnreadChapterNotificationActivity::class.java) // Unread Chapter tab
-            4 -> Intent(this, SettingsCommentNotificationActivity::class.java) // Comments tab
-            else -> Intent(this, SettingsAnilistNotificationActivity::class.java)
+        // One notification screen now; the tab picks which group it opens expanded.
+        val section = when (selected) {
+            2 -> NotificationSection.SUBSCRIPTIONS // Subscription tab
+            3 -> NotificationSection.MALSYNC       // Unread Chapter tab
+            4 -> NotificationSection.COMMENTS      // Comments tab
+            else -> NotificationSection.ANILIST    // User and Media tabs
         }
-        startActivity(intent)
+        startActivity(notificationSettingsIntent(this, section))
     }
 
     private class ViewPagerAdapter(

@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One collapsible group on a settings screen. Collapsed it shows an icon, the group name and a
+     summary of the group's current state; expanded it drops down that group's own rows in
+     [sectionBody] (a nested SettingsAdapter list).
+
+     Deliberately generic: the notification sources are the first user, but the same card is what
+     lets a large section carry internal structure without spending another screen on it. -->
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/sectionCard"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="10dp"
+    app:cardBackgroundColor="?attr/colorSurface"
+    app:cardCornerRadius="22dp"
+    app:cardElevation="0dp"
+    app:strokeColor="?attr/colorOutlineVariant"
+    app:strokeWidth="1dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:id="@+id/sectionHeader"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:minHeight="60dp"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="12dp">
+
+            <ImageView
+                android:id="@+id/sectionIcon"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                app:tint="?attr/colorPrimary"
+                tools:ignore="ContentDescription"
+                tools:srcCompat="@drawable/ic_round_notifications_none_24" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/sectionTitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:fontFamily="@font/poppins_bold"
+                    android:maxLines="1"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textSize="14sp"
+                    tools:text="AniList" />
+
+                <TextView
+                    android:id="@+id/sectionSummary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:fontFamily="@font/poppins"
+                    android:maxLines="1"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:textSize="12sp"
+                    tools:text="Every 2 hrs" />
+            </LinearLayout>
+
+            <ImageView
+                android:id="@+id/sectionChevron"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:layout_marginStart="2dp"
+                app:srcCompat="@drawable/ic_round_arrow_drop_down_24"
+                app:tint="?attr/colorOnSurfaceVariant"
+                tools:ignore="ContentDescription" />
+        </LinearLayout>
+
+        <View
+            android:id="@+id/sectionBodyDivider"
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginHorizontal="14dp"
+            android:background="?attr/colorOutlineVariant"
+            android:visibility="gone" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/sectionBody"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginBottom="10dp"
+            android:nestedScrollingEnabled="false"
+            android:overScrollMode="never"
+            android:visibility="gone"
+            tools:ignore="SpeakableTextPresentCheck" />
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

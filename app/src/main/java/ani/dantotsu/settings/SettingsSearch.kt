@@ -17,6 +17,7 @@ import android.widget.Button
 import android.widget.TextView
 import androidx.core.view.doOnPreDraw
 import androidx.core.widget.NestedScrollView
+import androidx.recyclerview.widget.ConcatAdapter
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
 import ani.dantotsu.download.DownloadActivity
@@ -81,6 +82,7 @@ data class SearchableSetting(
     val requiresOnline: Boolean = false,
     val anchorProvider: AccountProvider? = null,
     val anchorRowKey: String? = null,
+    val anchorSection: String? = null,
 )
 
 object SettingsSearch {
@@ -534,47 +536,49 @@ object SettingsSearch {
 
 
         // ---- Notifications ----
-        l += SearchableSetting(SettingsSubscriptionNotificationActivity::class.java, R.string.subscription_notifications, R.string.notifications, R.drawable.ic_round_notif_subscriptions_24, R.string.subscription_notifications_desc, keywordsRes = R.string.search_kw_subscription_notifications)
+        // All five sources now live as collapsible groups on SettingsNotificationActivity, so each
+        // entry names the group it lands in (anchorSection) and, for a row inside one, that row's
+        // anchorKey. A group entry with no row key flashes the collapsed card itself.
+        l += SearchableSetting(SettingsNotificationActivity::class.java, R.string.subscription_notifications, R.string.notifications, R.drawable.ic_round_notif_subscriptions_24, R.string.subscription_notifications_desc, keywordsRes = R.string.search_kw_subscription_notifications, anchorSection = NotificationSection.SUBSCRIPTIONS)
 
-        l += SearchableSetting(SettingsUnreadChapterNotificationActivity::class.java, R.string.unread_chapter_notifications, R.string.notifications, R.drawable.ic_round_malsync_notifications_24, R.string.unread_chapter_notifications_desc, keywordsRes = R.string.search_kw_unread_chapter_notifications)
+        l += SearchableSetting(SettingsNotificationActivity::class.java, R.string.unread_chapter_notifications, R.string.notifications, R.drawable.ic_round_malsync_notifications_24, R.string.unread_chapter_notifications_desc, keywordsRes = R.string.search_kw_unread_chapter_notifications, anchorSection = NotificationSection.MALSYNC)
 
-        l += SearchableSetting(SettingsAnilistNotificationActivity::class.java, R.string.anilist_notifications, R.string.notifications, R.drawable.ic_round_notif_anilist_24, R.string.anilist_notifications_desc, keywordsRes = R.string.search_kw_anilist_notifications)
+        l += SearchableSetting(SettingsNotificationActivity::class.java, R.string.anilist_notifications, R.string.notifications, R.drawable.ic_round_notif_anilist_24, R.string.anilist_notifications_desc, keywordsRes = R.string.search_kw_anilist_notifications, anchorSection = NotificationSection.ANILIST)
 
-        l += SearchableSetting(SettingsCommentNotificationActivity::class.java, R.string.comment_notifications, R.string.notifications, R.drawable.ic_round_notif_comments_24, R.string.comment_notifications_desc, keywordsRes = R.string.search_kw_comment_notifications)
+        l += SearchableSetting(SettingsNotificationActivity::class.java, R.string.comment_notifications, R.string.notifications, R.drawable.ic_round_notif_comments_24, R.string.comment_notifications_desc, keywordsRes = R.string.search_kw_comment_notifications, anchorSection = NotificationSection.COMMENTS)
 
-        l += SearchableSetting(SettingsMuNotificationActivity::class.java, R.string.mu_notifications, R.string.notifications, R.drawable.ic_round_notif_mangaupdates_24, R.string.mu_notifications_desc, keywordsRes = R.string.search_kw_mu_notifications)
+        l += SearchableSetting(SettingsNotificationActivity::class.java, R.string.mu_notifications, R.string.notifications, R.drawable.ic_round_notif_mangaupdates_24, R.string.mu_notifications_desc, keywordsRes = R.string.search_kw_mu_notifications, anchorSection = NotificationSection.MANGAUPDATES)
 
         l += SearchableSetting(SettingsNotificationActivity::class.java, R.string.use_alarm_manager_reliable, R.string.notifications, R.drawable.ic_round_alarm_24, R.string.use_alarm_manager_reliable_desc, keywordsRes = R.string.search_kw_use_alarm_manager_reliable)
 
         // Notification children
-        // The "how often" row of each screen. Indexed against the value-less form of its label,
+        // The "how often" row of each group. Indexed against the value-less form of its label,
         // since each of these rows renders its current setting into its own title.
-        l += SearchableSetting(SettingsAnilistNotificationActivity::class.java, R.string.anilist_notifications_checking_time_label, R.string.anilist_notifications, R.drawable.ic_round_notif_anilist_24, R.string.anilist_notifications_checking_time_desc, keywordsRes = R.string.search_kw_anilist_notifications_checking_time_label)
+        l += SearchableSetting(SettingsNotificationActivity::class.java, R.string.anilist_notifications_checking_time_label, R.string.anilist_notifications, R.drawable.ic_round_notif_anilist_24, R.string.anilist_notifications_checking_time_desc, keywordsRes = R.string.search_kw_anilist_notifications_checking_time_label, anchorSection = NotificationSection.ANILIST, anchorRowKey = "anilist_interval")
 
-        l += SearchableSetting(SettingsCommentNotificationActivity::class.java, R.string.comment_notification_checking_time_label, R.string.comment_notifications, R.drawable.ic_round_notif_comments_24, R.string.comment_notification_checking_time_desc, keywordsRes = R.string.search_kw_comment_notification_checking_time_label)
+        l += SearchableSetting(SettingsNotificationActivity::class.java, R.string.comment_notification_checking_time_label, R.string.comment_notifications, R.drawable.ic_round_notif_comments_24, R.string.comment_notification_checking_time_desc, keywordsRes = R.string.search_kw_comment_notification_checking_time_label, anchorSection = NotificationSection.COMMENTS, anchorRowKey = "comment_interval")
 
-        l += SearchableSetting(SettingsSubscriptionNotificationActivity::class.java, R.string.subscriptions_checking_time, R.string.subscription_notifications, R.drawable.ic_round_notif_subscriptions_24, keywordsRes = R.string.search_kw_subscriptions_checking_time)
+        l += SearchableSetting(SettingsNotificationActivity::class.java, R.string.subscriptions_checking_time, R.string.subscription_notifications, R.drawable.ic_round_notif_subscriptions_24, keywordsRes = R.string.search_kw_subscriptions_checking_time, anchorSection = NotificationSection.SUBSCRIPTIONS, anchorRowKey = "sub_interval")
 
-        l += SearchableSetting(SettingsUnreadChapterNotificationActivity::class.java, R.string.unread_chapter_notification_checking_time_label, R.string.unread_chapter_notifications, R.drawable.ic_round_notif_unread_24, R.string.unread_chapter_notification_checking_time_desc, keywordsRes = R.string.search_kw_unread_chapter_notification_checking_time_label)
+        l += SearchableSetting(SettingsNotificationActivity::class.java, R.string.unread_chapter_notification_checking_time_label, R.string.unread_chapter_notifications, R.drawable.ic_round_notif_unread_24, R.string.unread_chapter_notification_checking_time_desc, keywordsRes = R.string.search_kw_unread_chapter_notification_checking_time_label, anchorSection = NotificationSection.MALSYNC, anchorRowKey = "malsync_interval")
 
-        l += SearchableSetting(SettingsMuNotificationActivity::class.java, R.string.mu_notification_interval_label, R.string.mu_notifications, R.drawable.ic_round_notif_mangaupdates_24, R.string.mu_notification_interval_desc, keywordsRes = R.string.search_kw_mu_notification_interval_label)
+        l += SearchableSetting(SettingsNotificationActivity::class.java, R.string.mu_notification_interval_label, R.string.mu_notifications, R.drawable.ic_round_notif_mangaupdates_24, R.string.mu_notification_interval_desc, keywordsRes = R.string.search_kw_mu_notification_interval_label, anchorSection = NotificationSection.MANGAUPDATES, anchorRowKey = "mu_interval")
 
-        l += SearchableSetting(SettingsAnilistNotificationActivity::class.java, R.string.anilist_notification_filters, R.string.anilist_notifications, R.drawable.ic_anilist, R.string.anilist_notification_filters_desc, keywordsRes = R.string.search_kw_anilist_notification_filters)
+        l += SearchableSetting(SettingsNotificationActivity::class.java, R.string.anilist_notification_filters, R.string.anilist_notifications, R.drawable.ic_anilist, R.string.anilist_notification_filters_desc, keywordsRes = R.string.search_kw_anilist_notification_filters, anchorSection = NotificationSection.ANILIST, anchorRowKey = "anilist_filters")
 
-        l += SearchableSetting(SettingsSubscriptionNotificationActivity::class.java, R.string.notification_for_checking_subscriptions, R.string.subscription_notifications, R.drawable.ic_round_notif_progress_24, R.string.notification_for_checking_subscriptions_desc, keywordsRes = R.string.search_kw_notification_for_checking_subscriptions)
+        l += SearchableSetting(SettingsNotificationActivity::class.java, R.string.notification_for_checking_subscriptions, R.string.subscription_notifications, R.drawable.ic_round_notif_progress_24, R.string.notification_for_checking_subscriptions_desc, keywordsRes = R.string.search_kw_notification_for_checking_subscriptions, anchorSection = NotificationSection.SUBSCRIPTIONS, anchorRowKey = "sub_checking_notif")
 
-        l += SearchableSetting(SettingsSubscriptionNotificationActivity::class.java, R.string.view_subscriptions, R.string.subscription_notifications, R.drawable.ic_round_subscriptions_24, R.string.view_subscriptions_desc, keywordsRes = R.string.search_kw_view_subscriptions)
+        l += SearchableSetting(SettingsNotificationActivity::class.java, R.string.view_subscriptions, R.string.subscription_notifications, R.drawable.ic_round_subscriptions_24, R.string.view_subscriptions_desc, keywordsRes = R.string.search_kw_view_subscriptions, anchorSection = NotificationSection.SUBSCRIPTIONS, anchorRowKey = "sub_view")
 
-        l += SearchableSetting(SettingsUnreadChapterNotificationActivity::class.java, R.string.unread_manga_notifications, R.string.unread_chapter_notifications, R.drawable.ic_round_import_contacts_24, R.string.unread_manga_notifications_desc)
+        l += SearchableSetting(SettingsNotificationActivity::class.java, R.string.unread_manga_notifications, R.string.unread_chapter_notifications, R.drawable.ic_round_import_contacts_24, R.string.unread_manga_notifications_desc, anchorSection = NotificationSection.MALSYNC, anchorRowKey = "malsync_manga")
 
-        l += SearchableSetting(SettingsUnreadChapterNotificationActivity::class.java, R.string.unread_episode_notifications, R.string.unread_chapter_notifications, R.drawable.ic_round_movie_filter_24, R.string.unread_episode_notifications_desc)
+        l += SearchableSetting(SettingsNotificationActivity::class.java, R.string.unread_episode_notifications, R.string.unread_chapter_notifications, R.drawable.ic_round_movie_filter_24, R.string.unread_episode_notifications_desc, anchorSection = NotificationSection.MALSYNC, anchorRowKey = "malsync_episode")
 
-        l += SearchableSetting(SettingsUnreadChapterNotificationActivity::class.java, R.string.unread_chapter_check_progress_notification, R.string.unread_chapter_notifications, R.drawable.ic_round_notif_progress_24, R.string.unread_chapter_check_progress_notification_desc, keywordsRes = R.string.search_kw_unread_chapter_check_progress_notification)
+        l += SearchableSetting(SettingsNotificationActivity::class.java, R.string.unread_chapter_check_progress_notification, R.string.unread_chapter_notifications, R.drawable.ic_round_notif_progress_24, R.string.unread_chapter_check_progress_notification_desc, keywordsRes = R.string.search_kw_unread_chapter_check_progress_notification, anchorSection = NotificationSection.MALSYNC, anchorRowKey = "malsync_progress")
 
-        l += SearchableSetting(SettingsUnreadChapterNotificationActivity::class.java, R.string.clear_unread_chapter_history, R.string.unread_chapter_notifications, R.drawable.ic_round_delete_sweep_24, R.string.clear_unread_chapter_history_desc, keywordsRes = R.string.search_kw_clear_unread_chapter_history)
+        l += SearchableSetting(SettingsNotificationActivity::class.java, R.string.clear_unread_chapter_history, R.string.unread_chapter_notifications, R.drawable.ic_round_delete_sweep_24, R.string.clear_unread_chapter_history_desc, keywordsRes = R.string.search_kw_clear_unread_chapter_history, anchorSection = NotificationSection.MALSYNC, anchorRowKey = "malsync_clear")
 
-        l += SearchableSetting(SettingsMuNotificationActivity::class.java, R.string.mu_notifications_enabled, R.string.mu_notifications, R.drawable.ic_round_mangaupdates_24, R.string.mu_notifications_enabled_desc, keywordsRes = R.string.search_kw_mu_notifications_enabled)
-
+        l += SearchableSetting(SettingsNotificationActivity::class.java, R.string.mu_notifications_enabled, R.string.mu_notifications, R.drawable.ic_round_mangaupdates_24, R.string.mu_notifications_enabled_desc, keywordsRes = R.string.search_kw_mu_notifications_enabled, anchorSection = NotificationSection.MANGAUPDATES, anchorRowKey = "mu_enabled")
 
         // ---- About ----
         l += SearchableSetting(FAQActivity::class.java, R.string.faq, R.string.about, R.drawable.ic_round_quiz_24, R.string.faq_desc, keywordsRes = R.string.search_kw_faq)
@@ -650,10 +654,27 @@ object SettingsRouter {
     const val EXTRA_ANCHOR_TITLE_ALT = "ani.dantotsu.settings.ANCHOR_TITLE_ALT"
     const val EXTRA_ANCHOR_PROVIDER = "ani.dantotsu.settings.ANCHOR_PROVIDER"
     const val EXTRA_ANCHOR_ROW_KEY = "ani.dantotsu.settings.ANCHOR_ROW_KEY"
+    const val EXTRA_ANCHOR_SECTION = "ani.dantotsu.settings.ANCHOR_SECTION"
+
+    /**
+     * Open the anchored section rather than just pointing at it.
+     *
+     * Two different intents share [EXTRA_ANCHOR_SECTION]. A search result for the group *itself*
+     * is answering "where does this live?", so it flashes the collapsed card and leaves it shut —
+     * the same thing the account cards do. Something that navigates a user to a group to change it
+     * — the notification centre's settings button, a provider card's shortcut — is answering "take
+     * me there", and arriving at a card the user still has to tap is a step short of that.
+     */
+    const val EXTRA_ANCHOR_SECTION_EXPANDED = "ani.dantotsu.settings.ANCHOR_SECTION_EXPANDED"
 
     fun open(context: Context, setting: SearchableSetting) {
         val intent = Intent(context, setting.dest)
-        if (setting.anchorProvider != null) {
+        if (setting.anchorSection != null) {
+            // Handled by the destination itself via [handleSectionAnchor] — landing here can mean
+            // expanding a collapsed group first, which the generic paths below know nothing about.
+            intent.putExtra(EXTRA_ANCHOR_SECTION, setting.anchorSection)
+            if (setting.anchorRowKey != null) intent.putExtra(EXTRA_ANCHOR_ROW_KEY, setting.anchorRowKey)
+        } else if (setting.anchorProvider != null) {
             // Handled by SettingsAccountActivity itself — landing here can mean expanding a
             // collapsed card first, which the generic view/title paths below know nothing about.
             intent.putExtra(EXTRA_ANCHOR_PROVIDER, setting.anchorProvider.name)
@@ -697,6 +718,105 @@ object SettingsRouter {
                 }
             }
         }
+    }
+
+    /**
+     * Lands a search result on a setting that lives inside a collapsible [SettingsSection].
+     *
+     * The section is expanded first when the result names a row inside it, then scrolled to and
+     * flashed — the card itself when the result *is* the group, the row when it names one. Same
+     * shape as [SettingsAccountActivity]'s provider-card handling, generalised so any screen built
+     * from [SettingsSectionAdapter] gets it for free.
+     */
+    fun handleSectionAnchor(
+        activity: Activity,
+        adapter: SettingsSectionAdapter,
+        recycler: RecyclerView? = null,
+    ) {
+        val key = activity.intent.getStringExtra(EXTRA_ANCHOR_SECTION) ?: return
+        val rowKey = activity.intent.getStringExtra(EXTRA_ANCHOR_ROW_KEY)
+        val list = recycler ?: findSectionRecycler(activity, adapter) ?: return
+        // A row inside a group implies opening it; otherwise the caller says whether it wants the
+        // group opened or only pointed at — see [EXTRA_ANCHOR_SECTION_EXPANDED].
+        val expand = rowKey != null ||
+                activity.intent.getBooleanExtra(EXTRA_ANCHOR_SECTION_EXPANDED, false)
+        if (expand) adapter.expand(key)
+        list.doOnPreDraw {
+            scrollToSectionAndFlash(list, adapter, key, rowKey, expand, attempts = 12)
+        }
+    }
+
+    private fun scrollToSectionAndFlash(
+        list: RecyclerView,
+        adapter: SettingsSectionAdapter,
+        key: String,
+        rowKey: String?,
+        expanded: Boolean,
+        attempts: Int,
+    ) {
+        val position = adapter.positionOf(key)
+        if (position < 0) return
+        list.scrollToPosition(position)
+        list.postOnAnimation {
+            // The card sits inside a ConcatAdapter on the merged screens, so its position in the
+            // outer list is the section adapter's own position only while the section adapter is
+            // first — which it is by construction, the global rows following the groups.
+            val holder = list.findViewHolderForAdapterPosition(position)
+                    as? SettingsSectionAdapter.Holder
+            val target: View?
+            val cornerRadiusPx: Float
+            when {
+                rowKey != null -> {
+                    val nested = holder?.b?.sectionBody?.adapter as? SettingsAdapter
+                    val rowPos = nested?.indexOfKey(rowKey) ?: -1
+                    target = if (rowPos >= 0) holder?.b?.sectionBody?.layoutManager?.findViewByPosition(rowPos) else null
+                    cornerRadiusPx = 0f
+                }
+
+                // Opened by the arrival: the card's own bounds now cover its whole body, so
+                // flashing all of it would wash over the settings the user came to read. The
+                // header identifies the group and is enough to land the eye on it.
+                expanded -> {
+                    target = holder?.b?.sectionHeader
+                    cornerRadiusPx = 0f
+                }
+
+                // Pointed at but left shut — the card is its own bounds here, and the radius keeps
+                // the highlight from drawing square corners over its rounded ones.
+                else -> {
+                    target = holder?.b?.root
+                    cornerRadiusPx = holder?.b?.root?.radius ?: 0f
+                }
+            }
+            if (target != null) {
+                scrollToAndFlashSingle(target, cornerRadiusPx)
+            } else if (attempts > 0) {
+                // The card, or its body once expanded, may not be laid out yet — retry next frame.
+                list.postOnAnimation {
+                    scrollToSectionAndFlash(list, adapter, key, rowKey, expanded, attempts - 1)
+                }
+            }
+        }
+    }
+
+    /** The RecyclerView whose adapter is (or concatenates) [adapter], found from the content root. */
+    private fun findSectionRecycler(activity: Activity, adapter: SettingsSectionAdapter): RecyclerView? {
+        val root = activity.findViewById<View>(android.R.id.content) as? ViewGroup ?: return null
+        return findRecyclerWith(root, adapter)
+    }
+
+    private fun findRecyclerWith(view: View, adapter: SettingsSectionAdapter): RecyclerView? {
+        if (view is RecyclerView) {
+            val a = view.adapter
+            if (a === adapter) return view
+            if (a is ConcatAdapter && adapter in a.adapters) return view
+        }
+        if (view is ViewGroup) {
+            for (i in 0 until view.childCount) {
+                findRecyclerWith(view.getChildAt(i), adapter)?.let { return it }
+            }
+        }
+        return null
     }
 
     /** Scrolls [target]'s nearest [NestedScrollView] to bring it into view and briefly flashes it —
@@ -770,13 +890,12 @@ object SettingsRouter {
      * the row is available (or [attempts] run out).
      */
     private fun scheduleListHighlight(recycler: RecyclerView, title: String, attempts: Int) {
-        val adapter = recycler.adapter as? SettingsAdapter
-        if (adapter == null) {
+        val pos = settingsRowPosition(recycler.adapter, title)
+        if (pos == null) {
             // Adapter is assigned later in onCreate; wait for it.
             if (attempts > 0) recycler.postOnAnimation { scheduleListHighlight(recycler, title, attempts - 1) }
             return
         }
-        val pos = adapter.indexOfTitle(title)
         if (pos < 0) return // The row isn't in this list.
         val target = recycler.layoutManager?.findViewByPosition(pos)
             ?: recycler.findViewHolderForAdapterPosition(pos)?.itemView
@@ -787,6 +906,38 @@ object SettingsRouter {
         // Rows not laid out yet; try again next frame.
         if (attempts > 0) recycler.postOnAnimation { scheduleListHighlight(recycler, title, attempts - 1) }
     }
+
+    /**
+     * Where the row titled [title] sits in [adapter].
+     *
+     * A merged screen puts its plain rows beside section cards through a [ConcatAdapter], so the
+     * outer adapter is no longer always a [SettingsAdapter] — the position then has to count past
+     * whatever precedes the list the row is actually in.
+     *
+     * Returns null when there is no adapter yet (assigned later in onCreate, so the caller retries)
+     * and -1 when the row simply isn't in this list.
+     */
+    private fun settingsRowPosition(adapter: RecyclerView.Adapter<*>?, title: String): Int? =
+        when (adapter) {
+            null -> null
+            is SettingsAdapter -> adapter.indexOfTitle(title)
+            is ConcatAdapter -> {
+                var offset = 0
+                var found = -1
+                for (child in adapter.adapters) {
+                    if (child is SettingsAdapter) {
+                        val i = child.indexOfTitle(title)
+                        if (i >= 0) {
+                            found = offset + i
+                            break
+                        }
+                    }
+                    offset += child.itemCount
+                }
+                found
+            }
+            else -> -1
+        }
 
     /** Expands any collapsed [Xpandable] sections that contain [view] so it becomes visible. */
     private fun expandSections(view: View) {

@@ -322,7 +322,7 @@ class SettingsAccountActivity : AppCompatActivity() {
                 compact = true,
                 anchorKey = "notifications",
                 onClick = {
-                    startActivity(Intent(this, SettingsAnilistNotificationActivity::class.java))
+                    startActivity(notificationSettingsIntent(this, NotificationSection.ANILIST))
                 },
             ),
         )
@@ -389,7 +389,7 @@ class SettingsAccountActivity : AppCompatActivity() {
                 compact = true,
                 anchorKey = "notifications",
                 onClick = {
-                    startActivity(Intent(this, SettingsMuNotificationActivity::class.java))
+                    startActivity(notificationSettingsIntent(this, NotificationSection.MANGAUPDATES))
                 },
             ),
         )
@@ -486,7 +486,7 @@ class SettingsAccountActivity : AppCompatActivity() {
             compact = true,
             anchorKey = "notifications",
             onClick = {
-                startActivity(Intent(this, SettingsUnreadChapterNotificationActivity::class.java))
+                startActivity(notificationSettingsIntent(this, NotificationSection.MALSYNC))
             },
         ),
     )
