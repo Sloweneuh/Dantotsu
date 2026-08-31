@@ -174,6 +174,20 @@ class SettingsAccountActivity : AppCompatActivity() {
                             .show(supportFragmentManager, InfoTabOrderBottomSheet.TAG)
                     },
                 ),
+                // Came from Common, which described none of it. Backup and cloud sync answer the
+                // same question as the cards above — where your data lives and what it is tied to —
+                // and the sync code is itself an account of a kind.
+                Settings(
+                    type = 1,
+                    name = getString(R.string.backup_sync),
+                    desc = getString(R.string.backup_sync_desc),
+                    icon = R.drawable.backup_restore,
+                    isActivity = true,
+                    anchorKey = "backup_sync",
+                    onClick = {
+                        startActivity(Intent(this, SettingsBackupSyncActivity::class.java))
+                    },
+                ),
             )
         )
     }

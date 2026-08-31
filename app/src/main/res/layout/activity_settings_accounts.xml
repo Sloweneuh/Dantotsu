@@ -46,7 +46,7 @@
                 android:layout_marginVertical="32dp"
                 android:layout_weight="1"
                 android:fontFamily="@font/poppins_bold"
-                android:text="@string/accounts"
+                android:text="@string/accounts_and_sync"
                 android:textSize="28sp" />
 
             <ImageView

@@ -91,8 +91,8 @@ class SettingsActivity : AppCompatActivity() {
                     *listOfNotNull(
                         if (!offline) Settings(
                             type = 1,
-                            name = getString(R.string.accounts),
-                            desc = getString(R.string.accounts_desc),
+                            name = getString(R.string.accounts_and_sync),
+                            desc = getString(R.string.accounts_and_sync_desc),
                             icon = R.drawable.ic_round_manage_accounts_24,
                             onClick = {
                                 startActivity(Intent(context, SettingsAccountActivity::class.java))

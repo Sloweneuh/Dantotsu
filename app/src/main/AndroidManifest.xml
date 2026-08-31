@@ -260,7 +260,7 @@
             android:parentActivityName=".MainActivity" />
         <activity
             android:name=".settings.SettingsBackupSyncActivity"
-            android:parentActivityName=".settings.SettingsCommonActivity" />
+            android:parentActivityName=".settings.SettingsAccountActivity" />
         <activity
             android:name=".settings.SettingsSourcesActivity"
             android:parentActivityName=".MainActivity"

@@ -163,18 +163,6 @@ class SettingsCommonActivity : AppCompatActivity() {
                             },
                         ),
                         Settings(
-                            type = 1,
-                            name = getString(R.string.backup_sync),
-                            desc = getString(R.string.backup_sync_desc),
-                            icon = R.drawable.backup_restore,
-                            isActivity = true,
-                            onClick = {
-                                startActivity(
-                                    Intent(context, SettingsBackupSyncActivity::class.java)
-                                )
-                            },
-                        ),
-                        Settings(
                             type = 2,
                             name = getString(R.string.always_continue_content),
                             desc = getString(R.string.always_continue_content_desc),

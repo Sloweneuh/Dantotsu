@@ -60,8 +60,13 @@ import com.google.android.material.color.MaterialColors
  *                     be if the destination screen hides it there. Only needed for entries whose
  *                     section mixes online and offline rows (Backup & sync does: local
  *                     backup/restore stays usable, the cloud rows don't) — a section that's
- *                     entirely one or the other, like Accounts, is filtered by [sectionRes]
- *                     instead, in [query].
+ *                     entirely one or the other, like Accounts & Sync, is filtered by [sectionRes]
+ *                     instead, in [query]. See [worksOffline] for the exception.
+ * @param worksOffline keeps an entry searchable offline despite sitting in a section that is
+ *                     filtered out wholesale. Accounts & Sync is dropped offline because logins,
+ *                     connections and list sync are all non-functional there — but Backup &
+ *                     Restore moved into that section and its local half works perfectly well
+ *                     without a network, so it opts back in.
  * @param anchorProvider for [SettingsAccountActivity]: which provider card to land on. The card
  *                     is scrolled to and flashed collapsed when [anchorRowKey] is null (a setting
  *                     that lives on the card header itself, like signing in), or expanded and the
@@ -80,6 +85,7 @@ data class SearchableSetting(
     val keywordsRes: Int = 0,
     val intentTab: Int = -1,
     val requiresOnline: Boolean = false,
+    val worksOffline: Boolean = false,
     val anchorProvider: AccountProvider? = null,
     val anchorRowKey: String? = null,
     val anchorSection: String? = null,
@@ -103,7 +109,7 @@ object SettingsSearch {
         val l = ArrayList<SearchableSetting>()
 
         // ---- Top level sections ----
-        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.accounts, R.string.settings, R.drawable.ic_round_manage_accounts_24, R.string.accounts_desc, keywordsRes = R.string.search_kw_accounts, requiresOnline = true)
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.accounts_and_sync, R.string.settings, R.drawable.ic_round_manage_accounts_24, R.string.accounts_and_sync_desc, keywordsRes = R.string.search_kw_accounts, requiresOnline = true)
 
         l += SearchableSetting(SettingsAppearanceActivity::class.java, R.string.appearance, R.string.settings, R.drawable.ic_palette, R.string.appearance_desc, keywordsRes = R.string.search_kw_theme)
 
@@ -127,35 +133,35 @@ object SettingsSearch {
         // ---- Accounts ----
         // One entry per provider card, so searching its name jumps straight to it (collapsed —
         // there's no one setting to flash, just the card itself).
-        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.anilist, R.string.accounts, R.drawable.ic_anilist, anchorProvider = AccountProvider.ANILIST)
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.anilist, R.string.accounts_and_sync, R.drawable.ic_anilist, anchorProvider = AccountProvider.ANILIST)
 
-        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.mangaupdates, R.string.accounts, R.drawable.ic_round_mangaupdates_24, anchorProvider = AccountProvider.MANGAUPDATES)
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.mangaupdates, R.string.accounts_and_sync, R.drawable.ic_round_mangaupdates_24, anchorProvider = AccountProvider.MANGAUPDATES)
 
-        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.myanimelist, R.string.accounts, R.drawable.ic_myanimelist, anchorProvider = AccountProvider.MAL)
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.myanimelist, R.string.accounts_and_sync, R.drawable.ic_myanimelist, anchorProvider = AccountProvider.MAL)
 
-        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.mangabaka, R.string.accounts, R.drawable.ic_round_mangabaka_24, anchorProvider = AccountProvider.MANGABAKA)
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.mangabaka, R.string.accounts_and_sync, R.drawable.ic_round_mangabaka_24, anchorProvider = AccountProvider.MANGABAKA)
 
-        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.kitsu, R.string.accounts, R.drawable.ic_kitsu, anchorProvider = AccountProvider.KITSU)
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.kitsu, R.string.accounts_and_sync, R.drawable.ic_kitsu, anchorProvider = AccountProvider.KITSU)
 
-        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.simkl, R.string.accounts, R.drawable.ic_simkl, anchorProvider = AccountProvider.SIMKL)
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.simkl, R.string.accounts_and_sync, R.drawable.ic_simkl, anchorProvider = AccountProvider.SIMKL)
 
-        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.discord, R.string.accounts, R.drawable.ic_discord, anchorProvider = AccountProvider.DISCORD)
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.discord, R.string.accounts_and_sync, R.drawable.ic_discord, anchorProvider = AccountProvider.DISCORD)
 
-        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.comick, R.string.accounts, R.drawable.ic_round_comick_24, anchorProvider = AccountProvider.COMICK)
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.comick, R.string.accounts_and_sync, R.drawable.ic_round_comick_24, anchorProvider = AccountProvider.COMICK)
 
-        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.malsync, R.string.accounts, R.drawable.ic_malsync, anchorProvider = AccountProvider.MALSYNC)
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.malsync, R.string.accounts_and_sync, R.drawable.ic_malsync, anchorProvider = AccountProvider.MALSYNC)
 
-        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.enable_rpc, R.string.accounts, R.drawable.ic_round_sports_esports_24, R.string.enable_rpc_desc, anchorProvider = AccountProvider.DISCORD, anchorRowKey = "rpcEnable", keywordsRes = R.string.search_kw_enable_rpc)
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.enable_rpc, R.string.accounts_and_sync, R.drawable.ic_round_sports_esports_24, R.string.enable_rpc_desc, anchorProvider = AccountProvider.DISCORD, anchorRowKey = "rpcEnable", keywordsRes = R.string.search_kw_enable_rpc)
 
-        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.discord_rpc_settings, R.string.accounts, R.drawable.ic_round_discord_settings_24, R.string.discord_rpc_settings_desc, anchorProvider = AccountProvider.DISCORD, anchorRowKey = "rpcSettings")
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.discord_rpc_settings, R.string.accounts_and_sync, R.drawable.ic_round_discord_settings_24, R.string.discord_rpc_settings_desc, anchorProvider = AccountProvider.DISCORD, anchorRowKey = "rpcSettings")
 
-        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.discord_status_title, R.string.accounts, R.drawable.ic_round_discord_status_24, anchorProvider = AccountProvider.DISCORD, anchorRowKey = "status")
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.discord_status_title, R.string.accounts_and_sync, R.drawable.ic_round_discord_status_24, anchorProvider = AccountProvider.DISCORD, anchorRowKey = "status")
 
-        l += SearchableSetting(AnilistSettingsActivity::class.java, R.string.anilist_settings, R.string.accounts, R.drawable.ic_anilist, R.string.alsettings_desc, keywordsRes = R.string.search_kw_anilist_settings)
+        l += SearchableSetting(AnilistSettingsActivity::class.java, R.string.anilist_settings, R.string.accounts_and_sync, R.drawable.ic_anilist, R.string.alsettings_desc, keywordsRes = R.string.search_kw_anilist_settings)
 
-        l += SearchableSetting(SettingsListSyncActivity::class.java, R.string.list_comparison_title, R.string.accounts, R.drawable.ic_round_sync_24, R.string.list_comparison_desc, keywordsRes = R.string.search_kw_list_sync_settings)
+        l += SearchableSetting(SettingsListSyncActivity::class.java, R.string.list_comparison_title, R.string.accounts_and_sync, R.drawable.ic_round_sync_24, R.string.list_comparison_desc, keywordsRes = R.string.search_kw_list_sync_settings)
 
-        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.login_to_mangabaka, R.string.accounts, IC_ACCOUNT, R.string.mangabaka_login_desc, anchorProvider = AccountProvider.MANGABAKA, keywordsRes = R.string.search_kw_login_to_mangabaka)
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.login_to_mangabaka, R.string.accounts_and_sync, IC_ACCOUNT, R.string.mangabaka_login_desc, anchorProvider = AccountProvider.MANGABAKA, keywordsRes = R.string.search_kw_login_to_mangabaka)
 
 
         // ---- Anilist account settings ----
@@ -169,31 +175,31 @@ object SettingsSearch {
         // ---- Per-provider info-source / sync toggles (each expands its own card and flashes the row) ----
         // The "Show <provider> info" master switch shares one description everywhere (infoRow() in
         // SettingsAccountActivity) — only the title, which bakes in the provider name, differs.
-        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.disable_mangaupdates, R.string.accounts, R.drawable.ic_round_mangaupdates_info_24, R.string.account_show_info_desc, anchorProvider = AccountProvider.MANGAUPDATES, anchorRowKey = "info", keywordsRes = R.string.search_kw_disable_mangaupdates)
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.disable_mangaupdates, R.string.accounts_and_sync, R.drawable.ic_round_mangaupdates_info_24, R.string.account_show_info_desc, anchorProvider = AccountProvider.MANGAUPDATES, anchorRowKey = "info", keywordsRes = R.string.search_kw_disable_mangaupdates)
 
-        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.mu_list_fetch_enabled, R.string.accounts, R.drawable.ic_round_mangaupdates_list_24, R.string.mu_list_fetch_enabled_desc, anchorProvider = AccountProvider.MANGAUPDATES, anchorRowKey = "muListFetch", keywordsRes = R.string.search_kw_mu_list_fetch_enabled)
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.mu_list_fetch_enabled, R.string.accounts_and_sync, R.drawable.ic_round_mangaupdates_list_24, R.string.mu_list_fetch_enabled_desc, anchorProvider = AccountProvider.MANGAUPDATES, anchorRowKey = "muListFetch", keywordsRes = R.string.search_kw_mu_list_fetch_enabled)
 
-        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.mu_custom_list_mapping, R.string.accounts, R.drawable.ic_round_mangaupdates_mapping_24, R.string.mu_custom_list_mapping_desc, anchorProvider = AccountProvider.MANGAUPDATES, anchorRowKey = "muMapping", keywordsRes = R.string.search_kw_mu_custom_list_mapping)
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.mu_custom_list_mapping, R.string.accounts_and_sync, R.drawable.ic_round_mangaupdates_mapping_24, R.string.mu_custom_list_mapping_desc, anchorProvider = AccountProvider.MANGAUPDATES, anchorRowKey = "muMapping", keywordsRes = R.string.search_kw_mu_custom_list_mapping)
 
-        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.mangabaka_tag_weight, R.string.accounts, R.drawable.ic_label_24, R.string.mangabaka_tag_weight_desc, anchorProvider = AccountProvider.MANGABAKA, anchorRowKey = "tagWeight", keywordsRes = R.string.search_kw_mangabaka_tag_weight)
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.mangabaka_tag_weight, R.string.accounts_and_sync, R.drawable.ic_label_24, R.string.mangabaka_tag_weight_desc, anchorProvider = AccountProvider.MANGABAKA, anchorRowKey = "tagWeight", keywordsRes = R.string.search_kw_mangabaka_tag_weight)
 
-        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.disable_comick, R.string.accounts, R.drawable.ic_round_comick_info_24, R.string.account_show_info_desc, anchorProvider = AccountProvider.COMICK, anchorRowKey = "info", keywordsRes = R.string.search_kw_disable_comick)
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.disable_comick, R.string.accounts_and_sync, R.drawable.ic_round_comick_info_24, R.string.account_show_info_desc, anchorProvider = AccountProvider.COMICK, anchorRowKey = "info", keywordsRes = R.string.search_kw_disable_comick)
 
-        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.disable_mal, R.string.accounts, R.drawable.ic_round_mal_info_24, R.string.account_show_info_desc, anchorProvider = AccountProvider.MAL, anchorRowKey = "info", keywordsRes = R.string.search_kw_disable_mal)
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.disable_mal, R.string.accounts_and_sync, R.drawable.ic_round_mal_info_24, R.string.account_show_info_desc, anchorProvider = AccountProvider.MAL, anchorRowKey = "info", keywordsRes = R.string.search_kw_disable_mal)
 
-        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.disable_kitsu, R.string.accounts, R.drawable.ic_round_kitsu_info_24, R.string.account_show_info_desc, anchorProvider = AccountProvider.KITSU, anchorRowKey = "info", keywordsRes = R.string.search_kw_disable_kitsu)
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.disable_kitsu, R.string.accounts_and_sync, R.drawable.ic_round_kitsu_info_24, R.string.account_show_info_desc, anchorProvider = AccountProvider.KITSU, anchorRowKey = "info", keywordsRes = R.string.search_kw_disable_kitsu)
 
-        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.disable_simkl, R.string.accounts, R.drawable.ic_round_simkl_info_24, R.string.account_show_info_desc, anchorProvider = AccountProvider.SIMKL, anchorRowKey = "info", keywordsRes = R.string.search_kw_disable_simkl)
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.disable_simkl, R.string.accounts_and_sync, R.drawable.ic_round_simkl_info_24, R.string.account_show_info_desc, anchorProvider = AccountProvider.SIMKL, anchorRowKey = "info", keywordsRes = R.string.search_kw_disable_simkl)
 
-        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.disable_mangabaka, R.string.accounts, R.drawable.ic_round_mangabaka_info_24, R.string.account_show_info_desc, anchorProvider = AccountProvider.MANGABAKA, anchorRowKey = "info", keywordsRes = R.string.search_kw_disable_mangabaka)
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.disable_mangabaka, R.string.accounts_and_sync, R.drawable.ic_round_mangabaka_info_24, R.string.account_show_info_desc, anchorProvider = AccountProvider.MANGABAKA, anchorRowKey = "info", keywordsRes = R.string.search_kw_disable_mangabaka)
 
-        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.disable_malsync, R.string.accounts, R.drawable.ic_round_malsync_info_24, R.string.disable_malsync_desc, anchorProvider = AccountProvider.MALSYNC, anchorRowKey = "info", keywordsRes = R.string.search_kw_disable_malsync)
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.disable_malsync, R.string.accounts_and_sync, R.drawable.ic_round_malsync_info_24, R.string.disable_malsync_desc, anchorProvider = AccountProvider.MALSYNC, anchorRowKey = "info", keywordsRes = R.string.search_kw_disable_malsync)
 
-        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.malsync_checks_dialog_title, R.string.accounts, R.drawable.ic_round_malsync_settings_24, anchorProvider = AccountProvider.MALSYNC, anchorRowKey = "malsyncChecks", keywordsRes = R.string.search_kw_malsync_checks_dialog_title)
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.malsync_checks_dialog_title, R.string.accounts_and_sync, R.drawable.ic_round_malsync_settings_24, anchorProvider = AccountProvider.MALSYNC, anchorRowKey = "malsyncChecks", keywordsRes = R.string.search_kw_malsync_checks_dialog_title)
 
-        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.malsync_exclude_manage, R.string.accounts, R.drawable.ic_round_malsync_exclude_24, R.string.malsync_exclude_manage_desc, anchorProvider = AccountProvider.MALSYNC, anchorRowKey = "malsyncExclude", keywordsRes = R.string.search_kw_malsync_exclude_manage)
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.malsync_exclude_manage, R.string.accounts_and_sync, R.drawable.ic_round_malsync_exclude_24, R.string.malsync_exclude_manage_desc, anchorProvider = AccountProvider.MALSYNC, anchorRowKey = "malsyncExclude", keywordsRes = R.string.search_kw_malsync_exclude_manage)
 
-        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.customize_info_tabs, R.string.accounts, R.drawable.ic_round_view_array_24, R.string.customize_info_tabs_desc, keywordsRes = R.string.search_kw_customize_info_tabs)
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.customize_info_tabs, R.string.accounts_and_sync, R.drawable.ic_round_view_array_24, R.string.customize_info_tabs_desc, keywordsRes = R.string.search_kw_customize_info_tabs)
 
 
         // ---- List comparison ----
@@ -204,13 +210,13 @@ object SettingsSearch {
         l += SearchableSetting(SettingsListSyncActivity::class.java, R.string.auto_list_sync_removals, R.string.list_comparison_title, R.drawable.ic_round_delete_sweep_24, R.string.auto_list_sync_removals_desc, keywordsRes = R.string.search_kw_auto_list_sync_removals)
 
         // The per-tracker "sync to me" switches moved onto the provider cards.
-        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.mal_list_sync, R.string.accounts, R.drawable.ic_round_mal_sync_24, R.string.mal_list_sync_desc, anchorProvider = AccountProvider.MAL, anchorRowKey = "sync", keywordsRes = R.string.search_kw_mal_list_sync)
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.mal_list_sync, R.string.accounts_and_sync, R.drawable.ic_round_mal_sync_24, R.string.mal_list_sync_desc, anchorProvider = AccountProvider.MAL, anchorRowKey = "sync", keywordsRes = R.string.search_kw_mal_list_sync)
 
-        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.mangabaka_list_sync, R.string.accounts, R.drawable.ic_round_mangabaka_sync_24, R.string.mangabaka_list_sync_desc, anchorProvider = AccountProvider.MANGABAKA, anchorRowKey = "sync", keywordsRes = R.string.search_kw_mangabaka_list_sync)
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.mangabaka_list_sync, R.string.accounts_and_sync, R.drawable.ic_round_mangabaka_sync_24, R.string.mangabaka_list_sync_desc, anchorProvider = AccountProvider.MANGABAKA, anchorRowKey = "sync", keywordsRes = R.string.search_kw_mangabaka_list_sync)
 
-        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.kitsu_list_sync, R.string.accounts, R.drawable.ic_round_kitsu_sync_24, R.string.kitsu_list_sync_desc, anchorProvider = AccountProvider.KITSU, anchorRowKey = "sync", keywordsRes = R.string.search_kw_kitsu_list_sync)
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.kitsu_list_sync, R.string.accounts_and_sync, R.drawable.ic_round_kitsu_sync_24, R.string.kitsu_list_sync_desc, anchorProvider = AccountProvider.KITSU, anchorRowKey = "sync", keywordsRes = R.string.search_kw_kitsu_list_sync)
 
-        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.simkl_list_sync, R.string.accounts, R.drawable.ic_round_simkl_sync_24, R.string.simkl_list_sync_desc, anchorProvider = AccountProvider.SIMKL, anchorRowKey = "sync", keywordsRes = R.string.search_kw_simkl_list_sync)
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.simkl_list_sync, R.string.accounts_and_sync, R.drawable.ic_round_simkl_sync_24, R.string.simkl_list_sync_desc, anchorProvider = AccountProvider.SIMKL, anchorRowKey = "sync", keywordsRes = R.string.search_kw_simkl_list_sync)
 
 
         // ---- Appearance: theme ----
@@ -236,7 +242,7 @@ object SettingsSearch {
 
         l += SearchableSetting(SettingsCommonActivity::class.java, R.string.app_lock, R.string.common, R.drawable.ic_baseline_screen_lock_portrait_24, R.string.app_lock_desc, keywordsRes = R.string.search_kw_app_lock)
 
-        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.backup_sync, R.string.common, R.drawable.backup_restore, R.string.backup_sync_desc, keywordsRes = R.string.search_kw_backup_sync)
+        l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.backup_sync, R.string.accounts_and_sync, R.drawable.backup_restore, R.string.backup_sync_desc, keywordsRes = R.string.search_kw_backup_sync, worksOffline = true)
 
         l += SearchableSetting(SettingsCommonActivity::class.java, R.string.always_continue_content, R.string.common, R.drawable.ic_round_resume_24, R.string.always_continue_content_desc, keywordsRes = R.string.search_kw_always_continue_content)
 
@@ -635,7 +641,7 @@ object SettingsSearch {
         val offline = !ani.dantotsu.isOnline(context) ||
                 ani.dantotsu.settings.saving.PrefManager.getVal<Boolean>(ani.dantotsu.settings.saving.PrefName.OfflineMode)
         return index.mapNotNull { e ->
-            if (offline && (e.sectionRes == R.string.accounts || e.requiresOnline)) return@mapNotNull null
+            if (offline && ((e.sectionRes == R.string.accounts_and_sync && !e.worksOffline) || e.requiresOnline)) return@mapNotNull null
             val title = fold(context.getString(e.titleRes))
             val desc = if (e.descRes != 0) fold(context.getString(e.descRes)) else ""
             val section = fold(context.getString(e.sectionRes))
