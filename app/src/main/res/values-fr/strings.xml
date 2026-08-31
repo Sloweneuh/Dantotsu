@@ -329,6 +329,15 @@
     <string name="appearance">Apparence</string>
     <string name="appearance_desc">Thème, couleurs, accueil et animations</string>
     <string name="startUpTab_desc">L\'onglet ouvert au démarrage de l\'app</string>
+    <string name="sources_and_downloads">Sources et téléchargements</string>
+    <string name="sources_and_downloads_desc">Dépôts, extensions, téléchargements et réseau</string>
+    <string name="repositories">Dépôts</string>
+    <string name="repositories_desc">D\'où les extensions sont installées</string>
+    <string name="extension_behaviour_desc">Installation et affichage des extensions</string>
+    <string name="downloads_settings_desc">Gestionnaire, réseaux limités et suppression</string>
+    <string name="network_desc">User agent, DNS et proxy</string>
+    <string name="selected_dns_s">DNS sélectionné : %1$s</string>
+    <string name="selected_dns_desc">Fournisseur DNS-over-HTTPS utilisé pour toutes les requêtes</string>
     <string name="colors">Couleurs</string>
     <string name="colors_desc">OLED, Material You et couleurs personnalisées</string>
     <string name="home_screen">Écran d\'accueil</string>

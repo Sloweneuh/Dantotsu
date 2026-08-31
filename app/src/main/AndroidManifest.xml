@@ -262,12 +262,9 @@
             android:name=".settings.SettingsBackupSyncActivity"
             android:parentActivityName=".settings.SettingsCommonActivity" />
         <activity
-            android:name=".settings.SettingsExtensionsActivity"
+            android:name=".settings.SettingsSourcesActivity"
             android:parentActivityName=".MainActivity"
-            android:windowSoftInputMode="adjustPan"/>
-        <activity
-            android:name=".settings.SettingsAddonActivity"
-            android:parentActivityName=".MainActivity" />
+            android:windowSoftInputMode="adjustPan" />
         <activity
             android:name=".settings.SettingsMangaActivity"
             android:parentActivityName=".MainActivity" />

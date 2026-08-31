@@ -4,13 +4,14 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".settings.SettingsAccountActivity">
+    tools:context=".settings.SettingsSourcesActivity">
 
     <LinearLayout
-        android:id="@+id/settingsAddonsLayout"
+        android:id="@+id/settingsSourcesLayout"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical">
+
 
         <androidx.cardview.widget.CardView
             android:layout_width="wrap_content"
@@ -22,7 +23,7 @@
             app:cardElevation="0dp">
 
             <ImageButton
-                android:id="@+id/addonSettingsBack"
+                android:id="@+id/sourcesSettingsBack"
                 android:layout_width="64dp"
                 android:layout_height="64dp"
                 android:background="@color/nav_bg_inv"
@@ -44,7 +45,7 @@
                 android:layout_margin="32dp"
                 android:layout_weight="1"
                 android:fontFamily="@font/poppins_bold"
-                android:text="@string/addons"
+                android:text="@string/sources_and_downloads"
                 android:textSize="28sp" />
 
             <ImageView
@@ -53,7 +54,7 @@
                 android:layout_marginEnd="20dp"
                 android:layout_marginBottom="20dp"
                 android:padding="24dp"
-                app:srcCompat="@drawable/ic_round_widgets_24"
+                app:srcCompat="@drawable/ic_extension"
                 app:tint="?attr/colorOnBackground"
                 tools:ignore="ContentDescription" />
 
@@ -68,6 +69,5 @@
             android:requiresFadingEdge="vertical"
             tools:itemCount="5"
             tools:listitem="@layout/item_settings" />
-
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>

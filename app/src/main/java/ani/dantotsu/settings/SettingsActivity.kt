@@ -142,21 +142,11 @@ class SettingsActivity : AppCompatActivity() {
                     ),
                     Settings(
                         type = 1,
-                        name = getString(R.string.extensions),
-                        desc = getString(R.string.extensions_desc),
+                        name = getString(R.string.sources_and_downloads),
+                        desc = getString(R.string.sources_and_downloads_desc),
                         icon = R.drawable.ic_extension,
                         onClick = {
-                            startActivity(Intent(context, SettingsExtensionsActivity::class.java))
-                        },
-                        isActivity = true
-                    ),
-                    Settings(
-                        type = 1,
-                        name = getString(R.string.addons),
-                        desc = getString(R.string.addons_desc),
-                        icon = R.drawable.ic_round_widgets_24,
-                        onClick = {
-                            startActivity(Intent(context, SettingsAddonActivity::class.java))
+                            startActivity(Intent(context, SettingsSourcesActivity::class.java))
                         },
                         isActivity = true
                     ),

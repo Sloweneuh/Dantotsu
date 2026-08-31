@@ -55,7 +55,8 @@ import ani.dantotsu.parsers.Video
 import ani.dantotsu.parsers.VideoExtractor
 import ani.dantotsu.parsers.VideoType
 import ani.dantotsu.setSafeOnClickListener
-import ani.dantotsu.settings.SettingsAddonActivity
+import ani.dantotsu.settings.SettingsSourcesActivity
+import ani.dantotsu.settings.sourcesSettingsIntent
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.snackString
@@ -259,9 +260,9 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
                                     setPosButton(R.string.yes) {
                                         ContextCompat.startActivity(
                                             context,
-                                            Intent(
+                                            sourcesSettingsIntent(
                                                 context,
-                                                SettingsAddonActivity::class.java
+                                                SettingsSourcesActivity.Section.ADDONS
                                             ),
                                             null
                                         )
@@ -754,7 +755,7 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
                             setPosButton(R.string.yes) {
                                 ContextCompat.startActivity(
                                     context,
-                                    Intent(context, SettingsAddonActivity::class.java),
+                                    sourcesSettingsIntent(context, SettingsSourcesActivity.Section.ADDONS),
                                     null
                                 )
                             }

@@ -181,5 +181,6 @@ class SettingsSectionAdapter(
         /** Section state keys, so a screen and its stored expansion set can't drift apart. */
         const val STATE_NOTIFICATIONS = "notifications"
         const val STATE_APPEARANCE = "appearance"
+        const val STATE_SOURCES = "sources"
     }
 }

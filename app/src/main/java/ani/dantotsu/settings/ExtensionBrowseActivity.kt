@@ -65,7 +65,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
-import ani.dantotsu.settings.SettingsExtensionsActivity
 
 class ExtensionBrowseActivity : AppCompatActivity() {
 

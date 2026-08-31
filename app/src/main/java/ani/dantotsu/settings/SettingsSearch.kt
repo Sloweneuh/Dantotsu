@@ -113,9 +113,11 @@ object SettingsSearch {
 
         l += SearchableSetting(SettingsMangaActivity::class.java, R.string.manga, R.string.settings, R.drawable.ic_round_import_contacts_24, R.string.manga_desc, keywordsRes = R.string.search_kw_manga)
 
-        l += SearchableSetting(SettingsExtensionsActivity::class.java, R.string.extensions, R.string.settings, R.drawable.ic_extension, R.string.extensions_desc, keywordsRes = R.string.search_kw_extensions)
+        l += SearchableSetting(SettingsSourcesActivity::class.java, R.string.sources_and_downloads, R.string.settings, R.drawable.ic_extension, R.string.sources_and_downloads_desc, keywordsRes = R.string.search_kw_extensions)
 
-        l += SearchableSetting(SettingsAddonActivity::class.java, R.string.addons, R.string.settings, R.drawable.ic_round_widgets_24, R.string.addons_desc, keywordsRes = R.string.search_kw_addons)
+        l += SearchableSetting(SettingsSourcesActivity::class.java, R.string.extensions, R.string.sources_and_downloads, R.drawable.ic_extension, R.string.extension_behaviour_desc, keywordsRes = R.string.search_kw_extensions, anchorSection = SettingsSourcesActivity.Section.EXTENSIONS)
+
+        l += SearchableSetting(SettingsSourcesActivity::class.java, R.string.addons, R.string.sources_and_downloads, R.drawable.ic_round_widgets_24, R.string.addons_desc, keywordsRes = R.string.search_kw_addons, anchorSection = SettingsSourcesActivity.Section.ADDONS)
 
         l += SearchableSetting(SettingsNotificationActivity::class.java, R.string.notifications, R.string.settings, R.drawable.ic_round_notifications_none_24, R.string.notifications_desc, keywordsRes = R.string.search_kw_notifications)
 
@@ -254,7 +256,7 @@ object SettingsSearch {
 
         l += SearchableSetting(SettingsCommonActivity::class.java, R.string.hidden_from_lists_manage, R.string.common, R.drawable.ic_round_playlist_remove_24, R.string.hidden_from_lists_manage_desc, keywordsRes = R.string.search_kw_hidden_from_lists_manage)
 
-        l += SearchableSetting(SettingsCommonActivity::class.java, R.string.selected_dns, R.string.common, IC_COMMON, anchorViewId = R.id.settingsExtensionDns, keywordsRes = R.string.search_kw_selected_dns)
+        l += SearchableSetting(SettingsSourcesActivity::class.java, R.string.selected_dns, R.string.sources_and_downloads, R.drawable.ic_round_dns_24, R.string.selected_dns_desc, keywordsRes = R.string.search_kw_selected_dns, anchorSection = SettingsSourcesActivity.Section.NETWORK, anchorRowKey = "selected_dns")
 
         l += SearchableSetting(SettingsAppearanceActivity::class.java, R.string.startUpTab, R.string.appearance, IC_UI, R.string.startUpTab_desc, keywordsRes = R.string.search_kw_startUpTab, anchorSection = SettingsAppearanceActivity.Section.HOME, anchorRowKey = "start_up_tab")
 
@@ -262,17 +264,17 @@ object SettingsSearch {
         // ---- Downloads ---- (live inside DownloadActivity, not a Settings screen: most are in
         // the settings dialog opened via its cog icon, which these entries open automatically;
         // only the download location stays inline, on the Manage tab)
-        l += SearchableSetting(DownloadActivity::class.java, R.string.download_manager_select, R.string.downloads, R.drawable.ic_round_download_manager_24, R.string.download_manager_select_desc, keywordsRes = R.string.search_kw_download_manager_select)
+        l += SearchableSetting(SettingsSourcesActivity::class.java, R.string.download_manager_select, R.string.sources_and_downloads, R.drawable.ic_round_download_manager_24, R.string.download_manager_select_desc, keywordsRes = R.string.search_kw_download_manager_select, anchorSection = SettingsSourcesActivity.Section.DOWNLOADS, anchorRowKey = "download_manager")
 
-        l += SearchableSetting(DownloadActivity::class.java, R.string.allow_metered_downloads, R.string.downloads, R.drawable.ic_round_download_metered_24, R.string.allow_metered_downloads_desc, keywordsRes = R.string.search_kw_allow_metered_downloads)
+        l += SearchableSetting(SettingsSourcesActivity::class.java, R.string.allow_metered_downloads, R.string.sources_and_downloads, R.drawable.ic_round_download_metered_24, R.string.allow_metered_downloads_desc, keywordsRes = R.string.search_kw_allow_metered_downloads, anchorSection = SettingsSourcesActivity.Section.DOWNLOADS, anchorRowKey = "metered_downloads")
 
         l += SearchableSetting(DownloadActivity::class.java, R.string.change_download_location, R.string.downloads, IC_DOWNLOAD, R.string.change_download_location_desc, intentTab = 1, keywordsRes = R.string.search_kw_change_download_location)
 
-        l += SearchableSetting(DownloadActivity::class.java, R.string.purge_anime_downloads, R.string.downloads, R.drawable.ic_round_purge_anime_24, R.string.purge_anime_downloads_desc, keywordsRes = R.string.search_kw_purge_anime_downloads)
+        l += SearchableSetting(SettingsSourcesActivity::class.java, R.string.purge_anime_downloads, R.string.sources_and_downloads, R.drawable.ic_round_purge_anime_24, R.string.purge_anime_downloads_desc, keywordsRes = R.string.search_kw_purge_anime_downloads, anchorSection = SettingsSourcesActivity.Section.DOWNLOADS, anchorRowKey = "purge_anime")
 
-        l += SearchableSetting(DownloadActivity::class.java, R.string.purge_manga_downloads, R.string.downloads, R.drawable.ic_round_purge_manga_24, R.string.purge_manga_downloads_desc, keywordsRes = R.string.search_kw_purge_manga_downloads)
+        l += SearchableSetting(SettingsSourcesActivity::class.java, R.string.purge_manga_downloads, R.string.sources_and_downloads, R.drawable.ic_round_purge_manga_24, R.string.purge_manga_downloads_desc, keywordsRes = R.string.search_kw_purge_manga_downloads, anchorSection = SettingsSourcesActivity.Section.DOWNLOADS, anchorRowKey = "purge_manga")
 
-        l += SearchableSetting(DownloadActivity::class.java, R.string.purge_novel_downloads, R.string.downloads, R.drawable.ic_round_purge_novel_24, R.string.purge_novel_downloads_desc, keywordsRes = R.string.search_kw_purge_novel_downloads)
+        l += SearchableSetting(SettingsSourcesActivity::class.java, R.string.purge_novel_downloads, R.string.sources_and_downloads, R.drawable.ic_round_purge_novel_24, R.string.purge_novel_downloads_desc, keywordsRes = R.string.search_kw_purge_novel_downloads, anchorSection = SettingsSourcesActivity.Section.DOWNLOADS, anchorRowKey = "purge_novel")
 
 
         // ---- Backup & sync ----
@@ -515,33 +517,33 @@ object SettingsSearch {
 
 
         // ---- Extensions ----
-        l += SearchableSetting(SettingsExtensionsActivity::class.java, R.string.anime_add_repository, R.string.extensions, R.drawable.ic_round_github_anime_24, R.string.anime_add_repository_desc, keywordsRes = R.string.search_kw_anime_add_repository)
+        l += SearchableSetting(SettingsSourcesActivity::class.java, R.string.anime_add_repository, R.string.sources_and_downloads, R.drawable.ic_round_github_anime_24, R.string.anime_add_repository_desc, keywordsRes = R.string.search_kw_anime_add_repository, anchorSection = SettingsSourcesActivity.Section.REPOSITORIES, anchorRowKey = "anime_repo")
 
-        l += SearchableSetting(SettingsExtensionsActivity::class.java, R.string.manga_add_repository, R.string.extensions, R.drawable.ic_round_github_manga_24, R.string.manga_add_repository_desc, keywordsRes = R.string.search_kw_manga_add_repository)
+        l += SearchableSetting(SettingsSourcesActivity::class.java, R.string.manga_add_repository, R.string.sources_and_downloads, R.drawable.ic_round_github_manga_24, R.string.manga_add_repository_desc, keywordsRes = R.string.search_kw_manga_add_repository, anchorSection = SettingsSourcesActivity.Section.REPOSITORIES, anchorRowKey = "manga_repo")
 
-        l += SearchableSetting(SettingsExtensionsActivity::class.java, R.string.novel_add_repository, R.string.extensions, R.drawable.ic_round_github_novel_24, R.string.novel_add_repository_desc, keywordsRes = R.string.search_kw_novel_add_repository)
+        l += SearchableSetting(SettingsSourcesActivity::class.java, R.string.novel_add_repository, R.string.sources_and_downloads, R.drawable.ic_round_github_novel_24, R.string.novel_add_repository_desc, keywordsRes = R.string.search_kw_novel_add_repository, anchorSection = SettingsSourcesActivity.Section.REPOSITORIES, anchorRowKey = "novel_repo")
 
-        l += SearchableSetting(SettingsExtensionsActivity::class.java, R.string.extension_test, R.string.extensions, R.drawable.ic_round_science_24, R.string.extension_test_desc, keywordsRes = R.string.search_kw_extension_test)
+        l += SearchableSetting(SettingsSourcesActivity::class.java, R.string.extension_test, R.string.sources_and_downloads, R.drawable.ic_round_science_24, R.string.extension_test_desc, keywordsRes = R.string.search_kw_extension_test, anchorSection = SettingsSourcesActivity.Section.REPOSITORIES, anchorRowKey = "extension_test")
 
-        l += SearchableSetting(SettingsExtensionsActivity::class.java, R.string.user_agent, R.string.extensions, R.drawable.ic_globe_24, R.string.user_agent_desc, keywordsRes = R.string.search_kw_user_agent)
+        l += SearchableSetting(SettingsSourcesActivity::class.java, R.string.user_agent, R.string.sources_and_downloads, R.drawable.ic_globe_24, R.string.user_agent_desc, keywordsRes = R.string.search_kw_user_agent, anchorSection = SettingsSourcesActivity.Section.NETWORK, anchorRowKey = "user_agent")
 
-        l += SearchableSetting(SettingsExtensionsActivity::class.java, R.string.proxy, R.string.extensions, R.drawable.vpn_key_24, R.string.proxy_desc, keywordsRes = R.string.search_kw_proxy)
+        l += SearchableSetting(SettingsSourcesActivity::class.java, R.string.proxy, R.string.sources_and_downloads, R.drawable.vpn_key_24, R.string.proxy_desc, keywordsRes = R.string.search_kw_proxy, anchorSection = SettingsSourcesActivity.Section.NETWORK, anchorRowKey = "proxy")
 
-        l += SearchableSetting(SettingsExtensionsActivity::class.java, R.string.proxy_setup, R.string.extensions, R.drawable.lan_24, R.string.proxy_setup_desc, keywordsRes = R.string.search_kw_proxy_setup)
+        l += SearchableSetting(SettingsSourcesActivity::class.java, R.string.proxy_setup, R.string.sources_and_downloads, R.drawable.lan_24, R.string.proxy_setup_desc, keywordsRes = R.string.search_kw_proxy_setup, anchorSection = SettingsSourcesActivity.Section.NETWORK, anchorRowKey = "proxy_setup")
 
-        l += SearchableSetting(SettingsExtensionsActivity::class.java, R.string.force_legacy_installer, R.string.extensions, R.drawable.ic_round_history_24, R.string.force_legacy_installer_desc, keywordsRes = R.string.search_kw_force_legacy_installer)
+        l += SearchableSetting(SettingsSourcesActivity::class.java, R.string.force_legacy_installer, R.string.sources_and_downloads, R.drawable.ic_round_history_24, R.string.force_legacy_installer_desc, keywordsRes = R.string.search_kw_force_legacy_installer, anchorSection = SettingsSourcesActivity.Section.EXTENSIONS, anchorRowKey = "force_legacy_installer")
 
-        l += SearchableSetting(SettingsExtensionsActivity::class.java, R.string.skip_loading_extension_icons, R.string.extensions, R.drawable.ic_round_no_icon_24, R.string.skip_loading_extension_icons_desc, keywordsRes = R.string.search_kw_skip_loading_extension_icons)
+        l += SearchableSetting(SettingsSourcesActivity::class.java, R.string.skip_loading_extension_icons, R.string.sources_and_downloads, R.drawable.ic_round_no_icon_24, R.string.skip_loading_extension_icons_desc, keywordsRes = R.string.search_kw_skip_loading_extension_icons, anchorSection = SettingsSourcesActivity.Section.EXTENSIONS, anchorRowKey = "skip_extension_icons")
 
-        l += SearchableSetting(SettingsExtensionsActivity::class.java, R.string.NSFWExtention, R.string.extensions, R.drawable.ic_round_nsfw_24, R.string.NSFWExtention_desc, keywordsRes = R.string.search_kw_NSFWExtention)
+        l += SearchableSetting(SettingsSourcesActivity::class.java, R.string.NSFWExtention, R.string.sources_and_downloads, R.drawable.ic_round_nsfw_24, R.string.NSFWExtention_desc, keywordsRes = R.string.search_kw_NSFWExtention, anchorSection = SettingsSourcesActivity.Section.EXTENSIONS, anchorRowKey = "nsfw_extensions")
 
 
         // ---- Add-ons ----
-        l += SearchableSetting(SettingsAddonActivity::class.java, R.string.anime_downloader_addon, R.string.addons, R.drawable.ic_round_addon_download_24, keywordsRes = R.string.search_kw_anime_downloader_addon)
+        l += SearchableSetting(SettingsSourcesActivity::class.java, R.string.anime_downloader_addon, R.string.sources_and_downloads, R.drawable.ic_round_addon_download_24, keywordsRes = R.string.search_kw_anime_downloader_addon, anchorSection = SettingsSourcesActivity.Section.ADDONS, anchorRowKey = "downloader_addon")
 
-        l += SearchableSetting(SettingsAddonActivity::class.java, R.string.torrent_addon, R.string.addons, R.drawable.ic_round_magnet_24, keywordsRes = R.string.search_kw_torrent_addon)
+        l += SearchableSetting(SettingsSourcesActivity::class.java, R.string.torrent_addon, R.string.sources_and_downloads, R.drawable.ic_round_magnet_24, keywordsRes = R.string.search_kw_torrent_addon, anchorSection = SettingsSourcesActivity.Section.ADDONS, anchorRowKey = "torrent_addon")
 
-        l += SearchableSetting(SettingsAddonActivity::class.java, R.string.enable_torrent, R.string.addons, R.drawable.ic_round_dns_24, R.string.enable_torrent_desc, keywordsRes = R.string.search_kw_enable_torrent)
+        l += SearchableSetting(SettingsSourcesActivity::class.java, R.string.enable_torrent, R.string.sources_and_downloads, R.drawable.ic_round_dns_24, R.string.enable_torrent_desc, keywordsRes = R.string.search_kw_enable_torrent, anchorSection = SettingsSourcesActivity.Section.ADDONS, anchorRowKey = "enable_torrent")
 
 
         // ---- Notifications ----
