@@ -753,6 +753,14 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
         val dialogBinding =
             ani.dantotsu.databinding.DialogBackupOptionsBinding.inflate(layoutInflater)
 
+        // Inflated without a parent, so the root's match_parent width is dropped and the first
+        // measure pass runs at wrap_content — which is what left long labels rendering clipped
+        // until something forced a relayout. Restore it before the dialog measures anything.
+        dialogBinding.root.layoutParams = android.view.ViewGroup.LayoutParams(
+            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+            android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+        )
+
         val dialog = AlertDialog.Builder(this, R.style.MyPopup)
             .setTitle(R.string.backup_select_what_msg)
             .setView(dialogBinding.root)

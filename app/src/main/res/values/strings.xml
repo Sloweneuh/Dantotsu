@@ -2124,7 +2124,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
 
     <string name="backup_cat_general">General</string>
     <string name="backup_cat_general_desc">App-wide preferences and behavior</string>
-    <string name="backup_cat_ui">Appearance &amp; UI</string>
+    <string name="backup_cat_ui">Appearance</string>
     <string name="backup_cat_ui_desc">Theme, layout and visual options</string>
     <string name="backup_cat_player">Anime player</string>
     <string name="backup_cat_player_desc">Video playback and subtitle preferences</string>
@@ -2133,10 +2133,10 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="backup_cat_novel">Novel reader</string>
     <string name="backup_cat_novel_desc">Reading experience for light novels</string>
     <string name="backup_cat_accounts">Accounts &amp; logins</string>
-    <string name="backup_cat_accounts_desc">Tokens and credentials (file will be encrypted)</string>
+    <string name="backup_cat_accounts_desc">Trackers, their toggles and credentials (file will be encrypted)</string>
 
     <string name="backup_sub_app_behavior">App behavior</string>
-    <string name="backup_sub_app_behavior_desc">Language, continue, NSFW, lists</string>
+    <string name="backup_sub_app_behavior_desc">Language, resume, comments and privacy</string>
     <string name="backup_sub_capture">Screenshots &amp; clips</string>
     <string name="backup_sub_capture_desc">What captures show by default, and how clips are recorded</string>
     <string name="backup_sub_downloads">Downloads</string>
@@ -2144,11 +2144,11 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="backup_sub_notifications">Notifications</string>
     <string name="backup_sub_notifications_desc">Check intervals and notification toggles</string>
     <string name="backup_sub_network">Network</string>
-    <string name="backup_sub_network_desc">DNS, user agent, proxy toggle</string>
+    <string name="backup_sub_network_desc">DNS, user agent and proxy details</string>
     <string name="backup_sub_updates">Updates &amp; diagnostics</string>
     <string name="backup_sub_updates_desc">Update checks, logging, crash reports</string>
     <string name="backup_sub_connections">Trackers &amp; info sources</string>
-    <string name="backup_sub_connections_desc">Comick, MAL, MangaUpdates, MALSync, list-sync and tag options</string>
+    <string name="backup_sub_connections_desc">Automatic list comparison and info tab order</string>
     <string name="backup_sub_sources">Extension repos &amp; sources</string>
     <string name="backup_sub_sources_desc">Repository URLs and source ordering</string>
     <string name="backup_sub_search_history">Search history</string>
@@ -2159,7 +2159,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="backup_sub_theme">Theme</string>
     <string name="backup_sub_theme_desc">Color scheme, dark mode, OLED</string>
     <string name="backup_sub_layout">Layout &amp; home</string>
-    <string name="backup_sub_layout_desc">Tabs, home sections, statistics</string>
+    <string name="backup_sub_layout_desc">Tabs, home sections, statistics, notification dot</string>
     <string name="backup_sub_animations">Animations</string>
     <string name="backup_sub_animations_desc">Animation toggles and speed</string>
     <string name="backup_sub_blur">Banner &amp; blur</string>
@@ -2167,7 +2167,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="backup_sub_list_display">List display</string>
     <string name="backup_sub_list_display_desc">Grid/list view, default sort orders</string>
     <string name="backup_sub_ui_misc">Other UI options</string>
-    <string name="backup_sub_ui_misc_desc">Immersive mode, system bars, badges</string>
+    <string name="backup_sub_ui_misc_desc">Immersive mode and system bars</string>
 
     <string name="backup_sub_playback">Playback</string>
     <string name="backup_sub_playback_desc">Speed, resume, autoplay, watch percentage</string>
@@ -2178,7 +2178,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="backup_sub_gestures">Gestures</string>
     <string name="backup_sub_gestures_desc">Swipe, double tap, fast forward</string>
     <string name="backup_sub_cast">Cast &amp; advanced</string>
-    <string name="backup_sub_cast_desc">Cast, PiP, rotation, torrent, codec</string>
+    <string name="backup_sub_cast_desc">Cast, PiP, rotation, codec</string>
 
     <string name="backup_sub_reader_display">Display</string>
     <string name="backup_sub_reader_display_desc">Direction, layout, dual page, padding</string>

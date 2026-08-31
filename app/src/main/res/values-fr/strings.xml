@@ -1966,7 +1966,7 @@
 
     <string name="backup_cat_general">Général</string>
     <string name="backup_cat_general_desc">Préférences et comportement de l\'application</string>
-    <string name="backup_cat_ui">Apparence et interface</string>
+    <string name="backup_cat_ui">Apparence</string>
     <string name="backup_cat_ui_desc">Thème, mise en page et options visuelles</string>
     <string name="backup_cat_player">Lecteur d\'anime</string>
     <string name="backup_cat_player_desc">Préférences de lecture vidéo et de sous-titres</string>
@@ -1975,20 +1975,20 @@
     <string name="backup_cat_novel">Lecteur de roman</string>
     <string name="backup_cat_novel_desc">Expérience de lecture pour les light novels</string>
     <string name="backup_cat_accounts">Comptes et connexions</string>
-    <string name="backup_cat_accounts_desc">Jetons et identifiants (le fichier sera chiffré)</string>
+    <string name="backup_cat_accounts_desc">Trackers, leurs options et identifiants (le fichier sera chiffré)</string>
 
     <string name="backup_sub_app_behavior">Comportement de l\'application</string>
-    <string name="backup_sub_app_behavior_desc">Langue, reprise, NSFW, listes</string>
+    <string name="backup_sub_app_behavior_desc">Langue, reprise, commentaires et confidentialité</string>
     <string name="backup_sub_downloads">Téléchargements</string>
     <string name="backup_sub_downloads_desc">Gestionnaire et réseaux limités</string>
     <string name="backup_sub_notifications">Notifications</string>
     <string name="backup_sub_notifications_desc">Intervalles de vérification et activations</string>
     <string name="backup_sub_network">Réseau</string>
-    <string name="backup_sub_network_desc">DNS, user agent, activation du proxy</string>
+    <string name="backup_sub_network_desc">DNS, user agent et détails du proxy</string>
     <string name="backup_sub_updates">Mises à jour et diagnostics</string>
     <string name="backup_sub_updates_desc">Mises à jour, journalisation, rapports de plantage</string>
     <string name="backup_sub_connections">Trackers et sources d\'infos</string>
-    <string name="backup_sub_connections_desc">Comick, MAL, MangaUpdates, MALSync, options de synchronisation et de tags</string>
+    <string name="backup_sub_connections_desc">Comparaison automatique des listes et ordre des onglets d\'infos</string>
     <string name="backup_sub_sources">Dépôts d\'extensions et sources</string>
     <string name="backup_sub_sources_desc">URLs des dépôts et ordre des sources</string>
     <string name="backup_sub_search_history">Historique de recherche</string>
@@ -1999,7 +1999,7 @@
     <string name="backup_sub_theme">Thème</string>
     <string name="backup_sub_theme_desc">Palette, mode sombre, OLED</string>
     <string name="backup_sub_layout">Mise en page et accueil</string>
-    <string name="backup_sub_layout_desc">Onglets, sections d\'accueil, statistiques</string>
+    <string name="backup_sub_layout_desc">Onglets, sections d\'accueil, statistiques, point de notification</string>
     <string name="backup_sub_animations">Animations</string>
     <string name="backup_sub_animations_desc">Activation et vitesse des animations</string>
     <string name="backup_sub_blur">Bannière et flou</string>
@@ -2007,7 +2007,7 @@
     <string name="backup_sub_list_display">Affichage des listes</string>
     <string name="backup_sub_list_display_desc">Vue grille/liste, tri par défaut</string>
     <string name="backup_sub_ui_misc">Autres options d\'interface</string>
-    <string name="backup_sub_ui_misc_desc">Mode immersif, barres système, badges</string>
+    <string name="backup_sub_ui_misc_desc">Mode immersif et barres système</string>
 
     <string name="backup_sub_playback">Lecture</string>
     <string name="backup_sub_playback_desc">Vitesse, reprise, lecture auto, pourcentage vu</string>
@@ -2018,7 +2018,7 @@
     <string name="backup_sub_gestures">Gestes</string>
     <string name="backup_sub_gestures_desc">Glissement, double tap, avance rapide</string>
     <string name="backup_sub_cast">Cast et avancé</string>
-    <string name="backup_sub_cast_desc">Cast, PiP, rotation, torrent, codec</string>
+    <string name="backup_sub_cast_desc">Cast, PiP, rotation, codec</string>
 
     <string name="backup_sub_reader_display">Affichage</string>
     <string name="backup_sub_reader_display_desc">Sens, mise en page, double page, marges</string>

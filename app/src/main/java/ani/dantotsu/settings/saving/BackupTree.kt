@@ -7,7 +7,11 @@ import ani.dantotsu.settings.saving.internal.Location
  * Something a backup can carry that isn't a [PrefName] — it lives outside the preference files and
  * so can't be named by one, but still deserves a row the user can untick.
  */
-enum class BackupSection { ExtensionSettings }
+enum class BackupSection(val protected: Boolean) {
+    /** Some sources keep their logins in their own preferences, so this carries credentials even
+     *  though it names no [PrefName] that could say so. */
+    ExtensionSettings(protected = true),
+}
 
 data class BackupItem(
     val pref: PrefName? = null,
@@ -29,160 +33,162 @@ data class BackupCategory(
     val id: String,
     val titleRes: Int,
     val descRes: Int? = null,
-    val containsProtected: Boolean = false,
     val subCategories: List<BackupSubCategory>,
-)
+) {
+    /**
+     * Whether anything here is a credential.
+     *
+     * Derived rather than declared: it gates the encryption prompt, and as a hand-set flag it was
+     * one careless move away from carrying a token into a category that never asks for a password.
+     */
+    val containsProtected: Boolean
+        get() = subCategories.any { sub ->
+            sub.items.any {
+                it.pref?.data?.prefLocation == Location.Protected || it.section?.protected == true
+            }
+        }
+}
 
 object BackupTree {
 
     val categories: List<BackupCategory> = listOf(
         BackupCategory(
-            id = "general",
-            titleRes = R.string.backup_cat_general,
-            descRes = R.string.backup_cat_general_desc,
+            id = "accounts",
+            titleRes = R.string.backup_cat_accounts,
+            descRes = R.string.backup_cat_accounts_desc,
             subCategories = listOf(
                 BackupSubCategory(
-                    "general_app", R.string.backup_sub_app_behavior,
-                    R.string.backup_sub_app_behavior_desc,
+                    "accounts_anilist", R.string.backup_sub_anilist,
+                    R.string.backup_sub_anilist_desc,
                     listOf(
-                        BackupItem(PrefName.AppLanguage, R.string.language_setting),
-                        BackupItem(PrefName.ContinueMedia, R.string.always_continue_content),
-                        BackupItem(PrefName.SearchSources, R.string.search_source_list),
-                        BackupItem(PrefName.RecentlyListOnly, R.string.recentlyListOnly),
-                        BackupItem(PrefName.AdultOnly, R.string.adult_only_content),
-                        BackupItem(PrefName.NSFWExtension, R.string.NSFWExtention_desc),
-                        BackupItem(PrefName.IncludeAnimeList, R.string.backup_include_anime_list),
-                        BackupItem(PrefName.IncludeMangaList, R.string.backup_include_manga_list),
-                        BackupItem(PrefName.AniMangaSearchDirect, R.string.open_animanga_directly),
-                        BackupItem(PrefName.HidePrivate, R.string.hide_private),
-                        BackupItem(PrefName.SettingsPreferDub, R.string.prefer_dub),
-                        BackupItem(PrefName.SharedUserID, R.string.backup_shared_user_id),
-                        BackupItem(PrefName.CommentsEnabled, R.string.comments_button),
+                        BackupItem(PrefName.AnilistToken, R.string.backup_anilist_token),
+                        BackupItem(PrefName.AnilistUserName, R.string.backup_anilist_username),
+                        BackupItem(PrefName.AnilistUserId, R.string.backup_anilist_user_id),
                     )
                 ),
                 BackupSubCategory(
-                    "general_capture", R.string.backup_sub_capture,
-                    R.string.backup_sub_capture_desc,
+                    "accounts_mal", R.string.backup_sub_mal,
+                    R.string.backup_sub_mal_desc,
                     listOf(
-                        // The card toggles are shared by the screenshot and clip composers.
-                        BackupItem(PrefName.ScreenshotShowMediaInfo, R.string.screenshot_show_media_info),
-                        BackupItem(PrefName.ScreenshotShowDate, R.string.screenshot_show_date),
-                        BackupItem(PrefName.ScreenshotShowSource, R.string.screenshot_show_source),
-                        BackupItem(PrefName.ScreenshotShowUserInfo, R.string.screenshot_show_user_info),
-                        BackupItem(PrefName.ScreenshotShowAppLogo, R.string.screenshot_show_app_icon),
-                        BackupItem(PrefName.ScreenshotShowFrame, R.string.screenshot_show_frame),
-                        BackupItem(PrefName.ScreenshotShowRoundedCorners, R.string.screenshot_show_rounded_corners),
-                        BackupItem(PrefName.ClipDurationSeconds, R.string.clip_duration),
-                        BackupItem(PrefName.ClipBurnSubtitles, R.string.clip_burn_subtitles),
-                        BackupItem(PrefName.ClipExportAsGif, R.string.clip_default_gif),
-                        BackupItem(PrefName.ClipGifFps, R.string.clip_gif_fps),
-                        BackupItem(PrefName.ClipGifWidth, R.string.clip_gif_width),
+                        BackupItem(PrefName.MALUserName, R.string.backup_mal_username),
+                        BackupItem(PrefName.MALCodeChallenge, R.string.backup_mal_code_challenge),
+                        BackupItem(PrefName.MALToken, R.string.backup_mal_token),
+                        BackupItem(PrefName.MalEnabled, R.string.disable_mal),
+                        BackupItem(PrefName.MalListSyncEnabled, R.string.mal_list_sync),
                     )
                 ),
                 BackupSubCategory(
-                    "general_downloads", R.string.backup_sub_downloads,
-                    R.string.backup_sub_downloads_desc,
+                    "accounts_mu", R.string.backup_sub_mu,
+                    R.string.backup_sub_mu_desc,
                     listOf(
-                        BackupItem(PrefName.DownloadManager, R.string.download_manager_select),
-                        BackupItem(PrefName.AllowMeteredDownloads, R.string.allow_metered_downloads),
-                        BackupItem(PrefName.OfflineView, R.string.offline_mode),
+                        BackupItem(PrefName.MangaUpdatesUsername, R.string.backup_mu_username),
+                        BackupItem(PrefName.MangaUpdatesPassword, R.string.backup_mu_password),
+                        BackupItem(PrefName.MangaUpdatesToken, R.string.backup_mu_token),
+                        BackupItem(PrefName.MangaUpdatesEnabled, R.string.disable_mangaupdates),
+                        BackupItem(PrefName.MangaUpdatesListEnabled, R.string.mu_list_fetch_enabled),
+                        BackupItem(PrefName.MuCustomListMapping, R.string.mu_custom_list_mapping),
+                        BackupItem(PrefName.MuCustomListTitles, R.string.backup_mu_custom_list_titles),
                     )
                 ),
                 BackupSubCategory(
-                    "general_notif", R.string.backup_sub_notifications,
-                    R.string.backup_sub_notifications_desc,
+                    "accounts_mangabaka", R.string.backup_sub_mangabaka,
+                    R.string.backup_sub_mangabaka_desc,
                     listOf(
-                        BackupItem(PrefName.AnilistNotificationInterval, R.string.anilist_notification_frequency),
-                        BackupItem(PrefName.CommentNotificationInterval, R.string.comment_notification_frequency),
-                        BackupItem(PrefName.SubscriptionNotificationInterval, R.string.backup_subscription_interval_hours),
-                        BackupItem(PrefName.SubscriptionNotificationIntervalMinutes, R.string.backup_subscription_interval_minutes),
-                        BackupItem(PrefName.UnreadChapterNotificationInterval, R.string.unread_chapter_notification_frequency),
-                        BackupItem(PrefName.SubscriptionCheckingNotifications, R.string.checking_subscriptions),
-                        BackupItem(PrefName.UnreadChapterCheckingNotifications, R.string.unread_chapter_notifications),
-                        BackupItem(PrefName.UnreadMangaNotificationsEnabled, R.string.unread_manga_notifications),
-                        BackupItem(PrefName.UnreadEpisodeNotificationsEnabled, R.string.unread_episode_notifications),
-                        BackupItem(PrefName.AnilistFilteredTypes, R.string.anilist_notification_filters),
-                        BackupItem(PrefName.UseAlarmManager, R.string.use_alarm_manager_reliable),
+                        BackupItem(PrefName.MangaBakaToken, R.string.backup_mangabaka_token),
+                        BackupItem(PrefName.MangaBakaOAuthToken, R.string.backup_mangabaka_token),
+                        BackupItem(PrefName.MangaBakaUserName, R.string.backup_mangabaka_username),
+                        BackupItem(PrefName.MangaBakaUserId, R.string.backup_mangabaka_user_id),
+                        BackupItem(PrefName.MangaBakaInfoEnabled, R.string.disable_mangabaka),
+                        BackupItem(PrefName.MangaBakaListSyncEnabled, R.string.mangabaka_list_sync),
+                        BackupItem(PrefName.MangaBakaTagWeightFilter, R.string.mangabaka_tag_weight),
                     )
                 ),
                 BackupSubCategory(
-                    "general_network", R.string.backup_sub_network,
-                    R.string.backup_sub_network_desc,
+                    "accounts_kitsu", R.string.backup_sub_kitsu,
+                    R.string.backup_sub_kitsu_desc,
                     listOf(
-                        BackupItem(PrefName.DohProvider, R.string.selected_dns),
-                        BackupItem(PrefName.DefaultUserAgent, R.string.user_agent),
-                        BackupItem(PrefName.EnableSocks5Proxy, R.string.proxy),
-                        BackupItem(PrefName.ProxyAuthEnabled, R.string.authentication),
+                        BackupItem(PrefName.KitsuToken, R.string.backup_kitsu_token),
+                        BackupItem(PrefName.KitsuUserName, R.string.backup_kitsu_username),
+                        BackupItem(PrefName.KitsuUserId, R.string.backup_kitsu_user_id),
+                        BackupItem(PrefName.KitsuSlug, R.string.backup_kitsu_slug),
+                        BackupItem(PrefName.KitsuAvatar, R.string.backup_kitsu_avatar),
+                        BackupItem(PrefName.KitsuInfoEnabled, R.string.disable_kitsu),
+                        BackupItem(PrefName.KitsuListSyncEnabled, R.string.kitsu_list_sync),
                     )
                 ),
                 BackupSubCategory(
-                    "general_updates", R.string.backup_sub_updates,
-                    R.string.backup_sub_updates_desc,
+                    "accounts_simkl", R.string.backup_sub_simkl,
+                    R.string.backup_sub_simkl_desc,
                     listOf(
-                        BackupItem(PrefName.CheckUpdate, R.string.check_app_updates),
-                        BackupItem(PrefName.VerboseLogging, R.string.log_to_file),
-                        BackupItem(PrefName.DisableCrashReports, R.string.disable_crash_reports),
+                        BackupItem(PrefName.SimklToken, R.string.backup_simkl_token),
+                        BackupItem(PrefName.SimklUserName, R.string.backup_simkl_username),
+                        BackupItem(PrefName.SimklUserId, R.string.backup_simkl_user_id),
+                        BackupItem(PrefName.SimklAvatar, R.string.backup_simkl_avatar),
+                        BackupItem(PrefName.SimklInfoEnabled, R.string.disable_simkl),
+                        BackupItem(PrefName.SimklListSyncEnabled, R.string.simkl_list_sync),
+                    )
+                ),
+                BackupSubCategory(
+                    "accounts_comick", R.string.comick,
+                    R.string.account_info_source,
+                    listOf(
+                        BackupItem(PrefName.ComickEnabled, R.string.disable_comick),
+                    )
+                ),
+                BackupSubCategory(
+                    "accounts_malsync", R.string.malsync,
+                    R.string.account_info_source,
+                    listOf(
+                        BackupItem(PrefName.MalSyncInfoEnabled, R.string.disable_malsync),
+                        BackupItem(PrefName.MalSyncCheckMode, R.string.malsync_checks_dialog_title),
+                        BackupItem(PrefName.MalSyncExcludeList, R.string.malsync_exclude_manage),
+                        BackupItem(PrefName.UnreadChaptersSort, R.string.unread_sort_label),
+                    )
+                ),
+                BackupSubCategory(
+                    "accounts_discord", R.string.backup_sub_discord,
+                    R.string.backup_sub_discord_desc,
+                    listOf(
+                        BackupItem(PrefName.DiscordToken, R.string.backup_discord_token),
+                        BackupItem(PrefName.DiscordId, R.string.backup_discord_id),
+                        BackupItem(PrefName.DiscordUserName, R.string.backup_discord_username),
+                        BackupItem(PrefName.DiscordAvatar, R.string.backup_discord_avatar),
+                        BackupItem(PrefName.rpcEnabled, R.string.enable_rpc),
+                        BackupItem(PrefName.DiscordRPCModeAnime, R.string.discord_anime_presence),
+                        BackupItem(PrefName.DiscordRPCModeManga, R.string.discord_manga_presence),
+                        BackupItem(PrefName.DiscordRPCShowIconAnime, R.string.discord_rpc_show_icon_anime),
+                        BackupItem(PrefName.DiscordRPCShowIconManga, R.string.discord_rpc_show_icon_manga),
+                    )
+                ),
+                // Carried so restoring a backup onto a new device leaves it already linked, which
+                // is the second-device case this whole flow exists for. It belongs here rather
+                // than with the sync settings because it is a credential, and this section is the
+                // one already marked as holding them.
+                BackupSubCategory(
+                    "accounts_cloud_sync", R.string.backup_sub_cloud_sync,
+                    R.string.backup_sub_cloud_sync_desc,
+                    listOf(
+                        BackupItem(PrefName.CloudSyncKey, R.string.backup_cloud_sync_key),
                     )
                 ),
                 BackupSubCategory(
                     "general_connections", R.string.backup_sub_connections,
                     R.string.backup_sub_connections_desc,
                     listOf(
-                        BackupItem(PrefName.ComickEnabled, R.string.disable_comick),
-                        BackupItem(PrefName.MalEnabled, R.string.disable_mal),
-                        BackupItem(PrefName.MangaUpdatesEnabled, R.string.disable_mangaupdates),
-                        BackupItem(PrefName.MangaUpdatesListEnabled, R.string.mu_list_fetch_enabled),
-                        BackupItem(PrefName.MangaBakaListSyncEnabled, R.string.mangabaka_list_sync),
-                        BackupItem(PrefName.MangaBakaTagWeightFilter, R.string.mangabaka_tag_weight),
-                        BackupItem(PrefName.MalListSyncEnabled, R.string.mal_list_sync),
-                        BackupItem(PrefName.KitsuListSyncEnabled, R.string.kitsu_list_sync),
-                        BackupItem(PrefName.SimklListSyncEnabled, R.string.simkl_list_sync),
                         BackupItem(PrefName.AutoListSyncInterval, R.string.auto_list_sync_frequency),
                         BackupItem(PrefName.AutoListSyncRemovals, R.string.auto_list_sync_removals_label),
-                        BackupItem(PrefName.MalSyncInfoEnabled, R.string.disable_malsync),
-                        BackupItem(PrefName.MalSyncCheckMode, R.string.malsync_checks_dialog_title),
-                        BackupItem(PrefName.UnreadChaptersSort, R.string.unread_sort_label),
-                        BackupItem(PrefName.MuCustomListMapping, R.string.mu_custom_list_mapping),
-                        BackupItem(PrefName.MuCustomListTitles, R.string.backup_mu_custom_list_titles),
-                    )
-                ),
-                BackupSubCategory(
-                    "general_sources", R.string.backup_sub_sources,
-                    R.string.backup_sub_sources_desc,
-                    listOf(
-                        BackupItem(PrefName.AnimeExtensionRepos, R.string.backup_anime_extension_repos),
-                        BackupItem(PrefName.MangaExtensionRepos, R.string.backup_manga_extension_repos),
-                        BackupItem(PrefName.NovelExtensionRepos, R.string.backup_novel_extension_repos),
-                        // The plugin records, not the bundles: those are downloaded JavaScript
-                        // files, and a restore fetches them again from the URL each record keeps.
-                        BackupItem(PrefName.LNReaderRepos, R.string.backup_lnreader_repos),
-                        BackupItem(PrefName.LNReaderInstalled, R.string.backup_lnreader_installed),
-                        BackupItem(PrefName.AnimeSourcesOrder, R.string.backup_anime_sources_order),
-                        BackupItem(PrefName.MangaSourcesOrder, R.string.backup_manga_sources_order),
-                        BackupItem(PrefName.NovelSourcesOrder, R.string.backup_novel_sources_order),
-                    )
-                ),
-                BackupSubCategory(
-                    "general_history", R.string.backup_sub_search_history,
-                    R.string.backup_sub_search_history_desc,
-                    listOf(
-                        BackupItem(PrefName.SortedAnimeSH, R.string.backup_anime_search_history),
-                        BackupItem(PrefName.SortedMangaSH, R.string.backup_manga_search_history),
-                        BackupItem(PrefName.SortedCharacterSH, R.string.backup_character_search_history),
-                        BackupItem(PrefName.SortedStaffSH, R.string.backup_staff_search_history),
-                        BackupItem(PrefName.SortedStudioSH, R.string.backup_studio_search_history),
-                        BackupItem(PrefName.SortedUserSH, R.string.backup_user_search_history),
-                    )
-                ),
-                BackupSubCategory(
-                    "general_filters", R.string.backup_sub_saved_filters,
-                    R.string.backup_sub_saved_filters_desc,
-                    listOf(
-                        BackupItem(PrefName.SavedAniMangaFilters, R.string.backup_saved_animanga_filters),
-                        BackupItem(PrefName.SavedMUFilters, R.string.backup_saved_mu_filters),
-                        BackupItem(PrefName.SavedComickFilters, R.string.backup_saved_comick_filters),
-                        BackupItem(PrefName.SavedListFilters, R.string.backup_saved_list_filters),
-                        BackupItem(PrefName.SavedExtensionFilters, R.string.backup_saved_extension_filters),
+                        // "Customize Info Tabs" is a cross-provider row on the Accounts screen, not
+                        // something on any one card, so its order and visibility live here too.
+                        BackupItem(PrefName.InfoTabOrderAnilistAnime, R.string.pref_info_tab_order_anime),
+                        BackupItem(PrefName.InfoTabVisibilityAnilistAnime, R.string.pref_info_tab_visibility_anime),
+                        BackupItem(PrefName.InfoTabOrderAnilistManga, R.string.pref_info_tab_order_manga),
+                        BackupItem(PrefName.InfoTabVisibilityAnilistManga, R.string.pref_info_tab_visibility_manga),
+                        BackupItem(PrefName.InfoTabOrderAnilistNovel, R.string.pref_info_tab_order_novel),
+                        BackupItem(PrefName.InfoTabVisibilityAnilistNovel, R.string.pref_info_tab_visibility_novel),
+                        BackupItem(PrefName.InfoTabOrderMangaUpdates, R.string.pref_info_tab_order_mangaupdates),
+                        BackupItem(PrefName.InfoTabVisibilityMangaUpdates, R.string.pref_info_tab_visibility_mangaupdates),
+                        BackupItem(PrefName.InfoTabOrderMangaUpdatesNovel, R.string.pref_info_tab_order_mangaupdates_novel),
+                        BackupItem(PrefName.InfoTabVisibilityMangaUpdatesNovel, R.string.pref_info_tab_visibility_mangaupdates_novel),
                     )
                 ),
             )
@@ -203,13 +209,13 @@ object BackupTree {
                         BackupItem(PrefName.UseMaterialYou, R.string.use_material_you),
                         BackupItem(PrefName.Theme, R.string.theme_),
                         BackupItem(PrefName.DarkMode, R.string.use_dark_theme),
-                        BackupItem(PrefName.SkipExtensionIcons, R.string.skip_loading_extension_icons),
                     )
                 ),
                 BackupSubCategory(
                     "ui_layout", R.string.backup_sub_layout,
                     R.string.backup_sub_layout_desc,
                     listOf(
+                        BackupItem(PrefName.ShowNotificationRedDot, R.string.hide_notification_dot),
                         BackupItem(PrefName.DefaultStartUpTab, R.string.startUpTab),
                         BackupItem(PrefName.HomeLayout, R.string.home_layout_show),
                         BackupItem(PrefName.HomeLayoutOrder, R.string.home_layout_show),
@@ -245,8 +251,6 @@ object BackupTree {
                     "ui_lists", R.string.backup_sub_list_display,
                     R.string.backup_sub_list_display_desc,
                     listOf(
-                        BackupItem(PrefName.AnimeDefaultView, R.string.default_ep_view),
-                        BackupItem(PrefName.MangaDefaultView, R.string.default_chp_view),
                         BackupItem(PrefName.ListGrid, R.string.list_settings),
                         BackupItem(PrefName.PopularMangaList, R.string.backup_popular_manga_list),
                         BackupItem(PrefName.PopularAnimeList, R.string.backup_popular_anime_list),
@@ -260,10 +264,80 @@ object BackupTree {
                     "ui_misc", R.string.backup_sub_ui_misc,
                     R.string.backup_sub_ui_misc_desc,
                     listOf(
-                        BackupItem(PrefName.ShowYtButton, R.string.show_yt),
                         BackupItem(PrefName.ImmersiveMode, R.string.immersive_mode),
                         BackupItem(PrefName.ShowSystemBarsUI, R.string.ui_show_system_bars),
-                        BackupItem(PrefName.ShowNotificationRedDot, R.string.hide_notification_dot),
+                    )
+                ),
+            )
+        ),
+        BackupCategory(
+            id = "general",
+            titleRes = R.string.backup_cat_general,
+            descRes = R.string.backup_cat_general_desc,
+            subCategories = listOf(
+                BackupSubCategory(
+                    "general_app", R.string.backup_sub_app_behavior,
+                    R.string.backup_sub_app_behavior_desc,
+                    listOf(
+                        BackupItem(PrefName.AppLanguage, R.string.language_setting),
+                        BackupItem(PrefName.ContinueMedia, R.string.always_continue_content),
+                        BackupItem(PrefName.SearchSources, R.string.search_source_list),
+                        BackupItem(PrefName.RecentlyListOnly, R.string.recentlyListOnly),
+                        BackupItem(PrefName.AdultOnly, R.string.adult_only_content),
+                        BackupItem(PrefName.AniMangaSearchDirect, R.string.open_animanga_directly),
+                        BackupItem(PrefName.HidePrivate, R.string.hide_private),
+                        BackupItem(PrefName.CommentsEnabled, R.string.comments_button),
+                    )
+                ),
+                BackupSubCategory(
+                    "general_lock", R.string.app_lock,
+                    R.string.app_lock_desc,
+                    listOf(
+                        BackupItem(PrefName.AppPassword, R.string.app_lock),
+                        BackupItem(PrefName.BiometricToken, R.string.backup_biometric_token),
+                        BackupItem(PrefName.OverridePassword, R.string.backup_override_password),
+                    )
+                ),
+                BackupSubCategory(
+                    "general_capture", R.string.backup_sub_capture,
+                    R.string.backup_sub_capture_desc,
+                    listOf(
+                        // The card toggles are shared by the screenshot and clip composers.
+                        BackupItem(PrefName.ScreenshotShowMediaInfo, R.string.screenshot_show_media_info),
+                        BackupItem(PrefName.ScreenshotShowDate, R.string.screenshot_show_date),
+                        BackupItem(PrefName.ScreenshotShowSource, R.string.screenshot_show_source),
+                        BackupItem(PrefName.ScreenshotShowUserInfo, R.string.screenshot_show_user_info),
+                        BackupItem(PrefName.ScreenshotShowAppLogo, R.string.screenshot_show_app_icon),
+                        BackupItem(PrefName.ScreenshotShowFrame, R.string.screenshot_show_frame),
+                        BackupItem(PrefName.ScreenshotShowRoundedCorners, R.string.screenshot_show_rounded_corners),
+                        BackupItem(PrefName.ClipDurationSeconds, R.string.clip_duration),
+                        BackupItem(PrefName.ClipBurnSubtitles, R.string.clip_burn_subtitles),
+                        BackupItem(PrefName.ClipExportAsGif, R.string.clip_default_gif),
+                        BackupItem(PrefName.ClipGifFps, R.string.clip_gif_fps),
+                        BackupItem(PrefName.ClipGifWidth, R.string.clip_gif_width),
+                    )
+                ),
+                BackupSubCategory(
+                    "general_history", R.string.backup_sub_search_history,
+                    R.string.backup_sub_search_history_desc,
+                    listOf(
+                        BackupItem(PrefName.SortedAnimeSH, R.string.backup_anime_search_history),
+                        BackupItem(PrefName.SortedMangaSH, R.string.backup_manga_search_history),
+                        BackupItem(PrefName.SortedCharacterSH, R.string.backup_character_search_history),
+                        BackupItem(PrefName.SortedStaffSH, R.string.backup_staff_search_history),
+                        BackupItem(PrefName.SortedStudioSH, R.string.backup_studio_search_history),
+                        BackupItem(PrefName.SortedUserSH, R.string.backup_user_search_history),
+                    )
+                ),
+                BackupSubCategory(
+                    "general_filters", R.string.backup_sub_saved_filters,
+                    R.string.backup_sub_saved_filters_desc,
+                    listOf(
+                        BackupItem(PrefName.SavedAniMangaFilters, R.string.backup_saved_animanga_filters),
+                        BackupItem(PrefName.SavedMUFilters, R.string.backup_saved_mu_filters),
+                        BackupItem(PrefName.SavedComickFilters, R.string.backup_saved_comick_filters),
+                        BackupItem(PrefName.SavedListFilters, R.string.backup_saved_list_filters),
+                        BackupItem(PrefName.SavedExtensionFilters, R.string.backup_saved_extension_filters),
                     )
                 ),
             )
@@ -273,6 +347,16 @@ object BackupTree {
             titleRes = R.string.backup_cat_player,
             descRes = R.string.backup_cat_player_desc,
             subCategories = listOf(
+                BackupSubCategory(
+                    "player_library", R.string.library,
+                    R.string.library_anime_group_desc,
+                    listOf(
+                        BackupItem(PrefName.ShowYtButton, R.string.show_yt),
+                        BackupItem(PrefName.SettingsPreferDub, R.string.prefer_dub),
+                        BackupItem(PrefName.IncludeAnimeList, R.string.backup_include_anime_list),
+                        BackupItem(PrefName.AnimeDefaultView, R.string.default_ep_view),
+                    )
+                ),
                 BackupSubCategory(
                     "player_playback", R.string.backup_sub_playback,
                     R.string.backup_sub_playback_desc,
@@ -341,7 +425,6 @@ object BackupTree {
                         BackupItem(PrefName.UseInternalCast, R.string.try_internal_cast_experimental),
                         BackupItem(PrefName.Pip, R.string.picture_in_picture),
                         BackupItem(PrefName.RotationPlayer, R.string.lock_screen_rotation),
-                        BackupItem(PrefName.TorrentEnabled, R.string.enable_torrent),
                         BackupItem(PrefName.UseAdditionalCodec, R.string.use_additional_codec),
                     )
                 ),
@@ -352,6 +435,14 @@ object BackupTree {
             titleRes = R.string.backup_cat_reader,
             descRes = R.string.backup_cat_reader_desc,
             subCategories = listOf(
+                BackupSubCategory(
+                    "reader_library", R.string.library,
+                    R.string.library_manga_group_desc,
+                    listOf(
+                        BackupItem(PrefName.IncludeMangaList, R.string.backup_include_manga_list),
+                        BackupItem(PrefName.MangaDefaultView, R.string.default_chp_view),
+                    )
+                ),
                 BackupSubCategory(
                     "reader_display", R.string.backup_sub_reader_display,
                     R.string.backup_sub_reader_display_desc,
@@ -473,125 +564,116 @@ object BackupTree {
             )
         ),
         BackupCategory(
-            id = "accounts",
-            titleRes = R.string.backup_cat_accounts,
-            descRes = R.string.backup_cat_accounts_desc,
-            containsProtected = true,
+            id = "sources",
+            titleRes = R.string.sources_and_downloads,
+            descRes = R.string.sources_and_downloads_desc,
             subCategories = listOf(
-                BackupSubCategory(
-                    "accounts_anilist", R.string.backup_sub_anilist,
-                    R.string.backup_sub_anilist_desc,
-                    listOf(
-                        BackupItem(PrefName.AnilistToken, R.string.backup_anilist_token),
-                        BackupItem(PrefName.AnilistUserName, R.string.backup_anilist_username),
-                        BackupItem(PrefName.AnilistUserId, R.string.backup_anilist_user_id),
-                    )
-                ),
-                BackupSubCategory(
-                    "accounts_mal", R.string.backup_sub_mal,
-                    R.string.backup_sub_mal_desc,
-                    listOf(
-                        BackupItem(PrefName.MALUserName, R.string.backup_mal_username),
-                        BackupItem(PrefName.MALCodeChallenge, R.string.backup_mal_code_challenge),
-                        BackupItem(PrefName.MALToken, R.string.backup_mal_token),
-                    )
-                ),
-                BackupSubCategory(
-                    "accounts_mu", R.string.backup_sub_mu,
-                    R.string.backup_sub_mu_desc,
-                    listOf(
-                        BackupItem(PrefName.MangaUpdatesUsername, R.string.backup_mu_username),
-                        BackupItem(PrefName.MangaUpdatesPassword, R.string.backup_mu_password),
-                        BackupItem(PrefName.MangaUpdatesToken, R.string.backup_mu_token),
-                    )
-                ),
-                BackupSubCategory(
-                    "accounts_mangabaka", R.string.backup_sub_mangabaka,
-                    R.string.backup_sub_mangabaka_desc,
-                    listOf(
-                        BackupItem(PrefName.MangaBakaToken, R.string.backup_mangabaka_token),
-                        BackupItem(PrefName.MangaBakaOAuthToken, R.string.backup_mangabaka_token),
-                        BackupItem(PrefName.MangaBakaUserName, R.string.backup_mangabaka_username),
-                        BackupItem(PrefName.MangaBakaUserId, R.string.backup_mangabaka_user_id),
-                    )
-                ),
-                BackupSubCategory(
-                    "accounts_kitsu", R.string.backup_sub_kitsu,
-                    R.string.backup_sub_kitsu_desc,
-                    listOf(
-                        BackupItem(PrefName.KitsuToken, R.string.backup_kitsu_token),
-                        BackupItem(PrefName.KitsuUserName, R.string.backup_kitsu_username),
-                        BackupItem(PrefName.KitsuUserId, R.string.backup_kitsu_user_id),
-                        BackupItem(PrefName.KitsuSlug, R.string.backup_kitsu_slug),
-                        BackupItem(PrefName.KitsuAvatar, R.string.backup_kitsu_avatar),
-                    )
-                ),
-                BackupSubCategory(
-                    "accounts_simkl", R.string.backup_sub_simkl,
-                    R.string.backup_sub_simkl_desc,
-                    listOf(
-                        BackupItem(PrefName.SimklToken, R.string.backup_simkl_token),
-                        BackupItem(PrefName.SimklUserName, R.string.backup_simkl_username),
-                        BackupItem(PrefName.SimklUserId, R.string.backup_simkl_user_id),
-                        BackupItem(PrefName.SimklAvatar, R.string.backup_simkl_avatar),
-                    )
-                ),
-                BackupSubCategory(
-                    "accounts_discord", R.string.backup_sub_discord,
-                    R.string.backup_sub_discord_desc,
-                    listOf(
-                        BackupItem(PrefName.DiscordToken, R.string.backup_discord_token),
-                        BackupItem(PrefName.DiscordId, R.string.backup_discord_id),
-                        BackupItem(PrefName.DiscordUserName, R.string.backup_discord_username),
-                        BackupItem(PrefName.DiscordAvatar, R.string.backup_discord_avatar),
-                        BackupItem(PrefName.rpcEnabled, R.string.enable_rpc),
-                        BackupItem(PrefName.DiscordRPCModeAnime, R.string.discord_anime_presence),
-                        BackupItem(PrefName.DiscordRPCModeManga, R.string.discord_manga_presence),
-                        BackupItem(PrefName.DiscordRPCShowIconAnime, R.string.discord_rpc_show_icon_anime),
-                        BackupItem(PrefName.DiscordRPCShowIconManga, R.string.discord_rpc_show_icon_manga),
-                    )
-                ),
-                BackupSubCategory(
-                    "accounts_lock", R.string.backup_sub_app_lock,
-                    R.string.backup_sub_app_lock_desc,
-                    listOf(
-                        BackupItem(PrefName.AppPassword, R.string.app_lock),
-                        BackupItem(PrefName.BiometricToken, R.string.backup_biometric_token),
-                        BackupItem(PrefName.OverridePassword, R.string.backup_override_password),
-                    )
-                ),
-                BackupSubCategory(
-                    "accounts_proxy", R.string.backup_sub_proxy,
-                    R.string.backup_sub_proxy_desc,
-                    listOf(
-                        BackupItem(PrefName.Socks5ProxyHost, R.string.host),
-                        BackupItem(PrefName.Socks5ProxyPort, R.string.port),
-                        BackupItem(PrefName.Socks5ProxyUsername, R.string.backup_proxy_username),
-                        BackupItem(PrefName.Socks5ProxyPassword, R.string.backup_proxy_password),
-                    )
-                ),
-                // Carried so restoring a backup onto a new device leaves it already linked, which
-                // is the second-device case this whole flow exists for. It belongs here rather
-                // than with the sync settings because it is a credential, and this section is the
-                // one already marked as holding them.
-                BackupSubCategory(
-                    "accounts_cloud_sync", R.string.backup_sub_cloud_sync,
-                    R.string.backup_sub_cloud_sync_desc,
-                    listOf(
-                        BackupItem(PrefName.CloudSyncKey, R.string.backup_cloud_sync_key),
-                    )
-                ),
                 // Each source's own preferences, which the archive used to carry whether or not
-                // the user wanted them — and some sources keep logins in there, so it sits in this
-                // category and exporting it asks for a password like everything else here.
+                // the user wanted them. Some sources keep logins in there, so BackupSection marks
+                // it protected and exporting it still asks for a password.
                 BackupSubCategory(
-                    "accounts_extension_settings", R.string.backup_sub_extension_settings,
+                    "sources_extension_settings", R.string.backup_sub_extension_settings,
                     R.string.backup_sub_extension_settings_desc,
                     listOf(
                         BackupItem(
                             titleRes = R.string.backup_extension_settings,
                             section = BackupSection.ExtensionSettings,
                         ),
+                    )
+                ),
+                BackupSubCategory(
+                    "sources_extensions", R.string.extensions,
+                    R.string.extension_behaviour_desc,
+                    listOf(
+                        BackupItem(PrefName.SkipExtensionIcons, R.string.skip_loading_extension_icons),
+                        BackupItem(PrefName.NSFWExtension, R.string.NSFWExtention_desc),
+                    )
+                ),
+                BackupSubCategory(
+                    "sources_addons", R.string.addons,
+                    R.string.addons_desc,
+                    listOf(
+                        BackupItem(PrefName.TorrentEnabled, R.string.enable_torrent),
+                    )
+                ),
+                BackupSubCategory(
+                    "general_sources", R.string.backup_sub_sources,
+                    R.string.backup_sub_sources_desc,
+                    listOf(
+                        BackupItem(PrefName.AnimeExtensionRepos, R.string.backup_anime_extension_repos),
+                        BackupItem(PrefName.MangaExtensionRepos, R.string.backup_manga_extension_repos),
+                        BackupItem(PrefName.NovelExtensionRepos, R.string.backup_novel_extension_repos),
+                        // The plugin records, not the bundles: those are downloaded JavaScript
+                        // files, and a restore fetches them again from the URL each record keeps.
+                        BackupItem(PrefName.LNReaderRepos, R.string.backup_lnreader_repos),
+                        BackupItem(PrefName.LNReaderInstalled, R.string.backup_lnreader_installed),
+                        BackupItem(PrefName.AnimeSourcesOrder, R.string.backup_anime_sources_order),
+                        BackupItem(PrefName.MangaSourcesOrder, R.string.backup_manga_sources_order),
+                        BackupItem(PrefName.NovelSourcesOrder, R.string.backup_novel_sources_order),
+                    )
+                ),
+                BackupSubCategory(
+                    "general_downloads", R.string.backup_sub_downloads,
+                    R.string.backup_sub_downloads_desc,
+                    listOf(
+                        BackupItem(PrefName.DownloadManager, R.string.download_manager_select),
+                        BackupItem(PrefName.AllowMeteredDownloads, R.string.allow_metered_downloads),
+                        BackupItem(PrefName.OfflineView, R.string.offline_mode),
+                    )
+                ),
+                BackupSubCategory(
+                    "general_network", R.string.backup_sub_network,
+                    R.string.backup_sub_network_desc,
+                    listOf(
+                        BackupItem(PrefName.Socks5ProxyHost, R.string.host),
+                        BackupItem(PrefName.Socks5ProxyPort, R.string.port),
+                        BackupItem(PrefName.Socks5ProxyUsername, R.string.backup_proxy_username),
+                        BackupItem(PrefName.Socks5ProxyPassword, R.string.backup_proxy_password),
+                        BackupItem(PrefName.DohProvider, R.string.selected_dns),
+                        BackupItem(PrefName.DefaultUserAgent, R.string.user_agent),
+                        BackupItem(PrefName.EnableSocks5Proxy, R.string.proxy),
+                        BackupItem(PrefName.ProxyAuthEnabled, R.string.authentication),
+                    )
+                ),
+            )
+        ),
+        BackupCategory(
+            id = "notifications",
+            titleRes = R.string.notifications,
+            descRes = R.string.notifications_desc,
+            subCategories = listOf(
+                BackupSubCategory(
+                    "general_notif", R.string.backup_sub_notifications,
+                    R.string.backup_sub_notifications_desc,
+                    listOf(
+                        BackupItem(PrefName.AnilistNotificationInterval, R.string.anilist_notification_frequency),
+                        BackupItem(PrefName.CommentNotificationInterval, R.string.comment_notification_frequency),
+                        BackupItem(PrefName.SubscriptionNotificationInterval, R.string.backup_subscription_interval_hours),
+                        BackupItem(PrefName.SubscriptionNotificationIntervalMinutes, R.string.backup_subscription_interval_minutes),
+                        BackupItem(PrefName.UnreadChapterNotificationInterval, R.string.unread_chapter_notification_frequency),
+                        BackupItem(PrefName.SubscriptionCheckingNotifications, R.string.checking_subscriptions),
+                        BackupItem(PrefName.UnreadChapterCheckingNotifications, R.string.unread_chapter_notifications),
+                        BackupItem(PrefName.UnreadMangaNotificationsEnabled, R.string.unread_manga_notifications),
+                        BackupItem(PrefName.UnreadEpisodeNotificationsEnabled, R.string.unread_episode_notifications),
+                        BackupItem(PrefName.AnilistFilteredTypes, R.string.anilist_notification_filters),
+                        BackupItem(PrefName.UseAlarmManager, R.string.use_alarm_manager_reliable),
+                    )
+                ),
+            )
+        ),
+        BackupCategory(
+            id = "about",
+            titleRes = R.string.about,
+            descRes = R.string.about_desc,
+            subCategories = listOf(
+                BackupSubCategory(
+                    "general_updates", R.string.backup_sub_updates,
+                    R.string.backup_sub_updates_desc,
+                    listOf(
+                        BackupItem(PrefName.SharedUserID, R.string.backup_shared_user_id),
+                        BackupItem(PrefName.CheckUpdate, R.string.check_app_updates),
+                        BackupItem(PrefName.VerboseLogging, R.string.log_to_file),
+                        BackupItem(PrefName.DisableCrashReports, R.string.disable_crash_reports),
                     )
                 ),
             )
