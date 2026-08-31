@@ -139,10 +139,12 @@ class Xpandable @JvmOverloads constructor(
 
         val header = getChildAt(0)!!
         setChevronRotated(expanded, animate = false)
+        setBodyPadding(expanded)
 
         header.setOnClickListener {
             if (expanded) hideAll() else showAll()
             setChevronRotated(!expanded, animate = true)
+            if (!expanded) setBodyPadding(true)
             postDelayed({
                 expanded = !expanded
                 persist()
@@ -155,6 +157,19 @@ class Xpandable @JvmOverloads constructor(
             }
         }
         super.onAttachedToWindow()
+    }
+
+    /**
+     * Bottom padding, only while open.
+     *
+     * The card draws an edge the last control would otherwise sit flush against, and the section
+     * cards get this from their body's own margin, but an Xpandable's children come from the layout
+     * and most end without one. Applied only when expanded, since padding under a collapsed card's
+     * header would make it taller than the header it shows.
+     */
+    private fun setBodyPadding(open: Boolean) {
+        if (isNested()) return
+        setPadding(0, 0, 0, if (open) CARD_PAD else 0)
     }
 
     private fun setChevronRotated(open: Boolean, animate: Boolean) {
@@ -175,6 +190,8 @@ class Xpandable @JvmOverloads constructor(
                 }, 300)
             }
         }
+        // Cleared with the children, not before them, so the card does not jump mid-collapse.
+        postDelayed({ setBodyPadding(false) }, 300)
         postDelayed({
             listeners.forEach {
                 it.onRetract()
@@ -207,6 +224,7 @@ class Xpandable @JvmOverloads constructor(
         expanded = true
         persist()
         setChevronRotated(true, animate = false)
+        setBodyPadding(true)
         children.forEach {
             if (it != getChildAt(0)) it.visibility = VISIBLE
         }
@@ -233,6 +251,9 @@ class Xpandable @JvmOverloads constructor(
         /** The horizontal inset the settings lists use, so cards line up across screens. */
         private val CARD_INSET get() = 24f.px
 
+        /** Matches the bottom margin item_settings_section.xml gives its body. */
+        private val CARD_PAD get() = 10f.px
+
         private fun relaunchKey(scope: String) = "settings_relaunch_$scope"
 
         /**
@@ -250,5 +271,6 @@ class Xpandable @JvmOverloads constructor(
 
         const val SCOPE_PLAYER = "player"
         const val SCOPE_READER = "reader"
+        const val SCOPE_ANILIST = "anilist"
     }
 }

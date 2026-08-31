@@ -48,7 +48,7 @@
             android:layout_height="wrap_content"
             android:ellipsize="end"
             android:fontFamily="@font/poppins"
-            android:maxLines="1"
+            android:maxLines="2"
             android:textColor="?attr/colorOnSurfaceVariant"
             android:textSize="12sp"
             tools:text="Speed and resize mode" />

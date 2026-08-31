@@ -347,6 +347,9 @@
     <string name="default_chp_view_desc">How chapters are laid out on a media page</string>
     <!-- One-line summaries on the collapsible group headers of the Player and Reader screens. -->
     <string name="default_novel_settings">Default Novel Settings</string>
+    <string name="anime_manga_group_desc">Title and staff language, activity merging</string>
+    <string name="list_settings_group_desc">Score format, row order and custom lists</string>
+    <string name="anilist_other_group_desc">Time zone and message privacy</string>
     <string name="library">Library</string>
     <string name="library_anime_group_desc">Dub preference, list inclusion and episode layout</string>
     <string name="library_manga_group_desc">List inclusion and chapter layout</string>

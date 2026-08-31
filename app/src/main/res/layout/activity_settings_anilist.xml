@@ -65,19 +65,13 @@
         <ani.dantotsu.others.Xpandable
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            app:stateKey="anilist_media"
+            app:stateScope="anilist"
+            app:title="@string/anime_manga"
+            app:summary="@string/anime_manga_group_desc"
+            app:icon="@drawable/ic_round_language_24">
 
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="64dp"
-                android:layout_marginTop="8dp"
-                android:fontFamily="@font/poppins_bold"
-                android:gravity="center_vertical"
-                android:paddingHorizontal="32dp"
-                android:text="@string/anime_manga"
-                android:textColor="?attr/colorSecondary"
-                app:drawableEndCompat="@drawable/ic_round_arrow_drop_down_24"
-                tools:ignore="TextContrastCheck" />
 
             <TextView
                 android:layout_width="match_parent"
@@ -202,19 +196,12 @@
         <ani.dantotsu.others.Xpandable
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="64dp"
-            android:layout_marginTop="8dp"
-            android:fontFamily="@font/poppins_bold"
-            android:gravity="center_vertical"
-            android:paddingHorizontal="32dp"
-            android:text="@string/list_settings"
-            android:textColor="?attr/colorSecondary"
-            app:drawableEndCompat="@drawable/ic_round_arrow_drop_down_24"
-            tools:ignore="TextContrastCheck" />
+            android:orientation="vertical"
+            app:stateKey="anilist_lists"
+            app:stateScope="anilist"
+            app:title="@string/list_settings"
+            app:summary="@string/list_settings_group_desc"
+            app:icon="@drawable/ic_round_view_list_24">
 
             <TextView
                 android:layout_width="match_parent"
@@ -349,17 +336,15 @@
                 android:text="@string/save" />
 
         </ani.dantotsu.others.Xpandable>
-
-        <TextView
+        <ani.dantotsu.others.Xpandable
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:fontFamily="@font/poppins_bold"
-            android:gravity="center_vertical"
-            android:paddingHorizontal="32dp"
-            android:paddingTop="20dp"
-            android:text="@string/other"
-            android:textColor="?attr/colorSecondary"
-            tools:ignore="TextContrastCheck" />
+            android:orientation="vertical"
+            app:stateKey="anilist_other"
+            app:stateScope="anilist"
+            app:title="@string/other"
+            app:summary="@string/anilist_other_group_desc"
+            app:icon="@drawable/ic_round_tune_24">
 
         <TextView
             android:layout_width="match_parent"
@@ -407,5 +392,7 @@
             android:requiresFadingEdge="vertical"
             tools:itemCount="1"
             tools:listitem="@layout/item_settings" />
+
+        </ani.dantotsu.others.Xpandable>
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>

@@ -23,6 +23,7 @@ import ani.dantotsu.connections.anilist.api.UserTitleLanguage
 import ani.dantotsu.databinding.ActivitySettingsAnilistBinding
 import ani.dantotsu.initActivity
 import ani.dantotsu.navBarHeight
+import ani.dantotsu.others.Xpandable
 import ani.dantotsu.restartApp
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
@@ -44,6 +45,8 @@ class AnilistSettingsActivity : AppCompatActivity() {
         binding = ActivitySettingsAnilistBinding.inflate(layoutInflater)
         setContentView(binding.root)
         SettingsRouter.handleHighlight(this, binding.settingsRecyclerView1, binding.settingsRecyclerView2)
+        // Every group has now read the relaunch marker; consume it so one restart restores once.
+        Xpandable.consumeRelaunch(Xpandable.SCOPE_ANILIST)
 
         anilistMutations = AnilistMutations()
 
@@ -74,7 +77,7 @@ class AnilistSettingsActivity : AppCompatActivity() {
                 lifecycleScope.launch {
                     anilistMutations.updateSettings(titleLanguage = selectedLanguage)
                     Anilist.titleLanguage = selectedLanguage
-                    restartApp()
+                    restartKeepingSections()
                 }
                 settingsAnilistTitleLanguage.clearFocus()
             }
@@ -98,7 +101,7 @@ class AnilistSettingsActivity : AppCompatActivity() {
                 lifecycleScope.launch {
                     anilistMutations.updateSettings(staffNameLanguage = selectedLanguage)
                     Anilist.staffNameLanguage = selectedLanguage
-                    restartApp()
+                    restartKeepingSections()
                 }
                 settingsAnilistStaffLanguage.clearFocus()
             }
@@ -116,7 +119,7 @@ class AnilistSettingsActivity : AppCompatActivity() {
                 lifecycleScope.launch {
                     anilistMutations.updateSettings(activityMergeTime = selectedApiTime)
                     Anilist.activityMergeTime = selectedApiTime
-                    restartApp()
+                    restartKeepingSections()
                 }
                 settingsAnilistActivityMergeTime.clearFocus()
             }
@@ -140,7 +143,7 @@ class AnilistSettingsActivity : AppCompatActivity() {
                 lifecycleScope.launch {
                     anilistMutations.updateSettings(scoreFormat = selectedFormat)
                     Anilist.scoreFormat = selectedFormat
-                    restartApp()
+                    restartKeepingSections()
                 }
                 settingsAnilistScoreFormat.clearFocus()
             }
@@ -157,7 +160,7 @@ class AnilistSettingsActivity : AppCompatActivity() {
                 lifecycleScope.launch {
                     anilistMutations.updateSettings(rowOrder = selectedApiOrder)
                     Anilist.rowOrder = selectedApiOrder
-                    restartApp()
+                    restartKeepingSections()
                 }
                 settingsAnilistRowOrder.clearFocus()
             }
@@ -195,7 +198,7 @@ class AnilistSettingsActivity : AppCompatActivity() {
                 lifecycleScope.launch {
                     anilistMutations.updateSettings(timezone = apiTimezone)
                     Anilist.timezone = apiTimezone
-                    restartApp()
+                    restartKeepingSections()
                 }
                 settingsAnilistTimezone.clearFocus()
             }
@@ -215,7 +218,7 @@ class AnilistSettingsActivity : AppCompatActivity() {
                             lifecycleScope.launch {
                                 anilistMutations.updateSettings(airingNotifications = isChecked)
                                 Anilist.airingNotifications = isChecked
-                                restartApp()
+                                restartKeepingSections()
                             }
                         }
                     ),
@@ -229,7 +232,7 @@ class AnilistSettingsActivity : AppCompatActivity() {
                             lifecycleScope.launch {
                                 anilistMutations.updateSettings(displayAdultContent = isChecked)
                                 Anilist.adult = isChecked
-                                restartApp()
+                                restartKeepingSections()
                             }
                         }
                     ),
@@ -252,7 +255,7 @@ class AnilistSettingsActivity : AppCompatActivity() {
                         lifecycleScope.launch {
                             anilistMutations.updateSettings(restrictMessagesToFollowing = isChecked)
                             Anilist.restrictMessagesToFollowing = isChecked
-                            restartApp()
+                            restartKeepingSections()
                         }
                     }
                 ),
@@ -334,5 +337,16 @@ class AnilistSettingsActivity : AppCompatActivity() {
                 toast("Failed to save custom lists")
             }
         }
+    }
+
+    /**
+     * [restartApp], keeping the groups the user has open.
+     *
+     * Nearly every control on this screen writes to AniList and restarts, so without the marker a
+     * single dropdown change collapses the card it was changed in.
+     */
+    private fun restartKeepingSections() {
+        Xpandable.markRelaunch(Xpandable.SCOPE_ANILIST)
+        restartApp()
     }
 }

@@ -334,6 +334,9 @@
     <string name="manga_and_reader_desc">Bibliothèque, lecteur manga et lecteur de romans</string>
     <string name="default_chp_view_desc">Disposition des chapitres sur une page média</string>
     <string name="default_novel_settings">Paramètres par défaut des romans</string>
+    <string name="anime_manga_group_desc">Langue des titres et du staff, fusion des activités</string>
+    <string name="list_settings_group_desc">Format de note, ordre des lignes et listes personnalisées</string>
+    <string name="anilist_other_group_desc">Fuseau horaire et confidentialité des messages</string>
     <string name="library">Bibliothèque</string>
     <string name="library_anime_group_desc">Préférence VO/VF, inclusion dans les listes et disposition des épisodes</string>
     <string name="library_manga_group_desc">Inclusion dans les listes et disposition des chapitres</string>
