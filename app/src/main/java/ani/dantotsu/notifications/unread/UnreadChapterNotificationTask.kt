@@ -11,6 +11,7 @@ import ani.dantotsu.App
 import ani.dantotsu.MainActivity
 import ani.dantotsu.R
 import ani.dantotsu.connections.anilist.Anilist
+import ani.dantotsu.connections.malsync.LanguageMapper
 import ani.dantotsu.connections.malsync.MalSyncApi
 import ani.dantotsu.connections.malsync.UnreadChapterInfo
 import ani.dantotsu.connections.sync.UnreadSync
@@ -275,7 +276,8 @@ class UnreadChapterNotificationTask : Task {
                                     lastChapter = lastEpisode,
                                     source = result.source,
                                     userProgress = userProgress,
-                                    latestChapterAt = result.lastEp.timestampMillis()
+                                    latestChapterAt = result.lastEp.timestampMillis(),
+                                    language = result.id
                                 )
                             }
                         }
@@ -388,13 +390,20 @@ class UnreadChapterNotificationTask : Task {
             val title = context.getString(
                 if (isAnime) R.string.notification_new_episode_title else R.string.notification_new_chapter_title
             )
-            val sourceDisplay = if (info.source.isBlank()) context.getString(R.string.notification_unknown_source) else info.source
             val text = if (unreadCount == 1) {
                 "${media.userPreferredName}: $unitLabel ${info.lastChapter}"
             } else {
                 "${media.userPreferredName}: $unitLabel ${info.lastChapter} ($unreadCount unread)"
             }
-            val subText = context.getString(R.string.notification_source_subtext, sourceDisplay)
+            // Anime episodes come from whichever MALSync mirror has them; the language (dub/sub) is
+            // what the user actually cares about, so show that instead of the streaming source.
+            val subText = if (isAnime && !info.language.isNullOrBlank()) {
+                LanguageMapper.displayWithType(info.language)
+            } else {
+                val sourceDisplay = if (info.source.isBlank())
+                    context.getString(R.string.notification_unknown_source) else info.source
+                context.getString(R.string.notification_source_subtext, sourceDisplay)
+            }
 
             val intent = Intent(context, MediaDetailsActivity::class.java).apply {
                 putExtra("media", media as Serializable)
@@ -500,7 +509,8 @@ class UnreadChapterNotificationTask : Task {
                         image = media.cover,
                         banner = media.banner,
                         time = System.currentTimeMillis(),
-                        type = if (isAnime) "UnreadEpisode" else "UnreadChapter"
+                        type = if (isAnime) "UnreadEpisode" else "UnreadChapter",
+                        language = info.language
                     )
                 )
             }

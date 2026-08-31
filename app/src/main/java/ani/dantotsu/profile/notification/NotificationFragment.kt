@@ -178,7 +178,9 @@ class NotificationFragment : Fragment() {
                 } else {
                     "$unit ${it.lastChapter} <i>(${it.unreadCount} unread)</i>"
                 }
-                val source = if (it.source.isNotBlank()) {
+                val source = if (it.type == "UnreadEpisode" && !it.language.isNullOrBlank()) {
+                    "<small>${ani.dantotsu.connections.malsync.LanguageMapper.displayWithType(it.language)}</small>"
+                } else if (it.source.isNotBlank()) {
                     "<small>Source: ${it.source}</small>"
                 } else ""
 

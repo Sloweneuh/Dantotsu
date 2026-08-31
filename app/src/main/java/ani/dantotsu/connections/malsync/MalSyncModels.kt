@@ -54,8 +54,19 @@ data class UnreadChapterInfo(
      * When [lastChapter] was released, epoch ms, from [LastEpisode.timestampMillis]. Null when
      * MALSync didn't carry one — those entries sort last under the by-most-recent order.
      */
-    val latestChapterAt: Long? = null
-) : Serializable
+    val latestChapterAt: Long? = null,
+    /**
+     * For anime entries: the MALSync language ID the episode count was read for (e.g. "en/dub"),
+     * so the notification can show "English Dub" in place of the streaming source. Null for manga.
+     */
+    val language: String? = null
+) : Serializable {
+    companion object {
+        // Pinned so adding a field stays a backward-compatible change for anything already
+        // serialized (cached_unread_info, UnreadSync payloads) rather than an InvalidClassException.
+        private const val serialVersionUID = 1L
+    }
+}
 
 data class UnreleasedEpisodeInfo(
     val mediaId: Int,

@@ -14,7 +14,9 @@ data class UnreadChapterStore(
     val image: String?,  // Cover image URL
     val banner: String?, // Banner image URL
     val time: Long,      // Timestamp in milliseconds
-    val type: String = "UnreadChapter"
+    val type: String = "UnreadChapter",
+    // For UnreadEpisode entries: MALSync language ID (e.g. "en/dub"), shown in place of the source.
+    val language: String? = null
 ) : Serializable {
     companion object {
         // Pinned, like every other stored class. Java derives this from the class shape when it

@@ -109,6 +109,21 @@ object LanguageMapper {
     }
 
     /**
+     * A language ID rendered as a human string that keeps the dub/sub distinction — "English Dub",
+     * "Japanese Sub", "German" (when the ID carries no type). [mapLanguage] deliberately drops the
+     * type because its callers pair the name with a separate dub/sub icon; places with no icon
+     * (notifications) need it spelled out.
+     */
+    fun displayWithType(languageId: String): String {
+        val name = mapLanguage(languageId).displayName
+        return when {
+            languageId.endsWith("/dub") -> "$name Dub"
+            languageId.endsWith("/sub") -> "$name Sub"
+            else -> name
+        }
+    }
+
+    /**
      * Map language ID to full name and icon
      */
     fun mapLanguage(languageId: String, episodeCount: Int? = null): LanguageOption {
