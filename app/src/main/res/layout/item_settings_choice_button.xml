@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One button inside a type = 5 row's [settingsChoices]. Kept as its own layout so the buttons
+     stay consistent with the theme-mode picker in the Appearance header, which uses the same
+     card-wrapped ImageButton and the same selected/unselected alpha. -->
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    app:cardBackgroundColor="@color/nav_bg_inv"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="0dp">
+
+    <ImageButton
+        android:id="@+id/choiceButton"
+        android:layout_width="48dp"
+        android:layout_height="56dp"
+        android:alpha="0.33"
+        android:background="?android:attr/selectableItemBackground"
+        app:tint="?attr/colorOnBackground"
+        tools:ignore="ImageContrastCheck"
+        tools:srcCompat="@drawable/ic_round_home_24" />
+</androidx.cardview.widget.CardView>

@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A settings row whose control is a slider: icon, title, description, then the track.
+
+     Same shape as item_settings_switch, so a mixed list reads as one column — the title carries the
+     live value on the right where a row wants to show it (see Settings.slider). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/settingsLayout"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="24dp"
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+
+    <ImageView
+        android:id="@+id/settingsIcon"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_gravity="center"
+        android:layout_marginVertical="24dp"
+        android:layout_marginEnd="24dp"
+        app:srcCompat="@drawable/ic_circle_add"
+        app:tint="?attr/colorPrimary"
+        tools:ignore="ContentDescription" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:minHeight="44sp"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/settingsTitle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:elegantTextHeight="true"
+                android:fontFamily="@font/poppins_bold"
+                android:text="@string/name"
+                android:textAlignment="viewStart"
+                android:textColor="?attr/colorOnBackground"
+                android:textSize="16sp" />
+
+            <TextView
+                android:id="@+id/settingsValue"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_marginEnd="12dp"
+                android:fontFamily="@font/poppins_bold"
+                android:textColor="?attr/colorPrimary"
+                android:textSize="16sp"
+                android:visibility="gone"
+                tools:text="1.5x"
+                tools:visibility="visible" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/settingsDesc"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:alpha="0.66"
+            android:fontFamily="@font/poppins_semi_bold"
+            android:paddingRight="28dp"
+            android:text="@string/slogan"
+            android:textColor="?attr/colorOnSurfaceVariant" />
+
+        <com.google.android.material.slider.Slider
+            android:id="@+id/settingsSlider"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:paddingEnd="24dp"
+            android:stepSize="1"
+            android:valueFrom="0.0"
+            android:valueTo="10.0"
+            tools:ignore="RtlSymmetry" />
+    </LinearLayout>
+</LinearLayout>

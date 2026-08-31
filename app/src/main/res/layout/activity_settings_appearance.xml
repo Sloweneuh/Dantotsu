@@ -4,10 +4,10 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".settings.SettingsThemeActivity">
+    tools:context=".settings.SettingsAppearanceActivity">
 
     <LinearLayout
-        android:id="@+id/settingsThemeLayout"
+        android:id="@+id/settingsAppearanceLayout"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical">
@@ -23,7 +23,7 @@
             app:cardElevation="0dp">
 
             <ImageButton
-                android:id="@+id/themeSettingsBack"
+                android:id="@+id/appearanceSettingsBack"
                 android:layout_width="64dp"
                 android:layout_height="64dp"
                 android:background="@color/nav_bg_inv"
@@ -45,7 +45,7 @@
                 android:layout_margin="32dp"
                 android:layout_weight="1"
                 android:fontFamily="@font/poppins_bold"
-                android:text="@string/theme"
+                android:text="@string/appearance"
                 android:textSize="28sp" />
 
             <ImageView
@@ -162,6 +162,7 @@
                 android:textSize="14sp"
                 tools:ignore="LabelFor,TextContrastCheck,DuplicateSpeakableTextCheck" />
         </com.google.android.material.textfield.TextInputLayout>
+
 
         <ani.dantotsu.FadingEdgeRecyclerView
             android:id="@+id/settingsRecyclerView"

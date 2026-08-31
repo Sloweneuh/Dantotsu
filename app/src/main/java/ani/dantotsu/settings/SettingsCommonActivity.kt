@@ -125,21 +125,6 @@ class SettingsCommonActivity : AppCompatActivity() {
                         ),
                         Settings(
                             type = 1,
-                            name = getString(R.string.ui_settings),
-                            desc = getString(R.string.ui_settings_desc),
-                            icon = R.drawable.ic_round_grid_view_24,
-                            onClick = {
-                                startActivity(
-                                    Intent(
-                                        context,
-                                        UserInterfaceSettingsActivity::class.java,
-                                    ),
-                                )
-                            },
-                            isActivity = true,
-                        ),
-                        Settings(
-                            type = 1,
                             name = getString(R.string.app_lock),
                             desc = getString(R.string.app_lock_desc),
                             icon = R.drawable.ic_baseline_screen_lock_portrait_24,
@@ -317,67 +302,6 @@ class SettingsCommonActivity : AppCompatActivity() {
             settingsRecyclerView.apply {
                 layoutManager = LinearLayoutManager(context, LinearLayoutManager.VERTICAL, false)
                 setHasFixedSize(true)
-            }
-            refreshStartUpTabPicker()
-        }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        // Anime/manga tabs are toggled on the UI settings screen, one back-stack entry away — refresh
-        // here rather than only in onCreate, or backing out of that screen left this one showing a
-        // picker for a tab that was just turned off (or, with both off, the whole dead row).
-        if (::binding.isInitialized) refreshStartUpTabPicker()
-    }
-
-    private fun refreshStartUpTabPicker() {
-        binding.apply {
-            val showAnimeTab = PrefManager.getVal<Boolean>(PrefName.ShowAnimeTab)
-            val showMangaTab = PrefManager.getVal<Boolean>(PrefName.ShowMangaTab)
-            // Auto-correct saved default tab if the corresponding tab is now disabled
-            val currentDefault = PrefManager.getVal<Int>(PrefName.DefaultStartUpTab)
-            if ((currentDefault == 0 && !showAnimeTab) || (currentDefault == 2 && !showMangaTab)) {
-                PrefManager.setVal(PrefName.DefaultStartUpTab, 1)
-            }
-            // Show/hide tab picker buttons based on whether the tab is enabled
-            (uiSettingsAnime.parent as? View)?.visibility =
-                if (showAnimeTab) View.VISIBLE else View.GONE
-            (uiSettingsManga.parent as? View)?.visibility =
-                if (showMangaTab) View.VISIBLE else View.GONE
-            // With both anime and manga tabs off, Home is the only option left, so there is nothing
-            // left to pick — hide the whole row rather than a picker with one dead choice in it.
-            startUpTabRow.visibility = if (showAnimeTab || showMangaTab) View.VISIBLE else View.GONE
-
-            var previousStart: View =
-                when (PrefManager.getVal<Int>(PrefName.DefaultStartUpTab)) {
-                    0 -> uiSettingsAnime
-                    1 -> uiSettingsHome
-                    2 -> uiSettingsManga
-                    else -> uiSettingsHome
-                }
-            previousStart.alpha = 1f
-
-            fun uiDefault(
-                mode: Int,
-                current: View,
-            ) {
-                previousStart.alpha = 0.33f
-                previousStart = current
-                current.alpha = 1f
-                PrefManager.setVal(PrefName.DefaultStartUpTab, mode)
-                initActivity(this@SettingsCommonActivity)
-            }
-
-            uiSettingsAnime.setOnClickListener {
-                uiDefault(0, it)
-            }
-
-            uiSettingsHome.setOnClickListener {
-                uiDefault(1, it)
-            }
-
-            uiSettingsManga.setOnClickListener {
-                uiDefault(2, it)
             }
         }
     }

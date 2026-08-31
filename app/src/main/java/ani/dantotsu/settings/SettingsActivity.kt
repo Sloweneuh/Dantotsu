@@ -102,11 +102,11 @@ class SettingsActivity : AppCompatActivity() {
                     ).toTypedArray(),
                     Settings(
                         type = 1,
-                        name = getString(R.string.theme),
-                        desc = getString(R.string.theme_desc),
+                        name = getString(R.string.appearance),
+                        desc = getString(R.string.appearance_desc),
                         icon = R.drawable.ic_palette,
                         onClick = {
-                            startActivity(Intent(context, SettingsThemeActivity::class.java))
+                            startActivity(Intent(context, SettingsAppearanceActivity::class.java))
                         },
                         isActivity = true
                     ),

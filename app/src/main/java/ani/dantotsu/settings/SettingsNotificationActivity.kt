@@ -93,7 +93,9 @@ class SettingsNotificationActivity : AppCompatActivity() {
                     summary = { mangaUpdatesSummary() },
                     rows = { mangaUpdatesRows(onChanged) },
                 ),
-            )
+            ),
+            stateKey = SettingsSectionAdapter.STATE_NOTIFICATIONS,
+            keepExpanded = SettingsRouter.hasAnchor(this),
         )
 
         // The one genuinely global control, which used to sit loose below the five links.

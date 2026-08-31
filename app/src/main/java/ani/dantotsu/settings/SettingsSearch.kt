@@ -105,7 +105,7 @@ object SettingsSearch {
         // ---- Top level sections ----
         l += SearchableSetting(SettingsAccountActivity::class.java, R.string.accounts, R.string.settings, R.drawable.ic_round_manage_accounts_24, R.string.accounts_desc, keywordsRes = R.string.search_kw_accounts, requiresOnline = true)
 
-        l += SearchableSetting(SettingsThemeActivity::class.java, R.string.theme, R.string.settings, R.drawable.ic_palette, R.string.theme_desc, keywordsRes = R.string.search_kw_theme)
+        l += SearchableSetting(SettingsAppearanceActivity::class.java, R.string.appearance, R.string.settings, R.drawable.ic_palette, R.string.appearance_desc, keywordsRes = R.string.search_kw_theme)
 
         l += SearchableSetting(SettingsCommonActivity::class.java, R.string.common, R.string.settings, R.drawable.ic_round_settings_24, R.string.common_desc, keywordsRes = R.string.search_kw_common)
 
@@ -211,24 +211,26 @@ object SettingsSearch {
         l += SearchableSetting(SettingsAccountActivity::class.java, R.string.simkl_list_sync, R.string.accounts, R.drawable.ic_round_simkl_sync_24, R.string.simkl_list_sync_desc, anchorProvider = AccountProvider.SIMKL, anchorRowKey = "sync", keywordsRes = R.string.search_kw_simkl_list_sync)
 
 
-        // ---- Theme ----
-        l += SearchableSetting(SettingsThemeActivity::class.java, R.string.theme, R.string.theme, R.drawable.ic_palette, anchorViewId = R.id.themeSwitcher, keywordsRes = R.string.search_kw_theme_2)
+        // ---- Appearance: theme ----
+        // These sit as plain rows above the groups, so they match by title through the
+        // ConcatAdapter rather than needing a section anchor.
+        l += SearchableSetting(SettingsAppearanceActivity::class.java, R.string.theme, R.string.appearance, R.drawable.ic_palette, anchorViewId = R.id.themeSwitcher, keywordsRes = R.string.search_kw_theme_2)
 
-        l += SearchableSetting(SettingsThemeActivity::class.java, R.string.oled_theme_variant, R.string.theme, R.drawable.ic_round_brightness_4_24, R.string.oled_theme_variant_desc, keywordsRes = R.string.search_kw_oled_theme_variant)
+        l += SearchableSetting(SettingsAppearanceActivity::class.java, R.string.oled_theme_variant, R.string.appearance, R.drawable.ic_round_brightness_4_24, R.string.oled_theme_variant_desc, keywordsRes = R.string.search_kw_oled_theme_variant, anchorSection = SettingsAppearanceActivity.Section.COLORS, anchorRowKey = "oled_theme")
 
-        l += SearchableSetting(SettingsThemeActivity::class.java, R.string.use_material_you, R.string.theme, R.drawable.ic_round_auto_awesome_24, R.string.use_material_you_desc, keywordsRes = R.string.search_kw_use_material_you)
+        l += SearchableSetting(SettingsAppearanceActivity::class.java, R.string.use_material_you, R.string.appearance, R.drawable.ic_round_auto_awesome_24, R.string.use_material_you_desc, keywordsRes = R.string.search_kw_use_material_you, anchorSection = SettingsAppearanceActivity.Section.COLORS, anchorRowKey = "material_you")
 
-        l += SearchableSetting(SettingsThemeActivity::class.java, R.string.use_unique_theme_for_each_item, R.string.theme, R.drawable.ic_palette, R.string.use_unique_theme_for_each_item_desc, keywordsRes = R.string.search_kw_use_unique_theme_for_each_item)
+        l += SearchableSetting(SettingsAppearanceActivity::class.java, R.string.use_unique_theme_for_each_item, R.string.appearance, R.drawable.ic_palette, R.string.use_unique_theme_for_each_item_desc, keywordsRes = R.string.search_kw_use_unique_theme_for_each_item, anchorSection = SettingsAppearanceActivity.Section.COLORS, anchorRowKey = "source_theme")
 
-        l += SearchableSetting(SettingsThemeActivity::class.java, R.string.use_custom_theme, R.string.theme, R.drawable.ic_round_color_24, R.string.use_custom_theme_desc, keywordsRes = R.string.search_kw_use_custom_theme)
+        l += SearchableSetting(SettingsAppearanceActivity::class.java, R.string.use_custom_theme, R.string.appearance, R.drawable.ic_round_color_24, R.string.use_custom_theme_desc, keywordsRes = R.string.search_kw_use_custom_theme, anchorSection = SettingsAppearanceActivity.Section.COLORS, anchorRowKey = "custom_theme")
 
-        l += SearchableSetting(SettingsThemeActivity::class.java, R.string.color_picker, R.string.theme, R.drawable.ic_round_color_picker_24, R.string.color_picker_desc, keywordsRes = R.string.search_kw_color_picker)
+        l += SearchableSetting(SettingsAppearanceActivity::class.java, R.string.color_picker, R.string.appearance, R.drawable.ic_round_color_picker_24, R.string.color_picker_desc, keywordsRes = R.string.search_kw_color_picker, anchorSection = SettingsAppearanceActivity.Section.COLORS, anchorRowKey = "color_picker")
 
 
         // ---- Common ----
         l += SearchableSetting(SettingsCommonActivity::class.java, R.string.language_setting, R.string.common, R.drawable.ic_round_language_24, keywordsRes = R.string.search_kw_language_setting)
 
-        l += SearchableSetting(UserInterfaceSettingsActivity::class.java, R.string.ui_settings, R.string.common, R.drawable.ic_round_grid_view_24, R.string.ui_settings_desc, keywordsRes = R.string.search_kw_ui_settings)
+        l += SearchableSetting(SettingsAppearanceActivity::class.java, R.string.ui_settings, R.string.settings, R.drawable.ic_round_grid_view_24, R.string.appearance_desc, keywordsRes = R.string.search_kw_ui_settings)
 
         l += SearchableSetting(SettingsCommonActivity::class.java, R.string.app_lock, R.string.common, R.drawable.ic_baseline_screen_lock_portrait_24, R.string.app_lock_desc, keywordsRes = R.string.search_kw_app_lock)
 
@@ -254,7 +256,7 @@ object SettingsSearch {
 
         l += SearchableSetting(SettingsCommonActivity::class.java, R.string.selected_dns, R.string.common, IC_COMMON, anchorViewId = R.id.settingsExtensionDns, keywordsRes = R.string.search_kw_selected_dns)
 
-        l += SearchableSetting(SettingsCommonActivity::class.java, R.string.startUpTab, R.string.common, IC_COMMON, anchorViewId = R.id.uiSettingsHome, keywordsRes = R.string.search_kw_startUpTab)
+        l += SearchableSetting(SettingsAppearanceActivity::class.java, R.string.startUpTab, R.string.appearance, IC_UI, R.string.startUpTab_desc, keywordsRes = R.string.search_kw_startUpTab, anchorSection = SettingsAppearanceActivity.Section.HOME, anchorRowKey = "start_up_tab")
 
 
         // ---- Downloads ---- (live inside DownloadActivity, not a Settings screen: most are in
@@ -298,30 +300,37 @@ object SettingsSearch {
         l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.cloud_wipe, R.string.backup_sync, R.drawable.ic_round_delete_forever_24, R.string.cloud_wipe_desc, keywordsRes = R.string.search_kw_cloud_wipe, requiresOnline = true)
 
 
-        // ---- User Interface ----
-        l += SearchableSetting(UserInterfaceSettingsActivity::class.java, R.string.immersive_mode, R.string.ui_settings, IC_UI, anchorViewId = R.id.uiSettingsImmersive, keywordsRes = R.string.search_kw_immersive_mode)
+        // ---- Appearance: the groups that were UI Settings ----
+        // Each lands in its collapsible group on the Appearance screen and flashes the row inside.
+        l += SearchableSetting(SettingsAppearanceActivity::class.java, R.string.immersive_mode, R.string.appearance, IC_UI, R.string.immersive_mode_info, keywordsRes = R.string.search_kw_immersive_mode, anchorSection = SettingsAppearanceActivity.Section.SYSTEM_BARS, anchorRowKey = "immersive_mode")
 
-        l += SearchableSetting(UserInterfaceSettingsActivity::class.java, R.string.ui_show_system_bars, R.string.ui_settings, IC_UI, anchorViewId = R.id.uiSettingsShowSystemBarsUI, keywordsRes = R.string.search_kw_ui_show_system_bars)
+        l += SearchableSetting(SettingsAppearanceActivity::class.java, R.string.ui_show_system_bars, R.string.appearance, IC_UI, R.string.ui_show_system_bars_desc, keywordsRes = R.string.search_kw_ui_show_system_bars, anchorSection = SettingsAppearanceActivity.Section.SYSTEM_BARS, anchorRowKey = "ui_show_system_bars")
 
-        l += SearchableSetting(UserInterfaceSettingsActivity::class.java, R.string.hide_notification_dot, R.string.ui_settings, IC_UI, anchorViewId = R.id.uiSettingsHideRedDot, keywordsRes = R.string.search_kw_hide_notification_dot)
+        l += SearchableSetting(SettingsAppearanceActivity::class.java, R.string.hide_notification_dot, R.string.appearance, IC_UI, R.string.hide_notification_dot_desc, keywordsRes = R.string.search_kw_hide_notification_dot, anchorSection = SettingsAppearanceActivity.Section.SYSTEM_BARS, anchorRowKey = "hide_notification_dot")
 
-        l += SearchableSetting(UserInterfaceSettingsActivity::class.java, R.string.home_layout_show, R.string.ui_settings, IC_UI, anchorViewId = R.id.uiSettingsHomeLayout, keywordsRes = R.string.search_kw_home_layout_show)
+        l += SearchableSetting(SettingsAppearanceActivity::class.java, R.string.home_layout_show, R.string.appearance, IC_UI, R.string.home_layout_show_desc, keywordsRes = R.string.search_kw_home_layout_show, anchorSection = SettingsAppearanceActivity.Section.HOME, anchorRowKey = "home_layout")
 
-        l += SearchableSetting(UserInterfaceSettingsActivity::class.java, R.string.home_stats_select, R.string.ui_settings, IC_UI, anchorViewId = R.id.uiSettingsHomeStats, keywordsRes = R.string.search_kw_home_stats_select)
+        l += SearchableSetting(SettingsAppearanceActivity::class.java, R.string.home_stats_select, R.string.appearance, IC_UI, R.string.home_stats_select_desc, keywordsRes = R.string.search_kw_home_stats_select, anchorSection = SettingsAppearanceActivity.Section.HOME, anchorRowKey = "home_stats")
 
-        l += SearchableSetting(UserInterfaceSettingsActivity::class.java, R.string.small_view, R.string.ui_settings, IC_UI, anchorViewId = R.id.uiSettingsSmallView, keywordsRes = R.string.search_kw_small_view)
+        l += SearchableSetting(SettingsAppearanceActivity::class.java, R.string.small_view, R.string.appearance, IC_UI, R.string.small_view_desc, keywordsRes = R.string.search_kw_small_view, anchorSection = SettingsAppearanceActivity.Section.HOME, anchorRowKey = "small_view")
 
-        l += SearchableSetting(UserInterfaceSettingsActivity::class.java, R.string.show_anime_tab, R.string.ui_settings, IC_UI, anchorViewId = R.id.uiSettingsShowAnimeTab, keywordsRes = R.string.search_kw_show_anime_tab)
+        l += SearchableSetting(SettingsAppearanceActivity::class.java, R.string.show_anime_tab, R.string.appearance, IC_UI, R.string.show_anime_tab_desc, keywordsRes = R.string.search_kw_show_anime_tab, anchorSection = SettingsAppearanceActivity.Section.HOME, anchorRowKey = "show_anime_tab")
 
-        l += SearchableSetting(UserInterfaceSettingsActivity::class.java, R.string.show_manga_tab, R.string.ui_settings, IC_UI, anchorViewId = R.id.uiSettingsShowMangaTab, keywordsRes = R.string.search_kw_show_manga_tab)
+        l += SearchableSetting(SettingsAppearanceActivity::class.java, R.string.show_manga_tab, R.string.appearance, IC_UI, R.string.show_manga_tab_desc, keywordsRes = R.string.search_kw_show_manga_tab, anchorSection = SettingsAppearanceActivity.Section.HOME, anchorRowKey = "show_manga_tab")
 
-        l += SearchableSetting(UserInterfaceSettingsActivity::class.java, R.string.banner_animations, R.string.ui_settings, IC_UI, anchorViewId = R.id.uiSettingsBannerAnimation, keywordsRes = R.string.search_kw_banner_animations)
+        l += SearchableSetting(SettingsAppearanceActivity::class.java, R.string.banner_animations, R.string.appearance, IC_UI, R.string.banner_animations_desc, keywordsRes = R.string.search_kw_banner_animations, anchorSection = SettingsAppearanceActivity.Section.ANIMATIONS, anchorRowKey = "banner_animations")
 
-        l += SearchableSetting(UserInterfaceSettingsActivity::class.java, R.string.layout_animations, R.string.ui_settings, IC_UI, anchorViewId = R.id.uiSettingsLayoutAnimation, keywordsRes = R.string.search_kw_layout_animations)
+        l += SearchableSetting(SettingsAppearanceActivity::class.java, R.string.layout_animations, R.string.appearance, IC_UI, R.string.layout_animations_desc, keywordsRes = R.string.search_kw_layout_animations, anchorSection = SettingsAppearanceActivity.Section.ANIMATIONS, anchorRowKey = "layout_animations")
 
-        l += SearchableSetting(UserInterfaceSettingsActivity::class.java, R.string.trending_scroller, R.string.ui_settings, IC_UI, anchorViewId = R.id.uiSettingsTrendingScroller, keywordsRes = R.string.search_kw_trending_scroller)
+        l += SearchableSetting(SettingsAppearanceActivity::class.java, R.string.trending_scroller, R.string.appearance, IC_UI, R.string.trending_scroller_desc, keywordsRes = R.string.search_kw_trending_scroller, anchorSection = SettingsAppearanceActivity.Section.ANIMATIONS, anchorRowKey = "trending_scroller")
 
-        l += SearchableSetting(UserInterfaceSettingsActivity::class.java, R.string.blur_banners, R.string.ui_settings, IC_UI, anchorViewId = R.id.uiSettingsBlurBanners, keywordsRes = R.string.search_kw_blur_banners)
+        l += SearchableSetting(SettingsAppearanceActivity::class.java, R.string.animation_speed, R.string.appearance, IC_UI, R.string.animation_speed_desc, anchorSection = SettingsAppearanceActivity.Section.ANIMATIONS, anchorRowKey = "animation_speed")
+
+        l += SearchableSetting(SettingsAppearanceActivity::class.java, R.string.blur_banners, R.string.appearance, IC_UI, R.string.blur_banners_desc, keywordsRes = R.string.search_kw_blur_banners, anchorSection = SettingsAppearanceActivity.Section.BLUR, anchorRowKey = "blur_banners")
+
+        l += SearchableSetting(SettingsAppearanceActivity::class.java, R.string.radius, R.string.appearance, IC_UI, R.string.blur_radius_desc, anchorSection = SettingsAppearanceActivity.Section.BLUR, anchorRowKey = "blur_radius")
+
+        l += SearchableSetting(SettingsAppearanceActivity::class.java, R.string.sampling, R.string.appearance, IC_UI, R.string.blur_sampling_desc, anchorSection = SettingsAppearanceActivity.Section.BLUR, anchorRowKey = "blur_sampling")
 
 
         // ---- Anime ----
@@ -718,6 +727,21 @@ object SettingsRouter {
                 }
             }
         }
+    }
+
+    /**
+     * Whether [activity] was opened *at* a particular setting rather than plainly.
+     *
+     * True for anything routed by [open] — a search result, or a shortcut naming a group. A screen
+     * built from [SettingsSectionAdapter] uses it to decide whether to restore the groups the user
+     * had open: arriving at a named setting should not collapse them, while walking in from the
+     * settings list should start tidy.
+     */
+    fun hasAnchor(activity: Activity): Boolean = activity.intent.let {
+        it.hasExtra(EXTRA_ANCHOR_SECTION) ||
+                it.hasExtra(EXTRA_ANCHOR_PROVIDER) ||
+                it.hasExtra(EXTRA_ANCHOR_VIEW) ||
+                it.hasExtra(EXTRA_ANCHOR_TITLE)
     }
 
     /**

@@ -6,7 +6,10 @@ import android.view.ViewGroup
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.databinding.ItemSettingsBinding
+import ani.dantotsu.databinding.ItemSettingsChoiceBinding
+import ani.dantotsu.databinding.ItemSettingsChoiceButtonBinding
 import ani.dantotsu.databinding.ItemSettingsHeaderBinding
+import ani.dantotsu.databinding.ItemSettingsSliderBinding
 import ani.dantotsu.databinding.ItemSettingsSwitchBinding
 import ani.dantotsu.px
 import ani.dantotsu.setAnimation
@@ -31,6 +34,12 @@ class SettingsAdapter(private val settings: ArrayList<Settings>) :
     inner class SettingsHeaderViewHolder(val binding: ItemSettingsHeaderBinding) :
         RecyclerView.ViewHolder(binding.root)
 
+    inner class SettingsSliderViewHolder(val binding: ItemSettingsSliderBinding) :
+        RecyclerView.ViewHolder(binding.root)
+
+    inner class SettingsChoiceViewHolder(val binding: ItemSettingsChoiceBinding) :
+        RecyclerView.ViewHolder(binding.root)
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         return when (viewType) {
             1 -> SettingsViewHolder(
@@ -48,6 +57,18 @@ class SettingsAdapter(private val settings: ArrayList<Settings>) :
             // A plain section sub-header, used inside the account cards.
             3 -> SettingsHeaderViewHolder(
                 ItemSettingsHeaderBinding.inflate(
+                    LayoutInflater.from(parent.context), parent, false
+                )
+            )
+
+            4 -> SettingsSliderViewHolder(
+                ItemSettingsSliderBinding.inflate(
+                    LayoutInflater.from(parent.context), parent, false
+                )
+            )
+
+            5 -> SettingsChoiceViewHolder(
+                ItemSettingsChoiceBinding.inflate(
                     LayoutInflater.from(parent.context), parent, false
                 )
             )
@@ -131,6 +152,86 @@ class SettingsAdapter(private val settings: ArrayList<Settings>) :
 
             3 -> {
                 (holder as SettingsHeaderViewHolder).binding.settingsHeader.text = settings.name
+            }
+
+            4 -> {
+                val b = (holder as SettingsSliderViewHolder).binding
+                val cfg = settings.slider ?: return
+                setAnimation(b.root.context, b.root)
+
+                b.settingsTitle.text = settings.name
+                b.settingsDesc.text = settings.desc
+                b.settingsIcon.setImageDrawable(
+                    ContextCompat.getDrawable(b.root.context, settings.icon)
+                )
+
+                fun renderValue(v: Float) {
+                    val text = cfg.format?.invoke(v)
+                    b.settingsValue.text = text
+                    b.settingsValue.visibility = if (text != null) View.VISIBLE else View.GONE
+                }
+
+                // Cleared before the range is applied: a recycled holder still carries the previous
+                // row's listener, and setting valueFrom/valueTo/value would fire it — writing this
+                // row's bounds into that row's preference.
+                b.settingsSlider.clearOnChangeListeners()
+                b.settingsSlider.valueFrom = cfg.from
+                b.settingsSlider.valueTo = cfg.to
+                b.settingsSlider.stepSize = cfg.stepSize
+                b.settingsSlider.value = cfg.value.coerceIn(cfg.from, cfg.to)
+                b.settingsSlider.isEnabled = settings.isEnabled
+                renderValue(b.settingsSlider.value)
+                b.settingsSlider.addOnChangeListener { _, value, fromUser ->
+                    renderValue(value)
+                    // Only a drag commits. A programmatic value change during bind is not a choice
+                    // the user made, and several of these rows restart the app when written.
+                    if (fromUser && settings.isEnabled) cfg.onChange(value)
+                }
+            }
+
+            5 -> {
+                val b = (holder as SettingsChoiceViewHolder).binding
+                val cfg = settings.choice ?: return
+                setAnimation(b.root.context, b.root)
+
+                b.settingsTitle.text = settings.name
+                b.settingsDesc.text = settings.desc
+                b.settingsIcon.setImageDrawable(
+                    ContextCompat.getDrawable(b.root.context, settings.icon)
+                )
+
+                // Rebuilt rather than rebound: the option count is per-row (the start-up tab picker
+                // drops a button for each hidden tab), so a recycled holder's children are the
+                // wrong shape as often as not.
+                b.settingsChoices.removeAllViews()
+                val inflater = LayoutInflater.from(b.root.context)
+                cfg.options.forEachIndexed { index, option ->
+                    if (!option.visible) return@forEachIndexed
+                    val itemBinding = ItemSettingsChoiceButtonBinding.inflate(
+                        inflater, b.settingsChoices, false
+                    )
+                    itemBinding.choiceButton.apply {
+                        setImageDrawable(ContextCompat.getDrawable(b.root.context, option.icon))
+                        contentDescription = option.label
+                        scaleX = if (option.flipHorizontally) -1f else 1f
+                        alpha = if (index == cfg.selected) 1f else 0.33f
+                        isEnabled = settings.isEnabled
+                        setOnClickListener {
+                            if (!settings.isEnabled) return@setOnClickListener
+                            // Repaint the whole group so the previous selection dims, without
+                            // waiting for a rebind the caller may not trigger.
+                            var shown = 0
+                            cfg.options.forEachIndexed { i, o ->
+                                if (!o.visible) return@forEachIndexed
+                                (b.settingsChoices.getChildAt(shown) as? ViewGroup)
+                                    ?.getChildAt(0)?.alpha = if (i == index) 1f else 0.33f
+                                shown++
+                            }
+                            cfg.onSelect(index)
+                        }
+                    }
+                    b.settingsChoices.addView(itemBinding.root)
+                }
             }
         }
     }

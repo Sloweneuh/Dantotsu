@@ -338,6 +338,33 @@
     <string name="common">Common</string>
     <string name="theme">Theme</string>
     <string name="ui_settings">UI Settings</string>
+    <string name="appearance">Appearance</string>
+    <string name="appearance_desc">Theme, colours, home screen and animations</string>
+    <string name="startUpTab_desc">Which tab the app opens on</string>
+    <string name="colors">Colors</string>
+    <string name="colors_desc">OLED, Material You and custom colours</string>
+    <string name="home_screen">Home screen</string>
+    <string name="home_screen_desc">What the home tab shows, and which tabs exist</string>
+    <string name="animations_desc">Banner and layout motion</string>
+    <string name="system_bars">System bars</string>
+    <string name="system_bars_desc">Status bar, navigation bar and the notification dot</string>
+    <string name="blur_desc">Banner blur and its quality</string>
+    <!-- These rows were switches in the old UI Settings layout, which had nowhere to put a
+         description. They are list rows now, so each one gets the line it always wanted. -->
+    <string name="home_layout_show_desc">Choose which sections appear on Home, and in what order</string>
+    <string name="home_stats_select_desc">The two figures shown at the top of Home</string>
+    <string name="small_view_desc">Fit more titles per row in Trending</string>
+    <string name="show_anime_tab_desc">Show the Anime tab in the bottom bar</string>
+    <string name="show_manga_tab_desc">Show the Manga tab in the bottom bar</string>
+    <string name="banner_animations_desc">Slowly pan banner images</string>
+    <string name="layout_animations_desc">Animate lists and screens as they appear</string>
+    <string name="trending_scroller_desc">Auto-advance the Trending carousel</string>
+    <string name="animation_speed_desc">How fast layout animations play</string>
+    <string name="blur_banners_desc">Blur banner images behind content</string>
+    <string name="blur_radius_desc">How strong the blur is</string>
+    <string name="blur_sampling_desc">Higher is faster but coarser</string>
+    <string name="ui_show_system_bars_desc">Keep the status and navigation bars visible</string>
+    <string name="hide_notification_dot_desc">Hide the red dot on the notifications icon</string>
     <string name="about">About</string>
     <string name="devs">Developers/Helpers</string>
     <string name="disclaimer">Disclaimer</string>

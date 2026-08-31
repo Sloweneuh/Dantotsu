@@ -35,8 +35,6 @@ output.json
 #other
 scripts/
 
-#crowdin
-crowdin.yml
 
 #vscode
 .vscode

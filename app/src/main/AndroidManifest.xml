@@ -229,7 +229,6 @@
             android:parentActivityName=".MainActivity" />
         <activity android:name=".settings.AnilistSettingsActivity"/>
         <activity android:name=".settings.MUCustomListMappingActivity"/>
-        <activity android:name=".settings.UserInterfaceSettingsActivity" />
         <activity android:name=".settings.PlayerSettingsActivity" />
         <activity android:name=".settings.ReaderSettingsActivity" />
         <activity android:name=".settings.FAQActivity" />
@@ -276,7 +275,7 @@
             android:name=".settings.SettingsNotificationActivity"
             android:parentActivityName=".MainActivity" />
         <activity
-            android:name=".settings.SettingsThemeActivity"
+            android:name=".settings.SettingsAppearanceActivity"
             android:parentActivityName=".MainActivity" />
         <activity
             android:name=".settings.ExtensionsActivity"
