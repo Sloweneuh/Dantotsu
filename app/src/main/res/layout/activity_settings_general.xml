@@ -4,10 +4,10 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".settings.SettingsCommonActivity">
+    tools:context=".settings.SettingsGeneralActivity">
 
     <LinearLayout
-        android:id="@+id/settingsCommonLayout"
+        android:id="@+id/settingsGeneralLayout"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical">
@@ -22,7 +22,7 @@
             app:cardElevation="0dp">
 
             <ImageButton
-                android:id="@+id/commonSettingsBack"
+                android:id="@+id/generalSettingsBack"
                 android:layout_width="64dp"
                 android:layout_height="64dp"
                 android:background="@color/nav_bg_inv"
@@ -44,7 +44,7 @@
                 android:layout_margin="32dp"
                 android:layout_weight="1"
                 android:fontFamily="@font/poppins_bold"
-                android:text="@string/common"
+                android:text="@string/general"
                 android:textSize="28sp" />
 
             <ImageView

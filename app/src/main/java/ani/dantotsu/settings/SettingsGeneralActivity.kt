@@ -15,7 +15,7 @@ import ani.dantotsu.R
 import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.handoff.GlobalHandoffReceiver
 import ani.dantotsu.connections.handoff.HandoffManager
-import ani.dantotsu.databinding.ActivitySettingsCommonBinding
+import ani.dantotsu.databinding.ActivitySettingsGeneralBinding
 import ani.dantotsu.databinding.DialogCaptureDefaultsBinding
 import ani.dantotsu.databinding.DialogSetPasswordBinding
 import ani.dantotsu.initActivity
@@ -31,8 +31,8 @@ import ani.dantotsu.toast
 import ani.dantotsu.util.customAlertDialog
 import java.util.UUID
 
-class SettingsCommonActivity : AppCompatActivity() {
-    private lateinit var binding: ActivitySettingsCommonBinding
+class SettingsGeneralActivity : AppCompatActivity() {
+    private lateinit var binding: ActivitySettingsGeneralBinding
 
     override fun attachBaseContext(newBase: android.content.Context?) {
         super.attachBaseContext(newBase?.let { ani.dantotsu.util.LanguageHelper.applyLanguageToContext(it) })
@@ -43,16 +43,16 @@ class SettingsCommonActivity : AppCompatActivity() {
         ThemeManager(this).applyTheme()
         initActivity(this)
         val context = this
-        binding = ActivitySettingsCommonBinding.inflate(layoutInflater)
+        binding = ActivitySettingsGeneralBinding.inflate(layoutInflater)
         setContentView(binding.root)
         SettingsRouter.handleHighlight(this, binding.settingsRecyclerView)
 
         binding.apply {
-            settingsCommonLayout.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+            settingsGeneralLayout.updateLayoutParams<ViewGroup.MarginLayoutParams> {
                 topMargin = statusBarHeight
                 bottomMargin = navBarHeight
             }
-            commonSettingsBack.setOnClickListener {
+            generalSettingsBack.setOnClickListener {
                 onBackPressedDispatcher.onBackPressed()
             }
             settingsRecyclerView.adapter =
@@ -82,7 +82,7 @@ class SettingsCommonActivity : AppCompatActivity() {
                                             setTitle(getString(R.string.restart_required))
                                             setMessage(getString(R.string.restart_app_to_apply_language))
                                             setPosButton(getString(R.string.restart)) {
-                                                startMainActivity(this@SettingsCommonActivity)
+                                                startMainActivity(this@SettingsGeneralActivity)
                                             }
                                             setNegButton(getString(R.string.later))
                                             show()
@@ -119,7 +119,7 @@ class SettingsCommonActivity : AppCompatActivity() {
 
                                                 if (canBiometricPrompt) {
                                                     val biometricPrompt =
-                                                        BiometricPromptUtils.createBiometricPrompt(this@SettingsCommonActivity) { _ ->
+                                                        BiometricPromptUtils.createBiometricPrompt(this@SettingsGeneralActivity) { _ ->
                                                             val token = UUID.randomUUID().toString()
                                                             PrefManager.setVal(
                                                                 PrefName.BiometricToken,
@@ -128,7 +128,7 @@ class SettingsCommonActivity : AppCompatActivity() {
                                                             toast(R.string.success)
                                                         }
                                                     val promptInfo =
-                                                        BiometricPromptUtils.createPromptInfo(this@SettingsCommonActivity)
+                                                        BiometricPromptUtils.createPromptInfo(this@SettingsGeneralActivity)
                                                     biometricPrompt.authenticate(promptInfo)
                                                 }
                                             } else {

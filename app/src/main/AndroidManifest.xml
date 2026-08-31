@@ -256,7 +256,7 @@
             android:name=".settings.SettingsAnimeActivity"
             android:parentActivityName=".MainActivity" />
         <activity
-            android:name=".settings.SettingsCommonActivity"
+            android:name=".settings.SettingsGeneralActivity"
             android:parentActivityName=".MainActivity" />
         <activity
             android:name=".settings.SettingsBackupSyncActivity"

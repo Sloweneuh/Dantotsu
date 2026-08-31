@@ -341,6 +341,7 @@
     <string name="appearance">Appearance</string>
     <string name="appearance_desc">Theme, colours, home screen and animations</string>
     <string name="startUpTab_desc">Which tab the app opens on</string>
+    <string name="general_desc">Language, lock, privacy and behaviour</string>
     <string name="accounts_and_sync">Accounts &amp; Sync</string>
     <string name="accounts_and_sync_desc">Trackers, list sync, backup and cloud sync</string>
     <string name="sources_and_downloads">Sources &amp; Downloads</string>

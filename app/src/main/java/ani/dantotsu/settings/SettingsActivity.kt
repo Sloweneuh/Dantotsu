@@ -112,11 +112,11 @@ class SettingsActivity : AppCompatActivity() {
                     ),
                     Settings(
                         type = 1,
-                        name = getString(R.string.common),
-                        desc = getString(R.string.common_desc),
+                        name = getString(R.string.general),
+                        desc = getString(R.string.general_desc),
                         icon = R.drawable.ic_round_settings_24,
                         onClick = {
-                            startActivity(Intent(context, SettingsCommonActivity::class.java))
+                            startActivity(Intent(context, SettingsGeneralActivity::class.java))
                         },
                         isActivity = true
                     ),

@@ -113,7 +113,7 @@ object SettingsSearch {
 
         l += SearchableSetting(SettingsAppearanceActivity::class.java, R.string.appearance, R.string.settings, R.drawable.ic_palette, R.string.appearance_desc, keywordsRes = R.string.search_kw_theme)
 
-        l += SearchableSetting(SettingsCommonActivity::class.java, R.string.common, R.string.settings, R.drawable.ic_round_settings_24, R.string.common_desc, keywordsRes = R.string.search_kw_common)
+        l += SearchableSetting(SettingsGeneralActivity::class.java, R.string.general, R.string.settings, R.drawable.ic_round_settings_24, R.string.general_desc, keywordsRes = R.string.search_kw_common)
 
         l += SearchableSetting(SettingsAnimeActivity::class.java, R.string.anime, R.string.settings, R.drawable.ic_round_movie_filter_24, R.string.anime_desc, keywordsRes = R.string.search_kw_anime)
 
@@ -236,31 +236,31 @@ object SettingsSearch {
 
 
         // ---- Common ----
-        l += SearchableSetting(SettingsCommonActivity::class.java, R.string.language_setting, R.string.common, R.drawable.ic_round_language_24, keywordsRes = R.string.search_kw_language_setting)
+        l += SearchableSetting(SettingsGeneralActivity::class.java, R.string.language_setting, R.string.general, R.drawable.ic_round_language_24, keywordsRes = R.string.search_kw_language_setting)
 
         l += SearchableSetting(SettingsAppearanceActivity::class.java, R.string.ui_settings, R.string.settings, R.drawable.ic_round_grid_view_24, R.string.appearance_desc, keywordsRes = R.string.search_kw_ui_settings)
 
-        l += SearchableSetting(SettingsCommonActivity::class.java, R.string.app_lock, R.string.common, R.drawable.ic_baseline_screen_lock_portrait_24, R.string.app_lock_desc, keywordsRes = R.string.search_kw_app_lock)
+        l += SearchableSetting(SettingsGeneralActivity::class.java, R.string.app_lock, R.string.general, R.drawable.ic_baseline_screen_lock_portrait_24, R.string.app_lock_desc, keywordsRes = R.string.search_kw_app_lock)
 
         l += SearchableSetting(SettingsBackupSyncActivity::class.java, R.string.backup_sync, R.string.accounts_and_sync, R.drawable.backup_restore, R.string.backup_sync_desc, keywordsRes = R.string.search_kw_backup_sync, worksOffline = true)
 
-        l += SearchableSetting(SettingsCommonActivity::class.java, R.string.always_continue_content, R.string.common, R.drawable.ic_round_resume_24, R.string.always_continue_content_desc, keywordsRes = R.string.search_kw_always_continue_content)
+        l += SearchableSetting(SettingsGeneralActivity::class.java, R.string.always_continue_content, R.string.general, R.drawable.ic_round_resume_24, R.string.always_continue_content_desc, keywordsRes = R.string.search_kw_always_continue_content)
 
-        l += SearchableSetting(SettingsCommonActivity::class.java, R.string.comments_button, R.string.common, R.drawable.ic_round_comment_24, R.string.comments_button_desc, keywordsRes = R.string.search_kw_comments_button)
+        l += SearchableSetting(SettingsGeneralActivity::class.java, R.string.comments_button, R.string.general, R.drawable.ic_round_comment_24, R.string.comments_button_desc, keywordsRes = R.string.search_kw_comments_button)
 
-        l += SearchableSetting(SettingsCommonActivity::class.java, R.string.handoff_discovery_setting, R.string.common, R.drawable.ic_round_cast_24, R.string.handoff_discovery_setting_desc, keywordsRes = R.string.search_kw_handoff_discovery_setting)
+        l += SearchableSetting(SettingsGeneralActivity::class.java, R.string.handoff_discovery_setting, R.string.general, R.drawable.ic_round_cast_24, R.string.handoff_discovery_setting_desc, keywordsRes = R.string.search_kw_handoff_discovery_setting)
 
-        l += SearchableSetting(SettingsCommonActivity::class.java, R.string.capture_defaults, R.string.common, R.drawable.ic_round_screenshot_frame_24, R.string.capture_defaults_desc, keywordsRes = R.string.search_kw_capture_defaults)
+        l += SearchableSetting(SettingsGeneralActivity::class.java, R.string.capture_defaults, R.string.general, R.drawable.ic_round_screenshot_frame_24, R.string.capture_defaults_desc, keywordsRes = R.string.search_kw_capture_defaults)
 
-        l += SearchableSetting(SettingsCommonActivity::class.java, R.string.hide_private, R.string.common, R.drawable.ic_round_visibility_off_24, R.string.hide_private_desc, keywordsRes = R.string.search_kw_hide_private)
+        l += SearchableSetting(SettingsGeneralActivity::class.java, R.string.hide_private, R.string.general, R.drawable.ic_round_visibility_off_24, R.string.hide_private_desc, keywordsRes = R.string.search_kw_hide_private)
 
-        l += SearchableSetting(SettingsCommonActivity::class.java, R.string.search_source_list, R.string.common, R.drawable.ic_round_manage_search_24, R.string.search_source_list_desc, keywordsRes = R.string.search_kw_search_source_list)
+        l += SearchableSetting(SettingsGeneralActivity::class.java, R.string.search_source_list, R.string.general, R.drawable.ic_round_manage_search_24, R.string.search_source_list_desc, keywordsRes = R.string.search_kw_search_source_list)
 
-        l += SearchableSetting(SettingsCommonActivity::class.java, R.string.recentlyListOnly, R.string.common, R.drawable.ic_round_history_24, R.string.recentlyListOnly_desc, keywordsRes = R.string.search_kw_recentlyListOnly)
+        l += SearchableSetting(SettingsGeneralActivity::class.java, R.string.recentlyListOnly, R.string.general, R.drawable.ic_round_history_24, R.string.recentlyListOnly_desc, keywordsRes = R.string.search_kw_recentlyListOnly)
 
-        l += SearchableSetting(SettingsCommonActivity::class.java, R.string.adult_only_content, R.string.common, R.drawable.ic_round_nsfw_24, R.string.adult_only_content_desc, keywordsRes = R.string.search_kw_adult_only_content)
+        l += SearchableSetting(SettingsGeneralActivity::class.java, R.string.adult_only_content, R.string.general, R.drawable.ic_round_nsfw_24, R.string.adult_only_content_desc, keywordsRes = R.string.search_kw_adult_only_content)
 
-        l += SearchableSetting(SettingsCommonActivity::class.java, R.string.hidden_from_lists_manage, R.string.common, R.drawable.ic_round_playlist_remove_24, R.string.hidden_from_lists_manage_desc, keywordsRes = R.string.search_kw_hidden_from_lists_manage)
+        l += SearchableSetting(SettingsGeneralActivity::class.java, R.string.hidden_from_lists_manage, R.string.general, R.drawable.ic_round_playlist_remove_24, R.string.hidden_from_lists_manage_desc, keywordsRes = R.string.search_kw_hidden_from_lists_manage)
 
         l += SearchableSetting(SettingsSourcesActivity::class.java, R.string.selected_dns, R.string.sources_and_downloads, R.drawable.ic_round_dns_24, R.string.selected_dns_desc, keywordsRes = R.string.search_kw_selected_dns, anchorSection = SettingsSourcesActivity.Section.NETWORK, anchorRowKey = "selected_dns")
 

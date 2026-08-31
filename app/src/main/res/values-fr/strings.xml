@@ -329,6 +329,7 @@
     <string name="appearance">Apparence</string>
     <string name="appearance_desc">Thème, couleurs, accueil et animations</string>
     <string name="startUpTab_desc">L\'onglet ouvert au démarrage de l\'app</string>
+    <string name="general_desc">Langue, verrouillage, confidentialité et comportement</string>
     <string name="accounts_and_sync">Comptes et synchronisation</string>
     <string name="accounts_and_sync_desc">Trackers, synchro des listes, sauvegarde et cloud</string>
     <string name="sources_and_downloads">Sources et téléchargements</string>
