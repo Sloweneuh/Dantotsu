@@ -139,11 +139,20 @@ object AppFont {
      */
     fun install(activity: Activity) {
         if (current() == DEFAULT) return
+        val appCompat = activity as? AppCompatActivity ?: return
         val inflater = LayoutInflater.from(activity)
         if (installed.containsKey(inflater)) return
+
+        // An inflater accepts one factory and throws on the second, and AppCompat claims it during
+        // super.onCreate. App installs ahead of that for every activity, so this only trips where
+        // the hook could not run at all (before API 29); losing the chosen face there beats taking
+        // the screen down with it.
+        if (inflater.factory != null || inflater.factory2 != null) {
+            Logger.log("AppFont: ${activity.javaClass.simpleName} already has an inflater factory")
+            return
+        }
         installed[inflater] = true
 
-        val appCompat = activity as? AppCompatActivity ?: return
         LayoutInflaterCompat.setFactory2(inflater, object : LayoutInflater.Factory2 {
             override fun onCreateView(
                 parent: View?, name: String, context: android.content.Context, attrs: AttributeSet

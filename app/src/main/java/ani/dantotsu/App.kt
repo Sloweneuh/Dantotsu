@@ -286,6 +286,18 @@ class App : MultiDexApplication() {
         private fun isSettingsScreen(activity: Activity) =
             activity.javaClass.name.startsWith("ani.dantotsu.settings.")
 
+        /**
+         * The one point ahead of every activity's `onCreate`.
+         *
+         * [ani.dantotsu.themes.AppFont] draws through the activity's LayoutInflater, which accepts a
+         * single factory — and AppCompat takes it inside `super.onCreate`. Activities that theme
+         * themselves after that line were left with nowhere to install, so the font goes on here
+         * instead, before either of them runs.
+         */
+        override fun onActivityPreCreated(p0: Activity, p1: Bundle?) {
+            runCatching { ani.dantotsu.themes.AppFont.install(p0) }
+        }
+
         override fun onActivityCreated(p0: Activity, p1: Bundle?) {
             lastActivity = p0.javaClass.simpleName
         }
