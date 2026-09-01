@@ -35,6 +35,7 @@ import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.util.FinalExceptionHandler
 import ani.dantotsu.util.BitmapUtil
+import ani.dantotsu.util.LeakDetection
 import ani.dantotsu.util.Logger
 import com.google.android.material.color.DynamicColors
 import eu.kanade.tachiyomi.data.notification.Notifications
@@ -108,6 +109,9 @@ class App : MultiDexApplication() {
     @OptIn(DelicateCoroutinesApi::class)
     override fun onCreate() {
         super.onCreate()
+        // Before anything allocates. LeakCanary itself is already installed by its own
+        // ContentProvider by this point; this only sets how it behaves. No-op in release builds.
+        LeakDetection.install()
         PrefManager.init(this)
         // Before anything can query AniList. Entry points other than MainActivity (a notification
         // tap, a media deep link, a widget) go straight to a details screen and skip the session

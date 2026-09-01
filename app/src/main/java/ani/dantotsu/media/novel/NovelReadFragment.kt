@@ -719,7 +719,7 @@ class NovelReadFragment : Fragment() {
         super.onDestroyView()
         // Parsers outlive this screen, so a listener left pointing at the header keeps the whole
         // fragment alive with it.
-        model.novelSources[source]?.showUserTextListener = null
+        model.novelSources.flushTextListeners()
         _binding = null
     }
 }

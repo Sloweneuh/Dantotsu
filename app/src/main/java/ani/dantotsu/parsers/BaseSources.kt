@@ -156,6 +156,21 @@ abstract class BaseSources {
         }
     }
 
+    /**
+     * Drops every initialized parser's [BaseParser.showUserTextListener].
+     *
+     * The listeners point at a media screen's header views, while the parsers themselves are
+     * cached for the life of the process in a singleton ([MangaSources], [AnimeSources], ...).
+     * One left attached after its screen is gone therefore pins that screen's whole view
+     * hierarchy, and the Activity behind it — a fresh leak for every media opened.
+     */
+    fun flushTextListeners() {
+        list.forEach {
+            if (it.get.isInitialized())
+                it.get.value?.showUserTextListener = null
+        }
+    }
+
     open operator fun get(i: Int): BaseParser? {
         return list[i].get.value
     }

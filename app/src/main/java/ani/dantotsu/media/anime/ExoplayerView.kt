@@ -163,6 +163,7 @@ import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.toPx
 import ani.dantotsu.toast
 import ani.dantotsu.tryWithSuspend
+import ani.dantotsu.util.LeakDetection
 import ani.dantotsu.util.Logger
 import ani.dantotsu.util.customAlertDialog
 import com.anggrayudi.storage.file.extension
@@ -2353,6 +2354,11 @@ class ExoplayerView :
         exoPlayer.release()
         VideoCache.release()
         mediaSession?.release()
+        // The single biggest object this app holds: a retained ExoPlayer keeps its buffers,
+        // renderers and the Activity that built it alive. LeakCanary watches Activities on its
+        // own but knows nothing about a player released by hand, so say so explicitly.
+        LeakDetection.watch(exoPlayer, "ExoPlayer released by ExoplayerView.releasePlayer")
+        mediaSession?.let { LeakDetection.watch(it, "MediaSession released by ExoplayerView.releasePlayer") }
         RPCManager.clearPresence(this)
     }
 

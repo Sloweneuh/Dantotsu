@@ -1185,6 +1185,15 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
         return result
     }
 
+    override fun onDestroyView() {
+        // Parsers outlive this screen, so a listener left pointing at the header keeps the whole
+        // fragment — and the Activity behind it — alive with it. Unconditional, unlike the text
+        // flush below: a configuration change destroys these views too, and the rebind installs a
+        // fresh listener against the new ones.
+        model.mangaReadSources?.flushTextListeners()
+        super.onDestroyView()
+    }
+
     override fun onDestroy() {
         // Parsers are global singletons, so the "Found : x" text has to be cleared when leaving the
         // media, or the next one would open showing it. A rotation isn't leaving: the ViewModel keeps

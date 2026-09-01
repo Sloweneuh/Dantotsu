@@ -24,6 +24,7 @@ import ani.dantotsu.media.ExtensionDropdownAdapter
 import ani.dantotsu.parsers.NovelReadSources
 import ani.dantotsu.parsers.novel.lnreader.LNReaderChapter
 import ani.dantotsu.parsers.novel.lnreader.LNReaderPluginManager
+import ani.dantotsu.parsers.showUserTextOn
 import ani.dantotsu.settings.ExtensionsActivity
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
@@ -31,7 +32,6 @@ import ani.dantotsu.snackString
 import com.bumptech.glide.Glide
 import com.google.android.material.chip.Chip
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uy.kohesive.injekt.Injekt
@@ -132,9 +132,7 @@ class NovelReadAdapter(
         // parser so it updates as the match is resolved rather than only when the header is bound.
         novelReadSources[source]?.apply {
             binding.mediaSourceTitle.text = showUserText
-            showUserTextListener = { text ->
-                MainScope().launch { _binding?.mediaSourceTitle?.text = text }
-            }
+            showUserTextOn(binding.mediaSourceTitle)
         }
         binding.mediaSourceSearch.setOnClickListener { fragment.openEntryPicker() }
         binding.mediaSourceTitleBrowser.isVisible = fragment.entryUrl() != null

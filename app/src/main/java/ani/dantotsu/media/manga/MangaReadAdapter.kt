@@ -42,6 +42,7 @@ import ani.dantotsu.parsers.DynamicMangaParser
 import ani.dantotsu.parsers.MangaReadSources
 import ani.dantotsu.parsers.MangaSources
 import ani.dantotsu.parsers.OfflineMangaParser
+import ani.dantotsu.parsers.showUserTextOn
 import ani.dantotsu.px
 import ani.dantotsu.settings.FAQActivity
 import ani.dantotsu.settings.saving.PrefManager
@@ -53,7 +54,6 @@ import com.google.android.material.chip.Chip
 import eu.kanade.tachiyomi.data.notification.Notifications.CHANNEL_SUBSCRIPTION_CHECK
 import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.util.system.WebViewUtil
-import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 
 
@@ -159,7 +159,7 @@ class MangaReadAdapter(
             binding.mediaSource.setText(mangaReadSources.names[source])
             mangaReadSources[source].apply {
                 binding.mediaSourceTitle.text = showUserText
-                showUserTextListener = { MainScope().launch { binding.mediaSourceTitle.text = it } }
+                showUserTextOn(binding.mediaSourceTitle)
             }
             setupBrowserButton(binding, source)
         }
@@ -187,7 +187,7 @@ class MangaReadAdapter(
         binding.mediaSource.setOnItemClickListener { _, _, i, _ ->
             fragment.onSourceChange(i).apply {
                 binding.mediaSourceTitle.text = showUserText
-                showUserTextListener = { MainScope().launch { binding.mediaSourceTitle.text = it } }
+                showUserTextOn(binding.mediaSourceTitle)
                 source = i
                 // prefer English when switching sources
                 val newDefault = defaultLangIndexForSource(i, 0)
@@ -220,8 +220,7 @@ class MangaReadAdapter(
                 // don't re-persist sourceIndex (which may be an auto-hop fallback, not the user's).
                 fragment.onSourceChange(media.selected!!.sourceIndex, persist = false).apply {
                     binding.mediaSourceTitle.text = showUserText
-                    showUserTextListener =
-                        { MainScope().launch { binding.mediaSourceTitle.text = it } }
+                    showUserTextOn(binding.mediaSourceTitle)
                     setLanguageList(i, source)
                 }
                 subscribeButton(false)
@@ -764,8 +763,7 @@ class MangaReadAdapter(
                         // Not persisted: the user didn't pick this source, we fell through to it.
                         fragment.onSourceChange(nextIndex, persist = false).apply {
                             binding.mediaSourceTitle.text = showUserText
-                            showUserTextListener =
-                                { MainScope().launch { binding.mediaSourceTitle.text = it } }
+                            showUserTextOn(binding.mediaSourceTitle)
                             // prefer English when auto-switching
                             val nd = defaultLangIndexForSource(nextIndex, 0)
                             (mangaReadSources[nextIndex] as? DynamicMangaParser)?.let { ext ->

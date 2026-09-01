@@ -39,6 +39,7 @@ import ani.dantotsu.parsers.AnimeSources
 import ani.dantotsu.parsers.DynamicAnimeParser
 import ani.dantotsu.parsers.OfflineAnimeParser
 import ani.dantotsu.parsers.WatchSources
+import ani.dantotsu.parsers.showUserTextOn
 import ani.dantotsu.px
 import ani.dantotsu.settings.FAQActivity
 import ani.dantotsu.settings.saving.PrefManager
@@ -50,7 +51,6 @@ import com.google.android.material.chip.Chip
 import eu.kanade.tachiyomi.animesource.online.AnimeHttpSource
 import eu.kanade.tachiyomi.data.notification.Notifications.CHANNEL_SUBSCRIPTION_CHECK
 import eu.kanade.tachiyomi.util.system.WebViewUtil
-import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 
 
@@ -156,7 +156,7 @@ class AnimeWatchAdapter(
             binding.mediaSource.setText(watchSources.names[source])
             watchSources[source].apply {
                 binding.mediaSourceTitle.text = showUserText
-                showUserTextListener = { MainScope().launch { binding.mediaSourceTitle.text = it } }
+                showUserTextOn(binding.mediaSourceTitle)
                 val dubSeparate = isDubAvailableSeparately()
                 binding.animeSourceDubbedCont.isVisible = dubSeparate
                 if (dubSeparate) {
@@ -204,7 +204,7 @@ class AnimeWatchAdapter(
         binding.mediaSource.setOnItemClickListener { _, _, i, _ ->
             fragment.onSourceChange(i).apply {
                 binding.mediaSourceTitle.text = showUserText
-                showUserTextListener = { MainScope().launch { binding.mediaSourceTitle.text = it } }
+                showUserTextOn(binding.mediaSourceTitle)
                 changing = true
                 binding.animeSourceDubbed.isChecked = selectDub
                 changing = false
@@ -236,8 +236,7 @@ class AnimeWatchAdapter(
                 // don't re-persist sourceIndex (which may be an auto-hop fallback, not the user's).
                 fragment.onSourceChange(media.selected!!.sourceIndex, persist = false).apply {
                     binding.mediaSourceTitle.text = showUserText
-                    showUserTextListener =
-                        { MainScope().launch { binding.mediaSourceTitle.text = it } }
+                    showUserTextOn(binding.mediaSourceTitle)
                     changing = true
                     binding.animeSourceDubbed.isChecked = selectDub
                     changing = false
@@ -614,8 +613,7 @@ class AnimeWatchAdapter(
                         // Not persisted: the user didn't pick this source, we fell through to it.
                         fragment.onSourceChange(nextIndex, persist = false).apply {
                             binding.mediaSourceTitle.text = showUserText
-                            showUserTextListener =
-                                { MainScope().launch { binding.mediaSourceTitle.text = it } }
+                            showUserTextOn(binding.mediaSourceTitle)
                             binding.animeSourceDubbed.isChecked = selectDub
                             binding.animeSourceDubbedCont.isVisible = isDubAvailableSeparately()
                             val nd = defaultLangIndexForSource(nextIndex, 0)
