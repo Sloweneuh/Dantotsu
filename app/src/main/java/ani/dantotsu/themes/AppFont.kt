@@ -1,6 +1,7 @@
 package ani.dantotsu.themes
 
 import android.app.Activity
+import android.content.Context
 import android.graphics.Paint
 import android.graphics.Typeface
 import android.os.Build
@@ -71,29 +72,49 @@ object AppFont {
         if (key == DEFAULT) return null
         if (key == cachedKey) return cachedBase
 
-        val tf: Typeface? = try {
-            when {
-                key == SYSTEM -> Typeface.DEFAULT
-                key.startsWith(RES_PREFIX) -> {
-                    val name = key.removePrefix(RES_PREFIX)
-                    bundled.firstOrNull { it.first == name }
-                        ?.let { ResourcesCompat.getFont(activity, it.second) }
-                }
-
-                key.startsWith(FILE_PREFIX) -> {
-                    val f = File(key.removePrefix(FILE_PREFIX))
-                    if (f.isFile) Typeface.createFromFile(f) else null
-                }
-
-                else -> null
-            }
-        } catch (e: Exception) {
-            Logger.log("AppFont: could not load $key - ${e.message}")
-            null
-        }
+        val tf = resolve(activity, key)
         cachedKey = key
         cachedBase = tf
         return tf
+    }
+
+    /** The face a key names, uncached and with no opinion about what null should fall back to. */
+    private fun resolve(context: Context, key: String): Typeface? = try {
+        when {
+            key == SYSTEM -> Typeface.DEFAULT
+            key.startsWith(RES_PREFIX) -> {
+                val name = key.removePrefix(RES_PREFIX)
+                bundled.firstOrNull { it.first == name }
+                    ?.let { ResourcesCompat.getFont(context, it.second) }
+            }
+
+            key.startsWith(FILE_PREFIX) -> {
+                val f = File(key.removePrefix(FILE_PREFIX))
+                if (f.isFile) Typeface.createFromFile(f) else null
+            }
+
+            else -> null
+        }
+    } catch (e: Exception) {
+        Logger.log("AppFont: could not load $key - ${e.message}")
+        null
+    }
+
+    /**
+     * The face [key] names at [weight], for a picker that draws each option in its own font.
+     *
+     * Not [base]: that answers for the current choice and returns null for [DEFAULT] because the
+     * styles already say Poppins, which in a list would leave the default row as the only one not
+     * showing what it would look like. Here it resolves to Poppins outright. Null still means the
+     * font could not be loaded, and the caller decides what to draw the row in instead.
+     */
+    fun preview(context: Context, key: String, weight: Int = 600): Typeface? {
+        val tf = if (key == DEFAULT) {
+            runCatching { ResourcesCompat.getFont(context, R.font.poppins_semi_bold) }.getOrNull()
+        } else {
+            resolve(context, key)
+        }
+        return tf?.let { atWeight(it, weight) }
     }
 
     /** Loads the current choice, for a picker that wants to check it before committing. */

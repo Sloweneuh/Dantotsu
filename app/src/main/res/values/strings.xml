@@ -383,7 +383,7 @@
     <string name="app_font_desc">The typeface the whole app is drawn in</string>
     <string name="font_follow_system">Follow system font</string>
     <string name="font_default">Poppins (default)</string>
-    <string name="font_choose_file">Choose a font file2026</string>
+    <string name="font_choose_file">Choose a font file</string>
     <string name="font_installed_header">Fonts on this device</string>
     <string name="font_bundled_header">Bundled</string>
     <string name="font_no_latin">That font can0027t draw ordinary text, so it wasn0027t applied</string>

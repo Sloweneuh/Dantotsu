@@ -370,7 +370,7 @@
     <string name="app_font_desc">La police utilisée dans toute l0027application</string>
     <string name="font_follow_system">Suivre la police du système</string>
     <string name="font_default">Poppins (par défaut)</string>
-    <string name="font_choose_file">Choisir un fichier de police2026</string>
+    <string name="font_choose_file">Choisir un fichier de police</string>
     <string name="font_installed_header">Polices de cet appareil</string>
     <string name="font_bundled_header">Incluses</string>
     <string name="font_no_latin">Cette police ne peut pas afficher de texte courant, elle n0027a pas été appliquée</string>

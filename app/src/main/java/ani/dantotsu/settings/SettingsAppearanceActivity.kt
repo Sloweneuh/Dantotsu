@@ -12,10 +12,15 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
+import android.widget.LinearLayout
+import android.widget.RadioGroup
 import androidx.activity.addCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.AppCompatTextView
+import androidx.core.content.res.ResourcesCompat
 import androidx.core.view.updateLayoutParams
+import androidx.core.widget.NestedScrollView
 import androidx.recyclerview.widget.ConcatAdapter
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -36,6 +41,9 @@ import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.toast
 import ani.dantotsu.util.Logger
 import ani.dantotsu.util.customAlertDialog
+import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.google.android.material.color.MaterialColors
+import com.google.android.material.radiobutton.MaterialRadioButton
 import eltos.simpledialogfragment.SimpleDialog
 import eltos.simpledialogfragment.color.SimpleColorDialog
 import java.io.File
@@ -787,19 +795,83 @@ class SettingsAppearanceActivity : AppCompatActivity(), SimpleDialog.OnDialogRes
             }
             device.forEach { add(it.label) }
             add(getString(R.string.font_choose_file))
-        }.toTypedArray()
+        }
+        val selected = keys.indexOf(AppFont.current()).coerceAtLeast(0)
 
-        customAlertDialog().apply {
-            setTitle(R.string.app_font)
-            singleChoiceItems(labels, keys.indexOf(AppFont.current()).coerceAtLeast(0)) { i ->
-                if (keys[i] == PICK_FILE) {
-                    pickFontFile.launch(arrayOf("font/*", "application/x-font-ttf", "application/octet-stream"))
-                } else {
-                    applyFont(keys[i])
+        val sheet = BottomSheetDialog(this)
+        val dp = resources.displayMetrics.density
+        val onBgColor = MaterialColors.getColor(
+            binding.root, com.google.android.material.R.attr.colorOnBackground
+        )
+
+        val scrollView = NestedScrollView(this)
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundResource(R.drawable.bottom_sheet_background)
+            val h = (24 * dp).toInt()
+            setPadding(h, (20 * dp).toInt(), h, navBarHeight + (16 * dp).toInt())
+        }
+
+        container.addView(AppCompatTextView(this).apply {
+            text = getString(R.string.app_font)
+            textSize = 18f
+            typeface = ResourcesCompat.getFont(this@SettingsAppearanceActivity, R.font.poppins_bold)
+            setTextColor(onBgColor)
+            setPadding(0, 0, 0, (12 * dp).toInt())
+        })
+
+        container.addView(View(this).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, 1
+            ).also { it.bottomMargin = (12 * dp).toInt() }
+            alpha = 0.12f
+            setBackgroundColor(onBgColor)
+        })
+
+        val radioGroup = RadioGroup(this).apply {
+            orientation = RadioGroup.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+        }
+        val fallback = ResourcesCompat.getFont(this, R.font.poppins_semi_bold)
+        labels.forEachIndexed { i, name ->
+            MaterialRadioButton(this@SettingsAppearanceActivity).apply {
+                id = i
+                text = name
+                textSize = 15f
+                // Each row is drawn in the font it offers, so the list is its own preview. The
+                // file-picker row has nothing to preview and a font that fails to load has nothing
+                // worth previewing, so both fall back to the sheet's own face.
+                typeface = if (keys[i] == PICK_FILE) fallback
+                else AppFont.preview(this@SettingsAppearanceActivity, keys[i]) ?: fallback
+                isChecked = i == selected
+                minHeight = (48 * dp).toInt()
+                layoutParams = RadioGroup.LayoutParams(
+                    RadioGroup.LayoutParams.MATCH_PARENT,
+                    RadioGroup.LayoutParams.WRAP_CONTENT
+                )
+                radioGroup.addView(this)
+            }
+        }
+        radioGroup.setOnCheckedChangeListener { _, which ->
+            if (which >= 0) {
+                if (keys[which] == PICK_FILE) {
+                    pickFontFile.launch(
+                        arrayOf("font/*", "application/x-font-ttf", "application/octet-stream")
+                    )
+                } else if (which != selected) {
+                    applyFont(keys[which])
                 }
             }
-            show()
+            sheet.dismiss()
         }
+
+        container.addView(radioGroup)
+        scrollView.addView(container)
+        sheet.setContentView(scrollView)
+        sheet.show()
     }
 
     /**
