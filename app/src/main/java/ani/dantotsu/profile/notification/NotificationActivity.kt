@@ -55,7 +55,7 @@ class NotificationActivity : AppCompatActivity() {
             Pair(R.drawable.ic_round_person_24, "User"),
             Pair(R.drawable.ic_round_movie_filter_24, "Media"),
             Pair(R.drawable.ic_round_notifications_active_24, "Subs"),
-            Pair(R.drawable.ic_round_malsync_notifications_24, "Unread")
+            Pair(R.drawable.ic_round_malsync_notifications_24, "MalSync")
         )
         if (CommentsEnabled) {
             tabs.add(Pair(R.drawable.ic_round_comment_24, "Comments"))

@@ -384,6 +384,7 @@ class UnreadChapterNotificationTask : Task {
     ) {
         val notificationManager = NotificationManagerCompat.from(context)
         val unitLabel = if (isAnime) "Episode" else "Chapter"
+        val pendingLabel = if (isAnime) "unwatched" else "unread"
 
         newChapters.forEach { (media, info) ->
             val unreadCount = info.lastChapter - info.userProgress
@@ -393,7 +394,7 @@ class UnreadChapterNotificationTask : Task {
             val text = if (unreadCount == 1) {
                 "${media.userPreferredName}: $unitLabel ${info.lastChapter}"
             } else {
-                "${media.userPreferredName}: $unitLabel ${info.lastChapter} ($unreadCount unread)"
+                "${media.userPreferredName}: $unitLabel ${info.lastChapter} ($unreadCount $pendingLabel)"
             }
             // Anime episodes come from whichever MALSync mirror has them; the language (dub/sub) is
             // what the user actually cares about, so show that instead of the streaming source.

@@ -173,10 +173,11 @@ class NotificationFragment : Fragment() {
                 // Format with HTML for better styling - each on separate line
                 val title = "<b>${it.mediaName}</b>"
                 val unit = if (it.type == "UnreadEpisode") "Episode" else "Chapter"
+                val pending = if (it.type == "UnreadEpisode") "unwatched" else "unread"
                 val chapter = if (it.unreadCount == 1) {
                     "$unit ${it.lastChapter}"
                 } else {
-                    "$unit ${it.lastChapter} <i>(${it.unreadCount} unread)</i>"
+                    "$unit ${it.lastChapter} <i>(${it.unreadCount} $pending)</i>"
                 }
                 val source = if (it.type == "UnreadEpisode" && !it.language.isNullOrBlank()) {
                     "<small>${ani.dantotsu.connections.malsync.LanguageMapper.displayWithType(it.language)}</small>"
