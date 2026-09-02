@@ -319,26 +319,27 @@
 
             </LinearLayout>
 
+            <!-- Carded like the collapsible groups on the settings screens: Xpandable builds the
+                 icon/title/summary header and the chevron that turns, so the one group in this
+                 sheet reads as the same component as every other. The sheet already insets its
+                 own content by 32dp, hence cardInset="false". -->
             <ani.dantotsu.others.Xpandable
                 android:id="@+id/mediaListExpandable"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical">
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="48dp"
-                    android:fontFamily="@font/poppins_bold"
-                    android:gravity="center_vertical"
-                    android:text="@string/other"
-                    android:textColor="?attr/colorSecondary"
-                    app:drawableEndCompat="@drawable/ic_round_arrow_drop_down_24" />
+                android:layout_marginTop="16dp"
+                android:orientation="vertical"
+                app:cardInset="false"
+                app:icon="@drawable/ic_round_tune_24"
+                app:summary="@string/list_editor_other_group_desc"
+                app:title="@string/other">
 
                 <com.google.android.material.textfield.TextInputLayout
                     android:id="@+id/mediaListRepeatLayout"
                     style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="16dp"
                     android:hint="@string/total_repeats"
                     app:boxCornerRadiusBottomEnd="16dp"
                     app:boxCornerRadiusBottomStart="16dp"
@@ -369,6 +370,7 @@
                     style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="16dp"
                     android:layout_marginTop="16dp"
                     android:hint="@string/note"
                     app:boxCornerRadiusBottomEnd="16dp"
@@ -398,6 +400,7 @@
                     android:id="@+id/mediaListPrivate"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="16dp"
                     android:layout_marginTop="16dp"
                     android:fontFamily="@font/poppins_bold"
                     android:text="@string/list_private" />
@@ -406,6 +409,7 @@
                     android:id="@+id/mediaListShow"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="16dp"
                     android:layout_marginTop="16dp"
                     android:fontFamily="@font/poppins_bold"
                     android:text="@string/hide_in_home_screen" />
@@ -414,6 +418,7 @@
                     android:id="@+id/mediaListMalSyncExclude"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="16dp"
                     android:layout_marginTop="16dp"
                     android:fontFamily="@font/poppins_bold" />
 
@@ -421,6 +426,7 @@
                     android:id="@+id/mediaListAddCustomList"
                     android:layout_width="match_parent"
                     android:layout_height="48dp"
+                    android:layout_marginHorizontal="16dp"
                     android:fontFamily="@font/poppins_bold"
                     android:gravity="center_vertical"
                     android:text="@string/custom_lists"
@@ -430,6 +436,7 @@
                     android:id="@+id/mediaListCustomListContainer"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="16dp"
                     android:orientation="vertical">
 
                 </LinearLayout>

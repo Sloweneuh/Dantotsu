@@ -43,6 +43,9 @@ class Xpandable @JvmOverloads constructor(
     private var summaryText: CharSequence? = null
     private var iconRes: Int = 0
 
+    /** Whether the card insets itself from its parent; see the `cardInset` attribute. */
+    private var cardInset: Boolean = true
+
     /** The chevron on a header this view built. Null when the layout supplied its own header. */
     private var chevron: View? = null
 
@@ -56,6 +59,7 @@ class Xpandable @JvmOverloads constructor(
             titleText = getText(R.styleable.Xpandable_title)
             summaryText = getText(R.styleable.Xpandable_summary)
             iconRes = getResourceId(R.styleable.Xpandable_icon, 0)
+            cardInset = getBoolean(R.styleable.Xpandable_cardInset, cardInset)
         }
         stateKey?.let { key ->
             if (shouldRestore()) expanded = PrefManager.getCustomVal(prefKey(key), expanded)
@@ -130,7 +134,7 @@ class Xpandable @JvmOverloads constructor(
         if (!isNested()) {
             background = ContextCompat.getDrawable(context, R.drawable.bg_settings_section_card)
             clipToOutline = true
-            updateLayoutParams<MarginLayoutParams> {
+            if (cardInset) updateLayoutParams<MarginLayoutParams> {
                 topMargin = CARD_GAP
                 marginStart = CARD_INSET
                 marginEnd = CARD_INSET

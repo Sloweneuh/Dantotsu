@@ -24,5 +24,10 @@
         <attr name="title" format="string" />
         <attr name="summary" format="string" />
         <attr name="icon" format="reference" />
+        <!-- Whether the card insets itself from its parent. True on the settings screens, whose
+             lists lay their content out edge to edge; false where the host already supplies that
+             margin, such as the list editor sheet, where insetting again would indent this one
+             card further than every field beside it. -->
+        <attr name="cardInset" format="boolean" />
     </declare-styleable>
 </resources>

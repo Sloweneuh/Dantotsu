@@ -508,6 +508,8 @@
     <string name="share">Partager</string>
     <string name="skip">Passer</string>
     <string name="other">Autre</string>
+    <string name="list_editor_other_group_desc">Relectures, notes, confidentialité et listes personnalisées</string>
+    <string name="list_editor_privacy_group_desc">Confidentialité et visibilité sur l\'accueil</string>
     <string name="total_repeats">TOTAL RÉPÉTITIONS</string>
     <string name="custom_lists">Listes personnalisées</string>
     <string name="filter">Filtrer</string>

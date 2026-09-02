@@ -610,6 +610,8 @@
     <string name="share">Share</string>
     <string name="skip">Skip</string>
     <string name="other">Other</string>
+    <string name="list_editor_other_group_desc">Repeats, notes, privacy and custom lists</string>
+    <string name="list_editor_privacy_group_desc">Privacy and home screen visibility</string>
     <string name="total_repeats">TOTAL REPEATS</string>
     <string name="custom_lists">Custom Lists</string>
     <string name="filter">Filter</string>
