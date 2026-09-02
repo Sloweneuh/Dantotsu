@@ -76,6 +76,14 @@ object OfflineMediaLoader {
         return result
     }
 
+    /**
+     * The full [Media] for one downloaded title, parsed from its `media.json`. Null when the file
+     * is missing or unreadable, which is the only thing that separates a downloaded title from
+     * one the details screen can open offline.
+     */
+    fun loadMedia(context: Context, type: MediaType, titleName: String): Media? =
+        loadMedia(context, DownloadedType(titleName, "", type))
+
     private fun loadMedia(context: Context, downloadedType: DownloadedType): Media? {
         return try {
             val directory = getSubDirectory(

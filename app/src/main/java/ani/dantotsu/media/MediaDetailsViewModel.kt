@@ -14,6 +14,11 @@ import ani.dantotsu.connections.simkl.SimklApi
 import ani.dantotsu.connections.mangaupdates.MUSeriesRecord
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.currContext
+import ani.dantotsu.download.DownloadedType
+import ani.dantotsu.download.DownloadsManager
+import ani.dantotsu.download.DownloadsManager.Companion.compareName
+import ani.dantotsu.download.anime.AnimeDownloaderService.AnimeDownloadTask.Companion.getTaskName
+import ani.dantotsu.download.findValidName
 import ani.dantotsu.media.anime.Episode
 import ani.dantotsu.media.anime.SelectorDialogFragment
 import ani.dantotsu.media.manga.MangaChapter
@@ -30,6 +35,8 @@ import ani.dantotsu.parsers.DynamicMangaParser
 import ani.dantotsu.parsers.MangaReadSources
 import ani.dantotsu.parsers.MangaSources
 import ani.dantotsu.parsers.NovelSources
+import ani.dantotsu.parsers.OfflineAnimeParser
+import ani.dantotsu.parsers.OfflineMangaParser
 import ani.dantotsu.parsers.ShowResponse
 import ani.dantotsu.parsers.VideoExtractor
 import ani.dantotsu.parsers.WatchSources
@@ -39,11 +46,14 @@ import ani.dantotsu.snackString
 import ani.dantotsu.tryWithSuspend
 import ani.dantotsu.util.Logger
 import com.bumptech.glide.load.resource.bitmap.BitmapTransformation
+import eu.kanade.tachiyomi.animesource.model.SEpisodeImpl
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 
 class MediaDetailsViewModel : ViewModel() {
     val scrolledToTop = MutableLiveData(true)
@@ -630,6 +640,53 @@ class MediaDetailsViewModel : ViewModel() {
     private var episode = MutableLiveData<Episode?>(null)
     fun getEpisode(): LiveData<Episode?> = episode
 
+    private val downloadsManager get() = Injekt.get<DownloadsManager>()
+
+    /** The download entry for [number] of [media], or null if that episode isn't on disk. */
+    private fun downloadedEpisode(media: Media, number: String): DownloadedType? {
+        val valid = number.findValidName()
+        return downloadsManager.animeDownloadedTypes.firstOrNull {
+            it.chapterName == valid && media.compareName(it.titleName)
+        }
+    }
+
+    /** The download entry for [chapter] of [media], or null if that chapter isn't on disk. */
+    private fun downloadedChapter(media: Media, chapter: MangaChapter): DownloadedType? =
+        downloadsManager.mangaDownloadedTypes.firstOrNull {
+            it.uniqueName == chapter.uniqueNumber() && media.compareName(it.titleName)
+        }
+
+    private val offlineAnimeParser by lazy { OfflineAnimeParser() }
+    private val offlineMangaParser by lazy { OfflineMangaParser() }
+
+    /**
+     * Points [ep] at its downloaded copy when there is one, and reports whether it did.
+     *
+     * A downloaded episode is the one the user already paid for in bandwidth and storage, so it
+     * wins over anything the source could stream: playing it needs no network, no server pick and
+     * no extractor round trip. The local copy is a single "server", so it is selected here too —
+     * there is nothing to choose between.
+     */
+    suspend fun loadDownloadedEpisode(ep: Episode, media: Media): Boolean {
+        val entry = downloadedEpisode(media, ep.number) ?: return false
+        val sEpisode = ep.sEpisode ?: SEpisodeImpl()
+        val extra = mapOf("title" to entry.titleName, "episode" to entry.chapterName)
+        // Silent on failure: this is a shortcut, and the ordinary server flow still follows.
+        val extractors = tryWithSuspend {
+            offlineAnimeParser.loadByVideoServers(
+                getTaskName(entry.titleName, entry.chapterName), extra, sEpisode
+            ) {}
+        }?.filter { it.videos.isNotEmpty() } ?: return false
+        if (extractors.isEmpty()) return false
+
+        ep.extractors = extractors.toMutableList()
+        ep.extractorCallback = null
+        ep.allStreams = true
+        ep.selectedExtractor = extractors.first().server.name
+        ep.selectedVideo = 0
+        return true
+    }
+
     suspend fun loadEpisodeVideos(ep: Episode, i: Int, post: Boolean = true) {
         val link = ep.link ?: return
         if (!ep.allStreams || ep.extractors.isNullOrEmpty()) {
@@ -808,6 +865,23 @@ class MediaDetailsViewModel : ViewModel() {
         if (chapter.images().isNotEmpty()) {
             if (post) mangaChapter.postValue(chapter)
             return true
+        }
+
+        // A downloaded chapter wins over the source it came from: its pages are already on disk,
+        // so reading it costs no network and no wait, whichever source happens to be selected.
+        // A chapter bundled inside a one-file PDF has no entry of its own and falls through here.
+        val downloaded = getMedia().value?.let { downloadedChapter(it, chapter) }
+        if (downloaded != null) {
+            val images = tryWithSuspend {
+                offlineMangaParser.loadImages(
+                    "${downloaded.titleName}/${downloaded.chapterName}", chapter.sChapter
+                )
+            }
+            if (!images.isNullOrEmpty()) {
+                chapter.addImages(images)
+                if (post) mangaChapter.postValue(chapter)
+                return true
+            }
         }
 
         return tryWithSuspend(true) {

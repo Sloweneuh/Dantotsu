@@ -20,8 +20,9 @@
             android:id="@+id/itemMediaCover"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:contentDescription="@string/open_media"
+            android:foreground="?android:attr/selectableItemBackground"
             android:scaleType="centerCrop"
-            tools:ignore="ContentDescription"
             tools:src="@tools:sample/backgrounds/scenic" />
     </androidx.cardview.widget.CardView>
 

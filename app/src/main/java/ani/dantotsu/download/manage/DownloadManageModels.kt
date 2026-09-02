@@ -23,7 +23,8 @@ data class DownloadChild(
     val titleName: String,
     val chapterName: String,
     val scanlator: String,
-    val sizeBytes: Long,
+    /** On-disk size, or null while it is still being measured. */
+    val sizeBytes: Long? = null,
 )
 
 /** A downloaded media with its children and total on-disk size. */
@@ -32,10 +33,11 @@ data class DownloadMediaGroup(
     val titleName: String,
     val title: String,
     val coverUri: Uri?,
-    val sizeBytes: Long,
     val children: List<DownloadChild>,
     /** True chapter/episode total: one-file PDF bundles count all their contained chapters. */
     val itemCount: Int,
+    /** Sum of the children's sizes, or null while they are still being measured. */
+    val sizeBytes: Long? = null,
 )
 
 /** Aggregate totals shown above the management list. */
@@ -49,68 +51,87 @@ data class DownloadTotals(
 
 object DownloadManageLoader {
     /**
-     * Builds the grouped download list (offline-safe). Reads sizes recursively from disk, so
-     * call from a background dispatcher. One-file bundles appear as a single "batch" child
-     * (they are registered as one DownloadedType under the range name).
+     * Builds the grouped download list (offline-safe), without any sizes. Still touches the disk
+     * for each title's `media.json`/cover, so call from a background dispatcher.
      *
-     * Every size comes from a SAF `DocumentFile` walk, and each such call is a slow IPC round
-     * trip to the DocumentsProvider — with many downloaded titles/chapters this used to add up
-     * to a serial multi-second (or worse) load. Two changes bring that down: titles and their
-     * children are sized concurrently (`async`/`awaitAll`) instead of one after another, and a
-     * title's total size is now the sum of its already-computed children instead of a second,
-     * fully redundant walk of the same directory tree.
+     * Sizes are deliberately not part of this pass. Measuring one means a recursive
+     * `DocumentFile` walk of every chapter folder, and each such call is a slow IPC round trip to
+     * the DocumentsProvider — with many downloaded titles that is what made the screen sit on a
+     * spinner for seconds. The list can be shown without them, so it is: [loadSizes] fills them
+     * in afterwards and the rows update in place.
      */
-    suspend fun load(context: Context): Pair<List<DownloadMediaGroup>, DownloadTotals> =
-        coroutineScope {
-            val dm = Injekt.get<DownloadsManager>()
+    suspend fun load(context: Context): List<DownloadMediaGroup> = coroutineScope {
+        val dm = Injekt.get<DownloadsManager>()
 
-            val titleEntries = listOf(MediaType.MANGA, MediaType.ANIME, MediaType.NOVEL)
-                .flatMap { type ->
-                    val types = when (type) {
-                        MediaType.MANGA -> dm.mangaDownloadedTypes
-                        MediaType.ANIME -> dm.animeDownloadedTypes
-                        MediaType.NOVEL -> dm.novelDownloadedTypes
-                    }
-                    types.groupBy { it.titleName }
-                        .map { (titleName, entries) -> Triple(type, titleName, entries) }
+        val titleEntries = listOf(MediaType.MANGA, MediaType.ANIME, MediaType.NOVEL)
+            .flatMap { type ->
+                val types = when (type) {
+                    MediaType.MANGA -> dm.mangaDownloadedTypes
+                    MediaType.ANIME -> dm.animeDownloadedTypes
+                    MediaType.NOVEL -> dm.novelDownloadedTypes
                 }
+                types.groupBy { it.titleName }
+                    .map { (titleName, entries) -> Triple(type, titleName, entries) }
+            }
 
-            val groups = titleEntries.map { (type, titleName, entries) ->
-                async(Dispatchers.IO) { loadGroup(context, type, titleName, entries) }
-            }.awaitAll()
+        titleEntries.map { (type, titleName, entries) ->
+            async(Dispatchers.IO) { loadGroup(context, type, titleName, entries) }
+        }.awaitAll().sortedBy { it.title.lowercase() }
+    }
 
-            val totals = DownloadTotals(
-                manga = groups.filter { it.type == MediaType.MANGA }.sumOf { it.sizeBytes },
-                anime = groups.filter { it.type == MediaType.ANIME }.sumOf { it.sizeBytes },
-                novel = groups.filter { it.type == MediaType.NOVEL }.sumOf { it.sizeBytes },
-            )
-            groups.sortedBy { it.title.lowercase() } to totals
-        }
+    /**
+     * Measures every group from [load] and returns them with their sizes filled in, plus the
+     * aggregate totals. Titles and their children are sized concurrently, and a title's total is
+     * the sum of its already-measured children rather than a second walk of the same tree.
+     */
+    suspend fun loadSizes(
+        context: Context,
+        groups: List<DownloadMediaGroup>
+    ): Pair<List<DownloadMediaGroup>, DownloadTotals> = coroutineScope {
+        val sized = groups.map { group ->
+            async(Dispatchers.IO) {
+                val children = group.children.map { child ->
+                    async(Dispatchers.IO) {
+                        child.copy(
+                            sizeBytes = DownloadsManager.getDirSize(
+                                context, child.type, child.titleName, child.chapterName
+                            )
+                        )
+                    }
+                }.awaitAll()
+                group.copy(
+                    children = children,
+                    sizeBytes = children.sumOf { it.sizeBytes ?: 0L }
+                )
+            }
+        }.awaitAll()
 
-    private suspend fun loadGroup(
+        val totals = DownloadTotals(
+            manga = sized.filter { it.type == MediaType.MANGA }.sumOf { it.sizeBytes ?: 0L },
+            anime = sized.filter { it.type == MediaType.ANIME }.sumOf { it.sizeBytes ?: 0L },
+            novel = sized.filter { it.type == MediaType.NOVEL }.sumOf { it.sizeBytes ?: 0L },
+        )
+        sized to totals
+    }
+
+    private fun loadGroup(
         context: Context,
         type: MediaType,
         titleName: String,
         entries: List<DownloadedType>
-    ): DownloadMediaGroup = coroutineScope {
+    ): DownloadMediaGroup {
         val children = entries.map { e ->
-            async(Dispatchers.IO) {
-                DownloadChild(
-                    type = type,
-                    titleName = titleName,
-                    chapterName = e.chapterName,
-                    scanlator = e.scanlator,
-                    sizeBytes = DownloadsManager.getDirSize(context, type, titleName, e.chapterName)
-                )
-            }
-        }.awaitAll().sortedBy {
+            DownloadChild(
+                type = type,
+                titleName = titleName,
+                chapterName = e.chapterName,
+                scanlator = e.scanlator,
+            )
+        }.sortedBy {
             // Sort by the actual chapter/episode number, not lexicographically
             // ("1" < "10" < "2" would otherwise be wrong).
             MediaNameAdapter.findChapterNumber(it.chapterName) ?: Float.MAX_VALUE
         }
-        // The title's total is just the sum of its children's sizes — avoids re-walking the
-        // whole directory tree a second time (which duplicated all the file listings above).
-        val mediaSize = children.sumOf { it.sizeBytes }
         val meta = OfflineMediaLoader.load(context, type, titleName)
         // Manga one-file bundles hold several chapters in one entry; count them all.
         val itemCount = if (type == MediaType.MANGA) {
@@ -121,12 +142,11 @@ object DownloadManageLoader {
             }
         } else children.size
 
-        DownloadMediaGroup(
+        return DownloadMediaGroup(
             type = type,
             titleName = titleName,
             title = meta.title,
             coverUri = meta.coverUri,
-            sizeBytes = mediaSize,
             children = children,
             itemCount = itemCount
         )

@@ -2597,6 +2597,9 @@ class ExoplayerView :
                     val ep = episodes[episodeArr[currentEpisodeIndex + i]] ?: return@nextEpisode
                     val selected = media.selected ?: return@nextEpisode
                     lifecycleScope.launch(Dispatchers.IO) {
+                        // The next episode is downloaded: it is already the one that will play,
+                        // so there is no stream worth warming up for it.
+                        if (model.loadDownloadedEpisode(ep, media)) return@launch
                         if (media.selected!!.server != null) {
                             model.loadEpisodeSingleVideo(ep, selected, false)
                         } else {

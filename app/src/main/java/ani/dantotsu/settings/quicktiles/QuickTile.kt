@@ -12,9 +12,11 @@ import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.discord.Discord
 import ani.dantotsu.connections.mal.MAL
 import ani.dantotsu.connections.mangabaka.MangaBaka
+import ani.dantotsu.currContext
 import ani.dantotsu.download.DownloadActivity
 import ani.dantotsu.home.SearchBottomSheet
 import ani.dantotsu.incognitoNotification
+import ani.dantotsu.isOnline
 import ani.dantotsu.media.CalendarActivity
 import ani.dantotsu.media.user.ListActivity
 import ani.dantotsu.profile.activity.FeedActivity
@@ -261,17 +263,20 @@ object QuickTiles : TileCatalogue(PrefName.QuickTileOrder) {
             host.dismiss()
             SearchBottomSheet.newInstance().show(fm, "search")
         },
+        // Not network tiles: offline they open the downloaded-only list, the same redirect the
+        // offline home's Anime/Manga List buttons make. An AniList account is only what the
+        // online half of that needs.
         QuickTile.Action(
             "user_anime_list", R.string.anime_list, R.drawable.ic_round_movie_filter_24,
-            QuickTileCategory.LIBRARY, needsNetwork = true,
-            isAvailable = { Anilist.token != null },
+            QuickTileCategory.LIBRARY,
+            isAvailable = { isOffline() || Anilist.token != null },
         ) { host ->
             host.openUserList(anime = true)
         },
         QuickTile.Action(
             "user_manga_list", R.string.manga_list, R.drawable.ic_round_menu_book_24,
-            QuickTileCategory.LIBRARY, needsNetwork = true,
-            isAvailable = { Anilist.token != null },
+            QuickTileCategory.LIBRARY,
+            isAvailable = { isOffline() || Anilist.token != null },
         ) { host ->
             host.openUserList(anime = false)
         },
@@ -316,15 +321,23 @@ object QuickTiles : TileCatalogue(PrefName.QuickTileOrder) {
         ) { it.open(SettingsActivity::class.java) },
     )
 
+    /**
+     * Offline mode, by the user's choice or by there being no connection. Matches how the sheets
+     * hosting these tiles decide it, so a tile never claims to work in a state the panel greys out.
+     */
+    private fun isOffline(): Boolean =
+        PrefManager.getVal<Boolean>(PrefName.OfflineMode) ||
+                currContext()?.let { !isOnline(it) } == true
+
     private fun QuickTileHost.openUserList(anime: Boolean) {
-        ContextCompat.startActivity(
-            activity,
-            Intent(activity, ListActivity::class.java)
-                .putExtra("anime", anime)
-                .putExtra("userId", Anilist.userid)
-                .putExtra("username", Anilist.username),
-            null,
-        )
+        // Offline there is no AniList list to fetch, so show what is downloaded instead.
+        val intent = Intent(activity, ListActivity::class.java).putExtra("anime", anime)
+        if (isOffline()) {
+            intent.putExtra("offline", true)
+        } else {
+            intent.putExtra("userId", Anilist.userid).putExtra("username", Anilist.username)
+        }
+        ContextCompat.startActivity(activity, intent, null)
         dismiss()
     }
 

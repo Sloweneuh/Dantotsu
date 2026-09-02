@@ -1,11 +1,13 @@
 package ani.dantotsu.download.manage
 
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -15,7 +17,9 @@ import ani.dantotsu.download.DownloadActivity
 import ani.dantotsu.download.DownloadTracker
 import ani.dantotsu.download.DownloadedType
 import ani.dantotsu.download.DownloadsManager
+import ani.dantotsu.download.OfflineMediaLoader
 import ani.dantotsu.formatBytes
+import ani.dantotsu.media.MediaDetailsActivity
 import ani.dantotsu.openInFileManager
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
@@ -30,6 +34,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
+import java.io.Serializable
 
 class DownloadManagementFragment : Fragment() {
     private var _binding: FragmentDownloadManagementBinding? = null
@@ -41,6 +46,10 @@ class DownloadManagementFragment : Fragment() {
     // subsequent reloads (live refresh on download completion, onResume, after a delete) refresh
     // the already-visible list in place and shouldn't spin again.
     private var hasLoadedOnce = false
+
+    // Reloads can overlap (onResume, a finished download, a delete). Only the newest one is
+    // allowed to write to the views, so a slow size pass cannot land on top of a newer list.
+    private var loadToken = 0
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -57,6 +66,7 @@ class DownloadManagementFragment : Fragment() {
             onDeleteChild = { confirmDeleteChild(it) },
             onOpenMediaFolder = { openMediaFolder(it) },
             onOpenChildFolder = { openChildFolder(it) },
+            onOpenMedia = { openMedia(it) },
         )
         binding.downloadManageRecycler.layoutManager = LinearLayoutManager(requireContext())
         binding.downloadManageRecycler.adapter = adapter
@@ -91,23 +101,45 @@ class DownloadManagementFragment : Fragment() {
             binding.downloadManageProgressBar.visibility = View.VISIBLE
             binding.downloadManageEmpty.visibility = View.GONE
             binding.downloadLocationRow.visibility = View.GONE
+            binding.downloadTotalSize.text =
+                getString(R.string.download_total_size, SIZE_PENDING)
+            binding.downloadSubSize.text = getString(
+                R.string.download_subsize, SIZE_PENDING, SIZE_PENDING, SIZE_PENDING
+            )
         }
+        val token = ++loadToken
         viewLifecycleOwner.lifecycleScope.launch {
             val context = requireContext()
-            val (groups, totals) = withContext(Dispatchers.IO) {
+            val groups = withContext(Dispatchers.IO) {
                 try {
                     DownloadManageLoader.load(context)
                 } catch (e: Exception) {
                     Logger.log("Failed to load downloads: ${e.message}")
-                    emptyList<DownloadMediaGroup>() to DownloadTotals(0, 0, 0)
+                    emptyList()
                 }
             }
             val locationPath = withContext(Dispatchers.IO) { downloadLocationText(context) }
-            if (_binding == null) return@launch
+            if (_binding == null || token != loadToken) return@launch
             hasLoadedOnce = true
             binding.downloadManageProgressBar.visibility = View.GONE
             binding.downloadLocationRow.visibility = View.VISIBLE
             binding.downloadLocationPath.text = locationPath
+            adapter.submit(groups)
+            binding.downloadManageEmpty.visibility =
+                if (groups.isEmpty()) View.VISIBLE else View.GONE
+
+            // Sizes are measured separately: each one is a recursive walk of a chapter folder
+            // over SAF, which is slow enough that waiting for all of them used to hold the whole
+            // list back. The rows are already on screen by now and fill their sizes in here.
+            val (sized, totals) = withContext(Dispatchers.IO) {
+                try {
+                    DownloadManageLoader.loadSizes(context, groups)
+                } catch (e: Exception) {
+                    Logger.log("Failed to measure downloads: ${e.message}")
+                    groups to DownloadTotals(0, 0, 0)
+                }
+            }
+            if (_binding == null || token != loadToken) return@launch
             binding.downloadTotalSize.text =
                 getString(R.string.download_total_size, formatBytes(totals.total))
             binding.downloadSubSize.text = getString(
@@ -116,9 +148,7 @@ class DownloadManagementFragment : Fragment() {
                 formatBytes(totals.anime),
                 formatBytes(totals.novel)
             )
-            adapter.submit(groups)
-            binding.downloadManageEmpty.visibility =
-                if (groups.isEmpty()) View.VISIBLE else View.GONE
+            adapter.updateSizes(sized)
         }
     }
 
@@ -173,6 +203,30 @@ class DownloadManagementFragment : Fragment() {
                 return@launch
             }
             openInFileManager(context, root.uri)
+        }
+    }
+
+    /**
+     * Opens the media itself from its cover, showing the downloaded copy: everything the details
+     * screen needs is in the title's own `media.json`, so this works with no network.
+     */
+    private fun openMedia(group: DownloadMediaGroup) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val context = requireContext()
+            val media = withContext(Dispatchers.IO) {
+                OfflineMediaLoader.loadMedia(context, group.type, group.titleName)
+            }
+            if (media == null) {
+                toast(getString(R.string.error))
+                return@launch
+            }
+            ContextCompat.startActivity(
+                requireActivity(),
+                Intent(context, MediaDetailsActivity::class.java)
+                    .putExtra("media", media as Serializable)
+                    .putExtra("download", true),
+                null
+            )
         }
     }
 
@@ -239,5 +293,10 @@ class DownloadManagementFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    companion object {
+        /** Stands in for a size that has not been measured yet. */
+        private const val SIZE_PENDING = "…"
     }
 }

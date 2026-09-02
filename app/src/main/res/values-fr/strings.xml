@@ -1197,6 +1197,8 @@
     <string name="cancel_all_downloads_confirm">Annuler tous les téléchargements en cours et en attente ?</string>
     <string name="download_chapters_count">%1$d chapitres · %2$s</string>
     <string name="download_episodes_count">%1$d épisodes · %2$s</string>
+    <string name="download_chapters_count_only">%1$d chapitres</string>
+    <string name="download_episodes_count_only">%1$d épisodes</string>
     <string name="cancel_download">Annuler le téléchargement</string>
     <string name="reorder">Réorganiser</string>
     <string name="expand">Développer</string>
@@ -2195,6 +2197,7 @@
     <string name="downloaded_anime">Anime Téléchargés</string>
     <string name="cancel_all_downloads">Tout annuler</string>
     <string name="open_folder">Ouvrir le dossier</string>
+    <string name="open_media">Ouvrir le média</string>
     <string name="manage_filters">Gérer les filtres</string>
     <string name="clear_all">Tout supprimer</string>
     <!-- Écran de mise à jour de l'application -->

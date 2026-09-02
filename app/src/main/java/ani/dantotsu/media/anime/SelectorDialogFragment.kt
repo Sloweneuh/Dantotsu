@@ -391,54 +391,66 @@ class SelectorDialogFragment : BottomSheetDialogFragment() {
                     val ep = media?.anime?.episodes?.get(media?.anime?.selectedEpisode)
                     episode = ep
                     if (ep != null) {
-                        if (selected != null) {
-                            binding.selectorListContainer.visibility = View.GONE
-                            binding.selectorAutoListContainer.visibility = View.VISIBLE
-                            binding.selectorAutoText.text = selected
-                            binding.selectorCancel.setOnClickListener {
-                                media!!.selected!!.server = null
-                                model.saveSelected(media!!.id, media!!.selected!!)
-                                tryWith {
-                                    dismiss()
-                                }
+                        // A downloaded episode plays straight from disk: it needs no server
+                        // list, no extractor round trip and nothing for the user to pick, so it
+                        // wins over whatever the selected source would stream.
+                        scope.launch {
+                            val local = withContext(Dispatchers.IO) {
+                                model.loadDownloadedEpisode(ep, media!!)
                             }
-
-                            fun load() {
-                                val size =
-                                    if (model.watchSources!!.isDownloadedSource(media!!.selected!!.sourceIndex)) {
-                                        ep.extractors?.firstOrNull()?.videos?.size
-                                    } else {
-                                        ep.extractors?.find { it.server.name == selected }?.videos?.size
+                            if (local) {
+                                startExoplayer(media!!)
+                                return@launch
+                            }
+                            if (selected != null) {
+                                binding.selectorListContainer.visibility = View.GONE
+                                binding.selectorAutoListContainer.visibility = View.VISIBLE
+                                binding.selectorAutoText.text = selected
+                                binding.selectorCancel.setOnClickListener {
+                                    media!!.selected!!.server = null
+                                    model.saveSelected(media!!.id, media!!.selected!!)
+                                    tryWith {
+                                        dismiss()
                                     }
-
-                                if (size != null && size >= media!!.selected!!.video) {
-                                    media!!.anime!!.episodes?.get(media!!.anime!!.selectedEpisode!!)?.selectedExtractor =
-                                        selected
-                                    media!!.anime!!.episodes?.get(media!!.anime!!.selectedEpisode!!)?.selectedVideo =
-                                        media!!.selected!!.video
-                                    startExoplayer(media!!)
-                                } else {
-                                    prevEpisode = null
-                                    fail(R.string.auto_select_server_error)
                                 }
-                            }
 
-                            if (ep.extractors?.find { it.server.name == selected } == null) {
-                                scope.launch{
-                                    if(!withContext(Dispatchers.IO){
-                                        loadEpisodeSingleServer(ep.number, selected!!)
-                                    }){
-                                        media!!.selected!!.server = null
-                                        model.saveSelected(media!!.id, media!!.selected!!)
+                                fun load() {
+                                    val size =
+                                        if (model.watchSources!!.isDownloadedSource(media!!.selected!!.sourceIndex)) {
+                                            ep.extractors?.firstOrNull()?.videos?.size
+                                        } else {
+                                            ep.extractors?.find { it.server.name == selected }?.videos?.size
+                                        }
+
+                                    if (size != null && size >= media!!.selected!!.video) {
+                                        media!!.anime!!.episodes?.get(media!!.anime!!.selectedEpisode!!)?.selectedExtractor =
+                                            selected
+                                        media!!.anime!!.episodes?.get(media!!.anime!!.selectedEpisode!!)?.selectedVideo =
+                                            media!!.selected!!.video
+                                        startExoplayer(media!!)
+                                    } else {
                                         prevEpisode = null
                                         fail(R.string.auto_select_server_error)
                                     }
-                                    else load()
                                 }
-                            } else load()
+
+                                if (ep.extractors?.find { it.server.name == selected } == null) {
+                                    scope.launch{
+                                        if(!withContext(Dispatchers.IO){
+                                            loadEpisodeSingleServer(ep.number, selected!!)
+                                        }){
+                                            media!!.selected!!.server = null
+                                            model.saveSelected(media!!.id, media!!.selected!!)
+                                            prevEpisode = null
+                                            fail(R.string.auto_select_server_error)
+                                        }
+                                        else load()
+                                    }
+                                } else load()
+                            }
+                            else
+                                initializeVideoServerSelector(ep)
                         }
-                        else
-                            initializeVideoServerSelector(ep)
                     }
                 }
                 else {

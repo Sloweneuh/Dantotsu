@@ -2,7 +2,6 @@ package ani.dantotsu.download.manage
 
 import android.annotation.SuppressLint
 import android.view.LayoutInflater
-import android.view.View
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
@@ -17,6 +16,7 @@ class DownloadManagementAdapter(
     private val onDeleteChild: (DownloadChild) -> Unit,
     private val onOpenMediaFolder: (DownloadMediaGroup) -> Unit,
     private val onOpenChildFolder: (DownloadChild) -> Unit,
+    private val onOpenMedia: (DownloadMediaGroup) -> Unit,
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private sealed class Row {
@@ -35,6 +35,16 @@ class DownloadManagementAdapter(
         expanded.retainAll(groups.map { keyOf(it) }.toSet())
         rebuild(groups)
         notifyDataSetChanged()
+    }
+
+    /**
+     * Re-binds the same rows with their measured sizes, which arrive a moment after the list
+     * itself (see [DownloadManageLoader.loadSizes]). The row structure is identical, so this
+     * rebinds in place instead of rebuilding the list under the user.
+     */
+    fun updateSizes(groups: List<DownloadMediaGroup>) {
+        rebuild(groups)
+        notifyItemRangeChanged(0, rows.size)
     }
 
     private var currentGroups: List<DownloadMediaGroup> = emptyList()
@@ -80,14 +90,25 @@ class DownloadManagementAdapter(
         fun bind(group: DownloadMediaGroup) {
             val ctx = b.root.context
             b.itemMediaTitle.text = group.title
-            val countRes = if (group.type == MediaType.ANIME)
-                R.string.download_episodes_count else R.string.download_chapters_count
-            b.itemMediaSubtitle.text = ctx.getString(
-                countRes,
-                group.itemCount,
-                formatBytes(group.sizeBytes)
-            )
+            val anime = group.type == MediaType.ANIME
+            val size = group.sizeBytes
+            b.itemMediaSubtitle.text = if (size == null) {
+                // Still being measured; the count alone is worth showing right away.
+                ctx.getString(
+                    if (anime) R.string.download_episodes_count_only
+                    else R.string.download_chapters_count_only,
+                    group.itemCount
+                )
+            } else {
+                ctx.getString(
+                    if (anime) R.string.download_episodes_count
+                    else R.string.download_chapters_count,
+                    group.itemCount,
+                    formatBytes(size)
+                )
+            }
             b.itemMediaCover.loadImage(group.coverUri?.toString())
+            b.itemMediaCover.setOnClickListener { onOpenMedia(group) }
             b.itemMediaExpand.rotation = if (keyOf(group) in expanded) -90f else 90f
             b.root.setOnClickListener { toggle(group) }
             b.itemMediaDelete.setOnClickListener { onDeleteMedia(group) }
@@ -99,7 +120,7 @@ class DownloadManagementAdapter(
         RecyclerView.ViewHolder(b.root) {
         fun bind(child: DownloadChild) {
             b.itemChildLabel.text = child.chapterName
-            b.itemChildSize.text = formatBytes(child.sizeBytes)
+            b.itemChildSize.text = child.sizeBytes?.let { formatBytes(it) } ?: ""
             b.itemChildDelete.setOnClickListener { onDeleteChild(child) }
             b.itemChildOpenFolder.setOnClickListener { onOpenChildFolder(child) }
         }
