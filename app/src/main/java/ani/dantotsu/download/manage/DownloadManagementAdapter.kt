@@ -3,6 +3,7 @@ package ani.dantotsu.download.manage
 import android.annotation.SuppressLint
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.core.view.isVisible
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
 import ani.dantotsu.databinding.ItemDownloadChildBinding
@@ -119,8 +120,12 @@ class DownloadManagementAdapter(
     inner class ChildHolder(private val b: ItemDownloadChildBinding) :
         RecyclerView.ViewHolder(b.root) {
         fun bind(child: DownloadChild) {
-            b.itemChildLabel.text = child.chapterName
+            b.itemChildLabel.text = child.episodeTitle ?: child.chapterName
             b.itemChildSize.text = child.sizeBytes?.let { formatBytes(it) } ?: ""
+            b.itemChildDesc.isVisible = child.episodeDesc != null
+            b.itemChildDesc.text = child.episodeDesc
+            b.itemChildThumbCard.isVisible = child.episodeThumbUri != null
+            b.itemChildThumb.loadImage(child.episodeThumbUri?.toString())
             b.itemChildDelete.setOnClickListener { onDeleteChild(child) }
             b.itemChildOpenFolder.setOnClickListener { onOpenChildFolder(child) }
         }

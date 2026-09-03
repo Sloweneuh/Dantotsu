@@ -421,8 +421,16 @@ class EpisodeAdapter(
         }
 
         fun bind(episodeNumber: String, progress: String?, desc: String?) {
+            // Nothing useful to do with a download button while looking at the Downloaded
+            // source itself - every episode shown here is already downloaded, and there's no
+            // network to fetch a new one anyway.
+            binding.itemDownload.isVisible = !offlineMode
+            // The synopsis and the download status are two separate lines in this row, not
+            // alternatives - showing "Downloaded: (12.3 MB)" is no reason to hide a synopsis
+            // that's actually there.
+            binding.itemEpisodeDesc.visibility =
+                if (!desc.isNullOrBlank()) View.VISIBLE else View.GONE
             if (progress != null) {
-                binding.itemEpisodeDesc.visibility = View.GONE
                 if(progress == "")
                     binding.itemDownloadStatus.visibility = View.GONE
                 else
@@ -438,10 +446,7 @@ class EpisodeAdapter(
                 startOrContinueRotation(episodeNumber) {
                     binding.itemDownload.rotation = 0f
                 }
-                binding.itemEpisodeDesc.visibility = View.GONE
             } else if (downloadedEpisodes.contains(episodeNumber)) {
-                binding.itemEpisodeDesc.visibility = View.GONE
-                binding.itemDownloadStatus.visibility = View.VISIBLE
                 // Show checkmark
                 binding.itemDownload.setImageResource(R.drawable.ic_circle_check)
                 binding.itemDownload.postDelayed({
@@ -449,9 +454,6 @@ class EpisodeAdapter(
                     binding.itemDownload.rotation = 0f
                 }, 1000)
             } else {
-                binding.itemDownloadStatus.visibility = View.GONE
-                binding.itemEpisodeDesc.visibility =
-                    if (desc != null && desc.trim(' ') != "") View.VISIBLE else View.GONE
                 // Show download icon
                 binding.itemDownload.setImageResource(R.drawable.ic_download_24)
                 binding.itemDownload.rotation = 0f
@@ -498,6 +500,13 @@ class EpisodeAdapter(
     }
 
     private fun setupEpisodeBrowserButton(button: View) {
+        // There's nothing to open in a browser for the Downloaded source - offlineMode is the
+        // direct signal for that, rather than re-deriving it from the parser type below (which
+        // depends on media.selected!!.sourceIndex already pointing at the right entry).
+        if (offlineMode) {
+            button.visibility = View.GONE
+            return
+        }
         val parser = watchSources[media.selected!!.sourceIndex]
         if (parser is DynamicAnimeParser) {
             val httpSource = parser.extension.sources.getOrNull(parser.sourceLanguage) as? AnimeHttpSource

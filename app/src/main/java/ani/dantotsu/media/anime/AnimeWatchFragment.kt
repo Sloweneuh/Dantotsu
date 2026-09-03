@@ -295,10 +295,30 @@ class AnimeWatchFragment : Fragment() {
                     }
                     loaded = true
                 } else {
-                    reload()
-                    // Refresh browser button after reload completes
-                    lifecycleScope.launch {
-                        headerAdapter.refreshBrowserButton()
+                    // The fragment already loaded once for this media, so the offline switch
+                    // above never ran for it. If offline mode/connectivity changed since then
+                    // (e.g. toggled in Settings, then back-navigated here rather than a fresh
+                    // open) and we're still pointed at an online source, switch to the
+                    // Downloaded source now instead of leaving everything - episode list, browser
+                    // button, subscribe bell, cookie option - keyed to a source with no network
+                    // to answer it.
+                    val offlineNow =
+                        !isOnline(binding.root.context) || PrefManager.getVal(PrefName.OfflineMode)
+                    val onDownloadedSource =
+                        model.watchSources!!.isDownloadedSource(media.selected!!.sourceIndex)
+                    if (offlineNow && !onDownloadedSource) {
+                        media.selected!!.sourceIndex = model.watchSources!!.list.lastIndex
+                        media.anime?.episodes = null
+                        reload()
+                        lifecycleScope.launch(Dispatchers.IO) {
+                            model.loadEpisodes(media, media.selected!!.sourceIndex)
+                        }
+                    } else {
+                        reload()
+                        // Refresh browser button after reload completes
+                        lifecycleScope.launch {
+                            headerAdapter.refreshBrowserButton()
+                        }
                     }
                 }
             }
@@ -406,8 +426,14 @@ class AnimeWatchFragment : Fragment() {
                     }
 
                     val found = episodes.isNotEmpty()
-                    headerAdapter.subscribeButton(found)
-                    headerAdapter.downloadButton(found)
+                    val isDownloadedSource =
+                        model.watchSources!!.isDownloadedSource(media.selected!!.sourceIndex)
+                    // Subscribing notifies on new episodes from the source - meaningless (and
+                    // there's nothing to check with) for the Downloaded pseudo-source. Same for
+                    // bulk-downloading: everything shown here is already downloaded, and there's
+                    // no network to fetch anything new anyway.
+                    headerAdapter.subscribeButton(found && !isDownloadedSource)
+                    headerAdapter.downloadButton(found && !isDownloadedSource)
                     headerAdapter.refreshBrowserButton()
                     reload()
 
@@ -547,7 +573,11 @@ class AnimeWatchFragment : Fragment() {
     }
 
     fun onLangChange(i: Int) {
-        val selected = model.loadSelected(media)
+        // Mutate the current in-memory selection rather than re-fetching it from prefs: prefs
+        // can be stale relative to it (e.g. the offline branch switches sourceIndex to the
+        // Downloaded source purely in memory, without persisting), and re-fetching+replacing
+        // wholesale here would silently revert that back to whatever was last persisted.
+        val selected = media.selected ?: model.loadSelected(media)
         selected.langIndex = i
         model.saveSelected(media.id, selected)
         media.selected = selected
@@ -883,7 +913,11 @@ class AnimeWatchFragment : Fragment() {
 
     @SuppressLint("NotifyDataSetChanged")
     private fun reload() {
-        val selected = model.loadSelected(media)
+        // Same reasoning as onLangChange: use the current in-memory selection instead of
+        // re-fetching from prefs, which can be stale relative to it (the offline branch's
+        // sourceIndex switch is in-memory only) - saveSelected below would otherwise persist
+        // that staleness right back into storage on every reload.
+        val selected = media.selected ?: model.loadSelected(media)
 
         // Find latest episode for subscription
         selected.latest =

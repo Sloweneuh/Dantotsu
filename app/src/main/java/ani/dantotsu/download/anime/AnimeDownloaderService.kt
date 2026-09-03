@@ -41,6 +41,7 @@ import ani.dantotsu.snackString
 import ani.dantotsu.toast
 import ani.dantotsu.util.Logger
 import com.anggrayudi.storage.file.forceDelete
+import com.anggrayudi.storage.file.openInputStream
 import com.anggrayudi.storage.file.openOutputStream
 import com.google.gson.GsonBuilder
 import com.google.gson.InstanceCreator
@@ -458,9 +459,7 @@ class AnimeDownloaderService : Service() {
 
     private fun saveMediaInfo(task: AnimeDownloadTask, directory: DocumentFile) {
         CoroutineScope(Dispatchers.IO).launch {
-            directory.findFile("media.json")?.forceDelete(this@AnimeDownloaderService)
-            val file = directory.createFile("application/json", "media.json")
-                ?: throw Exception("File not created")
+            val existingFile = directory.findFile("media.json")
             val episodeDirectory =
                 getSubDirectory(
                     this@AnimeDownloaderService,
@@ -482,9 +481,32 @@ class AnimeDownloaderService : Service() {
                     SEpisodeImpl() // Provide an instance of SEpisodeImpl
                 })
                 .create()
+            // task.sourceMedia only reliably carries full episode detail (title/desc/thumb) for
+            // the episode being downloaded right now: it can be sourced from the bare
+            // Downloaded-source listing (e.g. re-downloading while offline), which has none of
+            // that for any episode. Keep whatever's already on disk for every *other* episode so
+            // this call can't regress metadata this title already had.
+            val existingEpisodes = try {
+                existingFile?.let { f ->
+                    val json = f.openInputStream(this@AnimeDownloaderService)
+                        ?.bufferedReader()?.use { it.readText() }
+                    gson.fromJson(json, Media::class.java)?.anime?.episodes
+                }
+            } catch (e: Exception) {
+                Logger.log("Failed to read existing media.json for merge: ${e.message}")
+                null
+            }
+            existingFile?.forceDelete(this@AnimeDownloaderService)
+            val file = directory.createFile("application/json", "media.json")
+                ?: throw Exception("File not created")
             val mediaJson = gson.toJson(task.sourceMedia)
             val media = gson.fromJson(mediaJson, Media::class.java)
             if (media != null) {
+                existingEpisodes?.forEach { (number, episode) ->
+                    if (number != task.episode) {
+                        media.anime?.episodes?.put(number, episode)
+                    }
+                }
                 media.cover = media.cover?.let { downloadImage(it, directory, "cover.jpg") }
                 media.banner = media.banner?.let { downloadImage(it, directory, "banner.jpg") }
                 if (task.episodeImage != null) {
@@ -529,6 +551,13 @@ class AnimeDownloaderService : Service() {
         replaceExisting: Boolean = true
     ): String? =
         withContext(Dispatchers.IO) {
+            // Already a local SAF document (e.g. task.sourceMedia came from the Downloaded
+            // source itself, whose media.json/Episode.thumb already point at content:// files
+            // written by a previous download) - nothing to fetch, and java.net.URL doesn't
+            // understand this scheme anyway.
+            if (url.startsWith("content://")) {
+                return@withContext url
+            }
             var connection: HttpURLConnection? = null
             println("Downloading url $url")
             try {

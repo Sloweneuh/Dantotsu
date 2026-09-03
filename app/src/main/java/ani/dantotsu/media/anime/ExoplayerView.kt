@@ -49,6 +49,7 @@ import android.widget.AdapterView
 import android.widget.ImageButton
 import android.widget.Spinner
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.addCallback
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -2831,6 +2832,29 @@ class ExoplayerView :
                 toast("Source Exception : ${error.message}")
                 isPlayerPlaying = true
                 sourceClick()
+            }
+
+            // The platform's own software decoder chokes on some codec profiles (e.g. AAC
+            // "Main") that the FFmpeg-based fallback decoder handles fine. Only worth the
+            // specific hint when that fallback isn't already on - if it is, this is a
+            // different failure and the raw error is more useful than a wrong suggestion.
+            PlaybackException.ERROR_CODE_DECODING_FAILED
+                -> {
+                if (!PrefManager.getVal<Boolean>(PrefName.UseAdditionalCodec)) {
+                    toast(
+                        getString(
+                            R.string.decoding_failed_enable_additional_codec,
+                            getString(R.string.use_additional_codec)
+                        ),
+                        Toast.LENGTH_LONG
+                    )
+                } else {
+                    toast(
+                        "Player Error ${error.errorCode} (${error.errorCodeName}) : ${error.message}",
+                        Toast.LENGTH_LONG
+                    )
+                }
+                Injekt.get<CrashlyticsInterface>().logException(error)
             }
 
             else -> {

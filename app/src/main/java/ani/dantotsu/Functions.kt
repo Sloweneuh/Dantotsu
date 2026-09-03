@@ -1229,11 +1229,11 @@ fun getAppString(res: Int): String {
     return currContext()?.getString(res) ?: ""
 }
 
-fun toast(string: String?) {
+fun toast(string: String?, duration: Int = Toast.LENGTH_SHORT) {
     if (string != null) {
         Logger.log(string)
         MainScope().launch {
-            Toast.makeText(currActivity()?.application ?: return@launch, string, Toast.LENGTH_SHORT)
+            Toast.makeText(currActivity()?.application ?: return@launch, string, duration)
                 .show()
         }
     }

@@ -6,6 +6,7 @@ import ani.dantotsu.download.DownloadCompat.Companion.loadEpisodesCompat
 import ani.dantotsu.download.DownloadCompat.Companion.loadSubtitleCompat
 import ani.dantotsu.download.DownloadsManager
 import ani.dantotsu.download.DownloadsManager.Companion.getSubDirectory
+import ani.dantotsu.download.OfflineMediaLoader
 import ani.dantotsu.download.anime.AnimeDownloaderService.AnimeDownloadTask.Companion.getTaskName
 import ani.dantotsu.media.MediaNameAdapter
 import ani.dantotsu.media.MediaType
@@ -34,6 +35,12 @@ class OfflineAnimeParser : AnimeParser() {
         sAnime: SAnime
     ): List<Episode> {
         val directory = getSubDirectory(context, MediaType.ANIME, false, animeLink)
+        // The folder listing is the source of truth for which episodes exist, but carries no
+        // metadata beyond the number; overlay the real title/synopsis/thumbnail saved into this
+        // title's media.json where an entry has one, rather than showing every offline episode
+        // as a bare number.
+        val savedEpisodes = OfflineMediaLoader.loadMedia(context, MediaType.ANIME, animeLink)
+            ?.anime?.episodes
         //get all of the folder names and add them to the list
         val episodes = mutableListOf<Episode>()
         if (directory?.exists() == true) {
@@ -43,12 +50,13 @@ class OfflineAnimeParser : AnimeParser() {
                 extraData["title"] = animeLink
                 extraData["episode"] = it.name!!
                 if (it.isDirectory) {
+                    val saved = savedEpisodes?.get(it.name)
                     val episode = Episode(
                         it.name!!,
                         getTaskName(animeLink, it.name!!),
-                        it.name,
-                        null,
-                        null,
+                        saved?.title?.takeIf { t -> t.isNotBlank() } ?: it.name,
+                        saved?.thumb,
+                        saved?.desc,
                         extra = extraData,
                         sEpisode = SEpisodeImpl()
                     )

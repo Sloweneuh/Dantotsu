@@ -2,6 +2,7 @@ package ani.dantotsu.download.manage
 
 import android.content.Context
 import android.net.Uri
+import androidx.core.net.toUri
 import ani.dantotsu.download.DownloadedType
 import ani.dantotsu.download.DownloadsManager
 import ani.dantotsu.download.OfflineMediaLoader
@@ -25,6 +26,12 @@ data class DownloadChild(
     val scanlator: String,
     /** On-disk size, or null while it is still being measured. */
     val sizeBytes: Long? = null,
+    /** Anime only: the episode's real title, from its media.json entry when it has one. */
+    val episodeTitle: String? = null,
+    /** Anime only: the episode's synopsis, from its media.json entry when it has one. */
+    val episodeDesc: String? = null,
+    /** Anime only: the episode's own thumbnail, when one was downloaded for it. */
+    val episodeThumbUri: Uri? = null,
 )
 
 /** A downloaded media with its children and total on-disk size. */
@@ -120,12 +127,25 @@ object DownloadManageLoader {
         titleName: String,
         entries: List<DownloadedType>
     ): DownloadMediaGroup {
+        // Per-episode title/desc/thumb live in the title's own media.json (AnimeDownloaderService
+        // writes them into media.anime.episodes[number] as each episode finishes). Manga/novel
+        // chapters carry no such per-entry metadata today, so this stays anime-only.
+        val episodes = if (type == MediaType.ANIME) {
+            OfflineMediaLoader.loadMedia(context, type, titleName)?.anime?.episodes
+        } else null
+
         val children = entries.map { e ->
+            val episode = episodes?.get(e.chapterName)
             DownloadChild(
                 type = type,
                 titleName = titleName,
                 chapterName = e.chapterName,
                 scanlator = e.scanlator,
+                episodeTitle = episode?.title?.takeIf { it.isNotBlank() },
+                episodeDesc = episode?.desc?.takeIf { it.isNotBlank() },
+                episodeThumbUri = episode?.thumb?.url?.let {
+                    runCatching { it.toUri() }.getOrNull()
+                },
             )
         }.sortedBy {
             // Sort by the actual chapter/episode number, not lexicographically

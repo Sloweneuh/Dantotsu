@@ -144,6 +144,21 @@
                     android:text="@string/empty"
                     app:lineHeight="15sp" />
 
+                <TextView
+                    android:id="@+id/itemDownloadStatus"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="4dp"
+                    android:layout_marginTop="2dp"
+                    android:alpha="0.7"
+                    android:ellipsize="marquee"
+                    android:fontFamily="@font/poppins"
+                    android:maxLines="2"
+                    android:text=""
+                    android:textSize="11sp"
+                    android:visibility="gone"
+                    app:lineHeight="13sp" />
+
             </LinearLayout>
 
             <ImageButton
@@ -166,18 +181,6 @@
                 tools:ignore="ContentDescription" />
 
         </LinearLayout>
-
-        <TextView
-            android:id="@+id/itemDownloadStatus"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:ellipsize="marquee"
-            android:fontFamily="@font/poppins_bold"
-            android:maxLines="5"
-            android:padding="16dp"
-            android:text=""
-            android:visibility="gone"
-            app:lineHeight="15sp" />
 
         <TextView
             android:id="@+id/itemEpisodeDesc"

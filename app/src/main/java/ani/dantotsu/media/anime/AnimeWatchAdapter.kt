@@ -149,8 +149,13 @@ class AnimeWatchAdapter(
         // Notify fragment of the language selection so loadEpisodes uses the chosen language
         try {
             fragment.onLangChange(defaultLang)
-            // trigger a load so the episodes shown correspond to the selected language
-            fragment.loadEpisodes(source, true)
+            // trigger a load so the episodes shown correspond to the selected language.
+            // Not while offline: `source` was read from media.selected before the fragment's own
+            // offline branch (AnimeWatchFragment's init coroutine) has a chance to switch it to
+            // the Downloaded source, so this would kick off a real network search against a
+            // stale online source with no network to answer it - hanging the spinner instead of
+            // ever reaching the Downloaded source's (synchronous) load.
+            if (!offline) fragment.loadEpisodes(source, true)
         } catch (_: Exception) { }
         if (watchSources.names.isNotEmpty() && source in 0 until watchSources.names.size) {
             binding.mediaSource.setText(watchSources.names[source])
@@ -410,6 +415,8 @@ class AnimeWatchAdapter(
                 // Hidden
                 mangaScanlatorContainer.visibility = View.GONE
                 //animeDownloadContainer.visibility = View.GONE
+                // Nothing to set cookies for on the Downloaded pseudo-source.
+                mediaWebviewContainer.isGone = offline
                 fragment.requireContext().customAlertDialog().apply {
                     setTitle(fragment.getString(R.string.options))
                     setCustomView(root)
@@ -677,7 +684,12 @@ class AnimeWatchAdapter(
                 try {
 
                     val savedResponse = parser.loadSavedShowResponse(media.id)
-                    if (savedResponse?.sAnime != null) {
+                    // sourceIndex can be stale by the time this completes (called early, from
+                    // the initial header bind, before the offline branch switches the selection
+                    // to the Downloaded source) - without this check, a slow lookup for an old
+                    // online source can resolve after the correct call already hid the button,
+                    // and show it again for a source that's no longer selected.
+                    if (savedResponse?.sAnime != null && media.selected?.sourceIndex == sourceIndex) {
                         val httpSource = parser.extension.sources.getOrNull(parser.sourceLanguage) as? AnimeHttpSource
                         if (httpSource != null) {
                             binding.mediaSourceTitleBrowser.visibility = View.VISIBLE
