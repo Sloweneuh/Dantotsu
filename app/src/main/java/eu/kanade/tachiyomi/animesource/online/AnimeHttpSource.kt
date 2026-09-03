@@ -370,7 +370,7 @@ abstract class AnimeHttpSource : AnimeCatalogueSource {
      * The hoster API hands videos back through [getVideoList] (Hoster), which never runs [sort],
      * so without this the source's ordering and filtering preferences are silently dropped.
      */
-    fun sortVideos(videos: List<Video>): List<Video> = videos.sort()
+    open fun sortVideos(videos: List<Video>): List<Video> = videos.sort()
 
     /**
      * Returns the request used to fetch the hoster list. Defaults to the same URL

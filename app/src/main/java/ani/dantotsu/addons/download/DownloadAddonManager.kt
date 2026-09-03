@@ -130,6 +130,6 @@ class DownloadAddonManager(
 
         const val DOWNLOAD_PACKAGE = "dantotsu.downloadAddon"
         const val DOWNLOAD_CLASS = "ani.dantotsu.downloadAddon.DownloadAddon"
-        const val REPO = "rebelonion/Dantotsu-Download-Addon"
+        const val REPO = "Sloweneuh/Dantotsu-Download-Addon"
     }
 }
