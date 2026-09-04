@@ -626,6 +626,7 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
                 activity.findViewById<ViewPager2>(R.id.mediaViewPager).isVisible = show
                 activity.findViewById<CardView>(R.id.mediaCover).isVisible = show
                 activity.findViewById<CardView>(R.id.mediaClose).isVisible = show
+                activity.findViewById<CardView>(R.id.quickSettings)?.isVisible = show
                 activity.findViewById<nl.joery.animatedbottombar.AnimatedBottomBar>(R.id.mediaBottomBar).isVisible = show
                 activity.findViewById<FrameLayout>(R.id.fragmentExtensionsContainer).isGone = show
             }

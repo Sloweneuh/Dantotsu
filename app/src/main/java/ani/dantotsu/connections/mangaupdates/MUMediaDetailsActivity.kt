@@ -296,6 +296,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
             binding.mediaViewPagerContainer?.visibility = View.INVISIBLE
             binding.mediaBottomBar?.visibility = View.INVISIBLE
             binding.mediaClose?.visibility = View.INVISIBLE
+            binding.quickSettings.root.visibility = View.INVISIBLE
             binding.mediaCover?.visibility = View.INVISIBLE
             binding.commentMessageContainer?.visibility = View.INVISIBLE
             lifecycleScope.launch(Dispatchers.IO) {
@@ -343,6 +344,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
                         binding.mediaViewPagerContainer?.visibility = View.VISIBLE
                         binding.mediaBottomBar?.visibility = View.VISIBLE
                         binding.mediaClose?.visibility = View.VISIBLE
+                        binding.quickSettings.root.visibility = View.VISIBLE
                         binding.mediaCover?.visibility = View.VISIBLE
                         binding.commentMessageContainer?.visibility = View.VISIBLE
                         launchMediaDetails(muMedia)
@@ -368,6 +370,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
             binding.mediaViewPagerContainer?.visibility = View.VISIBLE
             binding.mediaBottomBar?.visibility = View.VISIBLE
             binding.mediaClose?.visibility = View.VISIBLE
+            binding.quickSettings.root.visibility = View.VISIBLE
             binding.mediaCover?.visibility = View.VISIBLE
             binding.commentMessageContainer?.visibility = View.VISIBLE
             launchMediaDetails(muMedia)
