@@ -76,6 +76,22 @@ class SettingsDialogFragment : BottomSheetDialogFragment() {
         binding.settingsCloudCard.isVisible = !offline
         binding.settingsNotificationContainer.isVisible = !offline
 
+        // A shortcut back to the home page, pointless when that is where the sheet was opened from.
+        // Every screen that is not a main tab reports the default HOME page type, so the home tab is
+        // only actually "here" when the host is MainActivity (or the offline home).
+        val onHomePage = (activity is MainActivity && pageType == PageType.HOME) ||
+            pageType == PageType.OfflineHOME
+        binding.settingsHomeCard.isVisible = !onHomePage
+        binding.settingsHome.setOnClickListener {
+            val intent = Intent(activity, MainActivity::class.java).putExtra(
+                "FRAGMENT_CLASS_NAME",
+                if (Anilist.token != null) HomeFragment::class.java.name
+                else LoginFragment::class.java.name
+            )
+            startActivity(intent)
+            dismiss()
+        }
+
         setupQuickTiles(offline)
 
         if (offline) {

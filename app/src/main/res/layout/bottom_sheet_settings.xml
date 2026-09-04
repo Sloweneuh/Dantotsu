@@ -72,6 +72,30 @@
                 </LinearLayout>
 
 
+                <!-- Jump straight back to the home page. Only shown when the sheet was opened from
+                     somewhere else, since from home it would do nothing. -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/settingsHomeCard"
+                    android:layout_width="52dp"
+                    android:layout_height="52dp"
+                    android:layout_marginTop="4dp"
+                    android:layout_marginEnd="12dp"
+                    android:backgroundTint="@color/nav_bg_inv"
+                    app:cardCornerRadius="26dp"
+                    app:strokeColor="@color/transparent">
+
+                    <com.google.android.material.imageview.ShapeableImageView
+                        android:id="@+id/settingsHome"
+                        android:layout_width="52dp"
+                        android:layout_height="52dp"
+                        android:contentDescription="@string/home"
+                        android:scaleType="center"
+                        app:srcCompat="@drawable/ic_round_home_24"
+                        app:tint="@color/bg_opp"
+                        tools:ignore="ImageContrastCheck" />
+
+                </com.google.android.material.card.MaterialCardView>
+
                 <!-- Cloud sync at a glance. Sync is silent by design, so without this there is
                      nothing anywhere that distinguishes "off", "working" and "needs you". -->
                 <com.google.android.material.card.MaterialCardView
