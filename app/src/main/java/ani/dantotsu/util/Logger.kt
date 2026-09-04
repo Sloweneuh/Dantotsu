@@ -18,6 +18,7 @@ import uy.kohesive.injekt.api.get
 import java.io.File
 import java.util.Date
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeoutException
 import kotlin.system.exitProcess
 
 object Logger {
@@ -176,7 +177,32 @@ class FinalExceptionHandler : Thread.UncaughtExceptionHandler {
     private val defaultUEH = Thread.getDefaultUncaughtExceptionHandler()
     private val MAX_STACK_TRACE_SIZE = 131071 //128 KB - 1
 
+    /**
+     * The runtime's own finalizer watchdog, not a fault in ours.
+     *
+     * ART's FinalizerWatchdogDaemon measures a finalizer against wall-clock time, so anything that
+     * stops the finalizer thread from being scheduled for ten seconds looks identical to a finalizer
+     * that hung: the cached-app freezer suspending a backgrounded process, a device under heavy load,
+     * or a long GC pause. The object it names is almost always [android.os.BinderInternal]'s
+     * GcWatcher, whose finalize() does nothing but request a GC — it cannot itself hang.
+     *
+     * Treating that as a crash killed a process that was working fine, and did it from the
+     * background, where the CrashActivity below either fails to launch or tears down the user's task
+     * stack for a report about nothing. It is still recorded as a non-fatal, so a real regression in
+     * finalizer pressure would still show up in the numbers.
+     */
+    private fun isFinalizerWatchdogTimeout(t: Thread, e: Throwable) =
+        e is TimeoutException && t.name == "FinalizerWatchdogDaemon"
+
     override fun uncaughtException(t: Thread, e: Throwable) {
+        if (isFinalizerWatchdogTimeout(t, e)) {
+            runCatching { Injekt.get<CrashlyticsInterface>().logException(e) }
+            Logger.uncaughtException(t, e)
+            // Returning without the default handler leaves the watchdog thread dead and the process
+            // alive, which is the whole point.
+            return
+        }
+
         val stackTraceString = Log.getStackTraceString(e)
         Injekt.get<CrashlyticsInterface>().logException(e)
 
@@ -192,13 +218,21 @@ class FinalExceptionHandler : Thread.UncaughtExceptionHandler {
                 report.append(stackTraceString)
                 val reportString = report.toString()
                 Logger.uncaughtException(t, Error(reportString))
-                val intent = Intent(it, CrashActivity::class.java)
-                if (reportString.length > MAX_STACK_TRACE_SIZE) {
-                    val subStr = reportString.substring(0, MAX_STACK_TRACE_SIZE)
-                    intent.putExtra("stackTrace", subStr)
-                } else intent.putExtra("stackTrace", reportString)
-                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                it.startActivity(intent)
+                // Only while the app is actually on screen. A crash in a worker, a widget update or
+                // a boot receiver runs in a process the user isn't looking at, where this start is
+                // blocked outright from Android 10 on — and on the versions where it isn't, it
+                // CLEAR_TASKs whatever the user had open to show them a report they never asked for.
+                val foreground =
+                    App.instance?.mFTActivityLifecycleCallbacks?.isForeground == true
+                if (foreground) {
+                    val intent = Intent(it, CrashActivity::class.java)
+                    if (reportString.length > MAX_STACK_TRACE_SIZE) {
+                        val subStr = reportString.substring(0, MAX_STACK_TRACE_SIZE)
+                        intent.putExtra("stackTrace", subStr)
+                    } else intent.putExtra("stackTrace", reportString)
+                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    it.startActivity(intent)
+                }
             }
         } else {
             Logger.log("App context is null")

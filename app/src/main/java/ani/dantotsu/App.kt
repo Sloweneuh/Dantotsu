@@ -286,6 +286,9 @@ class App : MultiDexApplication() {
         private var resumeCount = 0
         private var startedActivities = 0
 
+        /** Whether any activity of ours is currently started, i.e. the process has a UI on screen. */
+        val isForeground get() = startedActivities > 0
+
         /** Every settings screen lives in this package, and none share a base class to hook. */
         private fun isSettingsScreen(activity: Activity) =
             activity.javaClass.name.startsWith("ani.dantotsu.settings.")
