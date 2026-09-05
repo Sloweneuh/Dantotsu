@@ -1,6 +1,7 @@
 package ani.dantotsu.media.manga.mangareader
 
 import android.animation.ObjectAnimator
+import android.content.res.Resources.getSystem
 import android.graphics.Bitmap
 import android.graphics.PointF
 import android.view.LayoutInflater
@@ -41,11 +42,31 @@ class ContinuousChapterAdapter(
         const val TYPE_BOUNDARY = 2
 
         /**
-         * Effectively "don't cap the height": a long-strip page is scrolled *within* its own item
-         * here, so downsampling it to the viewport would throw away the detail that is the whole
-         * point. [PagePrefetcher] has to decode with the same cap to produce the same bitmap.
+         * The per-page decode budget for this mode, expressed as the height cap
+         * [BaseImageAdapter.loadBitmap] takes — where it becomes `maxWidth * maxHeight`, the pixel
+         * budget both `ImageData.calculateInSampleSize` and `downsampleBitmap` sample against.
+         * [PagePrefetcher] has to decode with the same cap to produce the same bitmap.
+         *
+         * This was `Int.MAX_VALUE / 4`, meaning "don't cap the height": a long-strip page is
+         * scrolled through inside its own item here, so fitting it to the viewport would throw away
+         * the detail that is the whole point. But a height that large makes the *pixel* budget
+         * vacuous as well — `maxWidth * maxHeight` came out around 1.1e12 — and the pixel count is
+         * the only thing that bounds a bitmap's bytes. That left the width cap enforcing everything
+         * on its own, so a page's memory grew without limit with its height: an unresized webtoon
+         * strip at 2160x30000 is a single 259 MB allocation, on a 512 MB heap that also holds the
+         * page cache, the prefetch window and every bound view. Which is the shape of the OOMs this
+         * activity reports — a heap full of a handful of enormous pages, the failure then landing
+         * on whatever small allocation happens to come next.
+         *
+         * Four screen-heights keeps it generous — 8x the screen's pixels, twice what a page outside
+         * this mode gets — while staying finite. `maxWidth` is two viewport widths, so a strip keeps
+         * that doubled width until it is about two screens tall and only then samples down to one
+         * viewport width, which is still 1:1 for a reader whose `maxScale` is `minScale * 1.1`.
+         * Past roughly eight screens tall it does go soft, and that is the trade being made: a page
+         * that large cannot be held at full resolution and still leave a heap to read the rest of
+         * the chapter with.
          */
-        const val MAX_PAGE_HEIGHT = Int.MAX_VALUE / 4
+        val MAX_PAGE_HEIGHT = getSystem().displayMetrics.heightPixels * 4
     }
 
     /**
@@ -539,6 +560,31 @@ class ContinuousChapterAdapter(
         progress.visibility = View.GONE
         load.loaded = true
         return true
+    }
+
+    /**
+     * Hands the page's pixels back as soon as the view reaches the recycled pool.
+     *
+     * Nothing did this before: an item view only ever dropped its bitmap when [loadImage] ran on it
+     * again, so a holder sitting in the pool went on holding a full-resolution page for as long as
+     * it sat there. RecyclerView keeps up to five holders per view type, and a page here is tens of
+     * megabytes, so reading through a chapter accumulated offscreen pages that nothing on screen
+     * referenced and nothing would free until the pool happened to reuse them.
+     *
+     * The bitmap is not recycled, only released: it was handed over as [ImageSource.cachedBitmap],
+     * so [SubsamplingScaleImageView.recycle] drops the reference and leaves the pixels alone —
+     * which is what we want, since the same instance usually lives on in
+     * [ani.dantotsu.media.manga.MangaCache] and a page scrolled back into view should come from
+     * there rather than be decoded again. Clearing the tag alongside it retires the [PageLoad]: a
+     * load still in flight for this view now fails [stillOwns] and discards its result instead of
+     * painting it onto a holder that has moved on to another page.
+     */
+    override fun onViewRecycled(holder: RecyclerView.ViewHolder) {
+        super.onViewRecycled(holder)
+        if (holder !is ImageViewHolder) return
+        holder.itemView.findViewById<SubsamplingScaleImageView>(R.id.imgProgImageNoGestures)
+            ?.recycle()
+        holder.itemView.tag = null
     }
 
     inner class ImageViewHolder(view: View) : RecyclerView.ViewHolder(view)

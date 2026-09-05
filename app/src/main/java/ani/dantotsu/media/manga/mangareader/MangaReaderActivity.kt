@@ -1148,7 +1148,14 @@ class MangaReaderActivity : AppCompatActivity() {
                         ViewPager2.ORIENTATION_HORIZONTAL
                     else ViewPager2.ORIENTATION_VERTICAL
                 registerOnPageChangeCallback(pageChangeCallback)
-                offscreenPageLimit = 5
+                // Pages either side of the current one that ViewPager2 keeps bound, and therefore
+                // decoded and held. This was 5 — eleven full-resolution pages resident at once,
+                // which on a 1080p screen is up to 41 MB each and on its own enough to exhaust the
+                // heap before any cache or prefetch window is counted. Two keeps the neighbours a
+                // swipe can reach ready without that: a page a little further out is in MangaCache
+                // or Glide's memory cache by the time it is bound, so re-binding it is a cache read
+                // rather than a fetch, and the bitmap is only held for as long as it is near.
+                offscreenPageLimit = 2
 
                 if (!isContinuousMultiChapter) {
                     setCurrentItem(currentPage / (dualPage { 2 } ?: 1) - 1, false)

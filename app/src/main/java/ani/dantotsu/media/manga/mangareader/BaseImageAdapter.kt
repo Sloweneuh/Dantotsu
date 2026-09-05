@@ -29,6 +29,7 @@ import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.bumptech.glide.load.model.GlideUrl
 import com.bumptech.glide.load.resource.bitmap.BitmapTransformation
 import com.bumptech.glide.load.resource.bitmap.DownsampleStrategy
+import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -149,6 +150,32 @@ abstract class BaseImageAdapter(
         }
         if (alreadyShown) return
         activity.lifecycleScope.launch { loadImage(boundPosition, view) }
+    }
+
+    /**
+     * Hands the page's pixels back as soon as the view reaches the recycled pool.
+     *
+     * Nothing did this before: an item view only ever dropped its bitmap when [loadImage] ran on it
+     * again, so a holder sitting in the pool went on holding a full-resolution page for as long as
+     * it sat there. RecyclerView keeps up to five holders per view type, and a page here is tens of
+     * megabytes, so reading through a chapter accumulated offscreen pages that nothing on screen
+     * referenced and nothing would free until the pool happened to reuse them. The dual-page
+     * adapter is the worst of it, since the merged bitmap it displays is the width of two pages and
+     * is held by nothing but the view.
+     *
+     * The bitmap is not recycled, only released: it was handed over as `ImageSource.cachedBitmap`,
+     * so [SubsamplingScaleImageView.recycle] drops the reference and leaves the pixels alone —
+     * which is what we want, since a plain page's instance usually lives on in
+     * [ani.dantotsu.media.manga.MangaCache] and one scrolled back into view should come from there
+     * rather than be decoded again. Clearing the tag alongside it retires the [PageLoad]: a load
+     * still in flight for this view now fails [stillOwns] and discards its result instead of
+     * painting it onto a holder that has moved on to another page.
+     */
+    override fun onViewRecycled(holder: RecyclerView.ViewHolder) {
+        super.onViewRecycled(holder)
+        holder.itemView.findViewById<SubsamplingScaleImageView>(R.id.imgProgImageNoGestures)
+            ?.recycle()
+        holder.itemView.tag = null
     }
 
     abstract fun isZoomed(): Boolean
@@ -274,6 +301,12 @@ abstract class BaseImageAdapter(
 
                         // Downsample before transforms so we never hold a full-res bitmap in memory.
                         val downsampledBitmap = downsampleBitmap(rawBitmap, maxW, maxH)
+                        // A scaled copy leaves the full-resolution decode behind as garbage that
+                        // the collector only gets to when it next runs — and with two prefetch
+                        // workers decoding alongside the visible page, that is precisely when the
+                        // heap is tightest. Nothing else can reach it: it came straight out of the
+                        // decode above and was never handed to a cache or a view.
+                        if (downsampledBitmap !== rawBitmap) rawBitmap.recycle()
 
                         // Apply transforms via a Glide in-memory request (no network I/O —
                         // bitmap is already decoded). Result is cached below so this only
