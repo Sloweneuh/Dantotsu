@@ -34,6 +34,8 @@ enum class PrefName(val data: Pref) {
     NovelDownloadOneFile(Pref(Location.General, Boolean::class, false)),
     AskDownloadEpub(Pref(Location.General, Boolean::class, true)),
     NSFWExtension(Pref(Location.General, Boolean::class, true)),
+    // Which listing an extension browse opens on: 0 = popular, 1 = latest.
+    DefaultBrowseSort(Pref(Location.General, Int::class, 0)),
     ContinueMedia(Pref(Location.General, Boolean::class, true)),
     SearchSources(Pref(Location.General, Boolean::class, false)),
     RecentlyListOnly(Pref(Location.General, Boolean::class, false)),

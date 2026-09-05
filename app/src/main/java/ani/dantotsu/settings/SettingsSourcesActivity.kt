@@ -245,7 +245,39 @@ class SettingsSourcesActivity : AppCompatActivity() {
     // Extension behaviour
     // -----------------------------------------------------------------------------------------
 
+    private fun browseSortOptions() = arrayOf(getString(R.string.popular), getString(R.string.latest))
+
+    /** The current default sort, spelled out on the row so it reads without opening the dialog. */
+    private fun browseSortDesc(): String {
+        val index = PrefManager.getVal<Int>(PrefName.DefaultBrowseSort).coerceIn(0, 1)
+        return getString(R.string.default_browse_sort_desc, browseSortOptions()[index])
+    }
+
     private fun extensionRows(): List<Settings> = listOf(
+        Settings(
+            type = 1,
+            name = getString(R.string.default_browse_sort),
+            desc = browseSortDesc(),
+            icon = R.drawable.ic_round_sort_24,
+            compact = true,
+            anchorKey = "default_browse_sort",
+            attach = {
+                it.settingsDesc.text = browseSortDesc()
+                it.attachView.isVisible = false
+            },
+            onClick = { b ->
+                customAlertDialog().apply {
+                    setTitle(getString(R.string.default_browse_sort))
+                    singleChoiceItems(
+                        browseSortOptions(), PrefManager.getVal(PrefName.DefaultBrowseSort)
+                    ) { i ->
+                        PrefManager.setVal(PrefName.DefaultBrowseSort, i)
+                        b.settingsDesc.text = browseSortDesc()
+                    }
+                    show()
+                }
+            }
+        ),
         Settings(
             type = 2,
             name = getString(R.string.force_legacy_installer),

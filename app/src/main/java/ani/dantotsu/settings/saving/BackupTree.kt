@@ -585,6 +585,7 @@ object BackupTree {
                     "sources_extensions", R.string.extensions,
                     R.string.extension_behaviour_desc,
                     listOf(
+                        BackupItem(PrefName.DefaultBrowseSort, R.string.default_browse_sort),
                         BackupItem(PrefName.SkipExtensionIcons, R.string.skip_loading_extension_icons),
                         BackupItem(PrefName.NSFWExtension, R.string.NSFWExtention_desc),
                     )

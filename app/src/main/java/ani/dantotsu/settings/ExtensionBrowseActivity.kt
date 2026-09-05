@@ -33,6 +33,8 @@ import ani.dantotsu.parsers.ShowResponse
 import ani.dantotsu.parsers.novel.lnreader.LNReaderFilterSet
 import ani.dantotsu.parsers.novel.lnreader.LNReaderParser
 import ani.dantotsu.parsers.novel.lnreader.LNReaderPluginManager
+import ani.dantotsu.settings.saving.PrefManager
+import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.snackString
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.stripSpansOnPaste
@@ -107,6 +109,9 @@ class ExtensionBrowseActivity : AppCompatActivity() {
     private var currentQuery: String = ""
     private var searchBoxHasText = false // Tracks live text, even before it's submitted
     private var suppressQueryChange = false // True while we clear the box's text ourselves
+    // Novel plugins only report latest support after the first load, so a "Latest" default can
+    // only be applied once they answer — and only if the browse still sits where it opened.
+    private var awaitingNovelDefaultSort = false
 
     private enum class Mode { POPULAR, LATEST, FILTER, SEARCH }
 
@@ -265,7 +270,8 @@ class ExtensionBrowseActivity : AppCompatActivity() {
             binding.extensionBrowseSearch.setQuery(restoredQuery, false)
             suppressQueryChange = false
         }
-        load(restoredMode ?: Mode.POPULAR, null)
+        awaitingNovelDefaultSort = restoredMode == null
+        load(restoredMode ?: defaultMode(), null)
     }
 
     private val isNovel: Boolean get() = novelParser != null
@@ -391,6 +397,18 @@ class ExtensionBrowseActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * The listing a browse opens on.
+     *
+     * The user's default sort, except on a source with no separate latest listing (where the chip
+     * is hidden too) -- there, Popular is the only thing to show.
+     */
+    private fun defaultMode(): Mode {
+        val prefersLatest = PrefManager.getVal<Int>(PrefName.DefaultBrowseSort) == 1
+        val hasLatest = if (isNovel) novelSupportsLatest else supportsLatest()
+        return if (prefersLatest && hasLatest) Mode.LATEST else Mode.POPULAR
+    }
+
     private fun refreshChipVisibility() {
         if (isNovel) {
             binding.extensionBrowseChipGroup.isVisible = true
@@ -419,6 +437,12 @@ class ExtensionBrowseActivity : AppCompatActivity() {
             novelFilterDeclaration = declaration
             novelFilterSet = LNReaderFilterSet.from(declaration)
             refreshChipVisibility()
+            if (awaitingNovelDefaultSort) {
+                awaitingNovelDefaultSort = false
+                if (currentMode == Mode.POPULAR && defaultMode() == Mode.LATEST) {
+                    load(Mode.LATEST, null)
+                }
+            }
         }
     }
 
@@ -442,7 +466,7 @@ class ExtensionBrowseActivity : AppCompatActivity() {
     private fun modeForState(): Mode = when {
         currentQuery.isNotEmpty() -> Mode.SEARCH
         hasActiveFilterChips() -> Mode.FILTER
-        else -> Mode.POPULAR
+        else -> defaultMode()
     }
 
     fun hasActiveFilterChips(): Boolean = buildActiveFilterChips().isNotEmpty()
@@ -606,8 +630,7 @@ class ExtensionBrowseActivity : AppCompatActivity() {
                     adapter.setImageHeaders(currentSourceHeaders())
                     configureChips()
                     clearSearchQuery()
-                    binding.chipPopular.isChecked = true
-                    load(Mode.POPULAR, null)
+                    load(defaultMode(), null)
                 }
                 sheet.dismiss()
             }

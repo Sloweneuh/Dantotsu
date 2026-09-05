@@ -539,6 +539,8 @@ object SettingsSearch {
 
         l += SearchableSetting(SettingsSourcesActivity::class.java, R.string.proxy_setup, R.string.sources_and_downloads, R.drawable.lan_24, R.string.proxy_setup_desc, keywordsRes = R.string.search_kw_proxy_setup, anchorSection = SettingsSourcesActivity.Section.NETWORK, anchorRowKey = "proxy_setup")
 
+        l += SearchableSetting(SettingsSourcesActivity::class.java, R.string.default_browse_sort, R.string.sources_and_downloads, R.drawable.ic_round_sort_24, keywordsRes = R.string.search_kw_default_browse_sort, anchorSection = SettingsSourcesActivity.Section.EXTENSIONS, anchorRowKey = "default_browse_sort")
+
         l += SearchableSetting(SettingsSourcesActivity::class.java, R.string.force_legacy_installer, R.string.sources_and_downloads, R.drawable.ic_round_history_24, R.string.force_legacy_installer_desc, keywordsRes = R.string.search_kw_force_legacy_installer, anchorSection = SettingsSourcesActivity.Section.EXTENSIONS, anchorRowKey = "force_legacy_installer")
 
         l += SearchableSetting(SettingsSourcesActivity::class.java, R.string.skip_loading_extension_icons, R.string.sources_and_downloads, R.drawable.ic_round_no_icon_24, R.string.skip_loading_extension_icons_desc, keywordsRes = R.string.search_kw_skip_loading_extension_icons, anchorSection = SettingsSourcesActivity.Section.EXTENSIONS, anchorRowKey = "skip_extension_icons")

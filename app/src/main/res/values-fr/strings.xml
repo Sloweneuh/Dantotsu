@@ -905,6 +905,7 @@
     <string name="error_loading_image">Erreur de chargement de l\'image</string>
     <string name="discord_logout_success">Déconnexion réussie</string>
     <string name="warning">Avertissement</string>
+    <string name="default_browse_sort">Tri de navigation par défaut</string>
     <string name="force_legacy_installer">Forcer l\'installateur legacy</string>
     <string name="NSFWExtention">Extensions NSFW</string>
     <string name="skip_loading_extension_icons">Ignorer le chargement des icônes d\'extensions</string>
@@ -1620,6 +1621,7 @@
     <string name="manga_add_repository_desc">Ajouter des extensions Manga depuis diverses sources</string>
     <string name="novel_add_repository_desc">Ajouter des extensions Roman depuis diverses sources</string>
     <string name="user_agent_desc">Changer votre user agent par défaut</string>
+    <string name="default_browse_sort_desc">La navigation dans une extension commence par : %1$s</string>
     <string name="force_legacy_installer_desc">Utiliser l\'installateur legacy pour installer les extensions (Pour les vieux téléphones android)</string>
     <string name="skip_loading_extension_icons_desc">Ne pas charger les icônes des extensions sur la page des extensions</string>
     <string name="NSFWExtention_desc">Activer les extensions 18+ depuis la recherche (Peut supprimer certaines extensions utiles)</string>
@@ -2434,6 +2436,7 @@
     <string name="search_kw_user_agent">http en-tête navigateur requête demande</string>
     <string name="search_kw_proxy">réseau socks http tunnel</string>
     <string name="search_kw_proxy_setup">proxy réseau configurer configuration</string>
+    <string name="search_kw_default_browse_sort">navigation tri défaut populaire nouveau liste</string>
     <string name="search_kw_force_legacy_installer">installer apk paquet gestionnaire ancien</string>
     <string name="search_kw_skip_loading_extension_icons">icône performance chargement passer saut</string>
     <string name="search_kw_NSFWExtention">nsfw adulte</string>

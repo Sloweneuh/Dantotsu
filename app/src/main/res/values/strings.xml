@@ -1247,6 +1247,7 @@
     <string name="discord_logout_success">Successfully Logged Out</string>
     <string name="discord_warning"><![CDATA[By logging in, your discord will now show what you are watching & reading on Dantotsu\n\nIf you are on invisible mode, logging in will make you online, when you open Dantotsu.\n\nThis does break the Discord TOS. \nAlthough Discord has never banned anyone for using Custom Rich Presence(what Dantotsu uses), You have still been warned.\n\nDantotsu is not responsible for anything that happens to your account.]]></string>
     <string name="warning">Warning</string>
+    <string name="default_browse_sort">Default Browsing Sort</string>
     <string name="force_legacy_installer">Force Legacy Installer</string>
     <string name="NSFWExtention">NSFW Extensions</string>
     <string name="skip_loading_extension_icons">Skip loading extension icons</string>
@@ -1600,6 +1601,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="manga_add_repository_desc">Add Manga Extensions from various sources</string>
     <string name="novel_add_repository_desc">Add Novel Extensions from various sources</string>
     <string name="user_agent_desc">Change your default user agent</string>
+    <string name="default_browse_sort_desc">Browsing an extension opens on: %1$s</string>
     <string name="force_legacy_installer_desc">Use the legacy installer to install extensions (For older android phones)</string>
     <string name="skip_loading_extension_icons_desc">Don\'t load icons of extensions on the extension page</string>
     <string name="NSFWExtention_desc">Enable 18+ extensions from search (May remove some useful extensions)</string>
@@ -2575,6 +2577,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="search_kw_user_agent">http header browser request</string>
     <string name="search_kw_proxy">network socks http tunnel</string>
     <string name="search_kw_proxy_setup">proxy network configure setup</string>
+    <string name="search_kw_default_browse_sort">browse sort default popular latest listing</string>
     <string name="search_kw_force_legacy_installer">install apk package manager legacy</string>
     <string name="search_kw_skip_loading_extension_icons">icon performance loading skip</string>
     <string name="search_kw_NSFWExtention">nsfw adult</string>
