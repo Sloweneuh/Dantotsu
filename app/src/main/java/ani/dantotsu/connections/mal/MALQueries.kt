@@ -1,6 +1,7 @@
 package ani.dantotsu.connections.mal
 
 import ani.dantotsu.client
+import ani.dantotsu.connections.TrackerSessions
 import ani.dantotsu.connections.anilist.api.FuzzyDate
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
@@ -84,6 +85,10 @@ class MALQueries {
         if (idMAL == null) return
         // `force` bypasses the toggle for explicit user actions (e.g. the list-compare screen).
         if (!force && !PrefManager.getVal<Boolean>(PrefName.MalListSyncEnabled)) return
+        // [MAL.token] is restored in the background, so the check below has to wait for it or an
+        // update sent from an entry point that skipped the home screen reads as signed out and is
+        // dropped with nothing but a log line. See [TrackerSessions].
+        TrackerSessions.await()
         // Checked here rather than only at the request, the way MangaBaka and MangaUpdates do it.
         // The toggle syncs between devices but the login doesn't, so "on but signed out" is an
         // ordinary state — it used to build the whole payload and then vanish into a null header,
@@ -102,22 +107,41 @@ class MALQueries {
             data["score"] = score.div(10).toString()
         if (rewatch != null)
             data[if (isAnime) "num_times_rewatched" else "num_times_reread"] = rewatch.toString()
-        if (start != null)
-            data["start_date"] = start.toMALString()
-        if (end != null)
-            data["finish_date"] = end.toMALString()
-        tryWithSuspend {
+        // MAL's date fields are a strict `YYYY-MM-DD`, but AniList's are fuzzy and a partial one is
+        // perfectly ordinary there — a year on its own, or a year and a month, is what an import
+        // usually leaves behind. [FuzzyDate.toMALString] renders those as "2024" or "2024-03", and
+        // MAL answers a malformed date by rejecting the *whole* request: the progress, the status
+        // and the score in the same payload all fail to land because of the date beside them. So a
+        // date only goes when it is complete, and an incomplete one is simply left off rather than
+        // taking the rest of the update down with it.
+        start?.takeIf { it.isCompleteForMAL() }?.let { data["start_date"] = it.toMALString() }
+        end?.takeIf { it.isCompleteForMAL() }?.let { data["finish_date"] = it.toMALString() }
+        val response = tryWithSuspend {
             client.put(
                 "$apiUrl/${if (isAnime) "anime" else "manga"}/$idMAL/my_list_status",
                 authHeader ?: return@tryWithSuspend null,
                 data = data,
             )
         }
+        // The client doesn't raise on a non-2xx, so without this every rejection — an expired token,
+        // a progress past MAL's own total, a date it didn't like — passed for success and the entry
+        // just silently stayed as it was.
+        if (response == null || response.code !in 200..299) {
+            Logger.log(
+                "MAL: ${if (isAnime) "anime" else "manga"}/$idMAL update failed " +
+                    "(${response?.code ?: "no response"}) — sent $data" +
+                    (response?.text?.take(300)?.let { " — got $it" } ?: "")
+            )
+        }
     }
+
+    /** MAL takes `YYYY-MM-DD` and nothing less; see the call site in [editList]. */
+    private fun FuzzyDate.isCompleteForMAL() = year != null && month != null && day != null
 
     suspend fun deleteList(isAnime: Boolean, idMAL: Int?, force: Boolean = false) {
         if (idMAL == null) return
         if (!force && !PrefManager.getVal<Boolean>(PrefName.MalListSyncEnabled)) return
+        TrackerSessions.await() // see editList
         if (authHeader == null) {
             Logger.log("MAL: list sync is on but this device isn't signed in; skipping delete")
             return
@@ -135,6 +159,9 @@ class MALQueries {
      * Returns the raw entries (media node + list_status). Empty when logged out or on failure.
      */
     suspend fun getUserList(isAnime: Boolean): List<MALListNode> {
+        // Same wait: a list read before the token is restored comes back empty, which the
+        // comparison renders as "nothing is on MAL".
+        TrackerSessions.await()
         val header = authHeader ?: return emptyList()
         val type = if (isAnime) "animelist" else "mangalist"
         // Request MAL's own totals too (num_episodes / num_chapters,num_volumes) so the comparison can

@@ -63,29 +63,36 @@ class ListSyncCompareActivity : AppCompatActivity() {
             showMessage(getString(R.string.list_compare_login_anilist))
             return
         }
-        val sections = ListCompare.availableSections()
-        if (sections.isEmpty()) {
-            showMessage(getString(R.string.list_compare_login_trackers))
-            return
-        }
-        // Every card goes up straight away with its own spinner, so there's no screen-wide
-        // loading state and no section waiting on another one's network work.
-        binding.compareProgress.visibility = View.GONE
-        val muActive = ListCompare.muActive()
-        val handles = sections.associateWith { addSection(it, muActive) }
-        lifecycleScope.launch(Dispatchers.IO) {
-            ListCompare.compareStreaming(
-                onStats = { section, stats ->
-                    withContext(Dispatchers.Main) { handles[section]?.onStats?.invoke(stats) }
-                },
-                onSection = { section, result ->
-                    withContext(Dispatchers.Main) { handles[section]?.onResult?.invoke(result) }
-                },
-                onError = { section, e ->
-                    Logger.log(e)
-                    withContext(Dispatchers.Main) { handles[section]?.onError?.invoke() }
-                },
-            )
+        // Which sections exist is decided by which tokens are in memory, and those are restored in
+        // the background — so this has to wait for that, or a screen opened without going through
+        // the home screen finds no tokens and tells the user to log in to trackers they are already
+        // logged in to. Resumes on the main thread, which is where the rest of this belongs.
+        lifecycleScope.launch {
+            ani.dantotsu.connections.TrackerSessions.await()
+            val sections = ListCompare.availableSections()
+            if (sections.isEmpty()) {
+                showMessage(getString(R.string.list_compare_login_trackers))
+                return@launch
+            }
+            // Every card goes up straight away with its own spinner, so there's no screen-wide
+            // loading state and no section waiting on another one's network work.
+            binding.compareProgress.visibility = View.GONE
+            val muActive = ListCompare.muActive()
+            val handles = sections.associateWith { addSection(it, muActive) }
+            launch(Dispatchers.IO) {
+                ListCompare.compareStreaming(
+                    onStats = { section, stats ->
+                        withContext(Dispatchers.Main) { handles[section]?.onStats?.invoke(stats) }
+                    },
+                    onSection = { section, result ->
+                        withContext(Dispatchers.Main) { handles[section]?.onResult?.invoke(result) }
+                    },
+                    onError = { section, e ->
+                        Logger.log(e)
+                        withContext(Dispatchers.Main) { handles[section]?.onError?.invoke() }
+                    },
+                )
+            }
         }
     }
 

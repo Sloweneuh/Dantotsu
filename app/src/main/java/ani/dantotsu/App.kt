@@ -93,6 +93,11 @@ class App : MultiDexApplication() {
      */
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
+        // Every trim level means the app is either backgrounded or under pressure, and both are
+        // points we might not come back from. IdCache buffers its writes, so this is where a
+        // handful of lookups that never reached its flush threshold get persisted; it does nothing
+        // when there is nothing pending.
+        runCatching { ani.dantotsu.connections.IdCache.flushAsync() }
         if (level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) releaseBitmapCaches()
     }
 
@@ -113,11 +118,17 @@ class App : MultiDexApplication() {
         // ContentProvider by this point; this only sets how it behaves. No-op in release builds.
         LeakDetection.install()
         PrefManager.init(this)
+        // Only names the file; nothing is read from disk until a tracker first asks.
+        ani.dantotsu.connections.IdCache.init(this)
         // Before anything can query AniList. Entry points other than MainActivity (a notification
         // tap, a media deep link, a widget) go straight to a details screen and skip the session
         // restore that lives on the home path, which left those queries unauthenticated and so
         // without the user's list entry. Prefs-only, no network.
         Anilist.restoreSession()
+        // The same problem for every other tracker, except theirs can't be solved synchronously —
+        // an expired token has to be refreshed over the network. Started here so that a session
+        // opened from a notification or a deep link has its accounts by the time anything writes.
+        ani.dantotsu.connections.TrackerSessions.start()
         AppUpdater.cleanupDownloadedApkFiles(this)
 
         val crashlytics =
@@ -174,6 +185,10 @@ class App : MultiDexApplication() {
         }
 
         val scope = CoroutineScope(Dispatchers.IO)
+        // Off the main thread deliberately: it reads the whole preferences map, which on a device
+        // that has synced its lists is large enough that doing so is exactly the cost being
+        // reclaimed. One-shot, and a no-op once it has run.
+        scope.launch { PrefManager.pruneStaleCustomVals() }
         scope.launch {
             animeExtensionManager = Injekt.get()
             launch {

@@ -2,7 +2,7 @@ package ani.dantotsu.connections.kitsu
 
 import ani.dantotsu.asyncMap
 import ani.dantotsu.client
-import ani.dantotsu.settings.saving.PrefManager
+import ani.dantotsu.connections.IdCache
 import ani.dantotsu.tryWithSuspend
 import ani.dantotsu.util.Logger
 import kotlinx.coroutines.sync.Semaphore
@@ -15,7 +15,7 @@ import kotlinx.serialization.Serializable
  * `/mappings` route. No authentication required, so (like [ani.dantotsu.connections.mangabaka.MangaBakaApi])
  * these calls must never be gated behind [Kitsu.token].
  *
- * Results (hits and misses) are cached in [PrefManager] custom vals plus an in-memory negative set,
+ * Results (hits and misses) are cached in [IdCache] plus an in-memory negative set,
  * so a whole-list comparison doesn't re-query the same series.
  */
 object KitsuApi {
@@ -76,7 +76,7 @@ object KitsuApi {
         val out = HashMap<String, String>()
         val toFetch = ids.distinct().filter { id ->
             val key = "$CACHE_PREFIX${externalSite}_$id"
-            val cached = PrefManager.getCustomVal(key, "")
+            val cached = IdCache[key].orEmpty()
             when {
                 cached.isNotBlank() -> { out[id] = cached; false }
                 key in negativeCache -> false
@@ -90,6 +90,9 @@ object KitsuApi {
         // can carry more than one row for the same id when Kitsu has a duplicate/erroneous mapping
         // (e.g. a companion "Break Time" entry mapped onto the real season's AniList id).
         val bestCreatedAt = HashMap<String, String>()
+        // Collected across every chunk and stored once below, rather than a cache write per
+        // resolved id — see [SeedBatch].
+        val seeds = SeedBatch()
 
         // Kitsu caps page size at 20; keep the chunk under that so a title with a couple of
         // mappings for the same site can't push wanted rows off the page.
@@ -115,11 +118,12 @@ object KitsuApi {
                     if (ext !in bestCreatedAt || createdAt < bestCreatedAt.getValue(ext)) {
                         bestCreatedAt[ext] = createdAt
                         out[ext] = mediaId
-                        seedMediaId(externalSite, ext, mediaId)
+                        seeds.mediaId(externalSite, ext, mediaId)
                     }
                 }
             }
         }
+        seeds.flush()
         toFetch.filter { it !in out }.forEach { negativeCache.add("$CACHE_PREFIX${externalSite}_$it") }
         return out
     }
@@ -142,14 +146,45 @@ object KitsuApi {
      * Pre-seeds the id + total caches from the user's library (see [KitsuSync.getLibrarySnapshot]),
      * so a whole-list comparison resolves everything already in the library with zero network calls
      * and only looks up the media that are genuinely missing.
+     *
+     * Collect the seeds and [flush] them at a batch boundary rather than writing each on its own:
+     * [IdCache] persists by rewriting its file, so a per-entry write would rewrite it once per
+     * media. Collecting also means a key seeded repeatedly — which [batchLookup]'s `createdAt`
+     * tie-break does while it narrows in on the oldest mapping row — is only stored once.
      */
+    class SeedBatch {
+        private val values = LinkedHashMap<String, Any>()
+
+        @Synchronized
+        fun mediaId(externalSite: String, externalId: String, mediaId: String) {
+            values["$CACHE_PREFIX${externalSite}_$externalId"] = mediaId
+        }
+
+        @Synchronized
+        fun total(isAnime: Boolean, mediaId: String, total: Int) {
+            if (total > 0) {
+                values["$TOTAL_CACHE_PREFIX${if (isAnime) "anime" else "manga"}_$mediaId"] = total
+            }
+        }
+
+        /** Writes everything collected so far through a single editor, and starts over. */
+        @Synchronized
+        fun flush() {
+            if (values.isEmpty()) return
+            IdCache.putAll(values)
+            IdCache.flush()
+            values.clear()
+        }
+    }
+
+    /** Single-seed forms, for the one-off resolutions that aren't part of a bulk pass. */
     fun seedMediaId(externalSite: String, externalId: String, mediaId: String) {
-        PrefManager.setCustomVal("$CACHE_PREFIX${externalSite}_$externalId", mediaId)
+        IdCache.put("$CACHE_PREFIX${externalSite}_$externalId", mediaId)
     }
 
     fun seedTotal(isAnime: Boolean, mediaId: String, total: Int) {
         if (total > 0) {
-            PrefManager.setCustomVal("$TOTAL_CACHE_PREFIX${if (isAnime) "anime" else "manga"}_$mediaId", total)
+            IdCache.put("$TOTAL_CACHE_PREFIX${if (isAnime) "anime" else "manga"}_$mediaId", total)
         }
     }
 
@@ -158,7 +193,7 @@ object KitsuApi {
         val kind = if (isAnime) "anime" else "manga"
         val field = if (isAnime) "episodeCount" else "chapterCount"
         val cacheKey = "$TOTAL_CACHE_PREFIX${kind}_$mediaId"
-        val cached = PrefManager.getCustomVal(cacheKey, 0)
+        val cached = IdCache.getInt(cacheKey) ?: 0
         if (cached > 0) return cached
         val total = tryWithSuspend {
             rateLimiter.withPermit {
@@ -170,7 +205,7 @@ object KitsuApi {
                 }
             }
         }?.takeIf { it > 0 }
-        if (total != null) PrefManager.setCustomVal(cacheKey, total)
+        if (total != null) IdCache.put(cacheKey, total)
         return total
     }
 
@@ -188,7 +223,7 @@ object KitsuApi {
 
     private suspend fun lookup(externalSite: String, externalId: String): String? {
         val cacheKey = "$CACHE_PREFIX${externalSite}_$externalId"
-        val cached = PrefManager.getCustomVal(cacheKey, "")
+        val cached = IdCache[cacheKey].orEmpty()
         if (cached.isNotBlank()) return cached
         if (cacheKey in negativeCache) return null
 
@@ -214,7 +249,7 @@ object KitsuApi {
         }
 
         if (resolved != null) {
-            PrefManager.setCustomVal(cacheKey, resolved)
+            IdCache.put(cacheKey, resolved)
         } else {
             Logger.log("Kitsu mapping miss: $externalSite/$externalId")
             negativeCache.add(cacheKey)

@@ -13,7 +13,6 @@ import ani.dantotsu.connections.kitsu.KitsuApi
 import ani.dantotsu.connections.mal.MALSearchItem
 import ani.dantotsu.connections.simkl.SimklApi
 import ani.dantotsu.connections.mangabaka.MangaBakaApi
-import ani.dantotsu.connections.discord.Discord
 import ani.dantotsu.connections.mal.MAL
 import ani.dantotsu.connections.mangaupdates.MUMedia
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
@@ -290,13 +289,10 @@ class AnilistHomeViewModel : ViewModel() {
                     AppUpdater.check(context, false)
                 }
         }
-        Anilist.getSavedToken()
-        MAL.getSavedToken()
-        Discord.getSavedToken()
-        ani.dantotsu.connections.mangaupdates.MangaUpdates.getSavedToken()
-        ani.dantotsu.connections.mangabaka.MangaBaka.getSavedToken()
-        ani.dantotsu.connections.kitsu.Kitsu.getSavedToken()
-        ani.dantotsu.connections.simkl.Simkl.getSavedToken()
+        // The same restore every other entry point now gets, rather than a second copy of it here:
+        // this used to be the only place it happened, which is what left the trackers signed out
+        // for any session that didn't come through the home screen. See [TrackerSessions].
+        ani.dantotsu.connections.TrackerSessions.await()
         val ret = Anilist.query.getGenresAndTags()
         withContext(Dispatchers.Main) {
             genres.value = ret

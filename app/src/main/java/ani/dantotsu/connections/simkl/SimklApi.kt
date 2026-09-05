@@ -4,7 +4,7 @@ import ani.dantotsu.FileUrl
 import ani.dantotsu.Mapper
 import ani.dantotsu.client
 import ani.dantotsu.media.anime.Episode
-import ani.dantotsu.settings.saving.PrefManager
+import ani.dantotsu.connections.IdCache
 import ani.dantotsu.tryWithSuspend
 import ani.dantotsu.util.Logger
 import kotlinx.coroutines.async
@@ -23,7 +23,7 @@ import kotlinx.serialization.Serializable
  * plan/compilation cut) as **one** record, so two AniList ids can resolve to the same Simkl id.
  * The compare screen uses that to avoid offering the same Simkl entry twice.
  *
- * Hits and misses are cached in [PrefManager] custom vals plus an in-memory negative set.
+ * Hits and misses are cached in [IdCache] plus an in-memory negative set.
  */
 object SimklApi {
     // v2: the info tab resolves by AniList/MAL id through this cache, while the standalone media
@@ -47,9 +47,9 @@ object SimklApi {
 
     private suspend fun lookup(param: String, id: Int): Match? {
         val cacheKey = "$CACHE_PREFIX${param}_$id"
-        val cached = PrefManager.getCustomVal(cacheKey, 0L)
+        val cached = IdCache.getLong(cacheKey) ?: 0L
         if (cached > 0L) {
-            val eps = PrefManager.getCustomVal("$EP_CACHE_PREFIX${param}_$id", 0)
+            val eps = IdCache.getInt("$EP_CACHE_PREFIX${param}_$id") ?: 0
             return Match(cached, eps.takeIf { it > 0 })
         }
         if (cacheKey in negativeCache) return null
@@ -76,8 +76,8 @@ object SimklApi {
         val match = results.firstOrNull()
         val simklId = match?.ids?.simkl
         if (simklId != null && simklId > 0) {
-            PrefManager.setCustomVal(cacheKey, simklId)
-            match.totalEpisodes?.let { PrefManager.setCustomVal("$EP_CACHE_PREFIX${param}_$id", it) }
+            IdCache.put(cacheKey, simklId)
+            match.totalEpisodes?.let { IdCache.put("$EP_CACHE_PREFIX${param}_$id", it) }
             return Match(simklId, match.totalEpisodes)
         }
         Logger.log("Simkl id miss: $param/$id")

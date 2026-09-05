@@ -367,6 +367,8 @@ enum class PrefName(val data: Pref) {
     SearchStyle(Pref(Location.Irrelevant, Int::class, 0)),
     SearchStyleSupporting(Pref(Location.Irrelevant, Int::class, 0)),
     HasUpdatedPrefs(Pref(Location.Irrelevant, Boolean::class, false)),
+    /** Highest [ani.dantotsu.settings.saving.PrefManager.STALE_PRUNE_VERSION] already swept. */
+    CustomValPruneVersion(Pref(Location.Irrelevant, Int::class, 0)),
     LangSort(Pref(Location.Irrelevant, String::class, "all")),
     GenresList(Pref(Location.Irrelevant, Set::class, setOf<String>())),
     TagsListIsAdult(Pref(Location.Irrelevant, Set::class, setOf<String>())),

@@ -2,6 +2,7 @@ package ani.dantotsu.connections.kitsu
 
 import ani.dantotsu.Mapper
 import ani.dantotsu.connections.anilist.api.FuzzyDate
+import ani.dantotsu.connections.TrackerSessions
 import ani.dantotsu.connections.mangabaka.MangaBakaApi
 import ani.dantotsu.okHttpClient
 import ani.dantotsu.settings.saving.PrefManager
@@ -48,8 +49,16 @@ object KitsuSync {
         coerceInputValues = true
     }
 
-    fun isEnabled(force: Boolean = false): Boolean =
-        Kitsu.token != null && (force || PrefManager.getVal(PrefName.KitsuListSyncEnabled))
+    /**
+     * Suspends because of the [Kitsu.token] test: the token lives in memory and is restored in the
+     * background, so asking before the restore has finished answers "not signed in" and every push
+     * guarded by this quietly does nothing. Waiting here rather than at each caller means no write
+     * path can be added later that forgets to. See [TrackerSessions].
+     */
+    suspend fun isEnabled(force: Boolean = false): Boolean {
+        TrackerSessions.await()
+        return Kitsu.token != null && (force || PrefManager.getVal(PrefName.KitsuListSyncEnabled))
+    }
 
     // ---- pushes ----
 
@@ -160,14 +169,31 @@ object KitsuSync {
         }
     }
 
+    /**
+     * Headers for reading the signed-in user's *own* library.
+     *
+     * These reads used to go out with nothing but an `Accept` header, i.e. as an anonymous caller.
+     * Kitsu answers those with only the entries a stranger is allowed to see, so a library whose
+     * privacy is set on Kitsu comes back as an empty list — HTTP 200, no error, nothing to catch —
+     * and the comparison then reports every single title as missing from Kitsu while it sits there
+     * plainly on the site. Writes were authenticated all along ([authed]); only the reads weren't.
+     */
+    private fun readHeaders(): Map<String, String> {
+        val base = mapOf("Accept" to "application/vnd.api+json")
+        return Kitsu.token?.let { base + ("Authorization" to "Bearer $it") } ?: base
+    }
+
     private suspend fun findEntryId(isAnime: Boolean, mediaId: String): String? = tryWithSuspend {
         val userId = Kitsu.userid ?: return@tryWithSuspend null
         val url = "${Kitsu.API_URL}/library-entries" +
             "?filter%5BuserId%5D=$userId" +
             "&filter%5BmediaId%5D=$mediaId" +
             "&filter%5Bkind%5D=${if (isAnime) "anime" else "manga"}"
+        // cacheTime = 0: the shared client caches for six hours by default, and an "is there
+        // already an entry?" check that reads a stale answer makes [upsert] POST a duplicate over
+        // an entry that exists.
         json.decodeFromString<LibraryResponse>(
-            ani.dantotsu.client.get(url, mapOf("Accept" to "application/vnd.api+json")).text
+            ani.dantotsu.client.get(url, readHeaders(), cacheTime = 0).text
         ).data?.firstOrNull()?.id
     }
 
@@ -220,6 +246,9 @@ object KitsuSync {
      * response `meta.statusCounts` (reliable even if a status can't be fully paged).
      */
     suspend fun getLibrarySnapshot(isAnime: Boolean): Snapshot {
+        // [Kitsu.userid] is restored alongside the token, so the same wait applies: reading it too
+        // early returns an empty snapshot, which the comparison renders as "nothing is on Kitsu".
+        TrackerSessions.await()
         val userId = Kitsu.userid ?: return Snapshot(emptyList(), emptyMap())
         val entries = mutableListOf<LibraryEntry>()
         var counts: Map<String, Int> = emptyMap()
@@ -228,6 +257,10 @@ object KitsuSync {
         // mappings along, so the payload is heavier.
         val limit = 200
         var guard = 0
+        // One preferences commit per page instead of the three or four this loop writes per entry.
+        // A library of any size wrote thousands of them back to back, and the queued whole-map
+        // clones behind each are what ran the heap out here — see [KitsuApi.SeedBatch].
+        val seeds = KitsuApi.SeedBatch()
         while (guard++ < 100) {
             val page = tryWithSuspend {
                 val url = "${Kitsu.API_URL}/library-entries" +
@@ -235,12 +268,22 @@ object KitsuSync {
                     "&filter%5Bkind%5D=${if (isAnime) "anime" else "manga"}" +
                     "&include=media,media.mappings" +
                     "&page%5Blimit%5D=$limit&page%5Boffset%5D=$offset"
+                // cacheTime = 0 for the same reason every other tracker's list read sets it: a
+                // comparison has to see the library as it is now, not as the shared client last
+                // saw it up to six hours ago.
                 json.decodeFromString<LibraryResponse>(
-                    ani.dantotsu.client.get(url, mapOf("Accept" to "application/vnd.api+json")).text
+                    ani.dantotsu.client.get(url, readHeaders(), cacheTime = 0).text
                 )
             } ?: break
             page.meta?.statusCounts?.let { counts = it }
-            val included = page.included.orEmpty().associateBy { it.id }
+            // Only the mapping rows. `included` is one flat array holding both the media and their
+            // mappings, and the two use separate id sequences that overlap heavily — a live page of
+            // 35 entries carries anime 1376/3936/5646 next to mappings 3020/412/1614. Keying the
+            // whole array by id alone let a media row land on a mapping's id and win, and the
+            // lookup below then found a media where it wanted a mapping, read no `externalSite`
+            // from it, and silently dropped that title's AniList/MAL ids.
+            val included = page.included.orEmpty().filter { it.type == "mappings" }
+                .associateBy { it.id }
             val media = page.included.orEmpty().filter { it.type == "anime" || it.type == "manga" }
                 .associateBy { it.id }
             page.data.orEmpty().forEach { e ->
@@ -258,15 +301,15 @@ object KitsuSync {
                         site.startsWith("myanimelist") -> mp.externalId?.toIntOrNull()?.let { mal = it }
                         // MangaUpdates ids are keyed here too — seed so MU→Kitsu resolution is a hit.
                         site.startsWith("mangaupdates") -> mp.externalId?.takeIf { it.isNotBlank() }
-                            ?.let { KitsuApi.seedMediaId("mangaupdates", it, mediaId) }
+                            ?.let { seeds.mediaId("mangaupdates", it, mediaId) }
                     }
                 }
                 val total = (if (isAnime) attrs?.episodeCount else attrs?.chapterCount) ?: 0
                 // Seed the resolution/total caches so the comparison's per-media lookups become
                 // cache hits for everything already in the library.
-                al?.let { KitsuApi.seedMediaId(KitsuApi.siteFor("anilist", isAnime), it.toString(), mediaId) }
-                mal?.let { KitsuApi.seedMediaId(KitsuApi.siteFor("myanimelist", isAnime), it.toString(), mediaId) }
-                KitsuApi.seedTotal(isAnime, mediaId, total)
+                al?.let { seeds.mediaId(KitsuApi.siteFor("anilist", isAnime), it.toString(), mediaId) }
+                mal?.let { seeds.mediaId(KitsuApi.siteFor("myanimelist", isAnime), it.toString(), mediaId) }
+                seeds.total(isAnime, mediaId, total)
                 entries += LibraryEntry(
                     entryId = e.id,
                     mediaId = mediaId,
@@ -284,8 +327,19 @@ object KitsuSync {
                     malId = mal,
                 )
             }
+            seeds.flush()
             if ((page.data?.size ?: 0) < limit) break
             offset += limit
+        }
+        seeds.flush()
+        // An empty library and a library we were not allowed to read look identical from here —
+        // both are a 200 with no rows — and the comparison renders either as "every title is
+        // missing from Kitsu". Say which one it was, since the difference is the whole diagnosis.
+        if (entries.isEmpty()) {
+            Logger.log(
+                "Kitsu: empty ${if (isAnime) "anime" else "manga"} library snapshot for user " +
+                    "$userId (signed in: ${Kitsu.token != null})"
+            )
         }
         return Snapshot(entries, counts)
     }

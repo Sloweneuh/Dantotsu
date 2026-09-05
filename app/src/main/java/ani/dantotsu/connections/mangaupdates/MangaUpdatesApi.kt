@@ -670,6 +670,10 @@ object MangaUpdates {
         volume: Int?
     ): Boolean {
         return tryWithSuspend {
+            // The token is restored in the background, so this has to wait for it — a write sent
+            // from an entry point that skipped the home screen would otherwise find no token and
+            // give up with only a log line. See [ani.dantotsu.connections.TrackerSessions].
+            ani.dantotsu.connections.TrackerSessions.await()
             if (token.isNullOrBlank()) {
                 Logger.log("MangaUpdates AddToList: No token available")
                 return@tryWithSuspend false
@@ -721,6 +725,7 @@ object MangaUpdates {
         volume: Int?
     ): Boolean {
         return tryWithSuspend {
+            ani.dantotsu.connections.TrackerSessions.await() // see addToList
             if (token.isNullOrBlank()) {
                 Logger.log("MangaUpdates UpdateProgress: No token available")
                 return@tryWithSuspend false
@@ -761,6 +766,7 @@ object MangaUpdates {
      */
     suspend fun removeFromList(seriesId: Long): Boolean {
         return tryWithSuspend {
+            ani.dantotsu.connections.TrackerSessions.await() // see addToList
             if (token.isNullOrBlank()) {
                 Logger.log("MangaUpdates RemoveFromList: No token available")
                 return@tryWithSuspend false

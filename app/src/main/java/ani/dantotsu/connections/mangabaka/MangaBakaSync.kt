@@ -2,6 +2,7 @@ package ani.dantotsu.connections.mangabaka
 
 import ani.dantotsu.Mapper
 import ani.dantotsu.asyncMap
+import ani.dantotsu.connections.TrackerSessions
 import ani.dantotsu.connections.anilist.api.FuzzyDate
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
@@ -34,8 +35,14 @@ object MangaBakaSync {
      * [force] bypasses the pref (used by explicit user actions like the list-compare screen), so it
      * only requires a token.
      */
-    fun isEnabled(force: Boolean = false): Boolean =
-        MangaBaka.token != null && (force || PrefManager.getVal(PrefName.MangaBakaListSyncEnabled))
+    suspend fun isEnabled(force: Boolean = false): Boolean {
+        // Suspends for the [MangaBaka.token] test: the token is restored in the background, and
+        // reading it too early answers "not signed in", which silently turns every push guarded by
+        // this into a no-op. Waiting here covers all of them. See [TrackerSessions].
+        TrackerSessions.await()
+        return MangaBaka.token != null &&
+            (force || PrefManager.getVal(PrefName.MangaBakaListSyncEnabled))
+    }
 
     /**
      * Pushes an AniList manga entry to MangaBaka, resolving the series by AniList id (falling back
@@ -198,6 +205,9 @@ object MangaBakaSync {
      * for totals even if a huge state can't be fully enumerated.
      */
     suspend fun getLibrarySnapshot(): LibrarySnapshot {
+        // Same wait as [isEnabled]: the headers come from the in-memory token, and a snapshot read
+        // too early is empty, which the comparison renders as "nothing is on MangaBaka".
+        TrackerSessions.await()
         val headers = MangaBaka.authHeaders() ?: return LibrarySnapshot(emptyList(), emptyMap())
         val perState = LIBRARY_STATES.asyncMap { state -> state to fetchState(headers, state) }
         return LibrarySnapshot(
@@ -248,6 +258,7 @@ object MangaBakaSync {
      */
     suspend fun getLibraryEntry(seriesId: Long): LibraryStateEntry? =
         tryWithSuspend {
+            TrackerSessions.await()
             val request = authedRequest(seriesId).get().build()
             val response = MangaBakaApi.execute(request)
             val body = response.body?.string()

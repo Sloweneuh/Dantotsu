@@ -3,11 +3,6 @@ package ani.dantotsu.connections.sync
 import android.content.Context
 import ani.dantotsu.App
 import ani.dantotsu.connections.anilist.Anilist
-import ani.dantotsu.connections.kitsu.Kitsu
-import ani.dantotsu.connections.mal.MAL
-import ani.dantotsu.connections.mangabaka.MangaBaka
-import ani.dantotsu.connections.mangaupdates.MangaUpdates
-import ani.dantotsu.connections.simkl.Simkl
 import ani.dantotsu.isOnline
 import ani.dantotsu.notifications.Task
 import ani.dantotsu.settings.saving.PrefManager
@@ -70,13 +65,11 @@ class AutoListSyncTask : Task {
                 record(0, 0)
                 return@withContext true
             }
-            MAL.getSavedToken()
-            Kitsu.getSavedToken()
-            Simkl.getSavedToken()
-            MangaBaka.getSavedToken()
-            if (PrefManager.getVal<Boolean>(PrefName.MangaUpdatesListEnabled)) {
-                MangaUpdates.getSavedToken()
-            }
+            // This ran in a worker process that had never been near the home screen, so it always
+            // had to restore the sessions itself — a third copy of the same code, and one that
+            // could race the app's own restore into refreshing the same expired token twice.
+            // [TrackerSessions] is now the one place that does it.
+            ani.dantotsu.connections.TrackerSessions.await()
 
             val sections = ListCompare.availableSections().filter { allowed(it) }
             if (sections.isEmpty()) {

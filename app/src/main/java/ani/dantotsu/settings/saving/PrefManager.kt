@@ -242,6 +242,63 @@ object PrefManager {
     fun customValExists(key: String): Boolean = irrelevantPreferences?.contains(key) ?: false
 
     /**
+     * Key prefixes for the trackers' id-resolution caches, none of which are read from here any
+     * more — they live in [ani.dantotsu.connections.IdCache] now, which bounds them and keeps them
+     * out of the preferences map entirely. See that class for why they had to move.
+     *
+     * The first three were already dead before the move: each was retired by bumping the prefix in
+     * its own file, which left every key the old prefix had written behind for good, because
+     * nothing ever deleted them.
+     *
+     * Everything here is derived data, so dropping it costs a lookup the next time it is wanted and
+     * nothing more — there is deliberately no migration of the old values into the new store.
+     */
+    private val STALE_CUSTOM_PREFIXES = listOf(
+        "kitsu_media2_",        // retired generation of kitsu_media3_
+        "simkl_id_",            // retired generation of simkl_id2_
+        "simkl_eps_",           // retired generation of simkl_eps2_
+        "kitsu_media3_",        // the rest moved to IdCache
+        "kitsu_total2_",
+        "simkl_id2_",
+        "simkl_eps2_",
+        "mangabaka_series_",
+        "mangabaka_al_",
+        "mangabaka_mal_",
+        "mangabaka_mu_",
+        "mu_mal_id_",
+    )
+
+    /** Bump alongside [STALE_CUSTOM_PREFIXES] to sweep a newly retired set of keys. */
+    private const val STALE_PRUNE_VERSION = 2
+
+    /**
+     * Drops the keys listed in [STALE_CUSTOM_PREFIXES], once per version.
+     *
+     * They hold one key per media and never expired, so the Irrelevant file grew into tens of
+     * thousands of entries on a device that syncs its lists — and that whole map is resident for
+     * the life of the process, re-serialised in full on every write, cloned in full by
+     * `SharedPreferences.apply()` whenever a write is already in flight, packaged into every backup
+     * and walked by every cloud progress sync. All of that for keys nothing here consults now.
+     *
+     * Must not run on the main thread: reading `all` copies the entire map.
+     */
+    fun pruneStaleCustomVals() {
+        val prefs = irrelevantPreferences ?: return
+        if (getVal<Int>(PrefName.CustomValPruneVersion) >= STALE_PRUNE_VERSION) return
+        val dead = prefs.all.keys.filter { key ->
+            STALE_CUSTOM_PREFIXES.any { key.startsWith(it) }
+        }
+        if (dead.isNotEmpty()) {
+            with(prefs.edit()) {
+                dead.forEach { remove(it) }
+                apply()
+            }
+        }
+        setVal(PrefName.CustomValPruneVersion, STALE_PRUNE_VERSION)
+        Logger.log("PrefManager: pruned ${dead.size} stale cached ids")
+    }
+
+    /**
      * Batched form of [setCustomVal]/[removeCustomVal]: writes every entry through a single
      * [SharedPreferences.Editor] and one `apply()` call.
      *

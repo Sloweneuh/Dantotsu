@@ -2,7 +2,7 @@ package ani.dantotsu.connections.mangabaka
 
 import ani.dantotsu.Mapper
 import ani.dantotsu.okHttpClient
-import ani.dantotsu.settings.saving.PrefManager
+import ani.dantotsu.connections.IdCache
 import ani.dantotsu.tryWithSuspend
 import ani.dantotsu.util.Logger
 import kotlinx.coroutines.Dispatchers
@@ -82,7 +82,7 @@ object MangaBakaApi {
      */
     suspend fun resolveSeriesId(source: Source, id: Long): Long? {
         val cacheKey = "$CACHE_PREFIX${source.path}_$id"
-        val cached = PrefManager.getCustomVal(cacheKey, 0L)
+        val cached = IdCache.getLong(cacheKey) ?: 0L
         if (cached > 0L) return cached
         if (cacheKey in negativeCache) return null
 
@@ -90,7 +90,7 @@ object MangaBakaApi {
         val resolved = match.resolvedId()
 
         if (resolved != null) {
-            PrefManager.setCustomVal(cacheKey, resolved)
+            IdCache.put(cacheKey, resolved)
         } else {
             negativeCache.add(cacheKey)
         }
@@ -124,8 +124,8 @@ object MangaBakaApi {
     suspend fun getCrossIdsFromMangaUpdates(muSeriesId: Long): MuCrossIds {
         val alKey = "$AL_CACHE_PREFIX${Source.MANGAUPDATES.path}_$muSeriesId"
         val malKey = "$MAL_CACHE_PREFIX${Source.MANGAUPDATES.path}_$muSeriesId"
-        val cachedAl = PrefManager.getCustomVal(alKey, 0).takeIf { it > 0 }
-        val cachedMal = PrefManager.getCustomVal(malKey, 0).takeIf { it > 0 }
+        val cachedAl = IdCache.getInt(alKey)?.takeIf { it > 0 }
+        val cachedMal = IdCache.getInt(malKey)?.takeIf { it > 0 }
         // Each id is settled once it's either cached or known to be absent; only ask MangaBaka again
         // while something is still unknown.
         if ((cachedAl != null || alKey in negativeCache) && (cachedMal != null || malKey in negativeCache)) {
@@ -136,11 +136,11 @@ object MangaBakaApi {
         val source = match?.source
         val anilistId = source?.anilist?.id?.takeIf { it > 0 }
         val malId = source?.myAnimeList?.id?.takeIf { it > 0 }
-        if (anilistId != null) PrefManager.setCustomVal(alKey, anilistId) else negativeCache.add(alKey)
-        if (malId != null) PrefManager.setCustomVal(malKey, malId) else negativeCache.add(malKey)
+        if (anilistId != null) IdCache.put(alKey, anilistId) else negativeCache.add(alKey)
+        if (malId != null) IdCache.put(malKey, malId) else negativeCache.add(malKey)
 
         val seriesKey = "$CACHE_PREFIX${Source.MANGAUPDATES.path}_$muSeriesId"
-        match.resolvedId()?.let { PrefManager.setCustomVal(seriesKey, it) }
+        match.resolvedId()?.let { IdCache.put(seriesKey, it) }
             ?: negativeCache.add(seriesKey)
         return MuCrossIds(anilistId, malId)
     }
@@ -173,13 +173,13 @@ object MangaBakaApi {
 
     private suspend fun resolveMangaUpdatesId(source: Source, id: Long): Long? {
         val cacheKey = "$MU_CACHE_PREFIX${source.path}_$id"
-        val cached = PrefManager.getCustomVal(cacheKey, 0L)
+        val cached = IdCache.getLong(cacheKey) ?: 0L
         if (cached > 0L) return cached
         if (cacheKey in negativeCache) return null
 
         val muId = lookupSeries(source, id)?.source?.mangaUpdates?.toMuSeriesId()
         if (muId != null && muId > 0) {
-            PrefManager.setCustomVal(cacheKey, muId)
+            IdCache.put(cacheKey, muId)
         } else {
             negativeCache.add(cacheKey)
         }

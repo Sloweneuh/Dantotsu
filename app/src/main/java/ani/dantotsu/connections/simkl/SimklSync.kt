@@ -2,6 +2,7 @@ package ani.dantotsu.connections.simkl
 
 import ani.dantotsu.Mapper
 import ani.dantotsu.client
+import ani.dantotsu.connections.TrackerSessions
 import ani.dantotsu.okHttpClient
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
@@ -30,9 +31,16 @@ import okhttp3.RequestBody.Companion.toRequestBody
 object SimklSync {
     private val JSON = "application/json".toMediaTypeOrNull()
 
-    fun isEnabled(force: Boolean = false): Boolean =
-        Simkl.token != null && Simkl.isConfigured() &&
+    /**
+     * Suspends on account of the [Simkl.token] test — the token is restored in the background, so
+     * checking before that finishes reports the tracker as off and the push guarded by this does
+     * nothing at all. Waiting here covers every write path at once. See [TrackerSessions].
+     */
+    suspend fun isEnabled(force: Boolean = false): Boolean {
+        TrackerSessions.await()
+        return Simkl.token != null && Simkl.isConfigured() &&
             (force || PrefManager.getVal(PrefName.SimklListSyncEnabled))
+    }
 
     // ---- pushes ----
 
@@ -159,6 +167,9 @@ object SimklSync {
 
     /** The user's whole Simkl anime library, flattened for the comparison. */
     suspend fun getLibrary(): List<LibraryEntry> {
+        // Same wait: the header is built from the in-memory token, and a library read too early
+        // comes back empty, which the comparison renders as "nothing is on Simkl".
+        TrackerSessions.await()
         val header = Simkl.authHeader ?: return emptyList()
         val res = tryWithSuspend {
             client.get(

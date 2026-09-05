@@ -5,6 +5,7 @@ import ani.dantotsu.connections.anilist.api.FuzzyDate
 import ani.dantotsu.connections.comick.ComickApi
 import ani.dantotsu.connections.mal.MAL
 import ani.dantotsu.connections.mangabaka.MangaBakaApi
+import ani.dantotsu.connections.IdCache
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 
@@ -43,7 +44,7 @@ suspend fun resolveMuMalId(
 
     val malId = MangaBakaApi.getCrossIdsFromMangaUpdates(muSeriesId).malId
         ?: comickMalId(muSeriesId, titles, comickSlug, comickFallback)
-    if (malId != null) PrefManager.setCustomVal(cacheKey, malId)
+    if (malId != null) IdCache.put(cacheKey, malId)
     // Only a complete attempt settles a series as unlinkable. A [comickFallback]-less pass never
     // tried Comick, so recording its miss would stop the info tab and progress updates from doing
     // the search they're willing to pay for.
@@ -56,7 +57,7 @@ suspend fun resolveMuMalId(
  * caller has resolved one, since [resolveMuMalId] caches its answers in prefs.
  */
 fun cachedMuMalId(muSeriesId: Long): Int? =
-    PrefManager.getCustomVal("$PREF_MU_MAL_ID_PREFIX$muSeriesId", 0).takeIf { it > 0 }
+    IdCache.getInt("$PREF_MU_MAL_ID_PREFIX$muSeriesId")?.takeIf { it > 0 }
 
 /**
  * Titles to try when matching a MangaUpdates-backed [ani.dantotsu.media.Media] on Comick,
