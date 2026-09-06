@@ -20,7 +20,6 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
 import ani.dantotsu.R
 import ani.dantotsu.Refresh
-import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.databinding.ActivityListBinding
 import ani.dantotsu.dismissKeyboard
@@ -146,27 +145,22 @@ class ListActivity : AppCompatActivity() {
                         ?: emptyList()
                 ).map { it.id }.toSet()
 
-                binding.listProgressBar.visibility = View.VISIBLE
-                scope.launch {
-                    val sequels = withContext(Dispatchers.IO) {
-                        Anilist.query.getMissingSequels(completedIds, existingIds)
-                    }
-                    binding.listProgressBar.visibility = View.GONE
-                    if (sequels.isEmpty()) {
-                        toast(getString(R.string.no_missing_sequels_found))
-                        return@launch
-                    }
-
-                    ani.dantotsu.media.MediaListViewActivity.passedMedia = ArrayList(sequels)
-                    val intent = android.content.Intent(
-                        this@ListActivity,
-                        ani.dantotsu.media.MediaListViewActivity::class.java
-                    ).putExtra(
-                        "title",
-                        getString(R.string.missing_sequels_title, if (anime) getString(R.string.anime) else getString(R.string.manga))
-                    ).putExtra("isAnime", anime)
-                    startActivity(intent)
-                }
+                // Hand the sequel lookup to the list screen so it runs behind that screen's
+                // spinner, the same way a MAL stack resolves itself — rather than holding the
+                // user on the Completed list for the whole round-trip. The id lists go through
+                // statics: a full library can be long enough to strain the intent Bundle.
+                // See [MediaListViewActivity.loadMissingSequels].
+                ani.dantotsu.media.MediaListViewActivity.pendingSequelSourceIds = completedIds
+                ani.dantotsu.media.MediaListViewActivity.pendingSequelExistingIds = existingIds
+                val intent = android.content.Intent(
+                    this@ListActivity,
+                    ani.dantotsu.media.MediaListViewActivity::class.java
+                ).putExtra(
+                    "title",
+                    getString(R.string.missing_sequels_title, if (anime) getString(R.string.anime) else getString(R.string.manga))
+                ).putExtra("isAnime", anime)
+                    .putExtra("missingSequels", true)
+                startActivity(intent)
             }
             dialog.show(supportFragmentManager, "missing_sequels_confirm")
         }
