@@ -312,6 +312,16 @@
             android:name=".util.ActivityMarkdownCreator"
             android:windowSoftInputMode="adjustResize|stateVisible" />
         <activity android:name=".parsers.ParserTestActivity" />
+        <!-- OCR detection spike; delete with ani.dantotsu.spike -->
+        <activity android:name=".spike.MangaOcrSpikeActivity" />
+        <!--
+          Unbundled ML Kit keeps the OCR engine and its script models in Play Services rather than
+          in the apk. This asks for them at install time, so the first page measured does not wait
+          on a download. Delete alongside ani.dantotsu.spike.
+        -->
+        <meta-data
+            android:name="com.google.mlkit.vision.DEPENDENCIES"
+            android:value="ocr,ocr_japanese,ocr_korean,ocr_chinese" />
         <activity
             android:name=".media.ReviewActivity"
             android:parentActivityName=".media.MediaDetailsActivity" />

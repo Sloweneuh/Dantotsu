@@ -1,0 +1,365 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+  OCR detection spike. Throwaway: delete alongside ani.dantotsu.spike.
+-->
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/ocrSpikeContainer"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- Toolbar -->
+        <FrameLayout
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="48dp">
+
+            <ImageView
+                android:id="@+id/backButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="start|center_vertical"
+                android:layout_marginStart="12dp"
+                android:contentDescription="@string/app_name"
+                android:src="@drawable/ic_round_arrow_back_ios_new_24"
+                app:tint="?attr/colorOnBackground" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_marginStart="44dp"
+                android:ellipsize="end"
+                android:fontFamily="@font/poppins_bold"
+                android:gravity="center_vertical|start"
+                android:singleLine="true"
+                android:text="@string/ocr_spike"
+                android:textColor="?attr/colorOnBackground"
+                android:textSize="18sp" />
+        </FrameLayout>
+
+        <!-- Source script + page picker -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginEnd="16dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="2dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/poppins_semi_bold"
+                    android:text="@string/ocr_spike_source_script"
+                    android:textColor="?attr/colorOnBackground"
+                    android:textSize="14sp" />
+
+                <Spinner
+                    android:id="@+id/scriptSpinner"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/pickPageButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:fontFamily="@font/poppins_semi_bold"
+                    android:text="@string/ocr_spike_pick_page"
+                    app:icon="@drawable/ic_round_image_search_24" />
+
+                <TextView
+                    android:id="@+id/summaryText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:fontFamily="monospace"
+                    android:textColor="?attr/colorOnBackground"
+                    android:textSize="12sp"
+                    tools:text="14 blocks · 9 dialogue / 3 sfx / 2 over art" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <ProgressBar
+            android:id="@+id/ocrProgress"
+            style="?android:attr/progressBarStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="16dp"
+            android:visibility="gone"
+            tools:visibility="visible" />
+
+        <!--
+          Drag a block to move it, a corner handle to resize. Empty space scrolls the page unless
+          drawing is armed with the button below. The metrics follow the drag, which is the point:
+          the ring statistic is far easier to understand by moving a box off a bubble and onto
+          artwork than by guessing at a threshold for it.
+        -->
+        <ani.dantotsu.spike.BlockEditorView
+            android:id="@+id/pageImage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="16dp"
+            android:layout_marginEnd="16dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="2dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:id="@+id/selectionText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="monospace"
+                    android:textColor="?attr/colorOnBackground"
+                    android:textIsSelectable="true"
+                    android:textSize="12sp"
+                    tools:text="Tap a block to inspect it." />
+
+                <!--
+                  Drawing has to be armed. A page at full width fills the screen, so if every drag
+                  on empty space drew a box the page could not be scrolled at all. One box per arm,
+                  so a mode left on by accident cannot go on eating scrolls.
+                -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/addBlockButton"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:fontFamily="@font/poppins_semi_bold"
+                    android:text="@string/ocr_spike_add_block" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/reOcrButton"
+                        style="@style/Widget.Material3.Button.TonalButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="4dp"
+                        android:layout_weight="1"
+                        android:enabled="false"
+                        android:fontFamily="@font/poppins_semi_bold"
+                        android:text="@string/ocr_spike_re_ocr" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/deleteBlockButton"
+                        style="@style/Widget.Material3.Button.TextButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="4dp"
+                        android:layout_weight="1"
+                        android:enabled="false"
+                        android:fontFamily="@font/poppins_semi_bold"
+                        android:text="@string/ocr_spike_delete_block" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Live thresholds: these re-classify the blocks already recognised, no re-OCR -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="16dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="2dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/poppins_bold"
+                    android:text="@string/ocr_spike_thresholds"
+                    android:textColor="?attr/colorOnBackground"
+                    android:textSize="16sp" />
+
+                <TextView
+                    android:id="@+id/glyphLabel"
+                    style="@style/OcrSpikeSliderLabel"
+                    tools:text="SFX glyph height: 6.0% of page" />
+
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/glyphSlider"
+                    style="@style/OcrSpikeSlider"
+                    android:stepSize="0.5"
+                    android:value="6"
+                    android:valueFrom="1"
+                    android:valueTo="20" />
+
+                <TextView
+                    android:id="@+id/confLabel"
+                    style="@style/OcrSpikeSliderLabel"
+                    tools:text="Min confidence: 0.50" />
+
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/confSlider"
+                    style="@style/OcrSpikeSlider"
+                    android:stepSize="0.05"
+                    android:value="0.3"
+                    android:valueFrom="0"
+                    android:valueTo="1" />
+
+                <TextView
+                    android:id="@+id/kataLabel"
+                    style="@style/OcrSpikeSliderLabel"
+                    tools:text="Katakana ratio: 80%" />
+
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/kataSlider"
+                    style="@style/OcrSpikeSlider"
+                    android:stepSize="5"
+                    android:value="80"
+                    android:valueFrom="0"
+                    android:valueTo="100" />
+
+                <!--
+                  Off by default. Requiring a bright ring rejected white-on-black dialogue, which
+                  is a bubble in every sense that matters here — uniform, and safe to paint on.
+                -->
+                <TextView
+                    android:id="@+id/ringBrightLabel"
+                    style="@style/OcrSpikeSliderLabel"
+                    tools:text="Min ring median: off (light bubbles only)" />
+
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/ringBrightSlider"
+                    style="@style/OcrSpikeSlider"
+                    android:stepSize="5"
+                    android:value="0"
+                    android:valueFrom="0"
+                    android:valueTo="255" />
+
+                <!--
+                  Interquartile range, not standard deviation: a ring is mostly bubble interior
+                  with a minority of ink from the bubble outline, and an SD is at the mercy of that
+                  minority where a quartile range is not.
+                -->
+                <TextView
+                    android:id="@+id/ringIqrLabel"
+                    style="@style/OcrSpikeSliderLabel"
+                    tools:text="Ring IQR: 20" />
+
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/ringIqrSlider"
+                    style="@style/OcrSpikeSlider"
+                    android:stepSize="5"
+                    android:value="20"
+                    android:valueFrom="0"
+                    android:valueTo="150" />
+
+                <!--
+                  Ring thickness in glyph widths. Padding by a fraction of the block instead was
+                  what misread a whole page of bubbled dialogue as artwork: a tall vertical column
+                  padded by a quarter of its own height samples well past its bubble.
+                -->
+                <TextView
+                    android:id="@+id/ringPadLabel"
+                    style="@style/OcrSpikeSliderLabel"
+                    tools:text="Ring pad: 1.00× glyph" />
+
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/ringPadSlider"
+                    style="@style/OcrSpikeSlider"
+                    android:stepSize="0.25"
+                    android:value="0.5"
+                    android:valueFrom="0.25"
+                    android:valueTo="4" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/resetThresholdsButton"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:fontFamily="@font/poppins_semi_bold"
+                    android:text="@string/ocr_spike_reset" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Per-block metrics -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="2dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/poppins_bold"
+                    android:text="@string/ocr_spike_blocks"
+                    android:textColor="?attr/colorOnBackground"
+                    android:textSize="16sp" />
+
+                <HorizontalScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp">
+
+                    <TextView
+                        android:id="@+id/reportText"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="monospace"
+                        android:textColor="?attr/colorOnBackground"
+                        android:textIsSelectable="true"
+                        android:textSize="11sp"
+                        tools:text="#1  DIALOGUE  glyph 2.4%" />
+                </HorizontalScrollView>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/copyReportButton"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:fontFamily="@font/poppins_semi_bold"
+                    android:text="@string/ocr_spike_copy_report" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

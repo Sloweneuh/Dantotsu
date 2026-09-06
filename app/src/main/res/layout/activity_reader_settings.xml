@@ -809,6 +809,39 @@
                     android:text="@string/preload_amount_info"
                     android:textSize="14sp" />
 
+                <!-- OCR detection calibration; delete with ani.dantotsu.spike -->
+                <TextView
+                    android:id="@+id/readerSettingsOcrCalibration"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:drawableStart="@drawable/ic_round_translate_24"
+                    android:drawablePadding="16dp"
+                    android:elegantTextHeight="true"
+                    android:focusable="true"
+                    android:fontFamily="@font/poppins_bold"
+                    android:gravity="center_vertical|start"
+                    android:minHeight="64dp"
+                    android:paddingStart="32dp"
+                    android:paddingEnd="32dp"
+                    android:text="@string/ocr_spike"
+                    android:textAlignment="viewStart"
+                    android:textColor="?attr/colorOnBackground"
+                    app:drawableTint="?attr/colorPrimary" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="-8dp"
+                    android:layout_marginBottom="8dp"
+                    android:alpha="0.58"
+                    android:fontFamily="@font/poppins_family"
+                    android:paddingStart="32dp"
+                    android:paddingEnd="32dp"
+                    android:text="@string/ocr_spike_desc"
+                    android:textSize="14sp" />
+
             </ani.dantotsu.others.Xpandable>
 
             <ani.dantotsu.others.Xpandable

@@ -499,6 +499,18 @@ object BackupTree {
                         BackupItem(PrefName.CropBorderThreshold, R.string.backup_crop_sensitivity),
                     )
                 ),
+                BackupSubCategory(
+                    "reader_ocr", R.string.backup_sub_ocr,
+                    R.string.backup_sub_ocr_desc,
+                    listOf(
+                        BackupItem(PrefName.OcrSfxGlyphPercent, R.string.ocr_backup_glyph),
+                        BackupItem(PrefName.OcrMinConfidence, R.string.ocr_backup_confidence),
+                        BackupItem(PrefName.OcrKatakanaPercent, R.string.ocr_backup_katakana),
+                        BackupItem(PrefName.OcrMinRingMedian, R.string.ocr_backup_min_median),
+                        BackupItem(PrefName.OcrRingIqr, R.string.ocr_backup_iqr),
+                        BackupItem(PrefName.OcrRingPad, R.string.ocr_backup_pad),
+                    )
+                ),
             )
         ),
         BackupCategory(

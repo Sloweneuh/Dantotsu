@@ -242,6 +242,19 @@ dependencies {
     // promise job queue, so `await` never returns, and every LNReader entry point is async.
     implementation 'wang.harlon.quickjs:wrapper-android:3.2.0'
 
+//  ML Kit text recognition, unbundled: the engine and the script models are served by Play
+//  Services rather than packed into the apk. The bundled `com.google.mlkit:text-recognition-*`
+//  artifacts were measured at 43.3 MB here, and 41 MB of that was one native library —
+//  libmlkit_google_ocr_pipeline.so — duplicated across all four abis, since this app ships a
+//  universal apk with no splits. The script models themselves were only ~3 MB and mostly shared,
+//  so the four scripts are nearly free either way; the engine was the entire cost. The recognizer
+//  api is identical between the two, so only these coordinates change. The trade is that the
+//  models download on first use; the manifest asks Play Services to fetch them at install time.
+    implementation 'com.google.android.gms:play-services-mlkit-text-recognition:19.0.1'
+    implementation 'com.google.android.gms:play-services-mlkit-text-recognition-japanese:16.0.1'
+    implementation 'com.google.android.gms:play-services-mlkit-text-recognition-korean:16.0.1'
+    implementation 'com.google.android.gms:play-services-mlkit-text-recognition-chinese:16.0.1'
+
 }
 
 

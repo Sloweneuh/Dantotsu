@@ -1743,6 +1743,65 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="extension_type">Extension Type</string>
     <string name="extension_test">Extension Test</string>
     <string name="extension_test_desc">Test if the extensions are working</string>
+    <!-- OCR detection spike; delete with ani.dantotsu.spike -->
+    <string name="ocr_spike">OCR Detection Test</string>
+    <string name="ocr_spike_desc">Measure ML Kit text detection on a manga page</string>
+    <string name="ocr_spike_reset">Reset to defaults</string>
+    <string name="ocr_spike_reset_done">Thresholds reset to defaults</string>
+    <string name="backup_sub_ocr">Text detection</string>
+    <string name="backup_sub_ocr_desc">Calibrated OCR detection thresholds</string>
+    <string name="ocr_backup_glyph">SFX glyph height</string>
+    <string name="ocr_backup_confidence">Minimum confidence</string>
+    <string name="ocr_backup_katakana">Katakana ratio</string>
+    <string name="ocr_backup_min_median">Minimum ring median</string>
+    <string name="ocr_backup_iqr">Ring IQR</string>
+    <string name="ocr_backup_pad">Ring padding</string>
+    <string name="ocr_spike_source_script">Source script</string>
+    <string name="ocr_spike_pick_page">Pick a raw page</string>
+    <string name="ocr_spike_pick_prompt">Pick a raw page to measure.</string>
+    <string name="ocr_spike_thresholds">Thresholds</string>
+    <string name="ocr_spike_blocks">Blocks</string>
+    <string name="ocr_spike_copy_report">Copy report</string>
+    <string name="ocr_spike_add_block">Add a block</string>
+    <string name="ocr_spike_add_block_armed">Drawing — drag a box on the page</string>
+    <string name="ocr_spike_re_ocr">Re-OCR</string>
+    <string name="ocr_spike_delete_block">Delete</string>
+    <string name="ocr_spike_hint">Tap a block to inspect it.\nDrag it to move, corners to resize. Use “Add a block” to draw a new one.</string>
+    <string name="ocr_spike_failed">OCR failed: %1$s</string>
+    <string name="ocr_spike_no_page">No page measured yet.</string>
+    <string name="ocr_spike_no_blocks">no blocks recognised</string>
+    <string name="ocr_spike_nothing_recognised">(nothing recognised)</string>
+    <string name="ocr_spike_hand_drawn">hand-drawn</string>
+    <string name="ocr_spike_line_reordered">re-ordered</string>
+    <string name="ocr_spike_label_glyph">SFX glyph height   ≥ %1$.1f%% of page</string>
+    <string name="ocr_spike_label_confidence">Min confidence     &lt; %1$.2f is unusable</string>
+    <string name="ocr_spike_label_katakana">Katakana ratio     ≥ %1$.0f%%</string>
+    <string name="ocr_spike_label_min_median_off">Min ring median    off (light bubbles only)</string>
+    <string name="ocr_spike_label_min_median">Min ring median    ≥ %1$.0f</string>
+    <string name="ocr_spike_label_iqr">Ring IQR           ≤ %1$.0f</string>
+    <string name="ocr_spike_label_pad">Ring pad           %1$.2f× glyph</string>
+    <string name="ocr_spike_counts">%1$d blocks — %2$d dialogue / %3$d sfx / %4$d low-conf / %5$d over art</string>
+    <string name="ocr_spike_page_info">page %1$d×%2$d — OCR %3$d ms</string>
+    <string name="ocr_spike_reordered_count">%1$d vertical blocks re-ordered right-to-left</string>
+    <string name="ocr_spike_hand_drawn_count">%1$d hand-drawn</string>
+    <string name="ocr_spike_symbols_empty">symbols EMPTY — line-box fallback in use</string>
+    <string name="ocr_spike_reason_iqr">ring iqr %1$.0f > %2$.0f</string>
+    <string name="ocr_spike_reason_median">ring median %1$.0f &lt; %2$.0f</string>
+    <string name="ocr_spike_reason_confidence">conf %1$.2f &lt; %2$.2f</string>
+    <string name="ocr_spike_reason_glyph">glyph %1$.2f%% ≥ %2$.1f%%</string>
+    <string name="ocr_spike_reason_katakana">katakana %1$.0f%% ≥ %2$.0f%% at %3$.2f%% glyph</string>
+    <string name="ocr_spike_reason_pass">passes every test</string>
+    <string name="ocr_spike_selection_metrics">  glyph %1$.2f%%  conf %2$.2f  angle %3$.1f  kata %4$d%%  %5$d line(s)%6$s</string>
+    <string name="ocr_spike_selection_ring">  ring median %1$d  iqr %2$d   (mean %3$d, sd %4$d)</string>
+    <string name="ocr_spike_selection_size">  %1$d×%2$d px%3$s</string>
+    <!--
+      The per-block dump below is aligned monospace diagnostics rather than prose: translating it
+      would break the columns and the field names are the metric names used throughout the code.
+    -->
+    <string name="ocr_spike_report_header" translatable="false">--- OCR spike ---</string>
+    <string name="ocr_spike_report_page" translatable="false">page %1$d×%2$d, OCR %3$d ms</string>
+    <string name="ocr_spike_report_thresholds" translatable="false">thresholds: glyph≥%1$.1f%% conf&lt;%2$.2f kata≥%3$.0f%% iqr≤%4$.0f minmed%5$.0f pad%6$.2f×</string>
+    <string name="ocr_spike_report_line" translatable="false">#%1$-3d %2$s glyph %3$5.2f%% conf %4$.2f angle %5$6.1f kata %6$3d%% ring med%7$3d iqr%8$3d (sd%9$3d) %10$s%11$s%12$s %13$s</string>
     <string name="start_test">Start Test</string>
     <string name="no_extensions_selected">No extensions selected</string>
     <string name="ping_success">Ping successful: %1$s ms</string>

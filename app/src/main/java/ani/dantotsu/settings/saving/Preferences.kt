@@ -307,6 +307,19 @@ enum class PrefName(val data: Pref) {
     LockRotation(Pref(Location.Reader, Boolean::class, true)),
     PreloadAmount(Pref(Location.Reader, Int::class, 5)),
 
+    // Text-detection thresholds, calibrated in ani.dantotsu.spike.MangaOcrSpikeActivity. Every
+    // default here was measured on real pages rather than picked: dialogue glyphs clustered at
+    // 0.84-1.98% of page height against one sound effect at 2.91%, correct text ran down to 0.37
+    // confidence while garbled text scored 0.18-0.23, and a bubble's ring reads under 20 iqr where
+    // artwork runs 28-154. OcrMinRingMedian is 0 (off) on purpose — requiring a *bright* ring
+    // rejected white-on-black dialogue, and uniformity alone is the property that matters.
+    OcrSfxGlyphPercent(Pref(Location.Reader, Float::class, 6f)),
+    OcrMinConfidence(Pref(Location.Reader, Float::class, 0.3f)),
+    OcrKatakanaPercent(Pref(Location.Reader, Float::class, 80f)),
+    OcrMinRingMedian(Pref(Location.Reader, Float::class, 0f)),
+    OcrRingIqr(Pref(Location.Reader, Float::class, 20f)),
+    OcrRingPad(Pref(Location.Reader, Float::class, 0.5f)),
+
     //Novel Reader
     CurrentThemeName(Pref(Location.NovelReader, String::class, "Default")),
     LayoutNovel(Pref(Location.NovelReader, Int::class, 0)),

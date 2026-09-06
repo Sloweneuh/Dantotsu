@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+  OCR detection spike. Throwaway: delete alongside ani.dantotsu.spike.
+-->
+<resources>
+
+    <style name="OcrSpikeSliderLabel">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">12dp</item>
+        <item name="android:fontFamily">monospace</item>
+        <item name="android:textColor">?attr/colorOnBackground</item>
+        <item name="android:textSize">12sp</item>
+    </style>
+
+    <style name="OcrSpikeSlider" parent="Widget.Material3.Slider">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+    </style>
+
+</resources>

@@ -1,5 +1,6 @@
 package ani.dantotsu.settings
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
@@ -19,6 +20,7 @@ import ani.dantotsu.others.Xpandable
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.snackString
+import ani.dantotsu.spike.MangaOcrSpikeActivity
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
 
@@ -462,6 +464,11 @@ class ReaderSettingsActivity : AppCompatActivity() {
         binding.LNvolumeButton.setOnCheckedChangeListener { _, isChecked ->
             defaultSettingsLN.volumeButtons = isChecked
             PrefManager.setVal(PrefName.VolumeButtonsNovel, isChecked)
+        }
+
+        // OCR detection calibration; delete with ani.dantotsu.spike
+        binding.readerSettingsOcrCalibration.setOnClickListener {
+            startActivity(Intent(this, MangaOcrSpikeActivity::class.java))
         }
 
         binding.LNtextToSpeech.setOnClickListener {
