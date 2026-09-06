@@ -142,6 +142,10 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
         binding.extensionInfoBack.updateLayoutParams<ViewGroup.MarginLayoutParams> {
             topMargin += statusBarHeight
         }
+        binding.quickSettings.root.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+            topMargin += statusBarHeight
+        }
+        binding.quickSettings.bindQuickSettings(this)
         binding.extensionInfoBack.enableSettingsLongPress()
         binding.extensionInfoBack.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
 
