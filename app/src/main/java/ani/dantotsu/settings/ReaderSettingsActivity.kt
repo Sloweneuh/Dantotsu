@@ -2,16 +2,21 @@ package ani.dantotsu.settings
 
 import android.content.Intent
 import android.os.Bundle
+import android.text.util.Linkify
 import android.view.View
 import android.view.ViewGroup
 import android.widget.AdapterView
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
+import androidx.lifecycle.lifecycleScope
 import ani.dantotsu.NoPaddingArrayAdapter
 import androidx.recyclerview.widget.LinearLayoutManager
 import ani.dantotsu.R
 import ani.dantotsu.restartApp
 import ani.dantotsu.databinding.ActivityReaderSettingsBinding
+import ani.dantotsu.databinding.DialogUserAgentBinding
 import ani.dantotsu.media.novel.novelreader.NovelReaderActivity
 import ani.dantotsu.media.novel.novelreader.NovelTtsSettingsBottomSheet
 import ani.dantotsu.initActivity
@@ -20,9 +25,13 @@ import ani.dantotsu.others.Xpandable
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.snackString
+import ani.dantotsu.spike.LlmTranslator
 import ani.dantotsu.spike.MangaOcrSpikeActivity
+import ani.dantotsu.spike.TranslationEngine
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
+import ani.dantotsu.util.customAlertDialog
+import kotlinx.coroutines.launch
 
 class ReaderSettingsActivity : AppCompatActivity() {
     lateinit var binding: ActivityReaderSettingsBinding
@@ -466,10 +475,20 @@ class ReaderSettingsActivity : AppCompatActivity() {
             PrefManager.setVal(PrefName.VolumeButtonsNovel, isChecked)
         }
 
-        // OCR detection calibration; delete with ani.dantotsu.spike
+        // OCR & MTL; delete with ani.dantotsu.spike
         binding.readerSettingsOcrCalibration.setOnClickListener {
             startActivity(Intent(this, MangaOcrSpikeActivity::class.java))
         }
+        bindOcrKey(
+            TranslationEngine.GEMINI,
+            binding.readerSettingsGeminiKey,
+            binding.readerSettingsGeminiKeyState,
+        )
+        bindOcrKey(
+            TranslationEngine.OPENROUTER,
+            binding.readerSettingsOpenRouterKey,
+            binding.readerSettingsOpenRouterKeyState,
+        )
 
         binding.LNtextToSpeech.setOnClickListener {
             NovelTtsSettingsBottomSheet.newInstance()
@@ -542,5 +561,95 @@ class ReaderSettingsActivity : AppCompatActivity() {
         )
         binding.settingsRecyclerView.layoutManager =
             LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false)
+    }
+
+    // -----------------------------------------------------------------------------------------
+    // OCR & MTL keys; delete with ani.dantotsu.spike
+    // -----------------------------------------------------------------------------------------
+
+    /**
+     * Wires one provider's key row.
+     *
+     * A key is write-once: entered, checked against the provider, and from then on only removable.
+     * There is no editing step because there is nothing to edit — a key is opaque, so "changing"
+     * one means pasting a different one, which is a remove and an add. Offering a pre-filled box
+     * instead would put the existing secret back on screen for no gain, and invite a half-edited
+     * key being saved without ever being checked.
+     */
+    private fun bindOcrKey(engine: TranslationEngine, row: View, state: TextView) {
+        fun refresh() {
+            val stored = engine.storedKey()
+            state.setText(if (stored.isBlank()) R.string.ocr_key_not_set else R.string.ocr_key_set)
+        }
+        refresh()
+
+        row.setOnClickListener {
+            if (engine.storedKey().isNotBlank()) {
+                customAlertDialog().apply {
+                    setTitle(R.string.ocr_key_remove_title)
+                    setMessage(getString(R.string.ocr_key_remove_message, engine.label))
+                    setPosButton(R.string.remove) {
+                        engine.keyPref?.let { PrefManager.removeVal(it) }
+                        refresh()
+                        snackString(getString(R.string.ocr_key_removed))
+                    }
+                    setNegButton(R.string.cancel)
+                    show()
+                }
+            } else {
+                promptForOcrKey(engine, ::refresh)
+            }
+        }
+    }
+
+    private fun promptForOcrKey(engine: TranslationEngine, onSaved: () -> Unit) {
+        val dialogView = DialogUserAgentBinding.inflate(layoutInflater)
+        dialogView.subtitle.isVisible = true
+        // Before the text, not after: TextView linkifies while setting, so assigning the mask
+        // afterwards leaves the url as plain characters.
+        dialogView.subtitle.autoLinkMask = Linkify.WEB_URLS
+        dialogView.subtitle.text = buildString {
+            append(getString(R.string.ocr_key_prompt, engine.label))
+            // Where to get one, in the dialog that asks for it: someone who has not got a key yet
+            // is exactly the person standing in front of this box, and sending them off to find
+            // the right console page themselves is the step where they give up. Spelled out in
+            // full rather than hidden behind a link, so it can also be typed on another device.
+            engine.keyUrl?.let { append("\n\n").append(getString(R.string.ocr_key_get_at, it)) }
+        }
+        dialogView.userAgentTextBox.hint = getString(R.string.ocr_key_hint)
+
+        customAlertDialog().apply {
+            setTitle(engine.label)
+            setCustomView(dialogView.root)
+            setPosButton(R.string.ok) {
+                val key = dialogView.userAgentTextBox.text?.toString()?.trim().orEmpty()
+                if (key.isBlank()) return@setPosButton
+                verifyAndSaveOcrKey(engine, key, onSaved)
+            }
+            setNegButton(R.string.cancel)
+            show()
+        }
+    }
+
+    /**
+     * Stores the key only once the provider has agreed it works.
+     *
+     * Saving first and discovering later is the alternative, and it fails badly here: a mistyped
+     * key would sit in settings looking configured, and the first sign of trouble would be a page
+     * that quietly refuses to translate. One cheap authenticated call settles it while the user is
+     * still looking at the dialog they pasted into.
+     */
+    private fun verifyAndSaveOcrKey(engine: TranslationEngine, key: String, onSaved: () -> Unit) {
+        snackString(getString(R.string.ocr_key_checking))
+        lifecycleScope.launch {
+            val failure = LlmTranslator.verifyKey(engine, key)
+            if (failure == null) {
+                engine.keyPref?.let { PrefManager.setVal(it, key) }
+                onSaved()
+                snackString(getString(R.string.ocr_key_saved))
+            } else {
+                snackString(getString(R.string.ocr_key_invalid, failure))
+            }
+        }
     }
 }

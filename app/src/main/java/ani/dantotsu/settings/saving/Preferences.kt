@@ -320,6 +320,19 @@ enum class PrefName(val data: Pref) {
     OcrRingIqr(Pref(Location.Reader, Float::class, 20f)),
     OcrRingPad(Pref(Location.Reader, Float::class, 0.5f)),
 
+    // Which engine translates the detected text, and what the two key-based ones need. The key
+    // lives in Protected with the account tokens rather than beside the thresholds: it is the
+    // user's own credential on their own free tier, and nothing about it belongs in a plain
+    // preference file just because the feature that uses it is a reader setting.
+    OcrTranslationEngine(Pref(Location.Reader, Int::class, 0)),
+    OcrTranslationModel(Pref(Location.Reader, String::class, "")),
+    // One key per provider rather than one shared: they are separate accounts, and a single slot
+    // would silently drop whichever was entered first when the engine changed. Protected, with the
+    // account tokens — a key is the user's own credential and does not belong in a plain
+    // preference file just because the feature using it is a reader setting.
+    OcrGeminiApiKey(Pref(Location.Protected, String::class, "")),
+    OcrOpenRouterApiKey(Pref(Location.Protected, String::class, "")),
+
     //Novel Reader
     CurrentThemeName(Pref(Location.NovelReader, String::class, "Default")),
     LayoutNovel(Pref(Location.NovelReader, Int::class, 0)),

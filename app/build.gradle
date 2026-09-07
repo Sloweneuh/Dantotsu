@@ -255,6 +255,12 @@ dependencies {
     implementation 'com.google.android.gms:play-services-mlkit-text-recognition-korean:16.0.1'
     implementation 'com.google.android.gms:play-services-mlkit-text-recognition-chinese:16.0.1'
 
+//  ML Kit on-device translation. No unbundled variant exists, but the apk cost is only the library
+//  — the language models are fetched at runtime (~30 MB per pair) and cached by ML Kit, so nothing
+//  ships in the package. Free, offline once downloaded, and needs no key, which makes it the
+//  engine to prove the pipeline against before any of the network-backed ones are written.
+    implementation 'com.google.mlkit:translate:17.0.3'
+
 }
 
 

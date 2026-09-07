@@ -809,38 +809,140 @@
                     android:text="@string/preload_amount_info"
                     android:textSize="14sp" />
 
-                <!-- OCR detection calibration; delete with ani.dantotsu.spike -->
-                <TextView
+            </ani.dantotsu.others.Xpandable>
+
+            <!-- OCR & MTL; delete with ani.dantotsu.spike -->
+            <ani.dantotsu.others.Xpandable
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                app:icon="@drawable/ic_round_translate_24"
+                app:stateKey="reader_ocr_mtl"
+                app:stateScope="reader"
+                app:summary="@string/ocr_mtl_desc"
+                app:title="@string/ocr_mtl">
+
+                <!--
+                  Title and description share one clickable container rather than the title alone
+                  carrying the ripple. A description sitting outside the touch target both looks
+                  wrong — the ripple stops halfway down the row — and behaves wrong, since tapping
+                  the line that explains the setting does nothing.
+                -->
+                <LinearLayout
                     android:id="@+id/readerSettingsOcrCalibration"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:background="?attr/selectableItemBackground"
                     android:clickable="true"
-                    android:drawableStart="@drawable/ic_round_translate_24"
-                    android:drawablePadding="16dp"
-                    android:elegantTextHeight="true"
                     android:focusable="true"
-                    android:fontFamily="@font/poppins_bold"
-                    android:gravity="center_vertical|start"
-                    android:minHeight="64dp"
-                    android:paddingStart="32dp"
-                    android:paddingEnd="32dp"
-                    android:text="@string/ocr_spike"
-                    android:textAlignment="viewStart"
-                    android:textColor="?attr/colorOnBackground"
-                    app:drawableTint="?attr/colorPrimary" />
+                    android:orientation="vertical"
+                    android:paddingBottom="8dp">
 
-                <TextView
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:drawableStart="@drawable/ic_round_science_24"
+                        android:drawablePadding="16dp"
+                        android:elegantTextHeight="true"
+                        android:fontFamily="@font/poppins_bold"
+                        android:gravity="center_vertical|start"
+                        android:minHeight="64dp"
+                        android:paddingStart="32dp"
+                        android:paddingEnd="32dp"
+                        android:text="@string/ocr_spike"
+                        android:textAlignment="viewStart"
+                        android:textColor="?attr/colorOnBackground"
+                        app:drawableTint="?attr/colorPrimary" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="-8dp"
+                        android:alpha="0.58"
+                        android:fontFamily="@font/poppins_family"
+                        android:paddingStart="32dp"
+                        android:paddingEnd="32dp"
+                        android:text="@string/ocr_spike_desc"
+                        android:textSize="14sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/readerSettingsGeminiKey"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="-8dp"
-                    android:layout_marginBottom="8dp"
-                    android:alpha="0.58"
-                    android:fontFamily="@font/poppins_family"
-                    android:paddingStart="32dp"
-                    android:paddingEnd="32dp"
-                    android:text="@string/ocr_spike_desc"
-                    android:textSize="14sp" />
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:orientation="vertical"
+                    android:paddingBottom="8dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:drawableStart="@drawable/vpn_key_24"
+                        android:drawablePadding="16dp"
+                        android:elegantTextHeight="true"
+                        android:fontFamily="@font/poppins_bold"
+                        android:gravity="center_vertical|start"
+                        android:minHeight="64dp"
+                        android:paddingStart="32dp"
+                        android:paddingEnd="32dp"
+                        android:text="@string/ocr_key_gemini"
+                        android:textAlignment="viewStart"
+                        android:textColor="?attr/colorOnBackground"
+                        app:drawableTint="?attr/colorPrimary" />
+
+                    <TextView
+                        android:id="@+id/readerSettingsGeminiKeyState"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="-8dp"
+                        android:alpha="0.58"
+                        android:fontFamily="@font/poppins_family"
+                        android:paddingStart="32dp"
+                        android:paddingEnd="32dp"
+                        android:textSize="14sp"
+                        tools:text="Not set" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/readerSettingsOpenRouterKey"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="?attr/selectableItemBackground"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:orientation="vertical"
+                    android:paddingBottom="8dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:drawableStart="@drawable/vpn_key_24"
+                        android:drawablePadding="16dp"
+                        android:elegantTextHeight="true"
+                        android:fontFamily="@font/poppins_bold"
+                        android:gravity="center_vertical|start"
+                        android:minHeight="64dp"
+                        android:paddingStart="32dp"
+                        android:paddingEnd="32dp"
+                        android:text="@string/ocr_key_openrouter"
+                        android:textAlignment="viewStart"
+                        android:textColor="?attr/colorOnBackground"
+                        app:drawableTint="?attr/colorPrimary" />
+
+                    <TextView
+                        android:id="@+id/readerSettingsOpenRouterKeyState"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="-8dp"
+                        android:alpha="0.58"
+                        android:fontFamily="@font/poppins_family"
+                        android:paddingStart="32dp"
+                        android:paddingEnd="32dp"
+                        android:textSize="14sp"
+                        tools:text="Not set" />
+                </LinearLayout>
 
             </ani.dantotsu.others.Xpandable>
 

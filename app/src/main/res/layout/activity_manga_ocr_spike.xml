@@ -82,6 +82,145 @@
                     android:text="@string/ocr_spike_pick_page"
                     app:icon="@drawable/ic_round_image_search_24" />
 
+                <!--
+                  Rebuilds from the recognizer's runs rather than re-reading the page, so merged
+                  and unmerged can be compared without a second OCR pass.
+                -->
+                <!--
+                  Costs a second round of recognition over the page in tiles. Worth it because the
+                  full-page detector demonstrably misses text it can read: a bubble dropped
+                  entirely came back at 0.85 confidence once handed over as a crop.
+                -->
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/secondPass"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:checked="false"
+                    android:fontFamily="@font/poppins_semi_bold"
+                    android:minHeight="48dp"
+                    android:text="@string/ocr_spike_second_pass"
+                    android:textAlignment="viewStart"
+                    android:textColor="?attr/colorOnBackground" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/mergeBlocks"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:checked="true"
+                    android:fontFamily="@font/poppins_semi_bold"
+                    android:minHeight="48dp"
+                    android:text="@string/ocr_spike_merge_blocks"
+                    android:textAlignment="viewStart"
+                    android:textColor="?attr/colorOnBackground" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:fontFamily="@font/poppins_semi_bold"
+                    android:text="@string/ocr_spike_target_language"
+                    android:textColor="?attr/colorOnBackground"
+                    android:textSize="14sp" />
+
+                <Spinner
+                    android:id="@+id/targetLanguageSpinner"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:fontFamily="@font/poppins_semi_bold"
+                    android:text="@string/ocr_spike_engine"
+                    android:textColor="?attr/colorOnBackground"
+                    android:textSize="14sp" />
+
+                <Spinner
+                    android:id="@+id/engineSpinner"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp" />
+
+                <!-- Shown only for the engines that take a key. -->
+                <LinearLayout
+                    android:id="@+id/keyFields"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone"
+                    tools:visibility="visible">
+
+                    <!--
+                      The key itself is not here. It belongs with the other credentials in the
+                      reader's OCR & MTL settings, where it is checked once and then only
+                      removable; this screen only reports whether one is present.
+                    -->
+                    <TextView
+                        android:id="@+id/keyStateText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:fontFamily="monospace"
+                        android:textColor="?attr/colorOnBackground"
+                        android:textSize="12sp"
+                        tools:text="No Gemini key set — add one in reader settings" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:fontFamily="@font/poppins_semi_bold"
+                        android:text="@string/ocr_spike_model"
+                        android:textColor="?attr/colorOnBackground"
+                        android:textSize="14sp" />
+
+                    <Spinner
+                        android:id="@+id/modelSpinner"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/refreshModelsButton"
+                        style="@style/Widget.Material3.Button.TextButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/poppins_semi_bold"
+                        android:text="@string/ocr_spike_refresh_models" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/translateButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="4dp"
+                        android:layout_weight="1"
+                        android:fontFamily="@font/poppins_semi_bold"
+                        android:text="@string/ocr_spike_translate"
+                        app:icon="@drawable/ic_round_translate_24" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/previewToggle"
+                        style="@style/Widget.Material3.Button.TonalButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="4dp"
+                        android:layout_weight="1"
+                        android:enabled="false"
+                        android:fontFamily="@font/poppins_semi_bold"
+                        android:text="@string/ocr_spike_show_translation" />
+                </LinearLayout>
+
                 <TextView
                     android:id="@+id/summaryText"
                     android:layout_width="match_parent"
