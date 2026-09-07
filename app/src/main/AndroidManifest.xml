@@ -664,6 +664,7 @@
         <receiver android:name=".notifications.subscription.SubscriptionNotificationReceiver" />
         <receiver android:name=".notifications.unread.UnreadChapterNotificationReceiver" />
         <receiver android:name=".notifications.unread.MuUnreadNotificationReceiver" />
+        <receiver android:name=".notifications.unread.MarkReadNotificationReceiver" />
         <receiver android:name=".connections.sync.AutoListSyncReceiver" />
 
         <meta-data

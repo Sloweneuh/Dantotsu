@@ -430,6 +430,7 @@ class UnreadChapterNotificationTask : Task {
                 .setSubText(subText)
                 .setStyle(NotificationCompat.BigTextStyle().bigText(text))
                 .setContentIntent(pendingIntent)
+                .addAction(markAsReadAction(context, media, info.lastChapter, isAnime))
                 .setAutoCancel(true)
                 .setGroup(Notifications.GROUP_NEW_CHAPTERS)
                 .build()
@@ -437,6 +438,41 @@ class UnreadChapterNotificationTask : Task {
             notificationManager.notify(media.id, notification)
             notificationManager.notify(Notifications.ID_NEW_CHAPTERS, createGroupSummary(context))
         }
+    }
+
+    /**
+     * "Mark as read" / "Mark as watched" — writes [lastChapter] as the new progress on whichever
+     * tracker backs [media] without opening the app. The whole [Media] rides along on the intent so
+     * [MarkReadNotificationReceiver] can reuse [ani.dantotsu.connections.updateProgressSuspending]
+     * (mirrors included) rather than reconstruct it.
+     */
+    private fun markAsReadAction(
+        context: Context,
+        media: Media,
+        lastChapter: Int,
+        isAnime: Boolean,
+    ): NotificationCompat.Action {
+        val intent = Intent(context, MarkReadNotificationReceiver::class.java).apply {
+            action = MarkReadNotificationReceiver.ACTION
+            putExtra("media", media as Serializable)
+            putExtra(MarkReadNotificationReceiver.EXTRA_PROGRESS, lastChapter)
+            putExtra(MarkReadNotificationReceiver.EXTRA_NOTIFICATION_ID, media.id)
+        }
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            media.id,
+            intent,
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            } else {
+                PendingIntent.FLAG_UPDATE_CURRENT
+            }
+        )
+        val label = context.getString(
+            if (isAnime) R.string.notification_action_mark_watched
+            else R.string.notification_action_mark_read
+        )
+        return NotificationCompat.Action.Builder(R.drawable.ic_circle_check, label, pendingIntent).build()
     }
 
     /**

@@ -77,6 +77,8 @@
     <string name="notification_new_episode_title">Nouvel épisode disponible</string>
     <string name="notification_unknown_source">Source inconnue</string>
     <string name="notification_source_subtext">Source : %1$s</string>
+    <string name="notification_action_mark_read">Marquer comme lu</string>
+    <string name="notification_action_mark_watched">Marquer comme vu</string>
 
     <string name="get_recommendations">Regardez/Lisez des Anime ou Manga pour obtenir des recommandations</string>
     <string name="empty">Tout est à jour, quand la suite ?</string>

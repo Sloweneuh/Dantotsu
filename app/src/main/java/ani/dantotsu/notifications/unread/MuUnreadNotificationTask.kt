@@ -182,6 +182,7 @@ class MuUnreadNotificationTask : Task {
                 .setSubText(subText)
                 .setStyle(NotificationCompat.BigTextStyle().bigText(text))
                 .setContentIntent(pendingIntent)
+                .addAction(markAsReadAction(context, muMedia, latestChapter, notifId))
                 .setAutoCancel(true)
                 .setGroup(Notifications.GROUP_NEW_CHAPTERS)
                 .build()
@@ -189,6 +190,40 @@ class MuUnreadNotificationTask : Task {
             notificationManager.notify(notifId, notification)
             notificationManager.notify(Notifications.ID_NEW_CHAPTERS, createGroupSummary(context))
         }
+    }
+
+    /**
+     * "Mark as read" — writes [latestChapter] to MangaUpdates (and its mirrors) for this series
+     * without opening the app. The [MUMedia] rides along so [MarkReadNotificationReceiver] can turn
+     * it into a [ani.dantotsu.media.Media] and reuse the shared progress-update path.
+     */
+    private fun markAsReadAction(
+        context: Context,
+        muMedia: MUMedia,
+        latestChapter: Int,
+        notifId: Int,
+    ): NotificationCompat.Action {
+        val intent = Intent(context, MarkReadNotificationReceiver::class.java).apply {
+            action = MarkReadNotificationReceiver.ACTION
+            putExtra("muMedia", muMedia)
+            putExtra(MarkReadNotificationReceiver.EXTRA_PROGRESS, latestChapter)
+            putExtra(MarkReadNotificationReceiver.EXTRA_NOTIFICATION_ID, notifId)
+        }
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            notifId,
+            intent,
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            } else {
+                PendingIntent.FLAG_UPDATE_CURRENT
+            }
+        )
+        return NotificationCompat.Action.Builder(
+            R.drawable.ic_circle_check,
+            context.getString(R.string.notification_action_mark_read),
+            pendingIntent
+        ).build()
     }
 
     /**

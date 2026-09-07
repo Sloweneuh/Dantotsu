@@ -72,6 +72,43 @@ object UnreadCache {
         null
     }
 
+    /**
+     * Drops a single media from the cached unread row — both the AniList/MAL half and the
+     * MangaUpdates half, since the id is the same key ([ani.dantotsu.connections.mangaupdates.muMediaKey])
+     * in both — and broadcasts the change so the home row and widget redraw without it.
+     *
+     * Called when the user marks that entry read from its notification: the scheduled scan would
+     * clear it on its next run anyway, this just keeps the row honest in the meantime.
+     */
+    fun removeEntry(context: Context, mediaId: Int) {
+        try {
+            PrefManager.init(context)
+            var changed = false
+
+            val info = cachedInfo().toMutableMap()
+            if (info.remove(mediaId) != null) {
+                val media = cachedMedia().filterNot { it.id == mediaId }
+                PrefManager.setCustomVal("cached_unread_info", HashMap(info))
+                PrefManager.setCustomVal("cached_unread_chapters", ArrayList(media))
+                changed = true
+            }
+
+            val muInfo = cachedMuInfo().toMutableMap()
+            if (muInfo.remove(mediaId) != null) {
+                val muMedia = cachedMuMedia().filterNot {
+                    ani.dantotsu.connections.mangaupdates.muMediaKey(it.id) == mediaId
+                }
+                PrefManager.setCustomVal("cached_mu_unread_info", HashMap(muInfo))
+                PrefManager.setCustomVal("cached_mu_unread_media", ArrayList(muMedia))
+                changed = true
+            }
+
+            if (changed) broadcastUpdate(context)
+        } catch (e: Exception) {
+            Logger.log("UnreadCache: Failed to remove entry $mediaId: ${e.message}")
+        }
+    }
+
     fun broadcastUpdate(context: Context) {
         try {
             val intent = Intent(ACTION_CACHE_UPDATED)
