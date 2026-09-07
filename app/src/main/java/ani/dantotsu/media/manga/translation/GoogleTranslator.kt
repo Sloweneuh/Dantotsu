@@ -1,4 +1,4 @@
-package ani.dantotsu.spike
+package ani.dantotsu.media.manga.translation
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async

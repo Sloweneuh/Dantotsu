@@ -6,6 +6,11 @@ import android.view.View
 import android.view.ViewGroup
 import ani.dantotsu.BottomSheetDialogFragment
 import ani.dantotsu.R
+import androidx.core.view.isVisible
+import androidx.lifecycle.lifecycleScope
+import ani.dantotsu.media.manga.translation.MtlChoices
+import ani.dantotsu.media.manga.translation.PageTranslationPipeline
+import ani.dantotsu.media.manga.translation.TranslationEngine
 import ani.dantotsu.databinding.BottomSheetCurrentReaderSettingsBinding
 import ani.dantotsu.settings.CurrentReaderSettings
 import ani.dantotsu.settings.saving.PrefManager
@@ -32,6 +37,8 @@ class ReaderSettingsDialogFragment : BottomSheetDialogFragment() {
         val activity = requireActivity() as MangaReaderActivity
         val settings = activity.defaultSettings
         val isMultiChapter = PrefManager.getVal<Boolean>(PrefName.ContinuousMultiChapter)
+
+        bindMtlRows(activity)
 
         // Hide irrelevant settings in multi-chapter mode
         if (isMultiChapter) {
@@ -233,6 +240,45 @@ class ReaderSettingsDialogFragment : BottomSheetDialogFragment() {
     override fun onDestroy() {
         _binding = null
         super.onDestroy()
+    }
+
+    /**
+     * Engine, model, script and target, changeable without leaving the page.
+     *
+     * Here as well as in settings because these are things you change *against* a page — a model
+     * that reads one series badly may be fine on the next, and a script guessed from metadata is
+     * wrong exactly when you are looking at the evidence. Sending the reader to a settings screen
+     * to find that out is the difference between adjusting and giving up.
+     *
+     * Hidden entirely when translation is off rather than shown disabled: to somebody not using the
+     * feature these are four more rows in a sheet that is already long.
+     *
+     * Changing one re-labels the rows and nothing else. Pages already translated keep the words
+     * they have — quietly redoing them would spend quota nobody asked to spend, and the page's
+     * long-press already offers to translate again when that is what is wanted.
+     */
+    private fun bindMtlRows(activity: MangaReaderActivity) {
+        if (!PageTranslationPipeline.enabled()) return
+        binding.readerMtlGroup.isVisible = true
+
+        fun refresh() {
+            binding.readerMtlEngineState.text = MtlChoices.engineLabel()
+            binding.readerMtlModelState.text = MtlChoices.modelLabel(activity)
+            binding.readerMtlScriptState.text = MtlChoices.scriptLabel(activity)
+            binding.readerMtlTargetState.text = MtlChoices.targetLabel()
+            // Only the key-based engines have a model to choose.
+            val hasModel = TranslationEngine.fromPref().needsKey
+            binding.readerMtlModel.isVisible = hasModel
+            binding.readerMtlModelState.isVisible = hasModel
+        }
+        refresh()
+
+        binding.readerMtlEngine.setOnClickListener { MtlChoices.pickEngine(activity) { refresh() } }
+        binding.readerMtlModel.setOnClickListener {
+            MtlChoices.pickModel(activity, activity.lifecycleScope) { refresh() }
+        }
+        binding.readerMtlScript.setOnClickListener { MtlChoices.pickScript(activity) { refresh() } }
+        binding.readerMtlTarget.setOnClickListener { MtlChoices.pickTarget(activity) { refresh() } }
     }
 
     companion object {

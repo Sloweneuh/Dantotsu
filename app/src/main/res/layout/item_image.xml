@@ -25,6 +25,18 @@
             tools:ignore="ContentDescription,ImageContrastCheck"
             tools:src="@tools:sample/backgrounds/scenic[0]" />
 
+        <!--
+          Above the page and below everything else, so translations sit on the artwork without
+          covering the loading spinner or the error state. A sibling of the image inside the
+          GestureFrameLayout, which owns pan and zoom here — so this is transformed with the page
+          and needs no matrix of its own.
+        -->
+        <ani.dantotsu.media.manga.translation.TranslationOverlayView
+            android:id="@+id/imgProgTranslation"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_gravity="center" />
+
         <ProgressBar
             android:id="@+id/imgProgProgress"
             style="?android:attr/progressBarStyle"

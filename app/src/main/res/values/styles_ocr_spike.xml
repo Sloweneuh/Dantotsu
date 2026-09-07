@@ -17,4 +17,47 @@
         <item name="android:layout_height">wrap_content</item>
     </style>
 
+    <!--
+      A translation row in the reader's quick settings. Matches the switches it sits among, minus
+      the switch: the sheet's own margins supply the horizontal inset, so unlike the settings
+      screen's rows these carry no padding of their own.
+    -->
+    <style name="ReaderMtlRow">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:background">?attr/selectableItemBackground</item>
+        <item name="android:clickable">true</item>
+        <item name="android:focusable">true</item>
+        <item name="android:drawablePadding">16dp</item>
+        <item name="android:elegantTextHeight">true</item>
+        <item name="android:fontFamily">@font/poppins_bold</item>
+        <item name="android:gravity">center_vertical|start</item>
+        <item name="android:minHeight">64dp</item>
+        <item name="android:textAlignment">viewStart</item>
+        <item name="android:textColor">?attr/colorOnBackground</item>
+        <item name="drawableTint">?attr/colorPrimary</item>
+    </style>
+
+    <style name="ReaderMtlRowState">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">-8dp</item>
+        <item name="android:layout_marginBottom">8dp</item>
+        <item name="android:alpha">0.58</item>
+        <item name="android:fontFamily">@font/poppins_family</item>
+        <item name="android:textSize">14sp</item>
+    </style>
+
+    <!-- The explanatory line under a clickable OCR & MTL row. -->
+    <style name="OcrSettingSubtitle">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">-8dp</item>
+        <item name="android:alpha">0.58</item>
+        <item name="android:fontFamily">@font/poppins_family</item>
+        <item name="android:paddingStart">32dp</item>
+        <item name="android:paddingEnd">32dp</item>
+        <item name="android:textSize">14sp</item>
+    </style>
+
 </resources>

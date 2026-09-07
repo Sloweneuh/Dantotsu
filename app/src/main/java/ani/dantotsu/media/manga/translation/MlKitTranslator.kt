@@ -1,4 +1,4 @@
-package ani.dantotsu.spike
+package ani.dantotsu.media.manga.translation
 
 import com.google.mlkit.common.model.DownloadConditions
 import com.google.mlkit.nl.translate.TranslateLanguage

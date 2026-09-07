@@ -25,9 +25,10 @@ import ani.dantotsu.others.Xpandable
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.snackString
-import ani.dantotsu.spike.LlmTranslator
+import ani.dantotsu.media.manga.translation.LlmTranslator
+import ani.dantotsu.media.manga.translation.MtlChoices
 import ani.dantotsu.spike.MangaOcrSpikeActivity
-import ani.dantotsu.spike.TranslationEngine
+import ani.dantotsu.media.manga.translation.TranslationEngine
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.util.customAlertDialog
@@ -479,6 +480,11 @@ class ReaderSettingsActivity : AppCompatActivity() {
         binding.readerSettingsOcrCalibration.setOnClickListener {
             startActivity(Intent(this, MangaOcrSpikeActivity::class.java))
         }
+        binding.readerSettingsMtlEnabled.isChecked = PrefManager.getVal(PrefName.OcrTranslateEnabled)
+        binding.readerSettingsMtlEnabled.setOnCheckedChangeListener { _, on ->
+            PrefManager.setVal(PrefName.OcrTranslateEnabled, on)
+        }
+        bindMtlChoices()
         bindOcrKey(
             TranslationEngine.GEMINI,
             binding.readerSettingsGeminiKey,
@@ -566,6 +572,38 @@ class ReaderSettingsActivity : AppCompatActivity() {
     // -----------------------------------------------------------------------------------------
     // OCR & MTL keys; delete with ani.dantotsu.spike
     // -----------------------------------------------------------------------------------------
+
+    /**
+     * Engine, model, target language and source script.
+     *
+     * These live here rather than in the calibration screen because they are what the *reader*
+     * translates with; that screen tunes detection thresholds, and a control it owned would be
+     * configuring one page's experiment rather than the feature.
+     */
+    private fun bindMtlChoices() {
+        fun refresh() {
+            binding.readerSettingsMtlEngineState.text = MtlChoices.engineLabel()
+            binding.readerSettingsMtlModelState.text = MtlChoices.modelLabel(this)
+            binding.readerSettingsMtlTargetState.text = MtlChoices.targetLabel()
+            binding.readerSettingsMtlScriptState.text = MtlChoices.scriptLabel(this)
+            binding.readerSettingsMtlModel.isVisible = TranslationEngine.fromPref().needsKey
+        }
+        refresh()
+
+        binding.readerSettingsMtlEngine.setOnClickListener {
+            MtlChoices.pickEngine(this) { refresh() }
+        }
+        binding.readerSettingsMtlModel.setOnClickListener {
+            MtlChoices.pickModel(this, lifecycleScope) { refresh() }
+        }
+        binding.readerSettingsMtlTarget.setOnClickListener {
+            MtlChoices.pickTarget(this) { refresh() }
+        }
+        binding.readerSettingsMtlScript.setOnClickListener {
+            MtlChoices.pickScript(this) { refresh() }
+        }
+    }
+
 
     /**
      * Wires one provider's key row.

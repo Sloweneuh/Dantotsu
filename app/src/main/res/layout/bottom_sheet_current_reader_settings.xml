@@ -280,6 +280,65 @@
             app:showText="false"
             app:thumbTint="@color/button_switch_track" />
 
+        <!--
+          Translation, shown only when the feature is on. Here rather than only in the settings
+          screen because engine and language are things you change *against a page* — a model that
+          reads one series badly may be fine on the next — and leaving the reader to find out is
+          the difference between adjusting and giving up.
+        -->
+        <LinearLayout
+            android:id="@+id/readerMtlGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <TextView
+                android:id="@+id/readerMtlEngine"
+                style="@style/ReaderMtlRow"
+                android:drawableStart="@drawable/ic_round_translate_24"
+                android:text="@string/ocr_spike_engine" />
+
+            <TextView
+                android:id="@+id/readerMtlEngineState"
+                style="@style/ReaderMtlRowState"
+                tools:text="Gemini" />
+
+            <TextView
+                android:id="@+id/readerMtlModel"
+                style="@style/ReaderMtlRow"
+                android:drawableStart="@drawable/ic_round_tune_24"
+                android:text="@string/ocr_spike_model" />
+
+            <TextView
+                android:id="@+id/readerMtlModelState"
+                style="@style/ReaderMtlRowState"
+                tools:text="gemini-3.6-flash" />
+
+            <TextView
+                android:id="@+id/readerMtlScript"
+                style="@style/ReaderMtlRow"
+                android:drawableStart="@drawable/ic_round_format_text_24"
+                android:text="@string/ocr_source_script" />
+
+            <TextView
+                android:id="@+id/readerMtlScriptState"
+                style="@style/ReaderMtlRowState"
+                tools:text="Automatic" />
+
+            <TextView
+                android:id="@+id/readerMtlTarget"
+                style="@style/ReaderMtlRow"
+                android:drawableStart="@drawable/ic_round_language_24"
+                android:text="@string/ocr_spike_target_language" />
+
+            <TextView
+                android:id="@+id/readerMtlTargetState"
+                style="@style/ReaderMtlRowState"
+                tools:text="English" />
+        </LinearLayout>
+
         <com.google.android.material.materialswitch.MaterialSwitch
             android:id="@+id/readerTrueColors"
             android:layout_width="match_parent"

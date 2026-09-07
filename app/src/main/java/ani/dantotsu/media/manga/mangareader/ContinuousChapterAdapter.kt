@@ -559,6 +559,8 @@ class ContinuousChapterAdapter(
             .start()
         progress.visibility = View.GONE
         load.loaded = true
+        // The page is on screen, so whatever has been translated for it belongs on top of it.
+        activity.applyTranslationOverlay(parent, position)
         return true
     }
 

@@ -19,6 +19,7 @@ import ani.dantotsu.GesturesListener
 import ani.dantotsu.R
 import ani.dantotsu.media.manga.MangaCache
 import ani.dantotsu.media.manga.MangaChapter
+import ani.dantotsu.media.manga.translation.TranslationOverlayView
 import ani.dantotsu.parsers.MangaImage
 import ani.dantotsu.px
 import ani.dantotsu.settings.CurrentReaderSettings
@@ -175,6 +176,9 @@ abstract class BaseImageAdapter(
         super.onViewRecycled(holder)
         holder.itemView.findViewById<SubsamplingScaleImageView>(R.id.imgProgImageNoGestures)
             ?.recycle()
+        // Cleared with the pixels it belonged to. A holder returning to the pool still holding one
+        // page's translation would flash it over whichever page reuses the view.
+        holder.itemView.findViewById<TranslationOverlayView>(R.id.imgProgTranslation)?.clear()
         holder.itemView.tag = null
     }
 

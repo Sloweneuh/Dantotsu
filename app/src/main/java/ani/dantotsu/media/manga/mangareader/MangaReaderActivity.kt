@@ -66,6 +66,13 @@ import ani.dantotsu.media.MediaDetailsViewModel
 import ani.dantotsu.media.MediaNameAdapter
 import ani.dantotsu.media.MediaSingleton
 import ani.dantotsu.media.manga.MangaCache
+import ani.dantotsu.media.manga.mangareader.BaseImageAdapter.Companion.loadBitmap
+import ani.dantotsu.util.Logger
+import ani.dantotsu.media.manga.translation.PageTranslationPipeline
+import ani.dantotsu.media.manga.translation.SourceScript
+import ani.dantotsu.media.manga.translation.TranslatedPages
+import ani.dantotsu.media.manga.translation.TranslationOverlayView
+import ani.dantotsu.util.choiceBottomSheet
 import ani.dantotsu.media.manga.MangaChapter
 import ani.dantotsu.others.ImageViewDialog
 import ani.dantotsu.parsers.HMangaSources
@@ -2012,6 +2019,123 @@ class MangaReaderActivity : AppCompatActivity() {
         callback: ((ImageViewDialog) -> Unit)? = null
     ): Boolean {
         if (!defaultSettings.longClickImage) return false
+        // With translation on, a long press is no longer only "show me this image" — so it asks
+        // rather than assuming, and only when there is a second thing worth offering.
+        if (PageTranslationPipeline.enabled()) {
+            showPageActions(pos, img1, img2, callback)
+            return true
+        }
+        showImageDialog(pos, img1, img2, callback)
+        return true
+    }
+
+    /**
+     * The long-press menu, once translation gives a page more than one thing to do to it.
+     *
+     * Re-translating is offered for a page already done because the first answer is not always the
+     * right one, and it is the cheapest correction available before any editing UI exists.
+     */
+    private fun showPageActions(
+        pos: Int,
+        img1: MangaImage,
+        img2: MangaImage?,
+        callback: ((ImageViewDialog) -> Unit)?,
+    ) {
+        val done = TranslatedPages[img1.url.url] != null
+        val actions = listOfNotNull(
+            getString(
+                if (done) R.string.mtl_retranslate_page else R.string.mtl_translate_page,
+            ) to { translatePage(pos, img1) },
+            (getString(R.string.mtl_hide_translation) to { hideTranslation(img1) }).takeIf { done },
+            getString(R.string.view_image) to { showImageDialog(pos, img1, img2, callback) },
+        )
+        choiceBottomSheet(
+            getString(R.string.mtl_page_actions, pos + 1),
+            actions.map { it.first },
+            selectedIndex = -1,
+        ) { index -> actions[index].second() }
+    }
+
+    private fun hideTranslation(image: MangaImage) {
+        TranslatedPages.remove(image.url.url)
+        refreshTranslationOverlays()
+    }
+
+    /**
+     * Translates one page and paints it.
+     *
+     * The bitmap comes back through the same [loadBitmap] the adapters use, so a page on screen is
+     * already in [ani.dantotsu.media.manga.MangaCache] and this costs a lookup rather than a
+     * re-fetch — and the recognizer sees exactly the pixels the reader is showing, transforms and
+     * all, rather than a differently-processed copy.
+     */
+    private fun translatePage(pos: Int, image: MangaImage) {
+        if (!PageTranslationPipeline.ready()) {
+            snackString(getString(R.string.mtl_needs_key))
+            return
+        }
+        snackString(getString(R.string.mtl_translating, pos + 1))
+        lifecycleScope.launch {
+            runCatching {
+                val bitmap = loadBitmap(image.url, pageTransforms(image))
+                    ?: error(getString(R.string.mtl_page_unavailable))
+                withContext(Dispatchers.Default) {
+                    PageTranslationPipeline.run(
+                        bitmap,
+                        SourceScript.resolve(media.countryOfOrigin),
+                    )
+                }
+            }.onSuccess { page ->
+                if (page == null) {
+                    snackString(getString(R.string.mtl_nothing_found))
+                    return@onSuccess
+                }
+                TranslatedPages.put(image.url.url, page)
+                refreshTranslationOverlays()
+            }.onFailure {
+                Logger.log("MTL page translation failed: ${it.stackTraceToString()}")
+                snackString(it.message ?: getString(R.string.mtl_failed))
+            }
+        }
+    }
+
+    /**
+     * Re-applies overlays to whatever is on screen.
+     *
+     * Cheaper and less disruptive than telling the adapter a page changed: rebinding would drop the
+     * decoded bitmap and re-run the load for a change that only concerns a sibling view.
+     */
+    fun refreshTranslationOverlays() {
+        val recycler = binding.mangaReaderRecycler
+        for (i in 0 until recycler.childCount) {
+            val child = recycler.getChildAt(i) ?: continue
+            val holder = recycler.getChildViewHolder(child) ?: continue
+            applyTranslationOverlay(child, holder.bindingAdapterPosition)
+        }
+    }
+
+    /** Puts the stored translation for whatever page [itemView] is showing onto its overlay. */
+    fun applyTranslationOverlay(itemView: View, position: Int) {
+        val overlay = itemView.findViewById<TranslationOverlayView>(R.id.imgProgTranslation)
+            ?: return
+        val adapter = binding.mangaReaderRecycler.adapter
+        val image = when (adapter) {
+            is BaseImageAdapter -> adapter.pagesAt(position).firstOrNull()
+            is ContinuousChapterAdapter ->
+                (adapter.items.getOrNull(position) as? ContinuousChapterAdapter.ReaderItem.Image)
+                    ?.image
+            else -> null
+        }
+        val page = image?.let { TranslatedPages[it.url.url] }
+        if (page == null) overlay.clear() else overlay.setBlocks(page.blocks, page.pageWidth)
+    }
+
+    private fun showImageDialog(
+        pos: Int,
+        img1: MangaImage,
+        img2: MangaImage?,
+        callback: ((ImageViewDialog) -> Unit)?,
+    ) {
         val title = "(Page ${pos + 1}${if (img2 != null) "-${pos + 2}" else ""}) ${
             chaptersTitleArr.getOrNull(currentChapterIndex)?.replace(" : ", " - ") ?: ""
         } [${media.userPreferredName}]"
@@ -2039,8 +2163,8 @@ class MangaReaderActivity : AppCompatActivity() {
             onReloadPressed = callback
             show(supportFragmentManager, "image")
         }
-        return true
     }
+
     fun updateMaxChapterPage(max: Long) {
         maxChapterPage = max
         binding.mangaReaderSlider.apply {

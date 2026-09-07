@@ -6,15 +6,14 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Rect
-import android.graphics.Typeface
-import android.text.Layout
-import android.text.StaticLayout
-import android.text.TextPaint
+
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
 import androidx.core.graphics.toColorInt
-import androidx.core.graphics.withTranslation
+import ani.dantotsu.media.manga.translation.BlockPainter
+import ani.dantotsu.media.manga.translation.PaintedBlock
+
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -116,10 +115,6 @@ class BlockEditorView @JvmOverloads constructor(
     private var draft: Rect? = null
 
     private val pagePaint = Paint(Paint.FILTER_BITMAP_FLAG)
-    private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
-    private val textPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
-        typeface = Typeface.DEFAULT_BOLD
-    }
     private val boxPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
     private val handlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE }
@@ -129,14 +124,14 @@ class BlockEditorView @JvmOverloads constructor(
     private val handleRadius = HANDLE_DP * density
     private val touchSlop = TOUCH_DP * density
 
-    /** Breathing room between a repainted block and the text written into it. */
-    private val textInset = (3f * density).toInt()
+    /** Shared with the reader so a calibrated render and the real one cannot differ. */
+    private val painter = BlockPainter(resources.displayMetrics.density)
 
-    /** Fitted layouts, keyed by box id. Cleared whenever a box or the display scale changes. */
-    private val layoutCache = mutableMapOf<Int, StaticLayout>()
+    /** What preview mode paints; set alongside the diagnostic boxes. */
+    private var painted: List<PaintedBlock> = emptyList()
 
     fun setPage(bitmap: Bitmap?) {
-        layoutCache.clear()
+        painter.reset()
         page = bitmap
         selectedId = null
         draft = null
@@ -144,9 +139,10 @@ class BlockEditorView @JvmOverloads constructor(
         invalidate()
     }
 
-    fun setBoxes(newBoxes: List<Box>) {
-        layoutCache.clear()
+    fun setBoxes(newBoxes: List<Box>, paintedBlocks: List<PaintedBlock> = emptyList()) {
+        painter.reset()
         boxes = newBoxes
+        painted = paintedBlocks
         if (boxes.none { it.id == selectedId }) selectedId = null
         invalidate()
     }
@@ -170,7 +166,7 @@ class BlockEditorView @JvmOverloads constructor(
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
         // Fitted sizes are in view pixels, so a width change invalidates every one of them.
-        if (w != oldw) layoutCache.clear()
+        if (w != oldw) painter.reset()
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -183,7 +179,7 @@ class BlockEditorView @JvmOverloads constructor(
         labelPaint.textSize = 11f * density
 
         if (previewMode) {
-            boxes.forEach { box -> drawTranslated(canvas, box) }
+            painter.draw(canvas, painted, scale)
             return
         }
 
@@ -345,83 +341,6 @@ class BlockEditorView @JvmOverloads constructor(
         }
         return super.onTouchEvent(event)
     }
-
-    /**
-     * Paints out a block and writes its translation into the space.
-     *
-     * The type size is found by bisection rather than computed, because text wrapping is not a
-     * function you can invert: how tall a string lays out at a given size depends on where the
-     * wrapping happens to fall, so the only reliable question is "does this size fit", asked
-     * repeatedly. Twelve steps take it well below one pixel of resolution.
-     *
-     * Ink colour is chosen from the fill rather than fixed, which is what makes a white-on-black
-     * bubble come out white-on-black instead of unreadable black-on-black.
-     */
-    private fun drawTranslated(canvas: Canvas, box: Box) {
-        val view = box.rect.toView()
-        val fill = box.fill ?: Color.WHITE
-        fillPaint.color = fill
-        canvas.drawRect(view, fillPaint)
-
-        val text = box.translation
-        if (text.isNullOrBlank()) return
-
-        val width = (view.right - view.left).toInt() - textInset * 2
-        val height = (view.bottom - view.top).toInt() - textInset * 2
-        if (width <= 0 || height <= 0) return
-
-        val ink = if (isDark(fill)) Color.WHITE else Color.BLACK
-        // Fitting is twelve trial layouts per block, and onDraw can run for reasons that have
-        // nothing to do with the text changing. Cached against the box, which is enough because
-        // every path that alters a box goes through setBoxes.
-        val layout = layoutCache.getOrPut(box.id) { layoutAtBestSize(text, width, height, ink) }
-
-        // Centred vertically in whatever is left over, so a short line sits in the middle of the
-        // bubble rather than clinging to its top edge.
-        canvas.withTranslation(
-            view.left + textInset,
-            view.top + textInset + max(0f, (height - layout.height) / 2f),
-        ) {
-            layout.draw(this)
-        }
-    }
-
-    /**
-     * Bisects to the largest type size whose wrapped text still fits, and returns a layout at it.
-     *
-     * The returned layout gets a **paint of its own**, not the shared one. A [StaticLayout] holds a
-     * reference to the paint it was built with and reads it again at draw time, so layouts sharing
-     * one paint would every one of them draw at whichever size happened to be set last — with line
-     * breaks computed for a different size entirely. Caching the layouts is what made that
-     * reachable; a copy per layout is what makes caching safe.
-     */
-    private fun layoutAtBestSize(text: String, width: Int, height: Int, ink: Int): StaticLayout {
-        val paint = TextPaint(textPaint).apply { color = ink }
-        var low = MIN_TEXT_SP * density
-        var high = MAX_TEXT_SP * density
-        var best = low
-        repeat(BISECTION_STEPS) {
-            val mid = (low + high) / 2f
-            paint.textSize = mid
-            if (layoutOf(text, width, paint).height <= height) {
-                best = mid
-                low = mid
-            } else {
-                high = mid
-            }
-        }
-        paint.textSize = best
-        return layoutOf(text, width, paint)
-    }
-
-    private fun layoutOf(text: String, width: Int, paint: TextPaint): StaticLayout =
-        StaticLayout.Builder.obtain(text, 0, text.length, paint, width)
-            .setAlignment(Layout.Alignment.ALIGN_CENTER)
-            .setIncludePad(false)
-            .build()
-
-    private fun isDark(color: Int): Boolean =
-        (0.299 * Color.red(color) + 0.587 * Color.green(color) + 0.114 * Color.blue(color)) < 128
 
     /** Applies a corner drag, then normalises so a crossed-over corner still yields a sane rect. */
     private fun resized(start: Rect, dx: Int, dy: Int): Rect {

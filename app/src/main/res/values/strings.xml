@@ -1759,6 +1759,8 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="ocr_spike_merge_blocks">Merge runs into bubbles</string>
     <string name="ocr_spike_merged_info">%1$d runs merged into %2$d</string>
     <string name="ocr_mtl">OCR &amp; MTL</string>
+    <string name="mtl_enable">Translate manga pages</string>
+    <string name="mtl_enable_desc">Adds a translate action to the reader&#8217;s long-press menu</string>
     <string name="ocr_mtl_desc">Text detection and machine translation</string>
     <string name="ocr_key_gemini">Gemini API key</string>
     <string name="ocr_key_openrouter">OpenRouter API key</string>
@@ -1773,11 +1775,13 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="ocr_key_removed">Key removed</string>
     <string name="ocr_key_remove_title">Remove key?</string>
     <string name="ocr_key_remove_message">The %1$s key will be deleted from this device.</string>
+    <string name="ocr_source_script">Source script</string>
+    <string name="ocr_spike_mtl_config">%1$s · %2$s · into %3$s</string>
+    <string name="ocr_source_script_auto">Automatic — from the series</string>
+    <string name="ocr_model_not_applicable">Not used by this engine</string>
+    <string name="ocr_models_loading">Loading models…</string>
     <string name="ocr_spike_engine">Translation engine</string>
-    <string name="ocr_spike_key_missing">No %1$s key — add one in reader settings</string>
-    <string name="ocr_spike_key_present">%1$s key is set</string>
     <string name="ocr_spike_model">Model</string>
-    <string name="ocr_spike_refresh_models">Load models from provider</string>
     <string name="ocr_spike_no_models">The provider returned no usable models</string>
     <string name="ocr_spike_key_required">%1$s needs an API key</string>
     <string name="ocr_spike_target_language">Translate into</string>
@@ -1802,7 +1806,6 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="ocr_spike_failed">OCR failed: %1$s</string>
     <string name="ocr_spike_no_page">No page measured yet.</string>
     <string name="ocr_spike_no_blocks">no blocks recognised</string>
-    <string name="ocr_spike_nothing_recognised">(nothing recognised)</string>
     <string name="ocr_spike_hand_drawn">hand-drawn</string>
     <string name="ocr_spike_line_reordered">re-ordered</string>
     <string name="ocr_spike_label_glyph">SFX glyph height   ≥ %1$.1f%% of page</string>
@@ -2802,4 +2805,14 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="widget_preview_activity_two">Friend watched Episode 24 of Frieren: Beyond Journey\'s End</string>
     <string name="widget_preview_activity_time_one" translatable="false">2 hours ago</string>
     <string name="widget_preview_activity_time_two" translatable="false">1 day ago</string>
+    <string name="mtl_page_actions">Page %1$d</string>
+    <string name="mtl_translate_page">Translate this page</string>
+    <string name="mtl_retranslate_page">Translate this page again</string>
+    <string name="mtl_hide_translation">Hide the translation</string>
+    <string name="view_image">View image</string>
+    <string name="mtl_translating">Translating page %1$d…</string>
+    <string name="mtl_needs_key">Add an API key for this engine in reader settings</string>
+    <string name="mtl_page_unavailable">That page is not loaded</string>
+    <string name="mtl_nothing_found">No translatable text found on this page</string>
+    <string name="mtl_failed">Translation failed</string>
 </resources>

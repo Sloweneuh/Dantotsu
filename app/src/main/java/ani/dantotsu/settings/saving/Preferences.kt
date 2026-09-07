@@ -324,8 +324,18 @@ enum class PrefName(val data: Pref) {
     // lives in Protected with the account tokens rather than beside the thresholds: it is the
     // user's own credential on their own free tier, and nothing about it belongs in a plain
     // preference file just because the feature that uses it is a reader setting.
+    // The master switch. Off by default: it costs recognition time on every page and, for the
+    // key-based engines, the user's own quota, so it has to be asked for rather than assumed.
+    OcrTranslateEnabled(Pref(Location.Reader, Boolean::class, false)),
     OcrTranslationEngine(Pref(Location.Reader, Int::class, 0)),
     OcrTranslationModel(Pref(Location.Reader, String::class, "")),
+    // BCP-47, empty meaning the device's own language.
+    OcrTargetLanguage(Pref(Location.Reader, String::class, "")),
+    // Which recognizer to use, as a TextScript ordinal, or -1 to work it out from the media's
+    // country of origin. Automatic by default: countryOfOrigin answers precisely the question
+    // being asked here — JP, KR and CN/TW are the manga/manhwa/manhua distinction — so making the
+    // user state it again would only be asking them to repeat what the metadata already says.
+    OcrSourceScript(Pref(Location.Reader, Int::class, -1)),
     // One key per provider rather than one shared: they are separate accounts, and a single slot
     // would silently drop whichever was entered first when the engine changed. Protected, with the
     // account tokens — a key is the user's own credential and does not belong in a plain

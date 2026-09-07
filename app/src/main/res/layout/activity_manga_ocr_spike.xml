@@ -98,83 +98,17 @@
                     android:textAlignment="viewStart"
                     android:textColor="?attr/colorOnBackground" />
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:fontFamily="@font/poppins_semi_bold"
-                    android:text="@string/ocr_spike_target_language"
-                    android:textColor="?attr/colorOnBackground"
-                    android:textSize="14sp" />
 
-                <Spinner
-                    android:id="@+id/targetLanguageSpinner"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp" />
 
                 <TextView
-                    android:layout_width="wrap_content"
+                    android:id="@+id/mtlConfigText"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
-                    android:fontFamily="@font/poppins_semi_bold"
-                    android:text="@string/ocr_spike_engine"
+                    android:fontFamily="monospace"
                     android:textColor="?attr/colorOnBackground"
-                    android:textSize="14sp" />
-
-                <Spinner
-                    android:id="@+id/engineSpinner"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp" />
-
-                <!-- Shown only for the engines that take a key. -->
-                <LinearLayout
-                    android:id="@+id/keyFields"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:visibility="gone"
-                    tools:visibility="visible">
-
-                    <!--
-                      The key itself is not here. It belongs with the other credentials in the
-                      reader's OCR & MTL settings, where it is checked once and then only
-                      removable; this screen only reports whether one is present.
-                    -->
-                    <TextView
-                        android:id="@+id/keyStateText"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:fontFamily="monospace"
-                        android:textColor="?attr/colorOnBackground"
-                        android:textSize="12sp"
-                        tools:text="No Gemini key set — add one in reader settings" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:fontFamily="@font/poppins_semi_bold"
-                        android:text="@string/ocr_spike_model"
-                        android:textColor="?attr/colorOnBackground"
-                        android:textSize="14sp" />
-
-                    <Spinner
-                        android:id="@+id/modelSpinner"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/refreshModelsButton"
-                        style="@style/Widget.Material3.Button.TextButton"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:fontFamily="@font/poppins_semi_bold"
-                        android:text="@string/ocr_spike_refresh_models" />
-                </LinearLayout>
+                    android:textSize="12sp"
+                    tools:text="Gemini - gemini-3.6-flash - into English" />
 
                 <LinearLayout
                     android:layout_width="match_parent"

@@ -1727,6 +1727,8 @@
     <string name="ocr_spike_merge_blocks">Fusionner les segments en bulles</string>
     <string name="ocr_spike_merged_info">%1$d segments fusionnés en %2$d</string>
     <string name="ocr_mtl">OCR et TA</string>
+    <string name="mtl_enable">Traduire les pages de manga</string>
+    <string name="mtl_enable_desc">Ajoute une action de traduction au menu d&#8217;appui long du lecteur</string>
     <string name="ocr_mtl_desc">Détection de texte et traduction automatique</string>
     <string name="ocr_key_gemini">Clé API Gemini</string>
     <string name="ocr_key_openrouter">Clé API OpenRouter</string>
@@ -1741,11 +1743,13 @@
     <string name="ocr_key_removed">Clé supprimée</string>
     <string name="ocr_key_remove_title">Supprimer la clé ?</string>
     <string name="ocr_key_remove_message">La clé %1$s sera supprimée de cet appareil.</string>
+    <string name="ocr_source_script">Écriture source</string>
+    <string name="ocr_spike_mtl_config">%1$s · %2$s · vers %3$s</string>
+    <string name="ocr_source_script_auto">Automatique — selon la série</string>
+    <string name="ocr_model_not_applicable">Non utilisé par ce moteur</string>
+    <string name="ocr_models_loading">Chargement des modèles…</string>
     <string name="ocr_spike_engine">Moteur de traduction</string>
-    <string name="ocr_spike_key_missing">Aucune clé %1$s — ajoutez-en une dans les paramètres du lecteur</string>
-    <string name="ocr_spike_key_present">La clé %1$s est définie</string>
     <string name="ocr_spike_model">Modèle</string>
-    <string name="ocr_spike_refresh_models">Charger les modèles du fournisseur</string>
     <string name="ocr_spike_no_models">Aucun modèle utilisable renvoyé par le fournisseur</string>
     <string name="ocr_spike_key_required">%1$s nécessite une clé API</string>
     <string name="ocr_spike_target_language">Traduire vers</string>
@@ -1770,7 +1774,6 @@
     <string name="ocr_spike_failed">Échec de l\'OCR : %1$s</string>
     <string name="ocr_spike_no_page">Aucune page mesurée pour l\'instant.</string>
     <string name="ocr_spike_no_blocks">aucun bloc reconnu</string>
-    <string name="ocr_spike_nothing_recognised">(rien de reconnu)</string>
     <string name="ocr_spike_hand_drawn">tracé à la main</string>
     <string name="ocr_spike_line_reordered">réordonné</string>
     <string name="ocr_spike_label_glyph">Hauteur glyphe SFX ≥ %1$.1f%% de la page</string>
@@ -2680,4 +2683,14 @@
     <string name="search_kw_novel_margin">roman novel marge espacement margin gap</string>
     <string name="search_kw_novel_lock_rotation">roman novel orientation portrait paysage rotation rotate</string>
     <string name="search_kw_novel_hide_page_numbers">roman novel numéro de page compteur indicateur counter</string>
+    <string name="mtl_page_actions">Page %1$d</string>
+    <string name="mtl_translate_page">Traduire cette page</string>
+    <string name="mtl_retranslate_page">Traduire à nouveau cette page</string>
+    <string name="mtl_hide_translation">Masquer la traduction</string>
+    <string name="view_image">Voir l\'image</string>
+    <string name="mtl_translating">Traduction de la page %1$d…</string>
+    <string name="mtl_needs_key">Ajoutez une clé API pour ce moteur dans les paramètres du lecteur</string>
+    <string name="mtl_page_unavailable">Cette page n\'est pas chargée</string>
+    <string name="mtl_nothing_found">Aucun texte traduisible sur cette page</string>
+    <string name="mtl_failed">Échec de la traduction</string>
 </resources>
