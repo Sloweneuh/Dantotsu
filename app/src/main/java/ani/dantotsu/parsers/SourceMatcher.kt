@@ -167,16 +167,17 @@ object SourceMatcher {
     /**
      * The titles worth *searching* for, best first.
      *
-     * Latin-script only: a source's search box is indexed by whatever the site writes its entries
-     * in, and a native-script query on a site that lists romaji returns nothing — the same reason
-     * [ani.dantotsu.media.SourceSearchDialogFragment] offers Latin titles only. A media with no
-     * Latin title at all falls back to searching what it does have.
+     * Latin-script titles lead: a source's search box is indexed by whatever the site writes its
+     * entries in, and a native-script query on a site that lists romaji returns nothing. Native
+     * titles are kept, but sorted to the end — the same order
+     * [ani.dantotsu.media.SourceSearchDialogFragment] puts them in — so a media whose only match on
+     * a native-indexed source is its native name is still reachable, without spending an early
+     * [MAX_QUERIES] slot on a query that usually finds nothing.
      */
     fun queries(media: Media): List<String> {
-        val all = titles(media)
-        val latin = all.filter(::isLatinScript)
+        val (latin, nonLatin) = titles(media).partition(::isLatinScript)
         val seen = mutableSetOf<String>()
-        return latin.ifEmpty { all }.filter { seen.add(key(it).id) }
+        return (latin + nonLatin).filter { seen.add(key(it).id) }
     }
 
     /**

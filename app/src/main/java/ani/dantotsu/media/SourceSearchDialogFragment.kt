@@ -302,18 +302,30 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
                         }
                     }
 
-                    // Keep only Latin-script titles and dedupe case-insensitively, preserving
-                    // first-seen order. [seen] is shared with the MALSync pass further down, so a
-                    // title already in the dropdown is never appended a second time.
+                    // Dedupe case-insensitively, preserving first-seen order. [seen] is shared with
+                    // the MALSync pass further down, so a title already in the dropdown is never
+                    // appended a second time. Latin-script titles are kept at the top; native
+                    // (non-Latin) titles are collected separately and appended after them, so a
+                    // source that only matches the native spelling can still be reached without
+                    // pushing the usual romanised titles down.
                     val seen = linkedSetOf<String>()
-                    fun acceptable(candidates: List<String>): List<String> =
-                        candidates.filter { isLatinOnly(it) }
-                            .filter { seen.add(it.lowercase(java.util.Locale.ROOT)) }
+                    val latinTitles = mutableListOf<String>()
+                    val nonLatinTitles = mutableListOf<String>()
+                    fun accept(candidates: List<String>) {
+                        candidates.forEach { raw ->
+                            val title = raw.trim()
+                            if (title.isNotBlank() && seen.add(title.lowercase(java.util.Locale.ROOT))) {
+                                if (isLatinOnly(title)) latinTitles.add(title) else nonLatinTitles.add(title)
+                            }
+                        }
+                    }
+                    fun currentTitleOptions(): List<String> = latinTitles + nonLatinTitles
 
                     // Build a deterministic list of candidate titles/synonyms for the dropdown.
                     // Pull every title field available on the Media (AniList english,
                     // userPreferred, romaji and MAL/native), then synonyms, Comick and
-                    // MangaUpdates titles. Preserve order and dedupe case-insensitively.
+                    // MangaUpdates titles. Preserve order and dedupe case-insensitively; native
+                    // (non-Latin) titles are sorted to the bottom by [accept].
                     titleOptions = run {
                         val list = mutableListOf<String>()
 
@@ -347,7 +359,8 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
                             }
                         }
 
-                        acceptable(list)
+                        accept(list)
+                        currentTitleOptions()
                     }
 
                     // Auto-search with first title if needed (after titleOptions is set)
@@ -376,8 +389,9 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
                             emptyList<String>()
                         }
                     } ?: emptyList()
-                    acceptable(quicklinkTitles).takeIf { it.isNotEmpty() }?.let { extra ->
-                        titleOptions = titleOptions + extra
+                    if (quicklinkTitles.isNotEmpty()) {
+                        accept(quicklinkTitles)
+                        titleOptions = currentTitleOptions()
                     }
                 }
 
