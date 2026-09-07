@@ -1756,7 +1756,6 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="ocr_backup_min_median">Minimum ring median</string>
     <string name="ocr_backup_iqr">Ring IQR</string>
     <string name="ocr_backup_pad">Ring padding</string>
-    <string name="ocr_spike_second_pass">Second pass over tiles (slower)</string>
     <string name="ocr_spike_merge_blocks">Merge runs into bubbles</string>
     <string name="ocr_spike_merged_info">%1$d runs merged into %2$d</string>
     <string name="ocr_mtl">OCR &amp; MTL</string>
@@ -1813,10 +1812,11 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="ocr_spike_label_min_median">Min ring median    ≥ %1$.0f</string>
     <string name="ocr_spike_label_iqr">Ring IQR           ≤ %1$.0f</string>
     <string name="ocr_spike_label_pad">Ring pad           %1$.2f× glyph</string>
-    <string name="ocr_spike_counts">%1$d blocks — %2$d dialogue / %3$d sfx / %4$d low-conf / %5$d over art</string>
+    <string name="ocr_spike_counts">%1$d blocks — %2$d dialogue / %3$d sfx / %4$d low-conf / %5$d over art / %6$d furigana</string>
     <string name="ocr_spike_page_info">page %1$d×%2$d — OCR %3$d ms</string>
     <string name="ocr_spike_reordered_count">%1$d vertical blocks re-ordered right-to-left</string>
     <string name="ocr_spike_hand_drawn_count">%1$d hand-drawn</string>
+    <string name="ocr_spike_rejected_count">%1$d detections rejected as outside a bubble</string>
     <string name="ocr_spike_symbols_empty">symbols EMPTY — line-box fallback in use</string>
     <string name="ocr_spike_reason_iqr">ring iqr %1$.0f > %2$.0f</string>
     <string name="ocr_spike_reason_median">ring median %1$.0f &lt; %2$.0f</string>
@@ -1824,6 +1824,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="ocr_spike_reason_glyph">glyph %1$.2f%% ≥ %2$.1f%%</string>
     <string name="ocr_spike_reason_katakana">katakana %1$.0f%% ≥ %2$.0f%% at %3$.2f%% glyph</string>
     <string name="ocr_spike_reason_pass">passes every test</string>
+    <string name="ocr_spike_reason_furigana">kana-only and smaller than the page body text</string>
     <string name="ocr_spike_selection_metrics">  glyph %1$.2f%%  conf %2$.2f  angle %3$.1f  kata %4$d%%  %5$d line(s)%6$s</string>
     <string name="ocr_spike_selection_ring">  ring median %1$d  iqr %2$d   (mean %3$d, sd %4$d)</string>
     <string name="ocr_spike_selection_size">  %1$d×%2$d px%3$s</string>

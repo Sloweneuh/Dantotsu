@@ -104,6 +104,9 @@ class MangaOcrSpikeActivity : AppCompatActivity() {
     /** The recognizer's runs for the current page, before merging. See [Candidate]. */
     private var candidates: List<Candidate> = emptyList()
 
+    /** Lines and tile finds the ring test threw out, so a filter doing nothing is visible. */
+    private var rejected = 0
+
     /** Last failure, kept on screen rather than flashed past in a toast. */
     private var lastError: String? = null
 
@@ -241,8 +244,12 @@ class MangaOcrSpikeActivity : AppCompatActivity() {
         val symbolsAvailable: Boolean,
         val lineCount: Int,
         val katakanaRatio: Float,
+        /** No kanji anywhere in it. Half of what marks a block as furigana. */
+        val kanaOnly: Boolean,
         /** Drawn by hand rather than found by the full-page pass. */
         val synthetic: Boolean,
+        /** Every glyph box the extent was built from, kept so a wrong box can be taken apart. */
+        val glyphBoxes: List<Rect> = emptyList(),
         /** Filled in by [translatePage]; empty until then. */
         val translation: String = "",
     ) {
@@ -299,6 +306,17 @@ class MangaOcrSpikeActivity : AppCompatActivity() {
 
         /** Not inside anything uniform. Boxing this is what destroys artwork. */
         OVER_ART("OVER_ART", 0xFFF44336.toInt()),
+
+        /**
+         * Ruby text glossing the kanji beside it, which must not be treated as a line of its own.
+         *
+         * It says the same thing as the characters it annotates — a measured page produced
+         * `同級生` and its gloss as two blocks, and both came back translated as "Classmate" — so
+         * translating it duplicates the bubble, and painting it stamps a second box across the
+         * text it belongs to. It is also the least reliably read text on any page, being the
+         * smallest.
+         */
+        FURIGANA("FURIGANA", 0xFF2196F3.toInt()),
     }
 
     private enum class Script(val label: String) {
@@ -454,15 +472,19 @@ class MangaOcrSpikeActivity : AppCompatActivity() {
         currentScript = Script.entries.getOrElse(binding.scriptSpinner.selectedItemPosition) {
             Script.JAPANESE
         }
-        val useSecondPass = binding.secondPass.isChecked
         binding.ocrProgress.visibility = View.VISIBLE
         lifecycleScope.launch {
             val result = runCatching {
                 withContext(Dispatchers.Default) {
                     val bitmap = decodeSampled(uri) ?: error("could not decode that image")
                     val started = System.currentTimeMillis()
-                    var found = candidatesOf(recognize(bitmap), bitmap)
-                    if (useSecondPass) found = found + secondPass(bitmap, found)
+                    rejected = 0
+                    val (ocrBitmap, ocrScale) = ocrImage(bitmap)
+                    val found = try {
+                        candidatesOf(recognize(ocrBitmap), ocrBitmap, ocrScale)
+                    } finally {
+                        if (ocrBitmap !== bitmap) ocrBitmap.recycle()
+                    }
                     Triple(bitmap, found, System.currentTimeMillis() - started)
                 }
             }
@@ -489,86 +511,6 @@ class MangaOcrSpikeActivity : AppCompatActivity() {
             }
         }
     }
-
-    /**
-     * Reads the page again in overlapping tiles, and returns what the first pass never found.
-     *
-     * The full-page pass misses text it can read perfectly well: one measured page dropped a
-     * normal-sized bubble outright, and the identical pixels came back at 0.85 confidence — the
-     * best on that page — the moment they were handed over as a crop. So the limit is the
-     * *detector* at page scale, not the recogniser, and the fix is to ask again at a scale where
-     * the text is larger, which is precisely what the crop did by accident.
-     *
-     * Tiles overlap by [TILE_OVERLAP] so a bubble on a seam is whole in at least one of them, and
-     * anything landing where the first pass already found something is discarded — the second pass
-     * is there to add, never to relitigate.
-     */
-    private suspend fun secondPass(bitmap: Bitmap, found: List<Candidate>): List<Candidate> {
-        val extra = mutableListOf<Candidate>()
-        val stepX = bitmap.width / TILE_COLUMNS
-        val stepY = bitmap.height / TILE_ROWS
-        val padX = (stepX * TILE_OVERLAP).toInt()
-        val padY = (stepY * TILE_OVERLAP).toInt()
-
-        for (row in 0 until TILE_ROWS) {
-            for (column in 0 until TILE_COLUMNS) {
-                val tile = Rect(
-                    (column * stepX - padX).coerceAtLeast(0),
-                    (row * stepY - padY).coerceAtLeast(0),
-                    ((column + 1) * stepX + padX).coerceAtMost(bitmap.width),
-                    ((row + 1) * stepY + padY).coerceAtMost(bitmap.height),
-                )
-                if (tile.width() < MIN_CROP || tile.height() < MIN_CROP) continue
-
-                val scale = (TILE_TARGET.toFloat() / min(tile.width(), tile.height()))
-                    .coerceIn(1f, MAX_CROP_SCALE)
-                val crop = Bitmap.createBitmap(
-                    bitmap, tile.left, tile.top, tile.width(), tile.height(),
-                )
-                val scaled = if (scale > 1f) {
-                    crop.scale((crop.width * scale).toInt(), (crop.height * scale).toInt())
-                } else {
-                    crop
-                }
-                val text = try {
-                    recognize(scaled)
-                } finally {
-                    if (scaled !== crop) scaled.recycle()
-                    crop.recycle()
-                }
-
-                text.textBlocks
-                    .filter { it.boundingBox != null && it.text.length > 1 && it.lines.isNotEmpty() }
-                    .forEach { block ->
-                        val box = block.boundingBox!!.toPage(tile, scale)
-                        val known = found.any { intersects(it.box, box) } ||
-                            extra.any { intersects(it.box, box) }
-                        if (known) return@forEach
-                        val glyphs = block.lines.map { glyphSize(it).second }
-                        extra += Candidate(
-                            box = box,
-                            lines = block.lines,
-                            // Measured on the enlarged tile, so scaled back to page pixels or the
-                            // glyph would read several times its real size.
-                            glyphPx = glyphs.average().toFloat() / scale,
-                            vertical = block.lines.first().angle > VERTICAL_ANGLE,
-                        )
-                    }
-            }
-        }
-        return extra
-    }
-
-    /** A rect measured on a scaled tile, put back where it belongs on the page. */
-    private fun Rect.toPage(tile: Rect, scale: Float) = Rect(
-        tile.left + (left / scale).toInt(),
-        tile.top + (top / scale).toInt(),
-        tile.left + (right / scale).toInt(),
-        tile.top + (bottom / scale).toInt(),
-    )
-
-    private fun intersects(a: Rect, b: Rect) =
-        a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom
 
     private suspend fun recognize(bitmap: Bitmap): Text {
         val recognizer = TextRecognition.getClient(currentScript.options())
@@ -619,7 +561,12 @@ class MangaOcrSpikeActivity : AppCompatActivity() {
         val vertical: Boolean,
     )
 
-    private fun candidatesOf(text: Text, bitmap: Bitmap): List<Candidate> =
+    /**
+     * @param bitmap the image the recognizer actually saw, which may be an enlarged copy of the
+     *               page — rings are measured on it, so it must be that one and not the original.
+     * @param scale  how much larger it is than the page, used to put the results back.
+     */
+    private fun candidatesOf(text: Text, bitmap: Bitmap, scale: Float = 1f): List<Candidate> =
         text.textBlocks
             // Same filter TachiyomiAT applies before it builds its blocks, so the counts here mean
             // what they would mean downstream. A block with no lines has nothing to measure.
@@ -627,19 +574,114 @@ class MangaOcrSpikeActivity : AppCompatActivity() {
             .mapNotNull { block ->
                 val lines = linesInsideBubble(block.lines, bitmap)
                 if (lines.isEmpty()) return@mapNotNull null
+                val box = tightBox(lines) ?: return@mapNotNull null
                 Candidate(
-                    // The surviving lines' own extent, not the recognizer's block box. The two
-                    // differ exactly when a line has been dropped, which is the case this exists
-                    // for: a page measured here had a block stretched over a character's teeth,
-                    // and the box went with it even though nothing readable was there.
-                    box = lines.mapNotNull { it.boundingBox }.reduce { a, b ->
-                        Rect(a).apply { union(b) }
-                    },
+                    box = box.scaledDown(scale),
                     lines = lines,
-                    glyphPx = lines.map { glyphSize(it).second }.average().toFloat(),
+                    glyphPx = lines.map { glyphSize(it).second }.average().toFloat() / scale,
                     vertical = lines.first().angle > VERTICAL_ANGLE,
                 )
             }
+
+    private fun Rect.scaledDown(scale: Float) = if (scale == 1f) this else Rect(
+        (left / scale).toInt(),
+        (top / scale).toInt(),
+        (right / scale).toInt(),
+        (bottom / scale).toInt(),
+    )
+
+    /**
+     * The page as the recognizer should see it, enlarged when it is small, and by how much.
+     *
+     * ML Kit reads the same pixels correctly at one size and wrongly at another, and every problem
+     * this spike has chased came back to that. A bubble the full-page pass dropped entirely was
+     * read at 0.85 confidence from a crop; a character invented on a drawing of teeth — the stray
+     * `)` in `会った)と` — disappears when the identical box is re-read. The only thing those two
+     * paths did differently was enlarge the image first. Pages here are around 800px wide with
+     * glyphs near 18px, which is simply too small for the detector, so it is given a bigger copy.
+     *
+     * The page bitmap itself is left alone: it is what gets drawn, ringed and measured against, and
+     * results come back from [scaledDown] in its coordinates.
+     */
+    private fun ocrImage(page: Bitmap): Pair<Bitmap, Float> {
+        val scale = (OCR_TARGET_WIDTH.toFloat() / page.width).coerceIn(1f, MAX_OCR_SCALE)
+        if (scale == 1f) return page to 1f
+        return page.scale((page.width * scale).toInt(), (page.height * scale).toInt()) to scale
+    }
+
+    /**
+     * The extent of the actual glyphs, rather than the boxes the recognizer drew around them.
+     *
+     * A line's bounding box can be considerably taller than the characters in it, and on a page
+     * measured here one reached up out of its speech bubble and over a character's open mouth. No
+     * amount of judging that box could fix it: the text inside was perfectly good, so nothing was
+     * there to reject — the box was simply wrong. The ring test could not see it either, and for a
+     * reason worth stating, since it is the same reason the ring works at all. The ring around that
+     * block measured an interquartile range of 1 against a standard deviation of 85: nearly all
+     * white, with a minority of very dark pixels where the mouth was. A quartile range ignoring a
+     * minority is exactly the property that makes it survive a bubble's outline, and exactly what
+     * blinds it here.
+     *
+     * Symbols are the way out. Each character carries its own box, and their union hugs the text
+     * whatever shape the line box took. Falls back through elements to lines for a script whose
+     * recognizer leaves symbols empty.
+     */
+    private fun tightBox(lines: List<Text.Line>): Rect? {
+        val glyphs = lines.flatMap { sanedGlyphs(it) }
+        val elements = lines.flatMap { line -> line.elements.mapNotNull { it.boundingBox } }
+        val boxes = glyphs.ifEmpty { elements }.ifEmpty { lines.mapNotNull { it.boundingBox } }
+        if (boxes.isEmpty()) return null
+        return boxes.reduce { a, b -> Rect(a).apply { union(b) } }
+    }
+
+    /**
+     * One line's glyph boxes, with any the recognizer drew far too large cut back to size.
+     *
+     * Measured on the page this kept getting stuck on: a column of seven characters came back with
+     * boxes 145, 36, 35, 39, 39, 33 and 19 pixels tall. The first is not a character — it is one
+     * character's box stretched up across the drawing of an open mouth above it — and since the
+     * block's extent is the union of its glyphs, that single bad box dragged the whole bubble's
+     * frame over the artwork. Nothing further up could have caught it: the text was right, the
+     * classification was right, and a ring around the resulting box reads as uniform because the
+     * mouth is a minority of it.
+     *
+     * An outlier is put back where its neighbours say it belongs. Characters in a line abut, so a
+     * box that has grown has grown *away* from the neighbour it touches, and the far edge is the
+     * false one; the near edge plus a median glyph is where the character really is.
+     */
+    private fun sanedGlyphs(line: Text.Line): List<Rect> {
+        val boxes = line.elements.flatMap { element ->
+            element.symbols.mapNotNull { it.boundingBox }
+        }
+        if (boxes.size < 3) return boxes
+        val vertical = line.angle > VERTICAL_ANGLE
+        val sorted = if (vertical) boxes.sortedBy { it.top } else boxes.sortedBy { it.left }
+        val extents = sorted.map { if (vertical) it.height() else it.width() }.sorted()
+        val median = extents[extents.size / 2]
+        if (median <= 0) return sorted
+
+        return sorted.mapIndexed { index, box ->
+            val extent = if (vertical) box.height() else box.width()
+            if (extent <= median * GLYPH_OUTLIER) return@mapIndexed box
+            val next = sorted.getOrNull(index + 1)
+            val previous = sorted.getOrNull(index - 1)
+            when {
+                next != null -> if (vertical) {
+                    Rect(box.left, next.top - median, box.right, next.top)
+                } else {
+                    Rect(next.left - median, box.top, next.left, box.bottom)
+                }
+
+                previous != null -> if (vertical) {
+                    Rect(box.left, previous.bottom, box.right, previous.bottom + median)
+                } else {
+                    Rect(previous.right, box.top, previous.right + median, box.bottom)
+                }
+
+                else -> box
+            }
+        }
+    }
 
     /**
      * Drops lines the recognizer found outside anything resembling a bubble.
@@ -652,7 +694,10 @@ class MangaOcrSpikeActivity : AppCompatActivity() {
      * plainly not in one, so it is set far looser than the slider and never touches ordinary text.
      */
     private fun linesInsideBubble(lines: List<Text.Line>, bitmap: Bitmap): List<Text.Line> {
-        if (lines.size < 2) return lines
+        // A one-line run is *not* exempt. Skipping it was the hole that let this whole test miss
+        // the case it was written for: a character's teeth read as one line of text, in a block of
+        // its own, which then merged into the bubble beside it and took that bubble's box out over
+        // the artwork. Having no siblings simply means nothing to exclude from the ring.
         val boxes = lines.mapNotNull { it.boundingBox }
         val kept = lines.filter { line ->
             val box = line.boundingBox ?: return@filter false
@@ -667,7 +712,9 @@ class MangaOcrSpikeActivity : AppCompatActivity() {
         }
         // Rejecting everything means the test is wrong about this block rather than the block being
         // wrong, so the recognizer's own answer stands.
-        return kept.ifEmpty { lines }
+        if (kept.isEmpty()) return lines
+        rejected += lines.size - kept.size
+        return kept
     }
 
     /**
@@ -750,8 +797,9 @@ class MangaOcrSpikeActivity : AppCompatActivity() {
         val runs = if (binding.mergeBlocks.isChecked) mergeCandidates(candidates) else candidates
         nextId = 1
         blocks = emptyList()
-        blocks = runs.map { toRawBlock(nextId++, it.lines, it.box, synthetic = false) } +
-            handDrawn.map { it.copy(id = nextId++, translation = "") }
+        blocks = runs.map {
+            toRawBlock(nextId++, it.lines, it.box, synthetic = false, glyphPx = it.glyphPx)
+        } + handDrawn.map { it.copy(id = nextId++, translation = "") }
     }
 
     /**
@@ -764,6 +812,16 @@ class MangaOcrSpikeActivity : AppCompatActivity() {
         box: Rect,
         synthetic: Boolean,
         glyphScale: Float = 1f,
+        /**
+         * Glyph size already in page pixels, when the caller has it.
+         *
+         * A candidate knows its own, and passing it beats recomputing from [lines] — those boxes
+         * are in whatever space the recognizer saw, and reconstructing the divisor from a merged
+         * candidate is not even well defined, since its lines can come from passes enlarged by
+         * different amounts. Getting that wrong reported every merged block at roughly twice its
+         * real glyph size, which silently moves the SFX threshold and the ring padding with it.
+         */
+        glyphPx: Float? = null,
     ): RawBlock {
         val glyphs = lines.map { glyphSize(it) }
         val (ordered, reordered) = orderedText(lines)
@@ -780,13 +838,17 @@ class MangaOcrSpikeActivity : AppCompatActivity() {
                 lines.map { it.confidence }.average().toFloat()
             },
             angle = lines.firstOrNull()?.angle ?: 0f,
-            glyphPx = if (glyphs.isEmpty()) fallbackGlyph(box) else {
+            glyphPx = glyphPx ?: if (glyphs.isEmpty()) fallbackGlyph(box) else {
                 glyphs.map { it.second }.average().toFloat() / glyphScale
             },
             symbolsAvailable = glyphs.isNotEmpty() && glyphs.all { it.first },
             lineCount = lines.size,
             katakanaRatio = katakanaRatio(ordered),
+            kanaOnly = kanaOnly(ordered),
             synthetic = synthetic,
+            glyphBoxes = lines.flatMap { line ->
+                line.elements.flatMap { element -> element.symbols.mapNotNull { it.boundingBox } }
+            },
         )
     }
 
@@ -910,6 +972,25 @@ class MangaOcrSpikeActivity : AppCompatActivity() {
             mean = mean.toFloat(),
             stdDev = sqrt(variance).toFloat(),
         )
+    }
+
+    /**
+     * Whether every letter is kana, with no kanji among them.
+     *
+     * Half of what identifies furigana. On its own it identifies nothing — plenty of ordinary
+     * dialogue is written entirely in kana — which is why it is only ever used together with a
+     * glyph size well under the page's own.
+     */
+    private fun kanaOnly(text: String): Boolean {
+        var letters = 0
+        text.forEach { c ->
+            if (!c.isLetter()) return@forEach
+            letters++
+            val kana = c in 'ぁ'..'ゟ' || c in KATAKANA ||
+                c in KATAKANA_PHONETIC || c in KATAKANA_HALFWIDTH
+            if (!kana) return false
+        }
+        return letters > 0
     }
 
     /** Katakana as a share of letters — Japanese onomatopoeia is written in it almost exclusively. */
@@ -1076,6 +1157,23 @@ class MangaOcrSpikeActivity : AppCompatActivity() {
      * outline here — which is the strongest argument yet for bubble segmentation, and it comes from
      * rendering rather than from detection, where the argument was expected.
      */
+    /**
+     * A block's bounds with a little margin, for painting it out rather than writing into it.
+     *
+     * The box hugs the glyphs exactly, which is what it should do for placing text but leaves the
+     * outer edge of a stroke showing when the same box is used to cover one up. A quarter of a
+     * glyph is enough to swallow that without eating into the drawing.
+     */
+    private fun erasureRect(block: RawBlock, page: Bitmap): Rect {
+        val pad = (block.glyphPx * ERASURE_PAD).toInt().coerceAtLeast(1)
+        return Rect(
+            (block.box.left - pad).coerceAtLeast(0),
+            (block.box.top - pad).coerceAtLeast(0),
+            (block.box.right + pad).coerceAtMost(page.width),
+            (block.box.bottom + pad).coerceAtMost(page.height),
+        )
+    }
+
     private fun previewRects(scored: List<Scored>, page: Bitmap): Map<Int, Rect> {
         val original = scored.associate { it.block.id to it.block.box }
 
@@ -1182,9 +1280,14 @@ class MangaOcrSpikeActivity : AppCompatActivity() {
 
     private fun score(t: Thresholds): List<Scored> {
         val source = sourceBitmap ?: return emptyList()
+        // Furigana are small *relative to this page*, so the comparison has to come from the page
+        // rather than from a constant: a densely lettered release and a large-print one differ by
+        // more than furigana differ from body text.
+        val bodyGlyph = blocks.map { it.glyphPx }.filter { it > 0f }.sorted()
+            .let { if (it.isEmpty()) 0f else it[it.size / 2] }
         return blocks.map { block ->
             val ring = ringStats(source, block.box, block.glyphPx, t.ringPad)
-            Scored(block, ring, verdict(block, ring, source.height, t))
+            Scored(block, ring, verdict(block, ring, source.height, bodyGlyph, t))
         }
     }
 
@@ -1205,8 +1308,15 @@ class MangaOcrSpikeActivity : AppCompatActivity() {
         block: RawBlock,
         ring: Ring,
         pageHeight: Int,
+        bodyGlyph: Float,
         t: Thresholds,
     ): Verdict {
+        // Ahead of the ring test, because furigana sit hard against the kanji they gloss and so
+        // often ring as badly as artwork does. Calling them OVER_ART would be the right answer for
+        // the wrong reason, and would hide what they are.
+        if (block.kanaOnly && bodyGlyph > 0f && block.glyphPx < bodyGlyph * FURIGANA_RATIO) {
+            return Verdict.FURIGANA
+        }
         if (ring.iqr > t.ringIqr) return Verdict.OVER_ART
         if (t.minBrightness > 0f && ring.median < t.minBrightness) return Verdict.OVER_ART
         if (block.confidence < t.minConfidence) return Verdict.LOW_CONF
@@ -1248,6 +1358,8 @@ class MangaOcrSpikeActivity : AppCompatActivity() {
                 )
             }
 
+            Verdict.FURIGANA -> getString(R.string.ocr_spike_reason_furigana)
+
             Verdict.DIALOGUE -> getString(R.string.ocr_spike_reason_pass)
         }
     }
@@ -1274,10 +1386,23 @@ class MangaOcrSpikeActivity : AppCompatActivity() {
                 // Widened against every block, not just the drawn ones: a block that was filtered
                 // out of the preview still occupies space the others must not grow into.
                 val rects = previewRects(scored, source)
-                scored.filter { it.block.translation.isNotBlank() }.map {
+                scored.filter {
+                    // Furigana carry no translation and are painted anyway. The kanji they gloss
+                    // has just been replaced with English, so leaving the gloss behind strands
+                    // Japanese ruby against a translated line — the one case where a block must be
+                    // covered precisely because it is not being translated.
+                    it.block.translation.isNotBlank() || it.verdict == Verdict.FURIGANA
+                }.map {
                     BlockEditorView.Box(
                         id = it.block.id,
-                        rect = rects.getValue(it.block.id),
+                        // Its own bounds, not the widened ones: widening buys room for text to be
+                        // set into, and an erasure has none, so widening would only paint over
+                        // more of the drawing than the gloss ever covered.
+                        rect = if (it.block.translation.isBlank()) {
+                            erasureRect(it.block, source)
+                        } else {
+                            rects.getValue(it.block.id)
+                        },
                         color = it.verdict.color,
                         translation = it.block.translation,
                         fill = fillColor(it.ring.median),
@@ -1298,6 +1423,7 @@ class MangaOcrSpikeActivity : AppCompatActivity() {
                     counts[Verdict.SFX] ?: 0,
                     counts[Verdict.LOW_CONF] ?: 0,
                     counts[Verdict.OVER_ART] ?: 0,
+                    counts[Verdict.FURIGANA] ?: 0,
                 ),
             )
             append(
@@ -1322,6 +1448,9 @@ class MangaOcrSpikeActivity : AppCompatActivity() {
                     ),
                 )
             }
+            if (rejected > 0) {
+                append("\n" + getString(R.string.ocr_spike_rejected_count, rejected))
+            }
             val hand = scored.count { it.block.synthetic }
             if (hand > 0) append("\n" + getString(R.string.ocr_spike_hand_drawn_count, hand))
             val translated = scored.count { it.block.translation.isNotBlank() }
@@ -1341,6 +1470,15 @@ class MangaOcrSpikeActivity : AppCompatActivity() {
         }
 
         val selected = scored.firstOrNull { it.block.id == binding.pageImage.selectedId }
+        selected?.block?.takeIf { it.glyphBoxes.isNotEmpty() }?.let { block ->
+            // Every glyph the box was built from, so a box that is too big can be traced to the
+            // glyph that made it so rather than guessed at.
+            Log.d(
+                TAG,
+                "#${block.id} box=${block.box.toShortString()} glyphs=" +
+                    block.glyphBoxes.joinToString(" ") { it.toShortString() },
+            )
+        }
         binding.selectionText.text = if (selected == null) {
             getString(R.string.ocr_spike_hint)
         } else {
@@ -1491,6 +1629,9 @@ class MangaOcrSpikeActivity : AppCompatActivity() {
         /** Width-to-height a vertical block's box is widened towards before text is set into it. */
         const val PREVIEW_ASPECT = 1.4f
 
+        /** Margin added when covering a block up, in glyph widths. */
+        const val ERASURE_PAD = 0.25f
+
         /** Page pixels left between two widened boxes, so neighbours read as separate. */
         const val PREVIEW_GUTTER = 3
 
@@ -1509,11 +1650,32 @@ class MangaOcrSpikeActivity : AppCompatActivity() {
         /** Below this the crop is too small for the recognizer to be asked anything useful. */
         const val MIN_CROP = 12
 
-        /** Second-pass tiling. Overlap so a bubble on a seam is whole in at least one tile. */
-        const val TILE_ROWS = 3
-        const val TILE_COLUMNS = 2
-        const val TILE_OVERLAP = 0.15f
-        const val TILE_TARGET = 900
+        /**
+         * Width the page is enlarged to before the recognizer sees it.
+         *
+         * ML Kit is markedly better on larger text, and manga pages arrive small enough that its
+         * glyphs sit near the bottom of what it reads reliably.
+         */
+        const val OCR_TARGET_WIDTH = 1600
+        const val MAX_OCR_SCALE = 2.5f
+
+        /**
+         * How many median glyphs tall a glyph box may be before it is treated as misdrawn.
+         *
+         * Two is well clear of real variation — the widest spread measured in one column was 19
+         * to 39 against a median of 36 — while the bad box that prompted this was 145.
+         */
+        const val GLYPH_OUTLIER = 2f
+
+        /**
+         * Below this share of the page median glyph, kana-only text is taken to be furigana.
+         *
+         * Ruby is conventionally about half the size of the text it annotates. On the page this
+         * came from, body glyphs ran 1.16-1.56%% of page height while the three furigana measured
+         * 0.43, 0.69 and 0.94%% — the last of which is why this sits at 0.8 rather than nearer the
+         * conventional 0.5.
+         */
+        const val FURIGANA_RATIO = 0.8f
 
         /** Ring thickness used when judging a single line, in glyph widths. */
         const val LINE_RING_PAD = 0.5f
@@ -1521,11 +1683,13 @@ class MangaOcrSpikeActivity : AppCompatActivity() {
         /**
          * Ring spread above which a line is taken to be outside any bubble.
          *
-         * Far slacker than the block-level slider on purpose. This only has to catch lines sitting
-         * on artwork — teeth, hatching, a panel border — and every false rejection here silently
-         * deletes readable text, which is a worse failure than leaving a stray line in.
+         * Slacker than the block-level slider, but not by as much as it first was. Set to 60 it
+         * sat above measured artwork readings of 28 and 44 and so rejected nothing that mattered;
+         * across four pages in-bubble rings never exceeded 17 while artwork ran 28 and up, and 30
+         * sits in that gap with room on the safe side. Every false rejection here silently deletes
+         * readable text, which is why it is not tightened to the block-level 20.
          */
-        const val LINE_RING_IQR = 60f
+        const val LINE_RING_IQR = 30f
 
         /** Quiet space added around a hand-drawn box before it is read, as a share of its size. */
         const val CROP_MARGIN = 0.25f

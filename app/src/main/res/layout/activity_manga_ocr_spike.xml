@@ -86,23 +86,6 @@
                   Rebuilds from the recognizer's runs rather than re-reading the page, so merged
                   and unmerged can be compared without a second OCR pass.
                 -->
-                <!--
-                  Costs a second round of recognition over the page in tiles. Worth it because the
-                  full-page detector demonstrably misses text it can read: a bubble dropped
-                  entirely came back at 0.85 confidence once handed over as a crop.
-                -->
-                <com.google.android.material.materialswitch.MaterialSwitch
-                    android:id="@+id/secondPass"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:checked="false"
-                    android:fontFamily="@font/poppins_semi_bold"
-                    android:minHeight="48dp"
-                    android:text="@string/ocr_spike_second_pass"
-                    android:textAlignment="viewStart"
-                    android:textColor="?attr/colorOnBackground" />
-
                 <com.google.android.material.materialswitch.MaterialSwitch
                     android:id="@+id/mergeBlocks"
                     android:layout_width="match_parent"
