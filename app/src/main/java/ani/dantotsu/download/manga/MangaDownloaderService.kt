@@ -333,6 +333,7 @@ class MangaDownloaderService : Service() {
                         task.chapter,
                         MediaType.MANGA,
                         scanlator = task.scanlator,
+                        language = task.language,
                     )
                 )
                 broadcastDownloadFinished(task.uniqueName)
@@ -859,6 +860,8 @@ class MangaDownloaderService : Service() {
         val simultaneousDownloads: Int = 2,
         val asPdf: Boolean = false,
         val pdfTransitions: List<PdfTransition> = emptyList(),
+        /** The source's language code, carried through so the finished download can record it. */
+        val language: String? = null,
     ) {
         // Sanitized to match MangaChapter.uniqueNumber() and DownloadedType.chapterName — all
         // three identify the same chapter and must agree even when `chapter` contains characters

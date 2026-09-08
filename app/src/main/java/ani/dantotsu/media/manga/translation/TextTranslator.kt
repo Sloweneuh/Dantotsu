@@ -27,6 +27,15 @@ interface TextTranslator : Closeable {
 }
 
 /**
+ * What is being translated, which changes how the model-based engines are asked.
+ *
+ * Only the language models can act on this — the other two see one string at a time and have no
+ * instructions to give — but the difference is large where it applies: a comic page is dialogue
+ * read off a picture by imperfect recognition, and a novel is prose that arrived intact.
+ */
+enum class TextKind { COMIC, PROSE }
+
+/**
  * The engines, in rough order of what they cost the user to set up.
  *
  * The first two need nothing at all; the last two need the user's own key. All four are free at the
@@ -64,15 +73,20 @@ enum class TranslationEngine(
         else -> ""
     }
 
-    fun build(from: String, to: String, toLabel: String): TextTranslator {
+    fun build(
+        from: String,
+        to: String,
+        toLabel: String,
+        kind: TextKind = TextKind.COMIC,
+    ): TextTranslator {
         val key = storedKey()
         val model = PrefManager.getVal<String>(PrefName.OcrTranslationModel)
             .ifBlank { defaultModel() }
         return when (this) {
             ML_KIT -> MlKitTranslator(from, to)
             GOOGLE -> GoogleTranslator(from, to)
-            GEMINI -> LlmTranslator.gemini(key, model, toLabel)
-            OPENROUTER -> LlmTranslator.openRouter(key, model, toLabel)
+            GEMINI -> LlmTranslator.gemini(key, model, toLabel, kind)
+            OPENROUTER -> LlmTranslator.openRouter(key, model, toLabel, kind)
         }
     }
 

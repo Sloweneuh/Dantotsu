@@ -1758,6 +1758,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="ocr_backup_min_median">Minimum ring median</string>
     <string name="ocr_backup_iqr">Ring IQR</string>
     <string name="ocr_backup_pad">Ring padding</string>
+    <string name="ocr_backup_flat">Flat background</string>
     <string name="ocr_spike_merge_blocks">Merge runs into bubbles</string>
     <string name="ocr_spike_merged_info">%1$d runs merged into %2$d</string>
     <string name="ocr_mtl">OCR &amp; MTL</string>
@@ -1779,7 +1780,8 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="ocr_key_remove_message">The %1$s key will be deleted from this device.</string>
     <string name="ocr_source_script">Source script</string>
     <string name="ocr_spike_mtl_config">%1$s · %2$s · into %3$s</string>
-    <string name="ocr_source_script_auto">Automatic — from the series</string>
+    <string name="ocr_source_script_auto">Automatic — from the source</string>
+    <string name="ocr_source_script_auto_detected">%1$s (auto)</string>
     <string name="ocr_model_not_applicable">Not used by this engine</string>
     <string name="ocr_models_loading">Loading models…</string>
     <string name="ocr_spike_engine">Translation engine</string>
@@ -1817,21 +1819,26 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="ocr_spike_label_min_median">Min ring median    ≥ %1$.0f</string>
     <string name="ocr_spike_label_iqr">Ring IQR           ≤ %1$.0f</string>
     <string name="ocr_spike_label_pad">Ring pad           %1$.2f× glyph</string>
+    <string name="ocr_spike_label_flat">Flat background    ≥ %1$.0f%% one colour</string>
+    <string name="ocr_spike_label_flat_off">Flat background    off (bubbles only)</string>
     <string name="ocr_spike_counts">%1$d blocks — %2$d dialogue / %3$d sfx / %4$d low-conf / %5$d over art / %6$d furigana</string>
+    <string name="ocr_spike_counts_flat">%1$d of them kept by the flat-background test</string>
     <string name="ocr_spike_page_info">page %1$d×%2$d — OCR %3$d ms</string>
     <string name="ocr_spike_reordered_count">%1$d vertical blocks re-ordered right-to-left</string>
     <string name="ocr_spike_hand_drawn_count">%1$d hand-drawn</string>
     <string name="ocr_spike_rejected_count">%1$d detections rejected as outside a bubble</string>
     <string name="ocr_spike_symbols_empty">symbols EMPTY — line-box fallback in use</string>
-    <string name="ocr_spike_reason_iqr">ring iqr %1$.0f > %2$.0f</string>
+    <string name="ocr_spike_reason_iqr">ring iqr %1$.0f > %2$.0f, only %3$.0f%% one colour (needs %4$.0f%%)</string>
     <string name="ocr_spike_reason_median">ring median %1$.0f &lt; %2$.0f</string>
     <string name="ocr_spike_reason_confidence">conf %1$.2f &lt; %2$.2f</string>
     <string name="ocr_spike_reason_glyph">glyph %1$.2f%% ≥ %2$.1f%%</string>
     <string name="ocr_spike_reason_katakana">katakana %1$.0f%% ≥ %2$.0f%% at %3$.2f%% glyph</string>
     <string name="ocr_spike_reason_pass">passes every test</string>
+    <string name="ocr_spike_reason_flat">on a flat background — %1$.0f%% one colour</string>
+    <string name="ocr_spike_reason_seam">belongs to the neighbouring page, covered only</string>
     <string name="ocr_spike_reason_furigana">kana-only and smaller than the page body text</string>
     <string name="ocr_spike_selection_metrics">  glyph %1$.2f%%  conf %2$.2f  angle %3$.1f  kata %4$d%%  %5$d line(s)%6$s</string>
-    <string name="ocr_spike_selection_ring">  ring median %1$d  iqr %2$d   (mean %3$d, sd %4$d)</string>
+    <string name="ocr_spike_selection_ring">  ring median %1$d  iqr %2$d   (mean %3$d, sd %4$d)  flat %5$.0f%% %6$s</string>
     <string name="ocr_spike_selection_size">  %1$d×%2$d px%3$s</string>
     <!--
       The per-block dump below is aligned monospace diagnostics rather than prose: translating it
@@ -1839,7 +1846,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     -->
     <string name="ocr_spike_report_header" translatable="false">--- OCR spike ---</string>
     <string name="ocr_spike_report_page" translatable="false">page %1$d×%2$d, OCR %3$d ms</string>
-    <string name="ocr_spike_report_thresholds" translatable="false">thresholds: glyph≥%1$.1f%% conf&lt;%2$.2f kata≥%3$.0f%% iqr≤%4$.0f minmed%5$.0f pad%6$.2f×</string>
+    <string name="ocr_spike_report_thresholds" translatable="false">thresholds: glyph≥%1$.1f%% conf&lt;%2$.2f kata≥%3$.0f%% iqr≤%4$.0f minmed%5$.0f pad%6$.2f× flat≥%7$.0f%%</string>
     <string name="ocr_spike_report_line" translatable="false">#%1$-3d %2$s glyph %3$5.2f%% conf %4$.2f angle %5$6.1f kata %6$3d%% ring med%7$3d iqr%8$3d (sd%9$3d) %10$s%11$s%12$s %13$s</string>
     <string name="start_test">Start Test</string>
     <string name="no_extensions_selected">No extensions selected</string>
@@ -2817,4 +2824,14 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="mtl_page_unavailable">That page is not loaded</string>
     <string name="mtl_nothing_found">No translatable text found on this page</string>
     <string name="mtl_failed">Translation failed</string>
+    <string name="mtl_auto">Translate as you scroll</string>
+    <string name="mtl_auto_on">Pages will translate themselves as they come into view</string>
+    <string name="mtl_auto_off">Pages will only be translated when you ask</string>
+    <string name="mtl_auto_stopped">Stopped translating as you scroll — too many pages failed</string>
+    <string name="mtl_stitch">Read across page seams</string>
+    <string name="mtl_novel">Translate novel chapters</string>
+    <string name="mtl_novel_desc">Machine-translates a chapter as it is opened, with the engine and language set above</string>
+    <string name="mtl_novel_translating">Translating this chapter…</string>
+    <string name="mtl_novel_failed">Could not translate this chapter: %1$s</string>
+    <string name="mtl_novel_untranslated">Showing the chapter untranslated</string>
 </resources>

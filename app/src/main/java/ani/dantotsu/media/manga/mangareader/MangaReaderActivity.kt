@@ -37,6 +37,7 @@ import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
 import androidx.core.view.updatePadding
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.PagerSnapHelper
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
@@ -68,10 +69,15 @@ import ani.dantotsu.media.MediaSingleton
 import ani.dantotsu.media.manga.MangaCache
 import ani.dantotsu.media.manga.mangareader.BaseImageAdapter.Companion.loadBitmap
 import ani.dantotsu.util.Logger
+import ani.dantotsu.media.manga.translation.AutoTranslator
 import ani.dantotsu.media.manga.translation.PageTranslationPipeline
 import ani.dantotsu.media.manga.translation.SourceScript
+import ani.dantotsu.media.manga.translation.TextScript
+import ani.dantotsu.media.manga.translation.TranslatedPage
 import ani.dantotsu.media.manga.translation.TranslatedPages
 import ani.dantotsu.media.manga.translation.TranslationOverlayView
+import ani.dantotsu.parsers.DynamicMangaParser
+import ani.dantotsu.parsers.OfflineMangaParser
 import ani.dantotsu.util.choiceBottomSheet
 import ani.dantotsu.media.manga.MangaChapter
 import ani.dantotsu.others.ImageViewDialog
@@ -117,6 +123,18 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.properties.Delegates
+
+/**
+ * Pages past the last visible one that automatic translation works ahead on.
+ *
+ * Small on purpose. Every page ahead is a request that may never be read, and the wait for the page
+ * actually on screen is what the reader notices — a deep lookahead makes that wait longer, not
+ * shorter, because the queue in front of it is longer.
+ */
+private const val AUTO_LOOKAHEAD = 2
+
+/** Failures in a row that end an automatic run. See [MangaReaderActivity.autoFailures]. */
+private const val AUTO_FAILURE_LIMIT = 3
 
 class MangaReaderActivity : AppCompatActivity() {
     private val mangaCache = Injekt.get<MangaCache>()
@@ -1086,6 +1104,7 @@ class MangaReaderActivity : AppCompatActivity() {
                                 mostVisibleItemPosition(v, manager).toLong() * (dualPage { 2 }
                                     ?: 1) + 1)
                         }
+                        scheduleAutoTranslation()
                         super.onScrolled(v, dx, dy)
                     }
                 })
@@ -1220,6 +1239,9 @@ class MangaReaderActivity : AppCompatActivity() {
                 updatePageNumber(position.toLong() * (dualPage { 2 } ?: 1) + 1)
                 handleController(position == 0 || position + 1 >= maxChapterPage)
             }
+            // The paged layout has no scroll listener, so this is where automatic translation
+            // learns that the page has changed.
+            scheduleAutoTranslation()
             super.onPageSelected(position)
         }
     }
@@ -1798,6 +1820,12 @@ class MangaReaderActivity : AppCompatActivity() {
                         adapter.prependChapter(prevChapter, prevIdx, missing)
                         binding.mangaReaderPager.setCurrentItem(currentItem + insertedCount, false)
                     }
+                    // Every position just moved down by a whole chapter. Automatic translation
+                    // reads its direction from how the visible position changes, and that jump
+                    // looks exactly like a fast scroll *forwards* — which is the opposite of what
+                    // the reader just did to cause it. Dropping the anchor keeps the direction it
+                    // had and re-measures from where things now are.
+                    autoAnchor = RecyclerView.NO_POSITION
                     multiChapterLoading = false
                 }
             } else {
@@ -2062,6 +2090,32 @@ class MangaReaderActivity : AppCompatActivity() {
     }
 
     /**
+     * The language code the extension is serving these chapters in, where it names one.
+     *
+     * The source knows what is actually printed on the pages; the media's country of origin only
+     * knows what the work was written in, which is a different thing the moment anybody translates
+     * it. See [SourceScript].
+     */
+    fun sourceLanguageCode(): String? {
+        val index = media.selected?.sourceIndex ?: return null
+        return when (val parser = model.mangaReadSources?.get(index)) {
+            is DynamicMangaParser -> parser.extension.sources.getOrNull(parser.sourceLanguage)?.lang
+            // A download has no extension left to ask, so it answers with what was recorded when
+            // it was made. See [OfflineMangaParser.languageFor].
+            is OfflineMangaParser -> parser.languageFor(media.mainName())
+            else -> null
+        }
+    }
+
+    /** What automatic resolves to for this media, which the settings rows name. */
+    fun detectedScript(): TextScript =
+        SourceScript.detect(sourceLanguageCode(), media.countryOfOrigin)
+
+    /** The recognizer to actually use: the user's choice where there is one, otherwise the above. */
+    private fun activeScript(): TextScript =
+        SourceScript.resolve(sourceLanguageCode(), media.countryOfOrigin)
+
+    /**
      * Translates one page and paints it.
      *
      * The bitmap comes back through the same [loadBitmap] the adapters use, so a page on screen is
@@ -2076,27 +2130,222 @@ class MangaReaderActivity : AppCompatActivity() {
         }
         snackString(getString(R.string.mtl_translating, pos + 1))
         lifecycleScope.launch {
-            runCatching {
-                val bitmap = loadBitmap(image.url, pageTransforms(image))
-                    ?: error(getString(R.string.mtl_page_unavailable))
-                withContext(Dispatchers.Default) {
-                    PageTranslationPipeline.run(
-                        bitmap,
-                        SourceScript.resolve(media.countryOfOrigin),
-                    )
+            runTranslation(image)
+                .onSuccess { page ->
+                    if (page == null) {
+                        snackString(getString(R.string.mtl_nothing_found))
+                        return@onSuccess
+                    }
+                    TranslatedPages.put(image.url.url, page)
+                    refreshTranslationOverlays()
                 }
-            }.onSuccess { page ->
-                if (page == null) {
-                    snackString(getString(R.string.mtl_nothing_found))
-                    return@onSuccess
+                .onFailure {
+                    Logger.log("MTL page translation failed: ${it.stackTraceToString()}")
+                    snackString(it.message ?: getString(R.string.mtl_failed))
                 }
-                TranslatedPages.put(image.url.url, page)
-                refreshTranslationOverlays()
-            }.onFailure {
-                Logger.log("MTL page translation failed: ${it.stackTraceToString()}")
-                snackString(it.message ?: getString(R.string.mtl_failed))
-            }
         }
+    }
+
+    /** One page through the pipeline, saying nothing about it — shared by the menu and by auto. */
+    private suspend fun runTranslation(image: MangaImage): Result<TranslatedPage?> = runCatching {
+        val bitmap = loadBitmap(image.url, pageTransforms(image))
+            ?: error(getString(R.string.mtl_page_unavailable))
+        val (before, after) = seamNeighbours(image)
+        withContext(Dispatchers.Default) {
+            PageTranslationPipeline.run(bitmap, activeScript(), sourceLanguageCode(), before, after)
+        }
+    }
+
+    /**
+     * The images either side of this one, for reading across the seam between them.
+     *
+     * Only in a continuous layout, because only there are two images two slices of one drawing. In
+     * a paged layout they are two pages: no bubble crosses between them, and handing the recognizer
+     * the neighbour's edge would only give the merger a chance to join text that has nothing to do
+     * with itself.
+     */
+    private suspend fun seamNeighbours(image: MangaImage): Pair<Bitmap?, Bitmap?> {
+        if (!PageTranslationPipeline.stitching()) return null to null
+        if (defaultSettings.layout != CurrentReaderSettings.Layouts.CONTINUOUS) return null to null
+        val pages = readerPages()
+        val index = pages.indexOfFirst { it.url.url == image.url.url }
+        if (index < 0) return null to null
+        suspend fun at(position: Int): Bitmap? = pages.getOrNull(position)
+            ?.let { loadBitmap(it.url, pageTransforms(it)) }
+        return at(index - 1) to at(index + 1)
+    }
+
+    /**
+     * Which of the two page views is in use.
+     *
+     * The reader has both a RecyclerView and a ViewPager2 and shows one of them: everything but the
+     * paged layout goes through the recycler, and the paged layout through the pager. Only one of
+     * them carries an adapter at a time, so anything asking what is on screen has to ask the right
+     * one — reading the recycler in paged mode gets a null adapter and an empty answer, which is
+     * exactly what it looks like when a feature silently does nothing.
+     */
+    private val usingPager
+        get() = defaultSettings.layout == CurrentReaderSettings.Layouts.PAGED
+
+    private val pageHost: View
+        get() = if (usingPager) binding.mangaReaderPager else binding.mangaReaderRecycler
+
+    private fun readerAdapter(): RecyclerView.Adapter<*>? =
+        if (usingPager) binding.mangaReaderPager.adapter else binding.mangaReaderRecycler.adapter
+
+    /** Every page the reader currently has in its adapter, in reading order. */
+    private fun readerPages(): List<MangaImage> =
+        when (val adapter = readerAdapter()) {
+            is ContinuousChapterAdapter -> adapter.items.mapNotNull {
+                (it as? ContinuousChapterAdapter.ReaderItem.Image)?.image
+            }
+
+            is BaseImageAdapter -> adapter.images
+            else -> emptyList()
+        }
+
+    /** The page or pages one adapter position is showing. */
+    private fun pagesAtPosition(position: Int): List<MangaImage> =
+        when (val adapter = readerAdapter()) {
+            is BaseImageAdapter -> adapter.pagesAt(position)
+            is ContinuousChapterAdapter -> listOfNotNull(
+                (adapter.items.getOrNull(position) as? ContinuousChapterAdapter.ReaderItem.Image)
+                    ?.image,
+            )
+
+            else -> emptyList()
+        }
+
+    /**
+     * How many failures in a row end an automatic run.
+     *
+     * A dead key or a retired model fails identically on every page, and without a limit that is
+     * one doomed request per page for the rest of the chapter. One transient network error is not
+     * that, which is why it is a run of them rather than the first.
+     */
+    private var autoFailures = 0
+
+    /**
+     * Translates pages as they come into view, when that is switched on.
+     *
+     * The queue is rebuilt from what is on screen on every scroll rather than added to, so the page
+     * being looked at is always next — see [AutoTranslator].
+     */
+    private val autoTranslator by lazy {
+        AutoTranslator(lifecycleScope) { image ->
+            if (!PageTranslationPipeline.ready()) {
+                snackString(getString(R.string.mtl_needs_key))
+                return@AutoTranslator false
+            }
+            runTranslation(image)
+                .onSuccess { page ->
+                    autoFailures = 0
+                    if (page != null) {
+                        TranslatedPages.put(image.url.url, page)
+                        refreshTranslationOverlays()
+                    }
+                }
+                .onFailure {
+                    autoFailures++
+                    Logger.log("MTL auto translation failed: ${it.stackTraceToString()}")
+                    // Said out loud, because automatic translation has no other voice. Nobody
+                    // pressed anything, so a page that fails silently is indistinguishable from
+                    // the feature not being switched on — which is how a dead key, an unloaded
+                    // page and an out-of-memory composite all looked the same from the outside.
+                    // Once per run: the first message is the diagnosis and the rest are noise.
+                    if (autoFailures == 1) {
+                        snackString(it.message ?: getString(R.string.mtl_failed))
+                    }
+                }
+            val keepGoing = autoFailures < AUTO_FAILURE_LIMIT
+            if (!keepGoing) snackString(getString(R.string.mtl_auto_stopped))
+            keepGoing
+        }
+    }
+
+    private var autoQueuePosted = false
+
+    /**
+     * Asks for the visible pages to be queued, once, after the current layout pass.
+     *
+     * Called from the scroll listener, the pager's page change and every overlay binding, all of
+     * which fire far more often than the queue can change; posting once and reading the positions
+     * afterwards is what keeps that from being a cost on every scrolled pixel.
+     */
+    fun scheduleAutoTranslation() {
+        if (!PageTranslationPipeline.auto() || autoQueuePosted) return
+        autoQueuePosted = true
+        pageHost.post {
+            autoQueuePosted = false
+            queueAutoTranslation()
+        }
+    }
+
+    /**
+     * Which way through the chapter the reader is moving, as a step in adapter positions.
+     *
+     * Taken from the positions rather than from the scroll's sign, which would have to be read
+     * differently for each of the four reading directions — right-to-left and bottom-to-top both
+     * make a *negative* delta mean forwards. Positions only ever count one way.
+     */
+    private var autoDirection = 1
+    private var autoAnchor = RecyclerView.NO_POSITION
+
+    private fun queueAutoTranslation() {
+        if (!PageTranslationPipeline.auto()) return
+        val (first, last) = visiblePositions() ?: return
+
+        if (autoAnchor != RecyclerView.NO_POSITION && first != autoAnchor) {
+            autoDirection = if (first > autoAnchor) 1 else -1
+        }
+        autoAnchor = first
+
+        // The lookahead follows the reader instead of always pointing down the chapter. Fixed
+        // forwards, scrolling back up queued nothing that was not already on screen: a page only
+        // began translating once it was fully in view and took several seconds to arrive, so going
+        // up looked like the feature was off while going down looked like it worked. Which way
+        // "ahead" is depends on where the reader is going, and that is the only thing that decides
+        // which page is worth spending a request on before it is needed.
+        val ahead = if (autoDirection >= 0) {
+            ((last + 1)..(last + AUTO_LOOKAHEAD)).toList()
+        } else {
+            ((first - 1) downTo (first - AUTO_LOOKAHEAD)).toList()
+        }
+        autoTranslator.onVisible(
+            // What is on screen first, then what is about to be. Out-of-range positions resolve to
+            // no pages, so the ends of the chapter need no special case.
+            ((first..last).toList() + ahead).flatMap { pagesAtPosition(it) },
+        )
+    }
+
+    /**
+     * The first and last adapter positions on screen, from whichever view is showing them.
+     *
+     * The pager shows exactly one item, so its current page is both ends of the range — the
+     * lookahead is what gets the next one translated before it is swiped to.
+     */
+    private fun visiblePositions(): Pair<Int, Int>? {
+        if (usingPager) {
+            val current = binding.mangaReaderPager.currentItem
+            return current to current
+        }
+        val manager = binding.mangaReaderRecycler.layoutManager as? LinearLayoutManager ?: return null
+        val first = manager.findFirstVisibleItemPosition()
+        if (first == RecyclerView.NO_POSITION) return null
+        return first to manager.findLastVisibleItemPosition().coerceAtLeast(first)
+    }
+
+    /**
+     * Called when the engine, model, script or target changes.
+     *
+     * A page already translated keeps its words — redoing it would spend quota to say the same
+     * thing differently — but pages that failed under the old settings are worth another go, which
+     * is the case the reader is usually in when they change any of this.
+     */
+    fun onMtlSettingsChanged() {
+        autoFailures = 0
+        autoTranslator.reset()
+        scheduleAutoTranslation()
     }
 
     /**
@@ -2118,16 +2367,12 @@ class MangaReaderActivity : AppCompatActivity() {
     fun applyTranslationOverlay(itemView: View, position: Int) {
         val overlay = itemView.findViewById<TranslationOverlayView>(R.id.imgProgTranslation)
             ?: return
-        val adapter = binding.mangaReaderRecycler.adapter
-        val image = when (adapter) {
-            is BaseImageAdapter -> adapter.pagesAt(position).firstOrNull()
-            is ContinuousChapterAdapter ->
-                (adapter.items.getOrNull(position) as? ContinuousChapterAdapter.ReaderItem.Image)
-                    ?.image
-            else -> null
-        }
+        val image = pagesAtPosition(position).firstOrNull()
         val page = image?.let { TranslatedPages[it.url.url] }
         if (page == null) overlay.clear() else overlay.setBlocks(page.blocks, page.pageWidth)
+        // A page arriving on screen is the event automatic translation waits for, and this runs for
+        // every one of them whether or not it has a translation yet.
+        scheduleAutoTranslation()
     }
 
     private fun showImageDialog(

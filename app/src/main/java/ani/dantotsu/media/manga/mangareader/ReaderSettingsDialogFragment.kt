@@ -261,24 +261,56 @@ class ReaderSettingsDialogFragment : BottomSheetDialogFragment() {
         if (!PageTranslationPipeline.enabled()) return
         binding.readerMtlGroup.isVisible = true
 
+        // What automatic resolves to for the media open right now, so the row can say "Japanese
+        // (auto)" rather than only that it decided for itself.
+        val detected = activity.detectedScript()
+
         fun refresh() {
             binding.readerMtlEngineState.text = MtlChoices.engineLabel()
             binding.readerMtlModelState.text = MtlChoices.modelLabel(activity)
-            binding.readerMtlScriptState.text = MtlChoices.scriptLabel(activity)
+            binding.readerMtlScriptState.text = MtlChoices.scriptLabel(activity, detected)
             binding.readerMtlTargetState.text = MtlChoices.targetLabel()
-            // Only the key-based engines have a model to choose.
-            val hasModel = TranslationEngine.fromPref().needsKey
-            binding.readerMtlModel.isVisible = hasModel
-            binding.readerMtlModelState.isVisible = hasModel
+            // Only the key-based engines have a model to choose. Hiding the row takes its value
+            // line with it — they are one view now, so the state no longer needs hiding of its own.
+            binding.readerMtlModel.isVisible = TranslationEngine.fromPref().needsKey
         }
         refresh()
 
-        binding.readerMtlEngine.setOnClickListener { MtlChoices.pickEngine(activity) { refresh() } }
-        binding.readerMtlModel.setOnClickListener {
-            MtlChoices.pickModel(activity, activity.lifecycleScope) { refresh() }
+        // Whatever went wrong under the old settings is worth trying again under the new ones, so
+        // a change re-opens the pages automatic translation had given up on. Only on a *change*:
+        // hung off refresh() this would also fire on merely opening the sheet.
+        fun changed() {
+            refresh()
+            activity.onMtlSettingsChanged()
         }
-        binding.readerMtlScript.setOnClickListener { MtlChoices.pickScript(activity) { refresh() } }
-        binding.readerMtlTarget.setOnClickListener { MtlChoices.pickTarget(activity) { refresh() } }
+
+        binding.readerMtlEngine.setOnClickListener { MtlChoices.pickEngine(activity) { changed() } }
+        binding.readerMtlModel.setOnClickListener {
+            MtlChoices.pickModel(activity, activity.lifecycleScope) { changed() }
+        }
+        binding.readerMtlScript.setOnClickListener {
+            MtlChoices.pickScript(activity, detected) { changed() }
+        }
+        binding.readerMtlTarget.setOnClickListener { MtlChoices.pickTarget(activity) { changed() } }
+
+        binding.readerMtlAuto.isChecked = PrefManager.getVal(PrefName.OcrAutoTranslate)
+        binding.readerMtlAuto.setOnCheckedChangeListener { _, isChecked ->
+            PrefManager.setVal(PrefName.OcrAutoTranslate, isChecked)
+            // Said out loud because switching it on spends an API quota with nobody pressing
+            // anything afterwards, and switching it off leaves pages looking untranslated.
+            Toast.makeText(
+                requireContext(),
+                if (isChecked) R.string.mtl_auto_on else R.string.mtl_auto_off,
+                Toast.LENGTH_SHORT,
+            ).show()
+            activity.onMtlSettingsChanged()
+        }
+
+        binding.readerMtlStitch.isChecked = PrefManager.getVal(PrefName.OcrStitchPages)
+        binding.readerMtlStitch.setOnCheckedChangeListener { _, isChecked ->
+            PrefManager.setVal(PrefName.OcrStitchPages, isChecked)
+            activity.onMtlSettingsChanged()
+        }
     }
 
     companion object {

@@ -356,6 +356,25 @@
                     android:valueFrom="0.25"
                     android:valueTo="4" />
 
+                <!--
+                  How much of a ring has to be a single colour before the block inside it counts as
+                  sitting on a flat field and may be covered whatever its spread says. This is what
+                  lets lettering dropped straight onto a sky or a screentone be translated: there is
+                  no bubble to find, but there is nothing to destroy either. At 100 it is off.
+                -->
+                <TextView
+                    android:id="@+id/ringFlatLabel"
+                    style="@style/OcrSpikeSliderLabel"
+                    tools:text="Flat background: 90% one colour" />
+
+                <com.google.android.material.slider.Slider
+                    android:id="@+id/ringFlatSlider"
+                    style="@style/OcrSpikeSlider"
+                    android:stepSize="1"
+                    android:value="90"
+                    android:valueFrom="50"
+                    android:valueTo="100" />
+
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/resetThresholdsButton"
                     style="@style/Widget.Material3.Button.TextButton"

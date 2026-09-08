@@ -32,8 +32,21 @@ object MtlChoices {
     fun targetLabel(): String =
         Locale.forLanguageTag(SourceScript.targetLanguage()).getDisplayName(Locale.getDefault())
 
-    fun scriptLabel(context: Context): String =
-        SourceScript.override()?.label ?: context.getString(R.string.ocr_source_script_auto)
+    /**
+     * What the source-script row reads.
+     *
+     * @param detected what the metadata resolves to, where the caller knows which media is open. On
+     *   automatic the row names it — "Japanese (auto)" — because "Automatic" alone leaves the one
+     *   thing worth knowing unsaid: a page that comes back with nothing recognised is usually a
+     *   page being read with the wrong recognizer, and a row that only says it decided for itself
+     *   gives no way to see that.
+     */
+    fun scriptLabel(context: Context, detected: TextScript? = null): String =
+        SourceScript.override()?.label ?: autoLabel(context, detected)
+
+    private fun autoLabel(context: Context, detected: TextScript?): String =
+        if (detected == null) context.getString(R.string.ocr_source_script_auto)
+        else context.getString(R.string.ocr_source_script_auto_detected, detected.label)
 
     fun pickEngine(context: Context, onChanged: () -> Unit) {
         context.choiceBottomSheet(
@@ -61,11 +74,11 @@ object MtlChoices {
         }
     }
 
-    fun pickScript(context: Context, onChanged: () -> Unit) {
+    fun pickScript(context: Context, detected: TextScript? = null, onChanged: () -> Unit) {
         // Automatic first, because it is the right answer for anything with metadata and the one
-        // most people should never have to move off.
-        val labels = listOf(context.getString(R.string.ocr_source_script_auto)) +
-            TextScript.entries.map { it.label }
+        // most people should never have to move off. It names what it decided, so choosing against
+        // it is a comparison rather than a guess.
+        val labels = listOf(autoLabel(context, detected)) + TextScript.entries.map { it.label }
         context.choiceBottomSheet(
             context.getString(R.string.ocr_source_script),
             labels,

@@ -22,12 +22,29 @@
       the switch: the sheet's own margins supply the horizontal inset, so unlike the settings
       screen's rows these carry no padding of their own.
     -->
+    <!--
+      A whole row of the reader's translation settings: its name and, beneath, what it is currently
+      set to.
+
+      The row is what is clickable, not the name inside it. Putting the ripple and the touch target
+      on the name alone left the value line inert — half the row looked like part of the control and
+      did not behave like it, and the visible press covered only the top half of what a press
+      actually hit. The value is not a caption next to the setting, it *is* the setting's state, so
+      it belongs inside the same target.
+    -->
     <style name="ReaderMtlRow">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>
         <item name="android:background">?attr/selectableItemBackground</item>
         <item name="android:clickable">true</item>
         <item name="android:focusable">true</item>
+        <item name="android:orientation">vertical</item>
+    </style>
+
+    <!-- The name line inside a [ReaderMtlRow]. Deliberately not clickable: the row is. -->
+    <style name="ReaderMtlRowLabel">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
         <item name="android:drawablePadding">16dp</item>
         <item name="android:elegantTextHeight">true</item>
         <item name="android:fontFamily">@font/poppins_bold</item>

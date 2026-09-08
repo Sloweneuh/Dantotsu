@@ -294,49 +294,115 @@
             android:visibility="gone"
             tools:visibility="visible">
 
-            <TextView
+            <!--
+              Name and current value in one clickable row apiece — see the ReaderMtlRow style. The
+              value line is inside the row rather than beside it, so the ripple covers the whole
+              thing a press actually lands on.
+            -->
+            <LinearLayout
                 android:id="@+id/readerMtlEngine"
-                style="@style/ReaderMtlRow"
-                android:drawableStart="@drawable/ic_round_translate_24"
-                android:text="@string/ocr_spike_engine" />
+                style="@style/ReaderMtlRow">
 
-            <TextView
-                android:id="@+id/readerMtlEngineState"
-                style="@style/ReaderMtlRowState"
-                tools:text="Gemini" />
+                <TextView
+                    style="@style/ReaderMtlRowLabel"
+                    android:drawableStart="@drawable/ic_round_translate_24"
+                    android:text="@string/ocr_spike_engine" />
 
-            <TextView
+                <TextView
+                    android:id="@+id/readerMtlEngineState"
+                    style="@style/ReaderMtlRowState"
+                    tools:text="Gemini" />
+            </LinearLayout>
+
+            <LinearLayout
                 android:id="@+id/readerMtlModel"
-                style="@style/ReaderMtlRow"
-                android:drawableStart="@drawable/ic_round_tune_24"
-                android:text="@string/ocr_spike_model" />
+                style="@style/ReaderMtlRow">
 
-            <TextView
-                android:id="@+id/readerMtlModelState"
-                style="@style/ReaderMtlRowState"
-                tools:text="gemini-3.6-flash" />
+                <TextView
+                    style="@style/ReaderMtlRowLabel"
+                    android:drawableStart="@drawable/ic_round_tune_24"
+                    android:text="@string/ocr_spike_model" />
 
-            <TextView
+                <TextView
+                    android:id="@+id/readerMtlModelState"
+                    style="@style/ReaderMtlRowState"
+                    tools:text="gemini-3.6-flash" />
+            </LinearLayout>
+
+            <LinearLayout
                 android:id="@+id/readerMtlScript"
-                style="@style/ReaderMtlRow"
-                android:drawableStart="@drawable/ic_round_format_text_24"
-                android:text="@string/ocr_source_script" />
+                style="@style/ReaderMtlRow">
 
-            <TextView
-                android:id="@+id/readerMtlScriptState"
-                style="@style/ReaderMtlRowState"
-                tools:text="Automatic" />
+                <TextView
+                    style="@style/ReaderMtlRowLabel"
+                    android:drawableStart="@drawable/ic_round_format_text_24"
+                    android:text="@string/ocr_source_script" />
 
-            <TextView
+                <TextView
+                    android:id="@+id/readerMtlScriptState"
+                    style="@style/ReaderMtlRowState"
+                    tools:text="Automatic" />
+            </LinearLayout>
+
+            <LinearLayout
                 android:id="@+id/readerMtlTarget"
-                style="@style/ReaderMtlRow"
-                android:drawableStart="@drawable/ic_round_language_24"
-                android:text="@string/ocr_spike_target_language" />
+                style="@style/ReaderMtlRow">
 
-            <TextView
-                android:id="@+id/readerMtlTargetState"
-                style="@style/ReaderMtlRowState"
-                tools:text="English" />
+                <TextView
+                    style="@style/ReaderMtlRowLabel"
+                    android:drawableStart="@drawable/ic_round_language_24"
+                    android:text="@string/ocr_spike_target_language" />
+
+                <TextView
+                    android:id="@+id/readerMtlTargetState"
+                    style="@style/ReaderMtlRowState"
+                    tools:text="English" />
+            </LinearLayout>
+
+            <!--
+              Translating as you scroll rather than page by page. A switch here rather than only in
+              settings for the same reason as the rows above it: whether it is worth spending a
+              quota automatically is a decision made against the chapter in front of you.
+            -->
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/readerMtlAuto"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:drawableStart="@drawable/ic_round_translate_24"
+                android:drawablePadding="16dp"
+                android:elegantTextHeight="true"
+                android:fontFamily="@font/poppins_bold"
+                android:minHeight="64dp"
+                android:text="@string/mtl_auto"
+                android:textAlignment="viewStart"
+                android:textColor="?attr/colorOnBackground"
+                app:cornerRadius="0dp"
+                app:drawableTint="?attr/colorPrimary"
+                app:showText="false"
+                app:thumbTint="@color/button_switch_track" />
+
+            <!--
+              Reading a strip of the pages either side of each one, so a bubble cut in half by the
+              boundary between two source images is recognised whole. Costs about a fifth more
+              pixels per page and matters most in longstrip, where those boundaries fall wherever
+              the packer put them rather than between panels.
+            -->
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/readerMtlStitch"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:drawableStart="@drawable/ic_round_swipe_vertical_24"
+                android:drawablePadding="16dp"
+                android:elegantTextHeight="true"
+                android:fontFamily="@font/poppins_bold"
+                android:minHeight="64dp"
+                android:text="@string/mtl_stitch"
+                android:textAlignment="viewStart"
+                android:textColor="?attr/colorOnBackground"
+                app:cornerRadius="0dp"
+                app:drawableTint="?attr/colorPrimary"
+                app:showText="false"
+                app:thumbTint="@color/button_switch_track" />
         </LinearLayout>
 
         <com.google.android.material.materialswitch.MaterialSwitch

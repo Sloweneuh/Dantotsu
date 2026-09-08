@@ -472,7 +472,20 @@ data class DownloadedType(
     @Deprecated("use pChapter instead")
     private val chapter: String? = null,
     var size: Double? = null,
-    val scanlator: String = "Unknown"
+    val scanlator: String = "Unknown",
+    /**
+     * The source's language code — `ja`, `ko`, `en` — as the extension reported it when this was
+     * downloaded.
+     *
+     * Recorded because a download severs the only link to the extension that produced it: read
+     * offline there is no source left to ask what language the pages are in, and machine
+     * translation was falling back to the work's country of origin, which is a different question
+     * and gets a Korean release of a Japanese series read with the wrong recognizer.
+     *
+     * Null for anything downloaded before this existed, and for anything the source declined to
+     * name a language for. Those keep the old behaviour rather than getting a guess.
+     */
+    val language: String? = null,
 ) : Serializable {
     val titleName: String
         get() = title ?: pTitle.findValidName()

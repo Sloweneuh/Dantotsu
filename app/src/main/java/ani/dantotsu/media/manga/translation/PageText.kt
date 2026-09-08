@@ -62,13 +62,21 @@ enum class BlockVerdict {
      * strands Japanese against the English that replaced what it was glossing.
      */
     FURIGANA,
+
+    /**
+     * Dialogue that belongs to the page next to this one, straddling the seam between two source
+     * images. Covered but never translated: the page holding most of it writes the words, and this
+     * one paints out its sliver so half a Japanese sentence is not left showing beneath the English
+     * that replaced the other half. See the seam handling in [PageTranslationPipeline].
+     */
+    SEAM,
     ;
 
     /** Whether a translation should be requested for this block. */
     val translatable get() = this == DIALOGUE || this == SFX
 
     /** Whether the page beneath this block should be painted over. */
-    val covered get() = translatable || this == FURIGANA
+    val covered get() = translatable || this == FURIGANA || this == SEAM
 }
 
 /**
@@ -78,14 +86,21 @@ enum class BlockVerdict {
  * have earned it — a block reading `iqr 1 (sd 85)` is the signature of a box overlapping something
  * dark and small, which no quartile range can see by design.
  *
- * [median] doubles as the colour a block should be painted with, which is the right answer for an
- * inverted or toned bubble as much as a white one.
+ * [color] is what a block is painted with — the ring's own median colour, which is the right answer
+ * for an inverted, toned or coloured bubble as much as a white one. [flatShare] is how much of the
+ * ring is that colour, and it is what allows lettering with no bubble around it to be covered: text
+ * over a flat sky sits on one colour just as surely as text in a bubble does, and the spread
+ * [iqr] measures cannot tell that apart from a drawing.
  */
 data class Ring(
     val median: Float,
     val iqr: Float,
     val mean: Float,
     val stdDev: Float,
+    /** Median colour of the ring, component-wise. */
+    val color: Int,
+    /** Share of the ring within a tolerance of [color], from 0 to 1. */
+    val flatShare: Float,
 )
 
 /** A block with everything that depends on the current thresholds. */
@@ -107,6 +122,14 @@ data class DetectionThresholds(
     val minBrightness: Float,
     val ringIqr: Float,
     val ringPad: Float,
+    /**
+     * How much of a block's ring must be one colour, as a percentage, before the block counts as
+     * sitting on a flat field and may be covered whatever its spread says.
+     *
+     * Set to 100 this is effectively off: no real ring is entirely free of the compression noise
+     * and antialiasing that a tolerance of a couple of dozen levels still lets through.
+     */
+    val flatPercent: Float,
 ) {
     companion object {
         fun fromPrefs() = DetectionThresholds(
@@ -116,6 +139,7 @@ data class DetectionThresholds(
             minBrightness = PrefManager.getVal(PrefName.OcrMinRingMedian),
             ringIqr = PrefManager.getVal(PrefName.OcrRingIqr),
             ringPad = PrefManager.getVal(PrefName.OcrRingPad),
+            flatPercent = PrefManager.getVal(PrefName.OcrFlatPercent),
         )
     }
 }

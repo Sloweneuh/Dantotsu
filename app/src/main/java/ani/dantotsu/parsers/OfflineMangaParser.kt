@@ -6,6 +6,7 @@ import ani.dantotsu.download.DownloadCompat.Companion.loadChaptersCompat
 import ani.dantotsu.download.DownloadCompat.Companion.loadImagesCompat
 import ani.dantotsu.download.DownloadsManager
 import ani.dantotsu.download.DownloadsManager.Companion.getSubDirectory
+import ani.dantotsu.download.findValidName
 import ani.dantotsu.media.MediaNameAdapter
 import ani.dantotsu.media.MediaType
 import ani.dantotsu.media.manga.mangareader.PDF_CHAPTERS_FILE
@@ -26,6 +27,21 @@ class OfflineMangaParser : MangaParser() {
     override val hostUrl: String = "Offline"
     override val name: String = "Offline"
     override val saveName: String = "Offline"
+    /**
+     * The language this title's chapters were downloaded in, where the download recorded one.
+     *
+     * There is no extension behind an offline parser to ask, so this is the only thing that knows
+     * what language is printed on the pages — which is what machine translation needs to pick a
+     * recognizer. Null for downloads made before it was recorded; those fall back to the work's
+     * country of origin, as they did before.
+     */
+    fun languageFor(title: String): String? {
+        val key = title.findValidName()
+        return downloadManager.mangaDownloadedTypes
+            .firstOrNull { it.titleName == key && !it.language.isNullOrBlank() }
+            ?.language
+    }
+
     override suspend fun loadChapters(
         mangaLink: String,
         extra: Map<String, String>?,

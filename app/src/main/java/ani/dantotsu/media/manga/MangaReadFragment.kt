@@ -419,7 +419,8 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
                         retries = 25,
                         simultaneousDownloads = 2,
                         asPdf = true,
-                        pdfTransitions = transitions
+                        pdfTransitions = transitions,
+                        language = sourceLanguageCode()
                     )
                     // Mark every bundled chapter as downloading, and remember them so the
                     // single "range" finish/failed broadcast updates them all at once.
@@ -686,6 +687,19 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
         }
     }
 
+    /**
+     * The language the extension is serving these chapters in, where it names one.
+     *
+     * Read here, at download time, because it is the last moment it can be: once the chapter is on
+     * disk the extension that produced it is no longer in the picture, and nothing left in the
+     * download says what language its pages are in.
+     */
+    private fun sourceLanguageCode(): String? {
+        val index = media.selected?.sourceIndex ?: return null
+        val parser = model.mangaReadSources?.get(index) as? DynamicMangaParser ?: return null
+        return parser.extension.sources.getOrNull(parser.sourceLanguage)?.lang
+    }
+
     fun openChapterInBrowser(chapter: MangaChapter) {
         val parser = model.mangaReadSources?.get(media.selected!!.sourceIndex) as? DynamicMangaParser
         if (parser != null) {
@@ -809,7 +823,8 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
             sourceMedia = media,
             retries = 25,
             simultaneousDownloads = 2,
-            asPdf = asPdf
+            asPdf = asPdf,
+            language = sourceLanguageCode()
         )
         enqueueMangaDownload(downloadTask)
     }

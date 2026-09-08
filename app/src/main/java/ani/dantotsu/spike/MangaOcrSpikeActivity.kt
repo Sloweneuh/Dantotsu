@@ -46,7 +46,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.Locale
-import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
@@ -187,6 +186,7 @@ class MangaOcrSpikeActivity : AppCompatActivity() {
             BlockVerdict.LOW_CONF -> "LOW_CONF"
             BlockVerdict.OVER_ART -> "OVER_ART"
             BlockVerdict.FURIGANA -> "FURIGANA"
+            BlockVerdict.SEAM -> "SEAM    "
         }
 
     /** What a verdict is drawn in. */
@@ -197,6 +197,7 @@ class MangaOcrSpikeActivity : AppCompatActivity() {
             BlockVerdict.LOW_CONF -> 0xFF9C27B0.toInt()
             BlockVerdict.OVER_ART -> 0xFFF44336.toInt()
             BlockVerdict.FURIGANA -> 0xFF2196F3.toInt()
+            BlockVerdict.SEAM -> 0xFF00BCD4.toInt()
         }
 
 
@@ -301,6 +302,7 @@ class MangaOcrSpikeActivity : AppCompatActivity() {
         minBrightness = binding.ringBrightSlider.value,
         ringIqr = binding.ringIqrSlider.value,
         ringPad = binding.ringPadSlider.value,
+        flatPercent = binding.ringFlatSlider.value,
     )
 
     // ---------------------------------------------------------------------------------------
@@ -347,9 +349,16 @@ class MangaOcrSpikeActivity : AppCompatActivity() {
     }
 
     /**
-     * A page is decoded at up to [MAX_DIMENSION] on its long edge. The reader hands ML Kit a bitmap
-     * it has already downsampled to about twice the display, so recognising a full-resolution scan
-     * here would flatter the results relative to what the real pipeline would feed it.
+     * A page is decoded at up to [MAX_DIMENSION] across, within a budget of [MAX_PIXELS]. The reader
+     * hands ML Kit a bitmap it has already downsampled to about twice the display, so recognising a
+     * full-resolution scan here would flatter the results relative to what the real pipeline would
+     * feed it.
+     *
+     * Across, not on the long edge, which is what this used to measure. A longstrip image is 800
+     * wide and eight thousand tall, and capping its *long* edge at 2048 sampled it down by four —
+     * leaving a 200-pixel-wide page that was visibly pixelated on screen and had no glyphs left in
+     * it to recognise. Width is what decides whether text is legible; height only decides how much
+     * of it there is, and the pixel budget is what keeps that from running away.
      */
     private fun decodeSampled(uri: Uri): Bitmap? {
         // Read once, decode twice. Measuring and decoding each used to open the provider
@@ -365,7 +374,12 @@ class MangaOcrSpikeActivity : AppCompatActivity() {
         if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
 
         var sample = 1
-        while (max(bounds.outWidth, bounds.outHeight) / sample > MAX_DIMENSION) sample *= 2
+        while (
+            bounds.outWidth / sample > MAX_DIMENSION ||
+            bounds.outWidth.toLong() * bounds.outHeight / (sample.toLong() * sample) > MAX_PIXELS
+        ) {
+            sample *= 2
+        }
         val options = BitmapFactory.Options().apply {
             inSampleSize = sample
             inPreferredConfig = Bitmap.Config.ARGB_8888
@@ -553,7 +567,13 @@ class MangaOcrSpikeActivity : AppCompatActivity() {
         val block = scored.block
         return when (scored.verdict) {
             BlockVerdict.OVER_ART -> if (scored.ring.iqr > t.ringIqr) {
-                getString(R.string.ocr_spike_reason_iqr, scored.ring.iqr, t.ringIqr)
+                getString(
+                    R.string.ocr_spike_reason_iqr,
+                    scored.ring.iqr,
+                    t.ringIqr,
+                    scored.ring.flatShare * 100f,
+                    t.flatPercent,
+                )
             } else {
                 getString(R.string.ocr_spike_reason_median, scored.ring.median, t.minBrightness)
             }
@@ -581,7 +601,13 @@ class MangaOcrSpikeActivity : AppCompatActivity() {
 
             BlockVerdict.FURIGANA -> getString(R.string.ocr_spike_reason_furigana)
 
-            BlockVerdict.DIALOGUE -> getString(R.string.ocr_spike_reason_pass)
+            BlockVerdict.SEAM -> getString(R.string.ocr_spike_reason_seam)
+
+            BlockVerdict.DIALOGUE -> if (BlockScorer.flat(scored.ring, t)) {
+                getString(R.string.ocr_spike_reason_flat, scored.ring.flatShare * 100f)
+            } else {
+                getString(R.string.ocr_spike_reason_pass)
+            }
         }
     }
 
@@ -605,8 +631,9 @@ class MangaOcrSpikeActivity : AppCompatActivity() {
         binding.pageImage.setBoxes(
             scored.map { BlockEditorView.Box(it.block.id, it.block.box, it.verdict.color) },
             // Laid out by the same code the reader will use, so what is calibrated here is what
-            // gets drawn there.
-            TranslationLayout.paint(scored, source.width, source.height),
+            // gets drawn there — the page included, since a box only grows across pixels that
+            // measure as the colour it is about to be painted.
+            TranslationLayout.paint(scored, source.width, source.height, source),
         )
 
         val counts = scored.groupingBy { it.verdict }.eachCount()
@@ -622,6 +649,8 @@ class MangaOcrSpikeActivity : AppCompatActivity() {
                     counts[BlockVerdict.FURIGANA] ?: 0,
                 ),
             )
+            val flat = scored.count { it.verdict.covered && BlockScorer.flat(it.ring, t) }
+            if (flat > 0) appendLine(getString(R.string.ocr_spike_counts_flat, flat))
             append(
                 getString(
                     R.string.ocr_spike_page_info,
@@ -695,6 +724,8 @@ class MangaOcrSpikeActivity : AppCompatActivity() {
                         selected.ring.iqr.roundToInt(),
                         selected.ring.mean.roundToInt(),
                         selected.ring.stdDev.roundToInt(),
+                        selected.ring.flatShare * 100f,
+                        String.format("#%06X", selected.ring.color and 0xFFFFFF),
                     ),
                 )
                 appendLine(
@@ -731,6 +762,11 @@ class MangaOcrSpikeActivity : AppCompatActivity() {
         }
         binding.ringIqrLabel.text = getString(R.string.ocr_spike_label_iqr, t.ringIqr)
         binding.ringPadLabel.text = getString(R.string.ocr_spike_label_pad, t.ringPad)
+        binding.ringFlatLabel.text = if (t.flatPercent >= 100f) {
+            getString(R.string.ocr_spike_label_flat_off)
+        } else {
+            getString(R.string.ocr_spike_label_flat, t.flatPercent)
+        }
     }
 
     private fun buildReport(scored: List<ScoredBlock>, t: DetectionThresholds, full: Boolean): String {
@@ -750,7 +786,7 @@ class MangaOcrSpikeActivity : AppCompatActivity() {
                     getString(
                         R.string.ocr_spike_report_thresholds,
                         t.glyphPercent, t.minConfidence, t.katakanaPercent,
-                        t.ringIqr, t.minBrightness, t.ringPad,
+                        t.ringIqr, t.minBrightness, t.ringPad, t.flatPercent,
                     ),
                 )
             }
@@ -803,12 +839,16 @@ class MangaOcrSpikeActivity : AppCompatActivity() {
             Tunable(PrefName.OcrMinRingMedian) { it.ringBrightSlider },
             Tunable(PrefName.OcrRingIqr) { it.ringIqrSlider },
             Tunable(PrefName.OcrRingPad) { it.ringPadSlider },
+            Tunable(PrefName.OcrFlatPercent) { it.ringFlatSlider },
         )
 
         const val TAG = "OcrSpike"
 
-        /** Long edge the page is decoded to, matching roughly what the reader would hand over. */
+        /** Width the page is decoded to, matching roughly what the reader would hand over. */
         const val MAX_DIMENSION = 2048
+
+        /** Ceiling on the whole bitmap, which is what stops a tall strip exhausting memory. */
+        const val MAX_PIXELS = 8_000_000L
 
         /** Above this line angle the block is treated as a vertical column. */
         const val VERTICAL_ANGLE = 85f

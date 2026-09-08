@@ -14,6 +14,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.sqrt
 
 /**
  * Reads the text off a manga page.
@@ -155,9 +156,16 @@ class PageTextDetector(private val script: TextScript) {
      * Pages run around 800px wide with glyphs near 18px, which is simply too small for the
      * detector. The page bitmap itself is left alone — it is what gets drawn, ringed and measured
      * against — and results are divided back into its coordinates.
+     *
+     * The enlargement is capped by area as well as by width, because a longstrip image is not a
+     * page: 800x8000 doubled is 25 megapixels, a hundred megabytes of bitmap, for an image whose
+     * glyphs were already legible. Width alone cannot see that.
      */
     private fun ocrImage(page: Bitmap): Pair<Bitmap, Float> {
-        val scale = (OCR_TARGET_WIDTH.toFloat() / page.width).coerceIn(1f, MAX_OCR_SCALE)
+        val pixels = page.width.toLong() * page.height
+        val byArea = if (pixels <= 0) MAX_OCR_SCALE else sqrt(MAX_OCR_PIXELS / pixels.toFloat())
+        val scale = min(OCR_TARGET_WIDTH.toFloat() / page.width, byArea)
+            .coerceIn(1f, MAX_OCR_SCALE)
         if (scale == 1f) return page to 1f
         return page.scale((page.width * scale).toInt(), (page.height * scale).toInt()) to scale
     }
@@ -315,6 +323,16 @@ class PageTextDetector(private val script: TextScript) {
         /** Width the page is enlarged to before the recognizer sees it. */
         const val OCR_TARGET_WIDTH = 1600
         const val MAX_OCR_SCALE = 2.5f
+
+        /**
+         * Ceiling on the enlarged bitmap, which is what keeps a tall strip within memory.
+         *
+         * Eight megapixels is thirty-two of ARGB, on top of the page's own copy and whatever the
+         * reader is holding either side of it. It never binds on a page — 800x1200 doubled is 2 —
+         * and on a strip it lands near 1x, which is the right answer anyway: an 800-wide strip
+         * already has glyphs the recognizer can read.
+         */
+        const val MAX_OCR_PIXELS = 8_000_000f
 
         /** How many median glyphs tall a glyph box may be before it is treated as misdrawn. */
         const val GLYPH_OUTLIER = 2f

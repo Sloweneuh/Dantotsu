@@ -484,6 +484,11 @@ class ReaderSettingsActivity : AppCompatActivity() {
         binding.readerSettingsMtlEnabled.setOnCheckedChangeListener { _, on ->
             PrefManager.setVal(PrefName.OcrTranslateEnabled, on)
         }
+        binding.readerSettingsNovelMtlEnabled.isChecked =
+            PrefManager.getVal(PrefName.NovelTranslateEnabled)
+        binding.readerSettingsNovelMtlEnabled.setOnCheckedChangeListener { _, on ->
+            PrefManager.setVal(PrefName.NovelTranslateEnabled, on)
+        }
         bindMtlChoices()
         bindOcrKey(
             TranslationEngine.GEMINI,

@@ -55,8 +55,16 @@ object BlockScorer {
         if (block.kanaOnly && bodyGlyph > 0f && block.glyphPx < bodyGlyph * FURIGANA_RATIO) {
             return BlockVerdict.FURIGANA
         }
-        if (ring.iqr > t.ringIqr) return BlockVerdict.OVER_ART
-        if (t.minBrightness > 0f && ring.median < t.minBrightness) return BlockVerdict.OVER_ART
+        // A ring that is nearly all one colour is safe to paint over whatever its spread says, and
+        // the two disagree more often than they look like they should. Lettering dropped straight
+        // onto a flat sky, a screentone or a black gutter has no bubble to find, so the outline the
+        // spread is measuring is the artwork's own edge some way off — high iqr, nothing at risk.
+        // The colour it is painted with comes from the same measurement, which is what keeps the
+        // patch invisible instead of a grey rectangle in the middle of a blue sky.
+        if (!flat(ring, t)) {
+            if (ring.iqr > t.ringIqr) return BlockVerdict.OVER_ART
+            if (t.minBrightness > 0f && ring.median < t.minBrightness) return BlockVerdict.OVER_ART
+        }
         if (block.confidence < t.minConfidence) return BlockVerdict.LOW_CONF
 
         val glyphPercent = block.glyphPercent(pageHeight)
@@ -67,4 +75,8 @@ object BlockScorer {
                 )
         return if (isSfx) BlockVerdict.SFX else BlockVerdict.DIALOGUE
     }
+
+    /** Whether a block's surroundings are one colour, near enough to cover without loss. */
+    fun flat(ring: Ring, t: DetectionThresholds): Boolean =
+        ring.flatShare * 100f >= t.flatPercent
 }

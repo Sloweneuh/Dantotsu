@@ -319,6 +319,12 @@ enum class PrefName(val data: Pref) {
     OcrMinRingMedian(Pref(Location.Reader, Float::class, 0f)),
     OcrRingIqr(Pref(Location.Reader, Float::class, 20f)),
     OcrRingPad(Pref(Location.Reader, Float::class, 0.5f)),
+    // How much of a ring must be a single colour before the block inside it may be covered even
+    // though its spread says artwork. This is what lets lettering sitting straight on a flat sky
+    // or a screentone be translated: there is no bubble to find, but there is nothing to destroy
+    // either. 90% measured as the gap — flat backgrounds held 96-99% of their ring inside the
+    // colour tolerance where drawings managed under 60%.
+    OcrFlatPercent(Pref(Location.Reader, Float::class, 90f)),
 
     // Which engine translates the detected text, and what the two key-based ones need. The key
     // lives in Protected with the account tokens rather than beside the thresholds: it is the
@@ -331,11 +337,22 @@ enum class PrefName(val data: Pref) {
     OcrTranslationModel(Pref(Location.Reader, String::class, "")),
     // BCP-47, empty meaning the device's own language.
     OcrTargetLanguage(Pref(Location.Reader, String::class, "")),
-    // Which recognizer to use, as a TextScript ordinal, or -1 to work it out from the media's
-    // country of origin. Automatic by default: countryOfOrigin answers precisely the question
-    // being asked here — JP, KR and CN/TW are the manga/manhwa/manhua distinction — so making the
-    // user state it again would only be asking them to repeat what the metadata already says.
+    // Which recognizer to use, as a TextScript ordinal, or -1 to work it out from the source
+    // extension's language, falling back to the media's country of origin. Automatic by default:
+    // between them those two answer precisely the question being asked here, so making the user
+    // state it again would only be asking them to repeat what the metadata already says.
     OcrSourceScript(Pref(Location.Reader, Int::class, -1)),
+    // Translate pages as they scroll into view rather than waiting to be asked page by page. Off
+    // by default: it is the setting that spends an API quota without anybody pressing anything.
+    OcrAutoTranslate(Pref(Location.Reader, Boolean::class, false)),
+    // Read a strip of the neighbouring pages along with each page, so a bubble split across the
+    // seam between two source images is recognised whole. Costs about a fifth more pixels per
+    // page and is what makes longstrip readable, where a source's image boundaries fall wherever
+    // the packer put them rather than between panels.
+    OcrStitchPages(Pref(Location.Reader, Boolean::class, true)),
+    // Machine-translate novel chapters as they are opened, using the same engine and target
+    // language as the manga pipeline.
+    NovelTranslateEnabled(Pref(Location.Reader, Boolean::class, false)),
     // One key per provider rather than one shared: they are separate accounts, and a single slot
     // would silently drop whichever was entered first when the engine changed. Protected, with the
     // account tokens — a key is the user's own credential and does not belong in a plain

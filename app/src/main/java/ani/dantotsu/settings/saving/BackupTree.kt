@@ -509,6 +509,7 @@ object BackupTree {
                         BackupItem(PrefName.OcrMinRingMedian, R.string.ocr_backup_min_median),
                         BackupItem(PrefName.OcrRingIqr, R.string.ocr_backup_iqr),
                         BackupItem(PrefName.OcrRingPad, R.string.ocr_backup_pad),
+                        BackupItem(PrefName.OcrFlatPercent, R.string.ocr_backup_flat),
                     )
                 ),
             )

@@ -34,6 +34,7 @@ class LlmTranslator private constructor(
     private val model: String,
     private val targetLabel: String,
     private val gemini: Boolean,
+    private val kind: TextKind,
 ) : TextTranslator {
 
     private val client = OkHttpClient.Builder()
@@ -106,7 +107,37 @@ class LlmTranslator private constructor(
         }
     }
 
-    private fun prompt() = """
+    private fun prompt() = when (kind) {
+        TextKind.COMIC -> comicPrompt()
+        TextKind.PROSE -> prosePrompt()
+    }
+
+    /**
+     * Novel prose, which wants almost the opposite instructions to a comic page.
+     *
+     * The values are paragraphs of a book rather than bubbles read off a picture: they are not
+     * garbled, so the "return it unchanged if it cannot be read" escape hatch would only invite the
+     * model to skip a difficult sentence, and they carry markup-adjacent whitespace that has to
+     * come back exactly as it went out or the paragraph loses its spacing.
+     */
+    private fun prosePrompt() = """
+        You translate novels. The user sends a JSON object whose keys are numbers and whose values
+        are consecutive runs of text from one chapter, in reading order.
+
+        Translate every value into $targetLabel. Reply with a JSON object using exactly the same
+        keys, and nothing else — no commentary, no markdown fence.
+
+        The runs are consecutive prose, so translate them as continuous text: a sentence split
+        across two values still reads as one sentence, and names, honorifics and terminology must
+        stay consistent from one value to the next. Keep the register and the paragraphing of the
+        original, and keep each value's leading and trailing spaces exactly as they arrived — a run
+        is a fragment of a laid-out paragraph and the spacing is what joins it to its neighbours.
+
+        Translate every value, including short ones. Never merge two values, never drop one, and
+        never add explanation of your own.
+    """.trimIndent()
+
+    private fun comicPrompt() = """
         You translate comic pages. The user sends a JSON object whose keys are numbers and whose
         values are the text of the speech bubbles on one page, in reading order.
 
@@ -354,20 +385,32 @@ class LlmTranslator private constructor(
         private const val BATCH_SUFFIX = ":batch"
         private const val FREE_SUFFIX = ":free"
 
-        fun gemini(apiKey: String, model: String, targetLabel: String) = LlmTranslator(
+        fun gemini(
+            apiKey: String,
+            model: String,
+            targetLabel: String,
+            kind: TextKind = TextKind.COMIC,
+        ) = LlmTranslator(
             endpoint = "https://generativelanguage.googleapis.com/v1beta/models",
             apiKey = apiKey,
             model = model,
             targetLabel = targetLabel,
             gemini = true,
+            kind = kind,
         )
 
-        fun openRouter(apiKey: String, model: String, targetLabel: String) = LlmTranslator(
+        fun openRouter(
+            apiKey: String,
+            model: String,
+            targetLabel: String,
+            kind: TextKind = TextKind.COMIC,
+        ) = LlmTranslator(
             endpoint = "https://openrouter.ai/api/v1/chat/completions",
             apiKey = apiKey,
             model = model,
             targetLabel = targetLabel,
             gemini = false,
+            kind = kind,
         )
     }
 }

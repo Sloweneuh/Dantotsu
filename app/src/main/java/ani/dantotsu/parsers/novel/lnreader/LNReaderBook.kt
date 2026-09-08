@@ -2,9 +2,13 @@ package ani.dantotsu.parsers.novel.lnreader
 
 import android.content.Context
 import ani.dantotsu.R
+import ani.dantotsu.media.novel.translation.NovelTranslation
 import ani.dantotsu.others.LanguageMapper
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
+import ani.dantotsu.snackString
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
@@ -42,15 +46,43 @@ object LNReaderBook {
             ?: throw IllegalStateException("No chapter at $index")
         val html = parser.loadChapterHtml(chapter.path)
         if (html.isBlank()) throw IllegalStateException("Empty chapter")
+
+        // The plugin names its language in full ("English"); the document needs the code.
+        val sourceCode = LanguageMapper.getLanguageCode(parser.language)
+            .takeIf { it != "all" } ?: "en"
+
+        // Machine translation, where it is switched on and there is anything to gain by it. Done
+        // here rather than in the reader because the reader is a WebView over a packaged book: this
+        // is the last point at which the words are still ours to change, and changing them here
+        // leaves pagination, theming and the speech markers working as they always did.
+        val translated = NovelTranslation.worthDoing(sourceCode)
+        val body = NovelTranslation.translate(
+            context = context,
+            // Plugin plus chapter path: the chapter's own address within the source it came from,
+            // which is the same string on every launch and different for every chapter.
+            chapterId = "${parser.plugin.id}:${chapter.path}",
+            bodyHtml = html,
+            sourceLanguage = sourceCode,
+        ) {
+            // Only on a real translation, never on a cache hit. Said on the main thread
+            // explicitly: this whole function runs on IO in both of its callers, and a Snackbar
+            // built off it is a crash the helper only swallows.
+            say(context.getString(R.string.mtl_novel_translating))
+        }
+        // Identity, not equality: `translate` hands back the very string it was given when it gave
+        // up, which is the only way to tell "nothing to change" from "changed nothing".
+        if (translated && body === html) say(context.getString(R.string.mtl_novel_untranslated))
+
         LNReaderEpub.buildChapter(
             context = context,
             novelTitle = novel.name,
             chapterTitle = chapter.name,
-            bodyHtml = html,
+            bodyHtml = body,
             author = novel.author,
             baseUrl = parser.resolve(chapter.path),
-            // The plugin names its language in full ("English"); the document needs the code.
-            language = LanguageMapper.getLanguageCode(parser.language).takeIf { it != "all" } ?: "en",
+            // The document's language decides which dictionary the reader hyphenates with, so a
+            // translated chapter has to say what it now is rather than what it was.
+            language = if (translated && body !== html) NovelTranslation.target() else sourceCode,
             footerHtml = novel.chapters.getOrNull(index + 1)?.takeIf { continuous() }?.let { next ->
                 LNReaderEpub.transitionFooter(
                     endLabel = context.getString(R.string.chapter_transition_end, chapter.name),
@@ -58,5 +90,9 @@ object LNReaderBook {
                 )
             },
         )
+    }
+
+    private suspend fun say(message: String) = withContext(Dispatchers.Main) {
+        snackString(message)
     }
 }
