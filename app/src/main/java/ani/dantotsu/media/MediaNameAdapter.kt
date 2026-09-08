@@ -168,25 +168,50 @@ object MediaNameAdapter {
     }
 
     private fun normalizeNumberString(input: String): String? {
+        // Only the FIRST number token in the string is meaningful. Japanese raw titles such as
+        // "第３６話: 第３６話" repeat the chapter number, and concatenating every digit run turned
+        // that into "3636" — making consecutive chapters look 101 apart and inventing 100
+        // phantom "missing" chapters between each pair.
+        fun isSeparator(cp: Int) =
+            cp == '.'.code || cp == '．'.code || cp == '·'.code || cp == ','.code
+
         val sb = StringBuilder()
-        var foundDigit = false
         var i = 0
+        var sign = ""
+
+        // Skip anything ahead of the first digit, keeping a sign glued directly to it.
         while (i < input.length) {
-            // Use fully-qualified java.lang.Character to access codePointAt (avoids collision with kotlin.Char)
+            // Fully-qualified java.lang.Character for codePointAt (avoids collision with kotlin.Char)
             val cp = java.lang.Character.codePointAt(input, i)
-            val digit = java.lang.Character.getNumericValue(cp)
-            if (digit in 0..9) {
-                sb.append(('0'.code + digit).toChar())
-                foundDigit = true
-            } else if (cp == '.'.code || cp == '\uFF0E'.code || cp == '·'.code || cp == ','.code) {
-                // normalize various decimal separators to '.'
-                sb.append('.')
-                foundDigit = true
-            } else if (cp == '-'.code || cp == '+'.code) {
-                sb.appendCodePoint(cp)
-            }
+            if (java.lang.Character.getNumericValue(cp) in 0..9) break
+            sign = if (cp == '-'.code || cp == '+'.code) cp.toChar().toString() else ""
             i += java.lang.Character.charCount(cp)
         }
-        return if (foundDigit) sb.toString() else null
+        if (i >= input.length) return null
+
+        // Integer part.
+        while (i < input.length) {
+            val cp = java.lang.Character.codePointAt(input, i)
+            val digit = java.lang.Character.getNumericValue(cp)
+            if (digit !in 0..9) break
+            sb.append(('0'.code + digit).toChar())
+            i += java.lang.Character.charCount(cp)
+        }
+
+        // Optional fractional part: one separator immediately followed by more digits.
+        if (i < input.length && isSeparator(java.lang.Character.codePointAt(input, i))) {
+            var j = i + java.lang.Character.charCount(java.lang.Character.codePointAt(input, i))
+            val frac = StringBuilder()
+            while (j < input.length) {
+                val cp = java.lang.Character.codePointAt(input, j)
+                val digit = java.lang.Character.getNumericValue(cp)
+                if (digit !in 0..9) break
+                frac.append(('0'.code + digit).toChar())
+                j += java.lang.Character.charCount(cp)
+            }
+            if (frac.isNotEmpty()) sb.append('.').append(frac)
+        }
+
+        return if (sb.isEmpty()) null else sign + sb
     }
 }
