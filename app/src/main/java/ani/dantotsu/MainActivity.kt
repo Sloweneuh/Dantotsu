@@ -92,6 +92,15 @@ class MainActivity : AppCompatActivity() {
     private val scope = lifecycleScope
     private var load = false
 
+    /**
+     * The canonical tab (0=Anime, 1=Home, 2=Manga) sitting at each navbar position, in order.
+     *
+     * A field rather than a local so [onSaveInstanceState] can turn [selectedOption] — which is a
+     * position — back into the tab it stands for. Home-only until the `doOnAttach` block in
+     * [onCreate] has filled it in, which is also what the navbar shows until then.
+     */
+    private var visibleTabs: List<Int> = listOf(1)
+
     override fun attachBaseContext(newBase: android.content.Context?) {
         super.attachBaseContext(newBase?.let { ani.dantotsu.util.LanguageHelper.applyLanguageToContext(it) })
     }
@@ -278,12 +287,20 @@ class MainActivity : AppCompatActivity() {
             val showAnime = PrefManager.getVal<Boolean>(PrefName.ShowAnimeTab)
             val showManga = PrefManager.getVal<Boolean>(PrefName.ShowMangaTab)
             // Build ordered list of canonical tab indices (0=Anime, 1=Home, 2=Manga)
-            val visibleTabs = buildList {
+            visibleTabs = buildList {
                 if (showAnime) add(0)
                 add(1) // Home is always visible
                 if (showManga) add(2)
             }
-            val canonicalSelected = if (fragment != null) {
+            // The tab the user was last on wins, then the one the launching intent asked for, then
+            // their configured default. A non-null savedInstanceState means this very instance is
+            // being restored — after a process death, or a recreate() from one of the in-app
+            // notices — so what it carries is where the user actually was, which is better than
+            // replaying what the original intent wanted. Same rule as the shortcut actions above.
+            val restoredTab = savedInstanceState
+                ?.takeIf { it.containsKey(STATE_SELECTED_TAB) }
+                ?.getInt(STATE_SELECTED_TAB)
+            val canonicalSelected = restoredTab ?: if (fragment != null) {
                 when (fragment) {
                     AnimeFragment::class.java.name -> 0
                     HomeFragment::class.java.name -> 1
@@ -291,7 +308,7 @@ class MainActivity : AppCompatActivity() {
                     else -> 1
                 }
             } else {
-                PrefManager.getVal(PrefName.DefaultStartUpTab)
+                PrefManager.getVal<Int>(PrefName.DefaultStartUpTab)
             }
             // Map canonical index to actual visible position, fallback to Home
             selectedOption = visibleTabs.indexOf(canonicalSelected)
@@ -509,6 +526,22 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * The bottom-nav tab is the one piece of this screen's state Android cannot restore by itself:
+     * [selectedOption] is a global that [onCreate] recomputes from the start-up-tab preference, so
+     * every restore silently moved a user who was on Anime or Manga back to Home. Coming back to a
+     * process the system had killed in the background is the common way to hit that, and it reads
+     * as the app having restarted itself.
+     *
+     * Stored as the canonical tab rather than the navbar position: the set of visible tabs can
+     * change between the save and the restore — the Anime and Manga tabs are toggles — and a
+     * position would then name a different tab. Same reasoning as [ViewPagerAdapter.getItemId].
+     */
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putInt(STATE_SELECTED_TAB, visibleTabs.getOrElse(selectedOption) { 1 })
+    }
+
     override fun onRestart() {
         super.onRestart()
         window.navigationBarColor = ContextCompat.getColor(this, android.R.color.transparent)
@@ -664,4 +697,8 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    companion object {
+        /** Canonical tab index, in the saved instance state. See [onSaveInstanceState]. */
+        private const val STATE_SELECTED_TAB = "mainSelectedTab"
+    }
 }

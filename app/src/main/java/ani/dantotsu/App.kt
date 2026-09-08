@@ -114,6 +114,10 @@ class App : MultiDexApplication() {
     @OptIn(DelicateCoroutinesApi::class)
     override fun onCreate() {
         super.onCreate()
+        // Only ever set from background entry points before now, so on the UI path [currentContext]
+        // had nothing to fall back on and handed out the current activity or nothing at all. Now
+        // that the activity reference is released on destroy, that fallback has to actually exist.
+        App.context = applicationContext
         // Before anything allocates. LeakCanary itself is already installed by its own
         // ContentProvider by this point; this only sets how it behaves. No-op in release builds.
         LeakDetection.install()
@@ -167,6 +171,12 @@ class App : MultiDexApplication() {
             }
             crashlytics.setCustomKey("device Info", SettingsActivity.getDeviceInfo())
         }
+
+        // A process killed in the background leaves no trace the user can report — the app is just
+        // cold next time they open it. Ask the platform why the last one went away, now that the
+        // reporting decision above is settled. Off the main thread, and silent unless something
+        // actually died.
+        ani.dantotsu.util.ProcessExitReporter.report(this, crashlytics, !disableCrashReports)
 
         initializeNetwork()
 
@@ -417,7 +427,23 @@ class App : MultiDexApplication() {
             }
         }
         override fun onActivitySaveInstanceState(p0: Activity, p1: Bundle) {}
-        override fun onActivityDestroyed(p0: Activity) {}
+
+        /**
+         * Let go of the activity, which nothing here used to do.
+         *
+         * [currentActivity] is reachable from a static ([instance]), so whatever it last pointed at
+         * was kept alive for the life of the process — a destroyed activity, its whole view tree,
+         * and every cover and banner bitmap bound into it. That is dead weight the process carries
+         * into the background, where its size is what the low-memory killer chooses on, so it made
+         * the app likelier to be killed while the user was away and to come back cold.
+         *
+         * Only when it is still the activity we are holding: a forward navigation resumes the new
+         * screen before destroying the old one, so an unconditional clear would drop the live
+         * activity and leave [currentActivity] null for the rest of the session.
+         */
+        override fun onActivityDestroyed(p0: Activity) {
+            if (currentActivity === p0) currentActivity = null
+        }
     }
 
     companion object {

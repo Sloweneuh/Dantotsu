@@ -607,8 +607,16 @@
                 <data android:pathPrefix="/user" />
             </intent-filter>
         </activity>
+        <!--
+            alwaysRetainTaskState: without it the system resets a task down to its root activity
+            once the task has sat idle, so relaunching from the launcher threw the back stack away
+            and dropped the user back on the home page. AOSP waits 30 minutes before doing that;
+            the aggressive OEM ROMs do it after a couple of minutes in the background. MainActivity
+            is the task root, so declaring it here keeps the stack for every screen the app opens.
+        -->
         <activity
             android:name=".MainActivity"
+            android:alwaysRetainTaskState="true"
             android:configChanges="orientation|screenSize|layoutDirection"
             android:exported="true">
             <intent-filter>
