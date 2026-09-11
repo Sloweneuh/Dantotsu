@@ -138,6 +138,18 @@ class HomeFragment : Fragment() {
     private var savedMuUnreadKey: String? = null
     private var muUnreadInfoJob: kotlinx.coroutines.Job? = null
 
+    /**
+     * Whether the last home page fetch failed. An empty section means something different
+     * depending on this: genuinely nothing there, or an answer that never came back. Set from
+     * [AnilistHomeViewModel.getHomeDataError], which is posted before the (empty) list values it
+     * pairs with, so this is up to date by the time a list observer runs off that same failure.
+     */
+    private var homeDataErrored = false
+
+    /** The empty-state message for a section: the fetch-failed text if the last load errored, [defaultRes] otherwise. */
+    private fun emptyStateText(defaultRes: Int): String =
+        if (homeDataErrored) getString(R.string.home_section_load_error) else getString(defaultRes)
+
     /** Everything the row knows about either half, as one map. */
     private fun combinedUnreadInfo(): Map<Int, UnreadChapterInfo> = unreadInfoMap + muUnreadInfo
 
@@ -500,6 +512,12 @@ class HomeFragment : Fragment() {
         val scope = lifecycleScope
         Logger.log("HomeFragment")
 
+        // Registered first so it lands ahead of the list observers below: [homeDataErrored]
+        // explains why they see an empty list before they redraw as empty.
+        model.getHomeDataError().observe(viewLifecycleOwner) { errored ->
+            homeDataErrored = errored
+        }
+
         // class-level helpers `updateUnreadRefreshAlignment`, `mergedCachedInfoFor`, and `getLastChapterForMedia` are defined at class scope
         fun load() {
             Logger.log("Loading HomeFragment")
@@ -764,6 +782,8 @@ class HomeFragment : Fragment() {
             recyclerView: RecyclerView,
             progress: View,
             empty: View,
+            emptyText: android.widget.TextView,
+            emptyStringRes: Int,
             title: View,
             more: View,
             string: String
@@ -799,6 +819,7 @@ class HomeFragment : Fragment() {
                             LayoutAnimationController(setSlideIn(), 0.25f)
 
                     } else {
+                        emptyText.text = emptyStateText(emptyStringRes)
                         empty.visibility = View.VISIBLE
                     }
                     more.visibility = View.VISIBLE
@@ -911,6 +932,8 @@ class HomeFragment : Fragment() {
                         }
                     }
                 } else {
+                    binding.homeWatchingEmptyText.text = emptyStateText(R.string.empty)
+                    binding.homeWatchingBrowseButton.isVisible = !homeDataErrored
                     binding.homeWatchingEmpty.visibility = View.VISIBLE
                     binding.homeContinueWatchMore.visibility = View.VISIBLE
                     binding.homeContinueWatch.visibility = View.VISIBLE
@@ -931,6 +954,8 @@ class HomeFragment : Fragment() {
             binding.homeFavAnimeRecyclerView,
             binding.homeFavAnimeProgressBar,
             binding.homeFavAnimeEmpty,
+            binding.homeFavAnimeEmptyText,
+            R.string.empty_fav_anime,
             binding.homeFavAnime,
             binding.homeFavAnimeMore,
             getString(R.string.fav_anime)
@@ -1035,6 +1060,8 @@ class HomeFragment : Fragment() {
                         }
                     }
                 } else {
+                    binding.homePlannedAnimeEmptyText.text = emptyStateText(R.string.empty_planned_anime)
+                    binding.homePlannedAnimeBrowseButton.isVisible = !homeDataErrored
                     binding.homePlannedAnimeEmpty.visibility = View.VISIBLE
                     binding.homePlannedAnimeMore.visibility = View.VISIBLE
                     binding.homePlannedAnime.visibility = View.VISIBLE
@@ -1128,6 +1155,8 @@ class HomeFragment : Fragment() {
                 binding.homeReadingRecyclerView.layoutAnimation =
                     LayoutAnimationController(setSlideIn(), 0.25f)
             } else {
+                binding.homeReadingEmptyText.text = emptyStateText(R.string.empty)
+                binding.homeReadingBrowseButton.isVisible = !homeDataErrored
                 binding.homeReadingEmpty.visibility = View.VISIBLE
             }
             binding.homeContinueReadMore.visibility = View.VISIBLE
@@ -1151,6 +1180,8 @@ class HomeFragment : Fragment() {
             binding.homeFavMangaRecyclerView,
             binding.homeFavMangaProgressBar,
             binding.homeFavMangaEmpty,
+            binding.homeFavMangaEmptyText,
+            R.string.empty_fav_manga,
             binding.homeFavManga,
             binding.homeFavMangaMore,
             getString(R.string.fav_manga)
@@ -1198,6 +1229,8 @@ class HomeFragment : Fragment() {
                 binding.homePlannedMangaRecyclerView.layoutAnimation =
                     LayoutAnimationController(setSlideIn(), 0.25f)
             } else {
+                binding.homePlannedMangaEmptyText.text = emptyStateText(R.string.empty_planned_manga)
+                binding.homePlannedMangaBrowseButton.isVisible = !homeDataErrored
                 binding.homePlannedMangaEmpty.visibility = View.VISIBLE
             }
             binding.homePlannedMangaMore.visibility = View.VISIBLE
@@ -1232,6 +1265,8 @@ class HomeFragment : Fragment() {
             binding.homeRecommendedRecyclerView,
             binding.homeRecommendedProgressBar,
             binding.homeRecommendedEmpty,
+            binding.homeRecommendedEmptyText,
+            R.string.get_recommendations,
             binding.homeRecommended,
             binding.homeRecommendedMore,
             getString(R.string.recommended)

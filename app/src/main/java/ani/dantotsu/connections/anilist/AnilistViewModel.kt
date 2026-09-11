@@ -91,6 +91,16 @@ class AnilistHomeViewModel : ViewModel() {
 
     fun getRecommendation(): LiveData<ArrayList<Media>> = recommendation
 
+    /**
+     * Whether the last [initHomePage]/[initHomePageWithUserStatus] call failed. An empty section
+     * only means "failed" while this is true — posted before the (empty) list values in the catch
+     * blocks below, so an observer registered on both sees this update first and can tell a genuine
+     * empty list from a fetch that never came back.
+     */
+    private val homeDataError: MutableLiveData<Boolean> = MutableLiveData(false)
+
+    fun getHomeDataError(): LiveData<Boolean> = homeDataError
+
     private val userStatus: MutableLiveData<ArrayList<User>> =
         MutableLiveData<ArrayList<User>>(null)
 
@@ -218,6 +228,7 @@ class AnilistHomeViewModel : ViewModel() {
     suspend fun initHomePage() {
         try {
             val res = Anilist.query.initHomePage()
+            homeDataError.postValue(false)
             // Always post a value (even if empty) to ensure UI updates and hides progress bars
             animeContinue.postValue(res["currentAnime"] ?: arrayListOf())
             animeFav.postValue(res["favoriteAnime"] ?: arrayListOf())
@@ -228,6 +239,8 @@ class AnilistHomeViewModel : ViewModel() {
             recommendation.postValue(res["recommendations"] ?: arrayListOf())
             hidden.postValue(res["hidden"] ?: arrayListOf())
         } catch (e: Exception) {
+            // Posted first: see [homeDataError].
+            homeDataError.postValue(true)
             animeContinue.postValue(arrayListOf())
             animeFav.postValue(arrayListOf())
             animePlanned.postValue(arrayListOf())
@@ -254,6 +267,7 @@ class AnilistHomeViewModel : ViewModel() {
                 val res = homePageDeferred.await()
                 val statusRes = userStatusDeferred.await()
 
+                homeDataError.postValue(false)
                 // Post all values together
                 // Always post values (even if empty) to ensure UI updates properly
                 animeContinue.postValue(res["currentAnime"] ?: arrayListOf())
@@ -267,7 +281,9 @@ class AnilistHomeViewModel : ViewModel() {
                 userStatus.postValue(statusRes ?: arrayListOf())
             }
         } catch (e: Exception) {
-            // On error, post empty lists to ensure UI updates properly
+            // On error, post empty lists to ensure UI updates properly. Posted first: see
+            // [homeDataError].
+            homeDataError.postValue(true)
             animeContinue.postValue(arrayListOf())
             animeFav.postValue(arrayListOf())
             animePlanned.postValue(arrayListOf())

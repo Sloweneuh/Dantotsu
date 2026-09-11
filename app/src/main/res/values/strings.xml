@@ -555,6 +555,11 @@
     <string name="trending_scroller">Trending Scroller</string>
     <string name="animation_speed">Overall Speed</string>
     <string name="empty_fav">Looks like you don\'t like anything,\nTry liking a show to keep it here.</string>
+    <string name="empty_fav_anime">Looks like you don\'t have any favourite anime yet,\nTry liking an anime to keep it here.</string>
+    <string name="empty_fav_manga">Looks like you don\'t have any favourite manga yet,\nTry liking a manga to keep it here.</string>
+    <string name="empty_planned_anime">Nothing planned yet,\nAdd anime to your Plan to Watch list to see it here.</string>
+    <string name="empty_planned_manga">Nothing planned yet,\nAdd manga to your Plan to Read list to see it here.</string>
+    <string name="home_section_load_error">Couldn\'t load this — pull down to try again.</string>
     <string name="fav_anime">Favourite Anime</string>
     <string name="fav_manga">Favourite Manga</string>
     <string name="restart_app_extra">Restart the app to apply changes</string>

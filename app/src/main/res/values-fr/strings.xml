@@ -471,6 +471,11 @@
     <string name="trending_scroller">Défilement des tendances</string>
     <string name="animation_speed">Vitesse globale</string>
     <string name="empty_fav">Il semble que vous n\'aimez rien,\nEssayez d\'aimer une série pour la garder ici.</string>
+    <string name="empty_fav_anime">Vous n\'avez pas encore d\'anime favori,\nEssayez d\'aimer un anime pour le garder ici.</string>
+    <string name="empty_fav_manga">Vous n\'avez pas encore de manga favori,\nEssayez d\'aimer un manga pour le garder ici.</string>
+    <string name="empty_planned_anime">Rien de prévu pour l\'instant,\nAjoutez des anime à votre liste \"À regarder\" pour les voir ici.</string>
+    <string name="empty_planned_manga">Rien de prévu pour l\'instant,\nAjoutez des manga à votre liste \"À lire\" pour les voir ici.</string>
+    <string name="home_section_load_error">Impossible de charger,\nTirez vers le bas pour réessayer.</string>
     <string name="fav_anime">Anime favoris</string>
     <string name="fav_manga">Manga favoris</string>
     <string name="restart_app_extra">Redémarrez l\'application pour appliquer les changements</string>

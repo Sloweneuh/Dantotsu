@@ -479,6 +479,7 @@
                             tools:ignore="ContentDescription" />
 
                         <TextView
+                            android:id="@+id/homeWatchingEmptyText"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:alpha="0.58"
@@ -576,12 +577,13 @@
                             tools:ignore="ContentDescription" />
 
                         <TextView
+                            android:id="@+id/homeFavAnimeEmptyText"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:alpha="0.58"
                             android:paddingStart="32dp"
                             android:paddingEnd="32dp"
-                            android:text="@string/empty_fav"
+                            android:text="@string/empty_fav_anime"
                             android:textAlignment="center"
                             tools:ignore="TextContrastCheck" />
 
@@ -668,10 +670,11 @@
                             tools:ignore="ContentDescription" />
 
                         <TextView
+                            android:id="@+id/homePlannedAnimeEmptyText"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:alpha="0.58"
-                            android:text="@string/empty" />
+                            android:text="@string/empty_planned_anime" />
 
                         <Button
                             android:id="@+id/homePlannedAnimeBrowseButton"
@@ -869,6 +872,7 @@
                             tools:ignore="ContentDescription" />
 
                         <TextView
+                            android:id="@+id/homeReadingEmptyText"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:alpha="0.58"
@@ -965,12 +969,13 @@
                             tools:ignore="ContentDescription" />
 
                         <TextView
+                            android:id="@+id/homeFavMangaEmptyText"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:alpha="0.58"
                             android:paddingStart="32dp"
                             android:paddingEnd="32dp"
-                            android:text="@string/empty_fav"
+                            android:text="@string/empty_fav_manga"
                             android:textAlignment="center"
                             tools:ignore="TextContrastCheck" />
 
@@ -1058,10 +1063,11 @@
                             tools:ignore="ContentDescription" />
 
                         <TextView
+                            android:id="@+id/homePlannedMangaEmptyText"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:alpha="0.58"
-                            android:text="@string/empty" />
+                            android:text="@string/empty_planned_manga" />
 
                         <Button
                             android:id="@+id/homePlannedMangaBrowseButton"
@@ -1155,6 +1161,7 @@
                             tools:ignore="ContentDescription" />
 
                         <TextView
+                            android:id="@+id/homeRecommendedEmptyText"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_margin="16dp"
