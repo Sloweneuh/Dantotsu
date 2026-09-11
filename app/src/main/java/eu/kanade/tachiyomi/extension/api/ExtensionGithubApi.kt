@@ -16,6 +16,21 @@ import kotlinx.serialization.json.Json
 import tachiyomi.core.util.lang.withIOContext
 import uy.kohesive.injekt.injectLazy
 
+/**
+ * Result of fetching every repository configured for a media type.
+ *
+ * A repo that fails to fetch, or does not actually parse as an extension list (a dead link, or a
+ * page url like a GitHub file-viewer link rather than its raw index), is skipped rather than
+ * failing the whole refresh, so one bad entry cannot hide every other repository's extensions. But
+ * that also means an empty match for a package can mean either "removed upstream" or "its repo did
+ * not resolve this time" — callers need [allReposResolved] to tell those apart before treating an
+ * installed extension as obsolete.
+ */
+internal data class RepoFetchResult<T>(
+    val extensions: List<T>,
+    val allReposResolved: Boolean,
+)
+
 internal class ExtensionGithubApi {
     private val networkService: NetworkHelper by injectLazy()
     private val json: Json by injectLazy()
@@ -25,19 +40,23 @@ internal class ExtensionGithubApi {
     private suspend fun <T> findExtensions(
         repos: PrefName,
         transform: (RepoEntry, String) -> T?,
-    ): List<T> = withIOContext {
-        PrefManager.getVal<Set<String>>(repos).asyncMap { repo ->
+    ): RepoFetchResult<T> = withIOContext {
+        val perRepo = PrefManager.getVal<Set<String>>(repos).asyncMap { repo ->
             try {
-                fetcher.fetch(repo).mapNotNull { transform(it, repo) }
+                fetcher.fetch(repo).mapNotNull { transform(it, repo) } to true
             } catch (e: Throwable) {
                 Logger.log("Failed to get extensions from $repo")
                 Logger.log(e)
-                emptyList()
+                emptyList<T>() to false
             }
-        }.flatten()
+        }
+        RepoFetchResult(
+            extensions = perRepo.flatMap { it.first },
+            allReposResolved = perRepo.all { it.second },
+        )
     }
 
-    suspend fun findAnimeExtensions(): List<AnimeExtension.Available> =
+    suspend fun findAnimeExtensions(): RepoFetchResult<AnimeExtension.Available> =
         findExtensions(PrefName.AnimeExtensionRepos) { entry, repo ->
             if (entry.libVersion < ExtensionLoader.ANIME_LIB_VERSION_MIN ||
                 entry.libVersion > ExtensionLoader.ANIME_LIB_VERSION_MAX
@@ -63,7 +82,7 @@ internal class ExtensionGithubApi {
             )
         }
 
-    suspend fun findMangaExtensions(): List<MangaExtension.Available> =
+    suspend fun findMangaExtensions(): RepoFetchResult<MangaExtension.Available> =
         findExtensions(PrefName.MangaExtensionRepos) { entry, repo ->
             if (entry.libVersion < ExtensionLoader.MANGA_LIB_VERSION_MIN ||
                 entry.libVersion > ExtensionLoader.MANGA_LIB_VERSION_MAX
@@ -89,7 +108,7 @@ internal class ExtensionGithubApi {
             )
         }
 
-    suspend fun findNovelExtensions(): List<NovelExtension.Available> =
+    suspend fun findNovelExtensions(): RepoFetchResult<NovelExtension.Available> =
         findExtensions(PrefName.NovelExtensionRepos) { entry, repo ->
             NovelExtension.Available(
                 name = entry.name,

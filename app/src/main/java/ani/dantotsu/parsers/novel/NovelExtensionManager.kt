@@ -8,6 +8,7 @@ import ani.dantotsu.util.Logger
 import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.tachiyomi.extension.InstallStep
 import eu.kanade.tachiyomi.extension.api.ExtensionGithubApi
+import eu.kanade.tachiyomi.extension.api.RepoFetchResult
 import eu.kanade.tachiyomi.extension.util.ExtensionInstallReceiver
 import eu.kanade.tachiyomi.extension.util.ExtensionInstaller
 import eu.kanade.tachiyomi.extension.util.ExtensionLoader
@@ -76,20 +77,24 @@ class NovelExtensionManager(
      * Finds the available manga extensions in the [api] and updates [availableExtensions].
      */
     suspend fun findAvailableExtensions() {
-        val extensions: List<NovelExtension.Available> = try {
+        val result: RepoFetchResult<NovelExtension.Available> = try {
             api.findNovelExtensions()
         } catch (e: Exception) {
             Logger.log("Error finding extensions: ${e.message}")
             withUIContext { snackString("Failed to get Novel extensions list") }
-            emptyList()
+            RepoFetchResult(emptyList(), allReposResolved = false)
         }
+        val extensions = result.extensions
 
         _availableNovelExtensionsFlow.value = extensions
-        updatedInstalledNovelExtensionsStatuses(extensions)
+        updatedInstalledNovelExtensionsStatuses(extensions, result.allReposResolved)
         setupAvailableNovelExtensionsSourcesDataMap(extensions)
     }
 
-    private fun updatedInstalledNovelExtensionsStatuses(availableNovelExtensions: List<NovelExtension.Available>) {
+    private fun updatedInstalledNovelExtensionsStatuses(
+        availableNovelExtensions: List<NovelExtension.Available>,
+        allReposResolved: Boolean,
+    ) {
         if (availableNovelExtensions.isEmpty()) {
             preferences.novelExtensionUpdatesCount().set(0)
             return
@@ -102,7 +107,14 @@ class NovelExtensionManager(
             val pkgName = installedExt.pkgName
             val availableExt = availableNovelExtensions.find { it.pkgName == pkgName }
 
-            if (availableExt == null && !installedExt.isObsolete) {
+            // Only a repo that actually resolved can prove an extension is gone. One that failed to
+            // fetch or parse — a dead link, or a url that isn't really an extension list — would
+            // otherwise look identical to "removed", branding every one of its extensions obsolete.
+            //
+            // isUnofficial is deliberately not part of this check: every extension is loaded with
+            // isUnofficial = true since the signature-trust system it used to reflect was removed
+            // (c48028f3), so gating on it here would make this branch permanently unreachable.
+            if (availableExt == null && !installedExt.isObsolete && allReposResolved) {
                 mutInstalledNovelExtensions[index] = installedExt.copy(isObsolete = true)
                 hasChanges = true
             } else if (availableExt != null) {
@@ -117,7 +129,7 @@ class NovelExtensionManager(
         if (hasChanges) {
             _installedNovelExtensionsFlow.value = mutInstalledNovelExtensions
         }
-        updatePendingUpdatesCount()
+        updateExtensionCounts()
     }
 
     /**
@@ -181,7 +193,7 @@ class NovelExtensionManager(
      */
     private fun registerNewExtension(extension: NovelExtension.Installed) {
         _installedNovelExtensionsFlow.value += extension
-        updatePendingUpdatesCount()
+        updateExtensionCounts()
     }
 
     /**
@@ -198,7 +210,7 @@ class NovelExtensionManager(
         }
         mutInstalledNovelExtensions += extension
         _installedNovelExtensionsFlow.value = mutInstalledNovelExtensions
-        updatePendingUpdatesCount()
+        updateExtensionCounts()
     }
 
     /**
@@ -212,7 +224,7 @@ class NovelExtensionManager(
             _installedNovelExtensionsFlow.value.find { it.pkgName == pkgName }
         if (installedNovelExtension != null) {
             _installedNovelExtensionsFlow.value -= installedNovelExtension
-            updatePendingUpdatesCount()
+            updateExtensionCounts()
         }
     }
 
@@ -252,8 +264,9 @@ class NovelExtensionManager(
         return (availableExt.versionCode > versionCode)
     }
 
-    private fun updatePendingUpdatesCount() {
-        preferences.novelExtensionUpdatesCount()
-            .set(_installedNovelExtensionsFlow.value.count { it.hasUpdate })
+    private fun updateExtensionCounts() {
+        val installed = _installedNovelExtensionsFlow.value
+        preferences.novelExtensionUpdatesCount().set(installed.count { it.hasUpdate })
+        preferences.novelExtensionObsoleteCount().set(installed.count { it.isObsolete })
     }
 }

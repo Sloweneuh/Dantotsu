@@ -11,6 +11,7 @@ import ani.dantotsu.connections.sync.ExtensionSyncNotice
 import ani.dantotsu.connections.sync.SyncConflictNotice
 import ani.dantotsu.connections.sync.SyncLinkNotice
 import ani.dantotsu.connections.sync.SyncReloadNotice
+import ani.dantotsu.settings.ExtensionObsoleteNotice
 import ani.dantotsu.settings.ExtensionUpdateNotice
 import ani.dantotsu.settings.SettingsBackupSyncActivity
 
@@ -26,7 +27,9 @@ import ani.dantotsu.settings.SettingsBackupSyncActivity
  *  3. an AniList outage leaves every screen empty with nothing to explain it,
  *  4. a pending reload leaves the current screen showing values that are no longer stored,
  *  5. mismatched extensions leave a device without sources another one has,
- *  6. extension updates are simply waiting, and lose nothing by waiting longer.
+ *  6. extension updates are simply waiting, and lose nothing by waiting longer,
+ *  7. an obsolete extension has no one-tap fix — reviewing it can wait for whenever the user
+ *     gets to the extensions screen on their own.
  *
  * The first two and the fifth share a property the others don't: they can *only* be finished by a
  * person. Nothing in the app can generate a sync code, choose which settings win, or agree to
@@ -104,6 +107,7 @@ object AppNotices {
         SyncReloadNotice.ID to SyncReloadNotice.isPending(),
         ExtensionSyncNotice.ID to ExtensionSyncNotice.isPending(),
         ExtensionUpdateNotice.ID to ExtensionUpdateNotice.isPending(),
+        ExtensionObsoleteNotice.ID to ExtensionObsoleteNotice.isPending(),
     ).map { (id, pending) -> id to (pending && allowed(context, id)) }
 
     /**
@@ -154,6 +158,11 @@ object AppNotices {
             pending(ExtensionUpdateNotice.ID) -> show(activity, ExtensionUpdateNotice.ID) {
                 TopBanner.show(activity, ExtensionUpdateNotice.spec(activity))
                 ExtensionUpdateNotice.markShown()
+            }
+
+            pending(ExtensionObsoleteNotice.ID) -> show(activity, ExtensionObsoleteNotice.ID) {
+                TopBanner.show(activity, ExtensionObsoleteNotice.spec(activity))
+                ExtensionObsoleteNotice.markShown()
             }
         }
     }

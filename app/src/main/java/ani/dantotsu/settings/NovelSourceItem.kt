@@ -19,6 +19,7 @@ sealed class NovelSourceItem {
     abstract val name: String
     abstract val versionLabel: String
     abstract val hasUpdate: Boolean
+    abstract val isObsolete: Boolean
     abstract val icon: Drawable?
 
     data class Extension(val extension: NovelExtension.Installed) : NovelSourceItem() {
@@ -27,6 +28,7 @@ sealed class NovelSourceItem {
         override val versionLabel
             get() = "${LanguageMapper.getLanguageName("all")} ${extension.versionName}"
         override val hasUpdate get() = extension.hasUpdate
+        override val isObsolete get() = extension.isObsolete
         override val icon get() = extension.icon
     }
 
@@ -38,6 +40,9 @@ sealed class NovelSourceItem {
             plugin.availableVersion?.let { append("  →  ").append(it) }
         }
         override val hasUpdate get() = plugin.hasUpdate
+        // Plugins have no repo-absence signal like extensions do: they are just a downloaded
+        // file, re-fetched from whatever url the record was installed from.
+        override val isObsolete get() = false
         // Plugin icons are remote URLs rather than a packaged drawable, so rows load them lazily.
         override val icon: Drawable? get() = null
         val iconUrl: String? get() = plugin.plugin.iconUrl

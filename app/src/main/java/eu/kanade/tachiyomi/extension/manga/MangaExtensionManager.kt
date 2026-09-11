@@ -9,6 +9,7 @@ import ani.dantotsu.util.Logger
 import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.tachiyomi.extension.InstallStep
 import eu.kanade.tachiyomi.extension.api.ExtensionGithubApi
+import eu.kanade.tachiyomi.extension.api.RepoFetchResult
 import eu.kanade.tachiyomi.extension.manga.model.AvailableMangaSources
 import eu.kanade.tachiyomi.extension.manga.model.MangaExtension
 import eu.kanade.tachiyomi.extension.manga.model.MangaLoadResult
@@ -116,18 +117,19 @@ class MangaExtensionManager(
      * Finds the available extensions in the [api] and updates [availableExtensions].
      */
     suspend fun findAvailableExtensions() {
-        val extensions: List<MangaExtension.Available> = try {
+        val result: RepoFetchResult<MangaExtension.Available> = try {
             api.findMangaExtensions()
         } catch (e: Exception) {
             Logger.log(e)
             withUIContext { snackString(context.getString(R.string.failed_to_get_manga_extensions)) }
-            emptyList()
+            RepoFetchResult(emptyList(), allReposResolved = false)
         }
+        val extensions = result.extensions
 
         enableAdditionalSubLanguages(extensions)
 
         _availableExtensionsFlow.value = extensions
-        updatedInstalledExtensionsStatuses(extensions)
+        updatedInstalledExtensionsStatuses(extensions, result.allReposResolved)
         setupAvailableExtensionsSourcesDataMap(extensions)
     }
 
@@ -166,7 +168,10 @@ class MangaExtensionManager(
      *
      * @param availableExtensions The list of extensions given by the [api].
      */
-    private fun updatedInstalledExtensionsStatuses(availableExtensions: List<MangaExtension.Available>) {
+    private fun updatedInstalledExtensionsStatuses(
+        availableExtensions: List<MangaExtension.Available>,
+        allReposResolved: Boolean,
+    ) {
         if (availableExtensions.isEmpty()) {
             preferences.mangaExtensionUpdatesCount().set(0)
             return
@@ -179,7 +184,14 @@ class MangaExtensionManager(
             val pkgName = installedExt.pkgName
             val availableExt = availableExtensions.find { it.pkgName == pkgName }
 
-            if (!installedExt.isUnofficial && availableExt == null && !installedExt.isObsolete) {
+            // Only a repo that actually resolved can prove an extension is gone. One that failed to
+            // fetch or parse — a dead link, or a url that isn't really an extension list — would
+            // otherwise look identical to "removed", branding every one of its extensions obsolete.
+            //
+            // isUnofficial is deliberately not part of this check: every extension is loaded with
+            // isUnofficial = true since the signature-trust system it used to reflect was removed
+            // (c48028f3), so gating on it here would make this branch permanently unreachable.
+            if (availableExt == null && !installedExt.isObsolete && allReposResolved) {
                 mutInstalledExtensions[index] = installedExt.copy(isObsolete = true)
                 changed = true
             } else if (availableExt != null) {
@@ -194,7 +206,7 @@ class MangaExtensionManager(
         if (changed) {
             _installedExtensionsFlow.value = mutInstalledExtensions
         }
-        updatePendingUpdatesCount()
+        updateExtensionCounts()
     }
 
     /**
@@ -299,12 +311,12 @@ class MangaExtensionManager(
 
         override fun onExtensionInstalled(extension: MangaExtension.Installed) {
             registerNewExtension(extension.withUpdateCheck())
-            updatePendingUpdatesCount()
+            updateExtensionCounts()
         }
 
         override fun onExtensionUpdated(extension: MangaExtension.Installed) {
             registerUpdatedExtension(extension.withUpdateCheck())
-            updatePendingUpdatesCount()
+            updateExtensionCounts()
         }
 
         override fun onExtensionUntrusted(extension: MangaExtension.Untrusted) {
@@ -313,7 +325,7 @@ class MangaExtensionManager(
 
         override fun onPackageUninstalled(pkgName: String) {
             unregisterExtension(pkgName)
-            updatePendingUpdatesCount()
+            updateExtensionCounts()
         }
     }
 
@@ -336,8 +348,9 @@ class MangaExtensionManager(
         return (availableExt.versionCode > versionCode || availableExt.libVersion > libVersion)
     }
 
-    private fun updatePendingUpdatesCount() {
-        preferences.mangaExtensionUpdatesCount()
-            .set(_installedExtensionsFlow.value.count { it.hasUpdate })
+    private fun updateExtensionCounts() {
+        val installed = _installedExtensionsFlow.value
+        preferences.mangaExtensionUpdatesCount().set(installed.count { it.hasUpdate })
+        preferences.mangaExtensionObsoleteCount().set(installed.count { it.isObsolete })
     }
 }

@@ -12,6 +12,7 @@ import eu.kanade.tachiyomi.extension.anime.model.AnimeExtension
 import eu.kanade.tachiyomi.extension.anime.model.AnimeLoadResult
 import eu.kanade.tachiyomi.extension.anime.model.AvailableAnimeSources
 import eu.kanade.tachiyomi.extension.api.ExtensionGithubApi
+import eu.kanade.tachiyomi.extension.api.RepoFetchResult
 import eu.kanade.tachiyomi.extension.util.ExtensionInstallReceiver
 import eu.kanade.tachiyomi.extension.util.ExtensionInstaller
 import eu.kanade.tachiyomi.extension.util.ExtensionLoader
@@ -119,18 +120,19 @@ class AnimeExtensionManager(
      * Finds the available anime extensions in the [api] and updates [availableExtensions].
      */
     suspend fun findAvailableExtensions() {
-        val extensions: List<AnimeExtension.Available> = try {
+        val result: RepoFetchResult<AnimeExtension.Available> = try {
             api.findAnimeExtensions()
         } catch (e: Exception) {
             Logger.log(e)
             withUIContext { snackString(context.getString(R.string.failed_to_get_extensions_list)) }
-            emptyList()
+            RepoFetchResult(emptyList(), allReposResolved = false)
         }
+        val extensions = result.extensions
 
         enableAdditionalSubLanguages(extensions)
 
         _availableAnimeExtensionsFlow.value = extensions
-        updatedInstalledAnimeExtensionsStatuses(extensions)
+        updatedInstalledAnimeExtensionsStatuses(extensions, result.allReposResolved)
         setupAvailableAnimeExtensionsSourcesDataMap(extensions)
     }
 
@@ -169,7 +171,10 @@ class AnimeExtensionManager(
      *
      * @param availableAnimeExtensions The list of animeextensions given by the [api].
      */
-    private fun updatedInstalledAnimeExtensionsStatuses(availableAnimeExtensions: List<AnimeExtension.Available>) {
+    private fun updatedInstalledAnimeExtensionsStatuses(
+        availableAnimeExtensions: List<AnimeExtension.Available>,
+        allReposResolved: Boolean,
+    ) {
         if (availableAnimeExtensions.isEmpty()) {
             preferences.animeExtensionUpdatesCount().set(0)
             return
@@ -182,7 +187,14 @@ class AnimeExtensionManager(
             val pkgName = installedExt.pkgName
             val availableExt = availableAnimeExtensions.find { it.pkgName == pkgName }
 
-            if (!installedExt.isUnofficial && availableExt == null && !installedExt.isObsolete) {
+            // Only a repo that actually resolved can prove an extension is gone. One that failed to
+            // fetch or parse — a dead link, or a url that isn't really an extension list — would
+            // otherwise look identical to "removed", branding every one of its extensions obsolete.
+            //
+            // isUnofficial is deliberately not part of this check: every extension is loaded with
+            // isUnofficial = true since the signature-trust system it used to reflect was removed
+            // (c48028f3), so gating on it here would make this branch permanently unreachable.
+            if (availableExt == null && !installedExt.isObsolete && allReposResolved) {
                 mutInstalledAnimeExtensions[index] = installedExt.copy(isObsolete = true)
                 changed = true
             } else if (availableExt != null) {
@@ -197,7 +209,7 @@ class AnimeExtensionManager(
         if (changed) {
             _installedAnimeExtensionsFlow.value = mutInstalledAnimeExtensions
         }
-        updatePendingUpdatesCount()
+        updateExtensionCounts()
     }
 
     /**
@@ -305,12 +317,12 @@ class AnimeExtensionManager(
 
         override fun onExtensionInstalled(extension: AnimeExtension.Installed) {
             registerNewExtension(extension.withUpdateCheck())
-            updatePendingUpdatesCount()
+            updateExtensionCounts()
         }
 
         override fun onExtensionUpdated(extension: AnimeExtension.Installed) {
             registerUpdatedExtension(extension.withUpdateCheck())
-            updatePendingUpdatesCount()
+            updateExtensionCounts()
         }
 
         override fun onExtensionUntrusted(extension: AnimeExtension.Untrusted) {
@@ -319,7 +331,7 @@ class AnimeExtensionManager(
 
         override fun onPackageUninstalled(pkgName: String) {
             unregisterAnimeExtension(pkgName)
-            updatePendingUpdatesCount()
+            updateExtensionCounts()
         }
     }
 
@@ -342,8 +354,9 @@ class AnimeExtensionManager(
         return (availableExt.versionCode > versionCode || availableExt.libVersion > libVersion)
     }
 
-    private fun updatePendingUpdatesCount() {
-        preferences.animeExtensionUpdatesCount()
-            .set(_installedAnimeExtensionsFlow.value.count { it.hasUpdate })
+    private fun updateExtensionCounts() {
+        val installed = _installedAnimeExtensionsFlow.value
+        preferences.animeExtensionUpdatesCount().set(installed.count { it.hasUpdate })
+        preferences.animeExtensionObsoleteCount().set(installed.count { it.isObsolete })
     }
 }

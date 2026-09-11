@@ -330,6 +330,7 @@
     <string name="quick_tiles_resize">Resize tile</string>
     <string name="extensions">Extensions</string>
     <string name="extension_updates_available">Extension updates available</string>
+    <string name="obsolete_extensions_found">Obsolete extensions found</string>
     <string name="player_settings">Player Settings</string>
     <string name="recentlyListOnly">Only show my content in "Recently Updated"</string>
     <string name="download_manager_select">Download Manager</string>
@@ -1308,6 +1309,7 @@
     <string name="no_shows_to_display">No shows to display</string>
     <string name="extension_name">Extension Name</string>
     <string name="extension_version">version</string>
+    <string name="obsolete_extension">Obsolete extension</string>
     <string name="enter_password_to_decrypt_file">Enter your password to decrypt the file</string>
     <string name="show_rotate_button">Show Rotate Button</string>
     <string name="default_manga_settings">Default Manga Settings</string>
@@ -2217,6 +2219,11 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <plurals name="extension_updates_count">
         <item quantity="one">%d extension has an update</item>
         <item quantity="other">%d extensions have updates</item>
+    </plurals>
+
+    <plurals name="obsolete_extensions_count">
+        <item quantity="one">%d extension is no longer in its repo</item>
+        <item quantity="other">%d extensions are no longer in their repos</item>
     </plurals>
 
 

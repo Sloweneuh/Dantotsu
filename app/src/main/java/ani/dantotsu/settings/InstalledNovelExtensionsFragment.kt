@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
@@ -294,7 +295,16 @@ class InstalledNovelExtensionsFragment : Fragment(), SearchQueryHandler {
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
             val item = getItem(position)
             holder.extensionNameTextView.text = item.name
-            holder.extensionVersionTextView.text = item.versionLabel
+            if (item.isObsolete) {
+                val obsoleteLabel = holder.itemView.context.getString(R.string.obsolete_extension)
+                holder.extensionVersionTextView.text = "${item.versionLabel} • $obsoleteLabel"
+                holder.extensionVersionTextView.setTextColor(
+                    ContextCompat.getColor(holder.itemView.context, R.color.warning)
+                )
+            } else {
+                holder.extensionVersionTextView.text = item.versionLabel
+                holder.extensionVersionTextView.setTextColor(holder.defaultVersionTextColor)
+            }
             if (!skipIcons) {
                 when (item) {
                     is NovelSourceItem.Extension ->
@@ -321,6 +331,7 @@ class InstalledNovelExtensionsFragment : Fragment(), SearchQueryHandler {
             val extensionNameTextView: TextView = view.findViewById(R.id.extensionNameTextView)
             val extensionVersionTextView: TextView =
                 view.findViewById(R.id.extensionVersionTextView)
+            val defaultVersionTextColor: Int = extensionVersionTextView.currentTextColor
             val settingsImageView: ImageView = view.findViewById(R.id.settingsImageView)
             val extensionIconImageView: ImageView = view.findViewById(R.id.extensionIconImageView)
             val deleteView: ImageView = view.findViewById(R.id.deleteTextView)

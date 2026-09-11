@@ -318,6 +318,7 @@
     <string name="quick_tiles_resize">Redimensionner la tuile</string>
     <string name="extensions">Extensions</string>
     <string name="extension_updates_available">Mises à jour d\'extensions disponibles</string>
+    <string name="obsolete_extensions_found">Extensions obsolètes détectées</string>
     <string name="player_settings">Paramètres du lecteur</string>
     <string name="recentlyListOnly">Afficher uniquement mon contenu dans "Récemment mis à jour"</string>
     <string name="download_manager_select">Gestionnaire de téléchargement</string>
@@ -964,6 +965,7 @@
     <string name="no_shows_to_display">Aucune série à afficher</string>
     <string name="extension_name">Nom de l\'extension</string>
     <string name="extension_version">version</string>
+    <string name="obsolete_extension">Extension obsolète</string>
     <string name="show_rotate_button">Afficher le bouton de rotation</string>
     <string name="default_manga_settings">Paramètres Manga par défaut</string>
     <string name="use_dark_theme">Utiliser le thème sombre</string>
@@ -2056,6 +2058,11 @@
     <plurals name="extension_updates_count">
         <item quantity="one">%d extension a une mise à jour</item>
         <item quantity="other">%d extensions ont des mises à jour</item>
+    </plurals>
+
+    <plurals name="obsolete_extensions_count">
+        <item quantity="one">%d extension n\'est plus dans son dépôt</item>
+        <item quantity="other">%d extensions ne sont plus dans leurs dépôts</item>
     </plurals>
 
     <plurals name="cloud_sync_conflict_items">
