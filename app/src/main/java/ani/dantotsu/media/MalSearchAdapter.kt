@@ -9,11 +9,13 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import androidx.core.text.HtmlCompat
+import androidx.core.view.ViewCompat
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
 import ani.dantotsu.connections.mal.MALSearchItem
 import ani.dantotsu.databinding.ItemMediaCompactBinding
 import ani.dantotsu.databinding.ItemMediaLargeBinding
+import ani.dantotsu.mediaCoverTransitionName
 import ani.dantotsu.setSafeOnClickListener
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions.withCrossFade
@@ -22,7 +24,7 @@ class MalSearchAdapter(
     private val results: List<MALSearchItem>,
     private val isAnime: Boolean,
     var type: Int = 0,
-    private val onItemClick: (MALSearchItem) -> Unit
+    private val onItemClick: (MALSearchItem, View) -> Unit
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     inner class CompactViewHolder(val binding: ItemMediaCompactBinding) :
@@ -79,6 +81,7 @@ class MalSearchAdapter(
 
     private fun bindCompact(b: ItemMediaCompactBinding, item: MALSearchItem) {
         loadImage(b.itemCompactImage, poster(item))
+        ViewCompat.setTransitionName(b.itemCompactImage, mediaCoverTransitionName(item.node.id))
 
         b.itemCompactTitle.text = item.node.title
         b.itemCompactTitle.ellipsize = TextUtils.TruncateAt.MARQUEE
@@ -98,7 +101,7 @@ class MalSearchAdapter(
         b.itemCompactType.visibility = View.GONE
         b.itemCompactProgressContainer.visibility = View.GONE
 
-        b.root.setSafeOnClickListener { onItemClick(item) }
+        b.root.setSafeOnClickListener { onItemClick(item, b.itemCompactImage) }
         b.itemCompactTitle.setSafeOnClickListener { b.root.performClick() }
         b.itemCompactTitle.setOnLongClickListener {
             if (b.itemCompactTitle.isSingleLine) {
@@ -119,6 +122,7 @@ class MalSearchAdapter(
 
     private fun bindLarge(b: ItemMediaLargeBinding, item: MALSearchItem) {
         loadImage(b.itemCompactImage, poster(item))
+        ViewCompat.setTransitionName(b.itemCompactImage, mediaCoverTransitionName(item.node.id))
         loadImage(b.itemCompactBanner, poster(item))
 
         b.itemCompactTitle.text = item.node.title
@@ -160,7 +164,7 @@ class MalSearchAdapter(
         b.itemCompactTotal.visibility = View.GONE
         b.itemTotal.visibility = View.GONE
 
-        b.itemContainer.setSafeOnClickListener { onItemClick(item) }
+        b.itemContainer.setSafeOnClickListener { onItemClick(item, b.itemCompactImage) }
         b.itemContainer.setOnLongClickListener { openInBrowser(item, b.root); true }
     }
 

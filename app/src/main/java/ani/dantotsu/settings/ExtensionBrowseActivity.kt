@@ -6,11 +6,14 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.RadioGroup
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatTextView
+import androidx.core.app.ActivityOptionsCompat
 import androidx.core.content.res.ResourcesCompat
+import androidx.core.view.ViewCompat
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
 import androidx.core.widget.NestedScrollView
@@ -1081,7 +1084,8 @@ class ExtensionBrowseActivity : AppCompatActivity() {
         }
     }
 
-    private fun openInfo(item: BrowseItem) {
+    private fun openInfo(item: BrowseItem, coverImage: ImageView) {
+        val transitionName = ViewCompat.getTransitionName(coverImage)!!
         val intent = Intent(this, ExtensionMediaInfoActivity::class.java).apply {
             putExtra(ExtensionMediaInfoActivity.EXTRA_PKG,
                 animeExtension?.pkgName ?: mangaExtension?.pkgName ?: novelPlugin?.id)
@@ -1090,8 +1094,14 @@ class ExtensionBrowseActivity : AppCompatActivity() {
             if (item.anime != null) putExtra(ExtensionMediaInfoActivity.EXTRA_ANIME, item.anime)
             if (item.manga != null) putExtra(ExtensionMediaInfoActivity.EXTRA_MANGA, item.manga)
             if (item.novel != null) putExtra(ExtensionMediaInfoActivity.EXTRA_NOVEL, item.novel)
+            putExtra("transitionName", transitionName)
         }
-        startActivity(intent)
+        val options = ActivityOptionsCompat.makeSceneTransitionAnimation(
+            this,
+            coverImage,
+            transitionName
+        ).toBundle()
+        startActivity(intent, options)
     }
 
     private fun openInBrowser(item: BrowseItem) {
@@ -1128,6 +1138,9 @@ data class BrowseItem(
     val manga: SManga? = null,
     val novel: ShowResponse? = null,
 ) {
+    /** A stable per-item identifier for the shared-element transition name — see [mediaCoverTransitionName]. */
+    val uniqueId: String get() = anime?.url ?: manga?.url ?: novel?.link ?: title
+
     companion object {
         fun fromAnime(a: SAnime) = BrowseItem(a.title, a.thumbnail_url, anime = a)
         fun fromManga(m: SManga) = BrowseItem(m.title, m.thumbnail_url, manga = m)

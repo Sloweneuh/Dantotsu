@@ -6,10 +6,12 @@ import android.text.TextUtils
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.view.ViewCompat
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.connections.simkl.SimklApi
 import ani.dantotsu.databinding.ItemMediaCompactBinding
 import ani.dantotsu.databinding.ItemMediaLargeBinding
+import ani.dantotsu.mediaCoverTransitionName
 import ani.dantotsu.setSafeOnClickListener
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions.withCrossFade
@@ -17,7 +19,7 @@ import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions.withC
 class SimklSearchAdapter(
     private val results: List<SimklApi.SimklMedia>,
     var type: Int = 0,
-    private val onItemClick: (SimklApi.SimklMedia) -> Unit
+    private val onItemClick: (SimklApi.SimklMedia, View) -> Unit
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     inner class CompactViewHolder(val binding: ItemMediaCompactBinding) :
@@ -64,6 +66,7 @@ class SimklSearchAdapter(
 
     private fun bindCompact(b: ItemMediaCompactBinding, media: SimklApi.SimklMedia) {
         loadImage(b.itemCompactImage, media)
+        ViewCompat.setTransitionName(b.itemCompactImage, mediaCoverTransitionName(media.simklId))
 
         b.itemCompactTitle.text = title(media)
         b.itemCompactTitle.ellipsize = TextUtils.TruncateAt.MARQUEE
@@ -82,7 +85,7 @@ class SimklSearchAdapter(
         b.itemCompactType.visibility = View.GONE
         b.itemCompactProgressContainer.visibility = View.GONE
 
-        b.root.setSafeOnClickListener { onItemClick(media) }
+        b.root.setSafeOnClickListener { onItemClick(media, b.itemCompactImage) }
         b.itemCompactTitle.setSafeOnClickListener { b.root.performClick() }
         b.itemCompactImage.setSafeOnClickListener { b.root.performClick() }
         b.itemCompactImage.setOnLongClickListener { openInBrowser(media, b.root); true }
@@ -91,6 +94,7 @@ class SimklSearchAdapter(
 
     private fun bindLarge(b: ItemMediaLargeBinding, media: SimklApi.SimklMedia) {
         loadImage(b.itemCompactImage, media)
+        ViewCompat.setTransitionName(b.itemCompactImage, mediaCoverTransitionName(media.simklId))
         loadImage(b.itemCompactBanner, media)
 
         b.itemCompactTitle.text = title(media)
@@ -121,7 +125,7 @@ class SimklSearchAdapter(
         b.itemCompactTotal.visibility = View.GONE
         b.itemTotal.visibility = View.GONE
 
-        b.itemContainer.setSafeOnClickListener { onItemClick(media) }
+        b.itemContainer.setSafeOnClickListener { onItemClick(media, b.itemCompactImage) }
         b.itemContainer.setOnLongClickListener { openInBrowser(media, b.root); true }
     }
 

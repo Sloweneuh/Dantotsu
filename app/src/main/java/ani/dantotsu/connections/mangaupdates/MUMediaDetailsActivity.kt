@@ -44,6 +44,7 @@ import ani.dantotsu.initActivity
 import ani.dantotsu.isOnline
 import ani.dantotsu.hideSystemBars
 import ani.dantotsu.showSystemBars
+import ani.dantotsu.loadCoverImage
 import ani.dantotsu.loadImage
 import ani.dantotsu.media.Media
 import ani.dantotsu.media.MediaDetailsViewModel
@@ -118,6 +119,24 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
 
     private var muUserEntryDeferred: kotlinx.coroutines.Deferred<Unit>? = null
     private var detectedAniListId: Int? = null
+
+    private var enterTransitionStarted = false
+
+    // The shared-element cover animation must not run until this activity's layout has
+    // settled (inset-driven height/margin corrections happen after the first frame), otherwise
+    // the cover flies to a stale position — mirrors MediaDetailsActivity's fix.
+    private fun maybeStartEnterTransition() {
+        android.util.Log.d(
+            "TransitionDebug",
+            "MU maybeStartEnterTransition called, alreadyStarted=$enterTransitionStarted, " +
+                "sharedElementNames=${window.sharedElementEnterTransition}, " +
+                "hasFeature=${window.hasFeature(android.view.Window.FEATURE_ACTIVITY_TRANSITIONS)}, " +
+                "t=${System.currentTimeMillis()}"
+        )
+        if (enterTransitionStarted) return
+        enterTransitionStarted = true
+        startPostponedEnterTransition()
+    }
     private var detectedComickComic: ComickComic? = null
     private var useNovelReader: Boolean = false
 
@@ -275,17 +294,28 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         // Apply the selected theme before inflating the layout
         ThemeManager(this).applyTheme()
         super.onCreate(savedInstanceState)
+        android.util.Log.d(
+            "TransitionDebug",
+            "MU onCreate: postponeEnterTransition, hasFeature=${window.hasFeature(android.view.Window.FEATURE_ACTIVITY_TRANSITIONS)}, t=${System.currentTimeMillis()}"
+        )
+        postponeEnterTransition()
+        // Otherwise the rest of the content has no enter transition of its own and appears fully
+        // opaque immediately, on top of the still-animating shared element cover.
+        window.allowEnterTransitionOverlap = false
 
         Log.d("MUMediaDetailsActivity", "onCreate called with intent: $intent")
-        // Set up binding and content view first
-        binding = ActivityMediaBinding.inflate(layoutInflater)
-        setContentView(binding.root)
 
         // Handle deep link: https://www.mangaupdates.com/series/{slugOrId}
         val action = intent?.action
         val data = intent?.data
         Log.d("MUMediaDetailsActivity", "Intent action: $action, data: $data")
         if (Intent.ACTION_VIEW == action && data != null && data.host == "www.mangaupdates.com" && data.pathSegments?.firstOrNull() == "series") {
+            // Set up binding and content view here — needed to show the loading overlay while
+            // the deep link resolves. launchMediaDetails() below replaces both with a fresh
+            // binding once real data is ready (see the comment in the else branch for why the
+            // normal, non-deep-link path skips this and goes straight to launchMediaDetails()).
+            binding = ActivityMediaBinding.inflate(layoutInflater)
+            setContentView(binding.root)
             val slugOrId = data.pathSegments.getOrNull(1)
             Log.d("MUMediaDetailsActivity", "Deep link detected, slugOrId: $slugOrId, pathSegments: ${data.pathSegments}")
             // Show loading overlay, hide main content
@@ -364,15 +394,14 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
                 finish()
                 return
             }
-            // Show content immediately for normal launches
-            binding.loadingOverlay?.visibility = View.GONE
-            binding.mediaAppBar?.visibility = View.VISIBLE
-            binding.mediaViewPagerContainer?.visibility = View.VISIBLE
-            binding.mediaBottomBar?.visibility = View.VISIBLE
-            binding.mediaClose?.visibility = View.VISIBLE
-            binding.quickSettings.root.visibility = View.VISIBLE
-            binding.mediaCover?.visibility = View.VISIBLE
-            binding.commentMessageContainer?.visibility = View.VISIBLE
+            // Go straight to launchMediaDetails() — it sets up its own binding/content view.
+            // Calling setContentView() here too (the old code did, then set every section back
+            // to VISIBLE on a binding that's immediately discarded) attaches the shared-element
+            // transition to a content view that's replaced a moment later, which loses the
+            // animated hand-off: the cover just pops into its final spot instead of flying in
+            // from the list. This is the one thing that differs from MediaDetailsActivity
+            // (single setContentView call), which is why AniList media animates in properly and
+            // this didn't.
             launchMediaDetails(muMedia)
         }
     }
@@ -546,7 +575,10 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         @Suppress("DEPRECATION")
         extensionNovel =
             intent.getSerializableExtra(EXTRA_EXT_NOVEL) as? ani.dantotsu.parsers.ShowResponse
-        ThemeManager(this).applyTheme()
+        // Theme is already applied in onCreate(), before postponeEnterTransition() — calling
+        // setTheme() again here, after postponement already started, is redundant and (unlike
+        // MediaDetailsActivity, which only ever applies its theme once) is the one remaining
+        // difference from the AniList path.
         initActivity(this)
 
         // MangaUpdates details (series metadata, Comick/MangaBaka/AniList matching, list editing,
@@ -555,6 +587,25 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
 
         binding = ActivityMediaBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        // Match the transition name to the exact list row that was tapped. RecyclerView rows all
+        // carry the same static XML transitionName, so without this, every entry into this screen
+        // would resolve to whichever same-named row the departing window's transition machinery
+        // happens to find first (in practice, always the first list item) instead of the one
+        // actually clicked.
+        android.util.Log.d(
+            "TransitionDebug",
+            "MU setContentView done, extra transitionName=${intent.getStringExtra("transitionName")}, " +
+                "coverTransitionNameBefore=${ViewCompat.getTransitionName(binding.mediaCoverImage)}, t=${System.currentTimeMillis()}"
+        )
+        intent.getStringExtra("transitionName")?.let {
+            ViewCompat.setTransitionName(binding.mediaCoverImage, it)
+        }
+        android.util.Log.d(
+            "TransitionDebug",
+            "MU coverTransitionNameAfter=${ViewCompat.getTransitionName(binding.mediaCoverImage)}"
+        )
+        // Safety net: if insets never dispatch, don't hang the shared-element transition forever.
+        binding.root.postDelayed({ maybeStartEnterTransition() }, 300)
         // Block interaction while a received handoff resolves and auto-opens the reader, showing
         // what's being opened so the user can see it's progressing rather than a blank spinner.
         if (intent.getBooleanExtra(HandoffNavigator.EXTRA_AUTO_START, false)) {
@@ -658,6 +709,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
                 }
             }
             // mediaBottomInset already handled above depending on extra inset; no-op here
+            maybeStartEnterTransition()
             insets
         }
         useNovelReader = isNovelType(muMedia.format) || isNovelType(MUDetailsCache.get(muMedia.id)?.type)
@@ -829,8 +881,16 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
             )
             binding.mediaBanner.setTransitionGenerator(generator)
         }
-        blurImage(banner, muMedia.coverUrl)
-        binding.mediaCoverImage.loadImage(muMedia.coverUrl)
+        // muMedia.coverUrl is frequently null until the series details land (see the comment
+        // below) — the list row falls back to MUDetailsCache to show a cover at all, so without
+        // the same fallback here loadCoverImage(null) resolves synchronously and releases the
+        // postponed transition before the first layout pass, collapsing the animation entirely.
+        val resolvedCoverUrl = muMedia.coverUrl ?: MUDetailsCache.get(muMedia.id)?.coverUrl
+        blurImage(banner, resolvedCoverUrl)
+        // Gate the postponed transition on the cover actually having pixels: releasing it while
+        // Glide is still mid-fetch (even a cache hit resolves on a later frame, never instantly)
+        // animates an empty view, which reads as "the cover never flies in".
+        binding.mediaCoverImage.loadCoverImage(resolvedCoverUrl) { maybeStartEnterTransition() }
         binding.mediaCoverImage.setOnLongClickListener {
             // Resolved at click time: the cover is often only filled in once the series details
             // come back and land in the shared Media.

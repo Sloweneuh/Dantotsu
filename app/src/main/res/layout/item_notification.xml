@@ -46,6 +46,7 @@
                 android:layout_width="108dp"
                 android:layout_height="160dp"
                 android:scaleType="centerCrop"
+                android:transitionName="mediaCover"
                 app:shapeAppearanceOverlay="@style/roundedImageView"
                 tools:ignore="ContentDescription,ImageContrastCheck"
                 tools:srcCompat="@tools:sample/backgrounds/scenic"

@@ -9,6 +9,8 @@ import android.view.ViewGroup
 import android.view.WindowManager
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityOptionsCompat
+import androidx.core.view.ViewCompat
 import androidx.core.view.isVisible
 import androidx.core.view.updatePaddingRelative
 import androidx.lifecycle.lifecycleScope
@@ -292,8 +294,8 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
                     }
                 }
                 comickSearchResult = model.comickSearchResults
-                comickSearchAdaptor = ComickSearchAdapter(model.comickSearchResults.results, supportStyle) { comic ->
-                    onComickResultClicked(comic)
+                comickSearchAdaptor = ComickSearchAdapter(model.comickSearchResults.results, supportStyle) { comic, view ->
+                    onComickResultClicked(comic, view)
                 }
             }
 
@@ -330,8 +332,8 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
                     }
                 }
                 mangaBakaSearchResult = model.mangaBakaSearchResults
-                mangaBakaSearchAdaptor = MangaBakaSearchAdapter(model.mangaBakaSearchResults.results, supportStyle) { series ->
-                    onMangaBakaResultClicked(series)
+                mangaBakaSearchAdaptor = MangaBakaSearchAdapter(model.mangaBakaSearchResults.results, supportStyle) { series, view ->
+                    onMangaBakaResultClicked(series, view)
                 }
             }
 
@@ -365,8 +367,8 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
                     }
                 }
                 kitsuSearchResult = model.kitsuSearchResults
-                kitsuSearchAdaptor = KitsuSearchAdapter(model.kitsuSearchResults.results, isAnime, supportStyle) { item ->
-                    onKitsuResultClicked(item, isAnime)
+                kitsuSearchAdaptor = KitsuSearchAdapter(model.kitsuSearchResults.results, isAnime, supportStyle) { item, view ->
+                    onKitsuResultClicked(item, isAnime, view)
                 }
             }
 
@@ -380,8 +382,8 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
                     )
                 }
                 simklSearchResult = model.simklSearchResults
-                simklSearchAdaptor = SimklSearchAdapter(model.simklSearchResults.results, supportStyle) { media ->
-                    onSimklResultClicked(media)
+                simklSearchAdaptor = SimklSearchAdapter(model.simklSearchResults.results, supportStyle) { media, view ->
+                    onSimklResultClicked(media, view)
                 }
             }
 
@@ -397,8 +399,8 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
                     )
                 }
                 malSearchResult = model.malSearchResults
-                malSearchAdaptor = MalSearchAdapter(model.malSearchResults.results, isAnime, supportStyle) { item ->
-                    onMalResultClicked(item)
+                malSearchAdaptor = MalSearchAdapter(model.malSearchResults.results, isAnime, supportStyle) { item, view ->
+                    onMalResultClicked(item, view)
                 }
             }
         }
@@ -1072,7 +1074,13 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
         return if (this::headerAdaptor.isInitialized) headerAdaptor.getSearchText() else null
     }
 
-    private fun onComickResultClicked(comic: ComickComic) {
+    private fun transitionOptions(sharedView: View) = ActivityOptionsCompat.makeSceneTransitionAnimation(
+        this,
+        sharedView,
+        ViewCompat.getTransitionName(sharedView)!!
+    ).toBundle()
+
+    private fun onComickResultClicked(comic: ComickComic, sharedView: View) {
         val slug = comic.slug ?: return
         startActivity(
             Intent(this, ComickMediaActivity::class.java)
@@ -1083,37 +1091,55 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
                     ComickMediaActivity.EXTRA_MEDIA_TYPE,
                     if (comic.isAnime) ComickApi.MEDIA_TYPE_ANIME else ComickApi.MEDIA_TYPE_MANGA
                 )
+                .putExtra(ComickMediaActivity.EXTRA_COVER_URL, comickCoverUrl(comic))
+                .putExtra("transitionName", ViewCompat.getTransitionName(sharedView)),
+            transitionOptions(sharedView)
         )
     }
 
-    private fun onMangaBakaResultClicked(series: MangaBakaApi.Series) {
+    private fun onMangaBakaResultClicked(series: MangaBakaApi.Series, sharedView: View) {
         startActivity(
             Intent(this, MangaBakaMediaActivity::class.java)
                 .putExtra(MangaBakaMediaActivity.EXTRA_SERIES_ID, series.id)
+                .putExtra(MangaBakaMediaActivity.EXTRA_COVER_URL, series.cover?.thumbUrl())
+                .putExtra("transitionName", ViewCompat.getTransitionName(sharedView)),
+            transitionOptions(sharedView)
         )
     }
 
-    private fun onKitsuResultClicked(item: KitsuApi.Item, isAnime: Boolean) {
+    private fun onKitsuResultClicked(item: KitsuApi.Item, isAnime: Boolean, sharedView: View) {
         startActivity(
             Intent(this, KitsuMediaActivity::class.java)
                 .putExtra(KitsuMediaActivity.EXTRA_MEDIA_ID, item.id)
                 .putExtra(KitsuMediaActivity.EXTRA_IS_ANIME, isAnime)
+                .putExtra(KitsuMediaActivity.EXTRA_COVER_URL, kitsuPosterUrl(item))
+                .putExtra("transitionName", ViewCompat.getTransitionName(sharedView)),
+            transitionOptions(sharedView)
         )
     }
 
-    private fun onSimklResultClicked(media: SimklApi.SimklMedia) {
+    private fun onSimklResultClicked(media: SimklApi.SimklMedia, sharedView: View) {
         val id = media.simklId ?: return
         startActivity(
             Intent(this, SimklMediaActivity::class.java)
                 .putExtra(SimklMediaActivity.EXTRA_SIMKL_ID, id)
+                .putExtra(SimklMediaActivity.EXTRA_COVER_URL, SimklApi.posterUrl(media.poster))
+                .putExtra("transitionName", ViewCompat.getTransitionName(sharedView)),
+            transitionOptions(sharedView)
         )
     }
 
-    private fun onMalResultClicked(item: MALSearchItem) {
+    private fun onMalResultClicked(item: MALSearchItem, sharedView: View) {
         startActivity(
             Intent(this, MalMediaActivity::class.java)
                 .putExtra(MalMediaActivity.EXTRA_MEDIA_ID, item.node.id)
                 .putExtra(MalMediaActivity.EXTRA_IS_ANIME, item.isAnime)
+                .putExtra(
+                    MalMediaActivity.EXTRA_COVER_URL,
+                    item.node.mainPicture?.large ?: item.node.mainPicture?.medium
+                )
+                .putExtra("transitionName", ViewCompat.getTransitionName(sharedView)),
+            transitionOptions(sharedView)
         )
     }
 

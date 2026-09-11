@@ -12,8 +12,10 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.text.HtmlCompat
+import androidx.core.view.doOnPreDraw
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
+import androidx.core.view.ViewCompat
 import androidx.lifecycle.lifecycleScope
 import ani.dantotsu.R
 import ani.dantotsu.bindScrollToTop
@@ -45,6 +47,7 @@ import ani.dantotsu.databinding.ItemTitleTextBinding
 import ani.dantotsu.databinding.ItemChapterGapBinding
 import ani.dantotsu.databinding.ItemChapterListBinding
 import ani.dantotsu.initActivity
+import ani.dantotsu.loadCoverImage
 import ani.dantotsu.loadImage
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.openLinkInBrowser
@@ -76,6 +79,9 @@ class ComickMediaActivity : AppCompatActivity() {
         const val EXTRA_SLUG = "comick_slug"
         const val EXTRA_OPEN_CHAPTERS = "open_chapters"
         const val EXTRA_MEDIA_TYPE = "comick_media_type"
+        // Lets the shared-element transition show the real cover immediately instead of an
+        // empty view while the full series details are still being fetched over the network.
+        const val EXTRA_COVER_URL = "comick_cover_url"
         private const val HR_MARKER = ''
         private const val CHAPTER_GROUP_SIZE = 100
     }
@@ -99,11 +105,45 @@ class ComickMediaActivity : AppCompatActivity() {
         get() = if (isAnimeMode) ComickApi.MEDIA_TYPE_ANIME else ComickApi.MEDIA_TYPE_MANGA
     private var loadedSlug: String? = null
 
+    private var enterTransitionStarted = false
+
+    // Releasing on doOnPreDraw alone can fire before Glide has actually put pixels into the
+    // cover ImageView (even a passed-in cover URL resolves on a later frame, never
+    // synchronously), animating an empty view. Gate on whichever finishes last.
+    private fun maybeStartEnterTransition() {
+        if (enterTransitionStarted) return
+        enterTransitionStarted = true
+        startPostponedEnterTransition()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Must run before postponeEnterTransition(): applyTheme() calls setTheme(), and until
+        // that lands, Window.FEATURE_ACTIVITY_TRANSITIONS reads false, which breaks the shared
+        // element round-trip (notably the return-to-list transition on back navigation).
         ThemeManager(this).applyTheme()
+        postponeEnterTransition()
+        // Otherwise the rest of the content has no enter transition of its own and appears fully
+        // opaque immediately, on top of the still-animating shared element cover.
+        window.allowEnterTransitionOverlap = false
         binding = ActivityComickMediaBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        // Match the transition name to the exact search result that was tapped. Every row
+        // shares the same static XML transitionName, so without this, the return trip's
+        // name-based lookup in the calling window can land on any other view still carrying it.
+        intent.getStringExtra("transitionName")?.let {
+            ViewCompat.setTransitionName(binding.comickMediaCover, it)
+        }
+        // Show the cover the list already had immediately, so the shared-element transition
+        // carries the real image instead of flying in an empty view while details load.
+        val passedCoverUrl = intent.getStringExtra(EXTRA_COVER_URL)
+        if (passedCoverUrl != null) {
+            binding.comickMediaCover.loadCoverImage(passedCoverUrl) { maybeStartEnterTransition() }
+        } else {
+            binding.root.doOnPreDraw { maybeStartEnterTransition() }
+        }
+        // Safety net: never hang the shared-element transition forever.
+        binding.root.postDelayed({ maybeStartEnterTransition() }, 300)
         initActivity(this)
 
         binding.comickMediaBottomBar.updateLayoutParams<ViewGroup.MarginLayoutParams> {
@@ -120,7 +160,10 @@ class ComickMediaActivity : AppCompatActivity() {
             topMargin = statusBarHeight + 16f.px
         }
         binding.quickSettings.bindQuickSettings(this)
-        binding.comickMediaClose.setOnClickListener { finish() }
+        // Plain finish() skips the reverse shared-element transition — the default
+        // Activity.onBackPressed() (which this dispatches to) calls finishAfterTransition()
+        // instead, which is what actually plays the cover flying back to the list.
+        binding.comickMediaClose.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
 
         val segments = intent.data?.pathSegments
         // A shared comick.dev link tells us which catalogue it is: /anime/{slug} vs /comic/{slug}.

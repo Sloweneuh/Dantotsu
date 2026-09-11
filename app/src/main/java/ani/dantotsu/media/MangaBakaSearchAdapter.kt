@@ -9,11 +9,13 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import androidx.core.text.HtmlCompat
+import androidx.core.view.ViewCompat
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
 import ani.dantotsu.connections.mangabaka.MangaBakaApi
 import ani.dantotsu.databinding.ItemMediaCompactBinding
 import ani.dantotsu.databinding.ItemMediaLargeBinding
+import ani.dantotsu.mediaCoverTransitionName
 import ani.dantotsu.setSafeOnClickListener
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions.withCrossFade
@@ -21,7 +23,7 @@ import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions.withC
 class MangaBakaSearchAdapter(
     private val results: List<MangaBakaApi.Series>,
     var type: Int = 0,
-    private val onItemClick: (MangaBakaApi.Series) -> Unit
+    private val onItemClick: (MangaBakaApi.Series, View) -> Unit
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     inner class CompactViewHolder(val binding: ItemMediaCompactBinding) :
@@ -66,6 +68,7 @@ class MangaBakaSearchAdapter(
 
     private fun bindCompact(b: ItemMediaCompactBinding, series: MangaBakaApi.Series) {
         loadCover(b.itemCompactImage, series)
+        ViewCompat.setTransitionName(b.itemCompactImage, mediaCoverTransitionName(series.id))
 
         b.itemCompactTitle.text = series.displayTitle()
         b.itemCompactTitle.ellipsize = TextUtils.TruncateAt.MARQUEE
@@ -77,7 +80,7 @@ class MangaBakaSearchAdapter(
         b.itemCompactOngoing.visibility = View.GONE
         b.itemCompactType.visibility = View.GONE
 
-        b.root.setSafeOnClickListener { onItemClick(series) }
+        b.root.setSafeOnClickListener { onItemClick(series, b.itemCompactImage) }
         b.itemCompactTitle.setSafeOnClickListener { b.root.performClick() }
         b.itemCompactTitle.setOnLongClickListener {
             if (b.itemCompactTitle.isSingleLine) {
@@ -98,6 +101,7 @@ class MangaBakaSearchAdapter(
 
     private fun bindLarge(b: ItemMediaLargeBinding, series: MangaBakaApi.Series) {
         loadCover(b.itemCompactImage, series)
+        ViewCompat.setTransitionName(b.itemCompactImage, mediaCoverTransitionName(series.id))
         loadCover(b.itemCompactBanner, series)
 
         b.itemCompactTitle.text = series.displayTitle()
@@ -140,7 +144,7 @@ class MangaBakaSearchAdapter(
         b.itemCompactTotal.visibility = View.GONE
         b.itemTotal.visibility = View.GONE
 
-        b.itemContainer.setSafeOnClickListener { onItemClick(series) }
+        b.itemContainer.setSafeOnClickListener { onItemClick(series, b.itemCompactImage) }
         b.itemContainer.setOnLongClickListener { openInBrowser(series, b.root); true }
     }
 

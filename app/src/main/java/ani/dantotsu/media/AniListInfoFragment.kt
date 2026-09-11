@@ -13,10 +13,12 @@ import android.view.ViewGroup
 import android.widget.HorizontalScrollView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.app.ActivityOptionsCompat
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import android.net.Uri
 import androidx.core.text.HtmlCompat
+import androidx.core.view.ViewCompat
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
@@ -664,6 +666,11 @@ class AniListInfoFragment : Fragment() {
                                     media.sequel!!.banner ?: media.sequel!!.cover
                                 )
                                 mediaInfoSequel.setSafeOnClickListener {
+                                    val options = ActivityOptionsCompat.makeSceneTransitionAnimation(
+                                        requireActivity(),
+                                        mediaInfoSequelImage,
+                                        ViewCompat.getTransitionName(mediaInfoSequelImage)!!
+                                    ).toBundle()
                                     ContextCompat.startActivity(
                                         requireContext(),
                                         Intent(
@@ -672,7 +679,7 @@ class AniListInfoFragment : Fragment() {
                                         ).putExtra(
                                             "media",
                                             media.sequel as Serializable
-                                        ), null
+                                        ), options
                                     )
                                 }
                             }
@@ -682,6 +689,11 @@ class AniListInfoFragment : Fragment() {
                                     media.prequel!!.banner ?: media.prequel!!.cover
                                 )
                                 mediaInfoPrequel.setSafeOnClickListener {
+                                    val options = ActivityOptionsCompat.makeSceneTransitionAnimation(
+                                        requireActivity(),
+                                        mediaInfoPrequelImage,
+                                        ViewCompat.getTransitionName(mediaInfoPrequelImage)!!
+                                    ).toBundle()
                                     ContextCompat.startActivity(
                                         requireContext(),
                                         Intent(
@@ -690,7 +702,7 @@ class AniListInfoFragment : Fragment() {
                                         ).putExtra(
                                             "media",
                                             media.prequel as Serializable
-                                        ), null
+                                        ), options
                                     )
                                 }
                             }

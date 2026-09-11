@@ -9,20 +9,25 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import androidx.core.text.HtmlCompat
+import androidx.core.view.ViewCompat
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
 import ani.dantotsu.connections.kitsu.KitsuApi
 import ani.dantotsu.databinding.ItemMediaCompactBinding
 import ani.dantotsu.databinding.ItemMediaLargeBinding
+import ani.dantotsu.mediaCoverTransitionName
 import ani.dantotsu.setSafeOnClickListener
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions.withCrossFade
+
+fun kitsuPosterUrl(item: KitsuApi.Item): String? =
+    item.media.posterImage?.medium ?: item.media.posterImage?.original ?: item.media.posterImage?.small
 
 class KitsuSearchAdapter(
     private val results: List<KitsuApi.Item>,
     private val isAnime: Boolean,
     var type: Int = 0,
-    private val onItemClick: (KitsuApi.Item) -> Unit
+    private val onItemClick: (KitsuApi.Item, View) -> Unit
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     inner class CompactViewHolder(val binding: ItemMediaCompactBinding) :
@@ -57,10 +62,7 @@ class KitsuSearchAdapter(
             ?: item.media.titles?.values?.firstOrNull { !it.isNullOrBlank() }
             ?: ""
 
-    private fun poster(item: KitsuApi.Item): String? =
-        item.media.posterImage?.medium
-            ?: item.media.posterImage?.original
-            ?: item.media.posterImage?.small
+    private fun poster(item: KitsuApi.Item): String? = kitsuPosterUrl(item)
 
     private fun cover(item: KitsuApi.Item): String? =
         item.media.coverImage?.original ?: item.media.coverImage?.medium ?: poster(item)
@@ -79,6 +81,7 @@ class KitsuSearchAdapter(
 
     private fun bindCompact(b: ItemMediaCompactBinding, item: KitsuApi.Item) {
         loadImage(b.itemCompactImage, poster(item))
+        ViewCompat.setTransitionName(b.itemCompactImage, mediaCoverTransitionName(item.id))
 
         b.itemCompactTitle.text = title(item)
         b.itemCompactTitle.ellipsize = TextUtils.TruncateAt.MARQUEE
@@ -97,7 +100,7 @@ class KitsuSearchAdapter(
         b.itemCompactType.visibility = View.GONE
         b.itemCompactProgressContainer.visibility = View.GONE
 
-        b.root.setSafeOnClickListener { onItemClick(item) }
+        b.root.setSafeOnClickListener { onItemClick(item, b.itemCompactImage) }
         b.itemCompactTitle.setSafeOnClickListener { b.root.performClick() }
         b.itemCompactTitle.setOnLongClickListener {
             if (b.itemCompactTitle.isSingleLine) {
@@ -118,6 +121,7 @@ class KitsuSearchAdapter(
 
     private fun bindLarge(b: ItemMediaLargeBinding, item: KitsuApi.Item) {
         loadImage(b.itemCompactImage, poster(item))
+        ViewCompat.setTransitionName(b.itemCompactImage, mediaCoverTransitionName(item.id))
         loadImage(b.itemCompactBanner, cover(item))
 
         b.itemCompactTitle.text = title(item)
@@ -166,7 +170,7 @@ class KitsuSearchAdapter(
         b.itemCompactTotal.visibility = View.GONE
         b.itemTotal.visibility = View.GONE
 
-        b.itemContainer.setSafeOnClickListener { onItemClick(item) }
+        b.itemContainer.setSafeOnClickListener { onItemClick(item, b.itemCompactImage) }
         b.itemContainer.setOnLongClickListener { openInBrowser(item, b.root); true }
     }
 

@@ -6,7 +6,9 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.doOnPreDraw
 import androidx.core.view.updateLayoutParams
+import androidx.core.view.ViewCompat
 import androidx.lifecycle.lifecycleScope
 import ani.dantotsu.R
 import ani.dantotsu.blurImage
@@ -19,6 +21,7 @@ import ani.dantotsu.copyToClipboard
 import ani.dantotsu.databinding.ActivitySimklMediaBinding
 import ani.dantotsu.databinding.FragmentMediaInfoBinding
 import ani.dantotsu.initActivity
+import ani.dantotsu.loadCoverImage
 import ani.dantotsu.loadImage
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.openOrCopyAnilistLink
@@ -41,16 +44,51 @@ class SimklMediaActivity : AppCompatActivity() {
     companion object {
         const val EXTRA_SIMKL_ID = "simkl_media_id"
         const val EXTRA_OPEN_EPISODES = "simkl_open_episodes"
+        // Lets the shared-element transition show the real cover immediately instead of an
+        // empty view while the full series details are still being fetched over the network.
+        const val EXTRA_COVER_URL = "simkl_cover_url"
     }
 
     private lateinit var binding: ActivitySimklMediaBinding
     private lateinit var episodes: TrackerEpisodesController
 
+    private var enterTransitionStarted = false
+
+    // Releasing on doOnPreDraw alone can fire before Glide has actually put pixels into the
+    // cover ImageView (even a passed-in cover URL resolves on a later frame, never
+    // synchronously), animating an empty view. Gate on whichever finishes last.
+    private fun maybeStartEnterTransition() {
+        if (enterTransitionStarted) return
+        enterTransitionStarted = true
+        startPostponedEnterTransition()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Must run before postponeEnterTransition(): applyTheme() calls setTheme(), and until
+        // that lands, Window.FEATURE_ACTIVITY_TRANSITIONS reads false, which breaks the shared
+        // element round-trip (notably the return-to-list transition on back navigation).
         ThemeManager(this).applyTheme()
+        postponeEnterTransition()
+        // Otherwise the rest of the content has no enter transition of its own and appears fully
+        // opaque immediately, on top of the still-animating shared element cover.
+        window.allowEnterTransitionOverlap = false
         binding = ActivitySimklMediaBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        // Match the transition name to the exact search result that was tapped. Every row
+        // shares the same static XML transitionName, so without this, the return trip's
+        // name-based lookup in the calling window can land on any other view still carrying it.
+        intent.getStringExtra("transitionName")?.let {
+            ViewCompat.setTransitionName(binding.simklMediaCover, it)
+        }
+        val passedCoverUrl = intent.getStringExtra(EXTRA_COVER_URL)
+        if (passedCoverUrl != null) {
+            binding.simklMediaCover.loadCoverImage(passedCoverUrl) { maybeStartEnterTransition() }
+        } else {
+            binding.root.doOnPreDraw { maybeStartEnterTransition() }
+        }
+        // Safety net: never hang the shared-element transition forever.
+        binding.root.postDelayed({ maybeStartEnterTransition() }, 300)
         initActivity(this)
 
         binding.simklMediaBottomBar.updateLayoutParams<ViewGroup.MarginLayoutParams> {
@@ -67,7 +105,10 @@ class SimklMediaActivity : AppCompatActivity() {
             topMargin = statusBarHeight + 16f.px
         }
         binding.quickSettings.bindQuickSettings(this)
-        binding.simklMediaClose.setOnClickListener { finish() }
+        // Plain finish() skips the reverse shared-element transition — the default
+        // Activity.onBackPressed() (which this dispatches to) calls finishAfterTransition()
+        // instead, which is what actually plays the cover flying back to the list.
+        binding.simklMediaClose.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
 
         episodes = TrackerEpisodesController(
             activity = this,

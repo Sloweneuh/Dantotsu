@@ -476,7 +476,7 @@ class ComickInfoFragment : Fragment() {
                                 emptyMessage.visibility = View.GONE
                                 recyclerView.visibility = View.VISIBLE
                                 recyclerView.adapter =
-                                        ComickSearchAdapter(results) { selectedComic ->
+                                        ComickSearchAdapter(results) { selectedComic, _ ->
                                             // Save the selection - user knows it's correct, no
                                             // verification needed
                                             selectedComic.slug?.let { slug ->

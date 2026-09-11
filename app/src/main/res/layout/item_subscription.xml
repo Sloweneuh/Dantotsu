@@ -24,6 +24,7 @@
             android:layout_height="160dp"
             android:layout_gravity="center"
             android:scaleType="centerCrop"
+            android:transitionName="mediaCover"
             tools:ignore="ContentDescription,ImageContrastCheck"
             tools:srcCompat="@tools:sample/backgrounds/scenic"
             tools:tint="@color/transparent" />

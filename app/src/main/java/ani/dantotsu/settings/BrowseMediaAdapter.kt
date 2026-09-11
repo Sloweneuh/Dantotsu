@@ -2,13 +2,16 @@ package ani.dantotsu.settings
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import android.widget.ImageView
+import androidx.core.view.ViewCompat
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.FileUrl
 import ani.dantotsu.databinding.ItemExtensionMediaBinding
 import ani.dantotsu.loadImage
+import ani.dantotsu.mediaCoverTransitionName
 
 class BrowseMediaAdapter(
-    private val onClick: (BrowseItem) -> Unit,
+    private val onClick: (BrowseItem, ImageView) -> Unit,
     private val onOpenInBrowser: (BrowseItem) -> Unit,
 ) : RecyclerView.Adapter<BrowseMediaAdapter.VH>() {
 
@@ -55,8 +58,9 @@ class BrowseMediaAdapter(
         } else {
             holder.binding.extensionMediaCover.loadImage(thumb)
         }
+        ViewCompat.setTransitionName(holder.binding.extensionMediaCover, mediaCoverTransitionName(item.uniqueId))
 
-        val clickRow = { onClick(item) }
+        val clickRow = { onClick(item, holder.binding.extensionMediaCover) }
         holder.binding.extensionMediaRoot.setOnClickListener { clickRow() }
         holder.binding.extensionMediaTitle.setOnClickListener { clickRow() }
         holder.binding.extensionMediaCover.setOnClickListener { clickRow() }

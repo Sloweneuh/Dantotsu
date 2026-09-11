@@ -5,7 +5,9 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.app.ActivityOptionsCompat
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
 import androidx.fragment.app.Fragment
@@ -154,7 +156,7 @@ class ActivityFragment : Fragment() {
 
     }
 
-    private fun onActivityClick(id: Int, type: String) {
+    private fun onActivityClick(id: Int, type: String, sharedView: View?) {
         val intent = when (type) {
             "USER" -> Intent(requireContext(), ProfileActivity::class.java).putExtra("userId", id)
             "MEDIA" -> Intent(
@@ -164,7 +166,14 @@ class ActivityFragment : Fragment() {
 
             else -> return
         }
-        ContextCompat.startActivity(requireContext(), intent, null)
+        val options = if (sharedView != null) {
+            ActivityOptionsCompat.makeSceneTransitionAnimation(
+                requireActivity(),
+                sharedView,
+                ViewCompat.getTransitionName(sharedView)!!
+            ).toBundle()
+        } else null
+        ContextCompat.startActivity(requireContext(), intent, options)
     }
 
     override fun onResume() {

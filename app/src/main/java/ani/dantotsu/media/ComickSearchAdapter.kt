@@ -10,20 +10,30 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.core.text.HtmlCompat
+import androidx.core.view.ViewCompat
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
 import ani.dantotsu.connections.comick.ComickComic
 import ani.dantotsu.connections.comick.displayTitle
 import ani.dantotsu.databinding.ItemMediaCompactBinding
 import ani.dantotsu.databinding.ItemMediaLargeBinding
+import ani.dantotsu.mediaCoverTransitionName
 import ani.dantotsu.setSafeOnClickListener
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions.withCrossFade
 
+/** The thumbnail cover URL comick.dev serves for a search result, or null if it has no cover. */
+fun comickCoverUrl(comic: ComickComic): String? {
+    val b2key = comic.md_covers?.firstOrNull()?.b2key ?: return null
+    val lastDot = b2key.lastIndexOf('.')
+    val thumbKey = if (lastDot > 0) b2key.substring(0, lastDot) + "-s" + b2key.substring(lastDot) else "$b2key-s"
+    return "https://meo.comick.pictures/$thumbKey"
+}
+
 class ComickSearchAdapter(
     private val results: List<ComickComic>,
     var type: Int = 0,
-    private val onItemClick: (ComickComic) -> Unit
+    private val onItemClick: (ComickComic, View) -> Unit
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     inner class CompactViewHolder(val binding: ItemMediaCompactBinding) :
@@ -55,11 +65,10 @@ class ComickSearchAdapter(
 
     private fun loadCover(imageView: android.widget.ImageView, comic: ComickComic) {
         val b2key = comic.md_covers?.firstOrNull()?.b2key
-        if (b2key != null) {
-            val lastDot = b2key.lastIndexOf('.')
-            val thumbKey = if (lastDot > 0) b2key.substring(0, lastDot) + "-s" + b2key.substring(lastDot) else "$b2key-s"
+        val thumbUrl = comickCoverUrl(comic)
+        if (b2key != null && thumbUrl != null) {
             Glide.with(imageView.context)
-                .load("https://meo.comick.pictures/$thumbKey")
+                .load(thumbUrl)
                 .thumbnail(Glide.with(imageView.context).load("https://meo.comick.pictures/$b2key"))
                 .transition(withCrossFade())
                 .into(imageView)
@@ -80,6 +89,7 @@ class ComickSearchAdapter(
 
     private fun bindCompact(b: ItemMediaCompactBinding, comic: ComickComic) {
         loadCover(b.itemCompactImage, comic)
+        ViewCompat.setTransitionName(b.itemCompactImage, mediaCoverTransitionName(comic.slug))
 
         b.itemCompactTitle.text = comic.displayTitle()
         b.itemCompactTitle.ellipsize = TextUtils.TruncateAt.MARQUEE
@@ -92,7 +102,7 @@ class ComickSearchAdapter(
         b.itemCompactType.visibility = View.GONE
 
         b.root.setSafeOnClickListener {
-            comic.slug?.let { onItemClick(comic) }
+            comic.slug?.let { onItemClick(comic, b.itemCompactImage) }
                 ?: Toast.makeText(b.root.context, R.string.error_loading_data, Toast.LENGTH_SHORT).show()
         }
         b.itemCompactTitle.setSafeOnClickListener { b.root.performClick() }
@@ -115,6 +125,7 @@ class ComickSearchAdapter(
 
     private fun bindLarge(b: ItemMediaLargeBinding, comic: ComickComic) {
         loadCover(b.itemCompactImage, comic)
+        ViewCompat.setTransitionName(b.itemCompactImage, mediaCoverTransitionName(comic.slug))
         loadCover(b.itemCompactBanner, comic)
 
         b.itemCompactTitle.text = comic.displayTitle()
@@ -157,7 +168,7 @@ class ComickSearchAdapter(
         b.itemTotal.visibility = View.GONE
 
         b.itemContainer.setSafeOnClickListener {
-            comic.slug?.let { onItemClick(comic) }
+            comic.slug?.let { onItemClick(comic, b.itemCompactImage) }
                 ?: Toast.makeText(b.root.context, R.string.error_loading_data, Toast.LENGTH_SHORT).show()
         }
         b.itemContainer.setOnLongClickListener { openInBrowser(comic, b.root); true }

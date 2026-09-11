@@ -2,7 +2,9 @@ package ani.dantotsu.settings
 
 import android.content.Intent
 import android.view.View
+import androidx.core.app.ActivityOptionsCompat
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
 import ani.dantotsu.R
 import ani.dantotsu.databinding.ItemSubscriptionBinding
 import ani.dantotsu.loadImage
@@ -27,11 +29,19 @@ class MediaExcludeItem(
 
         viewBinding.root.setOnClickListener {
             val mediaId = id.toIntOrNull() ?: return@setOnClickListener
+            val activity = viewBinding.root.context as? androidx.fragment.app.FragmentActivity
+            val options = if (activity != null) {
+                ActivityOptionsCompat.makeSceneTransitionAnimation(
+                    activity,
+                    viewBinding.subscriptionCover,
+                    ViewCompat.getTransitionName(viewBinding.subscriptionCover)!!
+                ).toBundle()
+            } else null
             ContextCompat.startActivity(
                 viewBinding.root.context,
                 Intent(viewBinding.root.context, MediaDetailsActivity::class.java)
                     .putExtra("mediaId", mediaId),
-                null
+                options
             )
         }
 

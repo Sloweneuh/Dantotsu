@@ -46,6 +46,7 @@
                 <androidx.cardview.widget.CardView
                     android:layout_width="112dp"
                     android:layout_height="168dp"
+                    android:translationZ="9dp"
                     app:cardCornerRadius="12dp"
                     app:cardElevation="4dp">
 
@@ -54,6 +55,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
                         android:scaleType="centerCrop"
+                        android:transitionName="mediaCover"
                         app:shapeAppearanceOverlay="@style/roundedImageView"
                         tools:ignore="ContentDescription" />
                 </androidx.cardview.widget.CardView>

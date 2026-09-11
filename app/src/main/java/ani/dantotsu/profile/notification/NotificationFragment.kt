@@ -5,7 +5,9 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.app.ActivityOptionsCompat
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
@@ -216,7 +218,7 @@ class NotificationFragment : Fragment() {
                 !binding.notificationRecyclerView.canScrollVertically(1)
     }
 
-    fun onClick(id: Int, optional: Int?, type: NotificationClickType) {
+    fun onClick(id: Int, optional: Int?, type: NotificationClickType, sharedView: View?) {
         val intent = when (type) {
             NotificationClickType.USER -> Intent(
                 requireContext(),
@@ -252,7 +254,14 @@ class NotificationFragment : Fragment() {
         }
 
         intent?.let {
-            ContextCompat.startActivity(requireContext(), it, null)
+            val options = if (sharedView != null) {
+                ActivityOptionsCompat.makeSceneTransitionAnimation(
+                    requireActivity(),
+                    sharedView,
+                    ViewCompat.getTransitionName(sharedView)!!
+                ).toBundle()
+            } else null
+            ContextCompat.startActivity(requireContext(), it, options)
         }
     }
 

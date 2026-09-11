@@ -50,6 +50,7 @@ import ani.dantotsu.initActivity
 import ani.dantotsu.hideSystemBars
 import ani.dantotsu.showSystemBars
 import ani.dantotsu.isOnline
+import ani.dantotsu.loadCoverImage
 import ani.dantotsu.loadImage
 import ani.dantotsu.media.anime.AnimeWatchFragment
 import ani.dantotsu.media.comments.CommentsFragment
@@ -87,6 +88,23 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
     lateinit var navBar: AnimatedBottomBar
     var anime = true
     private var adult = false
+    private var enterTransitionStarted = false
+
+    // The shared-element cover animation must not run until this activity's layout has
+    // settled (inset-driven height/margin corrections happen after the first frame), otherwise
+    // the cover flies to a stale position. Call once layout/insets are ready.
+    private fun maybeStartEnterTransition() {
+        android.util.Log.d(
+            "TransitionDebug",
+            "AniList maybeStartEnterTransition called, alreadyStarted=$enterTransitionStarted, " +
+                "sharedElementNames=${window.sharedElementEnterTransition}, " +
+                "hasFeature=${window.hasFeature(android.view.Window.FEATURE_ACTIVITY_TRANSITIONS)}, " +
+                "t=${System.currentTimeMillis()}"
+        )
+        if (enterTransitionStarted) return
+        enterTransitionStarted = true
+        startPostponedEnterTransition()
+    }
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -110,12 +128,43 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
         launcher = LauncherWrapper(this, contract)
 
         mediaSingleton = null
+        // Must run before postponeEnterTransition(): applyTheme() calls setTheme(), and until
+        // that lands, Window.FEATURE_ACTIVITY_TRANSITIONS reads false (the manifest's static
+        // theme doesn't carry the dynamically-applied one's windowActivityTransitions flag yet),
+        // so postponing before this point is a no-op — the window starts drawing immediately and
+        // the shared-element cover just pops into place instead of flying in from the list.
         ThemeManager(this).applyTheme(MediaSingleton.bitmap)
         initActivity(this)
         MediaSingleton.bitmap = null
+        android.util.Log.d(
+            "TransitionDebug",
+            "AniList onCreate: postponeEnterTransition, hasFeature=${window.hasFeature(android.view.Window.FEATURE_ACTIVITY_TRANSITIONS)}, t=${System.currentTimeMillis()}"
+        )
+        postponeEnterTransition()
+        // Otherwise the rest of the content (banner, app bar, buttons) has no enter transition of
+        // its own so it appears fully opaque immediately, on top of the still-animating shared
+        // element cover — the cover only becomes visible once it lands exactly on top of it.
+        window.allowEnterTransitionOverlap = false
 
         binding = ActivityMediaBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        // Match the transition name to the exact list row that was tapped. RecyclerView rows all
+        // carry the same static XML transitionName, so without this, every entry into this screen
+        // would resolve to whichever same-named row the departing window's transition machinery
+        // happens to find first (in practice, always the first list item) instead of the one
+        // actually clicked.
+        android.util.Log.d(
+            "TransitionDebug",
+            "AniList setContentView done, extra transitionName=${intent.getStringExtra("transitionName")}, " +
+                "coverTransitionNameBefore=${ViewCompat.getTransitionName(binding.mediaCoverImage)}, t=${System.currentTimeMillis()}"
+        )
+        intent.getStringExtra("transitionName")?.let {
+            ViewCompat.setTransitionName(binding.mediaCoverImage, it)
+        }
+        android.util.Log.d(
+            "TransitionDebug",
+            "AniList coverTransitionNameAfter=${ViewCompat.getTransitionName(binding.mediaCoverImage)}"
+        )
         // Block interaction while a received handoff resolves and auto-opens, showing what's
         // being opened so the user can see it's progressing rather than a blank spinner.
         if (intent.getBooleanExtra(HandoffNavigator.EXTRA_AUTO_START, false)) {
@@ -234,8 +283,12 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                     rotateTextIn(navBar.getChildAt(i))
                 }
             }
+            maybeStartEnterTransition()
             insets
         }
+        // Safety net: if insets never dispatch (some OEMs/launch paths), don't hang the
+        // shared-element transition forever.
+        binding.root.postDelayed({ maybeStartEnterTransition() }, 300)
 
         // Ui init
 
@@ -325,7 +378,10 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
         val isDownload = intent.getBooleanExtra("download", false)
         media.selected = model.loadSelected(media, isDownload)
 
-        binding.mediaCoverImage.loadImage(media.cover)
+        // Gate the postponed transition on the cover actually having pixels: releasing it while
+        // Glide is still mid-fetch (even a cache hit resolves on a later frame, never instantly)
+        // animates an empty view, which reads as "the cover never flies in".
+        binding.mediaCoverImage.loadCoverImage(media.cover) { maybeStartEnterTransition() }
         binding.mediaCoverImage.setOnLongClickListener {
             val coverTitle = getString(R.string.cover, media.userPreferredName)
             ImageViewDialog.newInstance(this, coverTitle, media.cover)

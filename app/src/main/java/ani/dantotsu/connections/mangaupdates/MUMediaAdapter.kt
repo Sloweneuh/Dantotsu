@@ -8,6 +8,8 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.app.ActivityOptionsCompat
+import androidx.core.view.ViewCompat
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
 import ani.dantotsu.buildMarkwon
@@ -122,7 +124,15 @@ class MUMediaAdapter(
         b.root.setOnClickListener {
             val intent = Intent(it.context, MUMediaDetailsActivity::class.java)
             intent.putExtra("muMedia", item as Serializable)
-            it.context.startActivity(intent)
+            val activity = it.context as? androidx.fragment.app.FragmentActivity
+            val options = if (activity != null) {
+                ActivityOptionsCompat.makeSceneTransitionAnimation(
+                    activity,
+                    b.itemCompactImage,
+                    ViewCompat.getTransitionName(b.itemCompactImage)!!
+                ).toBundle()
+            } else null
+            it.context.startActivity(intent, options)
         }
 
         b.root.setOnLongClickListener { v ->
@@ -189,7 +199,15 @@ class MUMediaAdapter(
         b.itemContainer.setOnClickListener {
             val intent = Intent(it.context, MUMediaDetailsActivity::class.java)
             intent.putExtra("muMedia", item as Serializable)
-            it.context.startActivity(intent)
+            val activity = it.context as? androidx.fragment.app.FragmentActivity
+            val options = if (activity != null) {
+                ActivityOptionsCompat.makeSceneTransitionAnimation(
+                    activity,
+                    b.itemCompactImage,
+                    ViewCompat.getTransitionName(b.itemCompactImage)!!
+                ).toBundle()
+            } else null
+            it.context.startActivity(intent, options)
         }
 
         b.itemContainer.setOnLongClickListener { v ->

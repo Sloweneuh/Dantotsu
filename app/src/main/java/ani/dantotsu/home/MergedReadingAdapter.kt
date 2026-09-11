@@ -7,8 +7,10 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.content.res.AppCompatResources
+import androidx.core.app.ActivityOptionsCompat
 import androidx.core.content.ContextCompat
 import androidx.core.text.HtmlCompat
+import androidx.core.view.ViewCompat
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
 import ani.dantotsu.blurImage
@@ -22,6 +24,7 @@ import ani.dantotsu.currActivity
 import ani.dantotsu.databinding.ItemMediaCompactBinding
 import ani.dantotsu.databinding.ItemMediaLargeBinding
 import ani.dantotsu.loadImage
+import ani.dantotsu.mediaCoverTransitionName
 import ani.dantotsu.media.Media
 import ani.dantotsu.media.MediaDetailsActivity
 import ani.dantotsu.media.MediaListDialogSmallFragment
@@ -42,20 +45,37 @@ import java.io.Serializable
  * @param type 0 = compact grid, 1 = large list
  */
 class MergedReadingAdapter(
-    private val items: List<Any>,
+    private var items: List<Any>,
     private val type: Int = 0,
     private val matchParent: Boolean = false
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
 
-    override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
-        super.onAttachedToRecyclerView(recyclerView)
+    /**
+     * Replaces the backing list in place instead of the caller swapping in a whole new adapter.
+     * Swapping adapters resets the RecyclerView's scroll position and detaches every ViewHolder —
+     * if a background refresh lands that swap right as the user taps an item, the shared-element
+     * transition ends up animating from the stale, now-detached view's last bounds instead of the
+     * tapped item's actual on-screen position.
+     */
+    fun submitList(newItems: List<Any>) {
+        items = newItems
+        notifyDataSetChanged()
+        prefetchUncachedMuCovers()
+    }
+
+    private fun prefetchUncachedMuCovers() {
         val muIds = items.filterIsInstance<MUMedia>().filter { it.coverUrl == null }.map { it.id }
         MUDetailsCache.prefetch(scope, muIds) { id ->
             val pos = items.indexOfFirst { it is MUMedia && it.id == id }
             if (pos != -1) notifyItemChanged(pos)
         }
+    }
+
+    override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
+        super.onAttachedToRecyclerView(recyclerView)
+        prefetchUncachedMuCovers()
     }
 
     override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
@@ -104,6 +124,7 @@ class MergedReadingAdapter(
 
     private fun bindMedia(b: ItemMediaCompactBinding, media: Media) {
         b.itemCompactImage.loadImage(media.cover)
+        ViewCompat.setTransitionName(b.itemCompactImage, mediaCoverTransitionName(media.id))
 
         val ctx = b.root.context
         val isReleasing = isReleasingStatus(media.status)
@@ -145,10 +166,25 @@ class MergedReadingAdapter(
         b.itemCompactSourceBadge.visibility = View.GONE
 
         b.root.setSafeOnClickListener {
+            val activity = ctx as? FragmentActivity
+            val transitionName = ViewCompat.getTransitionName(b.itemCompactImage)!!
+            android.util.Log.d(
+                "TransitionDebug",
+                "AniList click: transitionName=$transitionName, activityNonNull=${activity != null}, t=${System.currentTimeMillis()}"
+            )
+            val options = if (activity != null) {
+                ActivityOptionsCompat.makeSceneTransitionAnimation(
+                    activity,
+                    b.itemCompactImage,
+                    transitionName
+                ).toBundle()
+            } else null
             ContextCompat.startActivity(
                 ctx,
-                Intent(ctx, MediaDetailsActivity::class.java).putExtra("media", media as Serializable),
-                null
+                Intent(ctx, MediaDetailsActivity::class.java)
+                    .putExtra("media", media as Serializable)
+                    .putExtra("transitionName", transitionName),
+                options
             )
         }
         b.root.setOnLongClickListener {
@@ -166,6 +202,7 @@ class MergedReadingAdapter(
         val coverUrl = item.coverUrl ?: MUDetailsCache.get(item.id)?.coverUrl
         if (coverUrl != null) b.itemCompactImage.loadImage(coverUrl)
         else b.itemCompactImage.setImageResource(0)
+        ViewCompat.setTransitionName(b.itemCompactImage, mediaCoverTransitionName(item.id))
 
         b.itemCompactTitle.text = item.title ?: ""
         b.itemCompactOngoing.visibility = View.GONE
@@ -195,9 +232,23 @@ class MergedReadingAdapter(
         b.itemCompactSourceBadge.visibility = View.VISIBLE
 
         b.root.setOnClickListener {
+            val transitionName = ViewCompat.getTransitionName(b.itemCompactImage)!!
+            android.util.Log.d(
+                "TransitionDebug",
+                "MU click: transitionName=$transitionName, t=${System.currentTimeMillis()}"
+            )
             val intent = Intent(it.context, MUMediaDetailsActivity::class.java)
             intent.putExtra("muMedia", item as Serializable)
-            it.context.startActivity(intent)
+            intent.putExtra("transitionName", transitionName)
+            val activity = it.context as? FragmentActivity
+            val options = if (activity != null) {
+                ActivityOptionsCompat.makeSceneTransitionAnimation(
+                    activity,
+                    b.itemCompactImage,
+                    transitionName
+                ).toBundle()
+            } else null
+            it.context.startActivity(intent, options)
         }
         b.root.setOnLongClickListener { v ->
             val fm = (currActivity() as? FragmentActivity)?.supportFragmentManager
@@ -210,6 +261,7 @@ class MergedReadingAdapter(
 
     private fun bindMediaLarge(b: ItemMediaLargeBinding, media: Media) {
         b.itemCompactImage.loadImage(media.cover)
+        ViewCompat.setTransitionName(b.itemCompactImage, mediaCoverTransitionName(media.id))
         blurImage(b.itemCompactBanner, media.banner ?: media.cover)
 
         val ctx = b.root.context
@@ -278,10 +330,25 @@ class MergedReadingAdapter(
         b.itemCompactSourceBadge.visibility = View.GONE
 
         b.root.setSafeOnClickListener {
+            val activity = ctx as? FragmentActivity
+            val transitionName = ViewCompat.getTransitionName(b.itemCompactImage)!!
+            android.util.Log.d(
+                "TransitionDebug",
+                "AniList click: transitionName=$transitionName, activityNonNull=${activity != null}, t=${System.currentTimeMillis()}"
+            )
+            val options = if (activity != null) {
+                ActivityOptionsCompat.makeSceneTransitionAnimation(
+                    activity,
+                    b.itemCompactImage,
+                    transitionName
+                ).toBundle()
+            } else null
             ContextCompat.startActivity(
                 ctx,
-                Intent(ctx, MediaDetailsActivity::class.java).putExtra("media", media as Serializable),
-                null
+                Intent(ctx, MediaDetailsActivity::class.java)
+                    .putExtra("media", media as Serializable)
+                    .putExtra("transitionName", transitionName),
+                options
             )
         }
         b.root.setOnLongClickListener {
@@ -305,6 +372,7 @@ class MergedReadingAdapter(
         } else {
             b.itemCompactImage.setImageResource(0)
         }
+        ViewCompat.setTransitionName(b.itemCompactImage, mediaCoverTransitionName(item.id))
 
         b.itemCompactTitle.text = item.title ?: ""
         b.itemCompactOngoing.visibility = View.GONE
@@ -357,9 +425,19 @@ class MergedReadingAdapter(
         b.itemCompactSourceBadge.visibility = View.VISIBLE
 
         b.root.setSafeOnClickListener {
+            val transitionName = ViewCompat.getTransitionName(b.itemCompactImage)!!
             val intent = Intent(ctx, MUMediaDetailsActivity::class.java)
             intent.putExtra("muMedia", item as Serializable)
-            ctx.startActivity(intent)
+            intent.putExtra("transitionName", transitionName)
+            val activity = ctx as? FragmentActivity
+            val options = if (activity != null) {
+                ActivityOptionsCompat.makeSceneTransitionAnimation(
+                    activity,
+                    b.itemCompactImage,
+                    transitionName
+                ).toBundle()
+            } else null
+            ctx.startActivity(intent, options)
         }
         b.root.setOnLongClickListener { v ->
             val fm = (currActivity() as? FragmentActivity)?.supportFragmentManager

@@ -2,7 +2,9 @@ package ani.dantotsu.settings
 
 import android.content.Intent
 import android.view.View
+import androidx.core.app.ActivityOptionsCompat
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
 import ani.dantotsu.R
 import ani.dantotsu.databinding.ItemSubscriptionBinding
 import ani.dantotsu.loadImage
@@ -25,10 +27,18 @@ class SubscriptionItem(
 
         binding.subscriptionName.text = media.name
         binding.root.setOnClickListener {
+            val activity = context as? androidx.fragment.app.FragmentActivity
+            val options = if (activity != null) {
+                ActivityOptionsCompat.makeSceneTransitionAnimation(
+                    activity,
+                    binding.subscriptionCover,
+                    ViewCompat.getTransitionName(binding.subscriptionCover)!!
+                ).toBundle()
+            } else null
             ContextCompat.startActivity(
                 context,
                 Intent(context, MediaDetailsActivity::class.java).putExtra("mediaId", media.id),
-                null
+                options
             )
         }
         binding.subscriptionCover.loadImage(media.image)

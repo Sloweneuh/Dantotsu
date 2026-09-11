@@ -27,6 +27,9 @@ class ListFragment : Fragment() {
     private var list: MutableList<Media>? = null
     private var muList: List<MUMedia>? = null
     private var mediaAdaptor: MediaAdaptor? = null
+    private var mergedAdaptor: MergedReadingAdapter? = null
+    private var currentAdapterType: Int? = null
+    private var currentSpanCount: Int? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,8 +59,15 @@ class ListFragment : Fragment() {
 
             val spanCount = if (g) (screenWidth / 120f).toInt() else 1
 
-            val layoutManager = GridLayoutManager(requireContext(), spanCount)
-            binding.listRecyclerView.layoutManager = layoutManager
+            // Recreating the layout manager (like swapping the adapter below) resets scroll
+            // position and detaches every row. A background list refresh can call update() again
+            // right as the user taps an item, and doing either unconditionally would strand the
+            // tapped view's shared-element transition on stale, no-longer-on-screen bounds — so
+            // only touch these when the display mode actually changed.
+            if (currentSpanCount != spanCount || binding.listRecyclerView.layoutManager == null) {
+                binding.listRecyclerView.layoutManager = GridLayoutManager(requireContext(), spanCount)
+                currentSpanCount = spanCount
+            }
 
             // If there are MU items, merge them with AniList items into a single sorted list
             if (muItems.isNotEmpty()) {
@@ -122,10 +132,21 @@ class ListFragment : Fragment() {
                     if (ascending) sorted else sorted.reversed()
                 }
 
-                val mergedAdapter = MergedReadingAdapter(mergedItems, if (g) 0 else 1, true)
-                mediaAdaptor = null
-                binding.listRecyclerView.adapter = mergedAdapter
+                val type = if (g) 0 else 1
+                val existing = mergedAdaptor
+                if (existing != null && mediaAdaptor == null && currentAdapterType == type) {
+                    // Same display mode, same adapter kind already showing: update its rows in
+                    // place rather than tearing down the RecyclerView's views and scroll position.
+                    existing.submitList(mergedItems)
+                } else {
+                    val mergedAdapter = MergedReadingAdapter(mergedItems, type, true)
+                    mergedAdaptor = mergedAdapter
+                    currentAdapterType = type
+                    mediaAdaptor = null
+                    binding.listRecyclerView.adapter = mergedAdapter
+                }
             } else {
+                mergedAdaptor = null
                 val anilistAdaptor = MediaAdaptor(if (g) 0 else 1, aniList, requireActivity(), true)
                 mediaAdaptor = anilistAdaptor
                 binding.listRecyclerView.adapter = anilistAdaptor

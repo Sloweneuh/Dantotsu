@@ -14,8 +14,10 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.FileProvider
 import androidx.core.content.res.ResourcesCompat
+import androidx.core.view.doOnPreDraw
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
+import androidx.core.view.ViewCompat
 import androidx.lifecycle.lifecycleScope
 import ani.dantotsu.FileUrl
 import ani.dantotsu.R
@@ -33,6 +35,7 @@ import ani.dantotsu.bindScrollToTop
 import ani.dantotsu.buildMarkwon
 import ani.dantotsu.copyToClipboard
 import ani.dantotsu.initActivity
+import ani.dantotsu.loadCoverImage
 import ani.dantotsu.loadImage
 import ani.dantotsu.media.Media
 import ani.dantotsu.media.MediaSingleton
@@ -123,11 +126,37 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
     private var pkg: String? = null
     private var langIndex: Int = 0
 
+    private var enterTransitionStarted = false
+
+    // Gated on the cover actually having pixels (see bindInitial()) — releasing purely on
+    // layout timing can animate an empty view since Glide never resolves synchronously.
+    private fun maybeStartEnterTransition() {
+        if (enterTransitionStarted) return
+        enterTransitionStarted = true
+        startPostponedEnterTransition()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Must run before postponeEnterTransition(): applyTheme() calls setTheme(), and until
+        // that lands, Window.FEATURE_ACTIVITY_TRANSITIONS reads false, which breaks the shared
+        // element round-trip (notably the return-to-list transition on back navigation).
         ThemeManager(this).applyTheme()
+        postponeEnterTransition()
+        // Otherwise the rest of the content has no enter transition of its own and appears fully
+        // opaque immediately, on top of the still-animating shared element cover.
+        window.allowEnterTransitionOverlap = false
         binding = ActivityExtensionMediaInfoBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        // Match the transition name to the exact list row that was tapped. Every row shares the
+        // same static XML transitionName, so without this, the return trip's name-based lookup
+        // in the calling window can land on any other view still carrying it.
+        intent.getStringExtra("transitionName")?.let {
+            ViewCompat.setTransitionName(binding.extensionInfoCover, it)
+        }
+        // Safety net: doOnPreDraw fires before bindInitial() (called later) has even started
+        // loading the cover, let alone before Glide renders it — see maybeStartEnterTransition().
+        binding.root.postDelayed({ maybeStartEnterTransition() }, 300)
         initActivity(this)
         markwon = buildMarkwon(this, userInputContent = false, linkResolver = { openLinkInBrowser(it) })
 
@@ -249,9 +278,9 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
         val cover = manga?.thumbnail_url ?: anime?.thumbnail_url
             ?: lnNovel?.cover?.takeIf { it.isNotBlank() } ?: novel?.coverUrl?.url
         if (!cover.isNullOrBlank() && sourceHeaders.isNotEmpty() && (cover.startsWith("http://") || cover.startsWith("https://"))) {
-            binding.extensionInfoCover.loadImage(FileUrl(cover, sourceHeaders))
+            binding.extensionInfoCover.loadCoverImage(FileUrl(cover, sourceHeaders)) { maybeStartEnterTransition() }
         } else {
-            binding.extensionInfoCover.loadImage(cover)
+            binding.extensionInfoCover.loadCoverImage(cover) { maybeStartEnterTransition() }
         }
         binding.extensionInfoCover.setOnLongClickListener {
             if (cover.isNullOrBlank()) return@setOnLongClickListener false

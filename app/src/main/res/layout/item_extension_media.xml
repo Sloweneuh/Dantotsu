@@ -22,6 +22,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:scaleType="centerCrop"
+            android:transitionName="mediaCover"
             app:shapeAppearanceOverlay="@style/roundedImageView"
             tools:ignore="ContentDescription"
             tools:srcCompat="@tools:sample/backgrounds/scenic" />

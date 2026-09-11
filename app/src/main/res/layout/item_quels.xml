@@ -29,6 +29,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:scaleType="centerCrop"
+            android:transitionName="mediaCover"
             tools:ignore="ContentDescription"
             tools:src="@tools:sample/backgrounds/scenic" />
 
@@ -84,6 +85,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:scaleType="centerCrop"
+            android:transitionName="mediaCover"
             tools:ignore="ContentDescription"
             tools:src="@tools:sample/backgrounds/scenic" />
 

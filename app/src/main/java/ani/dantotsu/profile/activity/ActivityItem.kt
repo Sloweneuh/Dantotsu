@@ -29,7 +29,7 @@ import kotlinx.coroutines.withContext
 class ActivityItem(
     private val activity: Activity,
     private val parentAdapter: GroupieAdapter,
-    val clickCallback: (Int, type: String) -> Unit,
+    val clickCallback: (Int, type: String, sharedView: View?) -> Unit,
 ) : BindableItem<ItemActivityBinding>() {
     private lateinit var binding: ItemActivityBinding
 
@@ -120,16 +120,16 @@ class ActivityItem(
                 binding.activityCover.loadImage(cover)
                 blurImage(binding.activityBannerImage, banner ?: cover)
                 binding.activityAvatarContainer.setOnClickListener {
-                    clickCallback(activity.userId ?: -1, "USER")
+                    clickCallback(activity.userId ?: -1, "USER", null)
                 }
                 binding.activityUserName.setOnClickListener {
-                    clickCallback(activity.userId ?: -1, "USER")
+                    clickCallback(activity.userId ?: -1, "USER", null)
                 }
                 binding.activityCoverContainer.setOnClickListener {
-                    clickCallback(activity.media?.id ?: -1, "MEDIA")
+                    clickCallback(activity.media?.id ?: -1, "MEDIA", binding.activityCover)
                 }
                 binding.activityMediaName.setOnClickListener {
-                    clickCallback(activity.media?.id ?: -1, "MEDIA")
+                    clickCallback(activity.media?.id ?: -1, "MEDIA", binding.activityCover)
                 }
                 binding.activityEdit.isVisible = false
             }
@@ -146,10 +146,10 @@ class ActivityItem(
                     )
                 }
                 binding.activityAvatarContainer.setOnClickListener {
-                    clickCallback(activity.userId ?: -1, "USER")
+                    clickCallback(activity.userId ?: -1, "USER", null)
                 }
                 binding.activityUserName.setOnClickListener {
-                    clickCallback(activity.userId ?: -1, "USER")
+                    clickCallback(activity.userId ?: -1, "USER", null)
                 }
                 binding.activityEdit.isVisible = activity.userId == Anilist.userid
                 binding.activityEdit.setOnClickListener {
@@ -177,10 +177,10 @@ class ActivityItem(
                     )
                 }
                 binding.activityAvatarContainer.setOnClickListener {
-                    clickCallback(activity.messengerId ?: -1, "USER")
+                    clickCallback(activity.messengerId ?: -1, "USER", null)
                 }
                 binding.activityUserName.setOnClickListener {
-                    clickCallback(activity.messengerId ?: -1, "USER")
+                    clickCallback(activity.messengerId ?: -1, "USER", null)
                 }
                 binding.activityEdit.isVisible = false
                 binding.activityEdit.isVisible = activity.messenger?.id == Anilist.userid

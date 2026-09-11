@@ -363,13 +363,19 @@ class UnreadChaptersAdapter(
 
             // Handle click to open media details
             val clickAction = {
-                root.context.startActivity(
-                    Intent(root.context, ani.dantotsu.media.MediaDetailsActivity::class.java)
-                        .putExtra("media", media)
-                        .putExtra("source", info.source)
-                        .putExtra("lastChapter", info.lastChapter),
-                    null
-                )
+                val intent = Intent(root.context, ani.dantotsu.media.MediaDetailsActivity::class.java)
+                    .putExtra("media", media)
+                    .putExtra("source", info.source)
+                    .putExtra("lastChapter", info.lastChapter)
+                val activity = (root.context as? androidx.fragment.app.FragmentActivity)
+                val options = if (activity != null) {
+                    ActivityOptionsCompat.makeSceneTransitionAnimation(
+                        activity,
+                        itemCompactImage,
+                        ViewCompat.getTransitionName(itemCompactImage)!!
+                    ).toBundle()
+                } else null
+                root.context.startActivity(intent, options)
             }
             root.setSafeOnClickListener { clickAction() }
             itemCompactImage.setSafeOnClickListener { clickAction() }
@@ -445,10 +451,17 @@ class UnreadChaptersAdapter(
             }
 
             val clickAction = {
-                root.context.startActivity(
-                    Intent(root.context, MUMediaDetailsActivity::class.java)
-                        .putExtra("muMedia", item as Serializable)
-                )
+                val intent = Intent(root.context, MUMediaDetailsActivity::class.java)
+                    .putExtra("muMedia", item as Serializable)
+                val activity = (root.context as? FragmentActivity)
+                val options = if (activity != null) {
+                    ActivityOptionsCompat.makeSceneTransitionAnimation(
+                        activity,
+                        itemCompactImage,
+                        ViewCompat.getTransitionName(itemCompactImage)!!
+                    ).toBundle()
+                } else null
+                root.context.startActivity(intent, options)
             }
             root.setSafeOnClickListener { clickAction() }
             itemCompactImage.setSafeOnClickListener { clickAction() }
@@ -523,10 +536,17 @@ class UnreadChaptersAdapter(
             // binder, which sets its own listeners on them, so leaving them alone would keep
             // the recycled entry's click action and open an unrelated media.
             val clickAction = {
-                root.context.startActivity(
-                    Intent(root.context, MUMediaDetailsActivity::class.java)
-                        .putExtra("muMedia", item as Serializable)
-                )
+                val intent = Intent(root.context, MUMediaDetailsActivity::class.java)
+                    .putExtra("muMedia", item as Serializable)
+                val activity = (root.context as? FragmentActivity)
+                val options = if (activity != null) {
+                    ActivityOptionsCompat.makeSceneTransitionAnimation(
+                        activity,
+                        itemCompactImage,
+                        ViewCompat.getTransitionName(itemCompactImage)!!
+                    ).toBundle()
+                } else null
+                root.context.startActivity(intent, options)
             }
             root.setSafeOnClickListener { clickAction() }
             itemCompactImage.setSafeOnClickListener { clickAction() }
