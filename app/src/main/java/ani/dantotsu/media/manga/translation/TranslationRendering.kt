@@ -54,6 +54,16 @@ object TranslationLayout {
     /** How flat a strip has to measure before a box is allowed to grow across it. */
     private const val SAFE_FLAT = 0.9f
 
+    /**
+     * How far from a ruby block its kanji may sit and still count as the thing it glosses, in ruby
+     * glyph widths.
+     *
+     * Ruby is set hard against what it annotates — a gap of anything is already unusual — and its
+     * glyphs are about half the size of that text, so three of them is a generous reach of roughly
+     * a character and a half of body type.
+     */
+    private const val RUBY_REACH = 3f
+
     /** Attempts at a smaller growth before a side gives up entirely. */
     private const val SAFETY_STEPS = 3
 
@@ -64,7 +74,7 @@ object TranslationLayout {
      * are left showing, since replacing them with a blank rectangle would delete the page and put
      * nothing in its place. Furigana are the one thing covered without being translated — the
      * kanji they gloss has just become English, and leaving the gloss strands Japanese ruby against
-     * it.
+     * it — and only where that kanji is really there to be replaced. See [glosses].
      *
      * @param page the page itself, where the caller has it. Given one, a box is only allowed to
      *   grow across pixels that measure as the colour it is about to be painted — which is what
@@ -84,6 +94,9 @@ object TranslationLayout {
             // painting a blank rectangle over the words it could not replace is worse than leaving
             // them. The cover-only verdicts are the ones with nothing to say by design.
             if (!translated && entry.verdict.translatable) return@mapNotNull null
+            if (entry.verdict == BlockVerdict.FURIGANA && !glosses(entry, scored)) {
+                return@mapNotNull null
+            }
             PaintedBlock(
                 id = entry.block.id,
                 // Expanding buys room for text to be set into. A cover-up has no text, so expanding
@@ -231,6 +244,26 @@ object TranslationLayout {
         if (strip.isEmpty) return true
         val ring = RingSampler.region(page, strip)
         return ring.flatShare >= SAFE_FLAT && RingSampler.sameColor(ring.color, fill)
+    }
+
+    /**
+     * Whether a ruby block annotates something that is actually being replaced.
+     *
+     * Furigana is covered on one premise: the kanji beside it has just become English, so leaving
+     * the gloss would strand Japanese ruby against it. Where that kanji is not there to be replaced
+     * the premise fails, and covering the ruby alone erases half of a Japanese phrase and puts
+     * nothing in its place — a page left worse than untouched. The page pass does exactly this on
+     * captions set in large display type, reading their small plain ruby while missing the
+     * characters it glosses entirely.
+     */
+    private fun glosses(ruby: ScoredBlock, scored: List<ScoredBlock>): Boolean {
+        val reach = (ruby.block.glyphPx * RUBY_REACH).toInt().coerceAtLeast(2)
+        val near = Rect(ruby.block.box).apply { inset(-reach, -reach) }
+        return scored.any { other ->
+            other.block.id != ruby.block.id &&
+                other.block.translation.isNotBlank() &&
+                Rect.intersects(near, other.block.box)
+        }
     }
 
     /**

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <!-- What the box under the finger was read as, so a box is judged before it costs a
+         translation. -->
+    <TextView
+        android:id="@+id/drawBoxesStatus"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/poppins_semi_bold"
+        android:paddingHorizontal="24dp"
+        android:paddingBottom="8dp"
+        android:textSize="12sp"
+        tools:text="#3 · text read here" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <ani.dantotsu.media.manga.translation.BlockEditorView
+            android:id="@+id/drawBoxesPage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+    </ScrollView>
+</LinearLayout>

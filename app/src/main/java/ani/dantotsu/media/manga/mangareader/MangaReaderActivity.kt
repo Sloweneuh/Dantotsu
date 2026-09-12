@@ -7,7 +7,9 @@ import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.content.res.Resources
+import android.app.AlertDialog
 import android.graphics.Bitmap
+import android.graphics.Rect
 import android.os.Build
 import android.os.Bundle
 import android.view.HapticFeedbackConstants
@@ -70,6 +72,13 @@ import ani.dantotsu.media.manga.MangaCache
 import ani.dantotsu.media.manga.mangareader.BaseImageAdapter.Companion.loadBitmap
 import ani.dantotsu.util.Logger
 import ani.dantotsu.media.manga.translation.AutoTranslator
+import ani.dantotsu.media.manga.translation.BlockEditorView
+import ani.dantotsu.media.manga.translation.DrawnRegions
+import ani.dantotsu.media.manga.translation.MtlSettings
+import ani.dantotsu.media.manga.translation.PageTextDetector
+import ani.dantotsu.media.manga.translation.ScoredBlock
+import ani.dantotsu.media.manga.translation.BlockVerdict
+import ani.dantotsu.databinding.DialogDrawBoxesBinding
 import ani.dantotsu.media.manga.translation.PageTranslationPipeline
 import ani.dantotsu.media.manga.translation.SourceScript
 import ani.dantotsu.media.manga.translation.TextScript
@@ -114,6 +123,7 @@ import kotlinx.coroutines.withContext
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.io.FileInputStream
+import java.io.InvalidClassException
 import java.io.FileOutputStream
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
@@ -135,6 +145,9 @@ private const val AUTO_LOOKAHEAD = 2
 
 /** Failures in a row that end an automatic run. See [MangaReaderActivity.autoFailures]. */
 private const val AUTO_FAILURE_LIMIT = 3
+
+/** Outline of a box the reader drew by hand. See [MangaReaderActivity.drawBoxes]. */
+private const val DRAWN_BOX_COLOR = 0xFF2196F3.toInt()
 
 class MangaReaderActivity : AppCompatActivity() {
     private val mangaCache = Injekt.get<MangaCache>()
@@ -1996,7 +2009,11 @@ class MangaReaderActivity : AppCompatActivity() {
                     return data
                 }
         } catch (e: Exception) {
-            if (toast) snackString(a?.getString(R.string.error_loading_data, fileName))
+            // A settings class that has grown a field since the file was written is not corruption,
+            // just a file from an older build: it is replaced from the defaults without a word.
+            if (toast && e !is InvalidClassException) {
+                snackString(a?.getString(R.string.error_loading_data, fileName))
+            }
             //try to delete the file
             try {
                 a?.deleteFile(fileName)
@@ -2075,6 +2092,7 @@ class MangaReaderActivity : AppCompatActivity() {
                 if (done) R.string.mtl_retranslate_page else R.string.mtl_translate_page,
             ) to { translatePage(pos, img1) },
             (getString(R.string.mtl_hide_translation) to { hideTranslation(img1) }).takeIf { done },
+            getString(R.string.mtl_draw_boxes) to { drawBoxes(pos, img1) },
             getString(R.string.view_image) to { showImageDialog(pos, img1, img2, callback) },
         )
         choiceBottomSheet(
@@ -2087,6 +2105,160 @@ class MangaReaderActivity : AppCompatActivity() {
     private fun hideTranslation(image: MangaImage) {
         TranslatedPages.remove(image.url.url)
         refreshTranslationOverlays()
+    }
+
+    /**
+     * Lets the reader draw boxes over text the page pass missed, then translates the page with
+     * them.
+     *
+     * The page pass drops whole columns often enough to need this — a caption in display type, one
+     * column of a two-column bubble — and the same text nearly always reads from a crop, so a box
+     * is all that is needed to get it. What the page pass *did* find is shown first, outlined in
+     * the colour of its verdict, so the missing text is obvious and a bubble it split or framed
+     * wrong can be redrawn: a detected box dragged or resized becomes a drawn one and supersedes
+     * it. Every box drawn or edited is read again at once and the result shown, so a box is judged
+     * before it costs a translation. Boxes are kept per page (see [DrawnRegions]) and shown again
+     * here, so a second visit edits rather than starts over.
+     */
+    private fun drawBoxes(pos: Int, image: MangaImage) {
+        if (!mtlSettings().ready()) {
+            snackString(getString(R.string.mtl_needs_key))
+            return
+        }
+        lifecycleScope.launch {
+            val bitmap = loadBitmap(image.url, pageTransforms(image))
+            if (bitmap == null) {
+                snackString(getString(R.string.mtl_page_unavailable))
+                return@launch
+            }
+            val key = image.url.url
+            val detector = PageTextDetector(activeScript())
+            val binding = DialogDrawBoxesBinding.inflate(layoutInflater)
+            val editor = binding.drawBoxesPage.apply { setPage(bitmap) }
+
+            // Detected blocks keep their ids from the page pass; drawn ones count on from there.
+            // Text is what each box was read as — blank for a box that read as nothing, absent
+            // while a read is still in flight.
+            val detected = LinkedHashMap<Int, ScoredBlock>()
+            val drawn = LinkedHashMap<Int, Rect>()
+            val text = HashMap<Int, String>()
+            var nextId = 1
+            var open = true
+
+            fun status(id: Int?) {
+                binding.drawBoxesStatus.text = when {
+                    id == null -> getString(R.string.mtl_draw_boxes_hint)
+                    id !in text -> getString(R.string.mtl_draw_boxes_reading, id)
+                    text.getValue(id).isBlank() ->
+                        getString(R.string.mtl_draw_boxes_read_nothing, id)
+
+                    else -> getString(R.string.mtl_draw_boxes_read, id, text.getValue(id))
+                }
+            }
+            fun render() {
+                editor.setBoxes(
+                    detected.map { (id, entry) ->
+                        BlockEditorView.Box(id, entry.block.box, entry.verdict.color)
+                    } + drawn.map { (id, rect) ->
+                        val color = when {
+                            id !in text -> DRAWN_BOX_COLOR
+                            text.getValue(id).isBlank() -> BlockVerdict.LOW_CONF.color
+                            else -> BlockVerdict.DIALOGUE.color
+                        }
+                        BlockEditorView.Box(id, rect, color)
+                    },
+                )
+            }
+            fun read(id: Int) {
+                val rect = drawn[id] ?: return
+                text.remove(id)
+                status(id)
+                lifecycleScope.launch {
+                    val (lines, glyphScale) = detector.readRegion(bitmap, rect)
+                    // The box may have moved or gone while the recognizer was busy.
+                    if (!open || drawn[id] !== rect) return@launch
+                    text[id] = detector
+                        .toBlock(id, lines, rect, synthetic = true, glyphScale = glyphScale)
+                        .text
+                    render()
+                    if (editor.selectedId == id || editor.selectedId == null) status(id)
+                }
+            }
+            fun remove() {
+                val id = editor.selectedId?.takeIf { it in drawn } ?: drawn.keys.lastOrNull()
+                if (id == null) return
+                drawn.remove(id)
+                text.remove(id)
+                editor.select(null)
+                render()
+                status(null)
+            }
+
+            editor.onBoxAdded = { rect ->
+                val id = nextId++
+                drawn[id] = rect
+                editor.select(id)
+                render()
+                read(id)
+            }
+            editor.onBoxChanged = { id, rect ->
+                // Touching a detected box makes it the reader's own: from here it is read from
+                // where they put it, and whatever the page pass found there gives way to it.
+                detected.remove(id)
+                drawn[id] = rect
+                render()
+            }
+            editor.onBoxEditEnded = { id -> read(id) }
+            editor.onSelectionChanged = { id -> status(id) }
+
+            binding.drawBoxesStatus.setText(R.string.mtl_draw_boxes_reading_page)
+            customAlertDialog().apply {
+                setTitle(R.string.mtl_draw_boxes_title, pos + 1)
+                setCustomView(binding.root)
+                setPosButton(R.string.mtl_draw_boxes_translate) {
+                    DrawnRegions.put(key, drawn.values.toList())
+                    translatePage(pos, image)
+                }
+                setNeutralButton(R.string.mtl_draw_boxes_remove)
+                setNegButton(R.string.cancel)
+                onDismiss { open = false }
+                // Removing is one step of editing, not the end of it, so the button is rewired
+                // once the dialog exists to keep it open — the builder dismisses on every button.
+                // Only drawn boxes go: a detected one belongs to the page pass, and the way to
+                // overrule it is to draw over it. What is selected goes, else the last box drawn,
+                // so a slip is one tap to undo.
+                var dialog: AlertDialog? = null
+                attach { dialog = it }
+                // The builder installs its own show listener after attach, so the rewiring has
+                // to go through the builder's hook rather than the dialog's.
+                setOnShowListener {
+                    dialog?.getButton(AlertDialog.BUTTON_NEUTRAL)?.setOnClickListener { remove() }
+                }
+                show()
+            }
+
+            // What the page pass finds, shown before anything is drawn — minus what the boxes
+            // already drawn on this page have superseded. Drawing is armed only once this is in,
+            // since ids are handed out from where the detected ones stop.
+            val kept = DrawnRegions[key]
+            val found = withContext(Dispatchers.Default) {
+                PageTranslationPipeline.detect(bitmap, activeScript(), kept)
+            }
+            if (!open) return@launch
+            found.forEach { entry ->
+                detected[entry.block.id] = entry
+                text[entry.block.id] = entry.block.text
+            }
+            nextId = (found.maxOfOrNull { it.block.id } ?: 0) + 1
+            kept.forEach { rect ->
+                val id = nextId++
+                drawn[id] = Rect(rect)
+                read(id)
+            }
+            render()
+            editor.addMode = true
+            status(null)
+        }
     }
 
     /**
@@ -2113,7 +2285,31 @@ class MangaReaderActivity : AppCompatActivity() {
 
     /** The recognizer to actually use: the user's choice where there is one, otherwise the above. */
     private fun activeScript(): TextScript =
-        SourceScript.resolve(sourceLanguageCode(), media.countryOfOrigin)
+        SourceScript.resolve(mtlSettings().script, sourceLanguageCode(), media.countryOfOrigin)
+
+    /**
+     * This manga's translation choices — part of its reader settings, like its layout, and saved
+     * in the same file. The preferences only seed the first copy; see [MtlSettings].
+     */
+    fun mtlSettings(): MtlSettings = MtlSettings.from(defaultSettings)
+
+    /**
+     * Stores a change from the settings sheet and reopens what automatic translation had given up
+     * on, since whatever failed under the old settings is worth trying again under the new ones.
+     *
+     * Saved without [applySettings], which rebuilds the page adapters: nothing about how the pages
+     * are laid out has changed, and re-binding them for an engine switch would drop every decoded
+     * bitmap on screen for no reason.
+     */
+    fun updateMtlSettings(settings: MtlSettings) {
+        settings.applyTo(defaultSettings)
+        saveReaderSettings("${media.id}_current_settings", defaultSettings)
+        onMtlSettingsChanged()
+    }
+
+    /** Whether the feature is on and this manga asks for pages to translate as they appear. */
+    private fun autoTranslating(): Boolean =
+        PageTranslationPipeline.enabled() && mtlSettings().auto
 
     /**
      * Translates one page and paints it.
@@ -2124,7 +2320,7 @@ class MangaReaderActivity : AppCompatActivity() {
      * all, rather than a differently-processed copy.
      */
     private fun translatePage(pos: Int, image: MangaImage) {
-        if (!PageTranslationPipeline.ready()) {
+        if (!mtlSettings().ready()) {
             snackString(getString(R.string.mtl_needs_key))
             return
         }
@@ -2152,7 +2348,10 @@ class MangaReaderActivity : AppCompatActivity() {
             ?: error(getString(R.string.mtl_page_unavailable))
         val (before, after) = seamNeighbours(image)
         withContext(Dispatchers.Default) {
-            PageTranslationPipeline.run(bitmap, activeScript(), sourceLanguageCode(), before, after)
+            PageTranslationPipeline.run(
+                bitmap, activeScript(), sourceLanguageCode(), mtlSettings(), before, after,
+                regions = DrawnRegions[image.url.url],
+            )
         }
     }
 
@@ -2165,7 +2364,7 @@ class MangaReaderActivity : AppCompatActivity() {
      * with itself.
      */
     private suspend fun seamNeighbours(image: MangaImage): Pair<Bitmap?, Bitmap?> {
-        if (!PageTranslationPipeline.stitching()) return null to null
+        if (!mtlSettings().stitch) return null to null
         if (defaultSettings.layout != CurrentReaderSettings.Layouts.CONTINUOUS) return null to null
         val pages = readerPages()
         val index = pages.indexOfFirst { it.url.url == image.url.url }
@@ -2232,8 +2431,8 @@ class MangaReaderActivity : AppCompatActivity() {
      * being looked at is always next — see [AutoTranslator].
      */
     private val autoTranslator by lazy {
-        AutoTranslator(lifecycleScope) { image ->
-            if (!PageTranslationPipeline.ready()) {
+        AutoTranslator(lifecycleScope, active = { autoTranslating() && mtlSettings().ready() }) { image ->
+            if (!mtlSettings().ready()) {
                 snackString(getString(R.string.mtl_needs_key))
                 return@AutoTranslator false
             }
@@ -2273,7 +2472,7 @@ class MangaReaderActivity : AppCompatActivity() {
      * afterwards is what keeps that from being a cost on every scrolled pixel.
      */
     fun scheduleAutoTranslation() {
-        if (!PageTranslationPipeline.auto() || autoQueuePosted) return
+        if (!autoTranslating() || autoQueuePosted) return
         autoQueuePosted = true
         pageHost.post {
             autoQueuePosted = false
@@ -2292,7 +2491,7 @@ class MangaReaderActivity : AppCompatActivity() {
     private var autoAnchor = RecyclerView.NO_POSITION
 
     private fun queueAutoTranslation() {
-        if (!PageTranslationPipeline.auto()) return
+        if (!autoTranslating()) return
         val (first, last) = visiblePositions() ?: return
 
         if (autoAnchor != RecyclerView.NO_POSITION && first != autoAnchor) {

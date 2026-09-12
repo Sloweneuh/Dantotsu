@@ -35,6 +35,8 @@ class PageTextDetector(private val script: TextScript) {
     class TextRun(
         val box: Rect,
         val lines: List<Text.Line>,
+        /** Each line's own bounds in page pixels, carried so a block can be scored line by line. */
+        val lineBoxes: List<Rect>,
         val glyphPx: Float,
         val vertical: Boolean,
     )
@@ -94,11 +96,18 @@ class PageTextDetector(private val script: TextScript) {
     fun blocks(runs: List<TextRun>, merge: Boolean, firstId: Int = 1): List<TextBlock> {
         var id = firstId
         return (if (merge) BubbleMerger.merge(runs) else runs).map { run ->
-            toBlock(id++, run.lines, run.box, glyphPx = run.glyphPx)
+            toBlock(id++, run.lines, run.box, glyphPx = run.glyphPx, lineBoxes = run.lineBoxes)
         }
     }
 
-    /** Builds a block from lines the caller obtained itself, as [readRegion] returns. */
+    /**
+     * Builds a block from lines the caller obtained itself, as [readRegion] returns.
+     *
+     * [lineBoxes] is left empty by such a caller on purpose: [readRegion]'s lines are in the
+     * coordinates of an enlarged crop rather than of the page, and a line box in the wrong frame
+     * would be ringed somewhere else entirely. An empty list is what puts [BlockScorer] back on the
+     * block's own ring, which is what it used before line boxes existed.
+     */
     fun toBlock(
         id: Int,
         lines: List<Text.Line>,
@@ -107,6 +116,7 @@ class PageTextDetector(private val script: TextScript) {
         glyphScale: Float = 1f,
         glyphPx: Float? = null,
         fallbackGlyphPx: Float = 0f,
+        lineBoxes: List<Rect> = emptyList(),
     ): TextBlock {
         val glyphs = lines.map { glyphSize(it) }
         val (ordered, reordered) = orderedText(lines)
@@ -126,6 +136,7 @@ class PageTextDetector(private val script: TextScript) {
             lineCount = lines.size,
             reordered = reordered,
             symbolsAvailable = glyphs.isNotEmpty() && glyphs.all { it.first },
+            lineBoxes = lineBoxes,
             synthetic = synthetic,
         )
     }
@@ -180,6 +191,7 @@ class PageTextDetector(private val script: TextScript) {
                 TextRun(
                     box = box.scaledDown(scale),
                     lines = lines,
+                    lineBoxes = lines.mapNotNull { tightBox(listOf(it))?.scaledDown(scale) },
                     glyphPx = lines.map { glyphSize(it).second }.average().toFloat() / scale,
                     vertical = lines.first().angle > TextBlock.VERTICAL_ANGLE,
                 )
@@ -285,14 +297,33 @@ class PageTextDetector(private val script: TextScript) {
     }
 
     /**
-     * Glyph size for one line, and whether it came from a real symbol box.
+     * Glyph size for one line, and whether it came from real symbol boxes.
      *
-     * The cross-axis of a single line is its glyph size whichever way the line runs, so
-     * `min(width, height)` of the line box is a sound fallback when symbols come back empty.
+     * The cross-axis is a line's glyph size whichever way the line runs — the width of a character
+     * in a vertical column, the height of one in a horizontal row — so `min(width, height)` of the
+     * line box is a sound fallback when symbols come back empty.
+     *
+     * Where symbols are available it is the *median* of their cross-axes, and both halves of that
+     * matter. Taking the short side of one box reads a character like 一, ー, 「 or a comma at a
+     * fraction of its real size, because the ink of those is a thin bar rather than a square; and
+     * taking it from the first symbol alone lets one such character at the head of a column decide
+     * the whole line. A column beginning 一角に measured a glyph of 3px against the 16px of the
+     * column beside it, which is past [BubbleMerger.GLYPH_RATIO] — so the two halves of one caption
+     * were refused a merge, and each was translated, sized and drawn as if it were a bubble of its
+     * own. Everything downstream is measured in glyph widths, so a wrong one is wrong everywhere:
+     * the ring's thickness, the gap two runs may be merged across, whether a block is a sound
+     * effect, and how much room its translation asks for.
      */
     private fun glyphSize(line: Text.Line): Pair<Boolean, Int> {
-        val symbol = line.elements.firstOrNull()?.symbols?.firstOrNull()?.boundingBox
-        if (symbol != null) return true to min(symbol.width(), symbol.height())
+        val vertical = line.angle > TextBlock.VERTICAL_ANGLE
+        val extents = line.elements
+            .flatMap { element -> element.symbols.mapNotNull { it.boundingBox } }
+            .map { if (vertical) it.width() else it.height() }
+            .sorted()
+        if (extents.isNotEmpty()) {
+            val median = extents[extents.size / 2]
+            if (median > 0) return true to median
+        }
         val box = line.boundingBox ?: return false to 0
         return false to min(box.width(), box.height())
     }
@@ -477,6 +508,7 @@ internal object BubbleMerger {
             // Left unordered: orderedText sorts every line of the joined run into reading order,
             // which is the point of merging in the first place.
             lines = a.lines + b.lines,
+            lineBoxes = a.lineBoxes + b.lineBoxes,
             glyphPx = (a.glyphPx + b.glyphPx) / 2f,
             vertical = a.vertical,
         )

@@ -1,4 +1,4 @@
-package ani.dantotsu.spike
+package ani.dantotsu.media.manga.translation
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -11,8 +11,6 @@ import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
 import androidx.core.graphics.toColorInt
-import ani.dantotsu.media.manga.translation.BlockPainter
-import ani.dantotsu.media.manga.translation.PaintedBlock
 
 import kotlin.math.abs
 import kotlin.math.max
@@ -22,7 +20,9 @@ import kotlin.math.roundToInt
 /**
  * The page with its blocks drawn over it, editable by hand.
  *
- * The sliders in [MangaOcrSpikeActivity] tune the thresholds; this tunes intuition about what is
+ * Two users. In the reader it is the way to point at text the page pass missed: a long press
+ * offers to draw a box, and the box is read on its own and translated with the rest of the page.
+ * In the calibration screen it is a diagnostic. The sliders there tune the thresholds; this tunes intuition about what is
  * being thresholded. Drag a block over a speech bubble and then off onto artwork and the ring
  * statistics move with it in real time, which is a far faster way to learn what separates the two
  * than guessing a variance number. Drawing a fresh block is the other half: the region is sent back
@@ -34,7 +34,6 @@ import kotlin.math.roundToInt
  * own width and converts on the way in and out, so nothing outside has to know about the display
  * scale.
  *
- * Throwaway, with the rest of `ani.dantotsu.spike`.
  */
 class BlockEditorView @JvmOverloads constructor(
     context: Context,
@@ -76,6 +75,13 @@ class BlockEditorView @JvmOverloads constructor(
 
     /** A block was drawn on empty space. */
     var onBoxAdded: ((rect: Rect) -> Unit)? = null
+
+    /**
+     * A move or resize of [id] ended. [onBoxChanged] fires on every pixel of the drag, which is
+     * right for live metrics and wrong for anything that costs — a re-read of the region belongs
+     * here, once, when the finger lifts.
+     */
+    var onBoxEditEnded: ((id: Int) -> Unit)? = null
 
     /** Selection changed, to null when the user tapped empty space. */
     var onSelectionChanged: ((id: Int?) -> Unit)? = null
@@ -282,6 +288,19 @@ class BlockEditorView @JvmOverloads constructor(
                 return true
             }
 
+            // A second finger while drawing hands the gesture back to whatever scrolls the page.
+            // Drawing is armed for every one-finger drag, so with a page taller than the screen
+            // this is the only way left to reach the bottom of it.
+            MotionEvent.ACTION_POINTER_DOWN -> {
+                if (mode == Mode.CREATE) {
+                    draft = null
+                    mode = Mode.NONE
+                    parent?.requestDisallowInterceptTouchEvent(false)
+                    invalidate()
+                }
+                return true
+            }
+
             MotionEvent.ACTION_MOVE -> {
                 val dx = ((event.x - downX) / scale).roundToInt()
                 val dy = ((event.y - downY) / scale).roundToInt()
@@ -324,6 +343,10 @@ class BlockEditorView @JvmOverloads constructor(
                         ) {
                             onBoxAdded?.invoke(drawn)
                         }
+                    }
+
+                    (mode == Mode.MOVE || mode == Mode.RESIZE) && moved -> {
+                        selectedId?.let { onBoxEditEnded?.invoke(it) }
                     }
 
                     // A tap that went nowhere on empty space clears the selection. A CANCEL means

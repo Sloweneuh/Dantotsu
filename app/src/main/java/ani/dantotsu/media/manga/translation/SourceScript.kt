@@ -34,11 +34,13 @@ object SourceScript {
     /**
      * The script to read a page of this media with.
      *
+     * @param override the reader's explicit choice for this media, or null to decide from the
+     *   metadata — [MtlSettings.script], which is where that choice lives.
      * @param sourceLanguage the extension source's language code, as `ja` / `ko` / `en`.
      * @param countryOfOrigin the work's origin, as AniList reports it.
      */
-    fun resolve(sourceLanguage: String?, countryOfOrigin: String?): TextScript =
-        override() ?: detect(sourceLanguage, countryOfOrigin)
+    fun resolve(override: TextScript?, sourceLanguage: String?, countryOfOrigin: String?): TextScript =
+        override ?: detect(sourceLanguage, countryOfOrigin)
 
     /**
      * What the metadata says, ignoring any override — which is what the settings rows show, so a

@@ -21,6 +21,7 @@ import ani.dantotsu.copyToClipboard
 import ani.dantotsu.databinding.ActivityMangaOcrSpikeBinding
 import ani.dantotsu.initActivity
 import ani.dantotsu.navBarHeight
+import ani.dantotsu.media.manga.translation.BlockEditorView
 import ani.dantotsu.media.manga.translation.BlockScorer
 import ani.dantotsu.media.manga.translation.BlockVerdict
 import ani.dantotsu.media.manga.translation.DetectionThresholds
@@ -187,17 +188,6 @@ class MangaOcrSpikeActivity : AppCompatActivity() {
             BlockVerdict.OVER_ART -> "OVER_ART"
             BlockVerdict.FURIGANA -> "FURIGANA"
             BlockVerdict.SEAM -> "SEAM    "
-        }
-
-    /** What a verdict is drawn in. */
-    private val BlockVerdict.color: Int
-        get() = when (this) {
-            BlockVerdict.DIALOGUE -> 0xFF4CAF50.toInt()
-            BlockVerdict.SFX -> 0xFFFF9800.toInt()
-            BlockVerdict.LOW_CONF -> 0xFF9C27B0.toInt()
-            BlockVerdict.OVER_ART -> 0xFFF44336.toInt()
-            BlockVerdict.FURIGANA -> 0xFF2196F3.toInt()
-            BlockVerdict.SEAM -> 0xFF00BCD4.toInt()
         }
 
 
@@ -566,16 +556,23 @@ class MangaOcrSpikeActivity : AppCompatActivity() {
     private fun reason(scored: ScoredBlock, pageHeight: Int, t: DetectionThresholds): String {
         val block = scored.block
         return when (scored.verdict) {
-            BlockVerdict.OVER_ART -> if (scored.ring.iqr > t.ringIqr) {
-                getString(
-                    R.string.ocr_spike_reason_iqr,
-                    scored.ring.iqr,
-                    t.ringIqr,
-                    scored.ring.flatShare * 100f,
-                    t.flatPercent,
-                )
-            } else {
-                getString(R.string.ocr_spike_reason_median, scored.ring.median, t.minBrightness)
+            BlockVerdict.OVER_ART -> {
+                val ring = if (scored.ring.iqr > t.ringIqr) {
+                    getString(
+                        R.string.ocr_spike_reason_iqr,
+                        scored.ring.iqr,
+                        t.ringIqr,
+                        scored.ring.flatShare * 100f,
+                        t.flatPercent,
+                    )
+                } else {
+                    getString(R.string.ocr_spike_reason_median, scored.ring.median, t.minBrightness)
+                }
+                // The line test is the block's second chance, so when it was taken and failed
+                // the reason has to say so — the ring numbers alone no longer explain the colour.
+                scored.lineFlat?.let { share ->
+                    ring + getString(R.string.ocr_spike_reason_lines, share * 100f)
+                } ?: ring
             }
 
             BlockVerdict.LOW_CONF -> getString(
@@ -603,10 +600,14 @@ class MangaOcrSpikeActivity : AppCompatActivity() {
 
             BlockVerdict.SEAM -> getString(R.string.ocr_spike_reason_seam)
 
-            BlockVerdict.DIALOGUE -> if (BlockScorer.flat(scored.ring, t)) {
-                getString(R.string.ocr_spike_reason_flat, scored.ring.flatShare * 100f)
-            } else {
-                getString(R.string.ocr_spike_reason_pass)
+            BlockVerdict.DIALOGUE -> when {
+                BlockScorer.flat(scored.ring, t) ->
+                    getString(R.string.ocr_spike_reason_flat, scored.ring.flatShare * 100f)
+
+                BlockScorer.enclosed(scored.lineFlat) ->
+                    getString(R.string.ocr_spike_reason_enclosed, scored.lineFlat!! * 100f)
+
+                else -> getString(R.string.ocr_spike_reason_pass)
             }
         }
     }

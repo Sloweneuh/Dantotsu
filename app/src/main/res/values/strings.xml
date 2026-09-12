@@ -1842,6 +1842,8 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="ocr_spike_reason_katakana">katakana %1$.0f%% ≥ %2$.0f%% at %3$.2f%% glyph</string>
     <string name="ocr_spike_reason_pass">passes every test</string>
     <string name="ocr_spike_reason_flat">on a flat background — %1$.0f%% one colour</string>
+    <string name="ocr_spike_reason_enclosed">ring fails as a whole, but %1$.0f%% of its lines ring flat on their own</string>
+    <string name="ocr_spike_reason_lines">; only %1$.0f%% of its lines ring flat on their own</string>
     <string name="ocr_spike_reason_seam">belongs to the neighbouring page, covered only</string>
     <string name="ocr_spike_reason_furigana">kana-only and smaller than the page body text</string>
     <string name="ocr_spike_selection_metrics">  glyph %1$.2f%%  conf %2$.2f  angle %3$.1f  kata %4$d%%  %5$d line(s)%6$s</string>
@@ -2830,6 +2832,15 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="mtl_translate_page">Translate this page</string>
     <string name="mtl_retranslate_page">Translate this page again</string>
     <string name="mtl_hide_translation">Hide the translation</string>
+    <string name="mtl_draw_boxes">Draw boxes over missed text</string>
+    <string name="mtl_draw_boxes_title">Page %1$d — draw boxes</string>
+    <string name="mtl_draw_boxes_hint">Drag over text the translation missed, or drag a detected box to fix it. Scroll with two fingers. Boxes are kept for this page.</string>
+    <string name="mtl_draw_boxes_reading_page">Reading the page…</string>
+    <string name="mtl_draw_boxes_reading">#%1$d · reading…</string>
+    <string name="mtl_draw_boxes_read_nothing">#%1$d · nothing read here</string>
+    <string name="mtl_draw_boxes_read" translatable="false">#%1$d · %2$s</string>
+    <string name="mtl_draw_boxes_translate">Translate</string>
+    <string name="mtl_draw_boxes_remove">Remove box</string>
     <string name="view_image">View image</string>
     <string name="mtl_translating">Translating page %1$d…</string>
     <string name="mtl_needs_key">Add an API key for this engine in reader settings</string>

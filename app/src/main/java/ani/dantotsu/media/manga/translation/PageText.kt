@@ -25,6 +25,12 @@ data class TextBlock(
     val lineCount: Int,
     val reordered: Boolean,
     val symbolsAvailable: Boolean,
+    /**
+     * Each line's own bounds, in page pixels, which is what lets a block be judged a line at a
+     * time. Empty for a block assembled by a caller rather than by the page pass — see
+     * [ani.dantotsu.media.manga.translation.PageTextDetector.toBlock].
+     */
+    val lineBoxes: List<Rect> = emptyList(),
     /** Drawn by hand rather than found by the page pass. */
     val synthetic: Boolean = false,
     /** Empty until a [TextTranslator] has run. */
@@ -59,7 +65,9 @@ enum class BlockVerdict {
     /**
      * Ruby glossing the kanji beside it. Covered but never translated: it says the same thing as
      * the characters it annotates, so translating duplicates the bubble, while leaving it visible
-     * strands Japanese against the English that replaced what it was glossing.
+     * strands Japanese against the English that replaced what it was glossing. Covered only where
+     * that English exists — see [TranslationLayout] — since a gloss painted out beside kanji still
+     * in Japanese is half a phrase erased for nothing.
      */
     FURIGANA,
 
@@ -77,6 +85,17 @@ enum class BlockVerdict {
 
     /** Whether the page beneath this block should be painted over. */
     val covered get() = translatable || this == FURIGANA || this == SEAM
+
+    /** What a block with this verdict is outlined in, wherever blocks are shown over a page. */
+    val color: Int
+        get() = when (this) {
+            DIALOGUE -> 0xFF4CAF50.toInt()
+            SFX -> 0xFFFF9800.toInt()
+            LOW_CONF -> 0xFF9C27B0.toInt()
+            OVER_ART -> 0xFFF44336.toInt()
+            FURIGANA -> 0xFF2196F3.toInt()
+            SEAM -> 0xFF00BCD4.toInt()
+        }
 }
 
 /**
@@ -108,6 +127,13 @@ data class ScoredBlock(
     val block: TextBlock,
     val ring: Ring,
     val verdict: BlockVerdict,
+    /**
+     * Share of the block's lines that ring flat, or null where the block's own ring settled it.
+     *
+     * Measured only when that ring failed, since it costs a sample per line. See
+     * [BlockScorer.score].
+     */
+    val lineFlat: Float? = null,
 )
 
 /**

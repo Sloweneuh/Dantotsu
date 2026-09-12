@@ -51,6 +51,26 @@ object TranslatedPages {
 }
 
 /**
+ * Boxes the reader drew by hand over text the page pass missed, keyed by page url.
+ *
+ * Kept apart from the translations so they survive one: a page translated again — after a change
+ * of engine, say — is read with the same boxes, rather than losing the very text somebody took the
+ * trouble to point at. Small, so a generous capacity costs nothing.
+ */
+object DrawnRegions {
+
+    private const val CAPACITY = 200
+
+    private val cache = LruCache<String, List<Rect>>(CAPACITY)
+
+    operator fun get(pageUrl: String): List<Rect> = cache.get(pageUrl).orEmpty()
+
+    fun put(pageUrl: String, regions: List<Rect>) {
+        if (regions.isEmpty()) cache.remove(pageUrl) else cache.put(pageUrl, regions)
+    }
+}
+
+/**
  * Runs a page all the way from pixels to blocks ready to paint.
  *
  * The single entry point the reader needs; everything it strings together — detection, scoring,
@@ -63,8 +83,13 @@ object PageTranslationPipeline {
      * @param script    which recognizer to use, from [SourceScript.resolve].
      * @param sourceLanguage the extension source's language code, which decides what the text is
      *                  being translated *from* when the pages are in a Latin-script language.
+     * @param settings  the engine, model and target to translate with, and whether to read across
+     *                  the seam — the reader's own for the media open, never the preferences.
      * @param before    the page above this one, and [after] the page below, where the reader has
      *                  them decoded. See [Seam].
+     * @param regions   boxes drawn by hand over text the page pass missed, in page pixels. Each
+     *                  is read on its own and translated whatever the scoring makes of it: a box
+     *                  somebody drew is an instruction, not a candidate.
      * @return null when the page has nothing worth translating, so the caller can say so rather
      *         than showing an empty overlay.
      */
@@ -72,26 +97,32 @@ object PageTranslationPipeline {
         page: Bitmap,
         script: TextScript,
         sourceLanguage: String? = null,
+        settings: MtlSettings = MtlSettings.fromPrefs(),
         before: Bitmap? = null,
         after: Bitmap? = null,
+        regions: List<Rect> = emptyList(),
     ): TranslatedPage? {
-        val seam = Seam.of(page, before, after)
+        val seam = Seam.of(page, before, after, settings.stitch)
         try {
             val detector = PageTextDetector(script)
             val runs = detector.read(seam.image)
-            val blocks = detector.blocks(runs, merge = true)
+            val found = detector.blocks(runs, merge = true)
+                .filterNot { superseded(it, regions.map(seam::toImage)) }
+            val blocks = found + drawnBlocks(detector, seam, found, regions)
             if (blocks.isEmpty()) return null
 
             val scored = BlockScorer
                 .score(blocks, seam.image, DetectionThresholds.fromPrefs())
                 .map { seam.assign(it) }
+                .map { trustDrawn(it) }
             val wanted = scored.filter { it.verdict.translatable }
             if (wanted.isEmpty()) return null
 
-            val engine = TranslationEngine.fromPref()
             val from = sourceCode(script, sourceLanguage)
-            val to = SourceScript.targetLanguage()
-            val translations = engine.build(from, to, targetLabel(to)).use { translator ->
+            val to = settings.targetLanguage()
+            val translations = settings.engine
+                .build(from, to, targetLabel(to), model = settings.modelName())
+                .use { translator ->
                 translator.prepare()
                 // One call for the whole page. The batch is what lets a language model see the
                 // bubbles as a conversation rather than as unrelated fragments.
@@ -125,6 +156,78 @@ object PageTranslationPipeline {
             seam.recycle()
         }
     }
+
+    /**
+     * Reads and scores a page without translating it, for showing what the page pass would do.
+     *
+     * The same detection [run] performs, minus the seam: the point is to show the reader the
+     * boxes before they draw their own, and a strip of the next page is not something they can
+     * draw on.
+     */
+    suspend fun detect(page: Bitmap, script: TextScript, regions: List<Rect>): List<ScoredBlock> {
+        val detector = PageTextDetector(script)
+        val blocks = detector.blocks(detector.read(page), merge = true)
+            .filterNot { superseded(it, regions) }
+        return BlockScorer.score(blocks, page, DetectionThresholds.fromPrefs())
+    }
+
+    /**
+     * Whether a block the page pass found sits under a box the reader drew.
+     *
+     * The drawn box wins. It is how a reader says "this, as one bubble" over a page pass that split
+     * it, or "this, correctly" over one that framed it wrong, and translating both would put two
+     * translations on one piece of text.
+     */
+    fun superseded(block: TextBlock, regions: List<Rect>): Boolean =
+        regions.any { it.contains(block.box.centerX(), block.box.centerY()) }
+
+    /**
+     * Blocks for the boxes the reader drew, read one region at a time.
+     *
+     * Padded and enlarged by [PageTextDetector.readRegion], which is the whole point: text the page
+     * pass dropped usually reads perfectly from a crop, since the recognizer's answer depends on
+     * the size it is shown. A box that reads as nothing is left out rather than painted blank.
+     */
+    private suspend fun drawnBlocks(
+        detector: PageTextDetector,
+        seam: Seam,
+        found: List<TextBlock>,
+        regions: List<Rect>,
+    ): List<TextBlock> {
+        if (regions.isEmpty()) return emptyList()
+        // The ring is padded in glyph widths, so a box the recognizer read nothing in still needs
+        // a size; the page's own median is the honest guess.
+        val bodyGlyph = found.map { it.glyphPx }.filter { it > 0f }.sorted()
+            .let { if (it.isEmpty()) 0f else it[it.size / 2] }
+        // Past the highest id present, not past the count: [found] has had blocks under drawn
+        // boxes removed but keeps the ids it was given before that, so counting would hand a
+        // drawn block the id of the last detected one — and every map downstream is keyed by id,
+        // which made that detected block quietly take the drawn one's words and place.
+        var id = (found.maxOfOrNull { it.id } ?: 0) + 1
+        return regions.mapNotNull { region ->
+            val rect = seam.toImage(region)
+            val (lines, glyphScale) = detector.readRegion(seam.image, rect)
+            detector.toBlock(
+                id++, lines, rect,
+                synthetic = true, glyphScale = glyphScale, fallbackGlyphPx = bodyGlyph,
+            ).takeIf { it.text.isNotBlank() }
+        }
+    }
+
+    /**
+     * A drawn box is translated whatever the ring or the recognizer's confidence say.
+     *
+     * Those tests exist to keep the page pass from painting over artwork and translating noise;
+     * a box somebody drew has already been judged text by the one judge that counts. Overriding
+     * the verdict rather than skipping the tests keeps the calibration screen honest, where a
+     * hand-drawn box is there precisely to see what the tests make of it.
+     */
+    private fun trustDrawn(entry: ScoredBlock): ScoredBlock =
+        if (entry.block.synthetic && !entry.verdict.translatable && entry.verdict != BlockVerdict.SEAM) {
+            entry.copy(verdict = BlockVerdict.DIALOGUE)
+        } else {
+            entry
+        }
 
     /** The language named in words, which is what the model-based engines put in their prompt. */
     private fun targetLabel(code: String): String =
@@ -164,20 +267,13 @@ object PageTranslationPipeline {
     fun TextBlock.sourceText(script: TextScript): String =
         text.replace(" / ", if (script == TextScript.LATIN) " " else "")
 
-    /** Whether an engine that needs a key has one, so the caller can explain rather than fail. */
-    fun ready(): Boolean {
-        val engine = TranslationEngine.fromPref()
-        return !engine.needsKey || engine.storedKey().isNotBlank()
-    }
-
-    /** Whether the reader should offer this at all. */
+    /**
+     * Whether the reader should offer this at all.
+     *
+     * The one translation switch that is not per media: it decides whether the feature exists,
+     * and everything a series can choose for itself is in [MtlSettings].
+     */
     fun enabled(): Boolean = PrefManager.getVal(PrefName.OcrTranslateEnabled)
-
-    /** Whether pages should translate themselves as they scroll into view. */
-    fun auto(): Boolean = enabled() && PrefManager.getVal(PrefName.OcrAutoTranslate)
-
-    /** Whether a page should be read together with a strip of its neighbours. */
-    fun stitching(): Boolean = PrefManager.getVal(PrefName.OcrStitchPages)
 }
 
 /**
@@ -214,6 +310,9 @@ private class Seam(
         if (centre in 0 until pageHeight) return entry
         return entry.copy(verdict = BlockVerdict.SEAM)
     }
+
+    /** A rect in the page's own coordinates, moved into the composite's. */
+    fun toImage(rect: Rect): Rect = if (!composite) rect else Rect(rect).apply { offset(0, offset) }
 
     /** Brings finished rectangles back into the page's own coordinates, dropping what missed it. */
     fun toPage(blocks: List<PaintedBlock>, width: Int, height: Int): List<PaintedBlock> {
@@ -260,8 +359,8 @@ private class Seam(
          */
         private const val MAX_COMPOSITE_PIXELS = 10_000_000L
 
-        fun of(page: Bitmap, before: Bitmap?, after: Bitmap?): Seam {
-            if (!PageTranslationPipeline.stitching() || (before == null && after == null)) {
+        fun of(page: Bitmap, before: Bitmap?, after: Bitmap?, stitch: Boolean): Seam {
+            if (!stitch || (before == null && after == null)) {
                 return Seam(page, 0, page.height, composite = false)
             }
             val depth = min((page.height * SHARE).toInt(), MAX).coerceAtLeast(0)

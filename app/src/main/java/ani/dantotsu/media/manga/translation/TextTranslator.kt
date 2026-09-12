@@ -73,15 +73,18 @@ enum class TranslationEngine(
         else -> ""
     }
 
+    /** The model the preferences name for this engine, or its default where they name none. */
+    fun modelFromPref(): String =
+        PrefManager.getVal<String>(PrefName.OcrTranslationModel).ifBlank { defaultModel() }
+
     fun build(
         from: String,
         to: String,
         toLabel: String,
         kind: TextKind = TextKind.COMIC,
+        model: String = modelFromPref(),
     ): TextTranslator {
         val key = storedKey()
-        val model = PrefManager.getVal<String>(PrefName.OcrTranslationModel)
-            .ifBlank { defaultModel() }
         return when (this) {
             ML_KIT -> MlKitTranslator(from, to)
             GOOGLE -> GoogleTranslator(from, to)

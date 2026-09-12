@@ -1810,6 +1810,8 @@
     <string name="ocr_spike_reason_katakana">katakana %1$.0f%% ≥ %2$.0f%% à %3$.2f%% de glyphe</string>
     <string name="ocr_spike_reason_pass">réussit tous les tests</string>
     <string name="ocr_spike_reason_flat">sur un fond uni — %1$.0f%% d\'une seule couleur</string>
+    <string name="ocr_spike_reason_enclosed">anneau en échec dans l&#8217;ensemble, mais %1$.0f%% de ses lignes ont un anneau uni à elles seules</string>
+    <string name="ocr_spike_reason_lines"> ; seulement %1$.0f%% de ses lignes ont un anneau uni à elles seules</string>
     <string name="ocr_spike_reason_seam">appartient à la page voisine, simplement masqué</string>
     <string name="ocr_spike_reason_furigana">kana uniquement et plus petit que le texte de la page</string>
     <string name="ocr_spike_selection_metrics">  glyphe %1$.2f%%  conf %2$.2f  angle %3$.1f  kata %4$d%%  %5$d ligne(s)%6$s</string>
@@ -2708,6 +2710,14 @@
     <string name="mtl_translate_page">Traduire cette page</string>
     <string name="mtl_retranslate_page">Traduire à nouveau cette page</string>
     <string name="mtl_hide_translation">Masquer la traduction</string>
+    <string name="mtl_draw_boxes">Encadrer le texte manqué</string>
+    <string name="mtl_draw_boxes_title">Page %1$d — encadrer le texte</string>
+    <string name="mtl_draw_boxes_hint">Tracez un cadre sur le texte que la traduction a manqué, ou déplacez un cadre détecté pour le corriger. Faites défiler à deux doigts. Les cadres sont conservés pour cette page.</string>
+    <string name="mtl_draw_boxes_reading_page">Lecture de la page…</string>
+    <string name="mtl_draw_boxes_reading">#%1$d · lecture…</string>
+    <string name="mtl_draw_boxes_read_nothing">#%1$d · rien de lu ici</string>
+    <string name="mtl_draw_boxes_translate">Traduire</string>
+    <string name="mtl_draw_boxes_remove">Retirer le cadre</string>
     <string name="view_image">Voir l\'image</string>
     <string name="mtl_translating">Traduction de la page %1$d…</string>
     <string name="mtl_needs_key">Ajoutez une clé API pour ce moteur dans les paramètres du lecteur</string>

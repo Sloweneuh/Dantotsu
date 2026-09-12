@@ -9,8 +9,8 @@ import ani.dantotsu.R
 import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
 import ani.dantotsu.media.manga.translation.MtlChoices
+import ani.dantotsu.media.manga.translation.MtlSettings
 import ani.dantotsu.media.manga.translation.PageTranslationPipeline
-import ani.dantotsu.media.manga.translation.TranslationEngine
 import ani.dantotsu.databinding.BottomSheetCurrentReaderSettingsBinding
 import ani.dantotsu.settings.CurrentReaderSettings
 import ani.dantotsu.settings.saving.PrefManager
@@ -265,37 +265,46 @@ class ReaderSettingsDialogFragment : BottomSheetDialogFragment() {
         // (auto)" rather than only that it decided for itself.
         val detected = activity.detectedScript()
 
+        // This manga's own choices, like every other row on this sheet: a change here is saved
+        // with its layout and direction and touches no other series. The preferences are only
+        // where a manga's first copy came from.
+        fun current() = activity.mtlSettings()
         fun refresh() {
-            binding.readerMtlEngineState.text = MtlChoices.engineLabel()
-            binding.readerMtlModelState.text = MtlChoices.modelLabel(activity)
-            binding.readerMtlScriptState.text = MtlChoices.scriptLabel(activity, detected)
-            binding.readerMtlTargetState.text = MtlChoices.targetLabel()
+            val settings = current()
+            binding.readerMtlEngineState.text = MtlChoices.engineLabel(settings)
+            binding.readerMtlModelState.text = MtlChoices.modelLabel(activity, settings)
+            binding.readerMtlScriptState.text = MtlChoices.scriptLabel(activity, settings, detected)
+            binding.readerMtlTargetState.text = MtlChoices.targetLabel(settings)
             // Only the key-based engines have a model to choose. Hiding the row takes its value
             // line with it — they are one view now, so the state no longer needs hiding of its own.
-            binding.readerMtlModel.isVisible = TranslationEngine.fromPref().needsKey
+            binding.readerMtlModel.isVisible = settings.engine.needsKey
         }
         refresh()
 
         // Whatever went wrong under the old settings is worth trying again under the new ones, so
         // a change re-opens the pages automatic translation had given up on. Only on a *change*:
         // hung off refresh() this would also fire on merely opening the sheet.
-        fun changed() {
+        fun changed(settings: MtlSettings) {
+            activity.updateMtlSettings(settings)
             refresh()
-            activity.onMtlSettingsChanged()
         }
 
-        binding.readerMtlEngine.setOnClickListener { MtlChoices.pickEngine(activity) { changed() } }
+        binding.readerMtlEngine.setOnClickListener {
+            MtlChoices.pickEngine(activity, current(), ::changed)
+        }
         binding.readerMtlModel.setOnClickListener {
-            MtlChoices.pickModel(activity, activity.lifecycleScope) { changed() }
+            MtlChoices.pickModel(activity, activity.lifecycleScope, current(), ::changed)
         }
         binding.readerMtlScript.setOnClickListener {
-            MtlChoices.pickScript(activity, detected) { changed() }
+            MtlChoices.pickScript(activity, current(), detected, ::changed)
         }
-        binding.readerMtlTarget.setOnClickListener { MtlChoices.pickTarget(activity) { changed() } }
+        binding.readerMtlTarget.setOnClickListener {
+            MtlChoices.pickTarget(activity, current(), ::changed)
+        }
 
-        binding.readerMtlAuto.isChecked = PrefManager.getVal(PrefName.OcrAutoTranslate)
+        binding.readerMtlAuto.isChecked = current().auto
         binding.readerMtlAuto.setOnCheckedChangeListener { _, isChecked ->
-            PrefManager.setVal(PrefName.OcrAutoTranslate, isChecked)
+            changed(current().copy(auto = isChecked))
             // Said out loud because switching it on spends an API quota with nobody pressing
             // anything afterwards, and switching it off leaves pages looking untranslated.
             Toast.makeText(
@@ -303,13 +312,11 @@ class ReaderSettingsDialogFragment : BottomSheetDialogFragment() {
                 if (isChecked) R.string.mtl_auto_on else R.string.mtl_auto_off,
                 Toast.LENGTH_SHORT,
             ).show()
-            activity.onMtlSettingsChanged()
         }
 
-        binding.readerMtlStitch.isChecked = PrefManager.getVal(PrefName.OcrStitchPages)
+        binding.readerMtlStitch.isChecked = current().stitch
         binding.readerMtlStitch.setOnCheckedChangeListener { _, isChecked ->
-            PrefManager.setVal(PrefName.OcrStitchPages, isChecked)
-            activity.onMtlSettingsChanged()
+            changed(current().copy(stitch = isChecked))
         }
     }
 

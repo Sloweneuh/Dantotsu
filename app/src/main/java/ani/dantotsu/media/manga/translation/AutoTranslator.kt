@@ -32,6 +32,12 @@ import kotlinx.coroutines.launch
 class AutoTranslator(
     private val scope: CoroutineScope,
     /**
+     * Whether a run may happen at all right now — the feature on, this media asking for it, and an
+     * engine that can be used. Asked on every call rather than once, since all three can change
+     * while the reader is open.
+     */
+    private val active: () -> Boolean,
+    /**
      * Translates one page.
      *
      * @return false where the failure is one that will happen again for every other page too — no
@@ -57,7 +63,7 @@ class AutoTranslator(
      * has changed.
      */
     fun onVisible(pages: List<MangaImage>) {
-        if (halted || !PageTranslationPipeline.auto() || !PageTranslationPipeline.ready()) return
+        if (halted || !active()) return
         val wanted = pages.filter { page ->
             val key = page.url.url
             key !in attempted && TranslatedPages[key] == null

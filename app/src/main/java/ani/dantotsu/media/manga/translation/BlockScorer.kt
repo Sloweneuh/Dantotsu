@@ -20,6 +20,15 @@ object BlockScorer {
      */
     private const val FURIGANA_RATIO = 0.8f
 
+    /**
+     * Share of a block's lines that must ring flat before the block counts as enclosed.
+     *
+     * A majority rather than all of them, because the column pressed hardest against a bubble's
+     * outline is the one that measures worst and every full bubble has one. On a measured page the
+     * six columns of one bubble ringed at 1, 1, 2, 4, 5 and 80.
+     */
+    private const val ENCLOSED_LINES = 0.6f
+
     fun score(
         blocks: List<TextBlock>,
         page: Bitmap,
@@ -33,8 +42,48 @@ object BlockScorer {
 
         return blocks.map { block ->
             val ring = RingSampler.sample(page, block.box, block.glyphPx, thresholds.ringPad)
-            ScoredBlock(block, ring, verdict(block, ring, page.height, bodyGlyph, thresholds))
+            // Measured only where the block's own ring has already failed. It answers the same
+            // question better, but it costs a sample per line against the block ring's one, and
+            // every slider move in the OCR screen re-scores the whole page. A block of one line
+            // has nothing to gain either way: its line box is its block box.
+            val lineFlat = if (flat(ring, thresholds) || block.lineBoxes.size < 2) {
+                null
+            } else {
+                lineFlatShare(block, page, thresholds)
+            }
+            val verdict = verdict(block, ring, lineFlat, page.height, bodyGlyph, thresholds)
+            ScoredBlock(block, ring, verdict, lineFlat)
         }
+    }
+
+    /**
+     * Share of a block's lines whose own ring is flat.
+     *
+     * The block ring asks its question of a rectangle, and a bubble is not one. Text that fills a
+     * round bubble hangs the corners of its bounding box over the artwork outside it, and a tall
+     * box puts a whole side of its ring out there — a third of the samples on a measured page,
+     * which is more than enough to carry a quartile range past any threshold that still rejects a
+     * drawing. Asked one line at a time it is answerable: a column is narrow, its ring hugs it, and
+     * it stays inside the bubble with the rest of the text.
+     *
+     * This is the test [PageTextDetector] already uses to drop lines found on teeth and hatching,
+     * put to the block's own thresholds. Siblings are excluded from each sample for the same reason
+     * it excludes them there: the columns either side of a middle one sit exactly where its ring
+     * falls, and counting them makes healthy text read as artwork.
+     */
+    private fun lineFlatShare(block: TextBlock, page: Bitmap, t: DetectionThresholds): Float {
+        val boxes = block.lineBoxes
+        val enclosed = boxes.count { box ->
+            val ring = RingSampler.sample(
+                page,
+                box,
+                block.glyphPx,
+                t.ringPad,
+                boxes.filter { it !== box },
+            )
+            ring.iqr <= t.ringIqr || flat(ring, t)
+        }
+        return enclosed.toFloat() / boxes.size
     }
 
     /**
@@ -45,6 +94,7 @@ object BlockScorer {
     private fun verdict(
         block: TextBlock,
         ring: Ring,
+        lineFlat: Float?,
         pageHeight: Int,
         bodyGlyph: Float,
         t: DetectionThresholds,
@@ -61,7 +111,7 @@ object BlockScorer {
         // spread is measuring is the artwork's own edge some way off — high iqr, nothing at risk.
         // The colour it is painted with comes from the same measurement, which is what keeps the
         // patch invisible instead of a grey rectangle in the middle of a blue sky.
-        if (!flat(ring, t)) {
+        if (!flat(ring, t) && !enclosed(lineFlat)) {
             if (ring.iqr > t.ringIqr) return BlockVerdict.OVER_ART
             if (t.minBrightness > 0f && ring.median < t.minBrightness) return BlockVerdict.OVER_ART
         }
@@ -79,4 +129,7 @@ object BlockScorer {
     /** Whether a block's surroundings are one colour, near enough to cover without loss. */
     fun flat(ring: Ring, t: DetectionThresholds): Boolean =
         ring.flatShare * 100f >= t.flatPercent
+
+    /** Whether enough of a block's lines ring flat for the block to count as inside something. */
+    fun enclosed(lineFlat: Float?): Boolean = lineFlat != null && lineFlat >= ENCLOSED_LINES
 }

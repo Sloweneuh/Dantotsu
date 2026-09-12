@@ -27,6 +27,7 @@ import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.snackString
 import ani.dantotsu.media.manga.translation.LlmTranslator
 import ani.dantotsu.media.manga.translation.MtlChoices
+import ani.dantotsu.media.manga.translation.MtlSettings
 import ani.dantotsu.spike.MangaOcrSpikeActivity
 import ani.dantotsu.media.manga.translation.TranslationEngine
 import ani.dantotsu.statusBarHeight
@@ -586,26 +587,35 @@ class ReaderSettingsActivity : AppCompatActivity() {
      * configuring one page's experiment rather than the feature.
      */
     private fun bindMtlChoices() {
+        // These are the defaults a manga starts from; each manga then keeps its own copy in its
+        // reader settings, edited from the reader's sheet. Re-read on every refresh rather than
+        // held, so a picker always starts from what was last saved.
+        fun current() = MtlSettings.fromPrefs()
         fun refresh() {
-            binding.readerSettingsMtlEngineState.text = MtlChoices.engineLabel()
-            binding.readerSettingsMtlModelState.text = MtlChoices.modelLabel(this)
-            binding.readerSettingsMtlTargetState.text = MtlChoices.targetLabel()
-            binding.readerSettingsMtlScriptState.text = MtlChoices.scriptLabel(this)
-            binding.readerSettingsMtlModel.isVisible = TranslationEngine.fromPref().needsKey
+            val settings = current()
+            binding.readerSettingsMtlEngineState.text = MtlChoices.engineLabel(settings)
+            binding.readerSettingsMtlModelState.text = MtlChoices.modelLabel(this, settings)
+            binding.readerSettingsMtlTargetState.text = MtlChoices.targetLabel(settings)
+            binding.readerSettingsMtlScriptState.text = MtlChoices.scriptLabel(this, settings)
+            binding.readerSettingsMtlModel.isVisible = settings.engine.needsKey
+        }
+        fun save(settings: MtlSettings) {
+            settings.saveToPrefs()
+            refresh()
         }
         refresh()
 
         binding.readerSettingsMtlEngine.setOnClickListener {
-            MtlChoices.pickEngine(this) { refresh() }
+            MtlChoices.pickEngine(this, current(), ::save)
         }
         binding.readerSettingsMtlModel.setOnClickListener {
-            MtlChoices.pickModel(this, lifecycleScope) { refresh() }
+            MtlChoices.pickModel(this, lifecycleScope, current(), ::save)
         }
         binding.readerSettingsMtlTarget.setOnClickListener {
-            MtlChoices.pickTarget(this) { refresh() }
+            MtlChoices.pickTarget(this, current(), ::save)
         }
         binding.readerSettingsMtlScript.setOnClickListener {
-            MtlChoices.pickScript(this) { refresh() }
+            MtlChoices.pickScript(this, current(), onChanged = ::save)
         }
     }
 

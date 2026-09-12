@@ -25,7 +25,15 @@ data class CurrentReaderSettings(
     var cropBorders: Boolean = PrefManager.getVal(PrefName.CropBorders),
     var cropBorderThreshold: Int = PrefManager.getVal(PrefName.CropBorderThreshold),
     var lockRotation: Boolean = PrefManager.getVal(PrefName.LockRotation),
-    var preloadAmount: Int = PrefManager.getVal(PrefName.PreloadAmount)
+    var preloadAmount: Int = PrefManager.getVal(PrefName.PreloadAmount),
+    // Translation, kept as the raw preference values so this stays plainly serializable. Read and
+    // written through ani.dantotsu.media.manga.translation.MtlSettings rather than directly.
+    var mtlEngine: Int = PrefManager.getVal(PrefName.OcrTranslationEngine),
+    var mtlModel: String = PrefManager.getVal(PrefName.OcrTranslationModel),
+    var mtlTarget: String = PrefManager.getVal(PrefName.OcrTargetLanguage),
+    var mtlScript: Int = PrefManager.getVal(PrefName.OcrSourceScript),
+    var mtlAuto: Boolean = PrefManager.getVal(PrefName.OcrAutoTranslate),
+    var mtlStitch: Boolean = PrefManager.getVal(PrefName.OcrStitchPages),
 ) : Serializable {
 
     enum class Directions {

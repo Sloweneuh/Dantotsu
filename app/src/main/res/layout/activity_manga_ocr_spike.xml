@@ -166,7 +166,7 @@
           the ring statistic is far easier to understand by moving a box off a bubble and onto
           artwork than by guessing at a threshold for it.
         -->
-        <ani.dantotsu.spike.BlockEditorView
+        <ani.dantotsu.media.manga.translation.BlockEditorView
             android:id="@+id/pageImage"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
