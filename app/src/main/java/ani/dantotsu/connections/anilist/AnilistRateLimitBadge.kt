@@ -31,6 +31,11 @@ import kotlinx.coroutines.launch
  * Before this, a limit was a toast per blocked query and then nothing, so a minute of the app
  * quietly refusing to load anything looked exactly like a minute of the app being broken.
  *
+ * The ring always drains, including over a window AniList never put a length on: the countdown in
+ * the middle of the pill is already stating that same estimate, so a ring that declined to agree
+ * with it bought nothing and cost the pill its one distinguishing feature — an indeterminate ring
+ * over a badge this small is just the spinner every other screen uses while it loads.
+ *
  * Attached from [ani.dantotsu.initActivity] alongside the download pill, which is what keeps it off
  * the reader and the player — neither calls it.
  */
@@ -63,32 +68,30 @@ fun attachAnilistRateLimitBadge(activity: Activity) {
 
         owner.lifecycleScope.launch {
             AnilistRateLimit.window.collectLatest { window ->
-                if (window == null) {
+                // A window that has already run out reaches an activity that was not on screen to
+                // tick it down (the reader and the player never attach this badge). Showing it for
+                // the one frame it takes to notice would be a pill that blinks for no reason.
+                if (window == null || !AnilistRateLimit.isLimited()) {
                     badge.visibility = View.GONE
+                    AnilistRateLimit.clear()
                     return@collectLatest
                 }
+                // Straight to where the wait actually is, without animating: an extended window, or
+                // one picked up by a screen opened mid-wait, would otherwise sweep the ring up from
+                // empty, which reads as the wait having just started over.
+                progress.setProgressCompat(AnilistRateLimit.remainingPercent(), false)
+                countdown.text = formatEta(AnilistRateLimit.remainingMillis())
                 badge.visibility = View.VISIBLE
-                setIndeterminate(progress, !window.announced)
                 // Nothing arrives from AniList to say the wait is over, so the countdown is also
                 // what notices. collectLatest cancels this loop if a new window replaces the one
                 // being drawn, which is why the tick can assume its own window is still current.
                 while (AnilistRateLimit.isLimited()) {
                     countdown.text = formatEta(AnilistRateLimit.remainingMillis())
-                    if (window.announced) {
-                        progress.setProgressCompat(AnilistRateLimit.remainingPercent(), true)
-                    }
+                    progress.setProgressCompat(AnilistRateLimit.remainingPercent(), true)
                     delay(250)
                 }
                 AnilistRateLimit.clear()
             }
         }
     }
-}
-
-/** [CircularProgressIndicator] only picks up a mode change while hidden. */
-private fun setIndeterminate(progress: CircularProgressIndicator, indeterminate: Boolean) {
-    if (progress.isIndeterminate == indeterminate) return
-    progress.hide()
-    progress.isIndeterminate = indeterminate
-    progress.show()
 }

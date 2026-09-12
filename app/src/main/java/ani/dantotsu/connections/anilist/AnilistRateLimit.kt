@@ -19,9 +19,9 @@ import kotlin.math.roundToInt
  * finished rendering, and then silence for the rest of the wait.
  *
  * Keeping it as a window with both ends known is what makes it displayable: how much of the wait is
- * left, out of how long it was, is a progress ring. [announced] separates a countdown AniList
- * actually gave from one this object had to assume, so the ring can decline to draw a precise
- * fraction of a number nobody promised.
+ * left, out of how long it was, is a progress ring. [Window.announced] separates a countdown AniList
+ * actually gave from one this object had to assume — the difference the badge's wording can lean on,
+ * and the reason an assumed window must never overwrite an announced one.
  *
  * Distinct from [AnilistApiStatus] on purpose, though both pause queries. A rate limit is the API
  * working correctly and telling the client to slow down, and it ends at a time the server named; an
@@ -36,7 +36,8 @@ object AnilistRateLimit {
     /**
      * @param startedAt when the limit was noticed, so the wait can be drawn as a fraction served.
      * @param endsAt when AniList said requests may resume.
-     * @param announced whether [endsAt] came from a header rather than [ASSUMED_WINDOW_MS].
+     * @param announced whether [endsAt] came from a header rather than [ASSUMED_WINDOW_MS]. Once
+     *   true it stays true for the life of the window: see [limit].
      */
     data class Window(val startedAt: Long, val endsAt: Long, val announced: Boolean)
 
@@ -53,16 +54,15 @@ object AnilistRateLimit {
     fun remainingSeconds(): Long = ((remainingMillis() + 999) / 1000).coerceAtLeast(0)
 
     /**
-     * How much of the wait is still to come, 0-100 — a ring that empties as it passes. Meaningless
-     * for an assumed window, whose caller should show something indeterminate instead.
+     * How much of the wait is still to come, 0-100 — a ring that empties as it passes. An assumed
+     * window drains just the same: the countdown beside the ring is already stating that same
+     * estimate out loud, so a ring that refused to agree with it would only read as a spinner.
      */
     fun remainingPercent(): Int {
         val w = _window.value ?: return 0
         val total = (w.endsAt - w.startedAt).coerceAtLeast(1L)
         return ((remainingMillis().toDouble() / total) * 100).roundToInt().coerceIn(0, 100)
     }
-
-    fun isAnnounced(): Boolean = _window.value?.announced == true
 
     /** What a query refused by the limit reports to its caller. */
     fun waitMessage(): String = "${getAppString(R.string.anilist_rate_limited)} · " +
@@ -84,8 +84,14 @@ object AnilistRateLimit {
         val fromRetry = retryAfterSeconds?.takeIf { it > 0 }?.let { now + it * 1000L } ?: 0L
         val fromReset = resetEpochSeconds?.takeIf { it > 0 }?.let { it * 1000L } ?: 0L
         val announced = fromRetry > 0 || fromReset > 0
-        val endsAt = maxOf(fromRetry, fromReset, if (announced) 0L else now + ASSUMED_WINDOW_MS)
         val current = _window.value
+        // A header-less 429 landing on top of a window that is already running is one of the
+        // requests that raced the first one out the door, not news: every screen fires its queries
+        // in a burst, so the refusals come back in a burst too. Letting one re-open the window
+        // would throw away an end AniList actually named in favour of a guess, and restart the
+        // badge's ring from full in the middle of a wait the user has been watching drain.
+        if (!announced && current != null && current.endsAt > now) return
+        val endsAt = maxOf(fromRetry, fromReset, if (announced) 0L else now + ASSUMED_WINDOW_MS)
         if (current != null && current.endsAt >= endsAt && current.announced == announced) return
         // An extension keeps the original start, so the ring carries on draining from where it was
         // instead of jumping back to full.

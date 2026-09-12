@@ -25,6 +25,7 @@ import ani.dantotsu.databinding.ActivityListBinding
 import ani.dantotsu.dismissKeyboard
 import ani.dantotsu.getThemeColor
 import ani.dantotsu.hideSystemBarsExtendView
+import ani.dantotsu.initActivity
 import ani.dantotsu.media.ActiveFilterChip
 import ani.dantotsu.media.ManageFiltersDialog
 import ani.dantotsu.settings.enableSettingsLongPress
@@ -71,6 +72,11 @@ class ListActivity : AppCompatActivity() {
 
         ThemeManager(this).applyTheme()
         binding = ActivityListBinding.inflate(layoutInflater)
+        // Every other list screen calls this; this one never did, which is why it was the one
+        // place the AniList rate-limit badge and the download pill never appeared — both are
+        // attached from here. It also brings the language preference and the navigation-bar theme,
+        // which this screen had likewise been inheriting from whatever activity ran last.
+        initActivity(this)
 
         val primaryColor = getThemeColor(com.google.android.material.R.attr.colorSurface)
         val primaryTextColor = getThemeColor(com.google.android.material.R.attr.colorPrimary)

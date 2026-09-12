@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?><!--
     Deliberately the download FAB's shape and size: both say "something is running in the
     background, you don't have to do anything about it", and one vocabulary for that is easier to
-    read than two. The ring is determinate here — it drains as the wait passes — and falls back to
-    indeterminate when AniList didn't send a countdown to drain.
+    read than two. The ring is always determinate — it drains as the wait passes, starting full —
+    because an indeterminate one at this size is indistinguishable from a plain loading spinner,
+    which is exactly the reading this badge exists to prevent.
 -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -54,7 +55,9 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:indeterminate="true"
+        android:indeterminate="false"
+        android:max="100"
+        android:progress="100"
         app:indicatorColor="?attr/colorSecondary"
         app:indicatorSize="60dp"
         app:trackThickness="3dp" />
