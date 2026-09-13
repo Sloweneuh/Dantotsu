@@ -42,6 +42,7 @@ import ani.dantotsu.databinding.ItemTitleChipgroupBinding
 import ani.dantotsu.databinding.ItemTitleRecyclerBinding
 import ani.dantotsu.databinding.ItemTitleTextBinding
 import ani.dantotsu.displayTimer
+import ani.dantotsu.getThemeColor
 import ani.dantotsu.isOnline
 import ani.dantotsu.loadImage
 import ani.dantotsu.navBarHeight
@@ -652,6 +653,65 @@ class AniListInfoFragment : Fragment() {
                     parent.addView(bind.root)
                 }
 
+                // Watch order (anime only) and news, as button cards laid out like the
+                // prequel/sequel pair below. Neither id is resolved here: the screens themselves
+                // work out the MAL / MangaBaka id they need, so opening one costs no request now.
+                if (!offline && (media.anime != null || media.manga != null)) {
+                    ItemQuelsBinding.inflate(
+                        LayoutInflater.from(context),
+                        parent,
+                        false
+                    ).apply {
+                        val artwork = media.banner ?: media.cover
+                        // These cards are buttons, not covers - leaving them named would give the
+                        // shared element transition four views called "mediaCover" to choose from.
+                        ViewCompat.setTransitionName(quelStartImage, null)
+                        ViewCompat.setTransitionName(quelEndImage, null)
+
+                        val titles = ArrayList(media.mainTitleOptions())
+                        if (media.anime != null) {
+                            quelStartCard.visibility = View.VISIBLE
+                            quelStartLabel.setText(R.string.watch_order)
+                            quelStartImage.loadImage(artwork)
+                            quelStartCard.setSafeOnClickListener {
+                                startActivity(
+                                    Intent(requireContext(), WatchOrderActivity::class.java)
+                                        .putExtra("mediaId", media.id)
+                                        .putExtra("malId", media.idMAL ?: -1)
+                                        .putExtra("startYear", media.startDate?.year ?: -1)
+                                        .putStringArrayListExtra("titles", titles)
+                                )
+                            }
+                        }
+
+                        // Manga and novels have no watch order, so news takes the start slot and
+                        // balanceQuelRow() centres it rather than leaving the row half empty.
+                        val onStart = media.anime == null
+                        val newsCard = if (onStart) quelStartCard else quelEndCard
+                        val newsLabel = if (onStart) quelStartLabel else quelEndLabel
+                        val newsImage = if (onStart) quelStartImage else quelEndImage
+                        if (onStart) quelStartAccent.setBackgroundColor(
+                            requireContext().getThemeColor(com.google.android.material.R.attr.colorPrimary)
+                        )
+
+                        newsCard.visibility = View.VISIBLE
+                        newsLabel.setText(R.string.news)
+                        newsImage.loadImage(artwork)
+                        newsCard.setSafeOnClickListener {
+                            startActivity(
+                                Intent(requireContext(), MediaNewsActivity::class.java)
+                                    .putExtra("mediaId", media.id)
+                                    .putExtra("malId", media.idMAL ?: -1)
+                                    .putExtra("startYear", media.startDate?.year ?: -1)
+                                    .putExtra("isAnime", media.anime != null)
+                                    .putStringArrayListExtra("titles", titles)
+                            )
+                        }
+                        balanceQuelRow()
+                        parent.addView(root)
+                    }
+                }
+
                 if (!media.relations.isNullOrEmpty() && !offline) {
                     if (media.sequel != null || media.prequel != null) {
                         ItemQuelsBinding.inflate(
@@ -661,15 +721,15 @@ class AniListInfoFragment : Fragment() {
                         ).apply {
 
                             if (media.sequel != null) {
-                                mediaInfoSequel.visibility = View.VISIBLE
-                                mediaInfoSequelImage.loadImage(
+                                quelEndCard.visibility = View.VISIBLE
+                                quelEndImage.loadImage(
                                     media.sequel!!.banner ?: media.sequel!!.cover
                                 )
-                                mediaInfoSequel.setSafeOnClickListener {
+                                quelEndCard.setSafeOnClickListener {
                                     val options = ActivityOptionsCompat.makeSceneTransitionAnimation(
                                         requireActivity(),
-                                        mediaInfoSequelImage,
-                                        ViewCompat.getTransitionName(mediaInfoSequelImage)!!
+                                        quelEndImage,
+                                        ViewCompat.getTransitionName(quelEndImage)!!
                                     ).toBundle()
                                     ContextCompat.startActivity(
                                         requireContext(),
@@ -684,15 +744,15 @@ class AniListInfoFragment : Fragment() {
                                 }
                             }
                             if (media.prequel != null) {
-                                mediaInfoPrequel.visibility = View.VISIBLE
-                                mediaInfoPrequelImage.loadImage(
+                                quelStartCard.visibility = View.VISIBLE
+                                quelStartImage.loadImage(
                                     media.prequel!!.banner ?: media.prequel!!.cover
                                 )
-                                mediaInfoPrequel.setSafeOnClickListener {
+                                quelStartCard.setSafeOnClickListener {
                                     val options = ActivityOptionsCompat.makeSceneTransitionAnimation(
                                         requireActivity(),
-                                        mediaInfoPrequelImage,
-                                        ViewCompat.getTransitionName(mediaInfoPrequelImage)!!
+                                        quelStartImage,
+                                        ViewCompat.getTransitionName(quelStartImage)!!
                                     ).toBundle()
                                     ContextCompat.startActivity(
                                         requireContext(),
@@ -706,6 +766,7 @@ class AniListInfoFragment : Fragment() {
                                     )
                                 }
                             }
+                            balanceQuelRow()
                             parent.addView(root)
                         }
                     }

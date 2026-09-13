@@ -15,6 +15,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
+import androidx.core.view.ViewCompat
 import androidx.core.view.updateLayoutParams
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -25,18 +26,24 @@ import ani.dantotsu.copyToClipboard
 import ani.dantotsu.databinding.FragmentMediaInfoBinding
 import ani.dantotsu.databinding.ItemChipBinding
 import ani.dantotsu.databinding.ItemChipSynonymBinding
+import ani.dantotsu.databinding.ItemQuelsBinding
 import ani.dantotsu.databinding.ItemTitleChipgroupBinding
 import ani.dantotsu.databinding.ItemTitleChipgroupMultilineBinding
 import ani.dantotsu.databinding.ItemChapterListBinding
 import ani.dantotsu.databinding.ItemTitleRecyclerBinding
 import ani.dantotsu.databinding.ItemTitleTextBinding
+import ani.dantotsu.getThemeColor
 import ani.dantotsu.isOnline
+import ani.dantotsu.loadImage
 import ani.dantotsu.media.MediaDetailsViewModel
+import ani.dantotsu.media.MediaNewsActivity
 import ani.dantotsu.media.QuicklinksBottomSheetFragment
 import ani.dantotsu.media.SearchActivity
+import ani.dantotsu.media.balanceQuelRow
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.openLinkInBrowser
 import ani.dantotsu.px
+import ani.dantotsu.setSafeOnClickListener
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import androidx.core.view.isVisible
@@ -482,6 +489,33 @@ class MUMediaInfoFragment : Fragment() {
             }
             bind.root.tag = "dynamic_mu_section"
             parent.addView(bind.root)
+        }
+
+        // News. MangaBaka carries a feed for MangaUpdates series too, keyed by the MangaUpdates
+        // id, which the screen resolves for itself. Same card as the AniList info tab's, centred
+        // on its own row since a manga has no watch order to sit beside.
+        ItemQuelsBinding.inflate(LayoutInflater.from(context), parent, false).apply {
+            // These cards are buttons, not covers - this screen runs a shared element transition
+            // on a view named "mediaCover", which must not have these to choose from.
+            ViewCompat.setTransitionName(quelStartImage, null)
+            ViewCompat.setTransitionName(quelEndImage, null)
+
+            quelStartCard.visibility = View.VISIBLE
+            quelStartLabel.setText(R.string.news)
+            quelStartAccent.setBackgroundColor(
+                requireContext().getThemeColor(com.google.android.material.R.attr.colorPrimary)
+            )
+            quelStartImage.loadImage(series.image?.url?.original ?: series.image?.url?.thumb)
+            quelStartCard.setSafeOnClickListener {
+                startActivity(
+                    Intent(requireContext(), MediaNewsActivity::class.java)
+                        .putExtra("muSeriesId", series.seriesId)
+                        .putExtra("isAnime", false)
+                )
+            }
+            balanceQuelRow()
+            root.tag = "dynamic_mu_section"
+            parent.addView(root)
         }
 
         // Direct recommendations

@@ -188,6 +188,10 @@
     <string name="ending">Ending</string>
     <string name="prequel">Prequel</string>
     <string name="sequel">Sequel</string>
+    <string name="watch_order">Watch Order</string>
+    <string name="news">News</string>
+    <string name="no_watch_order">No watch order found</string>
+    <string name="no_news">No news yet</string>
 
 
     <string name="anilist_settings">Anilist Settings</string>

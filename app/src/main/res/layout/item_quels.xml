@@ -1,31 +1,37 @@
-<?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<?xml version="1.0" encoding="utf-8"?><!--
+    A row of up to two equally-sized button cards over the media's artwork. Used for the
+    prequel/sequel pair and for the watch order / news shortcuts, so the labels, accent colours and
+    images are all set in code rather than here.
+
+    A GONE card gives up its weight but not the row's total, so weightSum is what stops a lone card
+    stretching the full width. balanceQuelRow() lowers it to widen that case; centre gravity then
+    puts the card in the middle of the row rather than leaving it against the start.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/mediaInfoQuelContainer"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
+    android:layout_height="wrap_content"
     android:layout_marginHorizontal="24dp"
     android:layout_marginTop="8dp"
-    android:layout_marginBottom="16dp">
+    android:layout_marginBottom="16dp"
+    android:gravity="center_horizontal"
+    android:orientation="horizontal"
+    android:weightSum="2">
 
     <com.google.android.material.card.MaterialCardView
-        android:id="@+id/mediaInfoPrequel"
+        android:id="@+id/quelStartCard"
         android:layout_width="0dp"
         android:layout_height="72dp"
         android:layout_margin="8dp"
         android:layout_weight="1"
         android:visibility="gone"
         app:cardCornerRadius="16dp"
-        app:layout_constrainedWidth="true"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@+id/mediaInfoSequel"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintWidth_max="256dp">
+        tools:visibility="visible">
 
         <ImageView
-            android:id="@+id/mediaInfoPrequelImage"
+            android:id="@+id/quelStartImage"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:scaleType="centerCrop"
@@ -46,16 +52,21 @@
             android:orientation="vertical">
 
             <TextView
+                android:id="@+id/quelStartLabel"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
+                android:ellipsize="end"
                 android:fontFamily="@font/poppins_bold"
+                android:gravity="center"
+                android:maxLines="2"
                 android:text="@string/prequel"
                 android:textAllCaps="true"
                 android:textColor="@color/bg_white"
                 android:textSize="16sp" />
 
             <View
+                android:id="@+id/quelStartAccent"
                 android:layout_width="64dp"
                 android:layout_height="2dp"
                 android:layout_gravity="center"
@@ -64,24 +75,17 @@
     </com.google.android.material.card.MaterialCardView>
 
     <com.google.android.material.card.MaterialCardView
-        android:id="@+id/mediaInfoSequel"
+        android:id="@+id/quelEndCard"
         android:layout_width="0dp"
         android:layout_height="72dp"
         android:layout_margin="8dp"
-        android:layout_marginStart="161dp"
-        android:layout_marginBottom="16dp"
         android:layout_weight="1"
         android:visibility="gone"
         app:cardCornerRadius="16dp"
-        app:layout_constrainedWidth="true"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@+id/mediaInfoPrequel"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintWidth_max="256dp">
+        tools:visibility="visible">
 
         <ImageView
-            android:id="@+id/mediaInfoSequelImage"
+            android:id="@+id/quelEndImage"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:scaleType="centerCrop"
@@ -102,16 +106,21 @@
             android:orientation="vertical">
 
             <TextView
+                android:id="@+id/quelEndLabel"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
+                android:ellipsize="end"
                 android:fontFamily="@font/poppins_bold"
+                android:gravity="center"
+                android:maxLines="2"
                 android:text="@string/sequel"
                 android:textAllCaps="true"
                 android:textColor="@color/bg_white"
                 android:textSize="16sp" />
 
             <View
+                android:id="@+id/quelEndAccent"
                 android:layout_width="64dp"
                 android:layout_height="2dp"
                 android:layout_gravity="center"
@@ -120,4 +129,4 @@
 
     </com.google.android.material.card.MaterialCardView>
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+</LinearLayout>

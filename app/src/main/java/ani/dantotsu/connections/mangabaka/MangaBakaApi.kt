@@ -554,6 +554,41 @@ object MangaBakaApi {
         Mapper.json.decodeFromString<SimilarResponse>(body).data ?: emptyList()
     } ?: emptyList()
 
+    /**
+     * Fetches series news via `GET /v1/series/{id}/news`. Public route — no auth.
+     *
+     * The route answers the whole feed in one response (no paging), already newest-first, and
+     * includes round-up articles that merely mention the series alongside others.
+     */
+    suspend fun getNews(seriesId: Long): List<NewsItem> = tryWithSuspend(snackbar = false) {
+        val request = Request.Builder()
+            .url("$API_URL/v1/series/$seriesId/news")
+            .get()
+            .build()
+        val response = execute(request)
+        val body = response.use { if (it.isSuccessful) it.body?.string() else null }
+        if (body.isNullOrBlank()) {
+            Logger.log("MangaBaka news[$seriesId]: no body")
+            return@tryWithSuspend emptyList<NewsItem>()
+        }
+        Mapper.json.decodeFromString<NewsResponse>(body).data.orEmpty()
+            .filter { !it.title.isNullOrBlank() && !it.url.isNullOrBlank() }
+    } ?: emptyList()
+
+    @Serializable
+    data class NewsResponse(val data: List<NewsItem>? = null)
+
+    /** [publishedAt] is an ISO-8601 instant, e.g. `2026-09-06T00:00:00.000Z`. */
+    @Serializable
+    data class NewsItem(
+        val id: Long? = null,
+        val title: String? = null,
+        val url: String? = null,
+        val author: String? = null,
+        @SerialName("source_name") val sourceName: String? = null,
+        @SerialName("published_at") val publishedAt: String? = null,
+    )
+
     // --- Series models (partial; unknown keys are ignored by Mapper.json) ---
 
     @Serializable

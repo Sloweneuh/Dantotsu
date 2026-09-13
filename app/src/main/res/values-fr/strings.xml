@@ -178,6 +178,10 @@
     <string name="ending">Ending</string>
     <string name="prequel">Préquelle</string>
     <string name="sequel">Suite</string>
+    <string name="watch_order">Ordre de visionnage</string>
+    <string name="news">Actualités</string>
+    <string name="no_watch_order">Aucun ordre de visionnage trouvé</string>
+    <string name="no_news">Aucune actualité pour le moment</string>
 
     <string name="anilist_settings">Paramètres Anilist</string>
     <string name="full_mangaupdates_account_help">

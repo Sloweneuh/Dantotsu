@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="?attr/selectableItemBackground"
+    android:clickable="true"
+    android:focusable="true"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingHorizontal="8dp"
+    android:paddingVertical="10dp">
+
+    <TextView
+        android:id="@+id/watchOrderPosition"
+        android:layout_width="28dp"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/poppins_bold"
+        android:gravity="end"
+        android:textColor="?attr/colorOnBackground"
+        android:textSize="14sp"
+        tools:text="12" />
+
+    <androidx.cardview.widget.CardView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        app:cardBackgroundColor="?android:colorBackground"
+        app:cardCornerRadius="8dp"
+        app:cardElevation="4dp">
+
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/watchOrderCover"
+            android:layout_width="48dp"
+            android:layout_height="72dp"
+            android:scaleType="centerCrop"
+            app:shapeAppearanceOverlay="@style/roundedImageView"
+            tools:ignore="ContentDescription,ImageContrastCheck"
+            tools:src="@tools:sample/backgrounds/scenic" />
+
+    </androidx.cardview.widget.CardView>
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/watchOrderTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:fontFamily="@font/poppins_semi_bold"
+            android:maxLines="2"
+            android:textColor="?attr/colorOnBackground"
+            android:textSize="14sp"
+            tools:text="One Piece: Taose! Kaizoku Ganzack" />
+
+        <TextView
+            android:id="@+id/watchOrderSubtitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:alpha="0.7"
+            android:ellipsize="end"
+            android:fontFamily="@font/poppins"
+            android:maxLines="1"
+            android:textColor="?attr/colorOnBackground"
+            android:textSize="12sp"
+            tools:text="One Piece: Defeat the Pirate Ganzack!" />
+
+        <TextView
+            android:id="@+id/watchOrderMeta"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:alpha="0.5"
+            android:ellipsize="end"
+            android:fontFamily="@font/poppins"
+            android:maxLines="2"
+            android:textColor="?attr/colorOnBackground"
+            android:textSize="11sp"
+            tools:text="Jul 26, 1998 • OVA • 1ep × 28min. • ★6.69 (24,568)" />
+
+    </LinearLayout>
+
+</LinearLayout>
