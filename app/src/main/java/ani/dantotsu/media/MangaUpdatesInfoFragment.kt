@@ -18,6 +18,7 @@ import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.comick.ComickApi
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.connections.mangaupdates.MangaUpdatesLoginDialog
+import ani.dantotsu.connections.mangaupdates.MuStatusText
 import ani.dantotsu.connections.mangaupdates.isMuNovelType
 import ani.dantotsu.media.manga.Manga
 import ani.dantotsu.setSafeOnClickListener
@@ -762,20 +763,7 @@ class MangaUpdatesInfoFragment : Fragment() {
         // Hide romaji title container for MangaUpdates
         binding.mediaInfoNameRomajiContainer.visibility = View.GONE
 
-        // Parse status field to extract chapter count and status text
-        // Example: "143 Chapters (Ongoing)" -> chapters: "143", status: "Ongoing"
-        var chaptersCount = "~"
-        var statusText = getString(R.string.unknown)
-
-        series.status?.let { fullStatus ->
-            // Extract first number for chapter count
-            val chapterMatch = Regex("""(\d+)\s+Chapter""").find(fullStatus)
-            chapterMatch?.groupValues?.get(1)?.let { chaptersCount = it }
-
-            // Extract text in first parentheses for status
-            val statusMatch = Regex("""\(([^)]+)\)""").find(fullStatus)
-            statusMatch?.groupValues?.get(1)?.let { statusText = it }
-        }
+        val parsedStatus = MuStatusText.parse(series.status, series.completed)
 
         // Mean Score (Rating)
         series.bayesian_rating?.let { ratingStr ->
@@ -790,11 +778,15 @@ class MangaUpdatesInfoFragment : Fragment() {
                 ?: run { binding.mediaInfoMeanScore.text = getString(R.string.unknown_value) }
 
         // Status (extracted from detailed status)
-        binding.mediaInfoStatus.text = statusText
+        binding.mediaInfoStatus.text =
+            parsedStatus.status?.toString() ?: getString(R.string.unknown)
 
-        // Total Chapters (extracted from detailed status)
-        binding.mediaInfoTotalTitle.setText(ani.dantotsu.R.string.total_chaps)
-        binding.mediaInfoTotal.text = chaptersCount
+        // Total chapters — or volumes, which is how two in five series are actually counted.
+        binding.mediaInfoTotalTitle.setText(
+            if (parsedStatus.unit == MuStatusText.Unit.VOLUMES) ani.dantotsu.R.string.total_vols
+            else ani.dantotsu.R.string.total_chaps
+        )
+        binding.mediaInfoTotal.text = parsedStatus.count?.toString() ?: "~"
 
         // Format/Type
         binding.mediaInfoFormat.text = series.type ?: getString(R.string.manga)

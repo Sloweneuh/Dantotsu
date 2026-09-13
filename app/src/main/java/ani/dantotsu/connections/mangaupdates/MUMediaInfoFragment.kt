@@ -232,14 +232,7 @@ class MUMediaInfoFragment : Fragment() {
         }
         binding.mediaInfoNameRomajiContainer.visibility = View.GONE
 
-        // Parse chapter count and status text from the combined status field
-        // e.g. "143 Chapters (Ongoing)" → chapters="143", status="Ongoing"
-        var chaptersCount = "~"
-        var statusText = getString(R.string.unknown)
-        series.status?.let { full ->
-            Regex("""(\d+)\s+Chapter""").find(full)?.groupValues?.get(1)?.let { chaptersCount = it }
-            Regex("""\(([^)]+)\)""").find(full)?.groupValues?.get(1)?.let { statusText = it }
-        }
+        val parsedStatus = MuStatusText.parse(series.status, series.completed)
 
         // Rating
         series.bayesian_rating?.let { ratingStr ->
@@ -248,9 +241,14 @@ class MUMediaInfoFragment : Fragment() {
                 if (rating != null) String.format("%.1f", rating) else ratingStr
         } ?: run { binding.mediaInfoMeanScore.text = getString(R.string.unknown_value) }
 
-        binding.mediaInfoStatus.text = statusText
-        binding.mediaInfoTotalTitle.setText(R.string.total_chaps)
-        binding.mediaInfoTotal.text = chaptersCount
+        binding.mediaInfoStatus.text =
+            parsedStatus.status?.toString() ?: getString(R.string.unknown)
+        // Two in five series are counted in volumes, not chapters - label the row for what it holds.
+        binding.mediaInfoTotalTitle.setText(
+            if (parsedStatus.unit == MuStatusText.Unit.VOLUMES) R.string.total_vols
+            else R.string.total_chaps
+        )
+        binding.mediaInfoTotal.text = parsedStatus.count?.toString() ?: "~"
         binding.mediaInfoFormat.text = series.type ?: getString(R.string.manga)
 
         binding.mediaInfoSourceContainer.visibility = View.GONE

@@ -138,6 +138,7 @@
     <string name="translation">Translation</string>
     <string name="total_eps">Total Episodes</string>
     <string name="total_chaps">Total Chapters</string>
+    <string name="total_vols">Total Volumes</string>
     <string name="latest_chapter">Latest Chapter</string>
     <string name="latest_episode">Latest Episode</string>
     <string name="ext_reader_no_tracking_title">No Progress Tracking</string>
