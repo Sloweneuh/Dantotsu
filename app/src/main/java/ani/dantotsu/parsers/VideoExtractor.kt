@@ -61,7 +61,14 @@ data class VideoServer(
     val embed: FileUrl,
     val extraData: Map<String, String>? = null,
     val video: eu.kanade.tachiyomi.animesource.model.Video? = null,
-    val offline: Boolean = false
+    val offline: Boolean = false,
+    /**
+     * Set instead of [video] when the server represents a [eu.kanade.tachiyomi.animesource.model.Hoster]
+     * (extensions-lib v16+) whose video list hasn't been resolved yet. The extractor resolves it
+     * in `extract()`, which lets it happen concurrently with every other server instead of
+     * blocking the server-list build on it.
+     */
+    val hoster: eu.kanade.tachiyomi.animesource.model.Hoster? = null,
 ) : Serializable {
     constructor(name: String, embedUrl: String, extraData: Map<String, String>? = null)
             : this(name, FileUrl(embedUrl), extraData)

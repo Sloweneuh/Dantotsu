@@ -111,8 +111,11 @@ open class Video(
         ffmpegVideoArgs: List<Pair<String, String>> = this.ffmpegVideoArgs,
         internalData: String = this.internalData,
         initialized: Boolean = this.initialized,
-        videoPageUrl: String = this.videoPageUrl,
     ): Video {
+        // videoPageUrl is deliberately not a parameter here: it isn't part of the primary
+        // constructor either (see the field's own comment), and copy() must keep the exact
+        // param list extensions compile their own copy$default calls against — see the
+        // class-level comment on the primary constructor.
         return Video(
             videoUrl = videoUrl,
             videoTitle = videoTitle,
@@ -128,7 +131,7 @@ open class Video(
             ffmpegVideoArgs = ffmpegVideoArgs,
             internalData = internalData,
             initialized = initialized,
-        ).also { it.videoPageUrl = videoPageUrl }
+        ).also { it.videoPageUrl = this.videoPageUrl }
     }
 
     enum class State {

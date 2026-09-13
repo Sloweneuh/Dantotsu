@@ -252,38 +252,38 @@ class DynamicAnimeParser(extension: AnimeExtension.Installed) : AnimeParser() {
             } catch (e: IllegalStateException) {
                 null
             }
-            val allVideos = if (!hosters.isNullOrEmpty()) {
-                hosters.flatMap { hoster ->
+            if (!hosters.isNullOrEmpty()) {
+                val eagerVideos = mutableListOf<Video>()
+                val lazyServers = mutableListOf<VideoServer>()
+                hosters.forEach { hoster ->
+                    if (hoster.videoList == null && hoster.lazy) {
+                        // The extension flagged this hoster as expensive to resolve.
+                        // Defer it to VideoServerPassthrough.extract(), which
+                        // loadByVideoServers() runs concurrently across every server,
+                        // instead of paying for it in this sequential loop.
+                        lazyServers += VideoServer(
+                            name = hoster.hosterName,
+                            embed = FileUrl(""),
+                            hoster = hoster,
+                        )
+                        return@forEach
+                    }
                     // Prefer videos that the hoster already carries (extensions like
                     // AnimePahe populate Hoster.videoList directly in hosterListParse).
                     // Only call getVideoList(hoster) when the hoster left it null.
-                    val videos = hoster.videoList ?: try {
-                        httpSource.getVideoList(hoster)
-                    } catch (e: IllegalStateException) {
-                        // The extension implements neither getVideoList(Hoster) nor
-                        // videoListParse, so this hoster can't be resolved. Say so: it
-                        // used to vanish from the server list with no trace.
-                        Logger.log("$name : no video resolver for hoster '${hoster.hosterName}'")
-                        emptyList()
-                    }
-                    // Sorted per hoster, not across the whole list: hoster order is the
-                    // source's server preference, and the extension's sort() is its quality
-                    // preference within a server. getVideoList(episode) applies sort() for
-                    // us on the legacy path; the hoster path never does.
-                    httpSource.sortVideos(videos)
-                        .map { it.copy(videoTitle = "${hoster.hosterName} - ${it.videoTitle}") }
+                    val videos = hoster.videoList ?: httpSource.getVideoListWithRetry(hoster)
+                    eagerVideos += httpSource.labelAndSortHosterVideos(hoster, videos)
                 }
+                // `Video.preferred` is the extension's explicit "play this one" marker. Stable
+                // partition so it lands first without otherwise disturbing the order above; a
+                // no-op for the extensions that never set it. Only the eagerly-resolved videos
+                // take part: lazy hosters resolve independently and later, in extract(), so
+                // there's no combined list left to reorder against by then.
+                (eagerVideos.preferredFirst().map { videoToVideoServer(it) }) + lazyServers
             } else {
-                httpSource.getVideoList(sEpisode)
+                val allVideos = httpSource.getVideoList(sEpisode)
+                allVideos.preferredFirst().map { videoToVideoServer(it) }
             }
-            // `Video.preferred` is the extension's explicit "play this one" marker. Stable
-            // partition so it lands first without otherwise disturbing the order above; a
-            // no-op for the extensions that never set it.
-            val ordered =
-                if (allVideos.any { it.preferred })
-                    allVideos.filter { it.preferred } + allVideos.filterNot { it.preferred }
-                else allVideos
-            ordered.map { videoToVideoServer(it) }
         } catch (e: Throwable) {
             Logger.log("Exception occurred: ${e.message}")
             emptyList()
@@ -373,6 +373,45 @@ class DynamicAnimeParser(extension: AnimeExtension.Installed) : AnimeParser() {
         )
     }
 }
+
+/**
+ * Labels a hoster's videos with its name and applies the source's own [AnimeHttpSource.sortVideos]
+ * preference. Shared by the eager path in [DynamicAnimeParser.loadVideoServers] and the deferred
+ * one in [VideoServerPassthrough] for lazy hosters, so both order a hoster's own videos the same way.
+ */
+private fun AnimeHttpSource.labelAndSortHosterVideos(hoster: Hoster, videos: List<Video>): List<Video> =
+    sortVideos(videos).map { it.copy(videoTitle = "${hoster.hosterName} - ${it.videoTitle}") }
+
+/**
+ * Calls getVideoList(hoster), retrying once if the attempt throws or comes back empty.
+ * Hoster resolution can depend on a fragile bypass step (e.g. AnimePahe's Cloudflare/Kwik
+ * extraction), which tends to fail closed — an empty list, not an exception — often enough
+ * that a single retry meaningfully improves how consistently a hoster's videos show up.
+ * IllegalStateException means the hoster genuinely isn't implemented, so it skips the retry.
+ */
+private suspend fun AnimeHttpSource.getVideoListWithRetry(hoster: Hoster): List<Video> {
+    repeat(2) { attempt ->
+        val videos = try {
+            getVideoList(hoster)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: IllegalStateException) {
+            // The extension implements neither getVideoList(Hoster) nor videoListParse for
+            // this hoster — retrying changes nothing.
+            Logger.log("no video resolver for hoster '${hoster.hosterName}'")
+            return emptyList()
+        } catch (e: Throwable) {
+            Logger.log("getVideoList failed for hoster '${hoster.hosterName}' (attempt ${attempt + 1}): ${e.message}")
+            emptyList()
+        }
+        if (videos.isNotEmpty()) return videos
+    }
+    return emptyList()
+}
+
+/** Stable-partitions [Video.preferred] entries to the front; a no-op when none are set. */
+private fun List<Video>.preferredFirst(): List<Video> =
+    if (any { it.preferred }) filter { it.preferred } + filterNot { it.preferred } else this
 
 class DynamicMangaParser(extension: MangaExtension.Installed) : MangaParser() {
     private val mangaCache = Injekt.get<MangaCache>()
@@ -586,21 +625,43 @@ class VideoServerPassthrough(
         get() = videoServer
 
     override suspend fun extract(): VideoContainer {
+        // A hoster the server list deferred (Hoster.lazy, extensions-lib v16+) hasn't been
+        // resolved into videos yet; do it now, here, where loadByVideoServers() runs every
+        // server concurrently instead of one after another.
+        val rawVideos = videoServer.hoster?.let { resolveLazyHoster(it) }
+            ?: listOfNotNull(videoServer.video)
+
         // For v16+ extensions (e.g. AnimePahe) the Video carries an embed/page
         // URL that needs resolveVideo() to swap in the real stream URL. The
         // default base implementation returns the input unchanged, so this is a
         // no-op for older extensions that already hand back a playable URL.
-        val resolved = videoServer.video?.let { original ->
+        //
+        // resolveVideo() returning null is a deliberate "drop this video" signal (e.g.
+        // AnimePahe when its Cloudflare/Kwik resolution fails) and must be told apart from
+        // "no source to resolve with". Using `?:` for both used to resurrect videos that
+        // asked to be dropped, feeding an unresolved, empty-URL Video into aniVideoToSaiVideo
+        // instead of just skipping it — the source of servers vanishing unpredictably.
+        val resolvedVideos = rawVideos.mapNotNull { original ->
             try {
-                source?.resolveVideo(original) ?: original
+                if (source == null) original else source.resolveVideo(original)
             } catch (e: Throwable) {
                 Logger.log("resolveVideo failed: ${e.message}")
                 original
             }
         }
-        val vidList = listOfNotNull(resolved?.let { aniVideoToSaiVideo(it) })
-        val subList = resolved?.subtitleTracks?.map { trackToSubtitle(it) } ?: emptyList()
-        val audioList = resolved?.audioTracks ?: emptyList()
+
+        // A lazy hoster can resolve to several qualities at once, unlike the single Video
+        // every other VideoServer carries, so one bad quality must not sink the rest.
+        val vidList = resolvedVideos.mapNotNull { video ->
+            try {
+                aniVideoToSaiVideo(video)
+            } catch (e: Throwable) {
+                Logger.log("Skipping unplayable video from '${videoServer.name}': ${e.message}")
+                null
+            }
+        }
+        val subList = resolvedVideos.firstOrNull()?.subtitleTracks?.map { trackToSubtitle(it) } ?: emptyList()
+        val audioList = resolvedVideos.firstOrNull()?.audioTracks ?: emptyList()
 
         return if (vidList.isNotEmpty()) {
             VideoContainer(vidList, subList, audioList)
@@ -609,9 +670,21 @@ class VideoServerPassthrough(
         }
     }
 
+    private suspend fun resolveLazyHoster(hoster: Hoster): List<Video> {
+        val httpSource = source ?: return emptyList()
+        hoster.status = Hoster.State.LOADING
+        val videos = httpSource.getVideoListWithRetry(hoster)
+        val ordered = httpSource.labelAndSortHosterVideos(hoster, videos).preferredFirst()
+        hoster.status = if (ordered.isNotEmpty()) Hoster.State.READY else Hoster.State.ERROR
+        return ordered
+    }
+
     private suspend fun aniVideoToSaiVideo(aniVideo: Video): ani.dantotsu.parsers.Video {
-        // Find the number value from the .quality string
-        val number = Regex("""\d+""").find(aniVideo.quality)?.value?.toInt() ?: 0
+        // Prefer the structured resolution an extensions-lib v16+ extension may have set;
+        // fall back to pulling a number out of the title for extensions that only set that.
+        val number = aniVideo.resolution
+            ?: Regex("""\d+""").find(aniVideo.videoTitle)?.value?.toInt()
+            ?: 0
 
         // Check for null video URL
         val videoUrl = aniVideo.videoUrl ?: throw Exception("Video URL is null")
