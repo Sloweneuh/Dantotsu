@@ -21,6 +21,9 @@ import kotlinx.coroutines.launch
 import java.text.Normalizer
 
 class ListViewModel : ViewModel() {
+    /** True once [loadLists]/[loadDownloadedLists] has completed at least once for this instance. */
+    var loaded = false
+
     var grid = MutableLiveData(PrefManager.getVal<Boolean>(PrefName.ListGrid))
 
     private val lists = MutableLiveData<MutableMap<String, ArrayList<Media>>>()

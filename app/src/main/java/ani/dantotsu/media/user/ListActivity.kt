@@ -250,7 +250,11 @@ class ListActivity : AppCompatActivity() {
             }
         }
 
-        val live = Refresh.activity.getOrPut(this.hashCode()) { MutableLiveData(true) }
+        // Default to false (not "needs load") — this activity is recreated on every rotation, so a
+        // key of this.hashCode() never matches its pre-rotation entry, and defaulting to true would
+        // refetch from AniList on every orientation change even though the ViewModel (which does
+        // survive rotation) already has the data. Only kick off a load when the ViewModel doesn't.
+        val live = Refresh.activity.getOrPut(this.hashCode()) { MutableLiveData(false) }
         live.observe(this) {
             if (it) {
                 scope.launch {
@@ -264,10 +268,12 @@ class ListActivity : AppCompatActivity() {
                             )
                         }
                     }
+                    model.loaded = true
                     live.postValue(false)
                 }
             }
         }
+        if (!model.loaded) live.postValue(true)
 
         updateSortIcon(anime)
 
