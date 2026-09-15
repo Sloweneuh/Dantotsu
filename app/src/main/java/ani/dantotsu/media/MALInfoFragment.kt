@@ -84,6 +84,10 @@ class MALInfoFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+        // ViewPager2's offscreenPageLimit can destroy this fragment's view while keeping the
+        // fragment instance alive; without resetting this, the media observer's `if (loaded)
+        // return` guard would skip re-rendering into the fresh (empty) binding.
+        loaded = false
     }
 
     @SuppressLint("SetJavaScriptEnabled")

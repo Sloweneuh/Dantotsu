@@ -59,6 +59,10 @@ class MangaUpdatesInfoFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+        // ViewPager2's offscreenPageLimit can destroy this fragment's view while keeping the
+        // fragment instance alive; without resetting this, the `!loaded` guard would skip
+        // re-rendering into the fresh (empty) binding.
+        loaded = false
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
