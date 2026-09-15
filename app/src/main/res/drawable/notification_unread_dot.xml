@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Unread marker on a notification card: theme accent, ringed so it reads on any banner. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <solid android:color="?attr/colorPrimary" />
+    <stroke
+        android:width="2dp"
+        android:color="?attr/colorSurface" />
+    <size
+        android:width="14dp"
+        android:height="14dp" />
+</shape>

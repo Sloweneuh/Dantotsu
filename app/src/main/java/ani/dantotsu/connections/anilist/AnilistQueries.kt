@@ -26,6 +26,7 @@ import ani.dantotsu.media.Media
 import ani.dantotsu.media.Studio
 import ani.dantotsu.others.MalScraper
 import ani.dantotsu.profile.User
+import ani.dantotsu.notifications.NotificationReadState
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.settings.saving.containsMediaId
@@ -174,9 +175,11 @@ class AnilistQueries {
         Anilist.animeMeanScore = user.statistics?.anime?.meanScore
         Anilist.mangaMeanScore = user.statistics?.manga?.meanScore
         Anilist.adult = user.options?.displayAdultContent ?: false
-        Anilist.unreadNotificationCount = user.unreadNotificationCount ?: 0
-        val unread = PrefManager.getVal<Int>(PrefName.UnreadCommentNotifications)
-        Anilist.unreadNotificationCount += unread
+        // The count alone can't say *which* notifications are new; one page fetch files them
+        // as unread (see NotificationReadState). Skipped when AniList has nothing new.
+        if ((user.unreadNotificationCount ?: 0) > 0) {
+            getNotifications(user.id, resetNotification = false)
+        }
         Anilist.initialized = true
 
         user.options?.let {
@@ -1773,11 +1776,15 @@ Page(page:$page,perPage:50) {
             """{User(id:$id){unreadNotificationCount}Page(page:$page,perPage:$ITEMS_PER_PAGE){$standardPageInformation notifications(resetNotificationCount:$reset , ${if (type == true) typeIn else ""}){__typename...on AiringNotification{id,type,animeId,episode,contexts,createdAt,media{id,title{romaji,english,native,userPreferred}bannerImage,coverImage{medium,large}},}...on FollowingNotification{id,userId,type,context,createdAt,user{id,name,bannerImage,avatar{medium,large,}}}...on ActivityMessageNotification{id,userId,type,activityId,context,createdAt,message{id}user{id,name,bannerImage,avatar{medium,large,}}}...on ActivityMentionNotification{id,userId,type,activityId,context,createdAt,activity{__typename}user{id,name,bannerImage,avatar{medium,large,}}}...on ActivityReplyNotification{id,userId,type,activityId,context,createdAt,activity{__typename}user{id,name,bannerImage,avatar{medium,large,}}}...on ActivityReplySubscribedNotification{id,userId,type,activityId,context,createdAt,activity{__typename}user{id,name,bannerImage,avatar{medium,large,}}}...on ActivityLikeNotification{id,userId,type,activityId,context,createdAt,activity{__typename}user{id,name,bannerImage,avatar{medium,large,}}}...on ActivityReplyLikeNotification{id,userId,type,activityId,context,createdAt,activity{__typename}user{id,name,bannerImage,avatar{medium,large,}}}...on ThreadCommentMentionNotification{id,userId,type,commentId,context,createdAt,thread{id}comment{id}user{id,name,bannerImage,avatar{medium,large,}}}...on ThreadCommentReplyNotification{id,userId,type,commentId,context,createdAt,thread{id}comment{id}user{id,name,bannerImage,avatar{medium,large,}}}...on ThreadCommentSubscribedNotification{id,userId,type,commentId,context,createdAt,thread{id}comment{id}user{id,name,bannerImage,avatar{medium,large,}}}...on ThreadCommentLikeNotification{id,userId,type,commentId,context,createdAt,thread{id}comment{id}user{id,name,bannerImage,avatar{medium,large,}}}...on ThreadLikeNotification{id,userId,type,threadId,context,createdAt,thread{id}comment{id}user{id,name,bannerImage,avatar{medium,large,}}}...on RelatedMediaAdditionNotification{id,type,context,createdAt,media{id,title{romaji,english,native,userPreferred}bannerImage,coverImage{medium,large}}}...on MediaDataChangeNotification{id,type,mediaId,context,reason,createdAt,media{id,title{romaji,english,native,userPreferred}bannerImage,coverImage{medium,large}}}...on MediaMergeNotification{id,type,mediaId,deletedMediaTitles,context,reason,createdAt,media{id,title{romaji,english,native,userPreferred}bannerImage,coverImage{medium,large}}}...on MediaDeletionNotification{id,type,deletedMediaTitle,context,reason,createdAt,}}}}""",
             force = true
         )
-        if (res != null && resetNotification) {
-            val commentNotifications = PrefManager.getVal(PrefName.UnreadCommentNotifications, 0)
-            res.data.user.unreadNotificationCount += commentNotifications
-            PrefManager.setVal(PrefName.UnreadCommentNotifications, 0)
-            Anilist.unreadNotificationCount = 0
+        // The first unfiltered page is the only view that lines up with the server's unread
+        // count (the newest N of *all* notifications), so it's where they get filed as unread.
+        // The count is read before the reset above applies: AniList resolves the query's fields
+        // in order, User before Page.
+        if (res != null && page == 1 && type != true) {
+            NotificationReadState.trackAnilist(
+                res.data.page.notifications,
+                res.data.user.unreadNotificationCount
+            )
         }
         return res
     }

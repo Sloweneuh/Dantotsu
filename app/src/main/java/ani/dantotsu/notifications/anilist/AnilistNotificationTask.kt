@@ -11,6 +11,7 @@ import androidx.core.app.NotificationManagerCompat
 import ani.dantotsu.MainActivity
 import ani.dantotsu.R
 import ani.dantotsu.connections.anilist.Anilist
+import ani.dantotsu.notifications.NotificationReadState
 import ani.dantotsu.notifications.Task
 import ani.dantotsu.profile.activity.ActivityItemBuilder
 import ani.dantotsu.settings.saving.PrefManager
@@ -44,7 +45,9 @@ class AnilistNotificationTask : Task {
                         newNotifications?.forEach {
                             if (!filteredTypes.contains(it.notificationType)) {
                                 val content = ActivityItemBuilder.getContent(it)
-                                val notification = createNotification(context, content, it.id)
+                                val notification = createNotification(
+                                    context, content, it.id, NotificationReadState.keyOf(it)
+                                )
                                 if (ActivityCompat.checkSelfPermission(
                                         context,
                                         Manifest.permission.POST_NOTIFICATIONS
@@ -85,7 +88,8 @@ class AnilistNotificationTask : Task {
     private fun createNotification(
         context: Context,
         content: String,
-        notificationId: Int? = null
+        notificationId: Int? = null,
+        readKey: String? = null
     ): android.app.Notification {
         val title = context.getString(R.string.new_anilist_notification)
         val intent = Intent(context, MainActivity::class.java).apply {
@@ -94,6 +98,7 @@ class AnilistNotificationTask : Task {
             if (notificationId != null) {
                 Logger.log("notificationId: $notificationId")
                 putExtra("activityId", notificationId)
+                if (readKey != null) putExtra(NotificationReadState.EXTRA_KEY, readKey)
             }
         }
         val pendingIntent = PendingIntent.getActivity(
@@ -110,6 +115,9 @@ class AnilistNotificationTask : Task {
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .setGroup(Notifications.GROUP_ANILIST)
+            .apply {
+                if (readKey != null) setDeleteIntent(NotificationReadState.dismissIntent(context, readKey))
+            }
             .build()
     }
 

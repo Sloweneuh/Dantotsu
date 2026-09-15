@@ -448,6 +448,9 @@ enum class PrefName(val data: Pref) {
         )
     ),
     UnreadCommentNotifications(Pref(Location.Irrelevant, Int::class, 0)),
+    // Keys of notifications the user hasn't dealt with yet; see NotificationReadState.
+    UnreadNotificationKeys(Pref(Location.Irrelevant, Set::class, setOf<String>())),
+    AnilistUnreadTrackedUpToId(Pref(Location.Irrelevant, Int::class, 0)),
     DownloadsDir(Pref(Location.Irrelevant, String::class, "")),
     DownloadsDirNested(Pref(Location.Irrelevant, Boolean::class, true)),
     OC(Pref(Location.Irrelevant, Boolean::class, false)),

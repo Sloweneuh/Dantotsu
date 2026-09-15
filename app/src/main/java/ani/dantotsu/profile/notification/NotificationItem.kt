@@ -4,12 +4,14 @@ import android.os.Build
 import android.text.Html
 import android.view.View
 import android.view.ViewGroup
+import androidx.core.view.isVisible
 import ani.dantotsu.R
 import ani.dantotsu.blurImage
 import ani.dantotsu.connections.anilist.api.Notification
 import ani.dantotsu.connections.anilist.api.NotificationType
 import ani.dantotsu.databinding.ItemNotificationBinding
 import ani.dantotsu.loadImage
+import ani.dantotsu.notifications.NotificationReadState
 import ani.dantotsu.notifications.comment.CommentStore
 import ani.dantotsu.notifications.subscription.SubscriptionStore
 import ani.dantotsu.notifications.unread.UnreadChapterStore
@@ -31,13 +33,57 @@ class NotificationItem(
     val type: NotificationFragment.Companion.NotificationType,
     val parentAdapter: GroupieAdapter,
     val clickCallback: (Int, Int?, NotificationClickType, View?) -> Unit,
+    /** [NotificationReadState] key; what tapping the card marks read. */
+    private val readKey: String,
+    private var unread: Boolean,
+) : BindableItem<ItemNotificationBinding>() {
+    val isUnread: Boolean get() = unread
 
-    ) : BindableItem<ItemNotificationBinding>() {
     private lateinit var binding: ItemNotificationBinding
     override fun bind(viewBinding: ItemNotificationBinding, position: Int) {
         binding = viewBinding
         setAnimation(binding.root.context, binding.root)
         setBinding()
+        bindReadState()
+    }
+
+    /** A read-state change only restyles; a full rebind would replay the card's entry animation. */
+    override fun bind(viewBinding: ItemNotificationBinding, position: Int, payloads: MutableList<Any>) {
+        if (payloads.contains(PAYLOAD_READ_STATE)) {
+            binding = viewBinding
+            bindReadState()
+        } else {
+            super.bind(viewBinding, position, payloads)
+        }
+    }
+
+    /** Unread cards carry the accent dot at full strength; read ones sit back, dimmed. */
+    private fun bindReadState() {
+        binding.notificationUnreadDot.isVisible = unread
+        binding.notificationCard.alpha = if (unread) 1f else READ_ALPHA
+    }
+
+    /**
+     * Restyles the card as read. The card stays put rather than vanishing from an unread-only
+     * list under the user's finger; the next reload drops it. The stored state is the caller's
+     * to update — one tap marks its own key, "mark all as read" clears the tab in one go.
+     */
+    fun setRead() {
+        if (!unread) return
+        unread = false
+        notifyChanged(PAYLOAD_READ_STATE)
+    }
+
+    /**
+     * Every tap target on the card goes through here: opening what a notification is about is
+     * what counts as reading it.
+     */
+    private fun open(id: Int, optional: Int?, clickType: NotificationClickType, sharedView: View?) {
+        if (unread) {
+            NotificationReadState.markRead(readKey)
+            setRead()
+        }
+        clickCallback(id, optional, clickType, sharedView)
     }
 
     fun dialog() {
@@ -45,7 +91,7 @@ class NotificationItem(
             COMMENT, SUBSCRIPTION, UNREAD_CHAPTER -> {
                 binding.root.context.customAlertDialog().apply {
                     setTitle(R.string.delete)
-                    setMessage(ActivityItemBuilder.getContent(notification))
+                    setMessage(styledContent())
                     setPosButton(R.string.yes) {
                         when (type) {
                             COMMENT -> {
@@ -55,6 +101,7 @@ class NotificationItem(
                                 ) ?: listOf()
                                 val newList = list.filter { it.commentId != notification.commentId }
                                 PrefManager.setVal(PrefName.CommentNotificationStore, newList)
+                                NotificationReadState.markRead(readKey)
                                 parentAdapter.remove(this@NotificationItem)
 
                             }
@@ -67,6 +114,7 @@ class NotificationItem(
                                 val newList =
                                     list.filter { (it.time / 1000L).toInt() != notification.createdAt }
                                 PrefManager.setVal(PrefName.SubscriptionNotificationStore, newList)
+                                NotificationReadState.markRead(readKey)
                                 parentAdapter.remove(this@NotificationItem)
                             }
 
@@ -78,6 +126,7 @@ class NotificationItem(
                                 val newList =
                                     list.filter { (it.time / 1000L).toInt() != notification.createdAt }
                                 PrefManager.setVal(PrefName.UnreadChapterNotificationStore, newList)
+                                NotificationReadState.markRead(readKey)
                                 parentAdapter.remove(this@NotificationItem)
                             }
 
@@ -146,18 +195,22 @@ class NotificationItem(
         }
     }
 
-    private fun setBinding() {
-        val notificationType: NotificationType =
-            NotificationType.valueOf(notification.notificationType)
-        
-        // Render HTML for styled text
+    /** The card text with its HTML (chapter entries use bold/small/line breaks) rendered. */
+    private fun styledContent(): CharSequence {
         val contentText = ActivityItemBuilder.getContent(notification)
-        binding.notificationText.text = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             Html.fromHtml(contentText, Html.FROM_HTML_MODE_COMPACT)
         } else {
             @Suppress("DEPRECATION")
             Html.fromHtml(contentText)
         }
+    }
+
+    private fun setBinding() {
+        val notificationType: NotificationType =
+            NotificationType.valueOf(notification.notificationType)
+
+        binding.notificationText.text = styledContent()
         
         // Ensure text wraps and displays fully
         binding.notificationText.maxLines = Int.MAX_VALUE
@@ -169,12 +222,12 @@ class NotificationItem(
                 binding.notificationCover.loadImage(notification.user?.avatar?.large)
                 image(true)
                 binding.notificationCoverUser.setOnClickListener {
-                    clickCallback(
+                    open(
                         notification.user?.id ?: 0, null, NotificationClickType.USER, null
                     )
                 }
                 binding.notificationBannerImage.setOnClickListener {
-                    clickCallback(
+                    open(
                         notification.activityId ?: 0, null, NotificationClickType.ACTIVITY, null
                     )
                 }
@@ -184,12 +237,12 @@ class NotificationItem(
                 binding.notificationCover.loadImage(notification.user?.avatar?.large)
                 image(true)
                 binding.notificationCoverUser.setOnClickListener {
-                    clickCallback(
+                    open(
                         notification.user?.id ?: 0, null, NotificationClickType.USER, null
                     )
                 }
                 binding.notificationBannerImage.setOnClickListener {
-                    clickCallback(
+                    open(
                         notification.activityId ?: 0, null, NotificationClickType.ACTIVITY, null
                     )
                 }
@@ -199,12 +252,12 @@ class NotificationItem(
                 binding.notificationCover.loadImage(notification.user?.avatar?.large)
                 image(true)
                 binding.notificationCoverUser.setOnClickListener {
-                    clickCallback(
+                    open(
                         notification.user?.id ?: 0, null, NotificationClickType.USER, null
                     )
                 }
                 binding.notificationBannerImage.setOnClickListener {
-                    clickCallback(
+                    open(
                         notification.userId ?: 0, null, NotificationClickType.USER, null
                     )
                 }
@@ -214,12 +267,12 @@ class NotificationItem(
                 binding.notificationCover.loadImage(notification.user?.avatar?.large)
                 image(true)
                 binding.notificationCoverUser.setOnClickListener {
-                    clickCallback(
+                    open(
                         notification.user?.id ?: 0, null, NotificationClickType.USER, null
                     )
                 }
                 binding.notificationBannerImage.setOnClickListener {
-                    clickCallback(
+                    open(
                         notification.activityId ?: 0, null, NotificationClickType.ACTIVITY, null
                     )
                 }
@@ -229,12 +282,12 @@ class NotificationItem(
                 binding.notificationCover.loadImage(notification.user?.avatar?.large)
                 image(true)
                 binding.notificationCoverUser.setOnClickListener {
-                    clickCallback(
+                    open(
                         notification.user?.id ?: 0, null, NotificationClickType.USER, null
                     )
                 }
                 binding.notificationBannerImage.setOnClickListener {
-                    clickCallback(
+                    open(
                         notification.user?.id ?: 0, null, NotificationClickType.USER, null
                     )
                 }
@@ -244,12 +297,12 @@ class NotificationItem(
                 binding.notificationCover.loadImage(notification.user?.avatar?.large)
                 image(true)
                 binding.notificationCoverUser.setOnClickListener {
-                    clickCallback(
+                    open(
                         notification.user?.id ?: 0, null, NotificationClickType.USER, null
                     )
                 }
                 binding.notificationBannerImage.setOnClickListener {
-                    clickCallback(
+                    open(
                         notification.user?.id ?: 0, null, NotificationClickType.USER, null
                     )
                 }
@@ -259,12 +312,12 @@ class NotificationItem(
                 binding.notificationCover.loadImage(notification.user?.avatar?.large)
                 image(true)
                 binding.notificationCoverUser.setOnClickListener {
-                    clickCallback(
+                    open(
                         notification.user?.id ?: 0, null, NotificationClickType.USER, null
                     )
                 }
                 binding.notificationBannerImage.setOnClickListener {
-                    clickCallback(
+                    open(
                         notification.user?.id ?: 0, null, NotificationClickType.USER, null
                     )
                 }
@@ -274,7 +327,7 @@ class NotificationItem(
                 binding.notificationCover.loadImage(notification.media?.coverImage?.large)
                 image()
                 binding.notificationBannerImage.setOnClickListener {
-                    clickCallback(
+                    open(
                         notification.media?.id ?: 0, null, NotificationClickType.MEDIA, binding.notificationCover
                     )
                 }
@@ -284,12 +337,12 @@ class NotificationItem(
                 image(true)
                 binding.notificationCover.loadImage(notification.user?.avatar?.large)
                 binding.notificationCoverUser.setOnClickListener {
-                    clickCallback(
+                    open(
                         notification.user?.id ?: 0, null, NotificationClickType.USER, null
                     )
                 }
                 binding.notificationBannerImage.setOnClickListener {
-                    clickCallback(
+                    open(
                         notification.activityId ?: 0, null, NotificationClickType.ACTIVITY, null
                     )
                 }
@@ -299,12 +352,12 @@ class NotificationItem(
                 binding.notificationCover.loadImage(notification.user?.avatar?.large)
                 image(true)
                 binding.notificationCoverUser.setOnClickListener {
-                    clickCallback(
+                    open(
                         notification.user?.id ?: 0, null, NotificationClickType.USER, null
                     )
                 }
                 binding.notificationBannerImage.setOnClickListener {
-                    clickCallback(
+                    open(
                         notification.activityId ?: 0, null, NotificationClickType.ACTIVITY, null
                     )
                 }
@@ -314,12 +367,12 @@ class NotificationItem(
                 binding.notificationCover.loadImage(notification.user?.avatar?.large)
                 image(true)
                 binding.notificationCoverUser.setOnClickListener {
-                    clickCallback(
+                    open(
                         notification.user?.id ?: 0, null, NotificationClickType.USER, null
                     )
                 }
                 binding.notificationBannerImage.setOnClickListener {
-                    clickCallback(
+                    open(
                         notification.user?.id ?: 0, null, NotificationClickType.USER, null
                     )
                 }
@@ -329,12 +382,12 @@ class NotificationItem(
                 binding.notificationCover.loadImage(notification.user?.avatar?.large)
                 image(true)
                 binding.notificationCoverUser.setOnClickListener {
-                    clickCallback(
+                    open(
                         notification.user?.id ?: 0, null, NotificationClickType.USER, null
                     )
                 }
                 binding.notificationBannerImage.setOnClickListener {
-                    clickCallback(
+                    open(
                         notification.user?.id ?: 0, null, NotificationClickType.USER, null
                     )
                 }
@@ -344,12 +397,12 @@ class NotificationItem(
                 binding.notificationCover.loadImage(notification.user?.avatar?.large)
                 image(true)
                 binding.notificationCoverUser.setOnClickListener {
-                    clickCallback(
+                    open(
                         notification.user?.id ?: 0, null, NotificationClickType.USER, null
                     )
                 }
                 binding.notificationBannerImage.setOnClickListener {
-                    clickCallback(
+                    open(
                         notification.activityId ?: 0, null, NotificationClickType.ACTIVITY, null
                     )
                 }
@@ -359,7 +412,7 @@ class NotificationItem(
                 binding.notificationCover.loadImage(notification.media?.coverImage?.large)
                 image()
                 binding.notificationBannerImage.setOnClickListener {
-                    clickCallback(
+                    open(
                         notification.media?.id ?: 0, null, NotificationClickType.MEDIA, binding.notificationCover
                     )
                 }
@@ -369,7 +422,7 @@ class NotificationItem(
                 binding.notificationCover.loadImage(notification.media?.coverImage?.large)
                 image()
                 binding.notificationBannerImage.setOnClickListener {
-                    clickCallback(
+                    open(
                         notification.media?.id ?: 0, null, NotificationClickType.MEDIA, binding.notificationCover
                     )
                 }
@@ -379,7 +432,7 @@ class NotificationItem(
                 binding.notificationCover.loadImage(notification.media?.coverImage?.large)
                 image()
                 binding.notificationBannerImage.setOnClickListener {
-                    clickCallback(
+                    open(
                         notification.media?.id ?: 0, null, NotificationClickType.MEDIA, binding.notificationCover
                     )
                 }
@@ -420,7 +473,7 @@ class NotificationItem(
                 (binding.notificationTextContainer.layoutParams as ViewGroup.MarginLayoutParams).marginStart = 125.toPx
 
                 binding.notificationBannerImage.setOnClickListener {
-                    clickCallback(
+                    open(
                         notification.mediaId ?: 0, null, NotificationClickType.MEDIA, binding.notificationCover
                     )
                 }
@@ -430,7 +483,7 @@ class NotificationItem(
                 image(user = true, commentNotification = true)
                 if (notification.commentId != null && notification.mediaId != null) {
                     binding.notificationBannerImage.setOnClickListener {
-                        clickCallback(
+                        open(
                             notification.mediaId,
                             notification.commentId,
                             NotificationClickType.COMMENT, binding.notificationCover
@@ -443,7 +496,7 @@ class NotificationItem(
                 image(user = true, commentNotification = true)
                 if (notification.commentId != null && notification.mediaId != null) {
                     binding.notificationBannerImage.setOnClickListener {
-                        clickCallback(
+                        open(
                             notification.mediaId,
                             notification.commentId,
                             NotificationClickType.COMMENT, binding.notificationCover
@@ -459,12 +512,12 @@ class NotificationItem(
             NotificationType.SUBSCRIPTION -> {
                 image(newRelease = true)
                 binding.notificationCoverUser.setOnClickListener {
-                    clickCallback(
+                    open(
                         notification.mediaId ?: 0, null, NotificationClickType.MEDIA, binding.notificationCover
                     )
                 }
                 binding.notificationBannerImage.setOnClickListener {
-                    clickCallback(
+                    open(
                         notification.mediaId ?: 0, null, NotificationClickType.MEDIA, binding.notificationCover
                     )
                 }
@@ -480,4 +533,8 @@ class NotificationItem(
         }
     }
 
+    private companion object {
+        const val READ_ALPHA = 0.55f
+        const val PAYLOAD_READ_STATE = "readState"
+    }
 }

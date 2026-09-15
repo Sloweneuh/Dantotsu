@@ -36,7 +36,9 @@ object Anilist {
     var volumesRead: Int? = null
     var animeMeanScore: Float? = null
     var mangaMeanScore: Float? = null
-    var unreadNotificationCount: Int = 0
+    /** Badge count: everything the user hasn't dealt with, across AniList and the local sources. */
+    val unreadNotificationCount: Int
+        get() = ani.dantotsu.notifications.NotificationReadState.unreadCount()
 
     var genres: ArrayList<String>? = null
     var tags: Map<Boolean, List<String>>? = null

@@ -9,6 +9,7 @@
     android:orientation="horizontal">
 
     <androidx.cardview.widget.CardView
+        android:id="@+id/notificationCard"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="start|center_vertical"
@@ -110,6 +111,16 @@
                 android:textSize="10sp"
                 tools:ignore="HardcodedText,SmallSp" />
         </LinearLayout>
+
+        <View
+            android:id="@+id/notificationUnreadDot"
+            android:layout_width="14dp"
+            android:layout_height="14dp"
+            android:layout_gravity="top|end"
+            android:layout_margin="12dp"
+            android:background="@drawable/notification_unread_dot"
+            android:visibility="gone"
+            tools:visibility="visible" />
 
     </androidx.cardview.widget.CardView>
 </FrameLayout>

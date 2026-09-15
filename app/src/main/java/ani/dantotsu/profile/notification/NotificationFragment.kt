@@ -18,6 +18,7 @@ import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.anilist.api.Notification
 import ani.dantotsu.databinding.FragmentNotificationsBinding
 import ani.dantotsu.media.MediaDetailsActivity
+import ani.dantotsu.notifications.NotificationReadState
 import ani.dantotsu.notifications.comment.CommentStore
 import ani.dantotsu.notifications.subscription.SubscriptionStore
 import ani.dantotsu.notifications.unread.UnreadChapterStore
@@ -43,6 +44,9 @@ class NotificationFragment : Fragment() {
     private var adapter: GroupieAdapter = GroupieAdapter()
     private var currentPage = 1
     private var hasNextPage = false
+
+    /** Smallest id on the last AniList page fetched, before the tab's own filter. */
+    private var lastPageMinId: Int? = null
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -60,18 +64,18 @@ class NotificationFragment : Fragment() {
         }
         binding.notificationRecyclerView.adapter = adapter
         binding.notificationRecyclerView.layoutManager = LinearLayoutManager(context)
-        binding.notificationProgressBar.isVisible = true
-        binding.emptyTextView.text = getString(R.string.nothing_here)
-        lifecycleScope.launch {
-            getList()
-
-            binding.notificationProgressBar.isVisible = false
+        // Fires with the current value on subscribe, so this is the initial load as well as the
+        // reload when "show all" is toggled.
+        (requireActivity() as NotificationActivity).showAll.observe(viewLifecycleOwner) {
+            lifecycleScope.launch {
+                binding.notificationProgressBar.isVisible = true
+                reload()
+                binding.notificationProgressBar.isVisible = false
+            }
         }
         binding.notificationSwipeRefresh.setOnRefreshListener {
             lifecycleScope.launch {
-                adapter.clear()
-                currentPage = 1
-                getList()
+                reload()
                 binding.notificationSwipeRefresh.isRefreshing = false
             }
         }
@@ -91,19 +95,101 @@ class NotificationFragment : Fragment() {
 
     }
 
+    /** Unread-only unless the screen's "show all" is on; a single deep-linked one always shows. */
+    private fun unreadOnly(): Boolean =
+        type != ONE && (activity as? NotificationActivity)?.showAll?.value != true
+
+    /**
+     * Marks this tab's notifications read — every stored one, not just the pages loaded. An
+     * unread-only list empties; a "show all" list restyles its cards in place.
+     */
+    fun markAllRead() {
+        val prefix = when (type) {
+            USER -> NotificationReadState.PREFIX_ANILIST_USER
+            MEDIA -> NotificationReadState.PREFIX_ANILIST_MEDIA
+            SUBSCRIPTION -> NotificationReadState.PREFIX_SUBSCRIPTION
+            UNREAD_CHAPTER -> NotificationReadState.PREFIX_CHAPTER
+            COMMENT -> NotificationReadState.PREFIX_COMMENT
+            ONE -> return
+        }
+        NotificationReadState.markAllRead(prefix)
+        if (unreadOnly()) {
+            adapter.clear()
+            updateEmptyView()
+        } else {
+            for (i in 0 until adapter.itemCount) {
+                (adapter.getItem(i) as? NotificationItem)?.setRead()
+            }
+        }
+    }
+
+    /**
+     * Drops cards read since the list was last in front. A tapped card is only restyled at the
+     * time — pulling it out mid-transition would break the shared-element animation into the
+     * page it opens — so an unread-only list sheds it here, once the user is back.
+     */
+    private fun pruneRead() {
+        if (!unreadOnly()) return
+        val read = (0 until adapter.itemCount)
+            .mapNotNull { adapter.getItem(it) as? NotificationItem }
+            .filterNot { it.isUnread }
+        if (read.isEmpty()) return
+        read.forEach { adapter.remove(it) }
+        updateEmptyView()
+    }
+
+    private fun updateEmptyView() {
+        binding.emptyTextView.text = getString(
+            if (unreadOnly()) R.string.no_unread_notifications else R.string.nothing_here
+        )
+        binding.emptyTextView.isVisible = adapter.itemCount == 0
+    }
+
+    private suspend fun reload() {
+        adapter.clear()
+        currentPage = 1
+        hasNextPage = false
+        binding.emptyTextView.isVisible = false
+        getList()
+    }
+
     private suspend fun getList() {
-        val list = when (type) {
-            ONE -> getNotificationsFiltered(false) { it.id == getID }
-            MEDIA -> getNotificationsFiltered(type = true) { it.media != null }
-            USER -> getNotificationsFiltered { it.media == null }
-            SUBSCRIPTION -> getSubscriptions()
-            UNREAD_CHAPTER -> getUnreadChapters()
-            COMMENT -> getComments()
-        }
-        adapter.addAll(list.map { NotificationItem(it, type, adapter, ::onClick) })
-        if (adapter.itemCount == 0) {
-            binding.emptyTextView.isVisible = true
-        }
+        val unreadOnly = unreadOnly()
+        val isAnilist = type == USER || type == MEDIA
+        // Unread AniList notifications are the newest, so in unread-only mode pages are pulled
+        // until the oldest unread id has been passed — the list may otherwise be too short to
+        // scroll, and the scroll listener is what fetches the next page.
+        val oldestUnread = NotificationReadState.oldestUnreadAnilistId()
+        var pagesLoaded = 0
+        do {
+            val list = when (type) {
+                ONE -> getNotificationsFiltered(false) { it.id == getID }
+                // Only the User tab resets AniList's own unread count: it fetches the unfiltered
+                // page, which is the one that count lines up with.
+                MEDIA -> getNotificationsFiltered(reset = false, type = true) { it.media != null }
+                USER -> getNotificationsFiltered { it.media == null }
+                SUBSCRIPTION -> getSubscriptions()
+                UNREAD_CHAPTER -> getUnreadChapters()
+                COMMENT -> getComments()
+            }
+            val items = list.mapNotNull { notification ->
+                val key = NotificationReadState.keyOf(notification)
+                val unread = NotificationReadState.isUnread(key)
+                if (unreadOnly && !unread) null
+                else NotificationItem(notification, type, adapter, ::onClick, key, unread)
+            }
+            adapter.addAll(items)
+            pagesLoaded++
+
+            if (unreadOnly && isAnilist) {
+                val pageMin = lastPageMinId
+                val pastOldestUnread =
+                    oldestUnread == null || pageMin == null || pageMin <= oldestUnread
+                if (pastOldestUnread) hasNextPage = false
+            }
+        } while (unreadOnly && isAnilist && hasNextPage && pagesLoaded < MAX_AUTO_PAGES)
+
+        updateEmptyView()
     }
 
     private suspend fun getNotificationsFiltered(
@@ -116,6 +202,7 @@ class NotificationFragment : Fragment() {
         val res = Anilist.query.getNotifications(userId, currentPage, reset, type)?.data?.page
         currentPage = res?.pageInfo?.currentPage?.plus(1) ?: 1
         hasNextPage = res?.pageInfo?.hasNextPage ?: false
+        lastPageMinId = res?.notifications?.minOfOrNull { it.id }
         return res?.notifications?.filter(filter) ?: listOf()
     }
 
@@ -138,7 +225,8 @@ class NotificationFragment : Fragment() {
                     context = it.title + ": " + it.content,
                     createdAt = (it.time / 1000L).toInt(),
                     image = it.image,
-                    banner = it.banner ?: it.image
+                    banner = it.banner ?: it.image,
+                    readKey = NotificationReadState.keyOf(it)
                 )
             }
     }
@@ -159,6 +247,7 @@ class NotificationFragment : Fragment() {
                     mediaId = it.mediaId,
                     context = it.title + "\n" + it.content,
                     createdAt = (it.time / 1000L).toInt(),
+                    readKey = NotificationReadState.keyOf(it)
                 )
             }
     }
@@ -203,7 +292,8 @@ class NotificationFragment : Fragment() {
                     context = content,
                     createdAt = (it.time / 1000L).toInt(),
                     image = it.image,
-                    banner = it.banner ?: it.image
+                    banner = it.banner ?: it.image,
+                    readKey = NotificationReadState.keyOf(it)
                 )
             }
     }
@@ -269,11 +359,15 @@ class NotificationFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         if (this::binding.isInitialized) {
+            pruneRead()
             binding.root.requestLayout()
         }
     }
 
     companion object {
+        /** Bound on the pages fetched back-to-back to fill an unread-only AniList tab. */
+        private const val MAX_AUTO_PAGES = 4
+
         enum class NotificationClickType { USER, MEDIA, ACTIVITY, COMMENT, UNDEFINED }
         enum class NotificationType { MEDIA, USER, SUBSCRIPTION, UNREAD_CHAPTER, COMMENT, ONE }
 

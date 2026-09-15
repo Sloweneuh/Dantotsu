@@ -101,6 +101,9 @@
     </string-array>
 
     <string name="nothing_here">Rien ici</string>
+    <string name="no_unread_notifications">Aucune notification non lue</string>
+    <string name="show_all_notifications">Afficher toutes les notifications</string>
+    <string name="mark_all_as_read">Tout marquer comme lu</string>
     <string name="followers">Abonnés</string>
     <string name="write_a_message">Écrire un message</string>
     <string name="status">STATUT</string>

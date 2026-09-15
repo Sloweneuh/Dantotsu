@@ -679,6 +679,7 @@
         <receiver android:name=".notifications.unread.UnreadChapterNotificationReceiver" />
         <receiver android:name=".notifications.unread.MuUnreadNotificationReceiver" />
         <receiver android:name=".notifications.unread.MarkReadNotificationReceiver" />
+        <receiver android:name=".notifications.NotificationDismissReceiver" android:exported="false" />
         <receiver android:name=".connections.sync.AutoListSyncReceiver" />
 
         <meta-data

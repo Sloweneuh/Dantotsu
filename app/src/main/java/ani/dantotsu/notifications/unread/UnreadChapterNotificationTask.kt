@@ -17,6 +17,7 @@ import ani.dantotsu.connections.malsync.UnreadChapterInfo
 import ani.dantotsu.connections.sync.UnreadSync
 import ani.dantotsu.media.Media
 import ani.dantotsu.media.MediaDetailsActivity
+import ani.dantotsu.notifications.NotificationReadState
 import ani.dantotsu.notifications.Task
 import ani.dantotsu.hasNotificationPermission
 import eu.kanade.tachiyomi.data.notification.Notifications
@@ -406,9 +407,11 @@ class UnreadChapterNotificationTask : Task {
                 context.getString(R.string.notification_source_subtext, sourceDisplay)
             }
 
+            val readKey = NotificationReadState.chapterKey(media.id, info.lastChapter)
             val intent = Intent(context, MediaDetailsActivity::class.java).apply {
                 putExtra("media", media as Serializable)
                 putExtra("source", info.source)
+                putExtra(NotificationReadState.EXTRA_KEY, readKey)
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             }
 
@@ -430,6 +433,7 @@ class UnreadChapterNotificationTask : Task {
                 .setSubText(subText)
                 .setStyle(NotificationCompat.BigTextStyle().bigText(text))
                 .setContentIntent(pendingIntent)
+                .setDeleteIntent(NotificationReadState.dismissIntent(context, readKey))
                 .addAction(markAsReadAction(context, media, info.lastChapter, isAnime))
                 .setAutoCancel(true)
                 .setGroup(Notifications.GROUP_NEW_CHAPTERS)
@@ -554,9 +558,9 @@ class UnreadChapterNotificationTask : Task {
         }
 
         PrefManager.setVal(PrefName.UnreadChapterNotificationStore, newStore)
-        PrefManager.setVal(
-            PrefName.UnreadCommentNotifications,
-            PrefManager.getVal<Int>(PrefName.UnreadCommentNotifications) + newChapters.size
+        NotificationReadState.reconcileChapters(newStore)
+        NotificationReadState.markUnread(
+            newChapters.map { (media, info) -> NotificationReadState.chapterKey(media.id, info.lastChapter) }
         )
     }
 

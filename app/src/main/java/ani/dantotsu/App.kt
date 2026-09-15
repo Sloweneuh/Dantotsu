@@ -152,6 +152,7 @@ class App : MultiDexApplication() {
             DynamicColors.applyToActivitiesIfAvailable(this)
         }
         registerActivityLifecycleCallbacks(mFTActivityLifecycleCallbacks)
+        runCatching { ani.dantotsu.notifications.NotificationReadState.migrateLegacyCounter() }
 
         // Check both the hardcoded constant and user preference
         val disableCrashReports = DisabledReports || PrefManager.getVal(PrefName.DisableCrashReports)
@@ -332,6 +333,11 @@ class App : MultiDexApplication() {
 
         override fun onActivityCreated(p0: Activity, p1: Bundle?) {
             lastActivity = p0.javaClass.simpleName
+            // A fresh launch (not a recreation) from one of our system notifications: whichever
+            // screen it lands on, that notification has now been seen.
+            if (p1 == null) {
+                runCatching { ani.dantotsu.notifications.NotificationReadState.consumeLaunchIntent(p0.intent) }
+            }
         }
 
         override fun onActivityStarted(p0: Activity) {

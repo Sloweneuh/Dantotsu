@@ -11,7 +11,7 @@ import ani.dantotsu.R
 
 class AlertDialogBuilder(private val context: Context) {
     private var title: String? = null
-    private var message: String? = null
+    private var message: CharSequence? = null
     private var posButtonTitle: String? = null
     private var negButtonTitle: String? = null
     private var neutralButtonTitle: String? = null
@@ -55,7 +55,8 @@ class AlertDialogBuilder(private val context: Context) {
         return this
     }
 
-    fun setMessage(message: String?): AlertDialogBuilder {
+    /** Takes a [CharSequence] so styled text (e.g. `Html.fromHtml`) keeps its formatting. */
+    fun setMessage(message: CharSequence?): AlertDialogBuilder {
         this.message = message
         return this
     }

@@ -9,11 +9,13 @@ import androidx.core.view.updateLayoutParams
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.MutableLiveData
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import ani.dantotsu.R
 import ani.dantotsu.databinding.ActivityNotificationBinding
 import ani.dantotsu.initActivity
 import ani.dantotsu.navBarHeight
+import ani.dantotsu.notifications.NotificationReadState
 import ani.dantotsu.profile.notification.NotificationFragment.Companion.NotificationType.COMMENT
 import ani.dantotsu.profile.notification.NotificationFragment.Companion.NotificationType.MEDIA
 import ani.dantotsu.profile.notification.NotificationFragment.Companion.NotificationType.ONE
@@ -35,6 +37,12 @@ class NotificationActivity : AppCompatActivity() {
     private var selected: Int = 0
     lateinit var navBar: AnimatedBottomBar
     private val CommentsEnabled = PrefManager.getVal<Int>(PrefName.CommentsEnabled) == 1
+
+    /**
+     * Whether the tabs list every notification or only unread ones. Off each time the screen is
+     * opened (kept across a rotation only); the tab fragments observe it and reload on change.
+     */
+    val showAll = MutableLiveData(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -69,13 +77,30 @@ class NotificationActivity : AppCompatActivity() {
         binding.notificationBack.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
         binding.quickSettings.bindQuickSettings(this)
 
+        val restoredShowAll = savedInstanceState?.getBoolean(KEY_SHOW_ALL) ?: false
+        showAll.value = restoredShowAll
+        binding.notificationShowAll.isChecked = restoredShowAll
+        binding.notificationShowAll.setOnCheckedChangeListener { _, checked ->
+            if (showAll.value != checked) showAll.value = checked
+        }
+        binding.notificationMarkAllRead.setOnClickListener { currentFragment()?.markAllRead() }
+
+        // Per-tab unread counts on the tab icons, kept live off the stored set: an item tapped
+        // here, "mark all as read", or a notification swiped away in the shade all move them.
+        PrefManager.getLiveVal(PrefName.UnreadNotificationKeys, setOf<String>())
+            .observe(this) { keys -> refreshTabBadges(keys) }
+
         // Settings button click listener
         binding.notificationSettings.setOnClickListener {
             openSettingsForCurrentTab()
         }
         
         val getOne = intent.getIntExtra("activityId", -1)
-        if (getOne != -1) navBar.isVisible = false
+        if (getOne != -1) {
+            // A single notification opened from the shade: nothing to filter or mark.
+            navBar.isVisible = false
+            binding.notificationListControls.isVisible = false
+        }
         binding.notificationViewPager.isUserInputEnabled = false
         binding.notificationViewPager.adapter =
             ViewPagerAdapter(supportFragmentManager, lifecycle, getOne, CommentsEnabled)
@@ -98,6 +123,27 @@ class NotificationActivity : AppCompatActivity() {
         super.onResume()
         if (this::navBar.isInitialized) {
             navBar.selectTabAt(selected)
+        }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putBoolean(KEY_SHOW_ALL, showAll.value == true)
+    }
+
+    /** FragmentStateAdapter tags its fragments "f" + item id, and the item id is the position. */
+    private fun currentFragment(): NotificationFragment? =
+        supportFragmentManager.findFragmentByTag("f$selected") as? NotificationFragment
+
+    private fun refreshTabBadges(keys: Set<String>) {
+        if (!navBar.isVisible) return
+        TAB_PREFIXES.take(navBar.tabCount).forEachIndexed { index, prefix ->
+            val count = NotificationReadState.unreadCount(prefix, keys)
+            if (count > 0) {
+                navBar.setBadgeAtTabIndex(index, AnimatedBottomBar.Badge(count.toString()))
+            } else {
+                navBar.clearBadgeAtTabIndex(index)
+            }
         }
     }
 
@@ -128,6 +174,19 @@ class NotificationActivity : AppCompatActivity() {
             4 -> newInstance(COMMENT)
             else -> newInstance(USER)
         }
+    }
+
+    private companion object {
+        const val KEY_SHOW_ALL = "showAll"
+
+        /** Tab order: User, Media, Subs, MalSync, Comments. */
+        val TAB_PREFIXES = listOf(
+            NotificationReadState.PREFIX_ANILIST_USER,
+            NotificationReadState.PREFIX_ANILIST_MEDIA,
+            NotificationReadState.PREFIX_SUBSCRIPTION,
+            NotificationReadState.PREFIX_CHAPTER,
+            NotificationReadState.PREFIX_COMMENT,
+        )
     }
 }
 

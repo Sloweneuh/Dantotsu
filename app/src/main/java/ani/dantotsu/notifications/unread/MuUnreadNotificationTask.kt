@@ -15,6 +15,7 @@ import ani.dantotsu.connections.mangaupdates.MUMedia
 import ani.dantotsu.connections.mangaupdates.MUMediaDetailsActivity
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.connections.mangaupdates.muMediaKey
+import ani.dantotsu.notifications.NotificationReadState
 import ani.dantotsu.notifications.Task
 import ani.dantotsu.hasNotificationPermission
 import eu.kanade.tachiyomi.data.notification.Notifications
@@ -158,12 +159,14 @@ class MuUnreadNotificationTask : Task {
                 source ?: "MangaUpdates"
             )
 
+            val notifId = muMediaKey(muMedia.id)
+            val readKey = NotificationReadState.chapterKey(notifId, latestChapter)
             val intent = Intent(context, MUMediaDetailsActivity::class.java).apply {
                 putExtra("muMedia", muMedia)
+                putExtra(NotificationReadState.EXTRA_KEY, readKey)
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             }
 
-            val notifId = muMediaKey(muMedia.id)
             val pendingIntent = PendingIntent.getActivity(
                 context,
                 notifId,
@@ -182,6 +185,7 @@ class MuUnreadNotificationTask : Task {
                 .setSubText(subText)
                 .setStyle(NotificationCompat.BigTextStyle().bigText(text))
                 .setContentIntent(pendingIntent)
+                .setDeleteIntent(NotificationReadState.dismissIntent(context, readKey))
                 .addAction(markAsReadAction(context, muMedia, latestChapter, notifId))
                 .setAutoCancel(true)
                 .setGroup(Notifications.GROUP_NEW_CHAPTERS)
@@ -293,9 +297,11 @@ class MuUnreadNotificationTask : Task {
         }
 
         PrefManager.setVal(PrefName.UnreadChapterNotificationStore, newStore)
-        PrefManager.setVal(
-            PrefName.UnreadCommentNotifications,
-            PrefManager.getVal<Int>(PrefName.UnreadCommentNotifications) + items.size
+        NotificationReadState.reconcileChapters(newStore)
+        NotificationReadState.markUnread(
+            items.map { (muMedia, latestChapter, _) ->
+                NotificationReadState.chapterKey(muMediaKey(muMedia.id), latestChapter)
+            }
         )
     }
 

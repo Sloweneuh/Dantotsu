@@ -15,6 +15,7 @@ import ani.dantotsu.MainActivity
 import ani.dantotsu.R
 import ani.dantotsu.connections.anilist.UrlMedia
 import ani.dantotsu.hasNotificationPermission
+import ani.dantotsu.notifications.NotificationReadState
 import ani.dantotsu.notifications.Task
 import ani.dantotsu.parsers.AnimeSources
 import ani.dantotsu.parsers.Episode
@@ -123,7 +124,7 @@ class SubscriptionNotificationTask : Task {
                             if (ep != null) ep.number + " " + context.getString(R.string.just_released) to null
                             else null
                         } ?: return@map
-                        addSubscriptionToStore(
+                        val readKey = addSubscriptionToStore(
                             SubscriptionStore(
                                 media.name,
                                 text.first,
@@ -132,15 +133,12 @@ class SubscriptionNotificationTask : Task {
                                 banner = media.banner
                             )
                         )
-                        PrefManager.setVal(
-                            PrefName.UnreadCommentNotifications,
-                            PrefManager.getVal<Int>(PrefName.UnreadCommentNotifications) + 1
-                        )
                         val notification = createNotification(
                             context.applicationContext,
                             media,
                             text.first,
-                            text.second
+                            text.second,
+                            readKey
                         )
                         if (hasNotificationPermission(context)) {
                             NotificationManagerCompat.from(context)
@@ -179,9 +177,10 @@ class SubscriptionNotificationTask : Task {
         context: Context,
         media: SubscriptionHelper.Companion.SubscribeMedia,
         text: String,
-        thumbnail: FileUrl?
+        thumbnail: FileUrl?,
+        readKey: String
     ): android.app.Notification {
-        val pendingIntent = getIntent(context, media.id)
+        val pendingIntent = getIntent(context, media.id, readKey)
         val icon =
             if (media.isAnime) R.drawable.ic_round_movie_filter_24 else R.drawable.ic_round_menu_book_24
 
@@ -191,6 +190,7 @@ class SubscriptionNotificationTask : Task {
             .setContentText(text)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setContentIntent(pendingIntent)
+            .setDeleteIntent(NotificationReadState.dismissIntent(context, readKey))
             .setAutoCancel(true)
             .setGroup(GROUP_SUBSCRIPTION_CHECK)
 
@@ -256,9 +256,10 @@ class SubscriptionNotificationTask : Task {
     }
 
 
-    private fun getIntent(context: Context, mediaId: Int): PendingIntent {
+    private fun getIntent(context: Context, mediaId: Int, readKey: String): PendingIntent {
         val notifyIntent = Intent(context, UrlMedia::class.java)
             .putExtra("media", mediaId)
+            .putExtra(NotificationReadState.EXTRA_KEY, readKey)
             .setAction(mediaId.toString())
             .apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -273,7 +274,11 @@ class SubscriptionNotificationTask : Task {
         )
     }
 
-    private fun addSubscriptionToStore(notification: SubscriptionStore) {
+    /**
+     * Files [notification] as unread and returns its read-state key — the existing entry's when
+     * the same release is already stored, since that's the one the centre will show.
+     */
+    private fun addSubscriptionToStore(notification: SubscriptionStore): String {
         val notificationStore = PrefManager.getNullableVal<List<SubscriptionStore>>(
             PrefName.SubscriptionNotificationStore,
             null
@@ -282,11 +287,14 @@ class SubscriptionNotificationTask : Task {
         if (newStore.size >= 100) {
             newStore.remove(newStore.minByOrNull { it.time })
         }
-        if (newStore.any { it.title == notification.title && it.content == notification.content }) {
-            return
+        val existing = newStore.find {
+            it.title == notification.title && it.content == notification.content
         }
-
-        newStore.add(notification)
+        val stored = existing ?: notification.also { newStore.add(it) }
         PrefManager.setVal(PrefName.SubscriptionNotificationStore, newStore)
+        NotificationReadState.reconcileSubscriptions(newStore)
+        val key = NotificationReadState.keyOf(stored)
+        NotificationReadState.markUnread(key)
+        return key
     }
 }

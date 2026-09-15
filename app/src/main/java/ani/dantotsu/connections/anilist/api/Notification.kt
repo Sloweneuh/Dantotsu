@@ -116,6 +116,9 @@ data class Notification(
     val comment: ThreadComment? = null,
     val image: String? = null,
     val banner: String? = null,
+    // Local-only, like image/banner: the NotificationReadState key of the stored entry this was
+    // built from. Null for real AniList notifications, whose key is derived from the id.
+    val readKey: String? = null,
 ) : java.io.Serializable
 
 @Serializable

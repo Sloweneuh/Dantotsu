@@ -16,6 +16,7 @@ import androidx.core.content.ContextCompat
 import ani.dantotsu.MainActivity
 import ani.dantotsu.R
 import ani.dantotsu.connections.comments.CommentsAPI
+import ani.dantotsu.notifications.NotificationReadState
 import ani.dantotsu.notifications.Task
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
@@ -56,10 +57,6 @@ class CommentNotificationTask : Task {
                     PrefManager.setVal(PrefName.RecentGlobalNotification, newRecentGlobal)
                 }
                 if (notifications.isNullOrEmpty()) return@withContext
-                PrefManager.setVal(
-                    PrefName.UnreadCommentNotifications,
-                    PrefManager.getVal<Int>(PrefName.UnreadCommentNotifications) + (notifications.size)
-                )
 
                 notifications.forEach {
                     val type: CommentNotificationWorker.NotificationType = when (it.type) {
@@ -81,7 +78,7 @@ class CommentNotificationTask : Task {
                                 it.mediaId,
                                 it.commentId
                             )
-                            addNotificationToStore(commentStore)
+                            val key = addNotificationToStore(commentStore)
 
                             createNotification(
                                 context,
@@ -91,7 +88,8 @@ class CommentNotificationTask : Task {
                                 it.mediaId,
                                 it.commentId,
                                 "",
-                                ""
+                                "",
+                                key
                             )
                         }
 
@@ -107,7 +105,7 @@ class CommentNotificationTask : Task {
                                 it.mediaId,
                                 it.commentId
                             )
-                            addNotificationToStore(commentStore)
+                            val key = addNotificationToStore(commentStore)
 
                             createNotification(
                                 context,
@@ -117,7 +115,8 @@ class CommentNotificationTask : Task {
                                 it.mediaId,
                                 it.commentId,
                                 names[it.mediaId]?.color ?: "#222222",
-                                names[it.mediaId]?.coverImage ?: ""
+                                names[it.mediaId]?.coverImage ?: "",
+                                key
                             )
                         }
 
@@ -132,7 +131,7 @@ class CommentNotificationTask : Task {
                                 null,
                                 null
                             )
-                            addNotificationToStore(commentStore)
+                            val key = addNotificationToStore(commentStore)
 
                             createNotification(
                                 context,
@@ -142,7 +141,8 @@ class CommentNotificationTask : Task {
                                 0,
                                 0,
                                 "",
-                                ""
+                                "",
+                                key
                             )
                         }
 
@@ -193,7 +193,11 @@ class CommentNotificationTask : Task {
         }
     }
 
-    private fun addNotificationToStore(notification: CommentStore) {
+    /**
+     * Files [notification] as unread and returns its read-state key — the existing entry's when
+     * one with the same content is already stored, since that's the one the centre will show.
+     */
+    private fun addNotificationToStore(notification: CommentStore): String {
         val notificationStore = PrefManager.getNullableVal<List<CommentStore>>(
             PrefName.CommentNotificationStore,
             null
@@ -202,11 +206,13 @@ class CommentNotificationTask : Task {
         if (newStore.size > 30) {
             newStore.remove(newStore.minByOrNull { it.time })
         }
-        if (newStore.any { it.content == notification.content }) {
-            return
-        }
-        newStore.add(notification)
+        val existing = newStore.find { it.content == notification.content }
+        val stored = existing ?: notification.also { newStore.add(it) }
         PrefManager.setVal(PrefName.CommentNotificationStore, newStore)
+        NotificationReadState.reconcileComments(newStore)
+        val key = NotificationReadState.keyOf(stored)
+        NotificationReadState.markUnread(key)
+        return key
     }
 
     private fun createNotification(
@@ -217,7 +223,8 @@ class CommentNotificationTask : Task {
         mediaId: Int,
         commentId: Int,
         color: String,
-        imageUrl: String
+        imageUrl: String,
+        readKey: String
     ): android.app.Notification? {
         Logger.log(
             "Creating notification of type $notificationType" +
@@ -229,6 +236,7 @@ class CommentNotificationTask : Task {
                     putExtra("FRAGMENT_TO_LOAD", "COMMENTS")
                     putExtra("mediaId", mediaId)
                     putExtra("commentId", commentId)
+                    putExtra(NotificationReadState.EXTRA_KEY, readKey)
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                 }
                 val pendingIntent = PendingIntent.getActivity(
@@ -243,6 +251,7 @@ class CommentNotificationTask : Task {
                     .setSmallIcon(R.drawable.notification_icon)
                     .setPriority(NotificationCompat.PRIORITY_HIGH)
                     .setContentIntent(pendingIntent)
+                    .setDeleteIntent(NotificationReadState.dismissIntent(context, readKey))
                     .setAutoCancel(true)
                     .setGroup(Notifications.GROUP_COMMENTS)
                 builder.build()
@@ -253,6 +262,7 @@ class CommentNotificationTask : Task {
                     putExtra("FRAGMENT_TO_LOAD", "COMMENTS")
                     putExtra("mediaId", mediaId)
                     putExtra("commentId", commentId)
+                    putExtra(NotificationReadState.EXTRA_KEY, readKey)
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                 }
                 val pendingIntent = PendingIntent.getActivity(
@@ -267,6 +277,7 @@ class CommentNotificationTask : Task {
                     .setSmallIcon(R.drawable.notification_icon)
                     .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                     .setContentIntent(pendingIntent)
+                    .setDeleteIntent(NotificationReadState.dismissIntent(context, readKey))
                     .setAutoCancel(true)
                     .setGroup(Notifications.GROUP_COMMENTS)
                 if (imageUrl.isNotEmpty()) {
@@ -283,6 +294,7 @@ class CommentNotificationTask : Task {
 
             CommentNotificationWorker.NotificationType.DANTOTSU_UPDATE -> {
                 val intent = Intent(context, MainActivity::class.java).apply {
+                    putExtra(NotificationReadState.EXTRA_KEY, readKey)
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                 }
                 val pendingIntent = PendingIntent.getActivity(
@@ -297,6 +309,7 @@ class CommentNotificationTask : Task {
                     .setSmallIcon(R.drawable.notification_icon)
                     .setPriority(NotificationCompat.PRIORITY_HIGH)
                     .setContentIntent(pendingIntent)
+                    .setDeleteIntent(NotificationReadState.dismissIntent(context, readKey))
                     .setAutoCancel(true)
                 builder.build()
             }

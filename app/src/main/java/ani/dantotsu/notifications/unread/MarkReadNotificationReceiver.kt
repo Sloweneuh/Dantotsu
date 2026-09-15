@@ -11,6 +11,7 @@ import ani.dantotsu.connections.mangaupdates.MUMedia
 import ani.dantotsu.connections.mangaupdates.toMedia
 import ani.dantotsu.connections.updateProgressSuspending
 import ani.dantotsu.media.Media
+import ani.dantotsu.notifications.NotificationReadState
 import ani.dantotsu.others.getSerialized
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
@@ -97,18 +98,16 @@ class MarkReadNotificationReceiver : BroadcastReceiver() {
         }
     }
 
-    /** Drops every stored entry for this media up to [progress] and trims the unread badge count. */
+    /** Drops every stored entry for this media up to [progress] and takes them off the badge. */
     private fun removeStoredNotification(mediaId: Int, progress: Int) {
         if (mediaId == -1) return
         val store = PrefManager.getNullableVal<List<UnreadChapterStore>>(
             PrefName.UnreadChapterNotificationStore, null
         ) ?: return
-        val kept = store.filterNot { it.mediaId == mediaId && it.lastChapter <= progress }
-        val removed = store.size - kept.size
-        if (removed <= 0) return
+        val (removed, kept) = store.partition { it.mediaId == mediaId && it.lastChapter <= progress }
+        if (removed.isEmpty()) return
         PrefManager.setVal(PrefName.UnreadChapterNotificationStore, kept)
-        val badge = PrefManager.getVal<Int>(PrefName.UnreadCommentNotifications)
-        PrefManager.setVal(PrefName.UnreadCommentNotifications, (badge - removed).coerceAtLeast(0))
+        NotificationReadState.markRead(removed.map { NotificationReadState.keyOf(it) })
     }
 
     /**
