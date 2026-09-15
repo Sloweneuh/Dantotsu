@@ -33,6 +33,16 @@ data class TextBlock(
     val lineBoxes: List<Rect> = emptyList(),
     /** Drawn by hand rather than found by the page pass. */
     val synthetic: Boolean = false,
+    /**
+     * The reader overruled the verdict for this block and asked for it to be translated anyway.
+     *
+     * Only meaningful with [synthetic]. Drawing a box used to *be* that instruction — every drawn
+     * box was translated whatever the scoring made of it — which is right for a bubble the page
+     * pass framed wrong and wrong for the far more common case of a box that turned out to cover
+     * artwork or to read as nonsense. So the two are separated: the box says where to look, this
+     * says to ignore the answer.
+     */
+    val trusted: Boolean = false,
     /** Empty until a [TextTranslator] has run. */
     val translation: String = "",
 ) {
@@ -120,6 +130,37 @@ data class Ring(
     val color: Int,
     /** Share of the ring within a tolerance of [color], from 0 to 1. */
     val flatShare: Float,
+)
+
+/**
+ * What lies in the gap between two runs of text, which is how one bubble is told from two things.
+ *
+ * Geometry cannot tell them apart: two columns of one bubble, two columns either side of a panel
+ * rule, and two separate bubbles all look alike in the numbers. Nor can the spread — vertical ruby
+ * is set in the gap by definition and is ink, so a gap holding the reading of a compound measured
+ * 74.6 against 228.7 for a gap across a panel rule and 0.0 to 8.6 for a clear one. What separates
+ * them is where the ink *is*. See [ani.dantotsu.media.manga.translation.RingSampler.divider].
+ */
+data class Divider(
+    /**
+     * The share of each line taken along the gap that sits off the gap's own field.
+     *
+     * One line per pixel across the gap's width, so a rule shows up as a line at 1.0 — it is
+     * opaque down its whole length — while glyphs never quite do, having holes in them. Ruby
+     * between two columns reaches 0.23 and a dotted divider 0.63. A long stroke in a kanji does
+     * reach 1.0, which is why one line alone settles nothing; see [ink] and the reading of both
+     * in [PageTextDetector].
+     */
+    val lines: List<Float>,
+    /**
+     * The share of the whole gap that sits off its field.
+     *
+     * A gap holding a column of text the recognizer missed measures 0.30 against the 0.05 of the
+     * clean white between two separate bubbles — and it is spread over every line rather than
+     * concentrated in one, which is what tells a missed column from a rule even when both have a
+     * line at 1.0.
+     */
+    val ink: Float,
 )
 
 /** A block with everything that depends on the current thresholds. */

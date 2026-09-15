@@ -303,41 +303,71 @@ class BlockPainter(private val density: Float) {
 
     fun reset() = layouts.clear()
 
+    /**
+     * Every cover-up first, then every word.
+     *
+     * Filling each block immediately before writing into it is the obvious order and it is wrong:
+     * blocks overlap, and a block that is only being covered has no text of its own to lose, so it
+     * happily painted out the translation of whatever was drawn before it. A page came back with
+     * the right-hand half of "To put it roughly" erased by the ruby patch beside it — text gone,
+     * nothing in its place, and nothing in the geometry to suggest why.
+     */
     fun draw(canvas: Canvas, blocks: List<PaintedBlock>, scale: Float) {
-        blocks.forEach { block ->
-            val left = block.rect.left * scale
-            val top = block.rect.top * scale
-            val right = block.rect.right * scale
-            val bottom = block.rect.bottom * scale
-            val width = (block.rect.width() * scale).toInt() - inset * 2
-            val height = (block.rect.height() * scale).toInt() - inset * 2
-
+        val placed = blocks.map { it to place(it, scale) }
+        placed.forEach { (block, at) ->
             fillPaint.color = block.fill
-
-            val text = block.text
-            if (text.isNullOrBlank() || width <= 0 || height <= 0) {
-                canvas.drawRect(left, top, right, bottom, fillPaint)
-                return@forEach
-            }
-
-            // Ink chosen from the fill rather than fixed, which is what makes a white-on-black
-            // bubble come out white-on-black instead of unreadable.
-            val ink = if (isDark(block.fill)) Color.WHITE else Color.BLACK
-            val layout = layouts.getOrPut(block.id) { fit(text, width, height, ink) }
-
-            // Text that would not fit even at the smallest size this is willing to draw takes the
-            // fill with it rather than spilling over the artwork. Shrinking further instead is what
-            // the floor exists to prevent: type nobody can read is not a translation.
-            val bleed = max(0, layout.height - height) / 2f
-            canvas.drawRect(left, top - bleed, right, bottom + bleed, fillPaint)
-
+            canvas.drawRect(at.left, at.top - at.bleed, at.right, at.bottom + at.bleed, fillPaint)
+        }
+        placed.forEach { (_, at) ->
+            val layout = at.layout ?: return@forEach
             canvas.withTranslation(
-                left + inset,
-                top + inset - bleed + max(0f, (height - layout.height) / 2f),
+                at.left + inset,
+                at.top + inset - at.bleed + max(0f, (at.height - layout.height) / 2f),
             ) {
                 layout.draw(this)
             }
         }
+    }
+
+    /** Where a block lands and how its text is set into it, worked out once for both passes. */
+    private class Placement(
+        val left: Float,
+        val top: Float,
+        val right: Float,
+        val bottom: Float,
+        val height: Int,
+        val layout: StaticLayout?,
+        /**
+         * How far the fill grows beyond the block to hold text that would not otherwise fit.
+         *
+         * Text too long for its box at the smallest size this will draw takes the fill with it
+         * rather than spilling over the artwork. Shrinking further instead is what the floor
+         * exists to prevent: type nobody can read is not a translation.
+         */
+        val bleed: Float,
+    )
+
+    private fun place(block: PaintedBlock, scale: Float): Placement {
+        val width = (block.rect.width() * scale).toInt() - inset * 2
+        val height = (block.rect.height() * scale).toInt() - inset * 2
+        val text = block.text
+        val layout = if (text.isNullOrBlank() || width <= 0 || height <= 0) {
+            null
+        } else {
+            // Ink chosen from the fill rather than fixed, which is what makes a white-on-black
+            // bubble come out white-on-black instead of unreadable.
+            val ink = if (isDark(block.fill)) Color.WHITE else Color.BLACK
+            layouts.getOrPut(block.id) { fit(text, width, height, ink) }
+        }
+        return Placement(
+            left = block.rect.left * scale,
+            top = block.rect.top * scale,
+            right = block.rect.right * scale,
+            bottom = block.rect.bottom * scale,
+            height = height,
+            layout = layout,
+            bleed = if (layout == null) 0f else max(0, layout.height - height) / 2f,
+        )
     }
 
     /**

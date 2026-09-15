@@ -6,16 +6,38 @@
     android:orientation="vertical">
 
     <!-- What the box under the finger was read as, so a box is judged before it costs a
-         translation. -->
+         translation.
+
+         Fixed at two lines rather than wrapping to its content. This sits above the page, so every
+         line it gained or lost moved the page under the finger mid-gesture — and it changes on
+         every selection, every read and every result, which is to say constantly while a box is
+         being drawn. -->
     <TextView
         android:id="@+id/drawBoxesStatus"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:ellipsize="end"
         android:fontFamily="@font/poppins_semi_bold"
+        android:lines="2"
         android:paddingHorizontal="24dp"
         android:paddingBottom="8dp"
         android:textSize="12sp"
         tools:text="#3 · text read here" />
+
+    <!-- Offered on a drawn box the scoring would otherwise stop: over artwork, or read as
+         something the recognizer does not believe. Held INVISIBLE rather than GONE for the rest of
+         the time, for the same reason the status line above is pinned to two lines — appearing and
+         disappearing would move the page under the finger. -->
+    <com.google.android.material.checkbox.MaterialCheckBox
+        android:id="@+id/drawBoxesTrust"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/poppins_bold"
+        android:paddingHorizontal="24dp"
+        android:paddingBottom="8dp"
+        android:text="@string/mtl_draw_boxes_trust"
+        android:textSize="12sp"
+        android:visibility="invisible" />
 
     <ScrollView
         android:layout_width="match_parent"

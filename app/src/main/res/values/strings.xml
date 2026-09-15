@@ -2839,11 +2839,12 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="mtl_hide_translation">Hide the translation</string>
     <string name="mtl_draw_boxes">Draw boxes over missed text</string>
     <string name="mtl_draw_boxes_title">Page %1$d — draw boxes</string>
-    <string name="mtl_draw_boxes_hint">Drag over text the translation missed, or drag a detected box to fix it. Scroll with two fingers. Boxes are kept for this page.</string>
+    <string name="mtl_draw_boxes_hint">Drag over missed text, or drag a box to fix it. Two fingers scroll.</string>
     <string name="mtl_draw_boxes_reading_page">Reading the page…</string>
     <string name="mtl_draw_boxes_reading">#%1$d · reading…</string>
     <string name="mtl_draw_boxes_read_nothing">#%1$d · nothing read here</string>
     <string name="mtl_draw_boxes_read" translatable="false">#%1$d · %2$s</string>
+    <string name="mtl_draw_boxes_trust">Translate anyway</string>
     <string name="mtl_draw_boxes_translate">Translate</string>
     <string name="mtl_draw_boxes_remove">Remove box</string>
     <string name="view_image">View image</string>

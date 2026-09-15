@@ -381,7 +381,8 @@ class MangaOcrSpikeActivity : AppCompatActivity() {
     private fun rebuildBlocks() {
         val handDrawn = blocks.filter { it.synthetic }
         blocks = emptyList()
-        val detected = detector().blocks(candidates, binding.mergeBlocks.isChecked)
+        val detected = detector()
+            .blocks(candidates, binding.mergeBlocks.isChecked, page = sourceBitmap)
         nextId = detected.size + 1
         blocks = detected + handDrawn.map { it.copy(id = nextId++, translation = "") }
     }
@@ -431,7 +432,8 @@ class MangaOcrSpikeActivity : AppCompatActivity() {
             val (lines, glyphScale) = detector().readRegion(source, block.box)
             val updated = detector().toBlock(
                 id, lines, block.box,
-                block.synthetic, glyphScale, fallbackGlyphPx = fallbackGlyph(block.box),
+                synthetic = block.synthetic, trusted = block.trusted,
+                glyphScale = glyphScale, fallbackGlyphPx = fallbackGlyph(block.box),
             )
             blocks = blocks.map { if (it.id == id) updated else it }
             render()

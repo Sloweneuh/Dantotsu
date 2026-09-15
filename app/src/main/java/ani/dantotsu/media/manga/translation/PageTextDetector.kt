@@ -39,6 +39,26 @@ class PageTextDetector(private val script: TextScript) {
         val lineBoxes: List<Rect>,
         val glyphPx: Float,
         val vertical: Boolean,
+        /** Read from a box drawn by hand rather than found by the page pass. */
+        val synthetic: Boolean = false,
+        /** The reader asked for this to be translated whatever the scoring says. */
+        val trusted: Boolean = false,
+    )
+
+    /**
+     * What one region read as, together with what it takes to put the answer back on the page.
+     *
+     * [readRegion] recognises an enlarged crop, so every rectangle it hands back is in that crop's
+     * frame. Carrying the crop and the enlargement is what lets a caller map them home — without
+     * them the read is a string and nothing more, which is why a hand-drawn box could never take
+     * part in merging.
+     */
+    data class RegionRead(
+        val lines: List<Text.Line>,
+        /** How much the crop was enlarged before the recognizer saw it. */
+        val scale: Float,
+        /** The region actually read, padding included, in page pixels. */
+        val crop: Rect,
     )
 
     /** How many runs the last [read] discarded as sitting outside any bubble. */
@@ -63,7 +83,7 @@ class PageTextDetector(private val script: TextScript) {
      * hand leaves the recognizer no quiet space, and a few characters cut out of a page is a very
      * small image. Cropping without scaling asks a harder question than the one already answered.
      */
-    suspend fun readRegion(page: Bitmap, rect: Rect): Pair<List<Text.Line>, Float> {
+    suspend fun readRegion(page: Bitmap, rect: Rect): RegionRead {
         val marginX = (rect.width() * CROP_MARGIN).toInt().coerceAtLeast(MIN_CROP_MARGIN)
         val marginY = (rect.height() * CROP_MARGIN).toInt().coerceAtLeast(MIN_CROP_MARGIN)
         val safe = Rect(
@@ -72,7 +92,9 @@ class PageTextDetector(private val script: TextScript) {
             (rect.right + marginX).coerceIn(1, page.width),
             (rect.bottom + marginY).coerceIn(1, page.height),
         )
-        if (safe.width() < MIN_CROP || safe.height() < MIN_CROP) return emptyList<Text.Line>() to 1f
+        if (safe.width() < MIN_CROP || safe.height() < MIN_CROP) {
+            return RegionRead(emptyList(), 1f, safe)
+        }
 
         return withContext(Dispatchers.Default) {
             val crop = Bitmap.createBitmap(page, safe.left, safe.top, safe.width(), safe.height())
@@ -84,7 +106,7 @@ class PageTextDetector(private val script: TextScript) {
                 crop
             }
             try {
-                recognize(scaled).textBlocks.flatMap { it.lines } to scale
+                RegionRead(recognize(scaled).textBlocks.flatMap { it.lines }, scale, safe)
             } finally {
                 if (scaled !== crop) scaled.recycle()
                 crop.recycle()
@@ -92,13 +114,63 @@ class PageTextDetector(private val script: TextScript) {
         }
     }
 
-    /** Turns runs into blocks, joining the ones that belong to the same bubble when asked. */
-    fun blocks(runs: List<TextRun>, merge: Boolean, firstId: Int = 1): List<TextBlock> {
+    /**
+     * Turns runs into blocks, joining the ones that belong to the same bubble when asked.
+     *
+     * @param page the image the runs were read from, where the caller has it. Given one, two runs
+     *   are only joined when what lies between them says they are in the same bubble — see
+     *   [BubbleMerger.merge].
+     */
+    fun blocks(
+        runs: List<TextRun>,
+        merge: Boolean,
+        firstId: Int = 1,
+        page: Bitmap? = null,
+    ): List<TextBlock> {
         var id = firstId
-        return (if (merge) BubbleMerger.merge(runs) else runs).map { run ->
-            toBlock(id++, run.lines, run.box, glyphPx = run.glyphPx, lineBoxes = run.lineBoxes)
+        return (if (merge) BubbleMerger.merge(runs, page) else runs).map { run ->
+            toBlock(
+                id++, run.lines, run.box,
+                synthetic = run.synthetic, trusted = run.trusted,
+                glyphPx = run.glyphPx, lineBoxes = run.lineBoxes,
+            )
         }
     }
+
+    /**
+     * One region's read as a run in the page's own coordinates, ready to merge with the rest.
+     *
+     * This is what lets a box drawn by hand join the bubble it belongs to. Until it existed a
+     * drawn box could only ever be a block of its own: [readRegion] answers in the frame of an
+     * enlarged crop, and a caller with no way home had nothing to offer [BubbleMerger], which
+     * works entirely in page pixels. So a reader patching the hole where the page pass dropped a
+     * column got a second block beside the bubble rather than the bubble put back together.
+     *
+     * The box is the extent of the glyphs rather than the rectangle that was drawn. A box drawn by
+     * hand has slack in it, and slack on the merging side reads as two runs sitting closer
+     * together than the text in them really is.
+     */
+    fun regionRun(read: RegionRead, trusted: Boolean): TextRun? {
+        if (read.lines.isEmpty()) return null
+        val box = tightBox(read.lines)?.toPage(read) ?: return null
+        return TextRun(
+            box = box,
+            lines = read.lines,
+            lineBoxes = read.lines.mapNotNull { tightBox(listOf(it))?.toPage(read) },
+            glyphPx = read.lines.map { glyphSize(it).second }.average().toFloat() / read.scale,
+            vertical = read.lines.first().angle > TextBlock.VERTICAL_ANGLE,
+            synthetic = true,
+            trusted = trusted,
+        )
+    }
+
+    /** A rectangle in an enlarged crop's frame, brought back into the page's. */
+    private fun Rect.toPage(read: RegionRead) = Rect(
+        read.crop.left + (left / read.scale).toInt(),
+        read.crop.top + (top / read.scale).toInt(),
+        read.crop.left + (right / read.scale).toInt(),
+        read.crop.top + (bottom / read.scale).toInt(),
+    )
 
     /**
      * Builds a block from lines the caller obtained itself, as [readRegion] returns.
@@ -113,13 +185,14 @@ class PageTextDetector(private val script: TextScript) {
         lines: List<Text.Line>,
         box: Rect,
         synthetic: Boolean = false,
+        trusted: Boolean = false,
         glyphScale: Float = 1f,
         glyphPx: Float? = null,
         fallbackGlyphPx: Float = 0f,
         lineBoxes: List<Rect> = emptyList(),
     ): TextBlock {
         val glyphs = lines.map { glyphSize(it) }
-        val (ordered, reordered) = orderedText(lines)
+        val (ordered, reordered) = orderedText(lines, lineBoxes)
         return TextBlock(
             id = id,
             text = if (lines.isEmpty()) "" else ordered.replace("\n", " / "),
@@ -138,6 +211,7 @@ class PageTextDetector(private val script: TextScript) {
             symbolsAvailable = glyphs.isNotEmpty() && glyphs.all { it.first },
             lineBoxes = lineBoxes,
             synthetic = synthetic,
+            trusted = trusted,
         )
     }
 
@@ -336,18 +410,27 @@ class PageTextDetector(private val script: TextScript) {
      * as given turns a sentence inside out — invisibly, because the translator then returns a
      * fluent, confident translation of the scrambled version.
      */
-    private fun orderedText(lines: List<Text.Line>): Pair<String, Boolean> {
+    private fun orderedText(lines: List<Text.Line>, boxes: List<Rect>): Pair<String, Boolean> {
         if (lines.isEmpty()) return "" to false
         if (lines.size < 2) return lines.joinToString("\n") { it.text } to false
 
-        val ordered = if (lines.first().angle > TextBlock.VERTICAL_ANGLE) {
-            lines.sortedByDescending { it.boundingBox?.left ?: 0 }
-        } else {
-            // Sorted rather than taken as given, because a merged run's lines arrive in whatever
-            // order its pieces were joined in, which is nobody's reading order.
-            lines.sortedBy { it.boundingBox?.top ?: 0 }
-        }
-        return ordered.joinToString("\n") { it.text } to (ordered != lines)
+        // A line's bounding box is in the frame of whatever image it was recognised in, and a
+        // merged run can hold lines from two of them — the page, and the enlarged crop a drawn box
+        // was read from. Sorting those together by their own boxes interleaves page coordinates
+        // with crop coordinates and turns the bubble inside out. [boxes] is every line's place on
+        // the page, which is the one frame they all share.
+        val place: (Int) -> Rect? =
+            if (boxes.size == lines.size) ({ boxes[it] }) else ({ lines[it].boundingBox })
+        val order = lines.indices.sortedWith(
+            if (lines.first().angle > TextBlock.VERTICAL_ANGLE) {
+                compareByDescending { place(it)?.left ?: 0 }
+            } else {
+                // Sorted rather than taken as given, because a merged run's lines arrive in
+                // whatever order its pieces were joined in, which is nobody's reading order.
+                compareBy { place(it)?.top ?: 0 }
+            },
+        )
+        return order.joinToString("\n") { lines[it].text } to (order != lines.indices.toList())
     }
 
     companion object {
@@ -448,13 +531,71 @@ internal object BubbleMerger {
     /** Largest gap between two runs of one bubble, in glyph widths. */
     private const val GAP_GLYPHS = 1.8f
 
+    /**
+     * How far that stretches across a gap that turns out to be full of text.
+     *
+     * [GAP_GLYPHS] is column spacing, and column spacing is all it should be. But the page pass
+     * drops a whole column often enough to be the normal case, and a bubble with its middle column
+     * missing has a hole in it two glyph widths across — a measured one came to 2.08, just past
+     * the limit, so the two halves of one bubble were translated, sized and drawn separately. A
+     * gap that wide is only ever crossable when something is *in* it; see [MISSED_INK].
+     */
+    private const val MISSED_GAP_GLYPHS = 3f
+
+    /**
+     * Share of a gap that must be off its own field before it counts as holding missed text.
+     *
+     * The gap where a column had gone missing measured 0.30 against 0.05 and 0.06 for the clean
+     * white between two separate bubbles on the same page — one of those only 2.5 glyphs wide,
+     * which is to say a plain distance threshold could not have told them apart at all.
+     */
+    private const val MISSED_INK = 0.15f
+
+    /**
+     * Share of one line down a gap that must be off the field for that line to be a rule.
+     *
+     * A rule is opaque along its whole length and measures 1.0. The nearest thing to a false
+     * positive is a dotted divider drawn inside a bubble, at 0.63.
+     */
+    private const val RULED_SHARE = 0.85f
+
+    /**
+     * How much ink may lie *beside* a ruled line before it is not a rule after all.
+     *
+     * One line at 1.0 settles nothing on its own, because kanji have long straight strokes: the
+     * gap holding a whole missed column measured 1.00 on its strongest line, exactly as the panel
+     * rule did. What tells them apart is everything else in the gap. Beside the rule there was
+     * nothing — 0.00, the gutter being clean white — while beside the missed column's strongest
+     * stroke lay the rest of the column, at 0.27. A rule accounts for the ink in its gap; a column
+     * of text cannot.
+     */
+    private const val RULE_BESIDE_INK = 0.10f
+
     /** How much of their shared axis two runs must overlap on to be one bubble. */
     private const val SPAN_OVERLAP = 0.5f
 
-    fun merge(input: List<PageTextDetector.TextRun>): List<PageTextDetector.TextRun> {
+    /**
+     * Narrowest gap worth measuring, in page pixels.
+     *
+     * A band one pixel wide pressed between two boxes is mostly the antialiasing of the glyphs
+     * either side of it, which would read as a rule on the cleanest bubble on the page. Runs that
+     * close together are touching, which is its own answer.
+     */
+    private const val MIN_GAP_PX = 2
+
+    /**
+     * @param page the image the runs came from, where the caller has it. Without it the gap test
+     *   is skipped and the rule is geometry alone, which merged a speech bubble with the
+     *   advertising column printed alongside the panel — adjacent, similarly sized vertical text,
+     *   and nothing in the numbers to say otherwise.
+     */
+    fun merge(
+        input: List<PageTextDetector.TextRun>,
+        page: Bitmap? = null,
+    ): List<PageTextDetector.TextRun> {
         val work = input.toMutableList()
         while (true) {
-            val pair = findPair(work) ?: break
+            val pair = findPair(work, page, input) ?: break
             val (i, j) = pair
             val joined = join(work[i], work[j])
             // Higher index first, or removing the lower shifts the higher out from under us.
@@ -465,16 +606,25 @@ internal object BubbleMerger {
         return work
     }
 
-    private fun findPair(work: List<PageTextDetector.TextRun>): Pair<Int, Int>? {
+    private fun findPair(
+        work: List<PageTextDetector.TextRun>,
+        page: Bitmap?,
+        found: List<PageTextDetector.TextRun>,
+    ): Pair<Int, Int>? {
         for (i in work.indices) {
             for (j in i + 1 until work.size) {
-                if (shouldMerge(work[i], work[j])) return i to j
+                if (shouldMerge(work[i], work[j], page, found)) return i to j
             }
         }
         return null
     }
 
-    private fun shouldMerge(a: PageTextDetector.TextRun, b: PageTextDetector.TextRun): Boolean {
+    private fun shouldMerge(
+        a: PageTextDetector.TextRun,
+        b: PageTextDetector.TextRun,
+        page: Bitmap?,
+        found: List<PageTextDetector.TextRun>,
+    ): Boolean {
         if (a.vertical != b.vertical) return false
         if (a.glyphPx <= 0f || b.glyphPx <= 0f) return false
         // Text of visibly different size is not one bubble — this is what stops a sound effect
@@ -482,13 +632,93 @@ internal object BubbleMerger {
         if (max(a.glyphPx, b.glyphPx) / min(a.glyphPx, b.glyphPx) > GLYPH_RATIO) return false
 
         val glyph = (a.glyphPx + b.glyphPx) / 2f
-        return if (a.vertical) {
-            gap(a.box.left, a.box.right, b.box.left, b.box.right) <= glyph * GAP_GLYPHS &&
-                overlap(a.box.top, a.box.bottom, b.box.top, b.box.bottom) >= SPAN_OVERLAP
+        val distance: Float
+        val span: Float
+        if (a.vertical) {
+            distance = gap(a.box.left, a.box.right, b.box.left, b.box.right)
+            span = overlap(a.box.top, a.box.bottom, b.box.top, b.box.bottom)
         } else {
-            gap(a.box.top, a.box.bottom, b.box.top, b.box.bottom) <= glyph * GAP_GLYPHS &&
-                overlap(a.box.left, a.box.right, b.box.left, b.box.right) >= SPAN_OVERLAP
+            distance = gap(a.box.top, a.box.bottom, b.box.top, b.box.bottom)
+            span = overlap(a.box.left, a.box.right, b.box.left, b.box.right)
         }
+        if (span < SPAN_OVERLAP) return false
+        if (distance > glyph * MISSED_GAP_GLYPHS) return false
+
+        // Touching, or no page to look at: the geometry is all there is to go on.
+        val band = between(a.box, b.box, a.vertical)
+        if (page == null || band == null) return distance <= glyph * GAP_GLYPHS
+
+        val divider = RingSampler.divider(page, band, a.vertical)
+        // A rule drawn the length of the gap divides what is either side of it however close the
+        // two sit: merging across one put a speech bubble and the advertising strip printed beside
+        // the panel into a single box.
+        if (ruled(divider)) return false
+        // Ordinary column spacing.
+        if (distance <= glyph * GAP_GLYPHS) return true
+        // Or a gap only this wide because a column went missing out of the middle of the bubble.
+        return divider.ink >= MISSED_INK &&
+            lostColumn(band, max(a.glyphPx, b.glyphPx), found)
+    }
+
+    /**
+     * Whether the text filling a gap could be a column these two runs lost, rather than one they
+     * are both the reading of.
+     *
+     * The two look identical from the outside and the difference is everything. Ruby is set beside
+     * the column it reads, so the readings either side of a line of kanji stand exactly one body
+     * column apart — which is precisely the shape of a column gone missing, full of ink and a
+     * little too wide to be ordinary spacing. Bridging those merged two readings across the very
+     * kanji they belonged to: the block spanned the body text without containing it, and was
+     * either translated as the nonsense its two readings run together make and painted over the
+     * bubble, or covered as ruby and painted out over the kanji.
+     *
+     * The recognizer settles it. Ink it never found can only be a column it lost; ink it *did*
+     * find, in type larger than ours, is what we are the reading of.
+     */
+    private fun lostColumn(
+        band: Rect,
+        glyph: Float,
+        found: List<PageTextDetector.TextRun>,
+    ): Boolean = found.none {
+        it.glyphPx > glyph * GLYPH_RATIO && Rect.intersects(it.box, band)
+    }
+
+    /**
+     * Whether a rule is drawn down a gap, as opposed to text standing in it.
+     *
+     * Both reach [RULED_SHARE] on their strongest line, so the strongest line is not the question;
+     * what is beside it is. See [RULE_BESIDE_INK].
+     */
+    private fun ruled(divider: Divider): Boolean {
+        if (divider.lines.none { it >= RULED_SHARE }) return false
+        val beside = divider.lines.filter { it < RULED_SHARE }
+        return beside.isEmpty() || beside.average() < RULE_BESIDE_INK
+    }
+
+    /**
+     * The band lying between two boxes, across the extent they share, or null where they touch.
+     *
+     * Runs that overlap on the axis the gap would be measured along have no gap to measure, and a
+     * rect of negative width samples nothing.
+     */
+    private fun between(a: Rect, b: Rect, vertical: Boolean): Rect? {
+        val rect = if (vertical) {
+            Rect(
+                min(a.right, b.right),
+                max(a.top, b.top),
+                max(a.left, b.left),
+                min(a.bottom, b.bottom),
+            )
+        } else {
+            Rect(
+                max(a.left, b.left),
+                min(a.bottom, b.bottom),
+                min(a.right, b.right),
+                max(a.top, b.top),
+            )
+        }
+        val thickness = if (vertical) rect.width() else rect.height()
+        return rect.takeUnless { it.isEmpty || thickness < MIN_GAP_PX }
     }
 
     /** Distance between two spans on one axis; zero where they touch or overlap. */
@@ -511,5 +741,8 @@ internal object BubbleMerger {
             lineBoxes = a.lineBoxes + b.lineBoxes,
             glyphPx = (a.glyphPx + b.glyphPx) / 2f,
             vertical = a.vertical,
+            // A bubble half of which somebody pointed at is still a bubble somebody pointed at.
+            synthetic = a.synthetic || b.synthetic,
+            trusted = a.trusted || b.trusted,
         )
 }

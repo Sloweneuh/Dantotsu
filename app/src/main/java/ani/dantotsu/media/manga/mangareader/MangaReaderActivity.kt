@@ -73,6 +73,9 @@ import ani.dantotsu.media.manga.mangareader.BaseImageAdapter.Companion.loadBitma
 import ani.dantotsu.util.Logger
 import ani.dantotsu.media.manga.translation.AutoTranslator
 import ani.dantotsu.media.manga.translation.BlockEditorView
+import ani.dantotsu.media.manga.translation.BlockScorer
+import ani.dantotsu.media.manga.translation.DetectionThresholds
+import ani.dantotsu.media.manga.translation.DrawnRegion
 import ani.dantotsu.media.manga.translation.DrawnRegions
 import ani.dantotsu.media.manga.translation.MtlSettings
 import ani.dantotsu.media.manga.translation.PageTextDetector
@@ -2142,8 +2145,20 @@ class MangaReaderActivity : AppCompatActivity() {
             val detected = LinkedHashMap<Int, ScoredBlock>()
             val drawn = LinkedHashMap<Int, Rect>()
             val text = HashMap<Int, String>()
+            // What the scorer makes of each drawn box, once it has been read. The page pass'
+            // blocks carry their own; this is the same judgement passed on the boxes the reader
+            // drew, so a box over artwork or over a sound effect says so instead of being green
+            // for having read any text at all.
+            val verdicts = HashMap<Int, BlockVerdict>()
+            // Boxes whose verdict the reader has overruled. Kept by id rather than on the box so
+            // that a drag, which re-reads and re-scores, does not quietly drop an answer they
+            // already gave.
+            val trusted = HashSet<Int>()
             var nextId = 1
             var open = true
+            // Guards the checkbox against its own listener while it is being brought into line
+            // with the selection.
+            var syncing = false
 
             fun status(id: Int?) {
                 binding.drawBoxesStatus.text = when {
@@ -2155,6 +2170,23 @@ class MangaReaderActivity : AppCompatActivity() {
                     else -> getString(R.string.mtl_draw_boxes_read, id, text.getValue(id))
                 }
             }
+            /**
+             * Offers the override on the selected box, where there is one to offer.
+             *
+             * Only a drawn box that read something and then scored as untranslatable has anything
+             * to overrule: a box already judged dialogue or an effect is translated regardless, one
+             * still being read has no verdict yet, and one that read nothing has no words to
+             * translate however much anybody insists.
+             */
+            fun trust() {
+                val id = editor.selectedId?.takeIf { it in drawn && !text[it].isNullOrBlank() }
+                val verdict = id?.let { verdicts[it] }
+                val offer = verdict != null && !verdict.translatable
+                syncing = true
+                binding.drawBoxesTrust.isChecked = offer && id in trusted
+                syncing = false
+                binding.drawBoxesTrust.visibility = if (offer) View.VISIBLE else View.INVISIBLE
+            }
             fun render() {
                 editor.setBoxes(
                     detected.map { (id, entry) ->
@@ -2163,7 +2195,7 @@ class MangaReaderActivity : AppCompatActivity() {
                         val color = when {
                             id !in text -> DRAWN_BOX_COLOR
                             text.getValue(id).isBlank() -> BlockVerdict.LOW_CONF.color
-                            else -> BlockVerdict.DIALOGUE.color
+                            else -> (verdicts[id] ?: BlockVerdict.DIALOGUE).color
                         }
                         BlockEditorView.Box(id, rect, color)
                     },
@@ -2172,15 +2204,35 @@ class MangaReaderActivity : AppCompatActivity() {
             fun read(id: Int) {
                 val rect = drawn[id] ?: return
                 text.remove(id)
+                verdicts.remove(id)
                 status(id)
+                trust()
                 lifecycleScope.launch {
-                    val (lines, glyphScale) = detector.readRegion(bitmap, rect)
+                    val read = detector.readRegion(bitmap, rect)
                     // The box may have moved or gone while the recognizer was busy.
                     if (!open || drawn[id] !== rect) return@launch
-                    text[id] = detector
-                        .toBlock(id, lines, rect, synthetic = true, glyphScale = glyphScale)
-                        .text
+                    // Through the same run the pipeline builds, so the box carries its lines'
+                    // places on the page and is judged a line at a time exactly as it will be
+                    // when the page is translated.
+                    val run = detector.regionRun(read, trusted = id in trusted)
+                    val block = detector.toBlock(
+                        id, read.lines, rect,
+                        synthetic = true, glyphScale = read.scale,
+                        lineBoxes = run?.lineBoxes.orEmpty(),
+                    )
+                    text[id] = block.text
+                    // Scored on its own, so the ruby test — which compares a block against the
+                    // page's median glyph — cannot fire on the one block it is given. That is the
+                    // right answer here anyway: a box drawn by hand is not ruby.
+                    verdicts[id] = withContext(Dispatchers.Default) {
+                        BlockScorer
+                            .score(listOf(block), bitmap, DetectionThresholds.fromPrefs())
+                            .first()
+                            .verdict
+                    }
+                    if (!open || drawn[id] !== rect) return@launch
                     render()
+                    trust()
                     if (editor.selectedId == id || editor.selectedId == null) status(id)
                 }
             }
@@ -2189,9 +2241,12 @@ class MangaReaderActivity : AppCompatActivity() {
                 if (id == null) return
                 drawn.remove(id)
                 text.remove(id)
+                verdicts.remove(id)
+                trusted.remove(id)
                 editor.select(null)
                 render()
                 status(null)
+                trust()
             }
 
             editor.onBoxAdded = { rect ->
@@ -2202,21 +2257,39 @@ class MangaReaderActivity : AppCompatActivity() {
                 read(id)
             }
             editor.onBoxChanged = { id, rect ->
-                // Touching a detected box makes it the reader's own: from here it is read from
-                // where they put it, and whatever the page pass found there gives way to it.
+                // *Moving* a detected box makes it the reader's own: from here it is read from
+                // where they put it, and whatever the page pass found there gives way to it. Only
+                // a real drag gets here — a tap that merely selects is not an edit, or picking a
+                // box up to look at it would silently convert it.
                 detected.remove(id)
                 drawn[id] = rect
+                // What the page pass read is what it read at the old rect, and what it made of it
+                // was judged there too. Neither describes this box any more, so the box goes back
+                // to pending until the re-read at the end of the drag answers for the new one.
+                text.remove(id)
+                verdicts.remove(id)
                 render()
             }
             editor.onBoxEditEnded = { id -> read(id) }
-            editor.onSelectionChanged = { id -> status(id) }
+            editor.onSelectionChanged = { id ->
+                status(id)
+                trust()
+            }
+            binding.drawBoxesTrust.setOnCheckedChangeListener { _, checked ->
+                if (syncing) return@setOnCheckedChangeListener
+                val id = editor.selectedId ?: return@setOnCheckedChangeListener
+                if (checked) trusted.add(id) else trusted.remove(id)
+            }
 
             binding.drawBoxesStatus.setText(R.string.mtl_draw_boxes_reading_page)
             customAlertDialog().apply {
                 setTitle(R.string.mtl_draw_boxes_title, pos + 1)
                 setCustomView(binding.root)
                 setPosButton(R.string.mtl_draw_boxes_translate) {
-                    DrawnRegions.put(key, drawn.values.toList())
+                    DrawnRegions.put(
+                        key,
+                        drawn.map { (id, rect) -> DrawnRegion(rect, id in trusted) },
+                    )
                     translatePage(pos, image)
                 }
                 setNeutralButton(R.string.mtl_draw_boxes_remove)
@@ -2241,8 +2314,13 @@ class MangaReaderActivity : AppCompatActivity() {
             // already drawn on this page have superseded. Drawing is armed only once this is in,
             // since ids are handed out from where the detected ones stop.
             val kept = DrawnRegions[key]
+            // The neighbours the translation would read across, so the boxes shown here are the
+            // ones it will actually act on. See [PageTranslationPipeline.detect].
+            val (before, after) = seamNeighbours(image)
             val found = withContext(Dispatchers.Default) {
-                PageTranslationPipeline.detect(bitmap, activeScript(), kept)
+                PageTranslationPipeline.detect(
+                    bitmap, activeScript(), kept, mtlSettings(), before, after,
+                )
             }
             if (!open) return@launch
             found.forEach { entry ->
@@ -2250,14 +2328,20 @@ class MangaReaderActivity : AppCompatActivity() {
                 text[entry.block.id] = entry.block.text
             }
             nextId = (found.maxOfOrNull { it.block.id } ?: 0) + 1
-            kept.forEach { rect ->
+            kept.forEach { region ->
                 val id = nextId++
-                drawn[id] = Rect(rect)
+                drawn[id] = Rect(region.rect)
+                if (region.trusted) trusted.add(id)
                 read(id)
             }
             render()
+            // Armed for as long as the dialog is open, and the hint says so in words, so the frame
+            // the view draws around itself would be permanently lit and read as a box around the
+            // whole page.
+            editor.addModeFrame = false
             editor.addMode = true
             status(null)
+            trust()
         }
     }
 

@@ -4,6 +4,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Rect
 import android.util.LruCache
+import ani.dantotsu.util.Logger
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import java.util.Locale
@@ -51,6 +52,17 @@ object TranslatedPages {
 }
 
 /**
+ * A box the reader drew by hand, and whether they overruled what the scoring made of it.
+ *
+ * [trusted] is off by default and that is the whole point of it: a drawn box says where to look,
+ * not what the answer must be. Somebody framing a bubble the page pass split wants it translated;
+ * somebody probing a caption to see whether it reads at all does not want artwork painted over
+ * when it turns out it does not. The dialog offers the override on exactly the boxes where the
+ * verdict would otherwise stop them — see `translate anyway` there.
+ */
+data class DrawnRegion(val rect: Rect, val trusted: Boolean = false)
+
+/**
  * Boxes the reader drew by hand over text the page pass missed, keyed by page url.
  *
  * Kept apart from the translations so they survive one: a page translated again — after a change
@@ -61,11 +73,11 @@ object DrawnRegions {
 
     private const val CAPACITY = 200
 
-    private val cache = LruCache<String, List<Rect>>(CAPACITY)
+    private val cache = LruCache<String, List<DrawnRegion>>(CAPACITY)
 
-    operator fun get(pageUrl: String): List<Rect> = cache.get(pageUrl).orEmpty()
+    operator fun get(pageUrl: String): List<DrawnRegion> = cache.get(pageUrl).orEmpty()
 
-    fun put(pageUrl: String, regions: List<Rect>) {
+    fun put(pageUrl: String, regions: List<DrawnRegion>) {
         if (regions.isEmpty()) cache.remove(pageUrl) else cache.put(pageUrl, regions)
     }
 }
@@ -87,9 +99,12 @@ object PageTranslationPipeline {
      *                  the seam — the reader's own for the media open, never the preferences.
      * @param before    the page above this one, and [after] the page below, where the reader has
      *                  them decoded. See [Seam].
-     * @param regions   boxes drawn by hand over text the page pass missed, in page pixels. Each
-     *                  is read on its own and translated whatever the scoring makes of it: a box
-     *                  somebody drew is an instruction, not a candidate.
+     * @param regions   boxes drawn by hand over text the page pass missed, in page pixels. Each is
+     *                  read on its own, then joins the page's own runs and is merged, scored and
+     *                  laid out with them — so a box over the column the pass dropped completes
+     *                  its bubble instead of standing beside it. One marked [DrawnRegion.trusted]
+     *                  is translated whatever the scoring said. One that reads as nothing stands
+     *                  aside rather than taking the page pass' own block with it.
      * @return null when the page has nothing worth translating, so the caller can say so rather
      *         than showing an empty overlay.
      */
@@ -100,15 +115,24 @@ object PageTranslationPipeline {
         settings: MtlSettings = MtlSettings.fromPrefs(),
         before: Bitmap? = null,
         after: Bitmap? = null,
-        regions: List<Rect> = emptyList(),
+        regions: List<DrawnRegion> = emptyList(),
     ): TranslatedPage? {
         val seam = Seam.of(page, before, after, settings.stitch)
         try {
             val detector = PageTextDetector(script)
             val runs = detector.read(seam.image)
-            val found = detector.blocks(runs, merge = true)
-                .filterNot { superseded(it, regions.map(seam::toImage)) }
-            val blocks = found + drawnBlocks(detector, seam, found, regions)
+            val (hand, taken) = handRuns(detector, seam, regions)
+            // What the page pass found inside a drawn box gives way to what the box itself read:
+            // both are the same words, and carrying two copies into the merge would put the
+            // bubble's line in twice. A region that read nothing takes nothing with it — that is
+            // how a bubble the pass *had* found went missing from the very page somebody was
+            // drawing boxes on to improve.
+            val kept = runs.filterNot { superseded(it.box, taken) }
+            // Drawn and found alike, merged together. A box drawn over the column the page pass
+            // dropped is then simply the missing piece of its bubble, rather than a second block
+            // standing beside it — which is what it was for as long as merging ran before the
+            // drawn regions were read at all.
+            val blocks = detector.blocks(kept + hand, merge = true, page = seam.image)
             if (blocks.isEmpty()) return null
 
             val scored = BlockScorer
@@ -130,8 +154,25 @@ object PageTranslationPipeline {
             }
 
             val byId = wanted.mapIndexed { index, entry ->
-                entry.block.id to translations.getOrElse(index) { entry.block.sourceText(script) }
+                val source = entry.block.sourceText(script)
+                val answer = translations.getOrElse(index) { source }
+                // An engine that cannot translate an entry returns it unchanged — the comic prompt
+                // asks for exactly that where a value reads as garbled or as a watermark, the
+                // keyless engines fall back to it on a failed request, and a missing key in a
+                // model's reply falls back to it here. Painting that back over the bubble it came
+                // from replaces the artist's lettering with system type saying the same words, and
+                // hides the original while doing it. Treated as no translation, so the block is
+                // left alone — which is what the blank case already does and for the same reason.
+                entry.block.id to if (answer.trim() == source.trim()) "" else answer
             }.toMap()
+            // A block the scorer wanted translated and that has no words to show for it is not
+            // painted at all, which from the outside is a bubble the pass plainly found and then
+            // did nothing about. Silent, and the one symptom hardest to tell from a detection
+            // failure, so it is said here rather than guessed at from a screenshot.
+            val silent = wanted.count { byId[it.block.id].isNullOrBlank() }
+            if (silent > 0) {
+                Logger.log("MTL: $silent of ${wanted.size} blocks came back untranslated")
+            }
             val finished = scored.map { entry ->
                 byId[entry.block.id]?.let { entry.copy(block = entry.block.copy(translation = it)) }
                     ?: entry
@@ -160,70 +201,100 @@ object PageTranslationPipeline {
     /**
      * Reads and scores a page without translating it, for showing what the page pass would do.
      *
-     * The same detection [run] performs, minus the seam: the point is to show the reader the
-     * boxes before they draw their own, and a strip of the next page is not something they can
-     * draw on.
+     * Detection **including the seam**, because the point is to show what the translation is going
+     * to act on. Reading the page alone here was cheaper and was the whole trouble: ML Kit reads an
+     * image as a whole, so prepending a strip of the neighbour moves where it puts its block
+     * boundaries, and the two passes came back with different answers on the same page. One
+     * reported bubble was a single merged box in the dialog and two separate ones in the finished
+     * render, each holding a third of a word per line. A preview that disagrees with the thing it
+     * previews is worse than no preview: it is where the boxes are drawn.
+     *
+     * Results are brought back into the page's own coordinates, since that is what the reader sees
+     * and draws on. Blocks belonging wholly to a neighbour fall away with them.
      */
-    suspend fun detect(page: Bitmap, script: TextScript, regions: List<Rect>): List<ScoredBlock> {
-        val detector = PageTextDetector(script)
-        val blocks = detector.blocks(detector.read(page), merge = true)
-            .filterNot { superseded(it, regions) }
-        return BlockScorer.score(blocks, page, DetectionThresholds.fromPrefs())
+    suspend fun detect(
+        page: Bitmap,
+        script: TextScript,
+        regions: List<DrawnRegion>,
+        settings: MtlSettings = MtlSettings.fromPrefs(),
+        before: Bitmap? = null,
+        after: Bitmap? = null,
+    ): List<ScoredBlock> {
+        val seam = Seam.of(page, before, after, settings.stitch)
+        try {
+            val detector = PageTextDetector(script)
+            val boxes = regions.map { seam.toImage(it.rect) }
+            val blocks = detector
+                .blocks(detector.read(seam.image), merge = true, page = seam.image)
+                .filterNot { superseded(it.box, boxes) }
+            return BlockScorer.score(blocks, seam.image, DetectionThresholds.fromPrefs())
+                .map { seam.assign(it) }
+                .mapNotNull { seam.toPage(it, page.width, page.height) }
+        } finally {
+            seam.recycle()
+        }
     }
 
     /**
      * Whether a block the page pass found sits under a box the reader drew.
      *
-     * The drawn box wins. It is how a reader says "this, as one bubble" over a page pass that split
-     * it, or "this, correctly" over one that framed it wrong, and translating both would put two
-     * translations on one piece of text.
+     * The drawn box wins, where it is doing anything at all. It is how a reader says "this, as one
+     * bubble" over a page pass that split it, or "this, correctly" over one that framed it wrong,
+     * and translating both would put two translations on one piece of text. A box that is not
+     * going to be covered has nothing to win with — see the ordering in [run].
      */
-    fun superseded(block: TextBlock, regions: List<Rect>): Boolean =
-        regions.any { it.contains(block.box.centerX(), block.box.centerY()) }
+    fun superseded(box: Rect, regions: List<Rect>): Boolean =
+        regions.any { it.contains(box.centerX(), box.centerY()) }
 
     /**
-     * Blocks for the boxes the reader drew, read one region at a time.
+     * The boxes the reader drew, read one region at a time, as runs the merger can take.
      *
-     * Padded and enlarged by [PageTextDetector.readRegion], which is the whole point: text the page
-     * pass dropped usually reads perfectly from a crop, since the recognizer's answer depends on
-     * the size it is shown. A box that reads as nothing is left out rather than painted blank.
+     * Padded and enlarged by [PageTextDetector.readRegion], which is the whole point: text the
+     * page pass dropped usually reads perfectly from a crop, since the recognizer's answer depends
+     * on the size it is shown. A box that reads as nothing is left out rather than painted blank —
+     * and, because it is left out, it does not supersede anything either.
+     *
+     * @return the runs, and the rectangles that earned the right to replace what lies under them.
      */
-    private suspend fun drawnBlocks(
+    private suspend fun handRuns(
         detector: PageTextDetector,
         seam: Seam,
-        found: List<TextBlock>,
-        regions: List<Rect>,
-    ): List<TextBlock> {
-        if (regions.isEmpty()) return emptyList()
-        // The ring is padded in glyph widths, so a box the recognizer read nothing in still needs
-        // a size; the page's own median is the honest guess.
-        val bodyGlyph = found.map { it.glyphPx }.filter { it > 0f }.sorted()
-            .let { if (it.isEmpty()) 0f else it[it.size / 2] }
-        // Past the highest id present, not past the count: [found] has had blocks under drawn
-        // boxes removed but keeps the ids it was given before that, so counting would hand a
-        // drawn block the id of the last detected one — and every map downstream is keyed by id,
-        // which made that detected block quietly take the drawn one's words and place.
-        var id = (found.maxOfOrNull { it.id } ?: 0) + 1
-        return regions.mapNotNull { region ->
-            val rect = seam.toImage(region)
-            val (lines, glyphScale) = detector.readRegion(seam.image, rect)
-            detector.toBlock(
-                id++, lines, rect,
-                synthetic = true, glyphScale = glyphScale, fallbackGlyphPx = bodyGlyph,
-            ).takeIf { it.text.isNotBlank() }
+        regions: List<DrawnRegion>,
+    ): Pair<List<PageTextDetector.TextRun>, List<Rect>> {
+        if (regions.isEmpty()) return emptyList<PageTextDetector.TextRun>() to emptyList()
+        val runs = ArrayList<PageTextDetector.TextRun>(regions.size)
+        val taken = ArrayList<Rect>(regions.size)
+        regions.forEach { region ->
+            val rect = seam.toImage(region.rect)
+            val read = detector.readRegion(seam.image, rect)
+            val run = detector.regionRun(read, region.trusted) ?: return@forEach
+            runs.add(run)
+            // The rectangle that was drawn, not the run's own tight box: what the reader pointed
+            // at is what they meant to take responsibility for, slack and all.
+            taken.add(rect)
         }
+        return runs to taken
     }
 
     /**
-     * A drawn box is translated whatever the ring or the recognizer's confidence say.
+     * A drawn box the reader stood behind is translated whatever the ring or the confidence say.
      *
-     * Those tests exist to keep the page pass from painting over artwork and translating noise;
-     * a box somebody drew has already been judged text by the one judge that counts. Overriding
-     * the verdict rather than skipping the tests keeps the calibration screen honest, where a
-     * hand-drawn box is there precisely to see what the tests make of it.
+     * Those tests exist to keep the page pass from painting over artwork and translating noise,
+     * and a box drawn by hand does not exempt itself from them merely by existing — that was the
+     * old rule, and it meant a box probing a caption that turned out to sit on artwork got the
+     * artwork painted over for its trouble. Asking instead is cheap: the dialog shows what the
+     * scoring made of each box and offers the override on the ones it would otherwise stop.
+     *
+     * Overriding the verdict rather than skipping the tests keeps the calibration screen honest,
+     * where a hand-drawn box is there precisely to see what the tests make of it.
+     *
+     * A block counts as drawn when any part of it was: a bubble somebody put back together by
+     * pointing at its missing column is a bubble they stood behind.
      */
     private fun trustDrawn(entry: ScoredBlock): ScoredBlock =
-        if (entry.block.synthetic && !entry.verdict.translatable && entry.verdict != BlockVerdict.SEAM) {
+        if (entry.block.synthetic && entry.block.trusted &&
+            !entry.verdict.translatable && entry.verdict != BlockVerdict.SEAM
+        ) {
             entry.copy(verdict = BlockVerdict.DIALOGUE)
         } else {
             entry
@@ -313,6 +384,37 @@ private class Seam(
 
     /** A rect in the page's own coordinates, moved into the composite's. */
     fun toImage(rect: Rect): Rect = if (!composite) rect else Rect(rect).apply { offset(0, offset) }
+
+    /** A rect in the composite's coordinates brought back into the page's, or null if it missed. */
+    fun toPage(rect: Rect, width: Int, height: Int): Rect? {
+        if (!composite) return rect
+        val top = rect.top - offset
+        val bottom = rect.bottom - offset
+        if (bottom <= 0 || top >= height) return null
+        return Rect(
+            rect.left.coerceIn(0, width),
+            top.coerceIn(0, height),
+            rect.right.coerceIn(0, width),
+            bottom.coerceIn(0, height),
+        ).takeUnless { it.isEmpty }
+    }
+
+    /**
+     * A scored block in the page's own coordinates, or null where it belongs to a neighbour.
+     *
+     * Every rect it carries moves, not only its bounds: a line box left in the composite's frame
+     * would be ringed somewhere else entirely if anything re-scored the block later.
+     */
+    fun toPage(entry: ScoredBlock, width: Int, height: Int): ScoredBlock? {
+        if (!composite) return entry
+        val box = toPage(entry.block.box, width, height) ?: return null
+        return entry.copy(
+            block = entry.block.copy(
+                box = box,
+                lineBoxes = entry.block.lineBoxes.mapNotNull { toPage(it, width, height) },
+            ),
+        )
+    }
 
     /** Brings finished rectangles back into the page's own coordinates, dropping what missed it. */
     fun toPage(blocks: List<PaintedBlock>, width: Int, height: Int): List<PaintedBlock> {

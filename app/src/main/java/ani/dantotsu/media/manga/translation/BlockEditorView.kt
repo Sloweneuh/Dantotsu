@@ -70,7 +70,10 @@ class BlockEditorView @JvmOverloads constructor(
             invalidate()
         }
 
-    /** A drag finished and [id] now occupies [rect]. Fires continuously while dragging. */
+    /**
+     * [id] now occupies [rect]. Fires continuously once a drag is under way, and never for a
+     * gesture that stayed within the touch slop — that one is a selection, not an edit.
+     */
     var onBoxChanged: ((id: Int, rect: Rect) -> Unit)? = null
 
     /** A block was drawn on empty space. */
@@ -106,6 +109,20 @@ class BlockEditorView @JvmOverloads constructor(
             invalidate()
         }
 
+    /**
+     * Whether an armed [addMode] draws its frame around the view.
+     *
+     * The frame answers "why did my drag draw a box instead of scrolling", which is a question
+     * only a host that can turn the mode off ever raises. Where drawing is armed for as long as
+     * the view is on screen the frame is permanently lit, says nothing, and reads as a box around
+     * the whole page — it is the same blue a box is drawn in.
+     */
+    var addModeFrame: Boolean = true
+        set(value) {
+            field = value
+            invalidate()
+        }
+
     private var scale = 1f
     private val destination = Rect()
 
@@ -117,6 +134,9 @@ class BlockEditorView @JvmOverloads constructor(
     private var corner = 0
     private var downX = 0f
     private var downY = 0f
+
+    /** Whether the finger has travelled far enough for this gesture to be a drag at all. */
+    private var dragging = false
     private var startRect = Rect()
     private var draft: Rect? = null
 
@@ -228,7 +248,7 @@ class BlockEditorView @JvmOverloads constructor(
         }
 
         // Armed drawing changes what a drag does, so it must never be invisible state.
-        if (addMode) {
+        if (addMode && addModeFrame) {
             boxPaint.color = DRAFT_COLOR
             boxPaint.strokeWidth = 3f * density
             val inset = 1.5f * density
@@ -255,6 +275,7 @@ class BlockEditorView @JvmOverloads constructor(
             MotionEvent.ACTION_DOWN -> {
                 downX = event.x
                 downY = event.y
+                dragging = false
 
                 val selected = boxes.firstOrNull { it.id == selectedId }
                 val grabbed = selected?.let { grabCorner(it.rect.toView(), event.x, event.y) }
@@ -302,6 +323,17 @@ class BlockEditorView @JvmOverloads constructor(
             }
 
             MotionEvent.ACTION_MOVE -> {
+                // A tap is not a drag, and the difference matters because [onBoxChanged] is acted
+                // on the instant it fires. Reporting the first pixel of finger jitter as a move is
+                // what turned picking a box up into editing it: a selection nobody meant as an edit
+                // still rewrote the block, at the same rect it already had. Creation is exempt —
+                // its draft is only drawn, and its own slop test is at the lift.
+                if (!dragging && mode != Mode.CREATE) {
+                    if (abs(event.x - downX) <= touchSlop && abs(event.y - downY) <= touchSlop) {
+                        return true
+                    }
+                    dragging = true
+                }
                 val dx = ((event.x - downX) / scale).roundToInt()
                 val dy = ((event.y - downY) / scale).roundToInt()
                 when (mode) {
@@ -345,7 +377,10 @@ class BlockEditorView @JvmOverloads constructor(
                         }
                     }
 
-                    (mode == Mode.MOVE || mode == Mode.RESIZE) && moved -> {
+                    // [dragging] rather than the distance at the lift: a finger that went out and
+                    // came back moved the box and has to be answered for, and one that never left
+                    // the slop reported no change to end.
+                    (mode == Mode.MOVE || mode == Mode.RESIZE) && dragging -> {
                         selectedId?.let { onBoxEditEnded?.invoke(it) }
                     }
 

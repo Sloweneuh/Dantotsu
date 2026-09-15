@@ -2717,10 +2717,11 @@
     <string name="mtl_hide_translation">Masquer la traduction</string>
     <string name="mtl_draw_boxes">Encadrer le texte manqué</string>
     <string name="mtl_draw_boxes_title">Page %1$d — encadrer le texte</string>
-    <string name="mtl_draw_boxes_hint">Tracez un cadre sur le texte que la traduction a manqué, ou déplacez un cadre détecté pour le corriger. Faites défiler à deux doigts. Les cadres sont conservés pour cette page.</string>
+    <string name="mtl_draw_boxes_hint">Tracez un cadre sur le texte manqué, ou déplacez-en un pour le corriger. Deux doigts pour défiler.</string>
     <string name="mtl_draw_boxes_reading_page">Lecture de la page…</string>
     <string name="mtl_draw_boxes_reading">#%1$d · lecture…</string>
     <string name="mtl_draw_boxes_read_nothing">#%1$d · rien de lu ici</string>
+    <string name="mtl_draw_boxes_trust">Traduire quand même</string>
     <string name="mtl_draw_boxes_translate">Traduire</string>
     <string name="mtl_draw_boxes_remove">Retirer le cadre</string>
     <string name="view_image">Voir l\'image</string>

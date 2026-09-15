@@ -142,6 +142,75 @@ object RingSampler {
         return channel[channel.size / 2]
     }
 
+    /**
+     * Measures the gap between two runs of text, for [Divider].
+     *
+     * Two numbers out of one pass, because the two questions a gap has to answer need different
+     * ones and sampling twice would double the cost of the merge.
+     *
+     * Neither is the spread. Across two pages the gap between two columns of one bubble measured
+     * 0.0 and 8.6 where it was clear, 3.3 with a dotted divider drawn down it, and **74.6** where
+     * it held the ruby reading of the kanji beside it, against 228.7 for a gap across a panel
+     * rule. Ruby sits between columns by definition, so no threshold on spread could keep it while
+     * still rejecting the rule.
+     *
+     * What separates them is where the ink sits. A rule is opaque down its whole length, so one
+     * line of it is entirely off the field and every line beside it is clean. A column of text the
+     * recognizer missed can reach 1.0 too — kanji have long straight strokes — but it leaves ink
+     * across the whole gap rather than in one line of it.
+     *
+     * The field is the gap's own median rather than white: an inverted bubble divides its columns
+     * with black and is no less one bubble for it.
+     *
+     * @param vertical which way the band is long, and so which way a rule through it would run:
+     *   true for the gap between two vertical columns, false for the gap between two rows.
+     */
+    fun divider(bitmap: Bitmap, band: Rect, vertical: Boolean): Divider {
+        val across = if (vertical) band.width() else band.height()
+        val along = if (vertical) band.height() else band.width()
+        if (across <= 0 || along <= 0) return Divider(emptyList(), 0f)
+        val stepAcross = (across / MAX_DIVIDER_LINES).coerceAtLeast(1)
+        val stepAlong = (along / DIVIDER_SAMPLES).coerceAtLeast(1)
+
+        val lines = ArrayList<ArrayList<Float>>()
+        val all = ArrayList<Float>()
+        var a = 0
+        while (a < across) {
+            val line = ArrayList<Float>()
+            var b = 0
+            while (b < along) {
+                val x = if (vertical) band.left + a else band.left + b
+                val y = if (vertical) band.top + b else band.top + a
+                if (x in 0 until bitmap.width && y in 0 until bitmap.height) {
+                    val pixel = bitmap[x, y]
+                    val luminance = 0.299f * Color.red(pixel) +
+                        0.587f * Color.green(pixel) +
+                        0.114f * Color.blue(pixel)
+                    line.add(luminance)
+                    all.add(luminance)
+                }
+                b += stepAlong
+            }
+            if (line.isNotEmpty()) lines.add(line)
+            a += stepAcross
+        }
+        if (all.isEmpty()) return Divider(emptyList(), 0f)
+        all.sort()
+        val field = all[all.size / 2]
+        fun offField(samples: List<Float>) =
+            samples.count { abs(it - field) > OFF_FIELD }.toFloat() / samples.size
+        return Divider(lines = lines.map { offField(it) }, ink = offField(all))
+    }
+
+    /** How far from the field a sample sits before it counts as something rather than nothing. */
+    private const val OFF_FIELD = 60f
+
+    /** Samples along a band's length, which is what resolves a dotted rule from a solid one. */
+    private const val DIVIDER_SAMPLES = 64
+
+    /** Lines across a band's width. A rule only has to be found once. */
+    private const val MAX_DIVIDER_LINES = 16
+
     /** How far two colours sit apart, as the largest of their per-channel differences. */
     fun distance(a: Int, b: Int): Int = max(
         abs(Color.red(a) - Color.red(b)),
