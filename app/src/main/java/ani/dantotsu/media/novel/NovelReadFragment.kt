@@ -721,5 +721,10 @@ class NovelReadFragment : Fragment() {
         // fragment alive with it.
         model.novelSources.flushTextListeners()
         _binding = null
+        // ViewPager2's offscreenPageLimit can destroy this fragment's view while keeping the
+        // fragment instance alive; without resetting this, the media observer's `if (!loaded)`
+        // guard would skip re-creating the adapters into the fresh (empty) binding, leaving the
+        // tab stuck on its loading spinner.
+        loaded = false
     }
 }

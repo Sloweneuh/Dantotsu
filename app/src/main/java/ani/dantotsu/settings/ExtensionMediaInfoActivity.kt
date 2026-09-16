@@ -126,6 +126,24 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
     private var pkg: String? = null
     private var langIndex: Int = 0
 
+    // Tracks in-flight loadDetails()/doOpenChapter() calls so the spinner reflects real work.
+    // Something in the window-visibility machinery (observed via WSA: the ProgressBar's
+    // visibility flag flips back to VISIBLE on its own a few hundred ms into backgrounding this
+    // Activity behind the reader, with no app code touching it) can leave it stuck showing after
+    // a trip to the reader even though loading finished before that trip started. onResume()
+    // re-asserts the real state instead of trusting whatever the system left behind.
+    private var pendingProgressLoads = 0
+
+    private fun beginProgress() {
+        pendingProgressLoads++
+        binding.extensionInfoProgress.isVisible = true
+    }
+
+    private fun endProgress() {
+        pendingProgressLoads = (pendingProgressLoads - 1).coerceAtLeast(0)
+        binding.extensionInfoProgress.isVisible = pendingProgressLoads > 0
+    }
+
     private var enterTransitionStarted = false
 
     // Gated on the cover actually having pixels (see bindInitial()) — releasing purely on
@@ -202,6 +220,13 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
         configureSearchButtons()
 
         if (pkg != null) loadDetails(pkg!!, langIndex)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // See pendingProgressLoads: reassert rather than trust whatever visibility a trip to
+        // another screen (reader, quicksearch match) left the spinner in.
+        binding.extensionInfoProgress.isVisible = pendingProgressLoads > 0
     }
 
     private var currentExtTabIndex = 0
@@ -326,7 +351,7 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
 
     private fun loadDetails(pkg: String, langIndex: Int) {
         synopsisExpanded = false
-        binding.extensionInfoProgress.isVisible = true
+        beginProgress()
         lifecycleScope.launch {
             val updated = runCatching {
                 withContext(Dispatchers.IO) {
@@ -378,7 +403,7 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
                     }
                 }
             }
-            binding.extensionInfoProgress.isVisible = false
+            endProgress()
             if (updated.isFailure) {
                 Logger.log(updated.exceptionOrNull() ?: Exception("details failed"))
                 return@launch
@@ -790,7 +815,7 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
     private fun doOpenChapter(sChapter: SChapter) {
         val currentPkg = pkg ?: return
         val currentLangIndex = langIndex
-        binding.extensionInfoProgress.isVisible = true
+        beginProgress()
         lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) {
                 runCatching {
@@ -832,7 +857,7 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
                     )
                 }.getOrNull()
             }
-            binding.extensionInfoProgress.isVisible = false
+            endProgress()
             if (result != null) {
                 MediaSingleton.media = result
                 startActivity(Intent(this@ExtensionMediaInfoActivity, MangaReaderActivity::class.java))
