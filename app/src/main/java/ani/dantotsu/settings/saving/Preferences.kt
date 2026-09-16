@@ -86,7 +86,6 @@ enum class PrefName(val data: Pref) {
     SubscriptionNotificationIntervalMinutes(Pref(Location.General, Long::class, 60L)), // New: 480 minutes = 8 hours
     UnreadChapterNotificationInterval(Pref(Location.General, Long::class, 60L)), // 60 minutes = 1 hour
     LastAnilistNotificationId(Pref(Location.General, Int::class, 0)),
-    AnilistFilteredTypes(Pref(Location.General, Set::class, setOf<String>())),
     UseAlarmManager(Pref(Location.General, Boolean::class, false)),
     FirebaseToken(Pref(Location.General, String::class, "")),
     LastFirebaseBackgroundCheck(Pref(Location.General, Long::class, 0L)),

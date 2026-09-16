@@ -2,6 +2,7 @@ package ani.dantotsu.connections.anilist
 
 import ani.dantotsu.connections.anilist.Anilist.executeQuery
 import ani.dantotsu.connections.anilist.api.FuzzyDate
+import ani.dantotsu.connections.anilist.api.NotificationType
 import ani.dantotsu.connections.anilist.api.Query
 import ani.dantotsu.connections.anilist.api.ToggleLike
 import ani.dantotsu.currContext
@@ -78,6 +79,39 @@ class AnilistMutations {
         """.trimIndent().replace("\n", "").replace("""    """, "").replace(",}", "}")
 
         executeQuery<JsonObject>(query, variables)
+    }
+
+    /**
+     * Writes the account's notification settings — which types AniList generates at all. AIRING
+     * doubles as the account's `airingNotifications` option, so that is kept in step with it.
+     * Returns the settings as AniList now has them, or null if the update failed.
+     */
+    suspend fun updateNotificationOptions(options: Map<String, Boolean>): Map<String, Boolean>? {
+        val query = """
+            mutation (${"$"}options: [NotificationOptionInput], ${"$"}airing: Boolean) {
+                UpdateUser(notificationOptions: ${"$"}options, airingNotifications: ${"$"}airing) {
+                    id
+                    options {
+                        airingNotifications
+                        notificationOptions { type enabled }
+                    }
+                }
+            }
+        """.trimIndent()
+        val optionsJson = options.entries.joinToString(",") { (type, enabled) ->
+            """{"type":"$type","enabled":$enabled}"""
+        }
+        val airing = options[NotificationType.AIRING.name]
+        val variables = buildString {
+            append("""{"options":[$optionsJson]""")
+            if (airing != null) append(""","airing":$airing""")
+            append("}")
+        }
+        val result = executeQuery<Query.NotificationOptions>(query, variables)
+        val updated = result?.data?.updateUser?.options ?: return null
+        updated.airingNotifications?.let { Anilist.airingNotifications = it }
+        return updated.notificationOptions?.associate { it.type to it.enabled }
+            ?.also { Anilist.notificationOptions = it }
     }
 
     /**

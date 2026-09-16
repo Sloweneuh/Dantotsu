@@ -190,6 +190,38 @@ class Query {
         )
     }
 
+    /**
+     * The notification-settings slice of the viewer, as returned by a `Viewer` query or an
+     * `UpdateUser` mutation that asks for only `options{...}`.
+     */
+    @Serializable
+    data class NotificationOptions(
+        @SerialName("data")
+        val data: Data?
+    ) {
+        @Serializable
+        data class Data(
+            @SerialName("Viewer")
+            val viewer: Holder? = null,
+            @SerialName("UpdateUser")
+            val updateUser: Holder? = null,
+        )
+
+        @Serializable
+        data class Holder(
+            @SerialName("options")
+            val options: Options?
+        )
+
+        @Serializable
+        data class Options(
+            @SerialName("airingNotifications")
+            val airingNotifications: Boolean? = null,
+            @SerialName("notificationOptions")
+            val notificationOptions: List<NotificationOption>? = null,
+        )
+    }
+
     @Serializable
     data class ToggleFollow(
         @SerialName("data")

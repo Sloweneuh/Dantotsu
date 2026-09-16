@@ -11,7 +11,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.FragmentActivity
 import ani.dantotsu.BuildConfig
 import ani.dantotsu.R
-import ani.dantotsu.connections.anilist.api.NotificationType
 import ani.dantotsu.databinding.ItemSettingsBinding
 import ani.dantotsu.notifications.TaskScheduler
 import ani.dantotsu.notifications.anilist.AnilistNotificationWorker
@@ -24,7 +23,6 @@ import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.util.Logger
 import ani.dantotsu.util.customAlertDialog
-import java.util.Locale
 
 /**
  * The rows behind each notification source group on [SettingsNotificationActivity].
@@ -389,28 +387,8 @@ fun AppCompatActivity.anilistRows(onChanged: () -> Unit): List<Settings> {
             compact = true,
             anchorKey = "anilist_filters",
             onClick = {
-                val types = NotificationType.entries.map { it.name }
-                val filteredTypes =
-                    PrefManager.getVal<Set<String>>(PrefName.AnilistFilteredTypes).toMutableSet()
-                val selected = types.map { filteredTypes.contains(it) }.toBooleanArray()
-                context.customAlertDialog().apply {
-                    setTitle(R.string.anilist_notification_filters)
-                    multiChoiceItems(
-                        types.map { name ->
-                            name.replace("_", " ").lowercase().replaceFirstChar {
-                                if (it.isLowerCase()) it.titlecase(Locale.ROOT) else it.toString()
-                            }
-                        }.toTypedArray(),
-                        selected
-                    ) { updatedSelected ->
-                        types.forEachIndexed { index, type ->
-                            if (updatedSelected[index]) filteredTypes.add(type)
-                            else filteredTypes.remove(type)
-                        }
-                        PrefManager.setVal(PrefName.AnilistFilteredTypes, filteredTypes)
-                    }
-                    show()
-                }
+                AnilistNotificationOptionsSheet()
+                    .show(supportFragmentManager, "anilistNotificationOptions")
             }
         ),
     )

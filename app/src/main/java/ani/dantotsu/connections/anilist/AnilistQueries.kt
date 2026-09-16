@@ -154,7 +154,7 @@ class AnilistQueries {
         val response: Query.Viewer?
         measureTimeMillis {
             response = executeQuery(
-                """{Viewer{name options{timezone titleLanguage staffNameLanguage activityMergeTime airingNotifications displayAdultContent restrictMessagesToFollowing} avatar{medium} bannerImage id mediaListOptions{scoreFormat rowOrder animeList{customLists} mangaList{customLists}} statistics{anime{count meanScore minutesWatched episodesWatched} manga{count meanScore chaptersRead volumesRead}} unreadNotificationCount}}"""
+                """{Viewer{name options{timezone titleLanguage staffNameLanguage activityMergeTime airingNotifications displayAdultContent restrictMessagesToFollowing notificationOptions{type enabled}} avatar{medium} bannerImage id mediaListOptions{scoreFormat rowOrder animeList{customLists} mangaList{customLists}} statistics{anime{count meanScore minutesWatched episodesWatched} manga{count meanScore chaptersRead volumesRead}} unreadNotificationCount}}"""
             )
         }.also { println("time : $it") }
         val user = response?.data?.user ?: return false
@@ -189,6 +189,9 @@ class AnilistQueries {
             Anilist.restrictMessagesToFollowing = it.restrictMessagesToFollowing ?: false
             Anilist.timezone = it.timezone
             Anilist.activityMergeTime = it.activityMergeTime
+            it.notificationOptions?.let { options ->
+                Anilist.notificationOptions = options.associate { o -> o.type to o.enabled }
+            }
         }
         user.mediaListOptions?.let {
             Anilist.scoreFormat = it.scoreFormat.toString()
@@ -213,6 +216,19 @@ class AnilistQueries {
         )
         val fetchedMedia = response?.data?.media ?: return null
         return Media(fetchedMedia)
+    }
+
+    /**
+     * The account's notification settings, fetched fresh (the viewer query is cached, so it can be
+     * behind an edit made on the site). Also refreshes [Anilist.notificationOptions].
+     */
+    suspend fun getNotificationOptions(): Map<String, Boolean>? {
+        val response = executeQuery<Query.NotificationOptions>(
+            """{Viewer{options{notificationOptions{type enabled}}}}""",
+            cache = 0
+        )
+        val options = response?.data?.viewer?.options?.notificationOptions ?: return null
+        return options.associate { it.type to it.enabled }.also { Anilist.notificationOptions = it }
     }
 
     fun mediaDetails(media: Media): Media {

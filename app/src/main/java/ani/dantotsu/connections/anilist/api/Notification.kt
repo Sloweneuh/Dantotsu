@@ -38,6 +38,9 @@ enum class NotificationType(val value: String) {
     }
 
     companion object {
+        /** The types AniList itself sends; everything from UNREAD_CHAPTER on is app-local. */
+        val anilistTypes: List<NotificationType> = entries.takeWhile { it != UNREAD_CHAPTER }
+
         fun String.fromFormattedString(): String {
             return this.replace(" ", "_").uppercase(Locale.ROOT)
         }

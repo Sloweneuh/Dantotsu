@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.AlertDialog
 import android.content.Context
 import android.os.Build
+import android.view.WindowInsets
 import android.view.WindowManager
 import android.view.View
 import android.widget.ListAdapter
@@ -243,6 +244,42 @@ class AlertDialogBuilder(private val context: Context) {
             }
         }
         dialog.show()
+        capHeight(dialog)
+    }
+
+    /**
+     * The window theme can't set `windowFixedHeightMajor` (private to the framework), so a tall
+     * list dialog otherwise stretches to the full usable height, and its scrolling list ends
+     * flush with the navigation bar — the last rows hidden with no hint that it scrolls. Once
+     * laid out, a dialog that reached that height is pulled back to a fraction of it; shorter
+     * ones keep wrapping their content.
+     */
+    private fun capHeight(dialog: AlertDialog) {
+        val window = dialog.window ?: return
+        val decor = window.decorView
+        decor.post {
+            val available = usableHeight()
+            val max = (available * MAX_HEIGHT_FRACTION).toInt()
+            if (decor.height > max) {
+                window.setLayout(window.attributes.width, max)
+            }
+        }
+    }
+
+    /** Screen height minus the system bars, i.e. what a floating window can occupy. */
+    private fun usableHeight(): Int {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val metrics = context.getSystemService(WindowManager::class.java).currentWindowMetrics
+            val bars = metrics.windowInsets.getInsetsIgnoringVisibility(
+                WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout()
+            )
+            return metrics.bounds.height() - bars.top - bars.bottom
+        }
+        return context.resources.displayMetrics.heightPixels
+    }
+
+    private companion object {
+        const val MAX_HEIGHT_FRACTION = 0.85f
     }
 }
 

@@ -11,6 +11,7 @@ import androidx.core.app.NotificationManagerCompat
 import ani.dantotsu.MainActivity
 import ani.dantotsu.R
 import ani.dantotsu.connections.anilist.Anilist
+import ani.dantotsu.connections.anilist.api.Notification
 import ani.dantotsu.notifications.NotificationReadState
 import ani.dantotsu.notifications.Task
 import ani.dantotsu.profile.activity.ActivityItemBuilder
@@ -40,32 +41,30 @@ class AnilistNotificationTask : Task {
                                 ?.takeLast(unreadNotificationCount)
                         val lastId = PrefManager.getVal<Int>(PrefName.LastAnilistNotificationId)
                         val newNotifications = unreadNotifications?.filter { it.id > lastId }
-                        val filteredTypes =
-                            PrefManager.getVal<Set<String>>(PrefName.AnilistFilteredTypes)
+                        // Which types arrive at all is the account's own notification setting,
+                        // edited from the notification settings screen; nothing is filtered here.
                         newNotifications?.forEach {
-                            if (!filteredTypes.contains(it.notificationType)) {
-                                val content = ActivityItemBuilder.getContent(it)
-                                val notification = createNotification(
-                                    context, content, it.id, NotificationReadState.keyOf(it)
-                                )
-                                if (ActivityCompat.checkSelfPermission(
-                                        context,
-                                        Manifest.permission.POST_NOTIFICATIONS
-                                    ) == PackageManager.PERMISSION_GRANTED
-                                ) {
-                                    NotificationManagerCompat.from(context)
-                                        .notify(
-                                            Notifications.CHANNEL_ANILIST,
-                                            System.currentTimeMillis().toInt(),
-                                            notification
-                                        )
-                                    NotificationManagerCompat.from(context)
-                                        .notify(
-                                            Notifications.CHANNEL_ANILIST,
-                                            Notifications.ID_ANILIST,
-                                            createGroupSummary(context)
-                                        )
-                                }
+                            val content = ActivityItemBuilder.getContent(it)
+                            val notification = createNotification(
+                                context, content, it, NotificationReadState.keyOf(it)
+                            )
+                            if (ActivityCompat.checkSelfPermission(
+                                    context,
+                                    Manifest.permission.POST_NOTIFICATIONS
+                                ) == PackageManager.PERMISSION_GRANTED
+                            ) {
+                                NotificationManagerCompat.from(context)
+                                    .notify(
+                                        Notifications.CHANNEL_ANILIST,
+                                        System.currentTimeMillis().toInt(),
+                                        notification
+                                    )
+                                NotificationManagerCompat.from(context)
+                                    .notify(
+                                        Notifications.CHANNEL_ANILIST,
+                                        Notifications.ID_ANILIST,
+                                        createGroupSummary(context)
+                                    )
                             }
                         }
                         if (newNotifications?.isNotEmpty() == true) {
@@ -88,22 +87,26 @@ class AnilistNotificationTask : Task {
     private fun createNotification(
         context: Context,
         content: String,
-        notificationId: Int? = null,
-        readKey: String? = null
+        source: Notification,
+        readKey: String
     ): android.app.Notification {
         val title = context.getString(R.string.new_anilist_notification)
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            putExtra("FRAGMENT_TO_LOAD", "NOTIFICATIONS")
-            if (notificationId != null) {
-                Logger.log("notificationId: $notificationId")
-                putExtra("activityId", notificationId)
-                if (readKey != null) putExtra(NotificationReadState.EXTRA_KEY, readKey)
+            val mediaId = source.media?.id
+            if (mediaId != null) {
+                // Airing / media-change notifications are about one title: land on its page,
+                // the way the deep-link path does, rather than on a one-item notification list.
+                putExtra("mediaId", mediaId)
+            } else {
+                putExtra("FRAGMENT_TO_LOAD", "NOTIFICATIONS")
+                putExtra("activityId", source.id)
             }
+            putExtra(NotificationReadState.EXTRA_KEY, readKey)
         }
         val pendingIntent = PendingIntent.getActivity(
             context,
-            notificationId ?: 0,
+            source.id,
             intent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
@@ -115,9 +118,7 @@ class AnilistNotificationTask : Task {
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .setGroup(Notifications.GROUP_ANILIST)
-            .apply {
-                if (readKey != null) setDeleteIntent(NotificationReadState.dismissIntent(context, readKey))
-            }
+            .setDeleteIntent(NotificationReadState.dismissIntent(context, readKey))
             .build()
     }
 

@@ -48,6 +48,12 @@ object Anilist {
     var titleLanguage: String? = null
     var staffNameLanguage: String? = null
     var airingNotifications: Boolean = false
+
+    /**
+     * The account's notification settings, by AniList type name. Null until the viewer has been
+     * loaded; [AnilistQueries.getNotificationOptions] fetches them fresh.
+     */
+    var notificationOptions: Map<String, Boolean>? = null
     var restrictMessagesToFollowing: Boolean = false
     var scoreFormat: String? = null
     var rowOrder: String? = null

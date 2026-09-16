@@ -85,8 +85,8 @@ data class UserOptions(
     // Profile highlight color (blue, purple, pink, orange, red, green, gray)
     @SerialName("profileColor") var profileColor: String?,
     //
-    //    // Notification options
-    //    // @SerialName("notificationOptions") var notificationOptions: List<NotificationOption>?,
+    // Notification options
+    @SerialName("notificationOptions") var notificationOptions: List<NotificationOption>? = null,
     //
     // The user's timezone offset (Auth user only)
     @SerialName("timezone") var timezone: String?,
@@ -102,6 +102,13 @@ data class UserOptions(
 
     // The list activity types the user has disabled from being created from list updates
     // @SerialName("disabledListActivity") var disabledListActivity: List<ListActivityOption>?,
+)
+
+/** One row of the account's notification settings: whether AniList generates [type] at all. */
+@Serializable
+data class NotificationOption(
+    @SerialName("type") var type: String,
+    @SerialName("enabled") var enabled: Boolean,
 )
 
 @Serializable

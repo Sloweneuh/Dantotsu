@@ -669,7 +669,6 @@ object BackupTree {
                         BackupItem(PrefName.UnreadChapterCheckingNotifications, R.string.unread_chapter_notifications),
                         BackupItem(PrefName.UnreadMangaNotificationsEnabled, R.string.unread_manga_notifications),
                         BackupItem(PrefName.UnreadEpisodeNotificationsEnabled, R.string.unread_episode_notifications),
-                        BackupItem(PrefName.AnilistFilteredTypes, R.string.anilist_notification_filters),
                         BackupItem(PrefName.UseAlarmManager, R.string.use_alarm_manager_reliable),
                     )
                 ),
