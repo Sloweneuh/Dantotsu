@@ -59,6 +59,7 @@ import ani.dantotsu.setSafeOnClickListener
 import ani.dantotsu.settings.bindQuickSettings
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
+import ani.dantotsu.util.TrackerLinks
 import com.google.android.material.chip.Chip
 import com.xwray.groupie.GroupieAdapter
 import kotlinx.coroutines.Dispatchers
@@ -531,8 +532,18 @@ class ComickMediaActivity : AppCompatActivity() {
     }
 
     private fun setupSourceButtons(comic: ComickComic) {
+        // Comick's own links first; failing those, a tracker link cited in the description is the
+        // next best thing — better than sending the user off to search for it.
+        val synopsis = comic.desc ?: comic.parsed
         val anilistId = comic.links?.al?.toIntOrNull()
-        val muLink = comic.links?.mu?.trim()
+            ?: TrackerLinks.findAnilistMedia(synopsis, isAnimeMode)?.id
+        val muUrl = comic.links?.mu?.trim()?.takeIf { it.isNotBlank() }?.let { muLink ->
+            if (muLink.all { it.isDigit() }) {
+                "https://www.mangaupdates.com/series.html?id=$muLink"
+            } else {
+                "https://www.mangaupdates.com/series/$muLink"
+            }
+        } ?: TrackerLinks.findMangaUpdatesSeries(synopsis)
         val titles = buildTitleList(comic)
 
         binding.comickMediaAnilistBtn.visibility = View.VISIBLE
@@ -565,15 +576,10 @@ class ComickMediaActivity : AppCompatActivity() {
         }
 
         binding.comickMediaMuBtn.visibility = View.VISIBLE
-        if (!muLink.isNullOrBlank()) {
+        if (muUrl != null) {
             binding.comickMediaMuBtn.setText(R.string.comick_open_mangaupdates)
             binding.comickMediaMuBtn.setOnClickListener {
-                val url = if (muLink.all { it.isDigit() }) {
-                    "https://www.mangaupdates.com/series.html?id=$muLink"
-                } else {
-                    "https://www.mangaupdates.com/series/$muLink"
-                }
-                if (!openMangaUpdatesSeriesInApp(url)) openLinkInBrowser(url)
+                if (!openMangaUpdatesSeriesInApp(muUrl)) openLinkInBrowser(muUrl)
             }
         } else {
             binding.comickMediaMuBtn.setText(R.string.mu_search_title)

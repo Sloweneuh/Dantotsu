@@ -30,6 +30,7 @@ import ani.dantotsu.px
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.stripSpansOnPaste
+import ani.dantotsu.util.LinkTouchListener
 import ani.dantotsu.util.Logger
 import androidx.core.view.isVisible
 import ani.dantotsu.databinding.ItemChapterListBinding
@@ -741,7 +742,7 @@ class MangaUpdatesInfoFragment : Fragment() {
         )
     }
 
-    @SuppressLint("SetTextI18n")
+    @SuppressLint("SetTextI18n", "ClickableViewAccessibility")
     private fun displaySeriesDetails(
             series: ani.dantotsu.connections.mangaupdates.MUSeriesRecord,
             media: Media,
@@ -855,10 +856,12 @@ class MangaUpdatesInfoFragment : Fragment() {
                 requireContext(),
                 userInputContent = false,
                 fragment = this,
-                linkResolver = { link -> if (!ani.dantotsu.openMangaUpdatesSeriesInApp(link)) ani.dantotsu.openLinkInBrowser(link) }
+                linkResolver = { ani.dantotsu.openLinkInAppOrBrowser(it) }
         )
         markwon.setMarkdown(binding.mediaInfoDescription, descCleaned)
         binding.mediaInfoDescription.movementMethod = android.text.method.LinkMovementMethod.getInstance()
+        // Links take the tap over the expand click below; a long press opens one in the browser.
+        binding.mediaInfoDescription.setOnTouchListener(LinkTouchListener())
         binding.mediaInfoDescription.setOnClickListener {
             if (binding.mediaInfoDescription.maxLines == 5) {
                 android.animation.ObjectAnimator.ofInt(

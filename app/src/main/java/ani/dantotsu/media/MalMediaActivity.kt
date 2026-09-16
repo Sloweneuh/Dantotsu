@@ -38,6 +38,7 @@ import ani.dantotsu.px
 import ani.dantotsu.settings.bindQuickSettings
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
+import ani.dantotsu.util.TrackerLinks
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
@@ -228,9 +229,13 @@ class MalMediaActivity : AppCompatActivity() {
         binding.malMediaScore.text = score?.let { "★ " + String.format(Locale.US, "%.1f", it) } ?: ""
     }
 
-    private fun setupSourceButtons(anime: MALAnimeResponse?, manga: MALMangaResponse?, anilistId: Int?, muId: Long?) {
+    private fun setupSourceButtons(anime: MALAnimeResponse?, manga: MALMangaResponse?, resolvedAnilistId: Int?, muId: Long?) {
         val kind = if (isAnime) "anime" else "manga"
         val titles = titleList(anime, manga)
+        // When the cross-source lookups come back empty, a tracker link cited in the synopsis is
+        // the next best thing — better than sending the user off to search for it.
+        val synopsis = anime?.synopsis ?: manga?.synopsis
+        val anilistId = resolvedAnilistId ?: TrackerLinks.findAnilistMedia(synopsis, isAnime)?.id
 
         binding.malMediaSourceButtons.visibility = View.VISIBLE
         binding.malMediaAnilistBtn.visibility = View.VISIBLE
@@ -256,11 +261,12 @@ class MalMediaActivity : AppCompatActivity() {
             return
         }
         binding.malMediaMuBtn.visibility = View.VISIBLE
-        if (muId != null) {
+        val muUrl = muId?.let { "https://www.mangaupdates.com/series.html?id=$it" }
+            ?: TrackerLinks.findMangaUpdatesSeries(synopsis)
+        if (muUrl != null) {
             binding.malMediaMuBtn.setText(R.string.comick_open_mangaupdates)
             binding.malMediaMuBtn.setOnClickListener {
-                val url = "https://www.mangaupdates.com/series.html?id=$muId"
-                if (!openMangaUpdatesSeriesInApp(url)) openLinkInBrowser(url)
+                if (!openMangaUpdatesSeriesInApp(muUrl)) openLinkInBrowser(muUrl)
             }
         } else {
             binding.malMediaMuBtn.setText(R.string.mu_search_title)

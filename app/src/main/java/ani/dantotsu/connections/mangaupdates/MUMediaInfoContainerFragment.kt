@@ -8,6 +8,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import ani.dantotsu.R
+import ani.dantotsu.openLinkInBrowser
 import ani.dantotsu.connections.mangabaka.MangaBakaApi
 import ani.dantotsu.databinding.FragmentMediaInfoContainerBinding
 import ani.dantotsu.media.ComickInfoFragment
@@ -192,7 +193,9 @@ class MUMediaInfoContainerFragment : Fragment() {
                     }
                     else -> return@setOnLongClickListener false
                 }
-                startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+                // The browser, explicitly: a bare ACTION_VIEW would be caught by the app's own
+                // deep-link filters and land right back on the page the user is already on.
+                openLinkInBrowser(url)
                 true
             }
         }.attach()

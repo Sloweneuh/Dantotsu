@@ -30,6 +30,7 @@ import ani.dantotsu.px
 import ani.dantotsu.settings.bindQuickSettings
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
+import ani.dantotsu.util.TrackerLinks
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -147,8 +148,13 @@ class MangaBakaMediaActivity : AppCompatActivity() {
     }
 
     private fun setupSourceButtons(series: MangaBakaApi.Series) {
+        // MangaBaka's cross-source ids first; failing those, a tracker link cited in the
+        // description still gets the button shown.
         val anilistId = series.source?.anilist?.id?.takeIf { it > 0 }
-        val muId = series.source?.mangaUpdates?.id?.takeIf { it.isNotBlank() }
+            ?: TrackerLinks.findAnilistMedia(series.description, isAnime = false)?.id
+        val muUrl = series.source?.mangaUpdates?.id?.takeIf { it.isNotBlank() }
+            ?.let { "https://www.mangaupdates.com/series/$it" }
+            ?: TrackerLinks.findMangaUpdatesSeries(series.description)
         var anyShown = false
 
         if (anilistId != null) {
@@ -159,12 +165,11 @@ class MangaBakaMediaActivity : AppCompatActivity() {
             }
             anyShown = true
         }
-        if (muId != null) {
+        if (muUrl != null) {
             binding.mangaBakaMediaMuBtn.visibility = View.VISIBLE
             binding.mangaBakaMediaMuBtn.setText(R.string.comick_open_mangaupdates)
             binding.mangaBakaMediaMuBtn.setOnClickListener {
-                val url = "https://www.mangaupdates.com/series/$muId"
-                if (!openMangaUpdatesSeriesInApp(url)) openLinkInBrowser(url)
+                if (!openMangaUpdatesSeriesInApp(muUrl)) openLinkInBrowser(muUrl)
             }
             anyShown = true
         }

@@ -1,5 +1,6 @@
 package ani.dantotsu.settings
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.graphics.Typeface
 import android.text.SpannableStringBuilder
@@ -23,6 +24,7 @@ import ani.dantotsu.FileUrl
 import ani.dantotsu.R
 import ani.dantotsu.blurImage
 import ani.dantotsu.connections.mangaupdates.AniListQuickSearchDialogFragment
+import ani.dantotsu.connections.mangaupdates.MUMediaDetailsActivity
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.connections.mangaupdates.MangaUpdatesQuickSearchDialogFragment
 import ani.dantotsu.databinding.ActivityExtensionMediaInfoBinding
@@ -38,6 +40,7 @@ import ani.dantotsu.initActivity
 import ani.dantotsu.loadCoverImage
 import ani.dantotsu.loadImage
 import ani.dantotsu.media.Media
+import ani.dantotsu.media.MediaDetailsActivity
 import ani.dantotsu.media.MediaSingleton
 import ani.dantotsu.media.MediaNameAdapter
 import ani.dantotsu.media.Selected
@@ -47,7 +50,9 @@ import ani.dantotsu.media.manga.mangareader.MangaReaderActivity
 import ani.dantotsu.media.novel.NovelChapterOpener
 import ani.dantotsu.media.novel.novelreader.NovelReaderActivity
 import ani.dantotsu.navBarHeight
+import ani.dantotsu.openLinkInAppOrBrowser
 import ani.dantotsu.openLinkInBrowser
+import ani.dantotsu.openMangaUpdatesSeriesInApp
 import ani.dantotsu.others.ImageViewDialog
 import nl.joery.animatedbottombar.AnimatedBottomBar
 import ani.dantotsu.parsers.Book
@@ -65,7 +70,9 @@ import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.snackString
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
+import ani.dantotsu.util.LinkTouchListener
 import ani.dantotsu.util.Logger
+import ani.dantotsu.util.TrackerLinks
 import ani.dantotsu.util.customAlertDialog
 import com.google.android.material.chip.Chip
 import eu.kanade.tachiyomi.animesource.AnimeSource
@@ -82,6 +89,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
+import java.io.Serializable
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -154,6 +162,7 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
         startPostponedEnterTransition()
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Must run before postponeEnterTransition(): applyTheme() calls setTheme(), and until
@@ -176,7 +185,10 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
         // loading the cover, let alone before Glide renders it — see maybeStartEnterTransition().
         binding.root.postDelayed({ maybeStartEnterTransition() }, 300)
         initActivity(this)
-        markwon = buildMarkwon(this, userInputContent = false, linkResolver = { openLinkInBrowser(it) })
+        markwon = buildMarkwon(this, userInputContent = false, linkResolver = { openLinkInAppOrBrowser(it) })
+        // Links get the tap (the synopsis's own click expands it); a long press opens the link in
+        // the browser even when the app has a screen for it.
+        binding.extensionInfoSynopsis.setOnTouchListener(LinkTouchListener())
 
         binding.extensionInfoBottomBar.updateLayoutParams<ViewGroup.MarginLayoutParams> {
             height += navBarHeight
@@ -432,6 +444,9 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
             allChapters = result.chapters
             chaptersDataLoaded = true
             renderDetails()
+            // The synopsis usually only arrives with the details, and it decides what the tracker
+            // buttons do.
+            configureSearchButtons()
             renderLatest()
             renderChapterList()
         }
@@ -993,8 +1008,22 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
         else -> ""
     }
 
+    /**
+     * The AniList / MangaUpdates buttons. Sources often cite the tracker entry in their synopsis;
+     * that is a match already made, so the button then views it — linking this entry to it the
+     * way picking it from the quick-search sheet would — instead of searching for one.
+     */
     private fun configureSearchButtons() {
+        val description = manga?.description ?: anime?.description ?: lnNovel?.summary
+        val anilist = TrackerLinks.findAnilistMedia(description, isAnime = anime != null)
+        binding.extensionInfoSearchAnilist.setText(
+            if (anilist != null) R.string.comick_open_anilist else R.string.search_anilist
+        )
         binding.extensionInfoSearchAnilist.setOnClickListener {
+            if (anilist != null) {
+                openLinkedAnilistMedia(anilist.id)
+                return@setOnClickListener
+            }
             val titles = collectTitles()
             if (titles.isEmpty()) return@setOnClickListener
             val type = when {
@@ -1016,10 +1045,19 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
         }
 
         // MangaUpdates catalogues light novels alongside manga, so a plugin entry can be matched
-        // there as readily as an Aniyomi one; only anime has nothing to look up.
+        // there as readily as an Aniyomi one; only anime has nothing to look up. Searching needs
+        // the API token; viewing a cited series doesn't.
+        val muLink = if (isManga || isNovel) TrackerLinks.findMangaUpdatesSeries(description) else null
         binding.extensionInfoSearchMu.isVisible =
-            (isManga || isNovel) && MangaUpdates.token != null
+            (isManga || isNovel) && (muLink != null || MangaUpdates.token != null)
+        binding.extensionInfoSearchMu.setText(
+            if (muLink != null) R.string.comick_open_mangaupdates else R.string.search_mangaupdates
+        )
         binding.extensionInfoSearchMu.setOnClickListener {
+            if (muLink != null) {
+                openLinkedMangaUpdatesSeries(muLink)
+                return@setOnClickListener
+            }
             val titles = collectTitles()
             if (titles.isEmpty()) return@setOnClickListener
             MangaUpdatesQuickSearchDialogFragment
@@ -1032,6 +1070,34 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
                 )
                 .show(supportFragmentManager, "ext_mu_quick_search")
         }
+    }
+
+    /** What picking [mediaId] from [AniListQuickSearchDialogFragment] does. */
+    private fun openLinkedAnilistMedia(mediaId: Int) {
+        val pkg = pkg
+        if (pkg != null) {
+            val m = manga
+            val a = anime
+            val n = novel
+            when {
+                m != null -> ExtensionMediaLinker.linkMangaMedia(mediaId, pkg, langIndex, m)
+                a != null -> ExtensionMediaLinker.linkAnimeMedia(mediaId, pkg, langIndex, a)
+                n != null -> ExtensionMediaLinker.linkNovelMedia(mediaId, pkg, n)
+            }
+        }
+        startActivity(Intent(this, MediaDetailsActivity::class.java).putExtra("mediaId", mediaId))
+    }
+
+    /** What picking the series from [MangaUpdatesQuickSearchDialogFragment] does. */
+    private fun openLinkedMangaUpdatesSeries(link: String) {
+        val opened = openMangaUpdatesSeriesInApp(link) {
+            val extPkg = pkg ?: return@openMangaUpdatesSeriesInApp
+            putExtra(MUMediaDetailsActivity.EXTRA_EXT_PKG, extPkg)
+            putExtra(MUMediaDetailsActivity.EXTRA_EXT_LANG, langIndex)
+            manga?.let { putExtra(MUMediaDetailsActivity.EXTRA_EXT_MANGA, it as Serializable) }
+            novel?.let { putExtra(MUMediaDetailsActivity.EXTRA_EXT_NOVEL, it as Serializable) }
+        }
+        if (!opened) openLinkInBrowser(link)
     }
 
     private fun collectTitles(): List<String> {

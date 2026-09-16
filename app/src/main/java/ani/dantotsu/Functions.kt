@@ -79,7 +79,6 @@ import androidx.annotation.AttrRes
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import androidx.core.content.ContextCompat
 import androidx.core.content.ContextCompat.getSystemService
 import androidx.core.content.FileProvider
 import androidx.core.math.MathUtils.clamp
@@ -99,10 +98,16 @@ import androidx.viewpager2.widget.ViewPager2
 import ani.dantotsu.BuildConfig.APPLICATION_ID
 import ani.dantotsu.connections.anilist.Genre
 import ani.dantotsu.connections.anilist.api.FuzzyDate
+import ani.dantotsu.connections.comick.ComickApi
 import ani.dantotsu.connections.crashlytics.CrashlyticsInterface
 import ani.dantotsu.databinding.ItemCountDownBinding
+import ani.dantotsu.media.ComickMediaActivity
+import ani.dantotsu.media.KitsuMediaActivity
+import ani.dantotsu.media.MalMediaActivity
+import ani.dantotsu.media.MangaBakaMediaActivity
 import ani.dantotsu.media.Media
 import ani.dantotsu.media.MediaDetailsActivity
+import ani.dantotsu.media.SimklMediaActivity
 import ani.dantotsu.notifications.IncognitoNotificationClickReceiver
 import ani.dantotsu.others.AlignTagHandler
 import ani.dantotsu.others.ImageViewDialog
@@ -1008,10 +1013,12 @@ fun openLinkInBrowser(link: String?) {
  * Accepts both link shapes MangaUpdates uses — `/series/<slugOrId>` and `/series.html?id=<num>` —
  * and normalizes them to the `/series/<slugOrId>` form the activity's deep-link handler expects.
  *
+ * @param configure extras for the activity beyond the link itself (e.g. the extension entry the
+ *   series was reached from, so the page can link the two).
  * @return true if [link] was a MangaUpdates series link and was handled in-app; false otherwise, in
  *   which case the caller should fall back to [openLinkInBrowser].
  */
-fun openMangaUpdatesSeriesInApp(link: String?): Boolean {
+fun openMangaUpdatesSeriesInApp(link: String?, configure: Intent.() -> Unit = {}): Boolean {
     val uri = link?.let { Uri.parse(it) } ?: return false
     val host = uri.host?.lowercase()?.removePrefix("www.")
     if (host != "mangaupdates.com") return false
@@ -1029,12 +1036,100 @@ fun openMangaUpdatesSeriesInApp(link: String?): Boolean {
         val intent = Intent(Intent.ACTION_VIEW, normalized).apply {
             setClass(ctx, ani.dantotsu.connections.mangaupdates.MUMediaDetailsActivity::class.java)
             if (ctx !is Activity) addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            configure()
         }
         ctx.startActivity(intent)
         true
     } catch (e: Exception) {
         Logger.log(e)
         false
+    }
+}
+
+/**
+ * Opens [link] on the app's own screen for it, when it has one: AniList media and profiles,
+ * MangaUpdates series, MyAnimeList media, and the Comick, MangaBaka, Kitsu and Simkl pages the
+ * manifest also deep-links. [openLinkInBrowser] pins a browser, so those deep-link filters never
+ * get a say there; and re-dispatching the URL at the app instead would land AniList and MAL links
+ * on [ani.dantotsu.connections.anilist.UrlMedia], which restarts the whole task — hence explicit
+ * intents.
+ *
+ * @return false when the app has no screen for [link]; callers usually fall back to the browser,
+ *   see [openLinkInAppOrBrowser].
+ */
+fun openLinkInApp(link: String?): Boolean {
+    if (openMangaUpdatesSeriesInApp(link)) return true
+    val uri = link?.let { Uri.parse(it) } ?: return false
+    if (uri.scheme != "http" && uri.scheme != "https") return false
+    val ctx = currContext() ?: return false
+    val intent = inAppIntentFor(ctx, uri) ?: return false
+    return try {
+        if (ctx !is Activity) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        ctx.startActivity(intent)
+        true
+    } catch (e: Exception) {
+        Logger.log(e)
+        false
+    }
+}
+
+/** [openLinkInApp], and the browser for everything else. */
+fun openLinkInAppOrBrowser(link: String?) {
+    if (!openLinkInApp(link)) openLinkInBrowser(link)
+}
+
+/**
+ * The screen for a `<site>/<kind>/<id-or-slug>` link, or null when the app has none. MangaUpdates
+ * isn't here: its two link shapes are [openMangaUpdatesSeriesInApp]'s.
+ */
+private fun inAppIntentFor(ctx: Context, uri: Uri): Intent? {
+    val host = uri.host?.lowercase()?.removePrefix("www.") ?: return null
+    val segments = uri.pathSegments.orEmpty()
+    val kind = segments.getOrNull(0) ?: return null
+    val target = segments.getOrNull(1)?.takeIf { it.isNotBlank() } ?: return null
+    return when (host) {
+        "anilist.co" -> when (kind) {
+            "anime", "manga" -> target.toIntOrNull()?.let {
+                Intent(ctx, MediaDetailsActivity::class.java).putExtra("mediaId", it)
+            }
+            "user" -> Intent(ctx, ProfileActivity::class.java).apply {
+                val id = target.toIntOrNull()
+                if (id != null) putExtra("userId", id) else putExtra("username", target)
+            }
+            else -> null
+        }
+        "myanimelist.net" -> when (kind) {
+            "anime", "manga" -> target.toIntOrNull()?.let {
+                Intent(ctx, MalMediaActivity::class.java)
+                    .putExtra(MalMediaActivity.EXTRA_MEDIA_ID, it)
+                    .putExtra(MalMediaActivity.EXTRA_IS_ANIME, kind == "anime")
+            }
+            else -> null
+        }
+        "comick.io", "comick.dev", "comick.app", "comick.cc" -> when (kind) {
+            "comic", "anime" -> Intent(ctx, ComickMediaActivity::class.java)
+                .putExtra(ComickMediaActivity.EXTRA_SLUG, target)
+                .putExtra(
+                    ComickMediaActivity.EXTRA_MEDIA_TYPE,
+                    if (kind == "anime") ComickApi.MEDIA_TYPE_ANIME else ComickApi.MEDIA_TYPE_MANGA
+                )
+            else -> null
+        }
+        "mangabaka.org" -> if (kind == "series") target.toLongOrNull()?.let {
+            Intent(ctx, MangaBakaMediaActivity::class.java)
+                .putExtra(MangaBakaMediaActivity.EXTRA_SERIES_ID, it)
+        } else null
+        "kitsu.io", "kitsu.app" -> when (kind) {
+            "anime", "manga" -> Intent(ctx, KitsuMediaActivity::class.java)
+                .putExtra(KitsuMediaActivity.EXTRA_MEDIA_ID, target)
+                .putExtra(KitsuMediaActivity.EXTRA_IS_ANIME, kind == "anime")
+            else -> null
+        }
+        "simkl.com" -> if (kind == "anime") target.toLongOrNull()?.let {
+            Intent(ctx, SimklMediaActivity::class.java)
+                .putExtra(SimklMediaActivity.EXTRA_SIMKL_ID, it)
+        } else null
+        else -> null
     }
 }
 
@@ -1691,47 +1786,20 @@ fun ImageView.openImage(title: String, image: String) {
 }
 
 /**
- * Attempts to open the link in the app, otherwise copies it to the clipboard
+ * The link resolver for user-written AniList content (comments, activities): AniList media and
+ * profiles open in-app, YouTube in its app, and anything else is only copied — never opened.
  * @param link the link to open
  */
 fun openOrCopyAnilistLink(link: String) {
-    if (link.startsWith("https://anilist.co/anime/") || link.startsWith("https://anilist.co/manga/")) {
-        val mangaAnime = link.substringAfter("https://anilist.co/").substringBefore("/")
-        val id =
-            link.substringAfter("https://anilist.co/$mangaAnime/").substringBefore("/")
-                .toIntOrNull()
-        if (id != null && currContext() != null) {
-            ContextCompat.startActivity(
-                currContext()!!,
-                Intent(currContext()!!, MediaDetailsActivity::class.java)
-                    .putExtra("mediaId", id),
-                null
-            )
-        } else {
-            copyToClipboard(link, true)
-        }
-    } else if (link.startsWith("https://anilist.co/user/")) {
-        val username = link.substringAfter("https://anilist.co/user/").substringBefore("/")
-        val id = username.toIntOrNull()
-        if (currContext() != null) {
-            val intent = Intent(currContext()!!, ProfileActivity::class.java)
-            if (id != null) {
-                intent.putExtra("userId", id)
-            } else {
-                intent.putExtra("username", username)
-            }
-            ContextCompat.startActivity(
-                currContext()!!,
-                intent,
-                null
-            )
-        } else {
-            copyToClipboard(link, true)
-        }
-    } else if (getYoutubeId(link).isNotEmpty()) {
-        openLinkInYouTube(link)
-    } else {
-        copyToClipboard(link, true)
+    val ctx = currContext()
+    val uri = Uri.parse(link)
+    val anilist = if (ctx != null && uri.host?.removePrefix("www.") == "anilist.co") {
+        inAppIntentFor(ctx, uri)
+    } else null
+    when {
+        anilist != null -> ctx!!.startActivity(anilist)
+        getYoutubeId(link).isNotEmpty() -> openLinkInYouTube(link)
+        else -> copyToClipboard(link, true)
     }
 }
 

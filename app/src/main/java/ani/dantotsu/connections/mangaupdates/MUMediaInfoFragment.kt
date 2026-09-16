@@ -8,9 +8,7 @@ import android.os.Bundle
 import android.text.Spannable
 import android.text.SpannableStringBuilder
 import android.text.method.LinkMovementMethod
-import android.text.style.ClickableSpan
 import android.text.style.StyleSpan
-import android.view.MotionEvent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -38,10 +36,11 @@ import ani.dantotsu.loadImage
 import ani.dantotsu.media.MediaDetailsViewModel
 import ani.dantotsu.media.MediaNewsActivity
 import ani.dantotsu.media.QuicklinksBottomSheetFragment
+import ani.dantotsu.util.LinkTouchListener
 import ani.dantotsu.media.SearchActivity
 import ani.dantotsu.media.balanceQuelRow
 import ani.dantotsu.navBarHeight
-import ani.dantotsu.openLinkInBrowser
+import ani.dantotsu.openLinkInAppOrBrowser
 import ani.dantotsu.px
 import ani.dantotsu.setSafeOnClickListener
 import ani.dantotsu.settings.saving.PrefManager
@@ -297,30 +296,11 @@ class MUMediaInfoFragment : Fragment() {
             requireContext(),
             userInputContent = false,
             fragment = this
-        ) { link -> if (!ani.dantotsu.openMangaUpdatesSeriesInApp(link)) openLinkInBrowser(link) }
+        ) { openLinkInAppOrBrowser(it) }
         markwon.setMarkdown(binding.mediaInfoDescription, desc)
         binding.mediaInfoDescription.movementMethod = LinkMovementMethod.getInstance()
-        // Use a touch listener so that link span taps are consumed before View.onTouchEvent
-        // can call performClick() — otherwise setOnClickListener intercepts all taps including links.
-        binding.mediaInfoDescription.setOnTouchListener { v, event ->
-            val tv = v as android.widget.TextView
-            val sp = tv.text as? Spannable
-            if (sp != null && (event.action == MotionEvent.ACTION_DOWN || event.action == MotionEvent.ACTION_UP)) {
-                val layout = tv.layout
-                if (layout != null) {
-                    val x = event.x - tv.totalPaddingLeft + tv.scrollX
-                    val y = (event.y - tv.totalPaddingTop + tv.scrollY).toInt()
-                    val line = layout.getLineForVertical(y)
-                    val off = layout.getOffsetForHorizontal(line, x)
-                    val links = sp.getSpans(off, off, ClickableSpan::class.java)
-                    if (links.isNotEmpty()) {
-                        if (event.action == MotionEvent.ACTION_UP) links[0].onClick(tv)
-                        return@setOnTouchListener true
-                    }
-                }
-            }
-            false
-        }
+        // Links take the tap over the expand click below; a long press opens one in the browser.
+        binding.mediaInfoDescription.setOnTouchListener(LinkTouchListener())
         binding.mediaInfoDescription.setOnClickListener {
             ObjectAnimator.ofInt(
                 binding.mediaInfoDescription,

@@ -30,6 +30,7 @@ import ani.dantotsu.px
 import ani.dantotsu.settings.bindQuickSettings
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
+import ani.dantotsu.util.TrackerLinks
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
@@ -196,7 +197,9 @@ class SimklMediaActivity : AppCompatActivity() {
             .filter { it.isNotBlank() }.distinct()
         binding.simklMediaSourceButtons.visibility = View.VISIBLE
         binding.simklMediaAnilistBtn.visibility = View.VISIBLE
+        // Simkl's ids can lack the AniList one; a link cited in the overview is the next best thing.
         val anilistId = full.ids?.anilist?.toIntOrNull()
+            ?: TrackerLinks.findAnilistMedia(full.overview, isAnime = true)?.id
         if (anilistId != null) {
             binding.simklMediaAnilistBtn.setText(R.string.comick_open_anilist)
             binding.simklMediaAnilistBtn.setOnClickListener {

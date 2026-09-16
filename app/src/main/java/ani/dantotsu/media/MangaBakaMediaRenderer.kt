@@ -36,10 +36,10 @@ import ani.dantotsu.databinding.ItemTitleChipgroupBinding
 import ani.dantotsu.databinding.ItemTitleRecyclerBinding
 import ani.dantotsu.databinding.ItemTitleTextBinding
 import ani.dantotsu.media.manga.Manga
-import ani.dantotsu.openLinkInBrowser
-import ani.dantotsu.openMangaUpdatesSeriesInApp
+import ani.dantotsu.openLinkInAppOrBrowser
 import ani.dantotsu.px
 import ani.dantotsu.setSafeOnClickListener
+import ani.dantotsu.util.LinkTouchListener
 import com.google.android.material.chip.Chip
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -61,7 +61,7 @@ object MangaBakaMediaRenderer {
     /** The fragment-only "similar → recommendations" row needs the current media + its view model. */
     data class RecoConfig(val media: Media, val model: MediaDetailsViewModel)
 
-    @SuppressLint("SetTextI18n")
+    @SuppressLint("SetTextI18n", "ClickableViewAccessibility")
     fun render(
         activity: AppCompatActivity,
         scope: CoroutineScope,
@@ -182,10 +182,12 @@ object MangaBakaMediaRenderer {
             ?: activity.getString(R.string.no_description_available)
         val markwon = buildMarkwon(
             activity, userInputContent = false, fragment = markwonFragment,
-            linkResolver = { link -> if (!openMangaUpdatesSeriesInApp(link)) openLinkInBrowser(link) },
+            linkResolver = { openLinkInAppOrBrowser(it) },
         )
         markwon.setMarkdown(info.mediaInfoDescription, desc.replace(Regex("\\n{3,}"), "\n\n").trim())
         info.mediaInfoDescription.movementMethod = LinkMovementMethod.getInstance()
+        // Links take the tap over the expand click below; a long press opens one in the browser.
+        info.mediaInfoDescription.setOnTouchListener(LinkTouchListener())
         info.mediaInfoDescription.setOnClickListener {
             val target = if (info.mediaInfoDescription.maxLines == 5) 100 else 5
             ObjectAnimator.ofInt(info.mediaInfoDescription, "maxLines", target)

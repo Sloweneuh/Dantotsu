@@ -1,7 +1,5 @@
 package ani.dantotsu.media
 
-import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -13,6 +11,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import ani.dantotsu.databinding.FragmentMediaInfoContainerBinding
 import ani.dantotsu.isOnline
+import ani.dantotsu.openLinkInBrowser
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import com.google.android.material.tabs.TabLayoutMediator
@@ -262,7 +261,9 @@ class MediaInfoFragment : Fragment() {
             }
         }
 
-        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+        // The browser, explicitly: a bare ACTION_VIEW would be caught by the app's own deep-link
+        // filters and land right back on the page the user is already on.
+        openLinkInBrowser(url)
         return true
     }
 

@@ -19,7 +19,9 @@ import ani.dantotsu.databinding.ItemChipBinding
 import ani.dantotsu.databinding.ItemChipSynonymBinding
 import ani.dantotsu.databinding.ItemTitleChipgroupBinding
 import ani.dantotsu.databinding.ItemTitleRecyclerBinding
+import ani.dantotsu.openLinkInAppOrBrowser
 import ani.dantotsu.openLinkInBrowser
+import ani.dantotsu.util.LinkTouchListener
 import java.util.Locale
 
 /**
@@ -31,7 +33,7 @@ object KitsuMediaRenderer {
 
     private const val tripleTab = "\t\t\t"
 
-    @SuppressLint("SetTextI18n")
+    @SuppressLint("SetTextI18n", "ClickableViewAccessibility")
     fun render(
         activity: AppCompatActivity,
         info: FragmentMediaInfoBinding,
@@ -158,9 +160,15 @@ object KitsuMediaRenderer {
         val desc = media.synopsis?.takeIf { it.isNotBlank() }
             ?: media.description?.takeIf { it.isNotBlank() }
             ?: activity.getString(R.string.no_description_available)
-        val markwon = buildMarkwon(activity, userInputContent = false)
+        // Not user content, so links open — in-app where the app has a screen for them — rather
+        // than being copied the way AniList comments are.
+        val markwon = buildMarkwon(
+            activity, userInputContent = false, linkResolver = { openLinkInAppOrBrowser(it) },
+        )
         markwon.setMarkdown(info.mediaInfoDescription, desc.replace(Regex("\\n{3,}"), "\n\n").trim())
         info.mediaInfoDescription.movementMethod = LinkMovementMethod.getInstance()
+        // Links take the tap over the expand click below; a long press opens one in the browser.
+        info.mediaInfoDescription.setOnTouchListener(LinkTouchListener())
         info.mediaInfoDescription.setOnClickListener {
             val target = if (info.mediaInfoDescription.maxLines == 5) 100 else 5
             ObjectAnimator.ofInt(info.mediaInfoDescription, "maxLines", target)

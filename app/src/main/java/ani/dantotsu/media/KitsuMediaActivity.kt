@@ -32,6 +32,7 @@ import ani.dantotsu.px
 import ani.dantotsu.settings.bindQuickSettings
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
+import ani.dantotsu.util.TrackerLinks
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -207,10 +208,13 @@ class KitsuMediaActivity : AppCompatActivity() {
         // has no such mapping — a quick-search sheet against it.
         val kind = if (isAnime) "anime" else "manga"
         val titles = titleList(full.media)
+        // When Kitsu's mappings have nothing, a tracker link cited in the synopsis is the next
+        // best thing — better than sending the user off to search for it.
+        val synopsis = full.media.synopsis ?: full.media.description
 
         binding.kitsuMediaSourceButtons.visibility = View.VISIBLE
         binding.kitsuMediaAnilistBtn.visibility = View.VISIBLE
-        val anilistId = full.anilistId
+        val anilistId = full.anilistId ?: TrackerLinks.findAnilistMedia(synopsis, isAnime)?.id
         if (anilistId != null) {
             binding.kitsuMediaAnilistBtn.setText(R.string.comick_open_anilist)
             binding.kitsuMediaAnilistBtn.setOnClickListener {
@@ -233,16 +237,17 @@ class KitsuMediaActivity : AppCompatActivity() {
             return
         }
         binding.kitsuMediaMuBtn.visibility = View.VISIBLE
-        val muId = full.muId?.trim()
-        if (!muId.isNullOrBlank()) {
+        val muUrl = full.muId?.trim()?.takeIf { it.isNotBlank() }?.let { muId ->
+            if (muId.all { it.isDigit() }) {
+                "https://www.mangaupdates.com/series.html?id=$muId"
+            } else {
+                "https://www.mangaupdates.com/series/$muId"
+            }
+        } ?: TrackerLinks.findMangaUpdatesSeries(synopsis)
+        if (muUrl != null) {
             binding.kitsuMediaMuBtn.setText(R.string.comick_open_mangaupdates)
             binding.kitsuMediaMuBtn.setOnClickListener {
-                val url = if (muId.all { it.isDigit() }) {
-                    "https://www.mangaupdates.com/series.html?id=$muId"
-                } else {
-                    "https://www.mangaupdates.com/series/$muId"
-                }
-                if (!openMangaUpdatesSeriesInApp(url)) openLinkInBrowser(url)
+                if (!openMangaUpdatesSeriesInApp(muUrl)) openLinkInBrowser(muUrl)
             }
         } else {
             binding.kitsuMediaMuBtn.setText(R.string.mu_search_title)
