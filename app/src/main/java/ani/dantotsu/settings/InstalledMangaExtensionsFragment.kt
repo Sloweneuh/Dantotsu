@@ -30,6 +30,7 @@ import ani.dantotsu.parsers.MangaSources
 import ani.dantotsu.settings.extensionprefs.MangaSourcePreferencesFragment
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
+import ani.dantotsu.setSettingsAvailable
 import ani.dantotsu.snackString
 import ani.dantotsu.util.Logger
 import ani.dantotsu.util.customAlertDialog
@@ -286,6 +287,8 @@ class InstalledMangaExtensionsFragment : Fragment(), SearchQueryHandler {
             holder.updateView.bindUpdateButton(extension.pkgName in updatingPkgs) {
                 onUpdateClicked(extension)
             }
+            val hasSettings = extension.sources.filterIsInstance<ConfigurableSource>().isNotEmpty()
+            holder.settingsImageView.setSettingsAvailable(hasSettings)
             holder.settingsImageView.setOnClickListener {
                 onSettingsClicked(extension)
             }

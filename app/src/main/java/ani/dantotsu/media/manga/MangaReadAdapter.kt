@@ -47,11 +47,13 @@ import ani.dantotsu.px
 import ani.dantotsu.settings.FAQActivity
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
+import ani.dantotsu.setSettingsAvailable
 import ani.dantotsu.snackString
 import ani.dantotsu.toast
 import ani.dantotsu.util.customAlertDialog
 import com.google.android.material.chip.Chip
 import eu.kanade.tachiyomi.data.notification.Notifications.CHANNEL_SUBSCRIPTION_CHECK
+import eu.kanade.tachiyomi.source.ConfigurableSource
 import eu.kanade.tachiyomi.source.online.HttpSource
 import eu.kanade.tachiyomi.util.system.WebViewUtil
 import kotlinx.coroutines.launch
@@ -76,6 +78,12 @@ class MangaReadAdapter(
             PrefManager.removeCustomVal(key)
             Log.d("PrefManager", "Removed key: $key")
         }
+    }
+
+    private fun updateSettingsButton(binding: ItemMediaSourceBinding, sourceIndex: Int) {
+        val hasSettings = (mangaReadSources[sourceIndex] as? DynamicMangaParser)
+            ?.extension?.sources?.filterIsInstance<ConfigurableSource>()?.isNotEmpty() == true
+        binding.mediaSourceSettings.setSettingsAvailable(hasSettings)
     }
 
     // Helper: choose English by default when available
@@ -163,6 +171,7 @@ class MangaReadAdapter(
             }
             setupBrowserButton(binding, source)
         }
+        updateSettingsButton(binding, source)
         media.selected?.scanlators?.let {
             hiddenScanlators.addAll(it)
         }
@@ -197,6 +206,7 @@ class MangaReadAdapter(
                 } ?: setLanguageList(newDefault, i)
             }
             setupBrowserButton(binding, i)
+            updateSettingsButton(binding, i)
             subscribeButton(false)
             downloadButton(false)
             // Invalidate if it's the last source

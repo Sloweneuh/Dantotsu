@@ -882,6 +882,13 @@ fun View.setSafeOnClickListener(onSafeClick: (View) -> Unit) {
     setOnClickListener(safeClickListener)
 }
 
+// Signals "nothing to configure here" by dimming and disabling the button, rather than letting
+// it be tapped just to show a toast saying so.
+fun View.setSettingsAvailable(available: Boolean) {
+    isEnabled = available
+    alpha = if (available) 1f else 0.4f
+}
+
 suspend fun getSize(file: FileUrl): Double? {
     return tryWithSuspend {
         client.head(file.url, file.headers, timeout = 1000).size?.toDouble()?.div(1024 * 1024)

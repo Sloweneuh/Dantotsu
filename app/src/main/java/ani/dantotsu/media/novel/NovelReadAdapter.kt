@@ -28,7 +28,7 @@ import ani.dantotsu.parsers.showUserTextOn
 import ani.dantotsu.settings.ExtensionsActivity
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
-import ani.dantotsu.snackString
+import ani.dantotsu.setSettingsAvailable
 import com.bumptech.glide.Glide
 import com.google.android.material.chip.Chip
 import kotlinx.coroutines.Dispatchers
@@ -103,9 +103,7 @@ class NovelReadAdapter(
         binding.mediaSourceAddExtension.isGone = offline
 
         // A plugin is a script with no preference screen, unlike an extension source.
-        binding.mediaSourceSettings.setOnClickListener {
-            snackString(fragment.getString(R.string.source_not_configurable))
-        }
+        binding.mediaSourceSettings.setSettingsAvailable(false)
 
         binding.mediaSourceAddExtension.setOnClickListener {
             ContextCompat.startActivity(

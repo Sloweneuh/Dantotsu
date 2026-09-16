@@ -28,6 +28,7 @@ import ani.dantotsu.parsers.AnimeSources
 import ani.dantotsu.settings.extensionprefs.AnimeSourcePreferencesFragment
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
+import ani.dantotsu.setSettingsAvailable
 import ani.dantotsu.snackString
 import ani.dantotsu.util.Logger
 import ani.dantotsu.util.customAlertDialog
@@ -284,6 +285,8 @@ class InstalledAnimeExtensionsFragment : Fragment(), SearchQueryHandler {
             holder.updateView.bindUpdateButton(extension.pkgName in updatingPkgs) {
                 onUpdateClicked(extension)
             }
+            val hasSettings = extension.sources.filterIsInstance<ConfigurableAnimeSource>().isNotEmpty()
+            holder.settingsImageView.setSettingsAvailable(hasSettings)
             holder.settingsImageView.setOnClickListener {
                 onSettingsClicked(extension)
             }

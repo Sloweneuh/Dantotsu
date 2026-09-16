@@ -25,6 +25,7 @@ import ani.dantotsu.parsers.novel.NovelExtensionManager
 import ani.dantotsu.parsers.novel.lnreader.LNReaderPluginManager
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
+import ani.dantotsu.setSettingsAvailable
 import ani.dantotsu.snackString
 import ani.dantotsu.util.Logger
 import ani.dantotsu.util.customAlertDialog
@@ -316,6 +317,8 @@ class InstalledNovelExtensionsFragment : Fragment(), SearchQueryHandler {
             holder.updateView.isVisible = item.hasUpdate
             holder.deleteView.setOnClickListener { onUninstallClicked(item) }
             holder.updateView.bindUpdateButton(item.key in updatingKeys) { onUpdateClicked(item) }
+            // Neither an extension source nor a plugin exposes a preference screen.
+            holder.settingsImageView.setSettingsAvailable(false)
             holder.settingsImageView.setOnClickListener { onSettingsClicked(item) }
             holder.itemView.setOnClickListener { onItemClicked(item) }
         }

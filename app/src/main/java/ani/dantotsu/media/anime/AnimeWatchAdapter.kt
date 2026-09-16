@@ -44,10 +44,12 @@ import ani.dantotsu.px
 import ani.dantotsu.settings.FAQActivity
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
+import ani.dantotsu.setSettingsAvailable
 import ani.dantotsu.snackString
 import ani.dantotsu.toast
 import ani.dantotsu.util.customAlertDialog
 import com.google.android.material.chip.Chip
+import eu.kanade.tachiyomi.animesource.ConfigurableAnimeSource
 import eu.kanade.tachiyomi.animesource.online.AnimeHttpSource
 import eu.kanade.tachiyomi.data.notification.Notifications.CHANNEL_SUBSCRIPTION_CHECK
 import eu.kanade.tachiyomi.util.system.WebViewUtil
@@ -80,6 +82,12 @@ class AnimeWatchAdapter(
             }
         } catch (_: Exception) { }
         return if (preferred >= 0) preferred else 0
+    }
+
+    private fun updateSettingsButton(binding: ItemMediaSourceBinding, sourceIndex: Int) {
+        val hasSettings = (watchSources[sourceIndex] as? DynamicAnimeParser)
+            ?.extension?.sources?.filterIsInstance<ConfigurableAnimeSource>()?.isNotEmpty() == true
+        binding.mediaSourceSettings.setSettingsAvailable(hasSettings)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -186,6 +194,7 @@ class AnimeWatchAdapter(
             }
             setupBrowserButton(binding, source)
         }
+        updateSettingsButton(binding, source)
 
         // Get icons for all sources
         val sourceIcons = watchSources.list.mapIndexed { index, lazierParser ->
@@ -220,6 +229,7 @@ class AnimeWatchAdapter(
                 try { fragment.onLangChange(newDefault) } catch (_: Exception) { }
             }
             setupBrowserButton(binding, i)
+            updateSettingsButton(binding, i)
             subscribeButton(false)
             downloadButton(false)
             fragment.loadEpisodes(i, false)

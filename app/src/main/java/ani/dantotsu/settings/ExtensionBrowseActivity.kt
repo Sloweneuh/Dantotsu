@@ -38,6 +38,7 @@ import ani.dantotsu.parsers.novel.lnreader.LNReaderParser
 import ani.dantotsu.parsers.novel.lnreader.LNReaderPluginManager
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
+import ani.dantotsu.setSettingsAvailable
 import ani.dantotsu.snackString
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.stripSpansOnPaste
@@ -193,12 +194,13 @@ class ExtensionBrowseActivity : AppCompatActivity() {
         binding.extensionBrowseTitle.isVisible = true
         binding.extensionBrowseIcon.isVisible = true
 
+        val configurableSources = when {
+            animeExtension != null -> animeExtension!!.sources.filterIsInstance<eu.kanade.tachiyomi.animesource.ConfigurableAnimeSource>()
+            mangaExtension != null -> mangaExtension!!.sources.filterIsInstance<eu.kanade.tachiyomi.source.ConfigurableSource>()
+            else -> emptyList()
+        }
+        binding.extensionBrowseSettings.setSettingsAvailable(configurableSources.isNotEmpty())
         binding.extensionBrowseSettings.setOnClickListener {
-            val configurableSources = when {
-                animeExtension != null -> animeExtension!!.sources.filterIsInstance<eu.kanade.tachiyomi.animesource.ConfigurableAnimeSource>()
-                mangaExtension != null -> mangaExtension!!.sources.filterIsInstance<eu.kanade.tachiyomi.source.ConfigurableSource>()
-                else -> emptyList()
-            }
             ExtensionSettingsOpener.openConfigurableSourcePreferences(this, configurableSources, null, sourceIndex)
         }
 
