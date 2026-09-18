@@ -41,7 +41,6 @@ import ani.dantotsu.databinding.FragmentMediaInfoBinding
 import ani.dantotsu.databinding.ItemChipBinding
 import ani.dantotsu.databinding.ItemChipSynonymBinding
 import ani.dantotsu.databinding.ItemTitleChipgroupBinding
-import ani.dantotsu.databinding.ItemTitleChipgroupMultilineBinding
 import ani.dantotsu.databinding.ItemTitleRecyclerBinding
 import ani.dantotsu.databinding.ItemTitleTextBinding
 import ani.dantotsu.databinding.ItemChapterGapBinding
@@ -817,7 +816,7 @@ class ComickMediaActivity : AppCompatActivity() {
 
         val categories = comic.mu_comics?.mu_comic_categories
         if (!categories.isNullOrEmpty()) {
-            val bind = ItemTitleChipgroupMultilineBinding.inflate(LayoutInflater.from(this), parent, false)
+            val bind = ItemTitleChipgroupBinding.inflate(LayoutInflater.from(this), parent, false)
             bind.itemTitle.text = "Tags"
             categories.sortedByDescending { it.positive_vote ?: 0 }.forEach { category ->
                 val title = category.mu_categories?.title ?: return@forEach
@@ -854,7 +853,7 @@ class ComickMediaActivity : AppCompatActivity() {
             lifecycleScope.launch {
                 val tags = withContext(Dispatchers.IO) { ComickApi.getComicTags(tagsHid) }
                 if (tags.isEmpty() || tagsPlaceholder.childCount > 0) return@launch
-                val bind = ItemTitleChipgroupMultilineBinding.inflate(
+                val bind = ItemTitleChipgroupBinding.inflate(
                     LayoutInflater.from(this@ComickMediaActivity), tagsPlaceholder, false
                 )
                 bind.itemTitle.text = getString(R.string.tags)
@@ -1002,7 +1001,7 @@ class ComickMediaActivity : AppCompatActivity() {
                 .mapNotNull { it.anime_companies }
                 .distinctBy { it.name }
             if (studios.isNotEmpty()) {
-                val bind = ItemTitleChipgroupMultilineBinding.inflate(
+                val bind = ItemTitleChipgroupBinding.inflate(
                     LayoutInflater.from(this), parent, false
                 )
                 bind.itemTitle.text = getString(R.string.studios)
@@ -1042,7 +1041,7 @@ class ComickMediaActivity : AppCompatActivity() {
     ) {
         val usable = links?.filter { !it.url.isNullOrBlank() && !it.name.isNullOrBlank() }
         if (usable.isNullOrEmpty()) return
-        val bind = ItemTitleChipgroupMultilineBinding.inflate(
+        val bind = ItemTitleChipgroupBinding.inflate(
             LayoutInflater.from(this), parent, false
         )
         bind.itemTitle.text = title

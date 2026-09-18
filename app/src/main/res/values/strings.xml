@@ -186,6 +186,12 @@
     <string name="filler">Filler</string>
     <string name="list_only">List Only</string>
     <string name="tags">Tags</string>
+    <string name="show_spoiler_tags">Show spoilers</string>
+    <string name="hide_spoiler_tags">Hide spoilers</string>
+    <string name="spoiler_tag">Spoiler</string>
+    <string name="tag_rank">Rank %1$d%%</string>
+    <string name="no_tag_description">No description for this tag.</string>
+    <string name="copy">Copy</string>
     <string name="synonyms">Synonyms</string>
     <string name="trailer">Trailer</string>
     <string name="opening">Opening</string>
@@ -2016,6 +2022,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="cancel_download">Cancel download</string>
     <string name="reorder">Reorder</string>
     <string name="expand">Expand</string>
+    <string name="collapse">Collapse</string>
     <string name="delete_chapter">Delete Chapter</string>
     <string name="delete_episode">Delete Episode</string>
     <string name="delete_progress_for_chapters">Delete Progress for all chapters of %1$s</string>

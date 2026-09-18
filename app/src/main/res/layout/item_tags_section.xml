@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- MangaBaka tags section: a "Tags" title with a weight-filter dropdown, above a wrapping chip group. -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!--
+  MangaBaka tags section: a "Tags" title with a weight-filter dropdown, a spoiler toggle and the
+  expand chevron, above a chip row that starts on one line (see ChipSections).
+-->
+<ani.dantotsu.others.ChipSectionLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -12,7 +15,7 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="32dp"
         android:layout_marginTop="8dp"
-        android:layout_marginEnd="24dp"
+        android:layout_marginEnd="26dp"
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
@@ -25,11 +28,27 @@
             android:text="@string/tags"
             android:textSize="16sp" />
 
+        <TextView
+            android:id="@+id/tagsSpoilerAction"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_section_action"
+            android:clickable="true"
+            android:focusable="true"
+            android:fontFamily="@font/poppins_bold"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp"
+            android:textColor="?attr/colorPrimary"
+            android:textSize="14sp"
+            android:visibility="gone" />
+
         <LinearLayout
             android:id="@+id/tagsFilterButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:background="?attr/selectableItemBackground"
+            android:background="@drawable/bg_section_action"
             android:clickable="true"
             android:focusable="true"
             android:gravity="center_vertical"
@@ -58,15 +77,36 @@
                 android:contentDescription="@string/tags"
                 android:src="@drawable/ic_round_arrow_drop_down_24" />
         </LinearLayout>
+
+        <ImageView
+            android:id="@+id/tagsExpand"
+            android:tag="chipExpand"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:layout_marginStart="2dp"
+            android:background="@drawable/bg_section_action"
+            android:clickable="true"
+            android:contentDescription="@string/expand"
+            android:focusable="true"
+            android:src="@drawable/ic_round_arrow_drop_down_24"
+            android:visibility="gone" />
     </LinearLayout>
 
-    <com.google.android.material.chip.ChipGroup
-        android:id="@+id/tagsChipGroup"
+    <ani.dantotsu.others.ChipScrollView
+        android:id="@+id/tagsChipScroll"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginStart="32dp"
-        android:layout_marginEnd="32dp"
         android:layout_marginBottom="8dp"
-        app:singleLine="false" />
+        android:clipToPadding="false"
+        android:paddingStart="28dp"
+        android:paddingEnd="28dp"
+        android:scrollbars="none">
 
-</LinearLayout>
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/tagsChipGroup"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:singleLine="true" />
+    </ani.dantotsu.others.ChipScrollView>
+
+</ani.dantotsu.others.ChipSectionLayout>

@@ -342,9 +342,13 @@ fun fullMediaInformation(id: Int) = """
     }
     synonyms
     tags {
+      id
       name
+      description
+      category
       rank
       isMediaSpoiler
+      isGeneralSpoiler
     }
     characters(sort: [ROLE, FAVOURITES_DESC], perPage: 25, page: 1) {
       edges {

@@ -1480,7 +1480,7 @@ class ComickInfoFragment : Fragment() {
                 if (_binding == null || tags.isEmpty() || tagsPlaceholder.childCount > 0) {
                     return@launch
                 }
-                val bind = ani.dantotsu.databinding.ItemTitleChipgroupMultilineBinding.inflate(
+                val bind = ani.dantotsu.databinding.ItemTitleChipgroupBinding.inflate(
                     LayoutInflater.from(context), tagsPlaceholder, false
                 )
                 bind.itemTitle.text = getString(R.string.tags)
@@ -1513,7 +1513,7 @@ class ComickInfoFragment : Fragment() {
 
             if (parent.findViewWithTag<View>("tags_comick") == null) {
                 val bind =
-                        ani.dantotsu.databinding.ItemTitleChipgroupMultilineBinding.inflate(
+                        ani.dantotsu.databinding.ItemTitleChipgroupBinding.inflate(
                                 LayoutInflater.from(context),
                                 parent,
                                 false
@@ -2010,7 +2010,7 @@ class ComickInfoFragment : Fragment() {
                 .distinctBy { it.name }
 
             if (studios.isNotEmpty()) {
-                val bind = ani.dantotsu.databinding.ItemTitleChipgroupMultilineBinding.inflate(
+                val bind = ani.dantotsu.databinding.ItemTitleChipgroupBinding.inflate(
                     LayoutInflater.from(context), parent, false
                 )
                 bind.itemTitle.text = getString(R.string.studios)
@@ -2068,7 +2068,7 @@ class ComickInfoFragment : Fragment() {
         val usable = links?.filter { !it.url.isNullOrBlank() && !it.name.isNullOrBlank() }
         if (usable.isNullOrEmpty() || parent.findViewWithTag<View>(tag) != null) return
 
-        val bind = ani.dantotsu.databinding.ItemTitleChipgroupMultilineBinding.inflate(
+        val bind = ani.dantotsu.databinding.ItemTitleChipgroupBinding.inflate(
             LayoutInflater.from(context), parent, false
         )
         bind.itemTitle.text = title

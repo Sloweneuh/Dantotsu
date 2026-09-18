@@ -288,32 +288,13 @@ object SimklMediaRenderer {
 
     /**
      * Simkl's API only carries a short genre list, so — when the record maps to an AniList id — the
-     * fuller AniList tag list (the same one the Simkl website shows) is surfaced here. Media
-     * spoilers stay blurred until tapped.
+     * fuller AniList tag list (the same one the Simkl website shows) is surfaced here, rendered by
+     * [AnilistTagChips] just as the AniList page renders its own: spoilers masked until asked for,
+     * each tag's description a long press away. There's no AniList tag search to send a tap to
+     * from here, so a revealed chip does nothing further.
      */
     private fun addTags(activity: AppCompatActivity, parent: ViewGroup, tags: List<MediaTag>?) {
-        val list = tags?.filter { it.name.isNotBlank() }
-            ?.sortedByDescending { it.rank ?: 0 } ?: return
-        if (list.isEmpty()) return
-
-        val bind = ItemTitleChipgroupBinding.inflate(activity.layoutInflater, parent, false)
-        bind.itemTitle.setText(R.string.tags)
-        list.forEach { tag ->
-            val chip = ItemChipBinding.inflate(activity.layoutInflater, bind.itemChipGroup, false).root
-            val label = tag.rank?.let { "${tag.name} $it%" } ?: tag.name
-            if (tag.isMediaSpoiler == true) {
-                val revealed = booleanArrayOf(false)
-                chip.text = "▓".repeat(tag.name.length.coerceIn(3, 12))
-                chip.setOnClickListener {
-                    if (!revealed[0]) { revealed[0] = true; chip.text = label }
-                }
-            } else {
-                chip.text = label
-            }
-            chip.setOnLongClickListener { copyToClipboard(tag.name); true }
-            bind.itemChipGroup.addView(chip)
-        }
-        parent.addView(bind.root)
+        AnilistTagChips.render(activity, parent, tags.orEmpty().map { AnilistTagChips.of(it) })
     }
 
     private fun addGenres(

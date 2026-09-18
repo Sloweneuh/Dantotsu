@@ -613,49 +613,35 @@ class AniListInfoFragment : Fragment() {
                     }
                 }
 
-                if (media.tags.isNotEmpty()) {
-                    val bind = ItemTitleChipgroupBinding.inflate(
-                        LayoutInflater.from(context),
-                        parent,
-                        false
-                    )
-                    bind.itemTitle.setText(R.string.tags)
-                    for (position in media.tags.indices) {
-                        val chip = ItemChipBinding.inflate(
-                            LayoutInflater.from(context),
-                            bind.itemChipGroup,
-                            false
-                        ).root
-                        chip.text = media.tags[position]
-                        // The tag search needs the network, so only wire it up when online.
-                        if (!offline) {
-                            chip.setSafeOnClickListener {
-                                ContextCompat.startActivity(
-                                    chip.context,
-                                    Intent(chip.context, SearchActivity::class.java)
-                                        .putExtra("type", type)
-                                        .putExtra("sortBy", Anilist.sortBy[2])
-                                        .putExtra("tag", media.tags[position].substringBefore(" :"))
-                                        .putExtra("search", true)
-                                        .also {
-                                            if (media.isAdult) {
-                                                if (!Anilist.adult) Toast.makeText(
-                                                    chip.context,
-                                                    currActivity()?.getString(R.string.content_18),
-                                                    Toast.LENGTH_SHORT
-                                                ).show()
-                                                it.putExtra("hentai", true)
-                                            }
-                                        },
-                                    null
-                                )
-                            }
-                        }
-                        chip.setOnLongClickListener { copyToClipboard(media.tags[position]);true }
-                        bind.itemChipGroup.addView(chip)
+                // Full tag data (rank, description, spoiler flags) once the media page has
+                // loaded; media cached for offline before that existed only keeps the flat
+                // "name : rank%" strings, so those are parsed back into tags instead.
+                val tagChips = media.tagsInfo?.takeIf { it.isNotEmpty() }?.map { AnilistTagChips.of(it) }
+                    ?: media.tags.map { AnilistTagChips.ofLabel(it) }
+                // The tag search needs the network, so only wire it up when online.
+                val onTagClick: ((AnilistTagChips.Tag) -> Unit)? =
+                    if (offline) null else fun(tag: AnilistTagChips.Tag) {
+                        ContextCompat.startActivity(
+                            requireContext(),
+                            Intent(requireContext(), SearchActivity::class.java)
+                                .putExtra("type", type)
+                                .putExtra("sortBy", Anilist.sortBy[2])
+                                .putExtra("tag", tag.name)
+                                .putExtra("search", true)
+                                .also {
+                                    if (media.isAdult) {
+                                        if (!Anilist.adult) Toast.makeText(
+                                            requireContext(),
+                                            currActivity()?.getString(R.string.content_18),
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                        it.putExtra("hentai", true)
+                                    }
+                                },
+                            null
+                        )
                     }
-                    parent.addView(bind.root)
-                }
+                AnilistTagChips.render(requireContext(), parent, tagChips, onTagClick)
 
                 // Watch order (anime only) and news, as button cards laid out like the
                 // prequel/sequel pair below. Neither id is resolved here: the screens themselves

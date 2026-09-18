@@ -6,6 +6,7 @@ import ani.dantotsu.connections.anilist.api.FuzzyDate
 import ani.dantotsu.connections.anilist.api.MediaEdge
 import ani.dantotsu.connections.anilist.api.MediaList
 import ani.dantotsu.connections.anilist.api.MediaStreamingEpisode
+import ani.dantotsu.connections.anilist.api.MediaTag
 import ani.dantotsu.connections.anilist.api.MediaType
 import ani.dantotsu.connections.anilist.api.Query
 import ani.dantotsu.connections.mal.MAL
@@ -65,6 +66,13 @@ data class Media(
     val meanScore: Int? = null,
     var genres: ArrayList<String> = arrayListOf(),
     var tags: ArrayList<String> = arrayListOf(),
+    /**
+     * The same tags as [tags], but unflattened - kept apart because [tags] is a plain
+     * "name : rank%" list that list/search filters match against, while the media page needs each
+     * tag's rank, description and spoiler flags to mask spoilers and explain what a tag means.
+     * Null until a full media fetch fills it in, so older cached (offline) media fall back to [tags].
+     */
+    var tagsInfo: ArrayList<MediaTag>? = null,
     var description: String? = null,
     var synonyms: ArrayList<String> = arrayListOf(),
     var trailer: String? = null,

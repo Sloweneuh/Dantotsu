@@ -18,6 +18,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.ListPopupWindow
 import androidx.core.content.ContextCompat
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import ani.dantotsu.R
@@ -342,6 +343,11 @@ object MangaBakaMediaRenderer {
             TagFilter(activity.getString(it.label), it.chevron, it.threshold)
         }
 
+        // Chips are rebuilt whenever the weight filter changes, so what the spoiler toggle last
+        // said has to be carried over to the new ones rather than silently unmasking them.
+        var spoilersShown = false
+        val spoilerChips = mutableListOf<Pair<MangaBakaApi.TagEntry, Chip>>()
+
         fun selectFilter(f: TagFilter) {
             bind.tagsFilterText.text = f.label
             if (f.chevron != null) {
@@ -352,8 +358,13 @@ object MangaBakaMediaRenderer {
                 bind.tagsFilterChevron.visibility = View.GONE
             }
             bind.tagsChipGroup.removeAllViews()
-            tags.filter { weightRank(it.weight) >= f.threshold }
-                .forEach { bind.tagsChipGroup.addView(makeTagChip(activity, it, bind.tagsChipGroup, onSearch)) }
+            spoilerChips.clear()
+            tags.filter { weightRank(it.weight) >= f.threshold }.forEach { tag ->
+                val chip = makeTagChip(activity, tag, bind.tagsChipGroup, spoilersShown, onSearch)
+                if (tag.isSpoiler == true) spoilerChips.add(tag to chip)
+                bind.tagsChipGroup.addView(chip)
+            }
+            bind.tagsSpoilerAction.isVisible = spoilerChips.isNotEmpty()
         }
 
         bind.tagsFilterButton.setOnClickListener {
@@ -370,13 +381,18 @@ object MangaBakaMediaRenderer {
             popup.show()
         }
 
+        ChipSections.spoilerToggle(bind.tagsSpoilerAction) { showing ->
+            spoilersShown = showing
+            spoilerChips.forEach { (tag, chip) -> setTagChipMasked(activity, chip, tag, !showing) }
+        }
+
         parent.addView(bind.root)
         selectFilter(filters[MangaBakaTagWeights.defaultIndex()])
     }
 
     private fun makeTagChip(
         activity: AppCompatActivity, tag: MangaBakaApi.TagEntry, group: ViewGroup,
-        onSearch: (String?, String?, String?) -> Unit,
+        spoilersShown: Boolean, onSearch: (String?, String?, String?) -> Unit,
     ): Chip {
         val name = tag.name ?: ""
         val chip = ItemChipBinding.inflate(activity.layoutInflater, group, false).root
@@ -390,24 +406,38 @@ object MangaBakaMediaRenderer {
         }
 
         val search = { onSearch(null, null, name) }
+        val masked = tag.isSpoiler == true && !spoilersShown
+        setTagChipMasked(activity, chip, tag, masked)
 
-        if (tag.isSpoiler == true) {
-            chip.text = "▓".repeat(name.length.coerceIn(3, 12))
-            val revealed = booleanArrayOf(false)
-            val onTap = { if (!revealed[0]) { revealed[0] = true; chip.text = name } else search() }
-            chip.setOnClickListener { onTap() }
-            chip.setOnCloseIconClickListener { onTap() }
-        } else {
-            chip.text = name
-            chip.setOnClickListener { search() }
-            chip.setOnCloseIconClickListener { search() }
+        // A masked chip spends its first tap on revealing itself; from then on it searches like
+        // any other, whether it was uncovered here or by the section's spoiler toggle.
+        val onTap = {
+            if (tag.isSpoiler == true && chip.text != name) setTagChipMasked(activity, chip, tag, false)
+            else search()
         }
+        chip.setOnClickListener { onTap() }
+        chip.setOnCloseIconClickListener { onTap() }
         chip.setOnLongClickListener {
             copyToClipboard(name)
             Toast.makeText(activity, activity.getString(R.string.copied_title_toast, name), Toast.LENGTH_SHORT).show()
             true
         }
         return chip
+    }
+
+    /** Covers a spoiler tag's name with blocks, or puts it back. */
+    private fun setTagChipMasked(
+        activity: AppCompatActivity, chip: Chip, tag: MangaBakaApi.TagEntry, masked: Boolean,
+    ) {
+        val name = tag.name ?: ""
+        if (masked) {
+            chip.text = ChipSections.mask(name)
+            // Blocks read as nothing at all to a screen reader, so say what the chip is instead.
+            chip.contentDescription = activity.getString(R.string.spoiler_tag)
+        } else {
+            chip.text = name
+            chip.contentDescription = null
+        }
     }
 
     private data class TagFilter(val label: String, val chevron: Int?, val threshold: Int)

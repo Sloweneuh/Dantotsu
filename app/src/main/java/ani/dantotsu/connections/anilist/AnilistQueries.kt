@@ -52,7 +52,7 @@ class AnilistQueries {
      */
     suspend fun getMediaTags(anilistId: Int): List<ani.dantotsu.connections.anilist.api.MediaTag>? {
         val response = executeQuery<Query.Media>(
-            """{Media(id:$anilistId){tags{id name rank category isMediaSpoiler}}}""",
+            """{Media(id:$anilistId){tags{id name description category rank isMediaSpoiler isGeneralSpoiler}}}""",
             force = true,
         )
         return response?.data?.media?.tags
@@ -276,11 +276,15 @@ class AnilistQueries {
                         }
 
                         fetchedMedia.tags?.apply {
+                            // Spoiler tags stay out of the flat list - that one feeds filters and
+                            // anything else that only wants tag names. The media page renders
+                            // [Media.tagsInfo] instead, where a spoiler is masked, not dropped.
                             media.tags = arrayListOf()
                             this.forEach { i ->
-                                if (i.isMediaSpoiler == false)
+                                if (i.isMediaSpoiler != true && i.isGeneralSpoiler != true)
                                     media.tags.add("${i.name} : ${i.rank.toString()}%")
                             }
+                            media.tagsInfo = ArrayList(this)
                         }
 
                         media.description = fetchedMedia.description.toString()

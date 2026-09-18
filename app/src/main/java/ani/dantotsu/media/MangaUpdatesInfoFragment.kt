@@ -1105,7 +1105,7 @@ class MangaUpdatesInfoFragment : Fragment() {
         // Categories (clickable for search, like Comick)
         if (!series.categories.isNullOrEmpty()) {
             val bind =
-                    ani.dantotsu.databinding.ItemTitleChipgroupMultilineBinding.inflate(
+                    ani.dantotsu.databinding.ItemTitleChipgroupBinding.inflate(
                             LayoutInflater.from(context),
                             parent,
                             false

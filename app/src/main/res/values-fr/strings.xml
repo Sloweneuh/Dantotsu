@@ -176,6 +176,12 @@
     <string name="filler">Filler</string>
     <string name="list_only">Liste uniquement</string>
     <string name="tags">Tags</string>
+    <string name="show_spoiler_tags">Afficher les spoilers</string>
+    <string name="hide_spoiler_tags">Masquer les spoilers</string>
+    <string name="spoiler_tag">Spoiler</string>
+    <string name="tag_rank">Pertinence %1$d%%</string>
+    <string name="no_tag_description">Aucune description pour ce tag.</string>
+    <string name="copy">Copier</string>
     <string name="synonyms">Synonymes</string>
     <string name="trailer">Bande-annonce</string>
     <string name="opening">Opening</string>
@@ -1222,6 +1228,7 @@
     <string name="cancel_download">Annuler le téléchargement</string>
     <string name="reorder">Réorganiser</string>
     <string name="expand">Développer</string>
+    <string name="collapse">Réduire</string>
     <string name="delete_chapter">Supprimer le chapitre</string>
     <string name="delete_episode">Supprimer l\'épisode</string>
     <string name="delete_progress_for_chapters">Supprimer la progression de tous les chapitres de %1$s</string>

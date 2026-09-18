@@ -26,7 +26,6 @@ import ani.dantotsu.databinding.ItemChipBinding
 import ani.dantotsu.databinding.ItemChipSynonymBinding
 import ani.dantotsu.databinding.ItemQuelsBinding
 import ani.dantotsu.databinding.ItemTitleChipgroupBinding
-import ani.dantotsu.databinding.ItemTitleChipgroupMultilineBinding
 import ani.dantotsu.databinding.ItemChapterListBinding
 import ani.dantotsu.databinding.ItemTitleRecyclerBinding
 import ani.dantotsu.databinding.ItemTitleTextBinding
@@ -190,7 +189,7 @@ class MUMediaInfoFragment : Fragment() {
         // Categories (stored in Media.tags)
         val categories = media?.tags.orEmpty()
         if (categories.isNotEmpty()) {
-            val bind = ItemTitleChipgroupMultilineBinding
+            val bind = ItemTitleChipgroupBinding
                 .inflate(LayoutInflater.from(context), parent, false)
             bind.itemTitle.text = getString(R.string.categories)
             categories.forEach { category ->
@@ -429,7 +428,7 @@ class MUMediaInfoFragment : Fragment() {
 
         // Categories
         if (!series.categories.isNullOrEmpty()) {
-            val bind = ItemTitleChipgroupMultilineBinding
+            val bind = ItemTitleChipgroupBinding
                 .inflate(LayoutInflater.from(context), parent, false)
             bind.itemTitle.text = getString(R.string.categories)
             series.categories.forEach { cat ->

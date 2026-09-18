@@ -440,7 +440,7 @@ data class MediaTag(
 
     // The user who submitted the tag
     @SerialName("userId") var userId: Int?,
-)
+) : java.io.Serializable
 
 @Serializable
 data class MediaConnection(
