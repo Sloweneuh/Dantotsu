@@ -1303,6 +1303,68 @@ object ComickApi {
      * `media_type=anime` because it returns `anime_profiles` inline, saving a detail call per hit —
      * but it is capped at 100 results and ignores `page`, so it can't back a paged browse.
      */
+    /** Comment sorts the API accepts. Anything else comes back empty, so these are all of them. */
+    const val COMMENT_SORT_TOP = "top"
+    const val COMMENT_SORT_NEWEST = "newest"
+
+    /**
+     * Comments on an entry - the ones left on the comic/anime itself rather than on a chapter.
+     *
+     * Neither comment route appears in any documentation; both were found by watching what a
+     * Comick page asks for. They take an entry's hid, not its slug or numeric id.
+     *
+     * @param hid the comic's or anime's HID
+     * @param sort [COMMENT_SORT_TOP] (the API default, by its own ranking) or [COMMENT_SORT_NEWEST]
+     * @param page 1-based; a page past the end answers with an empty list
+     */
+    suspend fun getComicComments(
+        hid: String,
+        sort: String = COMMENT_SORT_TOP,
+        page: Int? = null,
+    ): ComickCommentPage? = fetchComments("comic", hid, sort, page)
+
+    /**
+     * Comments on one chapter, or on one anime episode - episodes are chapter records, so they
+     * answer on the same route.
+     *
+     * @param hid the chapter's or episode's HID
+     */
+    suspend fun getChapterComments(
+        hid: String,
+        sort: String = COMMENT_SORT_TOP,
+        page: Int? = null,
+    ): ComickCommentPage? = fetchComments("chapter", hid, sort, page)
+
+    private suspend fun fetchComments(
+        kind: String,
+        hid: String,
+        sort: String,
+        page: Int?,
+    ): ComickCommentPage? = withContext(Dispatchers.IO) {
+        if (hid.isBlank()) return@withContext null
+        try {
+            val builder = "https://api.comick.dev/comment/$kind/$hid".toHttpUrlOrNull()
+                ?.newBuilder() ?: return@withContext null
+            // The default ranking has no name of its own - it is what the route does when asked
+            // for nothing - and passing an unknown sort empties the response, so only "newest"
+            // is ever sent.
+            if (sort == COMMENT_SORT_NEWEST) builder.addQueryParameter("sort", COMMENT_SORT_NEWEST)
+            page?.takeIf { it > 1 }?.let { builder.addQueryParameter("page", it.toString()) }
+
+            val response = client.newCall(request(builder.build().toString())).execute()
+            if (!response.isSuccessful) {
+                Logger.log("Comick comments API error: ${response.code} for $kind=$hid")
+                return@withContext null
+            }
+            val body = response.body.string()
+            if (body.isBlank()) return@withContext null
+            gson.fromJson(body, ComickCommentPage::class.java)
+        } catch (e: Exception) {
+            Logger.log("Error fetching Comick comments for $kind=$hid: ${e.message}")
+            null
+        }
+    }
+
     suspend fun searchAnime(
         query: String? = null,
         year: Int? = null,

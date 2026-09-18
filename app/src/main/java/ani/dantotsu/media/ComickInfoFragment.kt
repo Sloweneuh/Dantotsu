@@ -1279,6 +1279,18 @@ class ComickInfoFragment : Fragment() {
                     cb.itemChapterScan.visibility = if (hasScan) View.VISIBLE else View.GONE
                     cb.itemChapterScan.text = scan ?: ""
                     cb.itemChapterDateDivider.visibility = if (hasDate && hasScan) View.VISIBLE else View.GONE
+
+                    // The chapter is only known once this lands, so its comments button waits too.
+                    latest.hid?.takeIf { it.isNotBlank() }?.let { chapterHid ->
+                        cb.itemChapterBrowser.visibility = View.VISIBLE
+                        cb.itemChapterBrowser.setImageResource(R.drawable.ic_round_comment_24)
+                        cb.itemChapterBrowser.contentDescription = getString(R.string.comick_comments)
+                        cb.itemChapterBrowser.setSafeOnClickListener {
+                            ComickCommentsBottomSheet
+                                .forChapter(chapterHid, cb.itemChapterNumber.text.toString())
+                                .show(parentFragmentManager, "comick_chapter_comments")
+                        }
+                    }
                 }
             }
         }
@@ -1714,6 +1726,19 @@ class ComickInfoFragment : Fragment() {
             }
         }
 
+        // Comments on the entry, above the custom lists and reviews that follow.
+        comic.hid?.takeIf { it.isNotBlank() }?.let { commentsHid ->
+            ComickCommentViews.addSection(
+                context = requireContext(),
+                scope = viewLifecycleOwner.lifecycleScope,
+                fragmentManager = parentFragmentManager,
+                parent = parent,
+                hid = commentsHid,
+                heading = comic.title ?: getString(R.string.comick_comments),
+                isAlive = { _binding != null },
+            )
+        }
+
         // Custom Lists — placeholder added synchronously so it sits between recommendations and reviews
         val comickHid = comic.hid
         if (comickHid.isNullOrBlank()) {
@@ -1953,8 +1978,22 @@ class ComickInfoFragment : Fragment() {
                 episodes.asReversed().take(EPISODE_PREVIEW_COUNT).forEach { episode ->
                     val cb = ItemChapterListBinding.inflate(layoutInflater, placeholder, false)
                     cb.itemDownload.visibility = View.GONE
-                    cb.itemChapterBrowser.visibility = View.GONE
                     cb.itemEpisodeViewed.visibility = View.GONE
+
+                    // Episodes are chapter records on Comick, so their comments come from the same
+                    // route the chapter rows use.
+                    val episodeHid = episode.hid
+                    cb.itemChapterBrowser.visibility =
+                        if (episodeHid.isNullOrBlank()) View.GONE else View.VISIBLE
+                    if (!episodeHid.isNullOrBlank()) {
+                        cb.itemChapterBrowser.setImageResource(R.drawable.ic_round_comment_24)
+                        cb.itemChapterBrowser.contentDescription = getString(R.string.comick_comments)
+                        cb.itemChapterBrowser.setSafeOnClickListener {
+                            ComickCommentsBottomSheet
+                                .forChapter(episodeHid, cb.itemChapterNumber.text.toString())
+                                .show(parentFragmentManager, "comick_episode_comments")
+                        }
+                    }
                     cb.itemChapterDateLayout.layoutParams.height =
                         ViewGroup.LayoutParams.WRAP_CONTENT
 

@@ -381,8 +381,22 @@ class ComickMediaActivity : AppCompatActivity() {
             val b = ItemChapterListBinding.inflate(layoutInflater, binding.comickChaptersList, false)
             b.itemChapterDateLayout.layoutParams.height = ViewGroup.LayoutParams.WRAP_CONTENT
             b.itemDownload.isVisible = false
-            b.itemChapterBrowser.isVisible = false
             b.itemEpisodeViewed.isVisible = false
+
+            // The row's spare button becomes the way into this chapter's (or episode's) comments.
+            // How many there are isn't in the chapter list, and asking per row would be a request
+            // each, so the icon is unconditional and the count shows once the sheet opens.
+            val chapterHid = chapter.hid
+            b.itemChapterBrowser.isVisible = !chapterHid.isNullOrBlank()
+            if (!chapterHid.isNullOrBlank()) {
+                b.itemChapterBrowser.setImageResource(R.drawable.ic_round_comment_24)
+                b.itemChapterBrowser.contentDescription = getString(R.string.comick_comments)
+                b.itemChapterBrowser.setOnClickListener {
+                    ComickCommentsBottomSheet
+                        .forChapter(chapterHid, b.itemChapterNumber.text.toString())
+                        .show(supportFragmentManager, "comick_chapter_comments")
+                }
+            }
 
             val chapNum = chapter.chap
             val chapTitle = chapter.title
@@ -878,6 +892,19 @@ class ComickMediaActivity : AppCompatActivity() {
                 }
                 tagsPlaceholder.addView(bind.root)
             }
+        }
+
+        // Comments on the entry itself (chapter comments hang off the chapter rows instead).
+        comic.hid?.takeIf { it.isNotBlank() }?.let { commentsHid ->
+            ComickCommentViews.addSection(
+                context = this,
+                scope = lifecycleScope,
+                fragmentManager = supportFragmentManager,
+                parent = parent,
+                hid = commentsHid,
+                heading = comic.title ?: getString(R.string.comick_comments),
+                isAlive = { !isFinishing && !isDestroyed },
+            )
         }
 
         val recommendations = comic.recommendations

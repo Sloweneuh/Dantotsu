@@ -609,3 +609,79 @@ fun ComickRawReview.toComickReview(): ComickReview {
     )
 }
 
+
+/**
+ * A page of comments from `/comment/comic/{hid}` or `/comment/chapter/{hid}`.
+ *
+ * Neither route is documented; both answer with every comment they have for the entry (the
+ * busiest chapters checked returned 130 in one go, `remaining` at 0), so [remaining] is what says
+ * whether a further page exists rather than a count that has to be paged through.
+ */
+data class ComickCommentPage(
+    val comments: List<ComickComment>? = null,
+    val total: Int? = null,
+    val remaining: Int? = null,
+) : Serializable
+
+/**
+ * One comment. Replies come back nested in [other_comments] rather than as their own request,
+ * each carrying the parent's id in [comment_id].
+ */
+data class ComickComment(
+    val id: Long? = null,
+    val content: String? = null,
+    /** The rendered form of [content]; the two match except where the comment used markup. */
+    val parsed: String? = null,
+    val created_at: String? = null,
+    val up_count: Int? = null,
+    val down_count: Int? = null,
+    /** Set on a reply: the id of the comment it answers. */
+    val comment_id: Long? = null,
+    val md_chapter_id: Long? = null,
+    /** Key of an attached image, under the same host as the covers. */
+    val file: String? = null,
+    val w: Int? = null,
+    val h: Int? = null,
+    val identities: ComickCommentIdentity? = null,
+    val reply_to_user: ComickCommentIdentity? = null,
+    val other_comments: List<ComickComment>? = null,
+) : Serializable {
+
+    fun body(): String = (parsed?.takeIf { it.isNotBlank() } ?: content).orEmpty().trim()
+
+    fun author(): String? = identities?.traits?.username?.takeIf { it.isNotBlank() }
+
+    fun replyingTo(): String? = reply_to_user?.traits?.username?.takeIf { it.isNotBlank() }
+
+    fun avatarUrl(): String? = identities?.traits?.gravatar?.takeIf { it.isNotBlank() }
+
+    /** Attachment URL, on the image host the covers use. */
+    fun attachmentUrl(): String? =
+        file?.takeIf { it.isNotBlank() }?.let { "https://meo.comick.pictures/$it" }
+
+    fun createdAtMillis(): Long? = created_at?.let {
+        try {
+            Instant.parse(it).toEpochMilli()
+        } catch (_: DateTimeParseException) {
+            null
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    fun score(): Int = (up_count ?: 0) - (down_count ?: 0)
+}
+
+data class ComickCommentIdentity(
+    val id: String? = null,
+    val traits: ComickCommentTraits? = null,
+) : Serializable
+
+/**
+ * Only the display fields are modelled: the API also hands out each commenter's email address,
+ * which has no business being in the app, so it is never read.
+ */
+data class ComickCommentTraits(
+    val username: String? = null,
+    val gravatar: String? = null,
+) : Serializable

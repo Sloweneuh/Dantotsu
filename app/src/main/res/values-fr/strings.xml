@@ -176,6 +176,23 @@
     <string name="filler">Filler</string>
     <string name="list_only">Liste uniquement</string>
     <string name="tags">Tags</string>
+    <string name="comick_comments">Commentaires</string>
+    <string name="comick_no_comments">Aucun commentaire</string>
+    <string name="comick_comments_sort_top">Populaires</string>
+    <string name="comick_comments_sort_newest">Récents</string>
+    <string name="comick_comment_anonymous">Anonyme</string>
+    <string name="comick_comment_replying_to">En réponse à %1$s</string>
+    <string name="comick_comment_score">Score</string>
+    <string name="comick_comment_show_spoiler">Afficher le spoiler</string>
+    <string name="comick_chapter_comments">Commentaires sur %1$s</string>
+    <plurals name="comick_comment_count">
+        <item quantity="one">%1$d commentaire</item>
+        <item quantity="other">%1$d commentaires</item>
+    </plurals>
+    <plurals name="comick_comment_replies">
+        <item quantity="one">%1$d réponse</item>
+        <item quantity="other">%1$d réponses</item>
+    </plurals>
     <string name="show_spoiler_tags">Afficher les spoilers</string>
     <string name="hide_spoiler_tags">Masquer les spoilers</string>
     <string name="spoiler_tag">Spoiler</string>
