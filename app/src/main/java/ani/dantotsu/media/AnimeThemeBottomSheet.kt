@@ -8,6 +8,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.SeekBar
 import androidx.annotation.DrawableRes
+import android.util.TypedValue
+import android.widget.ImageView
 import androidx.annotation.OptIn
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
@@ -22,6 +24,7 @@ import ani.dantotsu.connections.animethemes.AnimeThemeTrack
 import ani.dantotsu.connections.animethemes.AnimeThemeVersion
 import ani.dantotsu.connections.animethemes.AnimeThemeVideo
 import ani.dantotsu.databinding.BottomSheetAnimeThemeBinding
+import ani.dantotsu.px
 import ani.dantotsu.setSafeOnClickListener
 import ani.dantotsu.snackString
 import com.google.android.material.chip.Chip
@@ -114,7 +117,7 @@ class AnimeThemeBottomSheet : BottomSheetDialogFragment() {
         })
 
         buildVersionChips(current)
-        buildSearchChips(current)
+        buildSearchButtons(current)
         selectVersion(current.versions.firstOrNull())
         binding.root.postDelayed(tick, 500)
     }
@@ -146,7 +149,7 @@ class AnimeThemeBottomSheet : BottomSheetDialogFragment() {
      * so these are searches rather than links: the song and its artists handed to each service,
      * which its app picks up when installed.
      */
-    private fun buildSearchChips(track: AnimeThemeTrack) {
+    private fun buildSearchButtons(track: AnimeThemeTrack) {
         val query = listOfNotNull(track.song, track.artists.joinToString(" ").takeIf {
             it.isNotBlank()
         }).joinToString(" ").trim()
@@ -159,18 +162,40 @@ class AnimeThemeBottomSheet : BottomSheetDialogFragment() {
         // URLEncoder's '+' would be searched for literally.
         val encoded = Uri.encode(query)
         MUSIC_SERVICES.forEach { service ->
-            binding.themeSheetSearch.addView(
-                chip(service.name, checkable = false, icon = service.icon) {
-                    try {
-                        startActivity(
-                            Intent(Intent.ACTION_VIEW, service.url.format(encoded).toUri())
-                        )
-                    } catch (_: Throwable) {
-                    }
-                }
-            )
+            binding.themeSheetSearch.addView(searchButton(service, encoded))
         }
     }
+
+    /**
+     * Icon only. Six services with their names attached took three lines and read as a wall of
+     * text; the marks say which service they are on sight. The name stays on as the content
+     * description and the long-press tooltip, which is what a screen reader announces.
+     */
+    private fun searchButton(service: MusicService, encoded: String): View =
+        ImageView(requireContext()).apply {
+            val size = 44f.px
+            val inset = 9f.px
+            layoutParams = ViewGroup.LayoutParams(size, size)
+            setPadding(inset, inset, inset, inset)
+            setImageResource(service.icon)
+            // The marks are solid black paths, so they follow the theme like the labels did.
+            imageTintList = ColorStateList.valueOf(
+                ContextCompat.getColor(requireContext(), R.color.bg_opp)
+            )
+            contentDescription = service.name
+            tooltipText = service.name
+            val ripple = TypedValue()
+            context.theme.resolveAttribute(
+                android.R.attr.selectableItemBackgroundBorderless, ripple, true
+            )
+            setBackgroundResource(ripple.resourceId)
+            setSafeOnClickListener {
+                try {
+                    startActivity(Intent(Intent.ACTION_VIEW, service.url.format(encoded).toUri()))
+                } catch (_: Throwable) {
+                }
+            }
+        }
 
     private fun selectVersion(entry: AnimeThemeVersion?) {
         version = entry ?: return
@@ -268,19 +293,10 @@ class AnimeThemeBottomSheet : BottomSheetDialogFragment() {
     private fun chip(
         text: String,
         checkable: Boolean = true,
-        @DrawableRes icon: Int? = null,
         onClick: () -> Unit
     ): Chip = Chip(requireContext()).apply {
         this.text = text
         isCheckable = checkable
-        icon?.let {
-            chipIcon = ContextCompat.getDrawable(requireContext(), it)
-            // The brand marks are solid black paths, so they have to follow the theme the way
-            // the chip's own label does, or they disappear against a dark background.
-            chipIconTint = ColorStateList.valueOf(
-                ContextCompat.getColor(requireContext(), R.color.bg_opp)
-            )
-        }
         setTextAppearance(R.style.Suffix)
         // After the text appearance, not before: applying one resets the colour, which is what
         // left the selected chip's label sitting invisibly on its own highlight. The state lists

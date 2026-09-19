@@ -174,11 +174,13 @@
             android:text="@string/search_on"
             android:textSize="12sp" />
 
-        <!-- Wraps rather than scrolls: six services off the side of the screen read as three. -->
+        <!-- A flow row, so the icon buttons wrap instead of running off the side. -->
         <com.google.android.material.chip.ChipGroup
             android:id="@+id/themeSheetSearch"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            app:chipSpacingHorizontal="4dp"
             app:chipSpacingVertical="0dp" />
 
         <TextView
