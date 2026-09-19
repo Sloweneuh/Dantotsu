@@ -24,6 +24,7 @@ import ani.dantotsu.media.Author
 import ani.dantotsu.media.Character
 import ani.dantotsu.media.Media
 import ani.dantotsu.media.Studio
+import ani.dantotsu.connections.animethemes.AnimeThemes
 import ani.dantotsu.others.MalScraper
 import ani.dantotsu.profile.User
 import ani.dantotsu.notifications.NotificationReadState
@@ -534,7 +535,12 @@ class AnilistQueries {
                     MalScraper.loadMedia(media)
                 }
             }
-            awaitAll(anilist, mal)
+            // Theme songs, independent of both: AnimeThemes is keyed off the AniList id, so it
+            // resolves for anime that never got a MAL id.
+            val themes = async {
+                media.anime?.let { it.themes = AnimeThemes.getThemes(media.id, media.idMAL) }
+            }
+            awaitAll(anilist, mal, themes)
         }
         return media
     }

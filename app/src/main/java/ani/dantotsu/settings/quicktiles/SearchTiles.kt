@@ -145,7 +145,7 @@ object SearchTiles : TileCatalogue(PrefName.SearchTileOrder) {
                 isAvailable = { true },
                 unavailableReason = R.string.search_needs_connection_enabled,
             ),
-            // MAL (Jikan) search needs no login either — same off-panel-by-default treatment.
+            // MAL search needs no login either — same off-panel-by-default treatment.
             service(
                 "mal", R.string.mal_manga_search, R.drawable.ic_myanimelist_manga,
                 SearchType.MAL,

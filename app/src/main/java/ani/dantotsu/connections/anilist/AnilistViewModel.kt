@@ -549,7 +549,7 @@ class AnilistSearch : ViewModel() {
         /** Kitsu, likewise — a manga and an anime catalogue searched as two sources. */
         val isKitsu: Boolean get() = this == KITSU || this == KITSU_ANIME
 
-        /** MAL (Jikan), likewise — a manga and an anime catalogue searched as two sources. */
+        /** MAL, likewise — a manga and an anime catalogue searched as two sources. */
         val isMal: Boolean get() = this == MAL || this == MAL_ANIME
 
         /** The search bar's hint: localized, and upper-cased the way the bar has always shown it. */

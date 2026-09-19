@@ -97,7 +97,7 @@ data class SimklSearchResults(
 ) : SearchResults<SimklApi.SimklMedia>, Serializable
 
 /**
- * MAL search state — query only. The official v2 API's search endpoint (unlike Jikan's) takes no
+ * MAL search state — query only. MAL's official v2 API search endpoint takes no
  * genre/status/rating/sort filters, only `q`/`limit`/`offset`, so there's no filter sheet or chip
  * strip for MAL — same shape as [SimklSearchResults].
  */

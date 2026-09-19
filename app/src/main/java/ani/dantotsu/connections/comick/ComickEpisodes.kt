@@ -12,7 +12,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 
 /**
- * Comick as a source of episode titles and synopses, alongside Kitsu, Anify and Jikan.
+ * Comick as a source of episode titles and synopses, alongside Kitsu, Anify and MAL.
  *
  * Comick has no thumbnails (its episode rows carry an empty `previews` array), so this only ever
  * contributes text — the watch screen merges it *under* the providers that do supply images.

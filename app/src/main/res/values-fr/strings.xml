@@ -203,6 +203,31 @@
     <string name="trailer">Bande-annonce</string>
     <string name="opening">Opening</string>
     <string name="ending">Ending</string>
+    <string name="insert_songs">Chansons d\'insertion</string>
+    <string name="theme_episodes">Ép. %1$s</string>
+    <string name="theme_episode">Ép. %1$s</string>
+    <string name="theme_version">Version %1$d</string>
+    <string name="theme_version_count">%1$d versions</string>
+    <string name="provided_by_animethemes">Fourni par AnimeThemes.moe</string>
+    <string name="theme_audio">Audio</string>
+    <string name="search_on">Rechercher sur</string>
+    <string name="theme_converting">Conversion du générique…</string>
+    <string name="theme_convert_failed">Échec de la conversion</string>
+    <string name="theme_video">Vidéo</string>
+    <string name="theme_download_source">Source</string>
+    <string name="theme_download_type">Type</string>
+    <string name="theme_download_format">Format</string>
+    <string name="theme_download_quality">Qualité</string>
+    <string name="theme_bitrate">%1$d kbps</string>
+    <string name="theme_quality_published">Tel que publié</string>
+    <string name="theme_flag_eps">%1$s : %2$s</string>
+    <string name="theme_no_credits">sans crédits</string>
+    <string name="theme_subbed">sous-titré</string>
+    <string name="theme_lyrics">paroles</string>
+    <string name="theme_overlap">sur les images de l’épisode</string>
+    <string name="theme_source_bd">Blu-ray</string>
+    <string name="theme_source_web">Web</string>
+    <string name="theme_source_raw">Raw</string>
     <string name="prequel">Préquelle</string>
     <string name="sequel">Suite</string>
     <string name="watch_order">Ordre de visionnage</string>
@@ -269,8 +294,8 @@
     <string name="disable_mal_desc">Activer ou désactiver la récupération des données MAL et l\'onglet MAL</string>
     <string name="mal_connections_help">Comment fonctionne le bouton MAL ?</string>
     <string name="full_mal_connections_help">
-        Activer MAL ajoute un **onglet MAL** — un onglet d\'informations supplémentaire dans les détails du contenu avec des données propres à MAL (scores, genres, staff, recommandations, avis, etc.), récupérées anonymement via l\'API publique Jikan.
-        \n\n Aucun compte MAL n\'est requis pour cet onglet. **Désactiver MAL arrête tous les appels à l\'API Jikan et retire MAL du sélecteur d\'onglets (Comptes \> ⋮ \> Ordre des onglets d\'infos). Cela ne désactive PAS la synchronisation de la progression.**
+        Activer MAL ajoute un **onglet MAL** — un onglet d\'informations supplémentaire dans les détails du contenu avec des données propres à MAL (scores, genres, staff, recommandations, avis, etc.), récupérées anonymement depuis MyAnimeList.
+        \n\n Aucun compte MAL n\'est requis pour cet onglet. **Désactiver MAL arrête ces requêtes et retire MAL du sélecteur d\'onglets (Comptes \> ⋮ \> Ordre des onglets d\'infos). Cela ne désactive PAS la synchronisation de la progression.**
         \n\n La synchronisation de la progression vers votre compte MAL est contrôlée séparément — connectez votre compte MAL sur sa carte dans **Comptes**, puis activez la **Synchronisation des listes MAL** sur la même carte pour envoyer vos mises à jour de liste Anilist vers MAL.
     </string>
     <string name="disable_mangaupdates">Afficher les infos MangaUpdates</string>

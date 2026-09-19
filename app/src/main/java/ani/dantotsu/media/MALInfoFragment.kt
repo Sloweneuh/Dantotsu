@@ -36,9 +36,8 @@ import kotlinx.coroutines.withContext
 import java.net.URLEncoder
 import ani.dantotsu.connections.mal.MALStack
 import ani.dantotsu.media.StackAdapter
-import ani.dantotsu.others.Jikan
+import ani.dantotsu.others.MalScraper
 import ani.dantotsu.others.MALReview
-import ani.dantotsu.others.toMALReview
 import ani.dantotsu.util.Logger
 import com.xwray.groupie.GroupieAdapter
 
@@ -634,14 +633,14 @@ class MALInfoFragment : Fragment() {
             }
         }
 
-        // Reviews from Jikan API
+        // Reviews scraped from MAL
         if (!offline) {
             lifecycleScope.launch {
                 val reviews = withContext(Dispatchers.IO) {
                     try {
-                        val response = Jikan.getAnimeReviews(malId)
-                        Logger.log("MAL Reviews (anime): malId=$malId response=${response != null} dataSize=${response?.data?.size}")
-                        response?.data?.map { it.toMALReview() } ?: emptyList()
+                        val response = MalScraper.getAnimeReviews(malId)
+                        Logger.log("MAL Reviews (anime): malId=$malId response=${response != null} dataSize=${response?.reviews?.size}")
+                        response?.reviews ?: emptyList()
                     } catch (e: Exception) {
                         Logger.log("MAL Reviews (anime) error: ${e.message}")
                         emptyList<MALReview>()
@@ -907,14 +906,14 @@ class MALInfoFragment : Fragment() {
             }
         }
 
-        // Reviews from Jikan API
+        // Reviews scraped from MAL
         if (!offline) {
             lifecycleScope.launch {
                 val reviews = withContext(Dispatchers.IO) {
                     try {
-                        val response = Jikan.getMangaReviews(malId)
-                        Logger.log("MAL Reviews (manga): malId=$malId response=${response != null} dataSize=${response?.data?.size}")
-                        response?.data?.map { it.toMALReview() } ?: emptyList()
+                        val response = MalScraper.getMangaReviews(malId)
+                        Logger.log("MAL Reviews (manga): malId=$malId response=${response != null} dataSize=${response?.reviews?.size}")
+                        response?.reviews ?: emptyList()
                     } catch (e: Exception) {
                         Logger.log("MAL Reviews (manga) error: ${e.message}")
                         emptyList<MALReview>()

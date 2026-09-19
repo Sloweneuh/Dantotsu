@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="20dp"
+        android:paddingTop="20dp"
+        android:paddingBottom="12dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/themeSheetTitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:fontFamily="@font/poppins_bold"
+                    android:maxLines="2"
+                    android:textSize="18sp"
+                    tools:text="OP1 · again" />
+
+                <TextView
+                    android:id="@+id/themeSheetArtists"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:alpha="0.75"
+                    android:ellipsize="end"
+                    android:fontFamily="@font/poppins"
+                    android:maxLines="1"
+                    android:textSize="13sp"
+                    tools:text="YUI" />
+            </LinearLayout>
+
+            <ImageView
+                android:id="@+id/themeSheetDownload"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginStart="8dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/download"
+                android:padding="8dp"
+                app:srcCompat="@drawable/ic_download_24" />
+        </LinearLayout>
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp">
+
+            <!-- The app replaces media3's own exo_player_view layout with the full-screen
+                 player's, whose controls only work when ExoplayerView wires them up, so the
+                 built-in controller stays off and the row below drives playback instead. -->
+            <androidx.media3.ui.PlayerView
+                android:id="@+id/themeSheetPlayer"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:background="@color/bg_black"
+                app:layout_constraintDimensionRatio="16:9"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:resize_mode="fit"
+                app:show_buffering="when_playing"
+                app:surface_type="texture_view"
+                app:use_controller="false" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:id="@+id/themeSheetPlayPause"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/play"
+                android:padding="8dp"
+                app:srcCompat="@drawable/ic_round_play_arrow_24" />
+
+            <TextView
+                android:id="@+id/themeSheetPosition"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/poppins"
+                android:fontFeatureSettings="tnum"
+                android:gravity="center"
+                android:minWidth="42dp"
+                android:textSize="11sp"
+                tools:text="0:12" />
+
+            <SeekBar
+                android:id="@+id/themeSheetSeek"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="4dp"
+                android:layout_weight="1"
+                android:max="1000" />
+
+            <TextView
+                android:id="@+id/themeSheetDuration"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/poppins"
+                android:fontFeatureSettings="tnum"
+                android:gravity="center"
+                android:minWidth="42dp"
+                android:textSize="11sp"
+                tools:text="1:30" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/themeSheetMeta"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:alpha="0.7"
+            android:fontFamily="@font/poppins"
+            android:textSize="12sp"
+            tools:text="Eps 1-14" />
+
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:scrollbars="none">
+
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/themeSheetVersions"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:singleLine="true"
+                app:singleSelection="true" />
+        </HorizontalScrollView>
+
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:scrollbars="none">
+
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/themeSheetVideos"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:singleLine="true"
+                app:singleSelection="true" />
+        </HorizontalScrollView>
+
+        <TextView
+            android:id="@+id/themeSheetSearchLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:alpha="0.7"
+            android:fontFamily="@font/poppins"
+            android:text="@string/search_on"
+            android:textSize="12sp" />
+
+        <!-- Wraps rather than scrolls: six services off the side of the screen read as three. -->
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/themeSheetSearch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:chipSpacingVertical="0dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:alpha="0.5"
+            android:fontFamily="@font/poppins"
+            android:text="@string/provided_by_animethemes"
+            android:textSize="11sp" />
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

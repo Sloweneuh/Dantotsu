@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/themeRoot"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="?android:attr/selectableItemBackground"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingHorizontal="4dp"
+    android:paddingVertical="10dp">
+
+    <TextView
+        android:id="@+id/themeSlug"
+        android:layout_width="56dp"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/poppins_bold"
+        android:textSize="13sp"
+        android:textAlignment="center"
+        tools:text="OP1" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/themeSong"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:fontFamily="@font/poppins_semi_bold"
+            android:maxLines="1"
+            android:textSize="14sp"
+            tools:text="again" />
+
+        <TextView
+            android:id="@+id/themeArtists"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:alpha="0.75"
+            android:ellipsize="end"
+            android:fontFamily="@font/poppins"
+            android:maxLines="1"
+            android:textSize="12sp"
+            tools:text="YUI" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <!-- Loud on purpose: a spoiler theme is one you want flagged before you tap it. -->
+            <TextView
+                android:id="@+id/themeFlags"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="6dp"
+                android:fontFamily="@font/poppins_bold"
+                android:textColor="?attr/colorError"
+                android:textSize="11sp"
+                android:visibility="gone"
+                tools:text="Spoiler"
+                tools:visibility="visible" />
+
+            <TextView
+                android:id="@+id/themeMeta"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:alpha="0.6"
+                android:ellipsize="end"
+                android:fontFamily="@font/poppins"
+                android:maxLines="1"
+                android:textSize="11sp"
+                tools:text="Eps 1-14 · 1080p Blu-ray" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/themePlay"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:layout_marginStart="8dp"
+        app:srcCompat="@drawable/ic_round_play_circle_24"
+        tools:ignore="ContentDescription" />
+</LinearLayout>

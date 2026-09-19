@@ -290,7 +290,7 @@ object SimklApi {
 
     /**
      * Simkl episode titles / synopses / thumbnails keyed by episode number, for the AniList watch
-     * screen to merge alongside Kitsu / Anify / Jikan. Resolves the Simkl id from the AniList (or
+     * screen to merge alongside Kitsu / Anify / MAL. Resolves the Simkl id from the AniList (or
      * MAL) id first. Only real episodes are included — specials share numbering with the main run.
      */
     suspend fun getEpisodesMeta(anilistId: Int?, malId: Int?): Map<String, Episode>? {

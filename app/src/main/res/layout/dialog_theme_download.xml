@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="20dp"
+        android:paddingTop="20dp"
+        android:paddingBottom="12dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/poppins_bold"
+            android:text="@string/download"
+            android:textSize="18sp" />
+
+        <TextView
+            android:id="@+id/themeDownloadSourceLabel"
+            style="@style/ThemeDownloadSectionLabel"
+            android:text="@string/theme_download_source" />
+
+        <!-- Wraps rather than scrolls: a source chip spells its quality out in full
+             ("1080p Blu-ray (no credits)"), so two of them rarely fit on one line. -->
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/themeDownloadSource"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:chipSpacingVertical="0dp"
+            app:singleSelection="true" />
+
+        <TextView
+            style="@style/ThemeDownloadSectionLabel"
+            android:text="@string/theme_download_type" />
+
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/themeDownloadType"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:singleSelection="true" />
+
+        <TextView
+            style="@style/ThemeDownloadSectionLabel"
+            android:text="@string/theme_download_format" />
+
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/themeDownloadFormat"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:singleSelection="true" />
+
+        <TextView
+            android:id="@+id/themeDownloadQualityLabel"
+            style="@style/ThemeDownloadSectionLabel"
+            android:text="@string/theme_download_quality" />
+
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/themeDownloadQuality"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            app:singleSelection="true" />
+
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/themeDownloadConfirm"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:fontFamily="@font/poppins_bold"
+            android:text="@string/download" />
+    </LinearLayout>
+</androidx.core.widget.NestedScrollView>

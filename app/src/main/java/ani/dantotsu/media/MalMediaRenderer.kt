@@ -31,7 +31,7 @@ import java.util.Locale
  * Populates a [FragmentMediaInfoBinding] from a fully-loaded official-API MAL media (via
  * [ani.dantotsu.connections.mal.MAL.query]), so [MalMediaActivity] renders the way
  * [KitsuMediaRenderer]/[SimklMediaRenderer] do. Anime and manga responses are different types
- * (unlike Kitsu/Jikan's unified model), so — mirroring [MALInfoFragment]'s own
+ * (unlike Kitsu's unified model), so — mirroring [MALInfoFragment]'s own
  * `displayAnimeInfo`/`displayMangaInfo` split — there are two entry points sharing the section
  * builders below.
  */

@@ -69,7 +69,7 @@ data class ComickAnimeInfo(
 ) : Serializable
 
 /**
- * MAL/Jikan-sourced broadcast and popularity metadata carried by anime entries. [episodes] is the
+ * MAL-sourced broadcast and popularity metadata carried by anime entries. [episodes] is the
  * *planned* episode count and is frequently null for currently-airing shows, so it is only ever a
  * hint — the authoritative count for what actually exists is the size of [ComickEpisode] list.
  */

@@ -225,7 +225,7 @@ class MALQueries {
 
     /**
      * Anime/manga search via the official v2 API — public (client-id fallback), no login needed.
-     * Unlike Jikan, this endpoint supports only `q`/`limit`/`offset` — no genre, status, rating or
+     * This endpoint supports only `q`/`limit`/`offset` — no genre, status, rating or
      * sort filters exist server-side, so the MAL search screen doesn't offer a filter sheet.
      *
      * A blank [query] falls back to `/{anime|manga}/ranking` (`ranking_type=all`) — the search

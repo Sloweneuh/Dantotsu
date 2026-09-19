@@ -30,6 +30,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
 import ani.dantotsu.connections.anilist.Anilist
+import ani.dantotsu.connections.animethemes.AnimeThemeTrack
 import ani.dantotsu.connections.anilist.GenresViewModel
 import ani.dantotsu.copyToClipboard
 import ani.dantotsu.currActivity
@@ -53,14 +54,11 @@ import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.toast
 import com.xwray.groupie.GroupieAdapter
-import io.noties.markwon.Markwon
-import io.noties.markwon.SoftBreakAddsNewLinePlugin
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.Serializable
-import java.net.URLEncoder
 import ani.dantotsu.connections.malsync.MalSyncApi
 import ani.dantotsu.connections.mangaupdates.MUMediaDetailsActivity
 
@@ -499,65 +497,34 @@ class AniListInfoFragment : Fragment() {
                     )
                 }
 
-                if (media.anime != null && (media.anime.op.isNotEmpty() || media.anime.ed.isNotEmpty()) && !offline) {
-                    val markWon = Markwon.builder(requireContext())
-                        .usePlugin(SoftBreakAddsNewLinePlugin.create()).build()
-
-                    fun makeLink(a: String): String {
-                        val first = a.indexOf('"').let { if (it != -1) it else return a } + 1
-                        val end = a.indexOf('"', first).let { if (it != -1) it else return a }
-                        val name = a.subSequence(first, end).toString()
-                        return "${a.subSequence(0, first)}" +
-                                "[$name](https://www.youtube.com/results?search_query=${
-                                    URLEncoder.encode(
-                                        name,
-                                        "utf-8"
-                                    )
-                                })" +
-                                "${a.subSequence(end, a.length)}"
-                    }
-
-                    fun makeText(textView: TextView, arr: ArrayList<String>) {
-                        var op = ""
-                        arr.forEach {
-                            op += "\n"
-                            op += makeLink(it)
-                        }
-                        op = op.removePrefix("\n")
-                        textView.setOnClickListener {
-                            if (textView.maxLines == 4) {
-                                ObjectAnimator.ofInt(textView, "maxLines", 100)
-                                    .setDuration(950).start()
-                            } else {
-                                ObjectAnimator.ofInt(textView, "maxLines", 4)
-                                    .setDuration(400).start()
-                            }
-                        }
-                        markWon.setMarkdown(textView, op)
-                    }
-
-                    if (media.anime.op.isNotEmpty()) {
-                        val bind = ItemTitleTextBinding.inflate(
+                val themes = media.anime?.themes
+                if (!themes.isNullOrEmpty() && !offline) {
+                    fun themeSection(titleRes: Int, tracks: List<AnimeThemeTrack>) {
+                        if (tracks.isEmpty()) return
+                        val bind = ItemTitleRecyclerBinding.inflate(
                             LayoutInflater.from(context),
                             parent,
                             false
                         )
-                        bind.itemTitle.setText(R.string.opening)
-                        makeText(bind.itemText, media.anime.op)
+                        bind.itemTitle.setText(titleRes)
+                        val themeAdapter = GroupieAdapter()
+                        tracks.forEach { track ->
+                            themeAdapter.add(AnimeThemeAdapter(track) {
+                                AnimeThemeBottomSheet.newInstance(it)
+                                    .show(parentFragmentManager, "animeTheme")
+                            })
+                        }
+                        bind.itemRecycler.adapter = themeAdapter
+                        bind.itemRecycler.layoutManager = LinearLayoutManager(requireContext())
                         parent.addView(bind.root)
                     }
 
-
-                    if (media.anime.ed.isNotEmpty()) {
-                        val bind = ItemTitleTextBinding.inflate(
-                            LayoutInflater.from(context),
-                            parent,
-                            false
-                        )
-                        bind.itemTitle.setText(R.string.ending)
-                        makeText(bind.itemText, media.anime.ed)
-                        parent.addView(bind.root)
-                    }
+                    themeSection(R.string.opening, themes.filter { it.isOpening })
+                    themeSection(R.string.ending, themes.filter { it.isEnding })
+                    // Whatever is neither — insert songs, and the odd unlabelled theme.
+                    themeSection(
+                        R.string.insert_songs,
+                        themes.filter { !it.isOpening && !it.isEnding })
                 }
 
                 if (media.genres.isNotEmpty()) {

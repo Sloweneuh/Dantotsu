@@ -26,6 +26,7 @@ object Notifications {
     const val CHANNEL_DOWNLOADER_PROGRESS = "downloader_progress_channel"
     const val ID_DOWNLOAD_CHAPTER_PROGRESS = -201
     const val ID_DOWNLOAD_EPISODE_PROGRESS = -203
+    const val ID_DOWNLOAD_THEME = -205
     const val CHANNEL_DOWNLOADER_ERROR = "downloader_error_channel"
     const val ID_DOWNLOAD_CHAPTER_ERROR = -202
     const val ID_DOWNLOAD_EPISODE_ERROR = -204

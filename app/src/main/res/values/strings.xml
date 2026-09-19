@@ -213,6 +213,31 @@
     <string name="trailer">Trailer</string>
     <string name="opening">Opening</string>
     <string name="ending">Ending</string>
+    <string name="insert_songs">Insert songs</string>
+    <string name="theme_episodes">Eps. %1$s</string>
+    <string name="theme_episode">Ep. %1$s</string>
+    <string name="theme_version">Version %1$d</string>
+    <string name="theme_version_count">%1$d versions</string>
+    <string name="provided_by_animethemes">Provided by AnimeThemes.moe</string>
+    <string name="theme_audio">Audio</string>
+    <string name="search_on">Search on</string>
+    <string name="theme_converting">Converting theme…</string>
+    <string name="theme_convert_failed">Theme conversion failed</string>
+    <string name="theme_video">Video</string>
+    <string name="theme_download_source">Source</string>
+    <string name="theme_download_type">Type</string>
+    <string name="theme_download_format">Format</string>
+    <string name="theme_download_quality">Quality</string>
+    <string name="theme_bitrate">%1$d kbps</string>
+    <string name="theme_quality_published">As published</string>
+    <string name="theme_flag_eps">%1$s: %2$s</string>
+    <string name="theme_no_credits">no credits</string>
+    <string name="theme_subbed">subbed</string>
+    <string name="theme_lyrics">lyrics</string>
+    <string name="theme_overlap">over episode footage</string>
+    <string name="theme_source_bd">Blu-ray</string>
+    <string name="theme_source_web">Web</string>
+    <string name="theme_source_raw">Raw</string>
     <string name="prequel">Prequel</string>
     <string name="sequel">Sequel</string>
     <string name="watch_order">Watch Order</string>
@@ -249,8 +274,8 @@
     <string name="disable_mal_desc">Toggle fetching MAL data and MAL tab</string>
     <string name="mal_connections_help">How does the MAL toggle work\?</string>
     <string name="full_mal_connections_help">
-        Enabling MAL adds a **MAL tab** — an extra info tab in media details with MAL-specific data (scores, genres, staff, recommendations, reviews, etc.), fetched anonymously from the public Jikan API.
-        \n\n No MAL account is required for this tab. **Disabling MAL stops all Jikan API calls and removes MAL from the info tab picker (Accounts \> ⋮ \> Info tab order). It does NOT disable progress syncing.**
+        Enabling MAL adds a **MAL tab** — an extra info tab in media details with MAL-specific data (scores, genres, staff, recommendations, reviews, etc.), fetched anonymously from MyAnimeList.
+        \n\n No MAL account is required for this tab. **Disabling MAL stops those requests and removes MAL from the info tab picker (Accounts \> ⋮ \> Info tab order). It does NOT disable progress syncing.**
         \n\n Progress syncing to your MAL account is controlled separately — connect your MAL account on its card in **Accounts**, then enable **MAL list sync** on the same card to push your Anilist list updates to MAL.
     </string>
     <string name="disable_mangaupdates">Show MangaUpdates info</string>

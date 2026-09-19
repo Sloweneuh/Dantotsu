@@ -24,7 +24,7 @@ import ani.dantotsu.media.anime.SelectorDialogFragment
 import ani.dantotsu.media.manga.MangaChapter
 import ani.dantotsu.others.AniSkip
 import ani.dantotsu.others.Anify
-import ani.dantotsu.others.Jikan
+import ani.dantotsu.others.MalScraper
 import ani.dantotsu.others.Kitsu
 import ani.dantotsu.parsers.AnimeSources
 import ani.dantotsu.parsers.Book
@@ -603,7 +603,7 @@ class MediaDetailsViewModel : ViewModel() {
     suspend fun loadFillerEpisodes(s: Media) {
         tryWithSuspend {
             if (fillerEpisodes.value == null)
-                    fillerEpisodes.postValue(Jikan.getEpisodes(s.idMAL ?: return@tryWithSuspend))
+                    fillerEpisodes.postValue(MalScraper.getEpisodes(s.idMAL ?: return@tryWithSuspend))
         }
     }
 

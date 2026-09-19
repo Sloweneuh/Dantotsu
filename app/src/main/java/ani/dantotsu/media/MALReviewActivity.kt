@@ -14,9 +14,8 @@ import ani.dantotsu.R
 import ani.dantotsu.databinding.ActivityFollowBinding
 import ani.dantotsu.initActivity
 import ani.dantotsu.navBarHeight
-import ani.dantotsu.others.Jikan
+import ani.dantotsu.others.MalScraper
 import ani.dantotsu.others.MALReview
-import ani.dantotsu.others.toMALReview
 import ani.dantotsu.settings.enableSettingsLongPress
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
@@ -67,7 +66,7 @@ class MALReviewActivity : AppCompatActivity() {
         binding.listBack.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
 
         lifecycleScope.launch(Dispatchers.IO) {
-            val response = if (isAnime) Jikan.getAnimeReviews(malId) else Jikan.getMangaReviews(malId)
+            val response = if (isAnime) MalScraper.getAnimeReviews(malId) else MalScraper.getMangaReviews(malId)
             withContext(Dispatchers.Main) {
                 binding.listProgressBar.visibility = View.GONE
                 binding.listRecyclerView.setOnTouchListener { _, event ->
@@ -84,9 +83,9 @@ class MALReviewActivity : AppCompatActivity() {
                     }
                     false
                 }
-                response?.data?.map { it.toMALReview() }?.let {
+                response?.reviews?.let {
                     reviews.addAll(it)
-                    hasNextPage = response.pagination?.hasNextPage == true
+                    hasNextPage = response.hasNextPage
                     fillList()
                 }
             }
@@ -95,10 +94,10 @@ class MALReviewActivity : AppCompatActivity() {
 
     private fun loadPage(page: Int, callback: () -> Unit) {
         lifecycleScope.launch(Dispatchers.IO) {
-            val response = if (isAnime) Jikan.getAnimeReviews(malId, page) else Jikan.getMangaReviews(malId, page)
+            val response = if (isAnime) MalScraper.getAnimeReviews(malId, page) else MalScraper.getMangaReviews(malId, page)
             withContext(Dispatchers.Main) {
-                hasNextPage = response?.pagination?.hasNextPage == true
-                response?.data?.map { it.toMALReview() }?.let {
+                hasNextPage = response?.hasNextPage == true
+                response?.reviews?.let {
                     reviews.addAll(it)
                     fillList()
                 }

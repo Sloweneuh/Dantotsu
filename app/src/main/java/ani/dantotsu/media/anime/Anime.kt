@@ -1,5 +1,6 @@
 package ani.dantotsu.media.anime
 
+import ani.dantotsu.connections.animethemes.AnimeThemeTrack
 import ani.dantotsu.media.Author
 import ani.dantotsu.media.Studio
 import java.io.Serializable
@@ -11,8 +12,8 @@ data class Anime(
     var season: String? = null,
     var seasonYear: Int? = null,
 
-    var op: ArrayList<String> = arrayListOf(),
-    var ed: ArrayList<String> = arrayListOf(),
+    /** Openings, endings and insert songs from AnimeThemes; null until fetched. */
+    var themes: ArrayList<AnimeThemeTrack>? = null,
 
     var mainStudio: Studio? = null,
     var author: Author? = null,
