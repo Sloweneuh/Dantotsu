@@ -41,6 +41,7 @@ import com.google.android.material.color.DynamicColors
 import eu.kanade.tachiyomi.data.notification.Notifications
 import eu.kanade.tachiyomi.extension.anime.AnimeExtensionManager
 import eu.kanade.tachiyomi.extension.manga.MangaExtensionManager
+import ani.dantotsu.notifications.extension.ExtensionUpdateScheduler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
@@ -200,6 +201,10 @@ class App : MultiDexApplication() {
         // that has synced its lists is large enough that doing so is exactly the cost being
         // reclaimed. One-shot, and a no-op once it has run.
         scope.launch { PrefManager.pruneStaleCustomVals() }
+        // Cheap and idempotent: puts the extension auto-update worker on its schedule, or takes it
+        // off when the preference is off. Safe to run every launch — the unique work is UPDATEd, so
+        // an unchanged request keeps the countdown it is already on.
+        scope.launch { runCatching { ExtensionUpdateScheduler.apply(this@App) } }
         scope.launch {
             animeExtensionManager = Injekt.get()
             launch {

@@ -54,9 +54,11 @@ abstract class Installer(private val service: Service) {
      *
      * @param downloadId Download ID as known by [ExtensionManager]
      * @param uri Uri of APK to install
+     * @param unattended Whether this install was started without the user watching, in which case
+     * nothing in the install path may put a window on screen. See [Entry.unattended].
      */
-    fun addToQueue(type: Type, downloadId: Long, uri: Uri) {
-        queue.add(Entry(type, downloadId, uri))
+    fun addToQueue(type: Type, downloadId: Long, uri: Uri, unattended: Boolean = false) {
+        queue.add(Entry(type, downloadId, uri, unattended))
         checkQueue()
     }
 
@@ -257,7 +259,19 @@ abstract class Installer(private val service: Service) {
      * @param downloadId Download ID as known by [ExtensionManager]
      * @param uri Uri of APK to install
      */
-    data class Entry(val type: Type, val downloadId: Long, val uri: Uri)
+    data class Entry(
+        val type: Type,
+        val downloadId: Long,
+        val uri: Uri,
+        /**
+         * Set when nobody is looking at the screen — a scheduled update rather than a tap. An
+         * unattended entry must never start an activity: the system asking for confirmation is a
+         * routine outcome here, and answering it by throwing the installer dialog over whatever the
+         * user is actually doing is worse than leaving the extension on its old version. Such an
+         * entry reports [InstallStep.RequiresUserAction] and lets the caller decide.
+         */
+        val unattended: Boolean = false,
+    )
 
     init {
         val filter = IntentFilter(ACTION_CANCEL_QUEUE)

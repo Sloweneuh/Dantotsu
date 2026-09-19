@@ -72,7 +72,8 @@ class ExtensionInstallService : Service() {
                 }
             }
         }
-        installer!!.addToQueue(mediaType ?: addonType!!, id, uri)
+        val unattended = intent.getBooleanExtra(EXTRA_UNATTENDED, false)
+        installer!!.addToQueue(mediaType ?: addonType!!, id, uri, unattended)
         return START_NOT_STICKY
     }
 
@@ -85,6 +86,7 @@ class ExtensionInstallService : Service() {
 
     companion object {
         private const val EXTRA_INSTALLER = "EXTRA_INSTALLER"
+        private const val EXTRA_UNATTENDED = "EXTRA_UNATTENDED"
 
         fun getIntent(
             context: Context,
@@ -92,11 +94,13 @@ class ExtensionInstallService : Service() {
             downloadId: Long,
             uri: Uri,
             installer: BasePreferences.ExtensionInstaller,
+            unattended: Boolean = false,
         ): Intent {
             val intent = Intent(context, ExtensionInstallService::class.java)
                 .setDataAndType(uri, ExtensionInstaller.APK_MIME)
                 .putExtra(EXTRA_DOWNLOAD_ID, downloadId)
                 .putExtra(EXTRA_INSTALLER, installer)
+                .putExtra(EXTRA_UNATTENDED, unattended)
             if (type is MediaType) {
                 intent.putExtra(EXTRA_EXTENSION_TYPE, type)
             } else if (type is AddonType) {

@@ -216,10 +216,13 @@ class MangaExtensionManager(
      *
      * @param extension The extension to be installed.
      */
-    fun installExtension(extension: MangaExtension.Available): Observable<InstallStep> {
+    fun installExtension(
+        extension: MangaExtension.Available,
+        unattended: Boolean = false,
+    ): Observable<InstallStep> {
         return installer.downloadAndInstall(
             api.getMangaApkUrl(extension), extension.pkgName,
-            extension.name, MediaType.MANGA
+            extension.name, MediaType.MANGA, unattended
         )
     }
 
@@ -230,10 +233,13 @@ class MangaExtensionManager(
      *
      * @param extension The extension to be updated.
      */
-    fun updateExtension(extension: MangaExtension.Installed): Observable<InstallStep> {
+    fun updateExtension(
+        extension: MangaExtension.Installed,
+        unattended: Boolean = false,
+    ): Observable<InstallStep> {
         val availableExt = _availableExtensionsFlow.value.find { it.pkgName == extension.pkgName }
             ?: return Observable.empty()
-        return installExtension(availableExt)
+        return installExtension(availableExt, unattended)
     }
 
     fun cancelInstallUpdateExtension(extension: MangaExtension) {

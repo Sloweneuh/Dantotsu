@@ -219,10 +219,13 @@ class AnimeExtensionManager(
      *
      * @param extension The anime extension to be installed.
      */
-    fun installExtension(extension: AnimeExtension.Available): Observable<InstallStep> {
+    fun installExtension(
+        extension: AnimeExtension.Available,
+        unattended: Boolean = false,
+    ): Observable<InstallStep> {
         return installer.downloadAndInstall(
             api.getAnimeApkUrl(extension), extension.pkgName,
-            extension.name, MediaType.ANIME
+            extension.name, MediaType.ANIME, unattended
         )
     }
 
@@ -233,11 +236,14 @@ class AnimeExtensionManager(
      *
      * @param extension The anime extension to be updated.
      */
-    fun updateExtension(extension: AnimeExtension.Installed): Observable<InstallStep> {
+    fun updateExtension(
+        extension: AnimeExtension.Installed,
+        unattended: Boolean = false,
+    ): Observable<InstallStep> {
         val availableExt =
             _availableAnimeExtensionsFlow.value.find { it.pkgName == extension.pkgName }
                 ?: return Observable.empty()
-        return installExtension(availableExt)
+        return installExtension(availableExt, unattended)
     }
 
     fun cancelInstallUpdateExtension(extension: AnimeExtension) {

@@ -722,6 +722,15 @@
             android:name="eu.kanade.tachiyomi.extension.util.ExtensionInstallService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+        <!--
+            ExtensionUpdateWorker runs as a foreground worker, and a foreground worker runs inside
+            WorkManager's own service rather than one of ours, so the type has to be declared on
+            that service or the promotion is rejected at runtime.
+        -->
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge" />
         <service
             android:name=".download.manga.MangaDownloaderService"
             android:exported="false"

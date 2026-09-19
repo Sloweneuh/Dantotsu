@@ -34,6 +34,8 @@ import ani.dantotsu.snackString
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.util.Logger
+import ani.dantotsu.notifications.extension.ExtensionUpdateScheduler
+import ani.dantotsu.notifications.extension.RefusedExtensionUpdates
 import ani.dantotsu.util.customAlertDialog
 import eu.kanade.domain.base.BasePreferences
 import tachiyomi.core.util.lang.launchIO
@@ -253,6 +255,24 @@ class SettingsSourcesActivity : AppCompatActivity() {
         return getString(R.string.default_browse_sort_desc, browseSortOptions()[index])
     }
 
+    /** How often a scheduled extension-update run happens, in minutes. */
+    private val autoUpdateIntervals = longArrayOf(360L, 720L, 1440L, 10080L)
+
+    private fun autoUpdateIntervalOptions() = arrayOf(
+        getString(R.string.every_6_hours),
+        getString(R.string.every_12_hours),
+        getString(R.string.daily),
+        getString(R.string.weekly),
+    )
+
+    /** The chosen interval, spelled out on the row so it reads without opening the dialog. */
+    private fun autoUpdateIntervalDesc(): String {
+        val index = autoUpdateIntervals
+            .indexOf(PrefManager.getVal<Long>(PrefName.AutoUpdateExtensionsInterval))
+            .coerceAtLeast(0)
+        return autoUpdateIntervalOptions()[index]
+    }
+
     private fun extensionRows(): List<Settings> = listOf(
         Settings(
             type = 1,
@@ -273,6 +293,63 @@ class SettingsSourcesActivity : AppCompatActivity() {
                     ) { i ->
                         PrefManager.setVal(PrefName.DefaultBrowseSort, i)
                         b.settingsDesc.text = browseSortDesc()
+                    }
+                    show()
+                }
+            }
+        ),
+        Settings(
+            type = 2,
+            name = getString(R.string.auto_update_extensions),
+            desc = getString(R.string.auto_update_extensions_desc),
+            icon = R.drawable.ic_round_sync_24,
+            compact = true,
+            anchorKey = "auto_update_extensions",
+            isChecked = PrefManager.getVal(PrefName.AutoUpdateExtensions),
+            switch = { isChecked, _ ->
+                PrefManager.setVal(PrefName.AutoUpdateExtensions, isChecked)
+                // Anything previously skipped was skipped under the old setting; turning this on
+                // again is the user asking for another look.
+                if (isChecked) RefusedExtensionUpdates.clear()
+                ExtensionUpdateScheduler.apply(this@SettingsSourcesActivity)
+            }
+        ),
+        Settings(
+            type = 2,
+            name = getString(R.string.auto_update_extensions_wifi_only),
+            desc = getString(R.string.auto_update_extensions_wifi_only_desc),
+            icon = R.drawable.ic_round_wifi_24,
+            compact = true,
+            anchorKey = "auto_update_extensions_wifi",
+            isChecked = PrefManager.getVal(PrefName.AutoUpdateExtensionsWifiOnly),
+            switch = { isChecked, _ ->
+                PrefManager.setVal(PrefName.AutoUpdateExtensionsWifiOnly, isChecked)
+                ExtensionUpdateScheduler.apply(this@SettingsSourcesActivity)
+            }
+        ),
+        Settings(
+            type = 1,
+            name = getString(R.string.auto_update_extensions_interval),
+            desc = autoUpdateIntervalDesc(),
+            icon = R.drawable.ic_round_schedule_24,
+            compact = true,
+            anchorKey = "auto_update_extensions_interval",
+            attach = {
+                it.settingsDesc.text = autoUpdateIntervalDesc()
+                it.attachView.isVisible = false
+            },
+            onClick = { b ->
+                customAlertDialog().apply {
+                    setTitle(getString(R.string.auto_update_extensions_interval))
+                    singleChoiceItems(
+                        autoUpdateIntervalOptions(),
+                        autoUpdateIntervals
+                            .indexOf(PrefManager.getVal<Long>(PrefName.AutoUpdateExtensionsInterval))
+                            .coerceAtLeast(0)
+                    ) { i ->
+                        PrefManager.setVal(PrefName.AutoUpdateExtensionsInterval, autoUpdateIntervals[i])
+                        b.settingsDesc.text = autoUpdateIntervalDesc()
+                        ExtensionUpdateScheduler.apply(this@SettingsSourcesActivity)
                     }
                     show()
                 }

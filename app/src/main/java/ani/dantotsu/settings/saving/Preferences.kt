@@ -34,6 +34,13 @@ enum class PrefName(val data: Pref) {
     NovelDownloadOneFile(Pref(Location.General, Boolean::class, false)),
     AskDownloadEpub(Pref(Location.General, Boolean::class, true)),
     NSFWExtension(Pref(Location.General, Boolean::class, true)),
+    // Off by default: this installs software in the background, which is the user's call to make.
+    AutoUpdateExtensions(Pref(Location.General, Boolean::class, false)),
+    AutoUpdateExtensionsWifiOnly(Pref(Location.General, Boolean::class, true)),
+    // Minutes. WorkManager will not schedule anything below 15 whatever this says.
+    AutoUpdateExtensionsInterval(Pref(Location.General, Long::class, 720L)),
+    // Device-local on purpose: which installer owns a package is a fact about this device.
+    RefusedExtensionUpdates(Pref(Location.Irrelevant, Set::class, setOf<String>())),
     // Which listing an extension browse opens on: 0 = popular, 1 = latest.
     DefaultBrowseSort(Pref(Location.General, Int::class, 0)),
     ContinueMedia(Pref(Location.General, Boolean::class, true)),

@@ -16,23 +16,14 @@ import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
 import ani.dantotsu.databinding.FragmentExtensionUpdatesBinding
 import ani.dantotsu.parsers.novel.NovelExtension
-import ani.dantotsu.parsers.novel.NovelExtensionManager
 import ani.dantotsu.snackString
 import ani.dantotsu.util.Logger
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import eu.kanade.tachiyomi.extension.InstallStep
-import eu.kanade.tachiyomi.extension.anime.AnimeExtensionManager
 import eu.kanade.tachiyomi.extension.anime.model.AnimeExtension
-import eu.kanade.tachiyomi.extension.manga.MangaExtensionManager
 import eu.kanade.tachiyomi.extension.manga.model.MangaExtension
-import rx.Subscription
-import rx.android.schedulers.AndroidSchedulers
-import rx.subscriptions.CompositeSubscription
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import uy.kohesive.injekt.Injekt
-import uy.kohesive.injekt.api.get
 
 /**
  * Fragment that shows all extensions with available updates across all media types.
@@ -42,11 +33,7 @@ class ExtensionUpdatesFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val skipIcons: Boolean = ani.dantotsu.settings.saving.PrefManager.getVal(ani.dantotsu.settings.saving.PrefName.SkipExtensionIcons)
-    private val animeExtensionManager: AnimeExtensionManager = Injekt.get()
-    private val mangaExtensionManager: MangaExtensionManager = Injekt.get()
-    private val novelExtensionManager: NovelExtensionManager = Injekt.get()
 
-    private val compositeSubscription = CompositeSubscription()
 
     private lateinit var adapter: UpdatesAdapter
 
@@ -84,28 +71,7 @@ class ExtensionUpdatesFragment : Fragment() {
     private fun loadUpdates() {
         lifecycleScope.launch {
             val updates = withContext(Dispatchers.Default) {
-                // What each update would install, looked up from the repo listing by package. The
-                // installed entry only knows that an update exists, not what version it is.
-                val animeVersions = animeExtensionManager.availableExtensionsFlow.value
-                    .associate { it.pkgName to it.versionName }
-                val mangaVersions = mangaExtensionManager.availableExtensionsFlow.value
-                    .associate { it.pkgName to it.versionName }
-                val novelVersions = novelExtensionManager.availableExtensionsFlow.value
-                    .associate { it.pkgName to it.versionName }
-
-                val animeUpdates = animeExtensionManager.installedExtensionsFlow.value
-                    .filter { it.hasUpdate }
-                    .map { UpdateItem.AnimeUpdate(it, animeVersions[it.pkgName]) }
-
-                val mangaUpdates = mangaExtensionManager.installedExtensionsFlow.value
-                    .filter { it.hasUpdate }
-                    .map { UpdateItem.MangaUpdate(it, mangaVersions[it.pkgName]) }
-
-                val novelUpdates = novelExtensionManager.installedExtensionsFlow.value
-                    .filter { it.hasUpdate }
-                    .map { UpdateItem.NovelUpdate(it, novelVersions[it.pkgName]) }
-
-                animeUpdates + mangaUpdates + novelUpdates
+                ExtensionUpdateRunner.pendingUpdates()
             }
 
             adapter.submitList(updates)
@@ -115,30 +81,9 @@ class ExtensionUpdatesFragment : Fragment() {
         }
     }
 
-    private fun updateObservable(item: UpdateItem) = when (item) {
-        is UpdateItem.AnimeUpdate -> animeExtensionManager.updateExtension(item.extension)
-        is UpdateItem.MangaUpdate -> mangaExtensionManager.updateExtension(item.extension)
-        is UpdateItem.NovelUpdate -> novelExtensionManager.updateExtension(item.extension)
-    }
-
+    /** A single row's update button. */
     private fun updateExtension(item: UpdateItem) {
-        var lastStep: InstallStep? = null
-        adapter.setUpdating(item, true)
-        updateObservable(item)
-            .observeOn(AndroidSchedulers.mainThread())
-            .subscribe(
-                { step -> lastStep = step },
-                { error ->
-                    Logger.log(error)
-                    adapter.setUpdating(item, false)
-                    snackString(getString(R.string.update_failed, error.message))
-                },
-                {
-                    adapter.setUpdating(item, false)
-                    lastStep.updateResultMessage()?.let { snackString(getString(it)) }
-                    loadUpdates() // Refresh the list
-                }
-            )
+        runUpdates(listOf(item), announceBatch = false)
     }
 
     private fun updateAllExtensions(items: List<UpdateItem>) {
@@ -146,58 +91,60 @@ class ExtensionUpdatesFragment : Fragment() {
             .setTitle(getString(R.string.update_all_extensions))
             .setMessage(getString(R.string.update_extensions_count, items.size))
             .setPositiveButton("Update") { _, _ ->
-                // Each row spins itself as its turn comes; this shows the batch as a whole is running,
-                // and stops in the terminal branch of updateExtensionsSequentially.
+                // Each row spins itself as its turn comes; this shows the batch as a whole is
+                // running, and stops when the flow ends.
                 binding.updateAllButton.setIconSpinning(true)
-                updateExtensionsSequentially(items.toMutableList())
+                runUpdates(items, announceBatch = true)
             }
             .setNegativeButton("Cancel", null)
             .show()
     }
 
-    private fun updateExtensionsSequentially(items: MutableList<UpdateItem>) {
-        if (items.isEmpty()) {
-            // The batch is done: stop the button spinning (see updateAllExtensions).
-            _binding?.updateAllButton?.setIconSpinning(false)
-            snackString("All extensions updated")
-            loadUpdates() // Final refresh
-            (activity as? ExtensionsActivity)?.onExtensionUpdatesFinished()
-            return
-        }
+    /**
+     * Runs [items] through the shared runner, spinning each row as its turn comes.
+     *
+     * Attended: the user is on this screen, so an extension the system will not replace silently
+     * gets its confirmation dialog here rather than being reported and skipped.
+     *
+     * Scoped to the view lifecycle, so leaving the screen stops the sequence — the installs already
+     * handed to the service still finish, since that is a foreground service of its own.
+     */
+    private fun runUpdates(items: List<UpdateItem>, announceBatch: Boolean) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            ExtensionUpdateRunner.run(items, unattended = false).collect { progress ->
+                when (progress) {
+                    is ExtensionUpdateRunner.Progress.Started ->
+                        adapter.setUpdating(progress.item, true)
 
-        val item = items.removeAt(0)
-
-        var lastStep: InstallStep? = null
-        adapter.setUpdating(item, true)
-
-        val subscription: Subscription = updateObservable(item)
-            .observeOn(AndroidSchedulers.mainThread())
-            .subscribe(
-                { step -> lastStep = step },
-                { error ->
-                    Logger.log(error)
-                    adapter.setUpdating(item, false)
-                    snackString("${getString(R.string.update_failed_short)}: ${item.name} - ${error.message}")
-                    // Continue with next extension even if one fails
-                    updateExtensionsSequentially(items)
-                },
-                {
-                    adapter.setUpdating(item, false)
-                    lastStep.updateResultMessage()?.let {
-                        snackString("${getString(it)}: ${item.name}")
+                    is ExtensionUpdateRunner.Progress.Finished -> {
+                        adapter.setUpdating(progress.item, false)
+                        progress.step.updateResultMessage()?.let {
+                            snackString("${getString(it)}: ${progress.item.name}")
+                        }
+                        loadUpdates()
                     }
-                    loadUpdates() // Refresh list after each update
-                    // Continue with next extension
-                    updateExtensionsSequentially(items)
-                }
-            )
 
-        // Add subscription to composite to prevent it from being garbage collected
-        compositeSubscription.add(subscription)
+                    is ExtensionUpdateRunner.Progress.Failed -> {
+                        Logger.log(progress.error)
+                        adapter.setUpdating(progress.item, false)
+                        snackString(
+                            "${getString(R.string.update_failed_short)}: " +
+                                "${progress.item.name} - ${progress.error.message}"
+                        )
+                    }
+                }
+            }
+
+            if (announceBatch) {
+                _binding?.updateAllButton?.setIconSpinning(false)
+                snackString(getString(R.string.all_extensions_updated))
+                (activity as? ExtensionsActivity)?.onExtensionUpdatesFinished()
+            }
+            loadUpdates()
+        }
     }
 
     override fun onDestroyView() {
-        compositeSubscription.clear()
         super.onDestroyView()
         _binding = null
     }

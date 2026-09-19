@@ -30,6 +30,18 @@ class PackageInstallerInstaller(private val service: Service) : Installer(servic
                 PackageInstaller.STATUS_FAILURE
             )) {
                 PackageInstaller.STATUS_PENDING_USER_ACTION -> {
+                    // Routine rather than exceptional: the system refuses a silent replace whenever
+                    // this app is not the installer of record for the package, which is the normal
+                    // state for anything installed by a different build of Dantotsu. When nobody
+                    // asked for this install, that is where it stops — the extension keeps its old
+                    // version and its pending update, and the caller decides what to surface.
+                    if (getActiveEntry()?.unattended == true) {
+                        activeSession?.let { (_, sessionId) ->
+                            runCatching { packageInstaller.abandonSession(sessionId) }
+                        }
+                        continueQueue(InstallStep.RequiresUserAction)
+                        return
+                    }
                     val userAction =
                         intent.getParcelableExtraCompat<Intent>(Intent.EXTRA_INTENT)?.run {
                             IntentSanitizer.Builder()
@@ -85,9 +97,11 @@ class PackageInstallerInstaller(private val service: Service) : Installer(servic
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 installParams.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
             }
-            activeSession = entry to packageInstaller.createSession(installParams)
             val fileSize = service.getUriSize(entry.uri) ?: throw IllegalStateException()
+            // Before createSession, not after: the session takes its copy of the params when it is
+            // created, so a setter called afterwards is silently dropped.
             installParams.setSize(fileSize)
+            activeSession = entry to packageInstaller.createSession(installParams)
 
             val inputStream =
                 service.contentResolver.openInputStream(entry.uri) ?: throw IllegalStateException()

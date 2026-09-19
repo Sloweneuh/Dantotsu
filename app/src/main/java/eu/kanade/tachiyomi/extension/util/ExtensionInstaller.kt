@@ -28,6 +28,7 @@ import rx.android.schedulers.AndroidSchedulers
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.io.File
+import java.util.Collections
 import java.util.concurrent.TimeUnit
 
 /**
@@ -54,6 +55,16 @@ class ExtensionInstaller(private val context: Context) {
     private val activeDownloads = hashMapOf<String, Long>()
 
     /**
+     * Download ids that were started without the user watching. Held separately because the only
+     * thing that survives the round trip through the system download manager is the id, and the
+     * install path has to know not to put a window on screen when it comes back.
+     *
+     * In memory only, which matches the rest of this class: the completion receiver is registered
+     * at runtime, so a download whose process died is never installed either way.
+     */
+    private val unattendedDownloads = Collections.synchronizedSet(mutableSetOf<Long>())
+
+    /**
      * Relay used to notify the installation step of every download.
      */
     private val downloadsRelay = PublishRelay.create<Pair<Long, InstallStep>>()
@@ -68,12 +79,15 @@ class ExtensionInstaller(private val context: Context) {
      * @param pkgName The package name of the extension.
      * @param name The name of the extension.
      * @param type The type of the extension.
+     * @param unattended Whether this was started by a schedule rather than by the user, in which
+     * case the install must never open a window. See [Installer.Entry.unattended].
      */
     fun <T : Type> downloadAndInstall(
         url: String,
         pkgName: String,
         name: String,
-        type: T
+        type: T,
+        unattended: Boolean = false,
     ): Observable<InstallStep> = Observable.defer {
         val oldDownload = activeDownloads[pkgName]
         if (oldDownload != null) {
@@ -94,10 +108,15 @@ class ExtensionInstaller(private val context: Context) {
             .setDescription(type.asText())
             .setAllowedNetworkTypes(DownloadManager.Request.NETWORK_WIFI or DownloadManager.Request.NETWORK_MOBILE)
             .setAllowedOverRoaming(true)
-            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+            // Deliberately not VISIBILITY_VISIBLE_NOTIFY_COMPLETED: that leaves a tappable entry
+            // in the shade once the apk lands, and tapping it hands the file to the system package
+            // installer instead of this app. Doing so transfers installer-of-record for that
+            // extension away permanently, and every later update of it then needs confirmation.
+            .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
 
         val id = downloadManager.enqueue(request)
         activeDownloads[pkgName] = id
+        if (unattended) unattendedDownloads.add(id)
 
         downloadsRelay.filter { it.first == id }
             .map { it.second }
@@ -145,8 +164,15 @@ class ExtensionInstaller(private val context: Context) {
      * @param uri The uri of the extension to install.
      */
     fun installApk(type: Type, downloadId: Long, uri: Uri) {
+        val unattended = downloadId in unattendedDownloads
         when (val installer = extensionInstaller.get()) {
             BasePreferences.ExtensionInstaller.LEGACY -> {
+                // The legacy installer is an activity by construction, so it has no unattended
+                // form. Hand the decision back instead of taking over the foreground.
+                if (unattended) {
+                    updateInstallStep(downloadId, InstallStep.RequiresUserAction)
+                    return
+                }
                 val intent = Intent(context, ExtensionInstallActivity::class.java)
                     .setDataAndType(uri, APK_MIME)
                     .putExtra(EXTRA_DOWNLOAD_ID, downloadId)
@@ -161,17 +187,24 @@ class ExtensionInstaller(private val context: Context) {
             }
 
             else -> {
-                val intent =
-                    ExtensionInstallService.getIntent(context, type, downloadId, uri, installer)
+                val intent = ExtensionInstallService.getIntent(
+                    context, type, downloadId, uri, installer, unattended
+                )
                 try {
                     ContextCompat.startForegroundService(context, intent)
                 } catch (e: RuntimeException) {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && e is ForegroundServiceStartNotAllowedException) {
-                        toast(context.getString(R.string.error_msg, context.getString(R.string.foreground_service_not_allowed)))
-                    } else {
-                        toast(context.getString(R.string.error_msg, e.message))
+                    if (!unattended) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && e is ForegroundServiceStartNotAllowedException) {
+                            toast(context.getString(R.string.error_msg, context.getString(R.string.foreground_service_not_allowed)))
+                        } else {
+                            toast(context.getString(R.string.error_msg, e.message))
+                        }
                     }
                     Logger.log(e)
+                    // The service is what reports every later step, so if it never starts nothing
+                    // else will ever close this download's stream and a caller waiting on it —
+                    // the sequential update loop, for one — stalls for good.
+                    updateInstallStep(downloadId, InstallStep.Error)
                 }
             }
         }
@@ -224,6 +257,7 @@ class ExtensionInstaller(private val context: Context) {
         val downloadId = activeDownloads.remove(pkgName)
         if (downloadId != null) {
             downloadManager.remove(downloadId)
+            unattendedDownloads.remove(downloadId)
         }
         if (activeDownloads.isEmpty()) {
             downloadReceiver.unregister()
@@ -240,6 +274,7 @@ class ExtensionInstaller(private val context: Context) {
         if (entry != null) {
             activeDownloads.remove(entry.key)
         }
+        unattendedDownloads.remove(downloadId)
         try {
             downloadManager.remove(downloadId)
         } catch (_: Exception) {

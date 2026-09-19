@@ -15,5 +15,6 @@ fun InstallStep?.updateResultMessage(): Int? = when (this) {
     InstallStep.Installed -> R.string.extension_updated
     InstallStep.Idle -> R.string.update_cancelled
     InstallStep.Error -> R.string.update_failed_short
+    InstallStep.RequiresUserAction -> R.string.update_needs_confirmation
     else -> null
 }
