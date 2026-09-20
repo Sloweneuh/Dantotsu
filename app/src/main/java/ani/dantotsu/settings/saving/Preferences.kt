@@ -457,6 +457,9 @@ enum class PrefName(val data: Pref) {
     // Keys of notifications the user hasn't dealt with yet; see NotificationReadState.
     UnreadNotificationKeys(Pref(Location.Irrelevant, Set::class, setOf<String>())),
     AnilistUnreadTrackedUpToId(Pref(Location.Irrelevant, Int::class, 0)),
+    // Confirmation prompts for the notification card's mark-read/unread and delete buttons.
+    AskMarkNotificationRead(Pref(Location.General, Boolean::class, true)),
+    AskDeleteNotification(Pref(Location.General, Boolean::class, true)),
     DownloadsDir(Pref(Location.Irrelevant, String::class, "")),
     DownloadsDirNested(Pref(Location.Irrelevant, Boolean::class, true)),
     OC(Pref(Location.Irrelevant, Boolean::class, false)),

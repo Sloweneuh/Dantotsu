@@ -176,7 +176,9 @@ class NotificationFragment : Fragment() {
                 val key = NotificationReadState.keyOf(notification)
                 val unread = NotificationReadState.isUnread(key)
                 if (unreadOnly && !unread) null
-                else NotificationItem(notification, type, adapter, ::onClick, key, unread)
+                else NotificationItem(
+                    notification, type, adapter, ::onClick, key, unread, unreadOnly, ::updateEmptyView
+                )
             }
             adapter.addAll(items)
             pagesLoaded++

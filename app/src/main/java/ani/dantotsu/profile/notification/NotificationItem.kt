@@ -4,6 +4,7 @@ import android.os.Build
 import android.text.Html
 import android.view.View
 import android.view.ViewGroup
+import android.widget.CheckBox
 import androidx.core.view.isVisible
 import ani.dantotsu.R
 import ani.dantotsu.blurImage
@@ -36,6 +37,10 @@ class NotificationItem(
     /** [NotificationReadState] key; what tapping the card marks read. */
     private val readKey: String,
     private var unread: Boolean,
+    /** Whether this tab is filtered to unread-only, i.e. AniList/NotificationActivity's "show all" is off. */
+    private val unreadOnly: Boolean,
+    /** Run after this card removes itself from [parentAdapter], so the empty-state text can refresh. */
+    private val onListChanged: () -> Unit,
 ) : BindableItem<ItemNotificationBinding>() {
     val isUnread: Boolean get() = unread
 
@@ -61,6 +66,14 @@ class NotificationItem(
     private fun bindReadState() {
         binding.notificationUnreadDot.isVisible = unread
         binding.notificationCard.alpha = if (unread) 1f else READ_ALPHA
+        val context = binding.root.context
+        binding.notificationMarkReadButton.setImageResource(
+            if (unread) R.drawable.ic_round_remove_red_eye_24
+            else R.drawable.ic_round_visibility_off_24
+        )
+        binding.notificationMarkReadButton.contentDescription = context.getString(
+            if (unread) R.string.notification_action_mark_read else R.string.mark_as_unread
+        )
     }
 
     /**
@@ -71,6 +84,13 @@ class NotificationItem(
     fun setRead() {
         if (!unread) return
         unread = false
+        notifyChanged(PAYLOAD_READ_STATE)
+    }
+
+    /** The reverse of [setRead], for the card's own "mark as unread" button. */
+    private fun setUnread() {
+        if (unread) return
+        unread = true
         notifyChanged(PAYLOAD_READ_STATE)
     }
 
@@ -86,61 +106,123 @@ class NotificationItem(
         clickCallback(id, optional, clickType, sharedView)
     }
 
-    fun dialog() {
-        when (type) {
-            COMMENT, SUBSCRIPTION, UNREAD_CHAPTER -> {
-                binding.root.context.customAlertDialog().apply {
-                    setTitle(R.string.delete)
-                    setMessage(styledContent())
-                    setPosButton(R.string.yes) {
-                        when (type) {
-                            COMMENT -> {
-                                val list = PrefManager.getNullableVal<List<CommentStore>>(
-                                    PrefName.CommentNotificationStore,
-                                    null
-                                ) ?: listOf()
-                                val newList = list.filter { it.commentId != notification.commentId }
-                                PrefManager.setVal(PrefName.CommentNotificationStore, newList)
-                                NotificationReadState.markRead(readKey)
-                                parentAdapter.remove(this@NotificationItem)
+    /** Whether this card's data lives in a local store this app can actually delete from. */
+    private val isDeletable: Boolean
+        get() = type == COMMENT || type == SUBSCRIPTION || type == UNREAD_CHAPTER
 
-                            }
-
-                            SUBSCRIPTION -> {
-                                val list = PrefManager.getNullableVal<List<SubscriptionStore>>(
-                                    PrefName.SubscriptionNotificationStore,
-                                    null
-                                ) ?: listOf()
-                                val newList =
-                                    list.filter { (it.time / 1000L).toInt() != notification.createdAt }
-                                PrefManager.setVal(PrefName.SubscriptionNotificationStore, newList)
-                                NotificationReadState.markRead(readKey)
-                                parentAdapter.remove(this@NotificationItem)
-                            }
-
-                            UNREAD_CHAPTER -> {
-                                val list = PrefManager.getNullableVal<List<UnreadChapterStore>>(
-                                    PrefName.UnreadChapterNotificationStore,
-                                    null
-                                ) ?: listOf()
-                                val newList =
-                                    list.filter { (it.time / 1000L).toInt() != notification.createdAt }
-                                PrefManager.setVal(PrefName.UnreadChapterNotificationStore, newList)
-                                NotificationReadState.markRead(readKey)
-                                parentAdapter.remove(this@NotificationItem)
-                            }
-
-                            else -> {}
-                        }
-                    }
-                    setNegButton(R.string.no)
-                    show()
-                }
-            }
-
-            else -> {}
+    /**
+     * A dialog shared by the mark-read/unread and delete buttons: the notification's own content
+     * as the message, a "never ask again" checkbox that flips [askAgainPref] off, and [onConfirm]
+     * run either immediately (when the user opted out before) or after a "Yes" tap. The checkbox
+     * is honored even on "No" — opting out means the popup stops, not that this one tap counts as
+     * a "Yes" — so the same tap that declines this time silently goes through next time.
+     */
+    private fun confirmThenRun(
+        titleRes: Int,
+        askAgainPref: PrefName,
+        onConfirm: () -> Unit
+    ) {
+        if (!PrefManager.getVal<Boolean>(askAgainPref)) {
+            onConfirm()
+            return
         }
+        val context = binding.root.context
+        val dialogView = View.inflate(context, R.layout.item_custom_dialog, null)
+        val checkbox = dialogView.findViewById<CheckBox>(R.id.dialog_checkbox)
+        checkbox.text = context.getString(R.string.never_ask_again)
+        context.customAlertDialog().apply {
+            setTitle(titleRes)
+            setMessage(styledContent())
+            setCustomView(dialogView)
+            setPosButton(R.string.yes) {
+                if (checkbox.isChecked) PrefManager.setVal(askAgainPref, false)
+                onConfirm()
+            }
+            setNegButton(R.string.no) {
+                if (checkbox.isChecked) PrefManager.setVal(askAgainPref, false)
+            }
+            show()
+        }
+    }
 
+    /**
+     * The mark-read/unread button. Marking read is what "clears" an unread-only tab — matching
+     * "mark all as read" — so the card removes itself there instead of just restyling; marking
+     * unread only ever happens in a "show all" list, where the card stays in place either way.
+     */
+    private fun toggleReadRequested() {
+        val titleRes =
+            if (unread) R.string.notification_action_mark_read else R.string.mark_as_unread
+        confirmThenRun(titleRes, PrefName.AskMarkNotificationRead) {
+            if (unread) {
+                NotificationReadState.markRead(readKey)
+                if (unreadOnly) {
+                    parentAdapter.remove(this@NotificationItem)
+                    onListChanged()
+                } else {
+                    setRead()
+                }
+            } else {
+                NotificationReadState.markUnread(readKey)
+                setUnread()
+            }
+        }
+    }
+
+    /** The delete button: only wired up for [isDeletable] types (see [bindActionButtons]). */
+    private fun deleteRequested() {
+        confirmThenRun(R.string.delete, PrefName.AskDeleteNotification) {
+            when (type) {
+                COMMENT -> {
+                    val list = PrefManager.getNullableVal<List<CommentStore>>(
+                        PrefName.CommentNotificationStore,
+                        null
+                    ) ?: listOf()
+                    val newList = list.filter { it.commentId != notification.commentId }
+                    PrefManager.setVal(PrefName.CommentNotificationStore, newList)
+                    NotificationReadState.markRead(readKey)
+                    parentAdapter.remove(this@NotificationItem)
+                    onListChanged()
+                }
+
+                SUBSCRIPTION -> {
+                    val list = PrefManager.getNullableVal<List<SubscriptionStore>>(
+                        PrefName.SubscriptionNotificationStore,
+                        null
+                    ) ?: listOf()
+                    val newList =
+                        list.filter { (it.time / 1000L).toInt() != notification.createdAt }
+                    PrefManager.setVal(PrefName.SubscriptionNotificationStore, newList)
+                    NotificationReadState.markRead(readKey)
+                    parentAdapter.remove(this@NotificationItem)
+                    onListChanged()
+                }
+
+                UNREAD_CHAPTER -> {
+                    val list = PrefManager.getNullableVal<List<UnreadChapterStore>>(
+                        PrefName.UnreadChapterNotificationStore,
+                        null
+                    ) ?: listOf()
+                    val newList =
+                        list.filter { (it.time / 1000L).toInt() != notification.createdAt }
+                    PrefManager.setVal(PrefName.UnreadChapterNotificationStore, newList)
+                    NotificationReadState.markRead(readKey)
+                    parentAdapter.remove(this@NotificationItem)
+                    onListChanged()
+                }
+
+                else -> {}
+            }
+        }
+    }
+
+    /** Wires the card's mark-read/unread and delete icon buttons; delete only for [isDeletable]. */
+    private fun bindActionButtons() {
+        binding.notificationMarkReadButton.setOnClickListener { toggleReadRequested() }
+        binding.notificationDeleteButton.isVisible = isDeletable
+        if (isDeletable) {
+            binding.notificationDeleteButton.setOnClickListener { deleteRequested() }
+        }
     }
 
     override fun getLayout(): Int {
@@ -523,14 +605,7 @@ class NotificationItem(
                 }
             }
         }
-        binding.notificationCoverUser.setOnLongClickListener {
-            dialog()
-            true
-        }
-        binding.notificationBannerImage.setOnLongClickListener {
-            dialog()
-            true
-        }
+        bindActionButtons()
     }
 
     private companion object {
