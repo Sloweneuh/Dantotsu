@@ -695,39 +695,20 @@ class MangaReadAdapter(
                 // Count against the full filtered list (stable across chapter tabs/pages).
                 val orderedChapters = filteredChapters.values.toList()
 
-                // Calculate gaps over contiguous comparable chapters only.
-                // Non-sequential rows and rows without a parsable chapter number break continuity.
-                var missingCount = 0
-                var previousComparableNumber: Int? = null
-                orderedChapters.forEach { chapter ->
-                    val isNonSequential =
-                        nonSequentialKeywords.any { chapter.number.lowercase().contains(it) }
-                    if (isNonSequential) {
-                        previousComparableNumber = null
-                        return@forEach
-                    }
-
-                    val currentNumber = resolveChapterNumber(chapter)?.toInt()
-                    if (currentNumber == null) {
-                        previousComparableNumber = null
-                        return@forEach
-                    }
-
-                    val prev = previousComparableNumber
-                    if (prev != null) {
-                        val gap = kotlin.math.abs(currentNumber - prev)
-                        if (gap > 1) missingCount += gap - 1
-                    }
-                    previousComparableNumber = currentNumber
-                }
-                // Also count chapters missing before the first available chapter (e.g. Ch1 when source starts at Ch2)
-                val minChapterNumber = orderedChapters
-                    .filter { chapter -> !nonSequentialKeywords.any { chapter.number.lowercase().contains(it) } }
+                // Numbers actually covered by some chapter, regardless of list order. Different
+                // scanlators can cover the same numbers (one with volume tags, one without), so
+                // counting gaps between consecutive list entries double-counted or invented gaps
+                // whenever a later scanlator's release reused an earlier number. Comparing against
+                // the full set of covered numbers instead - from 1 up to the highest chapter seen -
+                // isn't order-dependent, so it can't be fooled by that interleaving.
+                val presentNumbers = orderedChapters
+                    .filterNot { chapter -> nonSequentialKeywords.any { chapter.number.lowercase().contains(it) } }
                     .mapNotNull { resolveChapterNumber(it)?.toInt() }
-                    .minOrNull()
-                if (minChapterNumber != null && minChapterNumber > 1) {
-                    missingCount += minChapterNumber - 1
-                }
+                    .toHashSet()
+                val maxChapterNumber = presentNumbers.maxOrNull()
+                val missingCount = if (maxChapterNumber != null) {
+                    (1..maxChapterNumber).count { it !in presentNumbers }
+                } else 0
 
                 if (missingCount > 0) {
                     val missingLabel = if (missingCount == 1)

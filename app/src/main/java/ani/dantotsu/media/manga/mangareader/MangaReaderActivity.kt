@@ -1880,11 +1880,22 @@ class MangaReaderActivity : AppCompatActivity() {
         val isToNonSequential = nonSequentialKeywords.any { toChapterName.lowercase().contains(it) }
         
         if (isFromNonSequential || isToNonSequential) return 0
-        
+
         val diff = abs(toNum - fromNum)
-        // If the difference is > 1.1 (e.g. 5 to 7), we have at least one missing chapter.
+        // If the difference is <= 1.1 (e.g. 5 to 5.1), there's nothing missing.
         // Using 1.1 to avoid issues with 5.1, 5.2, etc.
-        return if (diff > 1.1f) (diff - 0.99f).toInt() else 0
+        if (diff <= 1.1f) return 0
+
+        // Different scanlators can cover the same chapter numbers (one with volume tags, one
+        // without), so a number is only really missing if no chapter anywhere in the list -
+        // not just these two neighbours - covers it.
+        val lo = minOf(fromNum, toNum).toInt()
+        val hi = maxOf(fromNum, toNum).toInt()
+        val presentNumbers = chapters.values.mapNotNullTo(HashSet()) {
+            (it.sChapter.chapter_number.takeIf { n -> n >= 0f }
+                ?: MediaNameAdapter.findChapterNumber(it.number))?.toInt()
+        }
+        return ((lo + 1) until hi).count { it !in presentNumbers }
     }
 
     /**

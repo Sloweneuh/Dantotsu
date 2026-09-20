@@ -1049,6 +1049,13 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
             val parserNumber = chapter.sChapter.chapter_number
             return if (parserNumber > 0f) parserNumber else MediaNameAdapter.findChapterNumber(chapter.number)
         }
+        // Multiple scanlators can cover the same chapter numbers (one with volume tags, one
+        // without), so the list isn't strictly increasing — it can dip back down when a later
+        // group's earlier-numbered releases follow. A number is only genuinely missing if it
+        // isn't covered by ANY entry in the list, not just the two neighbours being compared.
+        val presentChapterNumbers = chapList
+            .mapNotNull { resolveChapterNumber(it)?.toInt() }
+            .toHashSet()
         val displayList = ArrayList<MangaChapterListItem>()
         for (i in chapList.indices) {
             displayList.add(MangaChapterListItem.Chapter(chapList[i]))
@@ -1066,16 +1073,17 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
                 if (currNum != null && nextNum != null) {
                     val lo = minOf(currNum, nextNum)
                     val hi = maxOf(currNum, nextNum)
-                    val missing = hi.toInt() - lo.toInt() - 1
-                    if (missing > 0) {
+                    val missingNumbers = ((lo.toInt() + 1) until hi.toInt()).filterNot {
+                        it in presentChapterNumbers
+                    }
+                    if (missingNumbers.isNotEmpty()) {
                         if (isCompact) {
                             // One placeholder per missing chapter, each carries its chapter number
-                            for (n in 1..missing) {
-                                val chNum = lo.toInt() + n
+                            missingNumbers.forEach { chNum ->
                                 displayList.add(MangaChapterListItem.Gap(chNum.toFloat(), chNum.toFloat(), 1))
                             }
                         } else {
-                            displayList.add(MangaChapterListItem.Gap(lo, hi, missing))
+                            displayList.add(MangaChapterListItem.Gap(lo, hi, missingNumbers.size))
                         }
                     }
                 }
