@@ -2792,6 +2792,9 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="search_kw_proxy">network socks http tunnel</string>
     <string name="search_kw_proxy_setup">proxy network configure setup</string>
     <string name="search_kw_default_browse_sort">browse sort default popular latest listing</string>
+    <string name="search_kw_auto_update_extensions">automatic update background install extensions</string>
+    <string name="search_kw_auto_update_extensions_wifi_only">wifi unmetered metered network extension update</string>
+    <string name="search_kw_auto_update_extensions_interval">schedule frequency hours daily weekly check extension update</string>
     <string name="search_kw_force_legacy_installer">install apk package manager legacy</string>
     <string name="search_kw_skip_loading_extension_icons">icon performance loading skip</string>
     <string name="search_kw_NSFWExtention">nsfw adult</string>

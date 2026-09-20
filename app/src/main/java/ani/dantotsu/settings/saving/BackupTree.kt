@@ -601,6 +601,9 @@ object BackupTree {
                         BackupItem(PrefName.DefaultBrowseSort, R.string.default_browse_sort),
                         BackupItem(PrefName.SkipExtensionIcons, R.string.skip_loading_extension_icons),
                         BackupItem(PrefName.NSFWExtension, R.string.NSFWExtention_desc),
+                        BackupItem(PrefName.AutoUpdateExtensions, R.string.auto_update_extensions),
+                        BackupItem(PrefName.AutoUpdateExtensionsWifiOnly, R.string.auto_update_extensions_wifi_only),
+                        BackupItem(PrefName.AutoUpdateExtensionsInterval, R.string.auto_update_extensions_interval),
                     )
                 ),
                 BackupSubCategory(

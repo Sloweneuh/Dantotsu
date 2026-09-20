@@ -2643,6 +2643,9 @@
     <string name="search_kw_proxy">réseau socks http tunnel</string>
     <string name="search_kw_proxy_setup">proxy réseau configurer configuration</string>
     <string name="search_kw_default_browse_sort">navigation tri défaut populaire nouveau liste</string>
+    <string name="search_kw_auto_update_extensions">automatique mise à jour arrière-plan installer extensions</string>
+    <string name="search_kw_auto_update_extensions_wifi_only">wifi non mesurée mesurée réseau extension mise à jour</string>
+    <string name="search_kw_auto_update_extensions_interval">planifier fréquence heures quotidien hebdomadaire vérifier extension mise à jour</string>
     <string name="search_kw_force_legacy_installer">installer apk paquet gestionnaire ancien</string>
     <string name="search_kw_skip_loading_extension_icons">icône performance chargement passer saut</string>
     <string name="search_kw_NSFWExtention">nsfw adulte</string>
