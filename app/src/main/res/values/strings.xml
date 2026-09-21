@@ -387,6 +387,7 @@
     <string name="quick_tiles_resize">Resize tile</string>
     <string name="extensions">Extensions</string>
     <string name="extension_updates_available">Extension updates available</string>
+    <string name="extension_updates_need_confirmation">Extension updates need confirmation</string>
     <string name="obsolete_extensions_found">Obsolete extensions found</string>
     <string name="player_settings">Player Settings</string>
     <string name="recentlyListOnly">Only show my content in "Recently Updated"</string>
@@ -2323,6 +2324,11 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <plurals name="extension_updates_count">
         <item quantity="one">%d extension has an update</item>
         <item quantity="other">%d extensions have updates</item>
+    </plurals>
+
+    <plurals name="extension_updates_need_confirmation_count">
+        <item quantity="one">%d extension needs your confirmation to update</item>
+        <item quantity="other">%d extensions need your confirmation to update</item>
     </plurals>
 
     <plurals name="obsolete_extensions_count">

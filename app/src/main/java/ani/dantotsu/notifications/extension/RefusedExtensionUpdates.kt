@@ -34,6 +34,17 @@ object RefusedExtensionUpdates {
     }
 
     /**
+     * Whether [item] is the exact version a scheduled run already had refused unattended.
+     *
+     * Lets a list of pending updates mark the ones sitting there for that reason, rather than
+     * leaving that only in the one-off notification a scheduled run sends when it first happens.
+     */
+    fun isRefused(item: UpdateItem): Boolean {
+        val key = keyOf(item) ?: return false
+        return key in stored()
+    }
+
+    /**
      * Records [refused] and drops anything that is no longer pending.
      *
      * [stillPending] is every update that existed this run, refused or not. Entries outside it have

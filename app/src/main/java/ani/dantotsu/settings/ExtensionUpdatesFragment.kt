@@ -6,6 +6,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
@@ -15,6 +16,7 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
 import ani.dantotsu.databinding.FragmentExtensionUpdatesBinding
+import ani.dantotsu.notifications.extension.RefusedExtensionUpdates
 import ani.dantotsu.parsers.novel.NovelExtension
 import ani.dantotsu.snackString
 import ani.dantotsu.util.Logger
@@ -236,6 +238,7 @@ class UpdatesAdapter(
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         private val nameTextView: TextView = view.findViewById(R.id.extensionNameTextView)
         private val versionTextView: TextView = view.findViewById(R.id.extensionVersionTextView)
+        private val defaultVersionTextColor: Int = versionTextView.currentTextColor
         private val iconImageView: ImageView = view.findViewById(R.id.extensionIconImageView)
         private val updateButton: ImageView = view.findViewById(R.id.updateTextView)
         private val deleteButton: ImageView = view.findViewById(R.id.deleteTextView)
@@ -243,7 +246,7 @@ class UpdatesAdapter(
 
         fun bind(item: UpdateItem, onUpdateClick: (UpdateItem) -> Unit, skipIcons: Boolean, isUpdating: Boolean) {
             nameTextView.text = item.name
-            versionTextView.text = buildString {
+            val versionText = buildString {
                 append(item.type)
                 append(" • ")
                 append(item.versionName)
@@ -253,6 +256,20 @@ class UpdatesAdapter(
                     append(" → ")
                     append(it)
                 }
+            }
+            // A scheduled run already tried this exact version unattended and the system refused
+            // it — the system will not silently replace a package this build is not the installer
+            // of record for. Marked here so that stays visible after the one-off notification
+            // about it is gone; tapping Update below is attended and works regardless.
+            if (RefusedExtensionUpdates.isRefused(item)) {
+                val needsConfirmationLabel = itemView.context.getString(R.string.update_needs_confirmation)
+                versionTextView.text = "$versionText • $needsConfirmationLabel"
+                versionTextView.setTextColor(
+                    ContextCompat.getColor(itemView.context, R.color.warning)
+                )
+            } else {
+                versionTextView.text = versionText
+                versionTextView.setTextColor(defaultVersionTextColor)
             }
 
             // Set extension icon if available and not skipped

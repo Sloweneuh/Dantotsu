@@ -375,6 +375,7 @@
     <string name="quick_tiles_resize">Redimensionner la tuile</string>
     <string name="extensions">Extensions</string>
     <string name="extension_updates_available">Mises à jour d\'extensions disponibles</string>
+    <string name="extension_updates_need_confirmation">Mises à jour d\'extensions à confirmer</string>
     <string name="obsolete_extensions_found">Extensions obsolètes détectées</string>
     <string name="player_settings">Paramètres du lecteur</string>
     <string name="recentlyListOnly">Afficher uniquement mon contenu dans "Récemment mis à jour"</string>
@@ -2162,6 +2163,11 @@
     <plurals name="extension_updates_count">
         <item quantity="one">%d extension a une mise à jour</item>
         <item quantity="other">%d extensions ont des mises à jour</item>
+    </plurals>
+
+    <plurals name="extension_updates_need_confirmation_count">
+        <item quantity="one">%d extension a besoin de votre confirmation pour se mettre à jour</item>
+        <item quantity="other">%d extensions ont besoin de votre confirmation pour se mettre à jour</item>
     </plurals>
 
     <plurals name="obsolete_extensions_count">
