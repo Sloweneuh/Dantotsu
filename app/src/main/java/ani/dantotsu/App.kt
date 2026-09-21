@@ -5,6 +5,7 @@ import android.app.Activity
 import android.content.ComponentCallbacks2
 import android.content.Context
 import android.os.Bundle
+import android.os.StrictMode
 import android.util.Log
 import androidx.multidex.MultiDex
 import androidx.multidex.MultiDexApplication
@@ -66,6 +67,19 @@ class App : MultiDexApplication() {
     private lateinit var downloadAddonManager: DownloadAddonManager
 
     override fun attachBaseContext(base: Context?) {
+        // Every manifest ContentProvider's onCreate() — LeakCanary's, Firebase's, WorkManager's —
+        // runs between this method and Application.onCreate(). CloseGuard decides whether to track
+        // a resource at the moment that resource is constructed, so setting the policy in onCreate()
+        // was already too late for anything one of those providers allocates during its own init;
+        // it would stay untracked for its whole lifetime. This is the earliest app code runs at all.
+        if (BuildConfig.DEBUG) {
+            StrictMode.setVmPolicy(
+                StrictMode.VmPolicy.Builder()
+                    .detectLeakedClosableObjects()
+                    .penaltyLog()
+                    .build()
+            )
+        }
         // Apply language before anything else
         val context = base?.let { ani.dantotsu.util.LanguageHelper.applyLanguageToContext(it) } ?: base
         super.attachBaseContext(context)
@@ -125,6 +139,14 @@ class App : MultiDexApplication() {
         PrefManager.init(this)
         // Only names the file; nothing is read from disk until a tracker first asks.
         ani.dantotsu.connections.IdCache.init(this)
+        // Registers the NetworkHelper factory that initializeNetwork() below resolves, and must
+        // therefore land before it and before TrackerSessions.start(): that call spawns an IO
+        // coroutine that hits the network immediately (MAL.getSavedToken() -> client), and used to
+        // reach the lateinit `client` in Network.kt before initializeNetwork() — called much later
+        // in this method at the time — had assigned it, throwing UninitializedPropertyAccessException
+        // on nearly every cold start.
+        Injekt.importModule(AppModule(this))
+        initializeNetwork()
         // Before anything can query AniList. Entry points other than MainActivity (a notification
         // tap, a media deep link, a widget) go straight to a details screen and skip the session
         // restore that lives on the home path, which left those queries unauthenticated and so
@@ -144,7 +166,6 @@ class App : MultiDexApplication() {
         Thread.setDefaultUncaughtExceptionHandler(FinalExceptionHandler())
         Logger.log(Log.WARN, "App: Logging started")
 
-        Injekt.importModule(AppModule(this))
         Injekt.importModule(PreferenceModule(this))
 
 
@@ -179,8 +200,6 @@ class App : MultiDexApplication() {
         // reporting decision above is settled. Off the main thread, and silent unless something
         // actually died.
         ani.dantotsu.util.ProcessExitReporter.report(this, crashlytics, !disableCrashReports)
-
-        initializeNetwork()
 
         setupNotificationChannels()
         AppShortcuts.publish(this)

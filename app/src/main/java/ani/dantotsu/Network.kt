@@ -26,6 +26,7 @@ import kotlinx.serialization.serializer
 import okhttp3.OkHttpClient
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
+import java.io.IOException
 import java.io.PrintWriter
 import java.io.Serializable
 import java.io.StringWriter
@@ -142,11 +143,20 @@ fun logError(e: Throwable, post: Boolean = true, snackbar: Boolean = true) {
     Logger.log(e)
 }
 
+/**
+ * OkHttp's signature for a request aborted via `Call.cancel()` (itself usually driven by a
+ * coroutine's `invokeOnCancellation`, e.g. a superseded search or a screen navigated away from
+ * mid-request) — a normal outcome of stopping in-flight work, not a failure, so it shouldn't be
+ * logged/toasted like one. Unlike [CancellationException] this doesn't need to propagate for
+ * structured concurrency; callers already treat a null result as "no data".
+ */
+private fun Throwable.isCanceledCall() = this is IOException && message == "Canceled"
+
 fun <T> tryWith(post: Boolean = false, snackbar: Boolean = true, call: () -> T): T? {
     return try {
         call.invoke()
     } catch (e: Throwable) {
-        logError(e, post, snackbar)
+        if (!e.isCanceledCall()) logError(e, post, snackbar)
         null
     }
 }
@@ -161,7 +171,7 @@ suspend fun <T> tryWithSuspend(
     } catch (e: CancellationException) {
         throw e
     } catch (e: Throwable) {
-        logError(e, post, snackbar)
+        if (!e.isCanceledCall()) logError(e, post, snackbar)
         null
     }
 }

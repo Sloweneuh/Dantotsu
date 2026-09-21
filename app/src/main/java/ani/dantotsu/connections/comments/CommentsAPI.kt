@@ -269,6 +269,12 @@ object CommentsAPI {
     }
 
     suspend fun getNotifications(client: OkHttpClient): NotificationResponse? {
+        // With comments disabled, ADDRESS points at the unreachable LOCAL_HOST sentinel, so this
+        // would otherwise always burn a ~30s connect timeout (logging a stack trace) for a call
+        // that was already guaranteed to return null. CommentNotificationTask still needs to run
+        // unconditionally since it also delivers DANTOTSU_UPDATE notifications through this same
+        // endpoint, so the short-circuit belongs here rather than at the caller.
+        if (!commentsEnabled) return null
         val url = "$ADDRESS/notification/reply"
         val request = requestBuilder(client)
         val json = try {
@@ -315,6 +321,11 @@ object CommentsAPI {
 
     suspend fun fetchAuthToken(context: Context, client: OkHttpClient? = null) {
         isOnline = isOnline(context)
+        // Same LOCAL_HOST sentinel as getNotifications(): with comments disabled, ADDRESS is
+        // unreachable by design. CommentNotificationTask calls this unconditionally on every
+        // cold start (it also delivers unrelated update notifications), and used to pay for a
+        // real connect timeout here before getNotifications()'s own guard even ran.
+        if (!commentsEnabled) return
         if (authToken != null) return
         val MAX_RETRIES = 5
         val tokenLifetime: Long = 1000 * 60 * 60 * 24 * 6 // 6 days

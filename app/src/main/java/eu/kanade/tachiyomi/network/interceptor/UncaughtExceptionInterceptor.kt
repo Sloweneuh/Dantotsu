@@ -27,7 +27,11 @@ class UncaughtExceptionInterceptor : Interceptor {
             Logger.log(e)
             throw IOException("Unable to resolve host: ${e.message}")
         } catch (e: Exception) {
-            Logger.log(e)
+            // A request cancelled via Call.cancel() (a superseded search, a screen navigated
+            // away from mid-request) surfaces here as a plain IOException — not the "uncaught
+            // exception" this interceptor exists to catch, so it shouldn't be logged like one.
+            val isCanceled = e is IOException && e.message == "Canceled"
+            if (!isCanceled) Logger.log(e)
             if (e is IOException) {
                 throw e
             } else {

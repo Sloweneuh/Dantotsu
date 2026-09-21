@@ -761,9 +761,18 @@ class MangaReaderActivity : AppCompatActivity() {
                 media.selected = model.loadSelected(media)
                 PrefManager.setCustomVal("${media.id}_current_chp", chap.number)
                 currentChapterIndex = chaptersArr.indexOf(chap.uniqueNumber())
-                binding.mangaReaderChapterSelect.setSelection(currentChapterIndex)
-                updateChapterNavigationText()
-                applySettings()
+                // getMangaChapter() is sticky: if it already holds a value when this observer is
+                // registered (activity recreation, or a later update landing while a previous
+                // layout pass is still in flight), LiveData delivers it synchronously right here —
+                // and applySettings() toggles visibility on the whole reader chrome (top bar,
+                // slider, chapter selector) in one go, which is exactly what fired a
+                // "requestLayout() improperly called ... during layout" warning across all of
+                // them at once. Deferring to next frame keeps the mutation out of an active pass.
+                binding.mangaReaderCont.post {
+                    binding.mangaReaderChapterSelect.setSelection(currentChapterIndex)
+                    updateChapterNavigationText()
+                    applySettings()
+                }
                 val context = this
                 val offline: Boolean = PrefManager.getVal(PrefName.OfflineMode)
                 val incognito: Boolean = PrefManager.getVal(PrefName.Incognito)

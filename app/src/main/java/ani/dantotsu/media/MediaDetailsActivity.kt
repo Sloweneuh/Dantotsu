@@ -1172,7 +1172,11 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                 scope.launch { if (media.isFav != favButton?.clicked) favButton?.clicked() }
 
                 binding.mediaCover.setOnClickListener { openLinkInBrowser(media.shareLink) }
-                progress()
+                // Fragment attach can fire from inside the ViewPager2 RecyclerView's layout
+                // pass, and progress() mutates mediaAddToList's text — triggering a
+                // "requestLayout() improperly called ... during layout" warning. Defer to
+                // the next frame so the mutation happens outside that pass.
+                binding.mediaAddToList.post { progress() }
             }
         }
         adult = media.isAdult
