@@ -89,6 +89,17 @@
             app:tint="?attr/colorOnBackground" />
 
         <ImageButton
+            android:id="@+id/extensionBrowseWebview"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="4dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/open_in_webview"
+            android:padding="12dp"
+            app:srcCompat="@drawable/ic_round_public_24"
+            app:tint="?attr/colorOnBackground" />
+
+        <ImageButton
             android:id="@+id/extensionBrowseSettings"
             android:layout_width="48dp"
             android:layout_height="48dp"

@@ -1227,6 +1227,7 @@
     <string name="select_all">Tout sélectionner</string>
     <string name="test_results">Résultats des tests</string>
     <string name="open_in_browser">Ouvrir dans le navigateur</string>
+    <string name="open_in_webview">Ouvrir dans la WebView</string>
     <string name="premium_chapter_title">Chapitre premium</string>
     <string name="premium_chapter_message">Ce chapitre est un chapitre premium sur %1$s. Vous devez payer et le lire sur le site web.</string>
 

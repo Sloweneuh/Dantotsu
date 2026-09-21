@@ -6,15 +6,22 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.os.Build
 import android.os.Bundle
+import android.view.ViewGroup
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
+import androidx.activity.addCallback
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.isVisible
+import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.lifecycleScope
-import ani.dantotsu.R
 import ani.dantotsu.connections.discord.Discord.saveToken
 import ani.dantotsu.MainActivity
+import ani.dantotsu.databinding.ActivityDiscordBinding
+import ani.dantotsu.initActivity
+import ani.dantotsu.navBarHeight
+import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.util.Logger
 import kotlinx.coroutines.Dispatchers
@@ -30,6 +37,7 @@ class Login : AppCompatActivity() {
 
     private val discordAppPattern = Regex("https://discord\\.com/(app|channels)")
     private var tokenExtracted = false
+    private lateinit var binding: ActivityDiscordBinding
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -40,9 +48,19 @@ class Login : AppCompatActivity() {
             val process = getProcessName()
             if (packageName != process) WebView.setDataDirectorySuffix(process)
         }
-        setContentView(R.layout.activity_discord)
+        binding = ActivityDiscordBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+        initActivity(this)
 
-        val webView = findViewById<WebView>(R.id.discordWebview)
+        binding.discordWebviewToolbar.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+            topMargin = statusBarHeight
+        }
+        binding.discordWebview.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+            bottomMargin = navBarHeight
+        }
+        binding.discordWebviewTitle.text = "Discord Login"
+
+        val webView = binding.discordWebview
 
         webView.apply {
             settings.javaScriptEnabled = true
@@ -54,6 +72,7 @@ class Login : AppCompatActivity() {
         webView.webViewClient = object : WebViewClient() {
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                 super.onPageStarted(view, url, favicon)
+                binding.discordWebviewProgress.isVisible = true
                 view?.evaluateJavascript(
                     """window.LOCAL_STORAGE = localStorage""".trimIndent()
                 ) {}
@@ -61,6 +80,7 @@ class Login : AppCompatActivity() {
 
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
+                binding.discordWebviewProgress.isVisible = false
 
                 // Extract token only once when Discord app/channels page loads
                 if (!tokenExtracted && url != null && discordAppPattern.containsMatchIn(url)) {
@@ -91,6 +111,12 @@ class Login : AppCompatActivity() {
         }
 
         webView.loadUrl("https://discord.com/login")
+
+        onBackPressedDispatcher.addCallback(this) {
+            if (webView.canGoBack()) webView.goBack() else finish()
+        }
+        binding.discordWebviewBack.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
+        binding.discordWebviewReload.setOnClickListener { webView.reload() }
     }
 
     private fun login(token: String) {
@@ -146,7 +172,7 @@ class Login : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        findViewById<WebView>(R.id.discordWebview)?.destroy()
+        binding.discordWebview.destroy()
         super.onDestroy()
     }
 }

@@ -204,6 +204,23 @@ class ExtensionBrowseActivity : AppCompatActivity() {
             ExtensionSettingsOpener.openConfigurableSourcePreferences(this, configurableSources, null, sourceIndex)
         }
 
+        val hasWebViewSupport = when {
+            animeExtension != null -> animeExtension!!.sources
+                .any { it is eu.kanade.tachiyomi.animesource.online.AnimeHttpSource }
+            mangaExtension != null -> mangaExtension!!.sources
+                .any { it is eu.kanade.tachiyomi.source.online.HttpSource }
+            else -> !novelPlugin?.plugin?.site.isNullOrBlank()
+        }
+        binding.extensionBrowseWebview.setSettingsAvailable(hasWebViewSupport)
+        binding.extensionBrowseWebview.setOnClickListener {
+            val webUrl = currentBaseUrl()
+            if (webUrl.isNullOrBlank()) return@setOnClickListener
+            startActivity(Intent(this, ExtensionWebViewActivity::class.java).apply {
+                putExtra(ExtensionWebViewActivity.EXTRA_URL, webUrl)
+                putExtra(ExtensionWebViewActivity.EXTRA_TITLE, name)
+            })
+        }
+
         binding.extensionBrowseSearchIcon.setOnClickListener {
             if (binding.extensionBrowseSearch.isVisible) {
                 closeSearch()
@@ -645,6 +662,17 @@ class ExtensionBrowseActivity : AppCompatActivity() {
             sheet.setContentView(scrollView)
             sheet.show()
         }
+    }
+
+    // The site a "Open in WebView" tap should land on — the currently selected language's source
+    // for anime/manga, or the plugin's own site for a novel (a plugin is already one source in one
+    // language, see [novelParser]).
+    private fun currentBaseUrl(): String? = when {
+        animeExtension != null -> (animeExtension!!.sources.getOrNull(sourceIndex)
+            as? eu.kanade.tachiyomi.animesource.online.AnimeHttpSource)?.baseUrl
+        mangaExtension != null -> (mangaExtension!!.sources.getOrNull(sourceIndex)
+            as? eu.kanade.tachiyomi.source.online.HttpSource)?.baseUrl
+        else -> novelPlugin?.plugin?.site
     }
 
     private fun currentSourceHeaders(): Map<String, String> {

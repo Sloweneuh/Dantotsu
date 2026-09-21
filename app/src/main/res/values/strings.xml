@@ -2012,6 +2012,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="select_all">Select All</string>
     <string name="test_results">Test Results</string>
     <string name="open_in_browser">Open in browser</string>
+    <string name="open_in_webview">Open in WebView</string>
     <string name="premium_chapter_title">Premium chapter</string>
     <string name="premium_chapter_message">This chapter is a premium chapter on %1$s.\nYou will need to pay and read it on the website.</string>
 

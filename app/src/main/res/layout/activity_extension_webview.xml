@@ -2,13 +2,13 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/discordWebviewRoot"
+    android:id="@+id/extensionWebViewRoot"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical">
 
     <LinearLayout
-        android:id="@+id/discordWebviewToolbar"
+        android:id="@+id/extensionWebViewToolbar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
@@ -24,7 +24,7 @@
             app:cardElevation="0dp">
 
             <ImageButton
-                android:id="@+id/discordWebviewBack"
+                android:id="@+id/extensionWebViewBack"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:background="?android:attr/selectableItemBackground"
@@ -36,7 +36,7 @@
         </androidx.cardview.widget.CardView>
 
         <TextView
-            android:id="@+id/discordWebviewTitle"
+            android:id="@+id/extensionWebViewTitle"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
@@ -46,10 +46,10 @@
             android:singleLine="true"
             android:textColor="?attr/colorOnBackground"
             android:textSize="16sp"
-            tools:text="Discord Login" />
+            tools:text="MangaSource" />
 
         <ImageButton
-            android:id="@+id/discordWebviewReload"
+            android:id="@+id/extensionWebViewReload"
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:layout_marginStart="4dp"
@@ -60,21 +60,19 @@
             app:tint="?attr/colorOnBackground" />
 
         <ImageButton
-            android:id="@+id/discordWebviewOpenExternal"
+            android:id="@+id/extensionWebViewOpenExternal"
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:layout_marginStart="4dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/open_in_browser"
             android:padding="12dp"
-            android:visibility="gone"
             app:srcCompat="@drawable/ic_open_24"
-            app:tint="?attr/colorOnBackground"
-            tools:visibility="visible" />
+            app:tint="?attr/colorOnBackground" />
     </LinearLayout>
 
     <ProgressBar
-        android:id="@+id/discordWebviewProgress"
+        android:id="@+id/extensionWebViewProgress"
         style="?android:attr/progressBarStyleHorizontal"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -83,7 +81,7 @@
         tools:visibility="visible" />
 
     <WebView
-        android:id="@+id/discordWebview"
+        android:id="@+id/extensionWebView"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1" />

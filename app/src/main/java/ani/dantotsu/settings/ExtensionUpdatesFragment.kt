@@ -69,7 +69,7 @@ class ExtensionUpdatesFragment : Fragment() {
     }
 
     private fun loadUpdates() {
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             val updates = withContext(Dispatchers.Default) {
                 ExtensionUpdateRunner.pendingUpdates()
             }

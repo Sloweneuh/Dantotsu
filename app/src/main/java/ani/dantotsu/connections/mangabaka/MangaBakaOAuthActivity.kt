@@ -5,14 +5,21 @@ import android.app.Application
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.view.ViewGroup
 import android.webkit.CookieManager
 import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.activity.addCallback
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.isVisible
+import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.lifecycleScope
-import ani.dantotsu.R
+import ani.dantotsu.databinding.ActivityDiscordBinding
+import ani.dantotsu.initActivity
+import ani.dantotsu.navBarHeight
 import ani.dantotsu.snackString
+import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.util.Logger
 import kotlinx.coroutines.Dispatchers
@@ -30,10 +37,16 @@ import kotlinx.coroutines.withContext
  */
 class MangaBakaOAuthActivity : AppCompatActivity() {
 
+    private lateinit var binding: ActivityDiscordBinding
+
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         ThemeManager(this).applyTheme()
+
+        binding = ActivityDiscordBinding.inflate(layoutInflater)
+        setContentView(binding.root)
+        initActivity(this)
 
         val url = intent.getStringExtra("url")
         if (url.isNullOrBlank()) {
@@ -45,8 +58,16 @@ class MangaBakaOAuthActivity : AppCompatActivity() {
             val process = Application.getProcessName()
             if (packageName != process) WebView.setDataDirectorySuffix(process)
         }
-        setContentView(R.layout.activity_discord)
-        val webView = findViewById<WebView>(R.id.discordWebview)
+
+        binding.discordWebviewToolbar.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+            topMargin = statusBarHeight
+        }
+        binding.discordWebview.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+            bottomMargin = navBarHeight
+        }
+        binding.discordWebviewTitle.text = "MangaBaka Login"
+
+        val webView = binding.discordWebview
 
         CookieManager.getInstance().apply {
             setAcceptCookie(true)
@@ -70,8 +91,24 @@ class MangaBakaOAuthActivity : AppCompatActivity() {
                 }
                 return false
             }
+
+            override fun onPageStarted(view: WebView?, loadedUrl: String?, favicon: android.graphics.Bitmap?) {
+                super.onPageStarted(view, loadedUrl, favicon)
+                binding.discordWebviewProgress.isVisible = true
+            }
+
+            override fun onPageFinished(view: WebView?, loadedUrl: String?) {
+                super.onPageFinished(view, loadedUrl)
+                binding.discordWebviewProgress.isVisible = false
+            }
         }
         webView.loadUrl(url)
+
+        onBackPressedDispatcher.addCallback(this) {
+            if (webView.canGoBack()) webView.goBack() else finish()
+        }
+        binding.discordWebviewBack.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
+        binding.discordWebviewReload.setOnClickListener { webView.reload() }
     }
 
     private fun complete(redirect: Uri) {
@@ -94,5 +131,10 @@ class MangaBakaOAuthActivity : AppCompatActivity() {
                 finish()
             }
         }
+    }
+
+    override fun onDestroy() {
+        binding.discordWebview.destroy()
+        super.onDestroy()
     }
 }

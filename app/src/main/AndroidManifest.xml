@@ -282,6 +282,10 @@
         <activity
             android:name=".settings.ExtensionMediaInfoActivity"
             android:parentActivityName=".settings.ExtensionBrowseActivity" />
+        <activity
+            android:name=".settings.ExtensionWebViewActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode"
+            android:parentActivityName=".settings.ExtensionBrowseActivity" />
 
         <activity
             android:name=".profile.ProfileActivity"
