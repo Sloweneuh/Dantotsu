@@ -568,7 +568,7 @@ class NovelReadFragment : Fragment() {
         }
         val text = if (number == number.toLong().toFloat()) number.toLong().toString()
         else number.toString()
-        updateProgress(media, text)
+        updateProgress(media, text, MediaNameAdapter.findVolumeNumber(chapter.name))
         refreshList()
         refreshContinue()
     }

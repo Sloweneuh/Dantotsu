@@ -489,7 +489,11 @@ class MangaChapterAdapter(
                     } else {
                         binding.itemEpisodeViewedCover.visibility = View.GONE
                         binding.itemEpisodeCont.setOnLongClickListener {
-                            updateProgress(media, MediaNameAdapter.findChapterNumber(ep.number).toString())
+                            updateProgress(
+                                media,
+                                MediaNameAdapter.findChapterNumber(ep.number).toString(),
+                                MediaNameAdapter.findVolumeNumber(ep.number)
+                            )
                             true
                         }
                     }
@@ -528,7 +532,11 @@ class MangaChapterAdapter(
                         binding.itemEpisodeViewedCover.visibility = View.GONE
                         binding.itemEpisodeViewed.visibility = View.GONE
                         binding.root.setOnLongClickListener {
-                            updateProgress(media, MediaNameAdapter.findChapterNumber(ep.number).toString())
+                            updateProgress(
+                                media,
+                                MediaNameAdapter.findChapterNumber(ep.number).toString(),
+                                MediaNameAdapter.findVolumeNumber(ep.number)
+                            )
                             true
                         }
                     }

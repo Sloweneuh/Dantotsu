@@ -1172,21 +1172,22 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
             ?.takeIf { LNReaderSession.isActive }
         if (sessionChapter != null) {
             // A plugin's own chapter number when it gives one, since it is more reliable than what
-            // can be read out of a title like "Volume 3 Chapter 12".
+            // can be read out of a title like "Volume 3 Chapter 12" — but that same title is still
+            // the only place a volume number comes from, so it's read out regardless.
             val number = sessionChapter.chapterNumber?.toFloat()
                 ?: MediaNameAdapter.findChapterNumber(sessionChapter.name)
-            report(media, sessionChapter.path, number, onDone)
+            report(media, sessionChapter.path, number, MediaNameAdapter.findVolumeNumber(sessionChapter.name), onDone)
             return
         }
         val label = toc.getOrNull(position)?.label.orEmpty()
-        report(media, "toc:$position", MediaNameAdapter.findChapterNumber(label), onDone)
+        report(media, "toc:$position", MediaNameAdapter.findChapterNumber(label), MediaNameAdapter.findVolumeNumber(label), onDone)
     }
 
     /**
      * [onDone] runs once the chapter has been dealt with, whether that meant asking, updating
      * silently, or nothing at all — a chapter with no number to report is still a chapter read.
      */
-    private fun report(media: Media, key: String, number: Float?, onDone: () -> Unit = {}) {
+    private fun report(media: Media, key: String, number: Float?, volume: Int? = null, onDone: () -> Unit = {}) {
         val value = number?.takeIf { it > 0f }
         if (value == null || !reportedChapters.add(key)) {
             onDone()
@@ -1194,7 +1195,7 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
         }
         val text = if (value == value.toLong().toFloat()) value.toLong().toString()
         else value.toString()
-        askThenUpdateProgress(media, text, onDone)
+        askThenUpdateProgress(media, text, volume, onDone)
     }
 
     /**
@@ -1205,7 +1206,7 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
      * that has been allowed, and "don't ask again" is remembered per media so a title being read
      * straight through only interrupts once.
      */
-    private fun askThenUpdateProgress(media: Media, number: String, onDone: () -> Unit = {}) {
+    private fun askThenUpdateProgress(media: Media, number: String, volume: Int? = null, onDone: () -> Unit = {}) {
         if (PrefManager.getVal<Boolean>(PrefName.Incognito) ||
             (media.isAdult && !PrefManager.getVal<Boolean>(PrefName.UpdateForHReader)) ||
             // Nowhere to report to otherwise, and asking would only produce a login prompt.
@@ -1223,7 +1224,7 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
                 PrefManager.getCustomVal("${media.id}_progressDialog", true)
         if (!ask) {
             if (PrefManager.getCustomVal("${media.id}_save_progress", true)) {
-                updateProgress(media, number)
+                updateProgress(media, number, volume)
             }
             onDone()
             return
@@ -1244,7 +1245,7 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
             setCancelable(false)
             setPosButton(R.string.yes) {
                 PrefManager.setCustomVal("${media.id}_save_progress", true)
-                updateProgress(media, number)
+                updateProgress(media, number, volume)
                 onDone()
             }
             setNegButton(R.string.no) {

@@ -401,7 +401,11 @@ class MangaReaderActivity : AppCompatActivity() {
                 //  Allowing adult (Hentai) updates, or not an adult title
                 && if (media.isAdult) PrefManager.getVal(PrefName.UpdateForHReader) else true
             ) {
-                updateProgress(media, chapter)
+                updateProgress(
+                    media,
+                    chapter,
+                    MediaNameAdapter.findVolumeNumber(media.manga!!.selectedChapter!!.number)
+                )
                 finish()
             } else {
                 progress { finish() }
@@ -1949,7 +1953,8 @@ class MangaReaderActivity : AppCompatActivity() {
                         updateProgress(
                             media,
                             MediaNameAdapter.findChapterNumber(media.manga!!.selectedChapter!!.number)
-                                .toString()
+                                .toString(),
+                            MediaNameAdapter.findVolumeNumber(media.manga!!.selectedChapter!!.number)
                         )
                         runnable.run()
                     }
@@ -1969,7 +1974,8 @@ class MangaReaderActivity : AppCompatActivity() {
                     updateProgress(
                         media,
                         MediaNameAdapter.findChapterNumber(media.manga!!.selectedChapter!!.number)
-                            .toString()
+                            .toString(),
+                        MediaNameAdapter.findVolumeNumber(media.manga!!.selectedChapter!!.number)
                     )
                 runnable.run()
             }
@@ -1999,7 +2005,7 @@ class MangaReaderActivity : AppCompatActivity() {
         val chapterNum = MediaNameAdapter.findChapterNumber(completedChapter.number)?.toString() ?: return
 
         if (mayTrackProgressSilently() && PrefManager.getCustomVal("${media.id}_save_progress", true)) {
-            updateProgress(media, chapterNum)
+            updateProgress(media, chapterNum, MediaNameAdapter.findVolumeNumber(completedChapter.number))
         }
     }
 

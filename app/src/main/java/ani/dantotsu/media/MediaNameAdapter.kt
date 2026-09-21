@@ -13,6 +13,7 @@ object MediaNameAdapter {
     private const val REGEX_SEASON = "(season|s)[\\s:.\\-]*(\\d+)[\\s:.\\-]*"
     private const val REGEX_SUBDUB = "^(soft)?[\\s-]*(sub|dub|mixed)(bed|s)?\\s*$"
     private const val REGEX_CHAPTER = "(chapter|chap|ch|c)${REGEX_ITEM}"
+    private const val REGEX_VOLUME = "(volume|vol|v)${REGEX_ITEM}"
 
     fun setSubDub(text: String, typeToSetTo: SubDubType): String? {
         val subdubPattern: Pattern = Pattern.compile(REGEX_SUBDUB, Pattern.CASE_INSENSITIVE)
@@ -143,6 +144,18 @@ object MediaNameAdapter {
                 parseFloatSafe(text)
             }
         }
+    }
+
+    /**
+     * A volume number, only when the source's own chapter title actually names one (e.g. "Vol. 3
+     * Ch. 12") — unlike [findChapterNumber], there's no bare-number fallback, since a chapter title
+     * with no volume marker at all means the source isn't telling us one, not that the number we'd
+     * otherwise be guessing at is a volume.
+     */
+    fun findVolumeNumber(text: String): Int? {
+        val pattern: Pattern = Pattern.compile(REGEX_VOLUME, Pattern.CASE_INSENSITIVE)
+        val matcher: Matcher = pattern.matcher(text)
+        return if (matcher.find()) parseIntSafe(matcher.group(2)) else null
     }
 
     // Helpers to safely parse numbers which may contain unicode digits

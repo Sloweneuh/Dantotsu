@@ -670,7 +670,7 @@ object NovelTts {
         if (!PrefManager.getCustomVal("${media.id}_save_progress", true)) return
         val text = if (number == number.toLong().toFloat()) number.toLong().toString()
         else number.toString()
-        updateProgress(media, text)
+        updateProgress(media, text, MediaNameAdapter.findVolumeNumber(chapter.name))
     }
 
     /**

@@ -18,13 +18,19 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-fun updateProgress(media: Media, number: String) {
+/**
+ * @param sourceVolume The volume the chapter just read actually belongs to, when the source's
+ *   chapter title names one (see [ani.dantotsu.media.MediaNameAdapter.findVolumeNumber]). Null
+ *   means the source didn't say — the previously-recorded volume is resent unchanged, same as
+ *   before this parameter existed, rather than being cleared.
+ */
+fun updateProgress(media: Media, number: String, sourceVolume: Int? = null) {
     val incognito: Boolean = PrefManager.getVal(PrefName.Incognito)
     if (incognito) {
         toast("Sneaky sneaky :3")
         return
     }
-    CoroutineScope(Dispatchers.IO).launch { updateProgressSuspending(media, number) }
+    CoroutineScope(Dispatchers.IO).launch { updateProgressSuspending(media, number, sourceVolume) }
 }
 
 /**
@@ -35,12 +41,16 @@ fun updateProgress(media: Media, number: String) {
  * A background notification action awaits this so it knows the update landed before it clears the
  * notification; the in-app path just launches it through [updateProgress] and moves on.
  */
-suspend fun updateProgressSuspending(media: Media, number: String) {
+suspend fun updateProgressSuspending(media: Media, number: String, sourceVolume: Int? = null) {
     val incognito: Boolean = PrefManager.getVal(PrefName.Incognito)
     if (incognito) {
         toast("Sneaky sneaky :3")
         return
     }
+    // The source named a volume for this chapter — trust it over whatever's on record, and it
+    // becomes what's on record from here on (below). Otherwise resend the existing value
+    // unchanged, same round trip this function always did before sourceVolume existed.
+    val volume = sourceVolume ?: media.userVolume
 
     // The mirror writes (MAL, MangaBaka, cloud sync) are fired and forgotten — they run on their
     // own scope so a caller that awaits this function (a notification "mark as read" action) waits
@@ -60,7 +70,7 @@ suspend fun updateProgressSuspending(media: Media, number: String) {
                     seriesTitle = media.name,
                     listId = 0, // 0 = Reading
                     chapter = a,
-                    volume = media.userVolume
+                    volume = volume
                 )
                 if (added) media.muListId = 0
                 added
@@ -70,7 +80,7 @@ suspend fun updateProgressSuspending(media: Media, number: String) {
                     seriesTitle = media.name,
                     listId      = listId,
                     chapter     = a,
-                    volume      = media.userVolume
+                    volume      = volume
                 )
             }
             if (ok) {
@@ -80,6 +90,7 @@ suspend fun updateProgressSuspending(media: Media, number: String) {
                 )
                 toast(currContext()?.getString(R.string.setting_progress, a))
                 media.userProgress = a
+                media.userVolume = volume
                 Refresh.all()
                 // Keyed the way the widget keys MangaUpdates rows, not by media.id.
                 a?.let {
@@ -97,7 +108,7 @@ suspend fun updateProgressSuspending(media: Media, number: String) {
                         muSeriesId = muSeriesId,
                         muListId = muListId,
                         progressChapter = a,
-                        progressVolume = media.userVolume,
+                        progressVolume = volume,
                         startDate = muStart,
                     )
                 }
@@ -115,7 +126,7 @@ suspend fun updateProgressSuspending(media: Media, number: String) {
                         muListId = muListId,
                         titles = listOfNotNull(media.name, media.nameRomaji).distinct(),
                         chapter = a,
-                        volume = media.userVolume,
+                        volume = volume,
                         startDate = muStart,
                     )
                 }
@@ -141,7 +152,7 @@ suspend fun updateProgressSuspending(media: Media, number: String) {
             Anilist.mutation.editList(
                 media.id,
                 a,
-                progressVolumes = media.userVolume,
+                progressVolumes = volume,
                 status = status,
                 startedAt = startDate
             )
@@ -151,7 +162,6 @@ suspend fun updateProgressSuspending(media: Media, number: String) {
             // MangaBaka are mirrors. Fire them off together instead of chaining them ahead of
             // the toast, or the confirmation waits on up to four extra round trips (MangaBaka
             // needs an id lookup, then a PATCH, then a POST if the entry doesn't exist yet).
-            val volume = media.userVolume
             val mirroredStatus =
                 if (media.userStatus == "REPEATING") media.userStatus!! else "CURRENT"
             // The dates AniList now holds: the one we just backfilled, or the one it already had.
@@ -204,6 +214,7 @@ suspend fun updateProgressSuspending(media: Media, number: String) {
             }
         }
         media.userProgress = a
+        media.userVolume = volume
         Refresh.all()
         a?.let { noteWidgetProgress(media.id, it) }
     } else {
