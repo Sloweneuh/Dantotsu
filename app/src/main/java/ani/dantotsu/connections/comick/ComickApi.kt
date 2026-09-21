@@ -1,5 +1,7 @@
 package ani.dantotsu.connections.comick
 
+import ani.dantotsu.settings.saving.PrefManager
+import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.util.Logger
 import com.google.gson.Gson
 import com.google.gson.JsonArray
@@ -347,13 +349,13 @@ object ComickApi {
     /**
      * Fetch comic details from Comick API using the slug
      * @param slug The comic slug (e.g., "02-tonikaku-kawaii")
-     * @param lang Language code (default: "en")
+     * @param lang Language code (default: PrefName.ComickMangaBakaLanguage)
      * @param useCache Whether to check the merged data cache (default: true)
      * @return ComickResponse or null on failure
      */
     suspend fun getComicDetails(
         slug: String,
-        lang: String = "en",
+        lang: String = PrefManager.getVal(PrefName.ComickMangaBakaLanguage),
         useCache: Boolean = true,
         mediaType: String = MEDIA_TYPE_MANGA
     ): ComickResponse? = withContext(Dispatchers.IO) {
@@ -362,9 +364,9 @@ object ComickApi {
             if (useCache) {
                 val cachedMergedComic = mergedComicCache["$mediaType:$slug"]
                 if (cachedMergedComic != null) {
-                    // Still need to fetch for firstChap data
+                    // Still need to fetch for firstChap/langList data
                     val response = fetchComicDetailsRaw(slug, lang, mediaType)
-                    return@withContext ComickResponse(cachedMergedComic, response?.firstChap)
+                    return@withContext ComickResponse(cachedMergedComic, response?.firstChap, response?.langList)
                 }
             }
 
@@ -388,7 +390,7 @@ object ComickApi {
      */
     private suspend fun fetchComicDetailsRaw(
         slug: String,
-        lang: String = "en",
+        lang: String = PrefManager.getVal(PrefName.ComickMangaBakaLanguage),
         mediaType: String = MEDIA_TYPE_MANGA
     ): ComickResponse? {
         try {
@@ -791,11 +793,33 @@ object ComickApi {
     /**
      * Fetch chapters for a comic by its HID.
      * Paginates automatically until all chapters are retrieved.
+     *
+     * `lang` is a hard server-side filter — a title simply has no rows for a language nobody
+     * scanlated it into. Comick's coverage skews English, so a preferred language other than "en"
+     * that comes back empty falls back to "en" rather than showing "no chapters" for a title that
+     * has plenty, just not in the requested language.
+     *
      * @param hid The comic HID
-     * @param lang Language code (default "en")
+     * @param lang Language code (default: PrefName.ComickMangaBakaLanguage)
      * @return List of ComickChapter, newest first, or empty list on failure
      */
-    suspend fun getChapters(hid: String, lang: String = "en"): List<ComickChapter> = withContext(Dispatchers.IO) {
+    suspend fun getChapters(
+        hid: String,
+        lang: String = PrefManager.getVal(PrefName.ComickMangaBakaLanguage)
+    ): List<ComickChapter> = withContext(Dispatchers.IO) {
+        val chapters = fetchChaptersForLang(hid, lang)
+        val fallback = if (chapters.isEmpty() && !lang.equals("en", ignoreCase = true)) {
+            fetchChaptersForLang(hid, "en")
+        } else emptyList()
+        // Resolve chapters the same way the AniList/MangaUpdates/extension paths do: trust the
+        // source order and reverse it, rather than re-sorting by parsed number. The API is queried
+        // with chap-order=0 (newest-first) and paginated in that order, so reversing yields
+        // oldest-first. This keeps equal-numbered chapters (e.g. two "Chapter 0") in the same
+        // relative order as everywhere else instead of flipping them.
+        (chapters.ifEmpty { fallback }).reversed()
+    }
+
+    private fun fetchChaptersForLang(hid: String, lang: String): List<ComickChapter> {
         val all = mutableListOf<ComickChapter>()
         val limit = 300
         var page = 0
@@ -817,26 +841,30 @@ object ComickApi {
                 page++
             }
         } catch (e: Exception) {
-            Logger.log("Error fetching chapters for hid $hid: ${e.message}")
+            Logger.log("Error fetching chapters for hid $hid (lang=$lang): ${e.message}")
         }
-        // Resolve chapters the same way the AniList/MangaUpdates/extension paths do: trust the
-        // source order and reverse it, rather than re-sorting by parsed number. The API is queried
-        // with chap-order=0 (newest-first) and paginated in that order, so reversing yields
-        // oldest-first. This keeps equal-numbered chapters (e.g. two "Chapter 0") in the same
-        // relative order as everywhere else instead of flipping them.
-        all.reversed()
+        return all
     }
 
     /**
      * Fetch the latest (highest-numbered) chapter for a comic.
      * Pass [nearChapter] (from ComickComic.last_chapter) to query near that number
      * so the small fetch window is guaranteed to include it.
+     *
+     * Same "en" fallback as [getChapters]: a title with no chapters in the preferred language
+     * still has its English ones counted, rather than reading as having no latest chapter at all.
      */
     suspend fun getLatestChapter(
         hid: String,
-        lang: String = "en",
+        lang: String = PrefManager.getVal(PrefName.ComickMangaBakaLanguage),
         nearChapter: Double? = null
     ): ComickChapter? = withContext(Dispatchers.IO) {
+        val chapter = fetchLatestChapterForLang(hid, lang, nearChapter)
+        if (chapter != null || lang.equals("en", ignoreCase = true)) chapter
+        else fetchLatestChapterForLang(hid, "en", nearChapter)
+    }
+
+    private fun fetchLatestChapterForLang(hid: String, lang: String, nearChapter: Double?): ComickChapter? {
         try {
             val chapParam = nearChapter?.let {
                 "&chap=${if (it % 1.0 == 0.0) it.toInt() else it}"
@@ -844,18 +872,18 @@ object ComickApi {
             val url = "https://api.comick.dev/comic/$hid/chapters?lang=$lang&limit=10$chapParam&chap-order=0"
             val request = request(url)
             val response = client.newCall(request).execute()
-            if (!response.isSuccessful) return@withContext null
+            if (!response.isSuccessful) return null
             val body = response.body.string()
-            if (body.isBlank()) return@withContext null
-            val obj = gson.fromJson(body, com.google.gson.JsonObject::class.java) ?: return@withContext null
-            val arr = obj.getAsJsonArray("chapters") ?: return@withContext null
-            if (arr.size() == 0) return@withContext null
+            if (body.isBlank()) return null
+            val obj = gson.fromJson(body, com.google.gson.JsonObject::class.java) ?: return null
+            val arr = obj.getAsJsonArray("chapters") ?: return null
+            if (arr.size() == 0) return null
             val chapters = gson.fromJson(arr, Array<ComickChapter>::class.java).toList()
             // Take the chapter with the highest chapter number in the returned window
-            chapters.maxByOrNull { it.chap?.toDoubleOrNull() ?: -1.0 }
+            return chapters.maxByOrNull { it.chap?.toDoubleOrNull() ?: -1.0 }
         } catch (e: Exception) {
-            Logger.log("Error fetching latest chapter for hid $hid: ${e.message}")
-            null
+            Logger.log("Error fetching latest chapter for hid $hid (lang=$lang): ${e.message}")
+            return null
         }
     }
 

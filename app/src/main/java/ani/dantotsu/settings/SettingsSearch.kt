@@ -185,6 +185,8 @@ object SettingsSearch {
 
         l += SearchableSetting(SettingsAccountActivity::class.java, R.string.disable_comick, R.string.accounts_and_sync, R.drawable.ic_round_comick_info_24, R.string.account_show_info_desc, anchorProvider = AccountProvider.COMICK, anchorRowKey = "info", keywordsRes = R.string.search_kw_disable_comick)
 
+        l += SearchableSetting(SettingsAccountActivity::class.java, R.string.comick_mangabaka_language, R.string.accounts_and_sync, R.drawable.ic_round_language_24, keywordsRes = R.string.search_kw_comick_mangabaka_language)
+
         l += SearchableSetting(SettingsAccountActivity::class.java, R.string.disable_mal, R.string.accounts_and_sync, R.drawable.ic_round_mal_info_24, R.string.account_show_info_desc, anchorProvider = AccountProvider.MAL, anchorRowKey = "info", keywordsRes = R.string.search_kw_disable_mal)
 
         l += SearchableSetting(SettingsAccountActivity::class.java, R.string.disable_kitsu, R.string.accounts_and_sync, R.drawable.ic_round_kitsu_info_24, R.string.account_show_info_desc, anchorProvider = AccountProvider.KITSU, anchorRowKey = "info", keywordsRes = R.string.search_kw_disable_kitsu)
@@ -540,6 +542,8 @@ object SettingsSearch {
         l += SearchableSetting(SettingsSourcesActivity::class.java, R.string.proxy_setup, R.string.sources_and_downloads, R.drawable.lan_24, R.string.proxy_setup_desc, keywordsRes = R.string.search_kw_proxy_setup, anchorSection = SettingsSourcesActivity.Section.NETWORK, anchorRowKey = "proxy_setup")
 
         l += SearchableSetting(SettingsSourcesActivity::class.java, R.string.default_browse_sort, R.string.sources_and_downloads, R.drawable.ic_round_sort_24, keywordsRes = R.string.search_kw_default_browse_sort, anchorSection = SettingsSourcesActivity.Section.EXTENSIONS, anchorRowKey = "default_browse_sort")
+
+        l += SearchableSetting(SettingsSourcesActivity::class.java, R.string.preferred_source_language, R.string.sources_and_downloads, R.drawable.ic_round_language_24, keywordsRes = R.string.search_kw_preferred_source_language, anchorSection = SettingsSourcesActivity.Section.EXTENSIONS, anchorRowKey = "preferred_source_language")
 
         l += SearchableSetting(SettingsSourcesActivity::class.java, R.string.auto_update_extensions, R.string.sources_and_downloads, R.drawable.ic_round_sync_24, R.string.auto_update_extensions_desc, keywordsRes = R.string.search_kw_auto_update_extensions, anchorSection = SettingsSourcesActivity.Section.EXTENSIONS, anchorRowKey = "auto_update_extensions")
 

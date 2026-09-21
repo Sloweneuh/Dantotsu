@@ -271,6 +271,9 @@
     <string name="connections_desc">Enable or disable external connections and info tabs</string>
     <string name="disable_comick">Show Comick info</string>
     <string name="disable_comick_desc">Toggle fetching Comick data and Comick tab</string>
+    <string name="comick_mangabaka_language">Preferred Content Language</string>
+    <string name="comick_chapter_language">Chapter Language</string>
+    <string name="comick_mangabaka_language_desc">Titles (Comick, MangaBaka) and chapters (Comick) load in: %1$s</string>
     <string name="disable_mal">Show MyAnimeList info</string>
     <string name="disable_mal_desc">Toggle fetching MAL data and MAL tab</string>
     <string name="mal_connections_help">How does the MAL toggle work\?</string>
@@ -348,6 +351,7 @@
     <string name="unread_sort_option_unread">Fewest unread first</string>
     <string name="unread_sort_option_recent">Most recently updated</string>
     <string name="unread_sort_desc">How the home Unread Chapters row is ordered</string>
+    <string name="malsync_preferred_track_label">Anime release track</string>
     <string name="malsync_exclude_manage">Manage MALSync Exclusions</string>
     <string name="malsync_exclude_manage_desc">Media excluded from unread chapter / episode checks</string>
     <string name="customize_info_tabs">Info Tab Order</string>
@@ -1314,6 +1318,7 @@
     <string name="discord_warning"><![CDATA[By logging in, your discord will now show what you are watching & reading on Dantotsu\n\nIf you are on invisible mode, logging in will make you online, when you open Dantotsu.\n\nThis does break the Discord TOS. \nAlthough Discord has never banned anyone for using Custom Rich Presence(what Dantotsu uses), You have still been warned.\n\nDantotsu is not responsible for anything that happens to your account.]]></string>
     <string name="warning">Warning</string>
     <string name="default_browse_sort">Default Browsing Sort</string>
+    <string name="preferred_source_language">Preferred Source Language</string>
     <string name="force_legacy_installer">Force Legacy Installer</string>
     <string name="NSFWExtention">NSFW Extensions</string>
     <string name="skip_loading_extension_icons">Skip loading extension icons</string>
@@ -1669,6 +1674,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="novel_add_repository_desc">Add Novel Extensions from various sources</string>
     <string name="user_agent_desc">Change your default user agent</string>
     <string name="default_browse_sort_desc">Browsing an extension opens on: %1$s</string>
+    <string name="preferred_source_language_desc">Auto-selected on multi-language sources: %1$s</string>
     <string name="force_legacy_installer_desc">Use the legacy installer to install extensions (For older android phones)</string>
     <string name="skip_loading_extension_icons_desc">Don\'t load icons of extensions on the extension page</string>
     <string name="NSFWExtention_desc">Enable 18+ extensions from search (May remove some useful extensions)</string>
@@ -2645,6 +2651,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="search_kw_mu_custom_list_mapping">mangaupdates mu list status mapping</string>
     <string name="search_kw_mangabaka_tag_weight">mangabaka tag weight filter default incidental recurrent defining core</string>
     <string name="search_kw_disable_comick">comick source manga</string>
+    <string name="search_kw_comick_mangabaka_language">comick mangabaka language content title chapter preferred default english</string>
     <string name="search_kw_disable_mal">myanimelist mal account tracking</string>
     <string name="search_kw_disable_malsync">malsync sync tracking progress</string>
     <string name="search_kw_disable_kitsu">kitsu tab browse info source</string>
@@ -2652,7 +2659,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="search_kw_disable_mangabaka">mangabaka tab browse info source</string>
     <string name="search_kw_malsync_exclude_manage">exclude filter unread chapter episode notifications malsync</string>
     <string name="search_kw_unread_sort_label">unread chapters home sort order sorting recent latest updated malsync mangaupdates</string>
-    <string name="search_kw_malsync_checks_dialog_title">malsync checks mode manga anime both what</string>
+    <string name="search_kw_malsync_checks_dialog_title">malsync checks mode manga anime both what sub dub subbed dubbed track release language</string>
     <string name="search_kw_customize_info_tabs">anilist anime manga mangaupdates info tab order reorder visibility mal comick mangabaka</string>
     <string name="search_kw_compare_lists">compare audit diff differences out of date myanimelist mal kitsu simkl mangabaka anilist mangaupdates sync</string>
     <string name="search_kw_auto_list_sync">automatic auto compare schedule interval frequency background periodic list sync push myanimelist mal mangabaka</string>
@@ -2800,6 +2807,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="search_kw_proxy">network socks http tunnel</string>
     <string name="search_kw_proxy_setup">proxy network configure setup</string>
     <string name="search_kw_default_browse_sort">browse sort default popular latest listing</string>
+    <string name="search_kw_preferred_source_language">preferred source language extension default english sub dub subbed multi</string>
     <string name="search_kw_auto_update_extensions">automatic update background install extensions</string>
     <string name="search_kw_auto_update_extensions_wifi_only">wifi unmetered metered network extension update</string>
     <string name="search_kw_auto_update_extensions_interval">schedule frequency hours daily weekly check extension update</string>

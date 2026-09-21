@@ -1,5 +1,7 @@
 package ani.dantotsu.connections.comick
 
+import ani.dantotsu.settings.saving.PrefManager
+import ani.dantotsu.settings.saving.PrefName
 import java.io.Serializable
 import java.time.Instant
 import java.time.format.DateTimeParseException
@@ -8,7 +10,9 @@ import com.google.gson.JsonElement
 
 data class ComickResponse(
     val comic: ComickComic?,
-    val firstChap: ComickFirstChapter?
+    val firstChap: ComickFirstChapter?,
+    /** Every language with at least one chapter for this title — powers the chapter-list language picker. */
+    val langList: List<String>? = null
 ) : Serializable
 
 data class ComickComic(
@@ -261,10 +265,11 @@ data class ComickEpisode(
         anime_episode_profiles?.absolute_episode?.toString()
             ?: chap?.trim()?.takeIf { it.isNotBlank() }
 
-    /** English title if one is tagged as such, else the default title. */
+    /** [PrefName.ComickMangaBakaLanguage]-tagged title if one exists, else the default title. */
     fun displayTitle(): String? {
+        val preferredLang = PrefManager.getVal<String>(PrefName.ComickMangaBakaLanguage)
         val tagged = md_chapter_titles
-            ?.firstOrNull { it.lang?.equals("en", ignoreCase = true) == true }
+            ?.firstOrNull { it.lang?.equals(preferredLang, ignoreCase = true) == true }
             ?.title?.takeIf { it.isNotBlank() }
         return tagged ?: title?.takeIf { it.isNotBlank() }
     }
@@ -323,7 +328,7 @@ data class ComickScheduleEntry(
     val anime_profiles: ComickAnimeProfile?,
     val schedule: ComickScheduleSlot?,
 ) : Serializable {
-    fun displayTitle(): String? = pickEnglishTitle(title, md_titles)
+    fun displayTitle(): String? = pickPreferredTitle(title, md_titles)
 }
 
 data class ComickScheduleSlot(
@@ -370,7 +375,7 @@ data class ComickCategoryInfo(
 data class ComickAlternativeTitle(
     val title: String?,
     val lang: String?,
-    /** Marks the entry's primary title for its language — see [pickEnglishTitle]. */
+    /** Marks the entry's primary title for its language — see [pickPreferredTitle]. */
     val is_default: Boolean? = null,
 ) : Serializable
 
@@ -385,30 +390,34 @@ fun hasCJK(text: String) = text.any { c ->
  * `md_titles` array — search results, the media page, recommendations and custom-list entries all
  * use the same shape.
  *
- * Entries routinely carry several English-tagged titles: a romanisation, one or more fan
- * translations, and the one Comick actually shows. Taking the first of them produced titles like
- * "I am the only the one who levels up" and "Wan Piece" for Solo Leveling and One Piece, so the
- * `is_default` flag decides instead — checked against comick.dev's own headings, that agrees with
- * the site on 17 of 18 sampled entries where taking the first agreed on 11.
+ * Entries routinely carry several titles tagged for the same language: a romanisation, one or more
+ * fan translations, and the one Comick actually shows. Taking the first of them produced titles
+ * like "I am the only the one who levels up" and "Wan Piece" for Solo Leveling and One Piece, so
+ * the `is_default` flag decides instead — checked against comick.dev's own English headings, that
+ * agrees with the site on 17 of 18 sampled entries where taking the first agreed on 11.
  *
- * The flag is only ever consulted *within* the English-tagged, non-CJK candidates (some are
- * mistagged): on plenty of entries the default title overall is the Japanese one, and honouring
- * that would defeat the point.
+ * The flag is only ever consulted *within* the matching-language, non-CJK candidates (some English
+ * ones are mistagged): on plenty of entries the default title overall is the Japanese one, and
+ * honouring that would defeat the point. That CJK exclusion is specifically an English-tag data
+ * quality fix, so it only applies when [PrefName.ComickMangaBakaLanguage] is English — for any
+ * other preferred language it would throw out exactly the titles being asked for.
  */
-private fun pickEnglishTitle(title: String?, mdTitles: List<ComickAlternativeTitle>?): String? {
-    val english = mdTitles
-        ?.filter { it.lang?.equals("en", ignoreCase = true) == true }
+private fun pickPreferredTitle(title: String?, mdTitles: List<ComickAlternativeTitle>?): String? {
+    val preferredLang = PrefManager.getVal<String>(PrefName.ComickMangaBakaLanguage)
+    val excludeCJK = preferredLang.equals("en", ignoreCase = true)
+    val matches = mdTitles
+        ?.filter { it.lang?.equals(preferredLang, ignoreCase = true) == true }
         ?.mapNotNull { entry ->
-            entry.title?.takeIf { it.isNotBlank() && !hasCJK(it) }?.let { entry to it.trim() }
+            entry.title?.takeIf { it.isNotBlank() && (!excludeCJK || !hasCJK(it)) }?.let { entry to it.trim() }
         }
         .orEmpty()
 
-    val preferred = english.firstOrNull { it.first.is_default == true }?.second
-        ?: english.firstOrNull()?.second
+    val preferred = matches.firstOrNull { it.first.is_default == true }?.second
+        ?: matches.firstOrNull()?.second
     return preferred ?: title
 }
 
-fun ComickComic.displayTitle(): String? = pickEnglishTitle(title, md_titles)
+fun ComickComic.displayTitle(): String? = pickPreferredTitle(title, md_titles)
 
 data class ComickGenre(
     val md_genres: ComickGenreInfo?
@@ -479,7 +488,7 @@ data class ComickListComic(
     val translation_completed: Boolean? = null,
     val created_at: String? = null,
 ) : Serializable {
-    fun displayTitle(): String? = pickEnglishTitle(title, md_titles)
+    fun displayTitle(): String? = pickPreferredTitle(title, md_titles)
 }
 
 data class ComickFollowEntry(

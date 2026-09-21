@@ -28,6 +28,7 @@ import ani.dantotsu.snackString
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.toast
+import ani.dantotsu.util.choiceBottomSheet
 import ani.dantotsu.util.customAlertDialog
 import com.google.android.material.slider.Slider.OnChangeListener
 import eltos.simpledialogfragment.SimpleDialog
@@ -415,15 +416,12 @@ class PlayerSettingsActivity :
                 "Vietnamese",
             )
         binding.videoSubLanguage.setOnClickListener {
-            customAlertDialog().apply {
-                setTitle(getString(R.string.subtitle_langauge))
-                singleChoiceItems(
-                    subLanguages,
-                    PrefManager.getVal(PrefName.SubLanguage),
-                ) { count ->
-                    PrefManager.setVal(PrefName.SubLanguage, count)
-                }
-                show()
+            choiceBottomSheet(
+                getString(R.string.subtitle_langauge),
+                subLanguages.toList(),
+                PrefManager.getVal(PrefName.SubLanguage),
+            ) { count ->
+                PrefManager.setVal(PrefName.SubLanguage, count)
             }
         }
 

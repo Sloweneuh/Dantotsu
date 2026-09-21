@@ -173,6 +173,31 @@ enum class PrefName(val data: Pref) {
     MalSyncInfoEnabled(Pref(Location.General, Boolean::class, true)),
     MalSyncCheckMode(Pref(Location.General, String::class, "both")),
 
+    /**
+     * MALSync's default anime release track when a title has no per-media override, e.g. "en/dub"
+     * or "ja/sub" — any code [ani.dantotsu.connections.malsync.LanguageMapper] knows, matching what
+     * the per-media language picker itself can offer for a title.
+     */
+    MalSyncPreferredTrack(Pref(Location.General, String::class, "en/dub")),
+
+    /**
+     * Language code ([ani.dantotsu.others.LanguageMapper]) auto-selected when a manga/anime
+     * extension exposes multiple language sources and the user hasn't picked one for that title.
+     * Extensions only — deliberately separate from [ComickMangaBakaLanguage], which is exposed in
+     * the Comick settings card rather than here, since the two are unrelated data sources and a
+     * shared value hid that changing this one was silently affecting them too.
+     */
+    PreferredSourceLanguage(Pref(Location.General, String::class, "en")),
+
+    /**
+     * Language code ([ani.dantotsu.others.LanguageMapper]) Comick and MangaBaka display titles and
+     * fetch chapters in when a title carries more than one. Shared between the two because both are
+     * cross-reference/id-matching sources with the same "which language" question, not because
+     * either owns the setting — exposed on the Comick settings card, since that's the more visible
+     * of the two.
+     */
+    ComickMangaBakaLanguage(Pref(Location.General, String::class, "en")),
+
     /** How the home Unread Chapters row is ordered: "unread" (fewest unread first) or "recent". */
     UnreadChaptersSort(Pref(Location.General, String::class, "unread")),
     MalSyncExcludeList(Pref(Location.General, Set::class, setOf<String>())),

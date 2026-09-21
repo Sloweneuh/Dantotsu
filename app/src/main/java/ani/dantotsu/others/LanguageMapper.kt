@@ -1,5 +1,7 @@
 package ani.dantotsu.others
 
+import ani.dantotsu.settings.saving.PrefManager
+import ani.dantotsu.settings.saving.PrefName
 import java.util.Locale
 
 class LanguageMapper {
@@ -142,6 +144,22 @@ class LanguageMapper {
         fun getLanguageCode(language: String): String {
             return codeMap.filterValues { it.lowercase() == language.lowercase() }.keys.firstOrNull()
                 ?: "all"
+        }
+
+        /**
+         * Index in [langs] (raw source language codes, as extensions report them) matching the
+         * user's [PrefName.PreferredSourceLanguage] setting, or -1 if none of the extension's
+         * language variants match it. `startsWith` covers region variants (e.g. "en-US" matching
+         * a plain "en" preference); the display-name check covers the extensions that report a
+         * language as a word ("English") instead of a code.
+         */
+        fun preferredLanguageIndex(langs: List<String>): Int {
+            val code = PrefManager.getVal<String>(PrefName.PreferredSourceLanguage).lowercase()
+            val name = getLanguageName(code).lowercase()
+            return langs.indexOfFirst {
+                val l = it.lowercase()
+                l == code || l.startsWith(code) || l.contains(name)
+            }
         }
 
         enum class Language(val code: String) {

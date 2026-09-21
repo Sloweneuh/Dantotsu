@@ -27,6 +27,7 @@ import ani.dantotsu.connections.comick.ComickChapter
 import ani.dantotsu.connections.comick.ComickComic
 import ani.dantotsu.connections.comick.ComickEpisode
 import ani.dantotsu.connections.comick.ComickListComic
+import ani.dantotsu.connections.comick.ComickResponse
 import ani.dantotsu.connections.comick.broadcastDisplayZone
 import ani.dantotsu.connections.comick.displayTitle
 import ani.dantotsu.connections.comick.hasCJK
@@ -53,12 +54,16 @@ import ani.dantotsu.openLinkInBrowser
 import ani.dantotsu.openMangaUpdatesSeriesInApp
 import ani.dantotsu.openOrCopyAnilistLink
 import ani.dantotsu.others.ImageViewDialog
+import ani.dantotsu.others.LanguageMapper
 import ani.dantotsu.px
 import ani.dantotsu.setSafeOnClickListener
 import ani.dantotsu.settings.bindQuickSettings
+import ani.dantotsu.settings.saving.PrefManager
+import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.util.TrackerLinks
+import ani.dantotsu.util.choiceBottomSheet
 import com.google.android.material.chip.Chip
 import com.xwray.groupie.GroupieAdapter
 import kotlinx.coroutines.Dispatchers
@@ -97,6 +102,12 @@ class ComickMediaActivity : AppCompatActivity() {
     private var allEpisodes: List<ComickEpisode> = emptyList()
     private var chaptersLoaded = false
     private var currentTabIndex = 0
+
+    /** Every language with at least one chapter for this title — from [ComickResponse.langList]. */
+    private var chapterLangs: List<String> = emptyList()
+
+    /** The language [allChapters] was last fetched in. */
+    private var currentChapterLang: String = ""
 
     /** Anime entries use a different catalogue, list episodes instead of chapters, and have no
      *  MangaUpdates counterpart. */
@@ -194,6 +205,9 @@ class ComickMediaActivity : AppCompatActivity() {
                 finish()
                 return@launch
             }
+            // Anime entries have no chapter-language axis — their "chapters" are episodes,
+            // fetched by page scrape rather than the language-filtered chapters endpoint.
+            chapterLangs = if (isAnimeMode) emptyList() else comickData.langList.orEmpty()
 
             setupHeader(comic)
             setupSourceButtons(comic)
@@ -267,9 +281,26 @@ class ComickMediaActivity : AppCompatActivity() {
 
     private var loadedHid: String? = null
 
+    /** Per-title key a chapter-language choice for [hid] is remembered under. */
+    private fun chapterLangPrefKey(hid: String) = "comick_chapter_lang_$hid"
+
+    /**
+     * The language to fetch chapters in: this title's own remembered choice, else
+     * [PrefName.ComickMangaBakaLanguage], falling back within [chapterLangs] — to "en" (Comick's
+     * best-covered language) when the preferred one has no chapters here, else whatever the title
+     * does have — so the button never lands on a silently-empty selection.
+     */
+    private fun resolveChapterLang(hid: String): String {
+        val saved = PrefManager.getNullableCustomVal(chapterLangPrefKey(hid), null, String::class.java)
+        val preferred = saved ?: PrefManager.getVal(PrefName.ComickMangaBakaLanguage)
+        if (chapterLangs.isEmpty() || chapterLangs.contains(preferred)) return preferred
+        return if (chapterLangs.contains("en")) "en" else chapterLangs.first()
+    }
+
     private fun loadChapters(hid: String) {
         if (chaptersLoaded) return
         loadedHid = hid
+        currentChapterLang = resolveChapterLang(hid)
         binding.comickChaptersProgress.isVisible = true
         lifecycleScope.launch {
             val chapters = withContext(Dispatchers.IO) {
@@ -284,7 +315,7 @@ class ComickMediaActivity : AppCompatActivity() {
                         allEpisodes.map { it.toChapter() }
                     }
                 } else {
-                    ComickApi.getChapters(hid)
+                    ComickApi.getChapters(hid, currentChapterLang)
                 }
             }
             binding.comickChaptersProgress.isVisible = false
@@ -292,6 +323,25 @@ class ComickMediaActivity : AppCompatActivity() {
             chaptersLoaded = true
             // post{} ensures chips are built after the view has been laid out at real width
             binding.comickMediaChaptersScroll.post { populateChapters() }
+        }
+    }
+
+    /** Re-fetches the chapter list in [lang], remembered per-title from here on. */
+    private fun changeChapterLang(lang: String) {
+        val hid = loadedHid ?: return
+        if (lang == currentChapterLang) return
+        PrefManager.setCustomVal(chapterLangPrefKey(hid), lang)
+        chaptersLoaded = false
+        allChapters = emptyList()
+        loadChapters(hid)
+    }
+
+    private fun showChapterLangPicker() {
+        if (chapterLangs.size <= 1) return
+        val labels = chapterLangs.map { LanguageMapper.getLanguageName(it) }
+        val index = chapterLangs.indexOf(currentChapterLang).coerceAtLeast(0)
+        choiceBottomSheet(getString(R.string.comick_chapter_language), labels, index) { i ->
+            changeChapterLang(chapterLangs[i])
         }
     }
 
@@ -310,9 +360,17 @@ class ComickMediaActivity : AppCompatActivity() {
         binding.comickChaptersList.removeAllViews()
         binding.comickChaptersChipGroup.removeAllViews()
 
+        // Shown (and kept visible even with zero chapters below) whenever there's another
+        // language to switch to — a title whose resolved default came back empty still needs a
+        // way out of that state, not just a dead end.
+        val showLangButton = chapterLangs.size > 1
+        binding.comickChaptersLangButton.isVisible = showLangButton
+        binding.comickChaptersLangButton.setOnClickListener { showChapterLangPicker() }
+
         if (allChapters.isEmpty()) {
             binding.comickChaptersChipScroll.visibility = View.GONE
             binding.comickChaptersHeader.isVisible = false
+            binding.comickChaptersHeaderRow.isVisible = showLangButton
             binding.comickChaptersEmpty.setText(
                 if (isAnimeMode) R.string.no_episode else R.string.no_chapter
             )
@@ -324,6 +382,7 @@ class ComickMediaActivity : AppCompatActivity() {
 
         val total = allChapters.size
         val missing = computeMissingChapters(allChapters)
+        binding.comickChaptersHeaderRow.isVisible = true
         binding.comickChaptersHeader.isVisible = true
         binding.comickChaptersHeader.text = buildChaptersHeader(missing)
 

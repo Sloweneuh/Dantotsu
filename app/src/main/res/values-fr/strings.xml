@@ -63,6 +63,7 @@
     <string name="unread_sort_option_unread">Le moins de non-lus d\'abord</string>
     <string name="unread_sort_option_recent">Mis à jour le plus récemment</string>
     <string name="unread_sort_desc">Ordre d\'affichage des chapitres non lus sur l\'accueil</string>
+    <string name="malsync_preferred_track_label">Version diffusée de l\'anime</string>
     <string name="malsync_exclude_manage">Gérer les exclusions MALSync</string>
     <string name="malsync_exclude_manage_desc">Médias exclus des vérifications de chapitres / épisodes non lus</string>
     <string name="customize_info_tabs">Ordre des onglets d\'infos</string>
@@ -291,6 +292,9 @@
     <string name="connections_desc">Activer ou désactiver les connexions externes et les onglets d\'information</string>
     <string name="disable_comick">Afficher les infos Comick</string>
     <string name="disable_comick_desc">Activer ou désactiver la récupération des données Comick et l\'onglet Comick</string>
+    <string name="comick_mangabaka_language">Langue de contenu préférée</string>
+    <string name="comick_chapter_language">Langue des chapitres</string>
+    <string name="comick_mangabaka_language_desc">Titres (Comick, MangaBaka) et chapitres (Comick) chargés en : %1$s</string>
     <string name="disable_mal">Afficher les infos MyAnimeList</string>
     <string name="disable_mal_desc">Activer ou désactiver la récupération des données MAL et l\'onglet MAL</string>
     <string name="mal_connections_help">Comment fonctionne le bouton MAL ?</string>
@@ -972,6 +976,7 @@
     <string name="discord_logout_success">Déconnexion réussie</string>
     <string name="warning">Avertissement</string>
     <string name="default_browse_sort">Tri de navigation par défaut</string>
+    <string name="preferred_source_language">Langue de source préférée</string>
     <string name="force_legacy_installer">Forcer l\'installateur legacy</string>
     <string name="NSFWExtention">Extensions NSFW</string>
     <string name="skip_loading_extension_icons">Ignorer le chargement des icônes d\'extensions</string>
@@ -1705,6 +1710,7 @@
     <string name="novel_add_repository_desc">Ajouter des extensions Roman depuis diverses sources</string>
     <string name="user_agent_desc">Changer votre user agent par défaut</string>
     <string name="default_browse_sort_desc">La navigation dans une extension commence par : %1$s</string>
+    <string name="preferred_source_language_desc">Sélectionnée automatiquement sur les sources multilingues : %1$s</string>
     <string name="force_legacy_installer_desc">Utiliser l\'installateur legacy pour installer les extensions (Pour les vieux téléphones android)</string>
     <string name="skip_loading_extension_icons_desc">Ne pas charger les icônes des extensions sur la page des extensions</string>
     <string name="NSFWExtention_desc">Activer les extensions 18+ depuis la recherche (Peut supprimer certaines extensions utiles)</string>
@@ -2504,6 +2510,7 @@
     <string name="search_kw_mu_custom_list_mapping">mangaupdates mu liste statut correspondance</string>
     <string name="search_kw_mangabaka_tag_weight">mangabaka tag tags importance poids filtre défaut accessoire récurrent déterminant central</string>
     <string name="search_kw_disable_comick">comick source manga</string>
+    <string name="search_kw_comick_mangabaka_language">comick mangabaka langue contenu titre chapitre préférée défaut anglais</string>
     <string name="search_kw_disable_mal">myanimelist mal compte suivi</string>
     <string name="search_kw_disable_malsync">malsync sync synchronisation suivi progression</string>
     <string name="search_kw_disable_kitsu">kitsu onglet parcourir explorer info informations source</string>
@@ -2511,7 +2518,7 @@
     <string name="search_kw_disable_mangabaka">mangabaka onglet parcourir explorer info informations source</string>
     <string name="search_kw_malsync_exclude_manage">exclure filtre filtrer non lus chapitre épisode notifications malsync</string>
     <string name="search_kw_unread_sort_label">non lus chapitres accueil tri trier ordre récent dernier mis à jour malsync mangaupdates</string>
-    <string name="search_kw_malsync_checks_dialog_title">malsync vérifications mode manga anime les deux quoi</string>
+    <string name="search_kw_malsync_checks_dialog_title">malsync vérifications mode manga anime les deux quoi vostfr vf sous-titré doublé version langue</string>
     <string name="search_kw_customize_info_tabs">anilist anime animé manga mangaupdates info informations onglet ordre réordonner visibilité mal comick mangabaka</string>
     <string name="search_kw_compare_lists">comparer comparaison audit différence diff différences sortie de date myanimelist mal kitsu simkl mangabaka anilist mangaupdates sync synchronisation</string>
     <string name="search_kw_auto_list_sync">automatique auto comparer comparaison planification programmer intervalle fréquence arrière-plan fond périodique liste sync synchronisation envoyer pousser myanimelist mal mangabaka</string>
@@ -2651,6 +2658,7 @@
     <string name="search_kw_proxy">réseau socks http tunnel</string>
     <string name="search_kw_proxy_setup">proxy réseau configurer configuration</string>
     <string name="search_kw_default_browse_sort">navigation tri défaut populaire nouveau liste</string>
+    <string name="search_kw_preferred_source_language">langue source préférée extension défaut anglais sous-titré doublé multi</string>
     <string name="search_kw_auto_update_extensions">automatique mise à jour arrière-plan installer extensions</string>
     <string name="search_kw_auto_update_extensions_wifi_only">wifi non mesurée mesurée réseau extension mise à jour</string>
     <string name="search_kw_auto_update_extensions_interval">planifier fréquence heures quotidien hebdomadaire vérifier extension mise à jour</string>

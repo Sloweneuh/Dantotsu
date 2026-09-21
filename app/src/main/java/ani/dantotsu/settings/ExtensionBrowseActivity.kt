@@ -7,16 +7,12 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
-import android.widget.LinearLayout
-import android.widget.RadioGroup
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.app.ActivityOptionsCompat
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
-import androidx.core.widget.NestedScrollView
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -30,6 +26,7 @@ import ani.dantotsu.loadImage
 import ani.dantotsu.media.ActiveFilterChip
 import ani.dantotsu.media.ManageFiltersDialog
 import ani.dantotsu.navBarHeight
+import ani.dantotsu.others.LanguageMapper
 import ani.dantotsu.others.LanguageMapper.Companion.getLanguageName
 import ani.dantotsu.parsers.NovelParser
 import ani.dantotsu.parsers.ShowResponse
@@ -44,12 +41,10 @@ import ani.dantotsu.statusBarHeight
 import ani.dantotsu.stripSpansOnPaste
 import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.util.Logger
+import ani.dantotsu.util.choiceBottomSheet
 import ani.dantotsu.util.hideEmptyState
 import ani.dantotsu.util.showError
 import ani.dantotsu.util.showNoResults
-import com.google.android.material.bottomsheet.BottomSheetDialog
-import com.google.android.material.color.MaterialColors
-import com.google.android.material.radiobutton.MaterialRadioButton
 import eu.kanade.tachiyomi.animesource.AnimeCatalogueSource
 import eu.kanade.tachiyomi.animesource.model.AnimeFilter
 import eu.kanade.tachiyomi.animesource.model.AnimeFilterList
@@ -585,82 +580,22 @@ class ExtensionBrowseActivity : AppCompatActivity() {
             binding.extensionBrowseLanguage.isVisible = false
             return
         }
-        val englishIndex = when {
-            animeExtension != null -> animeExtension!!.sources.indexOfFirst { it.lang == "en" }
-            mangaExtension != null -> mangaExtension!!.sources.indexOfFirst { it.lang == "en" }
+        val preferredIndex = when {
+            animeExtension != null -> LanguageMapper.preferredLanguageIndex(animeExtension!!.sources.map { it.lang })
+            mangaExtension != null -> LanguageMapper.preferredLanguageIndex(mangaExtension!!.sources.map { it.lang })
             else -> -1
         }
-        if (applyDefaultLanguage && englishIndex != -1) sourceIndex = englishIndex
+        if (applyDefaultLanguage && preferredIndex != -1) sourceIndex = preferredIndex
         binding.extensionBrowseLanguage.isVisible = true
         binding.extensionBrowseLanguage.setOnClickListener {
-            val sheet = BottomSheetDialog(this)
-            val dp = resources.displayMetrics.density
-            val onBgColor = MaterialColors.getColor(
-                binding.root, com.google.android.material.R.attr.colorOnBackground
-            )
-
-            val scrollView = NestedScrollView(this)
-            val container = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                setBackgroundResource(R.drawable.bottom_sheet_background)
-                val h = (24 * dp).toInt()
-                setPadding(h, (20 * dp).toInt(), h, navBarHeight + (16 * dp).toInt())
+            choiceBottomSheet(getString(R.string.language), names.toList(), sourceIndex) { which ->
+                sourceIndex = which
+                defaultFilters = null
+                adapter.setImageHeaders(currentSourceHeaders())
+                configureChips()
+                clearSearchQuery()
+                load(defaultMode(), null)
             }
-
-            container.addView(AppCompatTextView(this).apply {
-                text = getString(R.string.language)
-                textSize = 18f
-                typeface = ResourcesCompat.getFont(this@ExtensionBrowseActivity, R.font.poppins_bold)
-                setTextColor(onBgColor)
-                setPadding(0, 0, 0, (12 * dp).toInt())
-            })
-
-            container.addView(View(this).apply {
-                layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 1).also {
-                    it.bottomMargin = (12 * dp).toInt()
-                }
-                alpha = 0.12f
-                setBackgroundColor(onBgColor)
-            })
-
-            val radioGroup = RadioGroup(this).apply {
-                orientation = RadioGroup.VERTICAL
-                layoutParams = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-                )
-            }
-            names.forEachIndexed { index, name ->
-                MaterialRadioButton(this@ExtensionBrowseActivity).apply {
-                    id = index
-                    text = name
-                    textSize = 15f
-                    typeface = ResourcesCompat.getFont(this@ExtensionBrowseActivity, R.font.poppins_semi_bold)
-                    isChecked = index == sourceIndex
-                    minHeight = (48 * dp).toInt()
-                    layoutParams = RadioGroup.LayoutParams(
-                        RadioGroup.LayoutParams.MATCH_PARENT,
-                        RadioGroup.LayoutParams.WRAP_CONTENT
-                    )
-                    radioGroup.addView(this)
-                }
-            }
-            radioGroup.setOnCheckedChangeListener { _, which ->
-                if (which >= 0 && which != sourceIndex) {
-                    sourceIndex = which
-                    defaultFilters = null
-                    adapter.setImageHeaders(currentSourceHeaders())
-                    configureChips()
-                    clearSearchQuery()
-                    load(defaultMode(), null)
-                }
-                sheet.dismiss()
-            }
-
-            container.addView(radioGroup)
-            scrollView.addView(container)
-            sheet.setContentView(scrollView)
-            sheet.show()
         }
     }
 

@@ -28,6 +28,7 @@ import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.toast
+import ani.dantotsu.util.choiceBottomSheet
 import ani.dantotsu.util.customAlertDialog
 import java.util.UUID
 
@@ -67,28 +68,24 @@ class SettingsGeneralActivity : AppCompatActivity() {
                             icon = R.drawable.ic_round_language_24,
                             onClick = {
                                 val languages = ani.dantotsu.util.LanguageHelper.getSupportedLanguages()
-                                val languageNames = languages.map { it.getDisplayName() }.toTypedArray()
+                                val languageNames = languages.map { it.getDisplayName() }
                                 val currentLanguage = ani.dantotsu.util.LanguageHelper.getCurrentLanguageCode()
                                 val currentIndex = languages.indexOfFirst { it.code == currentLanguage }
 
-                                customAlertDialog().apply {
-                                    setTitle(getString(R.string.language_setting))
-                                    singleChoiceItems(languageNames, currentIndex) { which ->
-                                        val selectedLanguage = languages[which]
-                                        ani.dantotsu.util.LanguageHelper.setLanguage(context, selectedLanguage.code)
+                                choiceBottomSheet(getString(R.string.language_setting), languageNames, currentIndex) { which ->
+                                    val selectedLanguage = languages[which]
+                                    ani.dantotsu.util.LanguageHelper.setLanguage(context, selectedLanguage.code)
 
-                                        // Show restart confirmation dialog
-                                        customAlertDialog().apply {
-                                            setTitle(getString(R.string.restart_required))
-                                            setMessage(getString(R.string.restart_app_to_apply_language))
-                                            setPosButton(getString(R.string.restart)) {
-                                                startMainActivity(this@SettingsGeneralActivity)
-                                            }
-                                            setNegButton(getString(R.string.later))
-                                            show()
+                                    // Show restart confirmation dialog
+                                    customAlertDialog().apply {
+                                        setTitle(getString(R.string.restart_required))
+                                        setMessage(getString(R.string.restart_app_to_apply_language))
+                                        setPosButton(getString(R.string.restart)) {
+                                            startMainActivity(this@SettingsGeneralActivity)
                                         }
+                                        setNegButton(getString(R.string.later))
+                                        show()
                                     }
-                                    show()
                                 }
                             },
                         ),

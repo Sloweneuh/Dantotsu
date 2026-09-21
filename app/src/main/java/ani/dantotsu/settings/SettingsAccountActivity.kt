@@ -32,12 +32,14 @@ import ani.dantotsu.media.MangaBakaTagWeights
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.openLinkInBrowser
 import ani.dantotsu.others.CustomBottomDialog
+import ani.dantotsu.others.LanguageMapper
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.snackString
 import ani.dantotsu.startMainActivity
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
+import ani.dantotsu.util.choiceBottomSheet
 import ani.dantotsu.util.customAlertDialog
 import io.noties.markwon.Markwon
 import io.noties.markwon.SoftBreakAddsNewLinePlugin
@@ -188,6 +190,32 @@ class SettingsAccountActivity : AppCompatActivity() {
             anchorKey = "backup_sync",
             onClick = {
                 startActivity(Intent(this, SettingsBackupSyncActivity::class.java))
+            },
+        ),
+        // Lives here rather than on the Comick card: it also governs MangaBaka, so a shared
+        // setting living inside one provider's card is exactly what made it invisible from the
+        // other. This screen, not either card, is what both have in common.
+        Settings(
+            type = 1,
+            name = getString(R.string.comick_mangabaka_language),
+            desc = comickMangaBakaLanguageDesc(),
+            icon = R.drawable.ic_round_language_24,
+            anchorKey = "comickMangaBakaLanguage",
+            attach = { b ->
+                b.settingsDesc.text = comickMangaBakaLanguageDesc()
+                b.attachView.visibility = View.GONE
+            },
+            onClick = { b ->
+                val code: String = PrefManager.getVal(PrefName.ComickMangaBakaLanguage)
+                val index = comickMangaBakaLanguages.indexOfFirst { it.code == code }.coerceAtLeast(0)
+                choiceBottomSheet(
+                    getString(R.string.comick_mangabaka_language),
+                    comickMangaBakaLanguageOptions().toList(),
+                    index,
+                ) { i ->
+                    PrefManager.setVal(PrefName.ComickMangaBakaLanguage, comickMangaBakaLanguages[i].code)
+                    b.settingsDesc.text = comickMangaBakaLanguageDesc()
+                }
             },
         ),
     )
@@ -450,6 +478,20 @@ class SettingsAccountActivity : AppCompatActivity() {
             anchorKey = "sync",
         ),
     )
+
+    private val comickMangaBakaLanguages = LanguageMapper.Companion.Language.entries.toTypedArray()
+
+    private fun comickMangaBakaLanguageOptions() = comickMangaBakaLanguages.map { entry ->
+        entry.name.lowercase().replace("_", " ")
+            .replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.ROOT) else it.toString() }
+    }.toTypedArray()
+
+    /** The language currently used for Comick/MangaBaka titles and Comick chapters. */
+    private fun comickMangaBakaLanguageDesc(): String {
+        val code: String = PrefManager.getVal(PrefName.ComickMangaBakaLanguage)
+        val index = comickMangaBakaLanguages.indexOfFirst { it.code == code }.coerceAtLeast(0)
+        return getString(R.string.comick_mangabaka_language_desc, comickMangaBakaLanguageOptions()[index])
+    }
 
     private fun malSyncRows(): List<Settings> = listOf(
         header(R.string.account_group_info),
@@ -725,6 +767,18 @@ class SettingsAccountActivity : AppCompatActivity() {
 
     // ---- MALSync "what to check" dialog (ported from the old Connections screen) ----
 
+    /**
+     * Base languages MALSync tracks releases in — the same set
+     * [ani.dantotsu.connections.malsync.LanguageMapper.mapLanguage] names explicitly, so this
+     * global default offers exactly what the per-media language picker
+     * ([MediaDetailsActivity]'s language button, built from
+     * [ani.dantotsu.connections.malsync.MalSyncApi.getAvailableLanguagesWithEpisodes]) can turn up
+     * for an actual title, rather than the English-only dub/sub choice this used to be.
+     */
+    private val malSyncTrackCodes = listOf(
+        "en", "ja", "de", "fr", "es", "pt", "it", "ru", "ar", "zh", "ko", "id", "ms", "th", "vi"
+    ).flatMap { listOf("$it/dub", "$it/sub") }
+
     private fun showMalSyncChecksDialog(descView: TextView) {
         val modeOptions = arrayOf(
             getString(R.string.malsync_checks_option_manga),
@@ -735,11 +789,18 @@ class SettingsAccountActivity : AppCompatActivity() {
             getString(R.string.unread_sort_option_unread),
             getString(R.string.unread_sort_option_recent),
         )
+        // Not localized: matches ani.dantotsu.connections.malsync.LanguageMapper's own display
+        // names, which the per-media language picker already shows unlocalized the same way.
+        val trackOptions = malSyncTrackCodes
+            .map { ani.dantotsu.connections.malsync.LanguageMapper.displayWithType(it) }
+            .toTypedArray()
         val dialogView = layoutInflater.inflate(R.layout.dialog_malsync_checks, null)
         val modeDropdown = dialogView.findViewById<AutoCompleteTextView>(R.id.malSyncModeDropdown)
         val sortDropdown = dialogView.findViewById<AutoCompleteTextView>(R.id.unreadSortDropdown)
+        val trackDropdown = dialogView.findViewById<AutoCompleteTextView>(R.id.malSyncPreferredTrackDropdown)
         modeDropdown.setAdapter(ArrayAdapter(this, R.layout.item_dropdown, modeOptions))
         sortDropdown.setAdapter(ArrayAdapter(this, R.layout.item_dropdown, sortOptions))
+        trackDropdown.setAdapter(ArrayAdapter(this, R.layout.item_dropdown, trackOptions))
         val currentIndex = when (PrefManager.getVal<String>(PrefName.MalSyncCheckMode)) {
             "manga" -> 0
             "anime" -> 1
@@ -750,6 +811,10 @@ class SettingsAccountActivity : AppCompatActivity() {
             sortOptions[if (PrefManager.getVal<String>(PrefName.UnreadChaptersSort) == "recent") 1 else 0],
             false,
         )
+        val currentTrackIndex = malSyncTrackCodes
+            .indexOf(PrefManager.getVal<String>(PrefName.MalSyncPreferredTrack))
+            .takeIf { it != -1 } ?: malSyncTrackCodes.indexOf("en/dub")
+        trackDropdown.setText(trackOptions[currentTrackIndex], false)
         modeDropdown.setOnItemClickListener { _, _, i, _ ->
             PrefManager.setVal(
                 PrefName.MalSyncCheckMode,
@@ -763,6 +828,9 @@ class SettingsAccountActivity : AppCompatActivity() {
         }
         sortDropdown.setOnItemClickListener { _, _, i, _ ->
             PrefManager.setVal(PrefName.UnreadChaptersSort, if (i == 1) "recent" else "unread")
+        }
+        trackDropdown.setOnItemClickListener { _, _, i, _ ->
+            PrefManager.setVal(PrefName.MalSyncPreferredTrack, malSyncTrackCodes[i])
         }
         customAlertDialog().apply {
             setTitle(R.string.malsync_checks_dialog_title)

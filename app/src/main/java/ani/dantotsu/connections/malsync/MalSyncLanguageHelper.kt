@@ -11,12 +11,13 @@ object MalSyncLanguageHelper {
     /**
      * Get the preferred language for a specific media
      * @param mediaId AniList media ID
-     * @return Preferred language (e.g., "en/dub") or default "en/dub"
+     * @return Preferred language (e.g., "en/dub"), falling back to the global
+     *   [PrefName.MalSyncPreferredTrack] setting when the title has no override of its own
      */
     fun getPreferredLanguage(mediaId: Int): String {
         val preferences = PrefManager.getVal<Set<String>>(PrefName.MalSyncLanguagePreferences)
         val entry = preferences.firstOrNull { it.startsWith("$mediaId:") }
-        return entry?.substringAfter(":")  ?: "en/dub" // Default to en/dub
+        return entry?.substringAfter(":") ?: PrefManager.getVal(PrefName.MalSyncPreferredTrack)
     }
 
     /**

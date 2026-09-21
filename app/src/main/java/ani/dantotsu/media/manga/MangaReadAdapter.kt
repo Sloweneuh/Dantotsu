@@ -86,18 +86,14 @@ class MangaReadAdapter(
         binding.mediaSourceSettings.setSettingsAvailable(hasSettings)
     }
 
-    // Helper: choose English by default when available
+    // Helper: choose the user's preferred source language by default when available
     private fun defaultLangIndexForSource(sourceIndex: Int, preferred: Int): Int {
         try {
             if (mangaReadSources is MangaSources) {
                 val parser = mangaReadSources[sourceIndex] as? DynamicMangaParser
                 if (parser != null) {
-                    val sources = parser.extension.sources
-                    val enIndex = sources.indexOfFirst {
-                        val code = it.lang.lowercase()
-                        code == "en" || code.startsWith("en") || code.contains("english")
-                    }
-                    if (enIndex != -1) return enIndex
+                    val langIndex = LanguageMapper.preferredLanguageIndex(parser.extension.sources.map { it.lang })
+                    if (langIndex != -1) return langIndex
                 }
             }
         } catch (ignored: Exception) { }

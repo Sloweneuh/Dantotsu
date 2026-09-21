@@ -133,6 +133,7 @@ object BackupTree {
                     R.string.account_info_source,
                     listOf(
                         BackupItem(PrefName.ComickEnabled, R.string.disable_comick),
+                        BackupItem(PrefName.ComickMangaBakaLanguage, R.string.comick_mangabaka_language),
                     )
                 ),
                 BackupSubCategory(
@@ -141,6 +142,7 @@ object BackupTree {
                     listOf(
                         BackupItem(PrefName.MalSyncInfoEnabled, R.string.disable_malsync),
                         BackupItem(PrefName.MalSyncCheckMode, R.string.malsync_checks_dialog_title),
+                        BackupItem(PrefName.MalSyncPreferredTrack, R.string.malsync_preferred_track_label),
                         BackupItem(PrefName.MalSyncExcludeList, R.string.malsync_exclude_manage),
                         BackupItem(PrefName.UnreadChaptersSort, R.string.unread_sort_label),
                     )
@@ -599,6 +601,7 @@ object BackupTree {
                     R.string.extension_behaviour_desc,
                     listOf(
                         BackupItem(PrefName.DefaultBrowseSort, R.string.default_browse_sort),
+                        BackupItem(PrefName.PreferredSourceLanguage, R.string.preferred_source_language),
                         BackupItem(PrefName.SkipExtensionIcons, R.string.skip_loading_extension_icons),
                         BackupItem(PrefName.NSFWExtension, R.string.NSFWExtention_desc),
                         BackupItem(PrefName.AutoUpdateExtensions, R.string.auto_update_extensions),

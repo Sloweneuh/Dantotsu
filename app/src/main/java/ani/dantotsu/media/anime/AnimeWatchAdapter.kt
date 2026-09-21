@@ -66,18 +66,14 @@ class AnimeWatchAdapter(
     private var _binding: ItemMediaSourceBinding? = null
     val binding get() = _binding
 
-    // Helper: choose English by default when available
+    // Helper: choose the user's preferred source language by default when available
     private fun defaultLangIndexForSource(sourceIndex: Int, preferred: Int): Int {
         try {
             if (watchSources is AnimeSources) {
                 val parser = watchSources[sourceIndex] as? DynamicAnimeParser
                 if (parser != null) {
-                    val sources = parser.extension.sources
-                    val enIndex = sources.indexOfFirst {
-                        val code = it.lang.lowercase()
-                        code == "en" || code.startsWith("en") || code.contains("english")
-                    }
-                    if (enIndex != -1) return enIndex
+                    val langIndex = LanguageMapper.preferredLanguageIndex(parser.extension.sources.map { it.lang })
+                    if (langIndex != -1) return langIndex
                 }
             }
         } catch (_: Exception) { }

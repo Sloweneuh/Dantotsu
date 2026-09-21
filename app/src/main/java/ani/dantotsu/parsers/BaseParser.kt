@@ -5,6 +5,7 @@ import ani.dantotsu.FileUrl
 import ani.dantotsu.R
 import ani.dantotsu.currContext
 import ani.dantotsu.media.Media
+import ani.dantotsu.others.LanguageMapper
 import ani.dantotsu.util.Logger
 import eu.kanade.tachiyomi.animesource.model.SAnime
 import eu.kanade.tachiyomi.source.model.SManga
@@ -135,16 +136,19 @@ abstract class BaseParser {
     /**
      * Points the parser at the language the chapters/episodes should come from, before searching.
      *
-     * Two things have to hold. A media nobody picked a language for searches English, because a
+     * Two things have to hold. A media nobody picked a language for searches
+     * [ani.dantotsu.settings.saving.PrefName.PreferredSourceLanguage] (English by default), because a
      * source's first entry is whatever language the extension happens to list first — which is how
      * chapter lists used to arrive in a language nobody asked for. But a language the user *did* pick
      * has to survive: the read/watch screen sets it on the parser and persists it as
      * [ani.dantotsu.media.Selected.langIndex] before triggering the load that lands here, so
-     * overwriting it with English is what made the language dropdown look like it did nothing.
+     * overwriting it with the preferred language is what made the language dropdown look like it did
+     * nothing.
      *
      * Neither value distinguishes "picked the first entry" from "never picked", so index 0 is read as
      * unset — the case that costs is a user deliberately choosing the first entry on an extension
-     * that also carries English, where this still lands on English as it did before.
+     * that also carries the preferred language, where this still lands on that language as it did
+     * before.
      */
     private fun applySourceLanguage(mediaObj: Media) {
         val selected = mediaObj.selected?.langIndex
@@ -162,11 +166,8 @@ abstract class BaseParser {
     private fun resolveLanguage(langs: List<String>, selected: Int?, current: Int): Int {
         listOf(selected, current).firstOrNull { it != null && it > 0 && it in langs.indices }
             ?.let { return it }
-        val english = langs.indexOfFirst {
-            val code = it.lowercase()
-            code == "en" || code.startsWith("en") || code.contains("english")
-        }
-        return if (english != -1) english else selected?.takeIf { it in langs.indices } ?: 0
+        val preferred = LanguageMapper.preferredLanguageIndex(langs)
+        return if (preferred != -1) preferred else selected?.takeIf { it in langs.indices } ?: 0
     }
 
     /**

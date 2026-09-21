@@ -196,20 +196,40 @@
                 android:layout_height="wrap_content"
                 android:orientation="vertical">
 
-                <!-- Chapter count / missing-chapter header -->
-                <TextView
-                    android:id="@+id/comickChaptersHeader"
+                <!-- Chapter count / missing-chapter header, plus the per-title chapter-language
+                     button (visible only when the title has chapters in more than one language) -->
+                <LinearLayout
+                    android:id="@+id/comickChaptersHeaderRow"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:fontFamily="@font/poppins_bold"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
                     android:paddingStart="16dp"
-                    android:paddingEnd="16dp"
+                    android:paddingEnd="8dp"
                     android:paddingTop="12dp"
                     android:paddingBottom="4dp"
-                    android:text="@string/chaps"
-                    android:textColor="?attr/colorOnBackground"
-                    android:textSize="14sp"
-                    android:visibility="gone" />
+                    android:visibility="gone">
+
+                    <TextView
+                        android:id="@+id/comickChaptersHeader"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:fontFamily="@font/poppins_bold"
+                        android:text="@string/chaps"
+                        android:textColor="?attr/colorOnBackground"
+                        android:textSize="14sp" />
+
+                    <ImageButton
+                        android:id="@+id/comickChaptersLangButton"
+                        android:layout_width="32dp"
+                        android:layout_height="32dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/comick_chapter_language"
+                        android:padding="4dp"
+                        android:src="@drawable/ic_round_language_24"
+                        android:visibility="gone" />
+                </LinearLayout>
 
                 <!-- Chip group for range navigation (visibility controlled in code) -->
                 <HorizontalScrollView

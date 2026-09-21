@@ -26,6 +26,7 @@ import ani.dantotsu.download.downloadSettingsRows
 import ani.dantotsu.initActivity
 import ani.dantotsu.media.MediaType
 import ani.dantotsu.navBarHeight
+import ani.dantotsu.others.LanguageMapper
 import ani.dantotsu.parsers.ParserTestActivity
 import ani.dantotsu.restartApp
 import ani.dantotsu.settings.saving.PrefManager
@@ -34,6 +35,7 @@ import ani.dantotsu.snackString
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.util.Logger
+import ani.dantotsu.util.choiceBottomSheet
 import ani.dantotsu.notifications.extension.ExtensionUpdateScheduler
 import ani.dantotsu.notifications.extension.RefusedExtensionUpdates
 import ani.dantotsu.util.customAlertDialog
@@ -255,6 +257,20 @@ class SettingsSourcesActivity : AppCompatActivity() {
         return getString(R.string.default_browse_sort_desc, browseSortOptions()[index])
     }
 
+    private val sourceLanguages = LanguageMapper.Companion.Language.entries.toTypedArray()
+
+    private fun preferredSourceLanguageOptions() = sourceLanguages.map { entry ->
+        entry.name.lowercase().replace("_", " ")
+            .replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.ROOT) else it.toString() }
+    }.toTypedArray()
+
+    /** The language currently auto-selected on a multi-language source, spelled out on the row. */
+    private fun preferredSourceLanguageDesc(): String {
+        val code: String = PrefManager.getVal(PrefName.PreferredSourceLanguage)
+        val index = sourceLanguages.indexOfFirst { it.code == code }.coerceAtLeast(0)
+        return getString(R.string.preferred_source_language_desc, preferredSourceLanguageOptions()[index])
+    }
+
     /** How often a scheduled extension-update run happens, in minutes. */
     private val autoUpdateIntervals = longArrayOf(360L, 720L, 1440L, 10080L)
 
@@ -295,6 +311,30 @@ class SettingsSourcesActivity : AppCompatActivity() {
                         b.settingsDesc.text = browseSortDesc()
                     }
                     show()
+                }
+            }
+        ),
+        Settings(
+            type = 1,
+            name = getString(R.string.preferred_source_language),
+            desc = preferredSourceLanguageDesc(),
+            icon = R.drawable.ic_round_language_24,
+            compact = true,
+            anchorKey = "preferred_source_language",
+            attach = {
+                it.settingsDesc.text = preferredSourceLanguageDesc()
+                it.attachView.isVisible = false
+            },
+            onClick = { b ->
+                val code: String = PrefManager.getVal(PrefName.PreferredSourceLanguage)
+                val index = sourceLanguages.indexOfFirst { it.code == code }.coerceAtLeast(0)
+                choiceBottomSheet(
+                    getString(R.string.preferred_source_language),
+                    preferredSourceLanguageOptions().toList(),
+                    index,
+                ) { i ->
+                    PrefManager.setVal(PrefName.PreferredSourceLanguage, sourceLanguages[i].code)
+                    b.settingsDesc.text = preferredSourceLanguageDesc()
                 }
             }
         ),

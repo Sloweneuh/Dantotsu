@@ -3,6 +3,8 @@ package ani.dantotsu.connections.mangabaka
 import ani.dantotsu.Mapper
 import ani.dantotsu.okHttpClient
 import ani.dantotsu.connections.IdCache
+import ani.dantotsu.settings.saving.PrefManager
+import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.tryWithSuspend
 import ani.dantotsu.util.Logger
 import kotlinx.coroutines.Dispatchers
@@ -637,27 +639,30 @@ object MangaBakaApi {
         val source: SeriesSource? = null,
     ) {
         /**
-         * [title] when no English entry exists in [titles], else that entry — see [pickEnglishTitle].
-         * What search results and media pages should show as the name.
+         * [title] when no [PrefName.ComickMangaBakaLanguage] entry exists in [titles], else that
+         * entry — see [pickPreferredTitle]. What search results and media pages should show as the
+         * name.
          */
-        fun displayTitle(): String? = pickEnglishTitle(title, titles)
+        fun displayTitle(): String? = pickPreferredTitle(title, titles)
     }
 
     /**
-     * The English entry in a series' `titles` array, preferring one flagged primary, else the first
-     * found; null when none exists. `is_primary` is per-language (a series can have an
-     * `is_primary`-flagged native title *and* an `is_primary`-flagged English one), so this alone
-     * decides which of possibly several English synonyms is the "real" one rather than a fan title.
+     * The [PrefName.ComickMangaBakaLanguage] entry in a series' `titles` array, preferring one
+     * flagged primary, else the first found; null when none exists. `is_primary` is per-language (a
+     * series can have an `is_primary`-flagged native title *and* an `is_primary`-flagged preferred
+     * one), so this alone decides which of possibly several synonyms in that language is the "real"
+     * one rather than a fan title.
      *
      * Shared by [Series] and [SimilarSeries]: the `similar` route embeds the same `titles` shape as
      * every other series lookup, just under a slimmer series object.
      */
-    private fun pickEnglishTitle(title: String?, titles: List<TitleEntry>?): String? {
-        val english = titles.orEmpty().filter {
-            it.language?.substringBefore('-')?.lowercase() == "en" && !it.title.isNullOrBlank()
+    private fun pickPreferredTitle(title: String?, titles: List<TitleEntry>?): String? {
+        val preferredLang = PrefManager.getVal<String>(PrefName.ComickMangaBakaLanguage)
+        val matching = titles.orEmpty().filter {
+            it.language?.substringBefore('-')?.lowercase() == preferredLang && !it.title.isNullOrBlank()
         }
-        val englishTitle = english.firstOrNull { it.isPrimary == true }?.title ?: english.firstOrNull()?.title
-        return englishTitle ?: title
+        val matchingTitle = matching.firstOrNull { it.isPrimary == true }?.title ?: matching.firstOrNull()?.title
+        return matchingTitle ?: title
     }
 
     @Serializable
@@ -773,7 +778,7 @@ object MangaBakaApi {
         // stub: same shape TitleEntry/Series.titles uses, so recommendations can prefer English too.
         val titles: List<TitleEntry>? = null,
     ) {
-        /** See [Series.displayTitle] / [pickEnglishTitle] — same preference, same titles shape. */
-        fun displayTitle(): String? = pickEnglishTitle(title, titles)
+        /** See [Series.displayTitle] / [pickPreferredTitle] — same preference, same titles shape. */
+        fun displayTitle(): String? = pickPreferredTitle(title, titles)
     }
 }

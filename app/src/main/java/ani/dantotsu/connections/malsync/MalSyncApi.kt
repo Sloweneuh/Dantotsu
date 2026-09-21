@@ -310,31 +310,29 @@ object MalSyncApi {
      * Implements progress selection logic for anime with language preference
      * Prioritizes based on preferred language with fallback logic
      * @param results List of available MalSync entries
-     * @param preferredLanguage Preferred language ID (e.g., "en/dub", "en/sub")
+     * @param preferredLanguage Preferred language ID (e.g., "en/dub", "ja/sub")
      * @return Best matching MalSyncResponse or null
      */
     private fun getProgressForAnime(results: List<MalSyncResponse>, preferredLanguage: String): MalSyncResponse? {
         if (results.isEmpty()) return null
 
         // Primary: Look for exact match with preferred language
-        var top = results.firstOrNull { it.id == preferredLanguage }
-        if (top != null) {
-            return top
+        results.firstOrNull { it.id == preferredLanguage }?.let { return it }
+
+        // Fallback 1: same language, the other track — a dub preference tries that language's sub
+        // before giving up on the language entirely, and vice versa.
+        val otherTrack = when {
+            preferredLanguage.endsWith("/dub") -> preferredLanguage.removeSuffix("/dub") + "/sub"
+            preferredLanguage.endsWith("/sub") -> preferredLanguage.removeSuffix("/sub") + "/dub"
+            else -> null
+        }
+        if (otherTrack != null) {
+            results.firstOrNull { it.id == otherTrack }?.let { return it }
         }
 
-        // Fallback 1: If preferred was "en/dub", try "en/sub"
-        if (preferredLanguage == "en/dub") {
-            top = results.firstOrNull { it.id == "en/sub" }
-            if (top != null) {
-                return top
-            }
-        }
-
-        // Fallback 2: Try any entry with lang "en"
-        top = results.firstOrNull { it.lang == "en" }
-        if (top != null) {
-            return top
-        }
+        // Fallback 2: Try any entry with lang "en" — MALSync's best-covered language, so a
+        // preference for something less common still lands on real data rather than nothing.
+        results.firstOrNull { it.lang == "en" }?.let { return it }
 
         // Fallback 3: Return first available entry
         return results.first()
