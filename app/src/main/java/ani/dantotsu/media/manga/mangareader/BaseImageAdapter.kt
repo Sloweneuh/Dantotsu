@@ -24,6 +24,7 @@ import ani.dantotsu.parsers.MangaImage
 import ani.dantotsu.px
 import ani.dantotsu.settings.CurrentReaderSettings
 import ani.dantotsu.tryWithSuspend
+import com.alexvasilkov.gestures.GestureController
 import com.alexvasilkov.gestures.views.GestureFrameLayout
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
@@ -149,9 +150,11 @@ abstract class BaseImageAdapter(
                 }
             }
         }
+        watchZoom(view) { activity.lifecycleScope.launch { loadImage(boundPosition, view) } }
         if (alreadyShown) return
         activity.lifecycleScope.launch { loadImage(boundPosition, view) }
     }
+
 
     /**
      * Hands the page's pixels back as soon as the view reaches the recycled pool.
@@ -188,6 +191,52 @@ abstract class BaseImageAdapter(
     abstract suspend fun loadImage(position: Int, parent: View): Boolean
 
     companion object {
+        /**
+         * Re-renders a page once a zoom settles, so it is decoded for the size it is being shown at.
+         *
+         * The wrapper zooms by transforming the view, which leaves the GPU stretching whatever bitmap
+         * the page was decoded into — detail the fitted render never had cannot appear that way. So
+         * the zoom is watched, and when it stops changing the page is read again from its cached
+         * bytes at the new size. Deliberately on settle rather than during the gesture: a decode per
+         * frame of a pinch would cost far more than it showed.
+         *
+         * The page is claimed through the same [beginPageLoad] ownership as any other load, so a
+         * re-render that finishes after the view has moved on is discarded rather than painted onto
+         * whatever page is there now.
+         */
+        fun watchZoom(view: GestureFrameLayout, reload: () -> Unit) {
+            (view.getTag(R.id.page_zoom_listener) as? GestureController.OnStateChangeListener)
+                ?.let { view.controller.removeOnStateChangeListener(it) }
+
+            val rerender = Runnable {
+                val zoom = view.controller.state.zoom.takeIf { it > 0f } ?: return@Runnable
+                val rendered = view.getTag(R.id.page_render_zoom) as? Float ?: 1f
+                // Ignore the small drift a settle leaves behind; only a real change is worth a decode.
+                if (zoom <= 1.05f && rendered <= 1f) return@Runnable
+                if (kotlin.math.abs(zoom - rendered) < 0.25f) return@Runnable
+                view.setTag(R.id.page_render_zoom, zoom)
+                reload()
+            }
+
+            val listener = object : GestureController.OnStateChangeListener {
+                override fun onStateChanged(state: com.alexvasilkov.gestures.State) {
+                    view.removeCallbacks(rerender)
+                    view.postDelayed(rerender, ZOOM_SETTLE_MS)
+                }
+
+                override fun onStateReset(
+                    oldState: com.alexvasilkov.gestures.State,
+                    newState: com.alexvasilkov.gestures.State
+                ) = Unit
+            }
+            view.controller.addOnStateChangeListener(listener)
+            view.setTag(R.id.page_zoom_listener, listener)
+        }
+
+        /** The zoom a page's current bitmap was decoded for; 1 means the plain fitted render. */
+        fun renderZoomOf(parent: View): Float =
+            (parent.getTag(R.id.page_render_zoom) as? Float) ?: 1f
+
         /**
          * The space actually available to a page: the RecyclerView the item sits in, minus every
          * padding between that and the image. The display metrics are only a fallback for a
@@ -244,14 +293,38 @@ abstract class BaseImageAdapter(
         suspend fun Context.loadBitmap(
             link: FileUrl,
             transforms: List<BitmapTransformation>,
-            maxHeightOverride: Int? = null
+            maxHeightOverride: Int? = null,
+            zoom: Float = 1f
         ): Bitmap? {
             return tryWithSuspend {
                 val mangaCache = uy.kohesive.injekt.Injekt.get<MangaCache>()
                 val dm = resources.displayMetrics
                 val maxW = dm.widthPixels * 2
                 val maxH = maxHeightOverride ?: (dm.heightPixels * 2)
+                // What the page is really drawn into, kept apart from the decode budget above:
+                // the budget bounds memory, this bounds resampling. The display metrics are the
+                // wrong figure for it — in a window (split screen, desktop mode, or WSA, where
+                // the display is the whole 1920x1080 desktop while the reader is a fraction of
+                // it) they describe the screen and not the reader, and overstating the width that
+                // far skips the downsample altogether. See [downsampleBitmap].
+                val reader = this@loadBitmap as? MangaReaderActivity
+                val decor = reader?.window?.decorView
+                val viewportW = decor?.width?.takeIf { it > 0 } ?: dm.widthPixels
+                // A continuous page fills the width and scrolls on past the bottom, so its height
+                // must not constrain it. A paged one is fitted whole, and in a landscape window
+                // it is the height that decides how wide it actually lands.
+                val viewportH =
+                    if (reader?.defaultSettings?.layout == CurrentReaderSettings.Layouts.CONTINUOUS) null
+                    else decor?.height?.takeIf { it > 0 } ?: dm.heightPixels
                 withContext(Dispatchers.IO) {
+                    // Zoomed in: the page is being drawn larger than it was decoded for, so
+                    // re-read it from the bytes at the size actually on screen. Straight from the
+                    // cache, no refetch, and filtered the same way — which is the whole reason
+                    // this beats letting the GPU stretch what it already has.
+                    if (zoom > 1f) {
+                        renderZoomed(link.url, transforms, viewportW, viewportH, zoom)
+                            ?.let { return@withContext it }
+                    }
                     // Downloaded PDF chapters: render the requested page on demand.
                     if (PdfPageRenderer.isPdfPage(link.url)) {
                         return@withContext PdfPageRenderer.render(this@loadBitmap, link.url, maxW)
@@ -259,35 +332,45 @@ abstract class BaseImageAdapter(
 
                     val localFile = File(link.url)
                     if (localFile.exists()) {
-                        return@withContext Glide.with(this@loadBitmap)
-                            .asBitmap()
-                            .load(localFile.absoluteFile)
-                            .skipMemoryCache(true)
-                            .diskCacheStrategy(DiskCacheStrategy.NONE)
-                            .override(maxW, maxH)
-                            .downsample(DownsampleStrategy.AT_MOST)
-                            .let {
-                                if (transforms.isNotEmpty()) it.transform(*transforms.toTypedArray())
-                                else it
-                            }
-                            .submit()
-                            .get()
+                        // Downsampled here rather than through Glide's own override: its sampling
+                        // is by powers of two, so asking it for the display width directly
+                        // undershoots to half of it and the page comes back soft. Let it decode
+                        // to the budget and take the last step properly. Same below.
+                        return@withContext downsampleBitmap(
+                            Glide.with(this@loadBitmap)
+                                .asBitmap()
+                                .load(localFile.absoluteFile)
+                                .skipMemoryCache(true)
+                                .diskCacheStrategy(DiskCacheStrategy.NONE)
+                                .override(maxW, maxH)
+                                .downsample(DownsampleStrategy.AT_MOST)
+                                .let {
+                                    if (transforms.isNotEmpty()) it.transform(*transforms.toTypedArray())
+                                    else it
+                                }
+                                .submit()
+                                .get(),
+                            maxW, maxH, viewportW, viewportH
+                        )
                     }
 
                     if (link.url.startsWith("content://")) {
-                        return@withContext Glide.with(this@loadBitmap)
-                            .asBitmap()
-                            .load(Uri.parse(link.url))
-                            .skipMemoryCache(true)
-                            .diskCacheStrategy(DiskCacheStrategy.NONE)
-                            .override(maxW, maxH)
-                            .downsample(DownsampleStrategy.AT_MOST)
-                            .let {
-                                if (transforms.isNotEmpty()) it.transform(*transforms.toTypedArray())
-                                else it
-                            }
-                            .submit()
-                            .get()
+                        return@withContext downsampleBitmap(
+                            Glide.with(this@loadBitmap)
+                                .asBitmap()
+                                .load(Uri.parse(link.url))
+                                .skipMemoryCache(true)
+                                .diskCacheStrategy(DiskCacheStrategy.NONE)
+                                .override(maxW, maxH)
+                                .downsample(DownsampleStrategy.AT_MOST)
+                                .let {
+                                    if (transforms.isNotEmpty()) it.transform(*transforms.toTypedArray())
+                                    else it
+                                }
+                                .submit()
+                                .get(),
+                            maxW, maxH, viewportW, viewportH
+                        )
                     }
 
                     // For extension sources: check bitmap cache before any network work
@@ -300,11 +383,13 @@ abstract class BaseImageAdapter(
 
                         ani.dantotsu.util.Logger.log("Using extension client for: ${link.url}")
                         val rawBitmap =
-                            imageData.fetchAndProcessImage(imageData.page, imageData.source, maxW, maxH)
+                            imageData.fetchAndProcessImage(
+                                imageData.page, imageData.source, maxW, maxH, cacheKey = link.url
+                            )
                                 ?: return@withContext null
 
                         // Downsample before transforms so we never hold a full-res bitmap in memory.
-                        val downsampledBitmap = downsampleBitmap(rawBitmap, maxW, maxH)
+                        val downsampledBitmap = downsampleBitmap(rawBitmap, maxW, maxH, viewportW, viewportH)
                         // A scaled copy leaves the full-resolution decode behind as garbage that
                         // the collector only gets to when it next runs — and with two prefetch
                         // workers decoding alongside the visible page, that is precisely when the
@@ -329,41 +414,153 @@ abstract class BaseImageAdapter(
                     }
 
                     // Fallback to standard Glide for plain remote URLs
-                    return@withContext Glide.with(this@loadBitmap)
-                        .asBitmap()
-                        .load(GlideUrl(link.url) { link.headers })
-                        .override(maxW, maxH)
-                        .downsample(DownsampleStrategy.AT_MOST)
-                        .let {
-                            if (transforms.isNotEmpty()) it.transform(*transforms.toTypedArray())
-                            else it
-                        }
-                        .submit()
-                        .get()
+                    return@withContext downsampleBitmap(
+                        Glide.with(this@loadBitmap)
+                            .asBitmap()
+                            .load(GlideUrl(link.url) { link.headers })
+                            .override(maxW, maxH)
+                            .downsample(DownsampleStrategy.AT_MOST)
+                            .let {
+                                if (transforms.isNotEmpty()) it.transform(*transforms.toTypedArray())
+                                else it
+                            }
+                            .submit()
+                            .get(),
+                        maxW, maxH, viewportW, viewportH
+                    )
                 }
             }
         }
 
-        private fun downsampleBitmap(bitmap: Bitmap, maxWidth: Int, maxHeight: Int): Bitmap {
-            // Only constrain by width on its own — tall images (e.g. long-strip pages) must not
-            // have their width crushed just because they're tall, as SSIV handles scrolling within
-            // the page. The total pixel count is still bounded against the same maxWidth ×
-            // maxHeight budget, which is what actually caps memory (bytes ≈ width × height × 4)
-            // regardless of aspect ratio — a plain width-or-height box would let an extremely tall
-            // narrow strip through unconstrained. In practice ImageData.decodeImage already
-            // presamples close to this budget, so this is mostly a defensive fallback for a bitmap
-            // that reaches here some other way, already at full resolution.
+        /**
+         * The page re-read at the size a zoom is showing it at, or null when it cannot be.
+         *
+         * Only the encoded bytes make this worth doing: they still hold every pixel the source
+         * had, so a zoom can be answered with real detail instead of a magnified copy of the
+         * fitted bitmap. Nothing is refetched — a page whose bytes have been evicted simply
+         * returns null and the caller carries on with the bitmap it already has.
+         *
+         * Capped at both the source's own resolution (past which there is nothing further to
+         * show) and a pixel ceiling, so holding a deeply zoomed page cannot cost more than a
+         * couple of ordinary ones.
+         */
+        private fun renderZoomed(
+            url: String,
+            transforms: List<BitmapTransformation>,
+            viewportWidth: Int,
+            viewportHeight: Int?,
+            zoom: Float
+        ): Bitmap? {
+            if (transforms.isNotEmpty()) return null
+            val cache = uy.kohesive.injekt.Injekt.get<MangaCache>()
+            val bytes = cache.getPageBytes(url) ?: return null
+
+            val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+
+            val fitted = fittedWidth(bounds.outWidth, bounds.outHeight, viewportWidth, viewportHeight)
+            val wanted = (fitted * zoom).toInt()
+                .coerceAtMost(bounds.outWidth)
+                .coerceAtMost(MAX_ZOOMED_WIDTH)
+            // Nothing to gain over what the fitted render already produced.
+            if (wanted <= fitted) return null
+
+            val key = "$url|zoom$wanted"
+            cache.getBitmap(key)?.takeIf { !it.isRecycled }?.let { return it }
+
+            val options = android.graphics.BitmapFactory.Options().apply {
+                // Only ever sampled down to the ceiling, and averaged the rest of the way by
+                // downsampleBitmap — sampling is not a resize, see MangaCache.
+                var sample = 1
+                while ((bounds.outWidth.toLong() / sample) * (bounds.outHeight.toLong() / sample) >
+                    MAX_ZOOMED_PIXELS
+                ) sample *= 2
+                inSampleSize = sample
+                inPreferredConfig = Bitmap.Config.ARGB_8888
+            }
+            val decoded = android.graphics.BitmapFactory
+                .decodeByteArray(bytes, 0, bytes.size, options) ?: return null
+            val scaled = downsampleBitmap(decoded, wanted, Int.MAX_VALUE / wanted, wanted, null)
+            if (scaled !== decoded) decoded.recycle()
+            cache.putBitmap(key, scaled)
+            return scaled
+        }
+
+        /** The width a page lands at once fitted into the viewport, mirroring [downsampleBitmap]. */
+        private fun fittedWidth(
+            sourceWidth: Int,
+            sourceHeight: Int,
+            viewportWidth: Int,
+            viewportHeight: Int?
+        ): Int = if (viewportHeight != null && sourceHeight > 0) {
+            minOf(
+                viewportWidth.toLong(),
+                viewportHeight.toLong() * sourceWidth / sourceHeight
+            ).toInt().coerceAtLeast(1)
+        } else viewportWidth
+
+        /**
+         * Brings a decoded page down to the size it will actually be drawn at.
+         *
+         * The width it will be *drawn* at — not the memory budget — is what bounds it, and that
+         * is the whole point. Manga greys are halftone screentones, and a texture sample minifying
+         * a dot grid reads a 2×2 neighbourhood no matter how far it is shrinking, so past 2× it
+         * misses most of the dots it should be averaging and they beat against the pixel grid as
+         * visible moiré. Resolving the screentone to flat grey here, in steps that each average
+         * their whole footprint, leaves the GPU drawing roughly 1:1 with nothing left to alias.
+         *
+         * [viewportHeight] is null for a continuous layout, where a page fills the width and
+         * scrolls on past the bottom. Given one, the page is fitted whole and its drawn width is
+         * whichever of the two bounds binds first — in a landscape window on a portrait page that
+         * is the height, by a wide margin, and going by the width alone leaves the downsample
+         * doing nothing at all.
+         *
+         * [maxWidth] × [maxHeight] stays the memory bound it always was and still applies on its
+         * own, which is what keeps an extremely tall strip in hand. Width is otherwise held to the
+         * drawn width alone, so a page already narrower than the viewport — a long-strip page
+         * usually is — keeps its own resolution instead of being crushed to fit a pixel budget.
+         */
+        private fun downsampleBitmap(
+            bitmap: Bitmap,
+            maxWidth: Int,
+            maxHeight: Int,
+            viewportWidth: Int,
+            viewportHeight: Int?
+        ): Bitmap {
+            val drawnWidth = if (viewportHeight != null && bitmap.height > 0) {
+                minOf(
+                    viewportWidth.toLong(),
+                    viewportHeight.toLong() * bitmap.width / bitmap.height
+                ).toInt().coerceAtLeast(1)
+            } else viewportWidth
             val maxPixels = maxWidth.toLong() * maxHeight.toLong()
-            val widthScale = maxWidth.toFloat() / bitmap.width
+            val widthScale = drawnWidth.toFloat() / bitmap.width
             val pixelScale = sqrt(maxPixels.toFloat() / (bitmap.width.toFloat() * bitmap.height.toFloat()))
             val scale = minOf(1f, widthScale, pixelScale)
             if (scale >= 1f) return bitmap
-            return Bitmap.createScaledBitmap(
-                bitmap,
-                (bitmap.width * scale).toInt().coerceAtLeast(1),
-                (bitmap.height * scale).toInt().coerceAtLeast(1),
-                true
-            )
+
+            val targetWidth = (bitmap.width * scale).toInt().coerceAtLeast(1)
+            val targetHeight = (bitmap.height * scale).toInt().coerceAtLeast(1)
+
+            // Halve while that still overshoots the target. A halving step samples exactly the 2×2
+            // block it replaces, so it averages the full footprint; going straight to the target
+            // in one jump does not, once the factor passes 2×. Stopping while the remainder is
+            // under 2× leaves a final step bilinear can cover honestly.
+            var current = bitmap
+            while (current.width / 2 >= targetWidth && current.height / 2 >= targetHeight) {
+                val halved = Bitmap.createScaledBitmap(
+                    current, current.width / 2, current.height / 2, true
+                )
+                if (current !== bitmap) current.recycle()
+                current = halved
+            }
+            if (current.width == targetWidth && current.height == targetHeight) return current
+            val scaled = Bitmap.createScaledBitmap(current, targetWidth, targetHeight, true)
+            // Only ever an intermediate of this function's own making — the caller still owns
+            // [bitmap] and recycles it itself.
+            if (current !== bitmap) current.recycle()
+            return scaled
         }
 
         private fun buildBitmapCacheKey(url: String, transforms: List<BitmapTransformation>): String {
@@ -373,6 +570,13 @@ abstract class BaseImageAdapter(
             transforms.forEach { it.updateDiskCacheKey(md) }
             return url + "|" + md.digest().joinToString("") { "%02x".format(it) }
         }
+
+        /** How long a zoom must hold still before the page is decoded again for it. */
+        private const val ZOOM_SETTLE_MS = 250L
+
+        /** Ceiling on a zoomed render, in both width and total pixels. */
+        private const val MAX_ZOOMED_WIDTH = 4096
+        private const val MAX_ZOOMED_PIXELS = 12L * 1024 * 1024
 
         fun mergeBitmap(bitmap1: Bitmap, bitmap2: Bitmap, scale: Boolean = false): Bitmap {
             val height = if (bitmap1.height > bitmap2.height) bitmap1.height else bitmap2.height

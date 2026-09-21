@@ -49,7 +49,9 @@ open class ImageAdapter(
         val link = images.getOrNull(position)?.url ?: return null
         if (link.url.isEmpty()) return null
 
-        return activity.loadBitmap(link, activity.pageTransforms(images[position]))
+        return activity.loadBitmap(
+            link, activity.pageTransforms(images[position]), zoom = renderZoomOf(parent)
+        )
     }
 
     override suspend fun loadImage(position: Int, parent: View): Boolean {
@@ -82,15 +84,21 @@ open class ImageAdapter(
         var sWidth = viewportWidth
         var sHeight = viewportHeight
 
+        // A zoomed re-render is a larger bitmap of the same page, and must not resize its slot —
+        // so the layout works from the fitted dimensions and only the scale uses the real ones.
+        val renderZoom = renderZoomOf(parent)
+        val fittedW = (bitmap.width / renderZoom).toInt().coerceAtLeast(1)
+        val fittedH = (bitmap.height / renderZoom).toInt().coerceAtLeast(1)
+
         if (settings.layout != PAGED)
             parent.updateLayoutParams {
                 if (settings.direction != LEFT_TO_RIGHT && settings.direction != RIGHT_TO_LEFT) {
                     sHeight =
-                        if (settings.wrapImages) bitmap.height else (sWidth * bitmap.height * 1f / bitmap.width).toInt()
+                        if (settings.wrapImages) fittedH else (sWidth * fittedH * 1f / fittedW).toInt()
                     height = sHeight + parent.paddingTop + parent.paddingBottom
                 } else {
                     sWidth =
-                        if (settings.wrapImages) bitmap.width else (sHeight * bitmap.width * 1f / bitmap.height).toInt()
+                        if (settings.wrapImages) fittedW else (sHeight * fittedW * 1f / fittedH).toInt()
                     width = sWidth + parent.paddingLeft + parent.paddingRight
                 }
             }

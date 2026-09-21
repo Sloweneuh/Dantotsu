@@ -17,6 +17,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import tachiyomi.decoder.ImageDecoder
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.FileNotFoundException
@@ -38,12 +40,18 @@ data class ImageData(
         httpSource: HttpSource,
         maxWidth: Int? = null,
         maxHeight: Int? = null,
+        cacheKey: String? = null,
     ): Bitmap? {
         return withContext(Dispatchers.IO) {
             try {
                 val response = httpSource.getImage(page)
                 Logger.log("Response: ${response.code} - ${response.message}")
                 val bytes = response.body.bytes()
+                // Kept encoded as well as decoded, so re-reading this page at a higher
+                // resolution when it is zoomed costs a decode rather than another download.
+                cacheKey?.let {
+                    runCatching { Injekt.get<MangaCache>().putPageBytes(it, bytes) }
+                }
                 return@withContext decodeImage(bytes, maxWidth, maxHeight)
             } catch (e: CancellationException) {
                 // Must propagate, not be treated as a failed page fetch — swallowing this here
@@ -90,16 +98,24 @@ data class ImageData(
     }
 
     /**
-     * The largest power-of-2 [BitmapFactory.Options.inSampleSize] that still fits [rawWidth] within
-     * [maxWidth] on its own, and — beyond that — keeps the total pixel count within the same budget
-     * a maxWidth × maxHeight image would use. Pixel count, not either dimension alone, is what
-     * actually bounds memory (bytes ≈ width × height × 4 for ARGB_8888), and checking it this way
-     * — rather than fitting both width and height individually — is what lets a tall, narrow
-     * webtoon-strip page keep its width instead of being crushed by a plain height cap.
+     * The largest power-of-2 [BitmapFactory.Options.inSampleSize] that keeps the total pixel count
+     * within the budget a maxWidth × maxHeight image would use. Pixel count, not either dimension
+     * alone, is what actually bounds memory (bytes ≈ width × height × 4 for ARGB_8888), and
+     * checking it this way — rather than fitting both width and height individually — is what lets
+     * a tall, narrow webtoon-strip page keep its width instead of being crushed by a plain height
+     * cap.
+     *
+     * Deliberately *only* the memory bound, with no separate "fit the width" step. Sampling is not
+     * a resize: BitmapFactory averages nothing on a PNG, it keeps every Nth pixel, and
+     * point-sampling a halftone screentone beats the dots against the new pixel grid into moiré
+     * that is then baked into the bitmap for good — no later resize can lift it back out. A page
+     * merely wider than the viewport used to trip the width step into sampling by 2 for no reason
+     * the memory budget asked for, which is exactly how a 1688px page reached a 644px viewport as
+     * a ruined 844px one. Whatever is still oversized after this is brought down by
+     * [ani.dantotsu.media.manga.mangareader.BaseImageAdapter]'s downsample, which actually filters.
      */
     private fun calculateInSampleSize(rawWidth: Int, rawHeight: Int, maxWidth: Int, maxHeight: Int): Int {
         var inSampleSize = 1
-        while (rawWidth / inSampleSize > maxWidth) inSampleSize *= 2
         val maxPixels = maxWidth.toLong() * maxHeight.toLong()
         while ((rawWidth.toLong() / inSampleSize) * (rawHeight.toLong() / inSampleSize) > maxPixels) {
             inSampleSize *= 2
@@ -169,6 +185,26 @@ class MangaCache {
         override fun sizeOf(key: String, value: Bitmap): Int = value.byteCount / 1024
     }
 
+    /**
+     * The pages as downloaded, still encoded.
+     *
+     * A decoded page is one resolution for ever, so zooming into it can only stretch what is
+     * there. Keeping the bytes means the page can be decoded again at the size a zoom actually
+     * asks for, and cheaply — a page is a couple of MB compressed against ~16MB expanded, so this
+     * whole cache costs less than three decoded pages.
+     */
+    private val pageBytesCache = object : LruCache<String, ByteArray>(32 * 1024) {
+        override fun sizeOf(key: String, value: ByteArray): Int = value.size / 1024
+    }
+
+    @Synchronized
+    fun putPageBytes(key: String, bytes: ByteArray) {
+        pageBytesCache.put(key, bytes)
+    }
+
+    @Synchronized
+    fun getPageBytes(key: String): ByteArray? = pageBytesCache.get(key)
+
     @Synchronized
     fun put(key: String, imageData: ImageData) {
         imageDataCache.put(key, imageData)
@@ -181,6 +217,7 @@ class MangaCache {
     fun remove(key: String) {
         imageDataCache.remove(key)
         bitmapCache.remove(key)
+        pageBytesCache.remove(key)
     }
 
     /**
@@ -200,12 +237,14 @@ class MangaCache {
     @Synchronized
     fun evictBitmaps() {
         bitmapCache.evictAll()
+        pageBytesCache.evictAll()
     }
 
     @Synchronized
     fun clear() {
         imageDataCache.evictAll()
         bitmapCache.evictAll()
+        pageBytesCache.evictAll()
     }
 
     fun size(): Int = imageDataCache.size()

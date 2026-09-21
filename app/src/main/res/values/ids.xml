@@ -16,4 +16,12 @@
     <item name="watch" type="id" />
     <item name="read" type="id" />
     <item name="comment" type="id" />
+
+    <!--
+      View tags for the reader's zoom-aware re-render: the zoom a page was last decoded for, and
+      the gesture listener watching for that to change. Both live on the page's item view so
+      recycling clears them with it. See BaseImageAdapter.
+    -->
+    <item name="page_render_zoom" type="id" />
+    <item name="page_zoom_listener" type="id" />
 </resources>

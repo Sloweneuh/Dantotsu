@@ -23,6 +23,8 @@ import com.davemorrissey.labs.subscaleview.ImageViewState
 import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
 import ani.dantotsu.media.manga.mangareader.BaseImageAdapter.Companion.loadBitmap
 import ani.dantotsu.media.manga.mangareader.BaseImageAdapter.Companion.pageViewport
+import ani.dantotsu.media.manga.mangareader.BaseImageAdapter.Companion.renderZoomOf
+import ani.dantotsu.media.manga.mangareader.BaseImageAdapter.Companion.watchZoom
 import kotlinx.coroutines.launch
 
 /**
@@ -408,6 +410,7 @@ class ContinuousChapterAdapter(
         view.controller.also {
             it.settings.isRotationEnabled = settings.rotation
         }
+        watchZoom(view) { activity.lifecycleScope.launch { loadImage(position, view) } }
 
         // A forced relayout (e.g. the blank-screen recovery in onResume/onConfigurationChanged)
         // can make RecyclerView rebind a view that is already showing this exact page. Binding it
@@ -493,7 +496,10 @@ class ContinuousChapterAdapter(
         progress.visibility = View.VISIBLE
 
         val bitmap: Bitmap? = with(activity) {
-            loadBitmap(link, activity.pageTransforms(item.image), MAX_PAGE_HEIGHT)
+            loadBitmap(
+                link, activity.pageTransforms(item.image), MAX_PAGE_HEIGHT,
+                zoom = renderZoomOf(parent)
+            )
         }
 
         // A newer load owns the view now — it was recycled onto another page, or reloaded — so
@@ -506,8 +512,12 @@ class ContinuousChapterAdapter(
         }
         failedPages.clearError(parent, item)
 
-        val bitmapW = bitmap.width
-        val bitmapH = bitmap.height
+        // A zoomed re-render hands back a larger bitmap of the same page. The layout below must
+        // not grow with it — the page occupies the same slot in the strip either way — so sizing
+        // works from the fitted dimensions, and only the scale below uses the real ones.
+        val renderZoom = renderZoomOf(parent)
+        val bitmapW = (bitmap.width / renderZoom).toInt().coerceAtLeast(1)
+        val bitmapH = (bitmap.height / renderZoom).toInt().coerceAtLeast(1)
         val (viewportWidth, viewportHeight) = pageViewport(parent)
         var sWidth = viewportWidth
         var sHeight = viewportHeight
@@ -529,8 +539,10 @@ class ContinuousChapterAdapter(
 
         // Prefer filling the primary axis for the current reader direction to avoid
         // visible side bars on vertical (top-to-bottom) layout.
-        val scaleX = sWidth * 1f / bitmapW
-        val scaleY = sHeight * 1f / bitmapH
+        // Against the real bitmap: a sharper one is drawn smaller by exactly the amount it is
+        // larger, so it lands at the same size on screen with more detail in it.
+        val scaleX = sWidth * 1f / bitmap.width
+        val scaleY = sHeight * 1f / bitmap.height
         val scale = when {
             // Paged: the whole page has to fit the viewport, so the smaller axis wins.
             // Filling one axis instead would push the other past the edge and crop it.
@@ -551,7 +563,7 @@ class ContinuousChapterAdapter(
         imageView.visibility = View.VISIBLE
         imageView.setImage(
             ImageSource.cachedBitmap(bitmap),
-            ImageViewState(scale, PointF(bitmapW / 2f, bitmapH / 2f), 0)
+            ImageViewState(scale, PointF(bitmap.width / 2f, bitmap.height / 2f), 0)
         )
 
         ObjectAnimator.ofFloat(parent, "alpha", 0f, 1f)
