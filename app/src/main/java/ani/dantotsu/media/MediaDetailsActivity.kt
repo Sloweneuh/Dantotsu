@@ -75,7 +75,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import nl.joery.animatedbottombar.AnimatedBottomBar
 
@@ -108,34 +107,51 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onCreate(savedInstanceState: Bundle?) {
-
         super.onCreate(savedInstanceState)
-        var media: Media = intent.getSerialized("media") ?: mediaSingleton ?: emptyMedia()
+        // Must be registered synchronously, here, before the activity reaches STARTED —
+        // registerForActivityResult() throws once past that point. The async branch below defers
+        // the rest of setup past a network round-trip, which is well past STARTED by the time it
+        // resumes, so this can't move into setUpWithMedia() with the rest.
+        launcher = LauncherWrapper(this, ActivityResultContracts.OpenDocumentTree())
+        // Same reasoning as the launcher: the system creates this window's decor view — and locks
+        // in its background, corner-radius shape and light/dark resource resolution — as soon as
+        // the activity reaches onResume, which the framework drives on its own regardless of
+        // whether setContentView() has been called yet. That used to always be after applyTheme()
+        // had already run, because runBlocking kept onCreate (and so onResume) from proceeding
+        // until setup was done. Now the async branch below lets onResume happen first, so an
+        // applyTheme() left in setUpWithMedia() is too late: the decor view is already built from
+        // the default manifest theme, which is what a notification/deep-link launch was showing —
+        // wrong background and corners — for as long as its network fetch was in flight.
+        ThemeManager(this).applyTheme(MediaSingleton.bitmap)
+        initActivity(this)
+        MediaSingleton.bitmap = null
         val id = intent.getIntExtra("mediaId", -1)
         if (id != -1) {
-            runBlocking {
-                withContext(Dispatchers.IO) {
-                    media = Anilist.query.getMedia(id, false) ?: emptyMedia()
-                }
+            // Notification/deep-link/widget launches carry only the id, so the AniList lookup used
+            // to run in a runBlocking right here — on the main thread, in onCreate. A slow reply
+            // held the thread long enough to ANR (confirmed via a Sentry Background ANR whose
+            // culprit traced back to this call), and a background-thread ANR gets the process
+            // killed with nothing left in the task's back stack. Fetch off the main thread instead
+            // and continue setup once it lands.
+            lifecycleScope.launch {
+                val media = withContext(Dispatchers.IO) { Anilist.query.getMedia(id, false) }
+                setUpWithMedia(media ?: emptyMedia())
             }
+        } else {
+            val media: Media = intent.getSerialized("media") ?: mediaSingleton ?: emptyMedia()
+            setUpWithMedia(media)
         }
+    }
+
+    private fun setUpWithMedia(initialMedia: Media) {
+        var media = initialMedia
         if (media.name == "No media found") {
             snackString(media.name)
             onBackPressedDispatcher.onBackPressed()
             return
         }
-        val contract = ActivityResultContracts.OpenDocumentTree()
-        launcher = LauncherWrapper(this, contract)
 
         mediaSingleton = null
-        // Must run before postponeEnterTransition(): applyTheme() calls setTheme(), and until
-        // that lands, Window.FEATURE_ACTIVITY_TRANSITIONS reads false (the manifest's static
-        // theme doesn't carry the dynamically-applied one's windowActivityTransitions flag yet),
-        // so postponing before this point is a no-op — the window starts drawing immediately and
-        // the shared-element cover just pops into place instead of flying in from the list.
-        ThemeManager(this).applyTheme(MediaSingleton.bitmap)
-        initActivity(this)
-        MediaSingleton.bitmap = null
         android.util.Log.d(
             "TransitionDebug",
             "AniList onCreate: postponeEnterTransition, hasFeature=${window.hasFeature(android.view.Window.FEATURE_ACTIVITY_TRANSITIONS)}, t=${System.currentTimeMillis()}"
@@ -1273,7 +1289,11 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
 
     override fun onResume() {
         super.onResume()
-        if (::navBar.isInitialized) navBar.selectTabAt(selected)
+        // setUpWithMedia() hasn't run yet if onResume lands while the id-only fetch in onCreate
+        // is still in flight — nothing here is needed before then, since setUpWithMedia() applies
+        // this same insets/immersive setup itself once it does run.
+        if (!::navBar.isInitialized) return
+        navBar.selectTabAt(selected)
         // Re-apply activity-level UI settings (immersive, insets)
         initActivity(this)
 
@@ -1341,6 +1361,8 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
+        // Same race as onResume(): nothing to reconfigure before setUpWithMedia() has run.
+        if (!::navBar.isInitialized) return
         val params: ViewGroup.MarginLayoutParams =
                 navBar.layoutParams as ViewGroup.MarginLayoutParams
         val showBottomInset = newConfig.orientation != Configuration.ORIENTATION_LANDSCAPE
