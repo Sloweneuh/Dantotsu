@@ -13,7 +13,6 @@ import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import org.jsoup.Jsoup
 import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
 
@@ -678,77 +677,24 @@ object ComickApi {
     }
 
     /**
-     * Scrape the covers page for a comic from comick.dev.
-     * URL pattern: https://comick.dev/comic/{slug}/cover
-     *
-     * The page is Next.js SSR, so the covers are present in the raw HTML.
-     * Each cover is a `div.h-30.relative`:
-     *   - child 1: `<div><img src="https://meo.comick.pictures/{b2key}"></div>`
-     *   - child 2: `<div>…volume number…</div>`
+     * Every cover ever uploaded for a comic — what backs the comick.dev `/comic/{slug}/cover`
+     * gallery page. Unlike [ComickComic.md_covers] (one entry: the current primary cover, inline
+     * on the main details response), this hits the dedicated route the page itself calls.
      *
      * @param slug The comic slug (e.g., "01-a-transmigrator-s-privilege")
      * @return List of ComickCover objects, or null on failure
      */
     suspend fun getCovers(slug: String): List<ComickCover>? = withContext(Dispatchers.IO) {
         try {
-            val url = "https://comick.dev/comic/$slug/cover"
-            val request = Request.Builder()
-                .url(url)
-                .header("User-Agent", "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 Chrome/120.0 Mobile Safari/537.36")
-                .build()
-            val response = client.newCall(request).execute()
+            val url = "https://api.comick.dev/comic/$slug/covers"
+            val response = client.newCall(request(url)).execute()
             if (!response.isSuccessful) {
-                Logger.log("Comick covers: HTTP ${response.code} for slug=$slug")
+                Logger.log("Comick covers API error: ${response.code} for slug=$slug")
                 return@withContext null
             }
-            val html = response.body.string()
-            val doc = Jsoup.parse(html)
-
-            // Each cover is inside a wrapper `div` with class containing "relative" (e.g. "h-30 relative").
-            // The image may be nested (inside a button) and may use `src`, `data-src` or `srcset`.
-            val coverDivs = doc.select("div.h-30.relative, div.relative")
-                .mapNotNull { wrapper ->
-                    // Only keep wrappers that contain an image element
-                    wrapper.selectFirst("img[src], img[data-src], img[srcset]")?.let { wrapper }
-                }
-                .distinctBy { it }
-
-            if (coverDivs.isEmpty()) {
-                return@withContext null
-            }
-
-            val baseUrl = "https://meo.comick.pictures/"
-            val covers = coverDivs.mapNotNull { wrapper ->
-                val img = wrapper.selectFirst("img[src], img[data-src], img[srcset]") ?: return@mapNotNull null
-
-                // Prefer `src`, then `data-src`, then parse the highest-quality URL from `srcset`.
-                var src = img.attr("src").trim()
-                if (src.isBlank()) src = img.attr("data-src").trim()
-                if (src.isBlank()) {
-                    val srcset = img.attr("srcset").trim().ifBlank { img.attr("data-srcset").trim() }
-                    if (srcset.isNotBlank()) {
-                        // srcset format: "url1 144w, url2 240w, ..." — pick the last (highest res) URL
-                        src = srcset.split(",").map { it.trim().split(" ")[0] }.lastOrNull() ?: ""
-                    }
-                }
-
-                if (src.isBlank()) return@mapNotNull null
-
-                // Normalize protocol-relative URLs
-                if (src.startsWith("//")) src = "https:$src"
-
-                // Extract a concise key (filename) when possible, otherwise keep the full URL
-                val b2key = if (src.startsWith(baseUrl)) src.removePrefix(baseUrl) else src.substringAfterLast('/')
-
-                // Volume badge: the child `div` that doesn't contain an img (usually the small number badge)
-                val vol = wrapper.children()
-                    .firstOrNull { child -> child.tagName() == "div" && child.selectFirst("img") == null }
-                    ?.text()?.trim()?.takeIf { it.isNotBlank() }
-
-                ComickCover(vol = vol, w = null, h = null, b2key = b2key)
-            }
-
-            covers.takeIf { it.isNotEmpty() }
+            val body = response.body.string()
+            if (body.isBlank()) return@withContext null
+            gson.fromJson(body, ComickCoversResponse::class.java)?.md_covers?.takeIf { it.isNotEmpty() }
         } catch (e: Exception) {
             Logger.log("Comick covers error for slug=$slug: ${e.message}")
             null
@@ -1095,109 +1041,55 @@ object ComickApi {
     // ---------------------------------------------------------------------------------------
 
     /**
-     * Next.js build id, needed for the lightweight episode route. Scraped from any page's
-     * `__NEXT_DATA__` and cached; it changes on every Comick deploy, at which point the data route
-     * starts answering 404 and [getAnimePage] re-scrapes it.
+     * Fetch an anime entry's episode list.
+     *
+     * Episodes are rows in the same `chapters` table as manga chapters, filtered with the
+     * `entry_type=episode` query param — now a documented parameter of this endpoint (see
+     * https://api.comick.dev/docs/json), though it didn't always work: this used to 404/come back
+     * empty, which is why episodes were scraped from the anime page's Next.js payload instead.
+     * That scrape is doubly dead now anyway — Comick's anime pages moved to the Next.js App
+     * Router, which streams props as RSC chunks rather than shipping a parseable
+     * `__NEXT_DATA__`/`_next/data` blob at all.
+     *
+     * @param hid The anime entry's HID
+     * @return episodes in viewing order, or empty on failure
      */
-    @Volatile
-    private var nextBuildId: String? = null
+    suspend fun getEpisodes(hid: String): List<ComickEpisode> = withContext(Dispatchers.IO) {
+        val episodes = fetchEpisodesForHid(hid)
+        // `chap-order` reflects upload order, not viewing order — unlike chapters, specials and
+        // backfilled episodes routinely land out of numeric sequence (e.g. episode 1 uploaded
+        // first, then 25 down to 2). Entries without a parseable number sort last rather than
+        // being dropped — they're still real episodes.
+        episodes.sortedBy { it.number()?.toDoubleOrNull() ?: Double.MAX_VALUE }
+    }
 
-    /**
-     * Fetch an anime's detail object together with its episode list.
-     *
-     * The episode list is deliberately *not* available from the public API: episodes are rows in
-     * the chapters table flagged `entry_type = "episode"`, and `/comic/{hid}/chapters` filters
-     * them out, returning an empty array for every anime. The only source is the page's
-     * server-rendered props, reachable two ways:
-     *
-     *  1. `/_next/data/{buildId}/anime/{slug}.json` — same payload, roughly a sixth of the size,
-     *     but tied to the current build id.
-     *  2. The `/anime/{slug}` HTML itself, parsing out `__NEXT_DATA__`. No build id needed, so
-     *     this is both the bootstrap for the id and the fallback when it goes stale.
-     *
-     * Note the payload carries every episode inline with no pagination and a server-side cap of
-     * 1000, so a long-running series is a genuinely large response (One Piece is ~1 MB).
-     *
-     * @return the page's anime entry and episodes (oldest first), or null if the page failed
-     */
-    suspend fun getAnimePage(slug: String): ComickAnimePage? = withContext(Dispatchers.IO) {
-        val cachedId = nextBuildId
-        if (cachedId != null) {
-            val viaData = runCatching { fetchAnimePageProps(dataRouteUrl(cachedId, slug)) }.getOrNull()
-            if (viaData != null) return@withContext parseAnimePage(viaData)
-            // Stale build id (404) — drop it so the HTML path below re-derives one.
-            nextBuildId = null
-        }
-
-        val html = try {
-            val response = client.newCall(
-                request(webUrl(slug, MEDIA_TYPE_ANIME), accept = "text/html")
-            ).execute()
-            if (!response.isSuccessful) {
-                Logger.log("Comick anime page: HTTP ${response.code} for slug=$slug")
-                return@withContext null
+    private fun fetchEpisodesForHid(hid: String): List<ComickEpisode> {
+        val all = mutableListOf<ComickEpisode>()
+        val limit = 300
+        // 1-based: page=0 silently aliases to page 1 on this route, which would duplicate the
+        // first page once the loop increments below.
+        var page = 1
+        try {
+            while (true) {
+                val url =
+                    "https://api.comick.dev/v1.0/comic/$hid/chapters?entry_type=episode&limit=$limit&page=$page&chap-order=0"
+                val request = request(url)
+                val response = client.newCall(request).execute()
+                if (!response.isSuccessful) break
+                val body = response.body.string()
+                if (body.isBlank()) break
+                val obj = gson.fromJson(body, com.google.gson.JsonObject::class.java) ?: break
+                val arr = obj.getAsJsonArray("chapters") ?: break
+                if (arr.size() == 0) break
+                val pageEpisodes = gson.fromJson(arr, Array<ComickEpisode>::class.java).toList()
+                all.addAll(pageEpisodes)
+                if (pageEpisodes.size < limit) break
+                page++
             }
-            response.body.string()
         } catch (e: Exception) {
-            Logger.log("Comick anime page error for slug=$slug: ${e.message}")
-            return@withContext null
+            Logger.log("Error fetching Comick episodes for hid $hid: ${e.message}")
         }
-
-        val nextData = extractNextData(html) ?: run {
-            Logger.log("Comick anime page: no __NEXT_DATA__ for slug=$slug")
-            return@withContext null
-        }
-        nextData.get("buildId")?.takeIf { !it.isJsonNull }?.asString?.let { nextBuildId = it }
-        val props = nextData.getAsJsonObject("props")?.getAsJsonObject("pageProps")
-            ?: return@withContext null
-        parseAnimePage(props)
-    }
-
-    /** Episodes only. See [getAnimePage] for why this can't come from the API. */
-    suspend fun getEpisodes(slug: String): List<ComickEpisode> =
-        getAnimePage(slug)?.episodes ?: emptyList()
-
-    private fun dataRouteUrl(buildId: String, slug: String): String {
-        val encoded = URLEncoder.encode(slug, "UTF-8")
-        return "https://comick.dev/_next/data/$buildId/anime/$encoded.json?slug=$encoded"
-    }
-
-    /** GETs a `_next/data` URL and returns its `pageProps`, or null on any non-200 / bad shape. */
-    private fun fetchAnimePageProps(url: String): com.google.gson.JsonObject? {
-        val response = client.newCall(request(url)).execute()
-        if (!response.isSuccessful) return null
-        val body = response.body.string()
-        if (body.isBlank()) return null
-        return gson.fromJson(body, com.google.gson.JsonObject::class.java)
-            ?.getAsJsonObject("pageProps")
-    }
-
-    private fun extractNextData(html: String): com.google.gson.JsonObject? = try {
-        Jsoup.parse(html).selectFirst("script#__NEXT_DATA__")
-            ?.data()
-            ?.takeIf { it.isNotBlank() }
-            ?.let { gson.fromJson(it, com.google.gson.JsonObject::class.java) }
-    } catch (e: Exception) {
-        Logger.log("Comick: failed to parse __NEXT_DATA__: ${e.message}")
-        null
-    }
-
-    private fun parseAnimePage(props: com.google.gson.JsonObject): ComickAnimePage {
-        val anime = runCatching {
-            props.getAsJsonObject("anime")?.let { gson.fromJson(it, ComickComic::class.java) }
-        }.getOrNull()
-
-        val episodes = runCatching {
-            props.getAsJsonArray("episodes")
-                ?.let { gson.fromJson(it, Array<ComickEpisode>::class.java) }
-                ?.toList()
-                ?: emptyList()
-        }.getOrElse { emptyList() }
-
-        // The payload is newest-first; present episodes in viewing order instead. Entries without
-        // a parseable number sort last rather than being dropped — they're still real episodes.
-        val ordered = episodes.sortedBy { it.number()?.toDoubleOrNull() ?: Double.MAX_VALUE }
-        return ComickAnimePage(anime, ordered)
+        return all
     }
 
     /**

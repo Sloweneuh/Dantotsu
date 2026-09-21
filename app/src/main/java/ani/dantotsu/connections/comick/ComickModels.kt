@@ -351,12 +351,6 @@ data class ComickUserTag(
     val comic_count: Int?,
 ) : Serializable
 
-/** An anime page's server-rendered props: the entry itself plus its episodes, oldest first. */
-data class ComickAnimePage(
-    val anime: ComickComic?,
-    val episodes: List<ComickEpisode>,
-) : Serializable
-
 data class ComickMuComics(
     val mu_comic_categories: List<ComickCategory>?
 ) : Serializable
@@ -521,6 +515,11 @@ data class ComickCover(
     /** Anime entries carry a MAL CDN poster alongside the Comick-hosted one. */
     val gpurl: String? = null,
     val is_primary: Boolean? = null,
+) : Serializable
+
+/** Response of `GET /comic/{slug}/covers` — every cover ever uploaded for the entry. */
+data class ComickCoversResponse(
+    val md_covers: List<ComickCover>?,
 ) : Serializable
 
 data class ComickChapter(

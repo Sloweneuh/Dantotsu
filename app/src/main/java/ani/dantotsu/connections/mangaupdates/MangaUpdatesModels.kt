@@ -372,6 +372,9 @@ data class MUListSeriesMetadata(
     @SerialName("bayesian_rating") val bayesianRating: Double? = null,
     @SerialName("latest_chapter") val latestChapter: Int? = null,
     @SerialName("last_updated") val lastUpdated: MUTimestamp? = null
+    // No `image` field: despite the OpenAPI docs listing one on this schema (shared with
+    // /series/search's `record`), a real /lists/{id}/search response never carries one here —
+    // verified against a live authenticated response. The list API genuinely has no covers.
 )
 
 // ── Series groups / releases ──────────────────────────────────────────────────

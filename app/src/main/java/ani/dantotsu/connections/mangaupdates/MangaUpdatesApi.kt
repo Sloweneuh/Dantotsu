@@ -503,10 +503,23 @@ object MangaUpdates {
      */
     suspend fun getSeriesFromUrl(urlOrId: String?): MUSeriesRecord? {
         return tryWithSuspend {
-            // Prefer resolving the canonical numeric identifier via the page's JSON-LD script
             val numericIdFromInput = urlOrId?.toLongOrNull()
 
-            // Build the page URL to fetch: numeric input uses series.html?id=..., slug uses /series/<slug>
+            // A MangaUpdates URL slug (e.g. "pb8uwds") is nothing but the series id, base36-encoded
+            // — the same scheme MUMedia already uses in reverse to build share links. Decoding is a
+            // free, offline check, and when it hits, it resolves the id with a single documented
+            // `/series/{id}` call, no page fetch or scrape needed at all. It's tried first because
+            // it's by far the common case: most slugs reaching this function come bare, off a Comick
+            // `links.mu` field or a share link, rather than embedded in a full page URL.
+            if (numericIdFromInput == null) {
+                urlOrId?.toLongOrNull(36)?.let { idFromSlug ->
+                    getSeriesDetails(idFromSlug)?.let { return@tryWithSuspend it }
+                }
+            }
+
+            // Below: the slug wasn't a bare id-encoding (e.g. it's a human-readable title slug from
+            // a full page URL, such as "one-piece") — fall back to resolving it off the page itself,
+            // preferring the canonical numeric identifier from its JSON-LD script.
             val pageUrl = if (numericIdFromInput != null) {
                 "$WEB_URL/series.html?id=$numericIdFromInput"
             } else {

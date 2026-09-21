@@ -114,7 +114,6 @@ class ComickMediaActivity : AppCompatActivity() {
     private var isAnimeMode = false
     private val mediaType
         get() = if (isAnimeMode) ComickApi.MEDIA_TYPE_ANIME else ComickApi.MEDIA_TYPE_MANGA
-    private var loadedSlug: String? = null
 
     private var enterTransitionStarted = false
 
@@ -188,7 +187,6 @@ class ComickMediaActivity : AppCompatActivity() {
                 ) segments[1] else null
             }
             ?: run { finish(); return }
-        loadedSlug = slug
 
         val openChapters = intent.getBooleanExtra(EXTRA_OPEN_CHAPTERS, false)
 
@@ -206,7 +204,7 @@ class ComickMediaActivity : AppCompatActivity() {
                 return@launch
             }
             // Anime entries have no chapter-language axis — their "chapters" are episodes,
-            // fetched by page scrape rather than the language-filtered chapters endpoint.
+            // fetched from a different endpoint than the language-filtered chapters one.
             chapterLangs = if (isAnimeMode) emptyList() else comickData.langList.orEmpty()
 
             setupHeader(comic)
@@ -219,7 +217,6 @@ class ComickMediaActivity : AppCompatActivity() {
                 binding.comickMediaInfoScroll.visibility = View.VISIBLE
             } else {
                 binding.comickMediaChaptersScroll.visibility = View.VISIBLE
-                // Episodes key off the slug (page scrape), chapters off the hid (API).
                 if (isAnimeMode) loadChapters(comic.hid.orEmpty())
                 else comic.hid?.let { loadChapters(it) }
             }
@@ -305,15 +302,8 @@ class ComickMediaActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val chapters = withContext(Dispatchers.IO) {
                 if (isAnimeMode) {
-                    // Episodes are chapter rows the chapters endpoint filters out, so they come
-                    // from the page instead — then flow through the exact same rendering.
-                    val slug = loadedSlug
-                    if (slug.isNullOrBlank()) {
-                        emptyList()
-                    } else {
-                        allEpisodes = ComickApi.getEpisodes(slug)
-                        allEpisodes.map { it.toChapter() }
-                    }
+                    allEpisodes = ComickApi.getEpisodes(hid)
+                    allEpisodes.map { it.toChapter() }
                 } else {
                     ComickApi.getChapters(hid, currentChapterLang)
                 }

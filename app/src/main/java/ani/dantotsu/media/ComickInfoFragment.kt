@@ -1889,6 +1889,7 @@ class ComickInfoFragment : Fragment() {
     private fun displayAnimeSections(parent: ViewGroup, comic: ani.dantotsu.connections.comick.ComickComic) {
         val profile = comic.anime_profiles
         val slug = comic.slug
+        val hid = comic.hid
 
         // --- Broadcast + MAL statistics -----------------------------------------------------
         if (profile != null && parent.findViewWithTag<View>("broadcast_comick") == null) {
@@ -1920,9 +1921,9 @@ class ComickInfoFragment : Fragment() {
         }
 
         // --- Episodes -----------------------------------------------------------------------
-        // Reserve the slot synchronously so it keeps its position, then fill it once the (page
-        // scrape) fetch returns. See ComickApi.getAnimePage for why this isn't a plain API call.
-        if (!slug.isNullOrBlank() && parent.findViewWithTag<View>("episodes_comick") == null) {
+        // Reserve the slot synchronously so it keeps its position, then fill it once the fetch
+        // returns.
+        if (!slug.isNullOrBlank() && !hid.isNullOrBlank() && parent.findViewWithTag<View>("episodes_comick") == null) {
             val placeholder = android.widget.LinearLayout(requireContext()).apply {
                 orientation = android.widget.LinearLayout.VERTICAL
                 tag = "episodes_comick"
@@ -1934,7 +1935,7 @@ class ComickInfoFragment : Fragment() {
             parent.addView(placeholder)
 
             viewLifecycleOwner.lifecycleScope.launch {
-                val episodes = withContext(Dispatchers.IO) { ComickApi.getEpisodes(slug) }
+                val episodes = withContext(Dispatchers.IO) { ComickApi.getEpisodes(hid) }
                 if (_binding == null || placeholder.childCount > 0) return@launch
 
                 val header = ani.dantotsu.databinding.ItemTitleRecyclerBinding.inflate(
