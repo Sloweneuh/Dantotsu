@@ -312,12 +312,10 @@ class HomeFragment : Fragment() {
                     val (visible, reconciled) = reconcileUnread(unreadList, info)
                     unreadAniList = visible
                     unreadInfoMap = reconciled
-                    // Persist MALSync unread info so cached UI can show source/lastEp on next load
-                    try {
-                        ani.dantotsu.settings.saving.PrefManager.setCustomVal("cached_unread_info", HashMap(reconciled))
-                    } catch (e: Exception) {
-                        ani.dantotsu.util.Logger.log("Failed to cache unread info: ${e.message}")
-                    }
+                    // Persist MALSync unread info so cached UI can show source/lastEp on next load.
+                    // Through UnreadCache so the media half is rewritten from the same map — see
+                    // [ani.dantotsu.notifications.unread.UnreadCache.replaceInfo].
+                    ani.dantotsu.notifications.unread.UnreadCache.replaceInfo(reconciled, unreadList)
                 } else {
                     // No fresh MALSync data. Prefer cached unreadInfo when available.
                     val merged = mergedCachedInfoFor(model.getMangaContinue().value)
@@ -333,6 +331,58 @@ class HomeFragment : Fragment() {
                 binding.homeUnreadChapters.startAnimation(setSlideUp())
             }
         }
+    }
+
+    /**
+     * Continue Reading, in the order the user actually read things on this device.
+     *
+     * That is what the row is for, and what [ani.dantotsu.connections.anilist.AnilistQueries]
+     * builds for the AniList half out of `continueMangaList` — the pref
+     * [ani.dantotsu.media.manga.mangareader.MangaReaderActivity] appends to every time a chapter is
+     * opened. Merging MangaUpdates series into the row used to throw that away and re-sort
+     * everything by `updatedAt`, because an MU entry had no obvious place in an AniList-shaped
+     * order, so the only key both sides shared was a timestamp. But `updatedAt` is when the *list
+     * entry* last changed — a website edit, a score, a sync from another device — which is a
+     * different question from what was last read here, and the row silently became the wrong one.
+     * (The Continue Watching row never did this; see the anime branch, which uses its list as-is.)
+     *
+     * The merge never needed the fallback: the reader records an MU series under
+     * [muMediaKey], so both sources rank against the one list. Anything never opened in the app has
+     * no local position at all and keeps the old timestamp order, behind everything that has one —
+     * the same "recent first, then the rest" shape the AniList half already had.
+     */
+    private fun orderByLocalReads(aniItems: List<Media>, muItems: List<MUMedia>): List<Any> {
+        @Suppress("UNCHECKED_CAST")
+        val localOrder = try {
+            PrefManager.getNullableCustomVal(
+                "continueMangaList", listOf<Int>(), List::class.java
+            ) as? List<Int>
+        } catch (e: Exception) {
+            ani.dantotsu.util.Logger.log("orderByLocalReads: ${e.message}")
+            null
+        }.orEmpty()
+
+        // The pref appends the newest at the end, so walk it backwards for "most recently read first".
+        val rank = HashMap<Int, Int>(localOrder.size * 2)
+        localOrder.asReversed().forEachIndexed { position, id ->
+            if (!rank.containsKey(id)) rank[id] = position
+        }
+
+        fun rankOf(item: Any): Int = when (item) {
+            is Media -> rank[item.id]
+            is MUMedia -> rank[muMediaKey(item.id)]
+            else -> null
+        } ?: Int.MAX_VALUE
+
+        fun updatedAtOf(item: Any): Long = when (item) {
+            is Media -> item.userUpdatedAt ?: 0L
+            is MUMedia -> item.updatedAt ?: 0L
+            else -> 0L
+        }
+
+        return (aniItems as List<Any> + muItems).sortedWith(
+            compareBy<Any> { rankOf(it) }.thenByDescending { updatedAtOf(it) }
+        )
     }
 
     // Helper: merge cached UnreadChapterInfo (from prefs) with current list's progress
@@ -1131,11 +1181,7 @@ class HomeFragment : Fragment() {
             binding.homeReadingRecyclerView.visibility = View.GONE
             binding.homeReadingEmpty.visibility = View.GONE
             if (aniItems.isNotEmpty() || muItems.isNotEmpty()) {
-                val combined: List<Any> =
-                    (aniItems.map { it to (it.userUpdatedAt ?: 0L) } +
-                     muItems.map { it to (it.updatedAt ?: 0L) })
-                        .sortedByDescending { (_, ts) -> ts }
-                        .map { (item, _) -> item }
+                val combined: List<Any> = orderByLocalReads(aniItems, muItems)
                 binding.homeReadingRecyclerView.adapter = MergedReadingAdapter(combined)
                 binding.homeReadingRecyclerView.layoutManager = LinearLayoutManager(
                     requireContext(), LinearLayoutManager.HORIZONTAL, false

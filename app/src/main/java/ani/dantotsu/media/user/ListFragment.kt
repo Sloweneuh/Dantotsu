@@ -30,6 +30,8 @@ class ListFragment : Fragment() {
     private var mergedAdaptor: MergedReadingAdapter? = null
     private var currentAdapterType: Int? = null
     private var currentSpanCount: Int? = null
+    /** The exact list instance [mediaAdaptor] was built around; see the identity check in update(). */
+    private var currentAniList: MutableList<Media>? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -146,10 +148,32 @@ class ListFragment : Fragment() {
                     binding.listRecyclerView.adapter = mergedAdapter
                 }
             } else {
-                mergedAdaptor = null
-                val anilistAdaptor = MediaAdaptor(if (g) 0 else 1, aniList, requireActivity(), true)
-                mediaAdaptor = anilistAdaptor
-                binding.listRecyclerView.adapter = anilistAdaptor
+                val type = if (g) 0 else 1
+                // The MangaUpdates branch above already refuses to swap adapters when it doesn't
+                // have to; this one always did, and that is why an ordinary AniList tab jumped back
+                // to the top a moment after it opened. update() runs once per observer — the lists
+                // themselves, the MU map, and the grid toggle — plus once more when favourites land,
+                // and every one of those assignments detached the rows and dropped the scroll
+                // position even though the tab's contents had not moved.
+                //
+                // Identity is the right test: when nothing was refiltered the view model re-posts
+                // the very same ArrayList instances, and the adapter is already holding this one.
+                // A rebind still goes out, since entries can be updated in place (favourites fill in
+                // userProgress), and notifyDataSetChanged keeps the scroll offset that a fresh
+                // adapter would have thrown away.
+                if (mediaAdaptor != null && mergedAdaptor == null &&
+                    currentAdapterType == type && currentAniList === aniList
+                ) {
+                    @Suppress("NotifyDataSetChanged")
+                    mediaAdaptor?.notifyDataSetChanged()
+                } else {
+                    mergedAdaptor = null
+                    val anilistAdaptor = MediaAdaptor(type, aniList, requireActivity(), true)
+                    mediaAdaptor = anilistAdaptor
+                    currentAdapterType = type
+                    currentAniList = aniList
+                    binding.listRecyclerView.adapter = anilistAdaptor
+                }
             }
         }
 

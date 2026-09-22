@@ -66,6 +66,8 @@ class ListActivity : AppCompatActivity() {
     private var offline: Boolean = false
     private var lastTabSignature: String = ""
     private var isRebuildingTabs = false
+    /** Held so each rebuild can retire the previous one; see buildTabs. */
+    private var tabMediator: TabLayoutMediator? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -726,11 +728,23 @@ class ListActivity : AppCompatActivity() {
         val prevTabBase = prevTabText?.replace(Regex(" \\(.+\\)$"), "")
 
         isRebuildingTabs = true
-        binding.listViewPager.adapter = ListViewPagerAdapter(
-            aniIndices, false, this, muTabPosition, muSeparateTabs
-        )
+        // Update the existing adapter rather than replacing it: favourites and MangaUpdates each
+        // land after the AniList lists do, and a replacement rebuilds every fragment — including
+        // the one being read — for a tab set that has only gained an entry. See [ListViewPagerAdapter].
+        val existingAdapter = binding.listViewPager.adapter as? ListViewPagerAdapter
+        if (existingAdapter != null) {
+            existingAdapter.update(aniIndices, muTabPosition, muSeparateTabs)
+        } else {
+            binding.listViewPager.adapter = ListViewPagerAdapter(
+                aniIndices, false, this, muTabPosition, muSeparateTabs
+            )
+        }
 
-        TabLayoutMediator(binding.listTabLayout, binding.listViewPager) { tab, position ->
+        // The mediator captures this call's tab labels, so the previous one has to go — reusing the
+        // adapter means its observer is still registered and would repopulate from stale counts.
+        // Detaching only tears down tabs; it leaves the fragments alone.
+        tabMediator?.detach()
+        tabMediator = TabLayoutMediator(binding.listTabLayout, binding.listViewPager) { tab, position ->
             when {
                 muTabPosition >= 0 && position == muTabPosition -> {
                     tab.text = "MangaUpdates ($totalMu)"
@@ -767,7 +781,8 @@ class ListActivity : AppCompatActivity() {
                     tab.tag = "ANI:$aniKey"
                 }
             }
-        }.attach()
+        }
+        tabMediator?.attach()
         // Try to find a tab whose stable tag matches the preserved key (if any),
         // otherwise fall back to matching text.
         var finalTab = savedTab

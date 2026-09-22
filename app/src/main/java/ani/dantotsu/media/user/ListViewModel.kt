@@ -21,6 +21,11 @@ import kotlinx.coroutines.launch
 import java.text.Normalizer
 
 class ListViewModel : ViewModel() {
+    private companion object {
+        /** Long enough to swallow a typed word, short enough not to feel laggy. */
+        const val SEARCH_DEBOUNCE_MS = 200L
+    }
+
     /** True once [loadLists]/[loadDownloadedLists] has completed at least once for this instance. */
     var loaded = false
 
@@ -29,7 +34,11 @@ class ListViewModel : ViewModel() {
     private val lists = MutableLiveData<MutableMap<String, ArrayList<Media>>>()
     private val unfilteredLists = MutableLiveData<MutableMap<String, ArrayList<Media>>>()
     val currentFilters = MutableLiveData<ListFilters>(ListFilters())
+    /** Written on the main thread by [searchLists], read by the debounced search coroutine. */
+    @Volatile
     private var currentSearchQuery: String = ""
+
+    private var searchJob: Job? = null
 
     private val muLists = MutableLiveData<Map<String, List<MUMedia>>>()
     fun getMuLists(): LiveData<Map<String, List<MUMedia>>> = muLists
@@ -52,6 +61,10 @@ class ListViewModel : ViewModel() {
     suspend fun loadLists(anime: Boolean, userId: Int, sortOrder: String? = null) {
         tryWithSuspend {
             activeSortOrder = sortOrder
+            // Every load builds fresh Media instances, so the identity-keyed search keys built
+            // against the previous set can never be hit again. Changing the sort order reloads, so
+            // without this they would accumulate for as long as the screen is open.
+            searchKeys.clear()
             val res = Anilist.query.getMediaLists(anime, userId, sortOrder)
             unfilteredLists.postValue(res)
             val filters = currentFilters.value
@@ -135,6 +148,7 @@ class ListViewModel : ViewModel() {
     suspend fun loadDownloadedLists(anime: Boolean, context: Context, sortOrder: String? = null) {
         tryWithSuspend {
             activeSortOrder = sortOrder
+            searchKeys.clear()
             rawMuData = null
             val media = OfflineMediaLoader.loadDownloadedMediaList(context, anime)
             val sorted = sortDownloadedMedia(media, sortOrder)
@@ -359,16 +373,92 @@ class ListViewModel : ViewModel() {
         }
     }
 
+    /**
+     * Compiled once. This used to be built inside [normalize] with `.toRegex()`, which compiled a
+     * fresh pattern on every call — and [performSearch] calls normalize once per title, once per
+     * romaji title, once per userPreferred title and once per synonym, for every entry in every
+     * list, on every keystroke. On a large library that was tens of thousands of pattern
+     * compilations per character typed.
+     */
+    private val combiningMarks = Regex("\\p{InCombiningDiacriticalMarks}+")
+
     private fun normalize(text: String?): String {
         if (text.isNullOrBlank()) return ""
         val normalized = Normalizer.normalize(text.trim(), Normalizer.Form.NFD)
-        return normalized.replace("\\p{InCombiningDiacriticalMarks}+".toRegex(), "").lowercase()
+        return combiningMarks.replace(normalized, "").lowercase()
     }
 
+    /**
+     * Everything an entry can be searched by, normalised once and kept.
+     *
+     * Keyed by object identity rather than media id on purpose: the same series can be present as
+     * more than one [Media] — the favourites query returns its own instances, and unlike the list
+     * query it does not ask for synonyms — so keying by id would let whichever instance was seen
+     * first decide what the other can be found by. Identity keeps each instance matching on exactly
+     * the fields it carries, which is what the per-keystroke code did.
+     *
+     * Fields are joined with a NUL, a character no typed query contains, so a match can never
+     * straddle the boundary between two titles.
+     */
+    private val searchKeys = java.util.Collections.synchronizedMap(
+        java.util.IdentityHashMap<Media, String>()
+    )
+
+    private fun searchKeyFor(media: Media): String = searchKeys.getOrPut(media) {
+        buildList {
+            add(media.name)
+            add(media.nameRomaji)
+            add(media.userPreferredName)
+            addAll(media.synonyms)
+        }.joinToString("\u0000") { normalize(it) }
+    }
+
+    /**
+     * The MangaUpdates equivalent. Synonyms arrive asynchronously into
+     * [MangaUpdates.synonymsCache], so the count they were built from is kept alongside and the key
+     * is rebuilt when more show up — otherwise a series would stay unfindable by a synonym that had
+     * since been resolved.
+     */
+    private val muSearchKeys =
+        java.util.Collections.synchronizedMap(HashMap<Long, Pair<Int, String>>())
+
+    private fun muSearchKeyFor(mu: MUMedia): String {
+        val synonyms = MangaUpdates.synonymsCache[mu.id].orEmpty()
+        muSearchKeys[mu.id]?.let { (count, key) -> if (count == synonyms.size) return key }
+        val key = (listOf(mu.title) + synonyms).joinToString("\u0000") { normalize(it) }
+        muSearchKeys[mu.id] = synonyms.size to key
+        return key
+    }
+
+    /**
+     * Debounced, and off the main thread.
+     *
+     * This is called straight from the search field's TextWatcher, so it used to run the whole pass
+     * — every entry of every list, including the "All" bucket that repeats them all — synchronously
+     * on the UI thread for each character typed. Coalescing the keystrokes means a word costs one
+     * pass instead of one per letter, and running it on [Dispatchers.Default] means the pass it does
+     * cost is not paid by the frame loop.
+     *
+     * [currentSearchQuery] is still assigned synchronously: callers such as [loadLists] read it to
+     * decide whether results arriving from the network should come back filtered, and that has to be
+     * true the moment the user types rather than a debounce later. It doubles as the coalescing
+     * check — a job whose query is no longer the current one has been superseded and stops.
+     *
+     * Clearing the field skips the delay; restoring the full list should feel immediate.
+     */
     fun searchLists(search: String) {
         val query = search.trim()
         currentSearchQuery = query  // Save current search query
 
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch(Dispatchers.Default) {
+            if (query.isNotEmpty()) delay(SEARCH_DEBOUNCE_MS)
+            if (query != currentSearchQuery) return@launch
+            applySearch(query)
+        }
+    }
+
+    private fun applySearch(query: String) {
         if (query.isEmpty()) {
             // Restore MU list respecting AniList-only suppression rules.
             val filters = currentFilters.value
@@ -434,14 +524,8 @@ class ListViewModel : ViewModel() {
 
         val currentLists = baseList ?: return
         val filteredLists = currentLists.mapValues { entry ->
-            entry.value.filter { media ->
-                val name = normalize(media.name)
-                val romaji = normalize(media.nameRomaji)
-                val userPreferred = normalize(media.userPreferredName)
-                val synonyms = media.synonyms.map { normalize(it) }
-
-                (name.contains(q) || romaji.contains(q) || userPreferred.contains(q) || synonyms.any { it.contains(q) })
-            }.let { ArrayList(it) }
+            entry.value.filter { media -> searchKeyFor(media).contains(q) }
+                .let { ArrayList(it) }
         }.toMutableMap()
 
         lists.postValue(filteredLists)
@@ -470,8 +554,7 @@ class ListViewModel : ViewModel() {
 
     private fun matchesMuSearch(mu: MUMedia, normalizedQuery: String?): Boolean {
         if (normalizedQuery.isNullOrBlank()) return true
-        return normalize(mu.title).contains(normalizedQuery) ||
-            MangaUpdates.synonymsCache[mu.id]?.any { normalize(it).contains(normalizedQuery) } == true
+        return muSearchKeyFor(mu).contains(normalizedQuery)
     }
 
     private fun matchesMuFilters(mu: MUMedia, filters: ListFilters?): Boolean {

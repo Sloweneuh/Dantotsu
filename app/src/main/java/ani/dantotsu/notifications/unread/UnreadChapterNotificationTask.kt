@@ -110,7 +110,12 @@ class UnreadChapterNotificationTask : Task {
                                 "UnreadChapterNotificationTask: using shared cloud result (${shared.size}, " +
                                     "${reconciled.size} still unread after live progress); skipping MALSync scan"
                             )
-                            handleUnreadResult(context, reconciled, mangaList)
+                            // A completed scan from another device, so it answers for the whole
+                            // list — anything it does not mention is caught up, not unknown.
+                            handleUnreadResult(
+                                context, reconciled, mangaList,
+                                answeredIds = mangaList.mapTo(HashSet()) { it.id }
+                            )
                             return@anilistCheck
                         }
 
@@ -215,7 +220,10 @@ class UnreadChapterNotificationTask : Task {
 
                         // Publish for the user's other devices, then cache + notify locally.
                         UnreadSync.push(unreadInfo)
-                        handleUnreadResult(context, unreadInfo, mangaList)
+                        handleUnreadResult(
+                            context, unreadInfo, mangaList,
+                            answeredIds = batchResults.keys
+                        )
 
                         if (progressNotification != null) {
                             Logger.log("UnreadChapterNotificationTask: Canceling progress notification")
@@ -284,7 +292,10 @@ class UnreadChapterNotificationTask : Task {
                     }
 
                     Logger.log("UnreadChapterNotificationTask: found ${unreadInfo.size} anime with unread episodes")
-                    handleUnreadResult(context, unreadInfo, animeList, isAnime = true)
+                    handleUnreadResult(
+                        context, unreadInfo, animeList, isAnime = true,
+                        answeredIds = batchResults.keys
+                    )
                 }
 
                 // === MangaUpdates unread check ===
@@ -333,6 +344,8 @@ class UnreadChapterNotificationTask : Task {
         unreadInfo: Map<Int, UnreadChapterInfo>,
         mediaList: List<Media>,
         isAnime: Boolean = false,
+        /** Which of [mediaList] this run actually got an answer for. See [UnreadCache.save]. */
+        answeredIds: Set<Int> = emptySet(),
     ) {
         // The map passed in may have come from another device via UnreadSync (a cached result
         // computed under that device's exclude list at that time), so re-filter against this
@@ -342,7 +355,7 @@ class UnreadChapterNotificationTask : Task {
 
         if (!isAnime) {
             try {
-                UnreadCache.save(context, filteredUnreadInfo, mediaList)
+                UnreadCache.save(context, filteredUnreadInfo, mediaList, answeredIds)
                 UnreadCache.broadcastUpdate(context)
             } catch (e: Exception) {
                 Logger.log("UnreadChapterNotificationTask: Failed to cache/broadcast unread results: ${e.message}")

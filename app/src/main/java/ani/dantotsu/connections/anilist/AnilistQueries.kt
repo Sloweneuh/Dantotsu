@@ -689,12 +689,36 @@ class AnilistQueries {
         return """ Page(page: 1, perPage:30) { $standardPageInformation recommendations(sort: RATING_DESC, onList: true) { rating userRating mediaRecommendation { id idMal isAdult mediaListEntry { progress private score(format:POINT_100) status } chapters isFavourite format episodes nextAiringEpisode {episode} popularity meanScore isFavourite format title {english romaji userPreferred } description type status(version: 2) bannerImage coverImage { large } } } } """
     }
 
-    private fun recommendationPlannedQuery(type: String): String {
-        return """ MediaListCollection(userId: ${Anilist.userid}, type: $type, status: PLANNING${if (type == "ANIME") ", sort: MEDIA_POPULARITY_DESC" else ""} ) { lists { entries { media { id mediaListEntry { progress private score(format:POINT_100) status } idMal type isAdult popularity status(version: 2) chapters episodes nextAiringEpisode {episode} meanScore isFavourite format bannerImage coverImage{large} title { english romaji userPreferred } description } } } }"""
+    /**
+     * The PLANNING collection, as both the "Planned" row and the recommendations row need it.
+     *
+     * Those two used to ask for it separately — `plannedAnime`/`plannedManga` through
+     * [continueMediaQuery] and `recommendationPlannedQueryAnime`/`Manga` through a near-identical
+     * builder of its own — which put the user's entire planning list, descriptions and all, into the
+     * same home request twice per type. On a large library that was the single biggest thing in it.
+     *
+     * The field set here is the union of what both consumers read, so neither loses anything:
+     * entry-level `progress`/`updatedAt` for [initHomePage]'s row ordering, `popularity` and
+     * `status(version: 2)` for [mergeRecommendations]. Version 2 is what the recommendations filter
+     * has always seen, so keeping it preserves that row exactly — and it also means the planned row
+     * can finally tell a hiatus series from a releasing one.
+     *
+     * `sort` is [continueMediaQuery]'s UPDATED_TIME rather than the recommendation builder's
+     * MEDIA_POPULARITY_DESC; [mergeRecommendations] re-sorts by `meanScore` itself, so the server
+     * order never mattered to it.
+     */
+    private fun plannedMediaQuery(type: String): String {
+        return """ MediaListCollection(userId: ${Anilist.userid}, type: $type, status: PLANNING, sort: UPDATED_TIME ) { lists { entries { progress private score(format:POINT_100) status updatedAt media { id idMal type isAdult popularity status(version: 2) chapters episodes nextAiringEpisode {episode} meanScore isFavourite format bannerImage coverImage{large} title { english romaji userPreferred } description } } } } """
     }
 
+    /**
+     * `status(version: 2)` on the media, matching [plannedMediaQuery]: version 1 has no HIATUS, so a
+     * paused series reported as RELEASING and the row drew it with the ongoing dot despite the app
+     * having a hiatus one to draw. The two builders feed rows that sit next to each other on the
+     * home screen, so they agree on what a status means.
+     */
     private fun continueMediaQuery(type: String, status: String): String {
-        return """ MediaListCollection(userId: ${Anilist.userid}, type: $type, status: $status , sort: UPDATED_TIME ) { lists { entries { progress private score(format:POINT_100) status updatedAt media { id idMal type isAdult status chapters episodes nextAiringEpisode {episode} meanScore isFavourite format bannerImage coverImage{large} title { english romaji userPreferred } description } } } } """
+        return """ MediaListCollection(userId: ${Anilist.userid}, type: $type, status: $status , sort: UPDATED_TIME ) { lists { entries { progress private score(format:POINT_100) status updatedAt media { id idMal type isAdult status(version: 2) chapters episodes nextAiringEpisode {episode} meanScore isFavourite format bannerImage coverImage{large} title { english romaji userPreferred } description } } } } """
     }
 
     suspend fun initHomePage(): Map<String, ArrayList<Media>> {
@@ -708,25 +732,39 @@ class AnilistQueries {
         val savedOrder = PrefManager.getVal<List<Int>>(PrefName.HomeLayoutOrder)
         val order = if (savedOrder.isNullOrEmpty() || savedOrder.size != viewsCount) (0 until viewsCount).toList() else savedOrder
 
+        // The planned collections are shared: the Planned rows show them, and the recommendations row
+        // ranks them. Whichever sections are on, each type is asked for at most once — a repeated
+        // alias would be a duplicate of the heaviest thing in this request (and invalid GraphQL).
+        // See [plannedMediaQuery].
+        val wantRecommendations = toShow.getOrNull(7) == true
+        val wantPlannedAnime = toShow.getOrNull(2) == true || wantRecommendations
+        val wantPlannedManga = toShow.getOrNull(6) == true || wantRecommendations
+
         val queries = mutableListOf<String>()
+        val added = mutableSetOf<String>()
+        fun addOnce(alias: String, body: String) {
+            if (added.add(alias)) queries.add("""$alias: $body""")
+        }
         for (idx in order) {
             when (idx) {
                 0 -> if (toShow.getOrNull(0) == true) {
-                    queries.add("""currentAnime: ${continueMediaQuery("ANIME", "CURRENT")}""")
-                    queries.add("""repeatingAnime: ${continueMediaQuery("ANIME", "REPEATING")}""")
+                    addOnce("currentAnime", continueMediaQuery("ANIME", "CURRENT"))
+                    addOnce("repeatingAnime", continueMediaQuery("ANIME", "REPEATING"))
                 }
-                1 -> if (toShow.getOrNull(1) == true) queries.add("""favoriteAnime: ${favMediaQuery(true, 1)}""")
-                2 -> if (toShow.getOrNull(2) == true) queries.add("""plannedAnime: ${continueMediaQuery("ANIME", "PLANNING")}""")
+                1 -> if (toShow.getOrNull(1) == true) addOnce("favoriteAnime", favMediaQuery(true, 1))
+                2 -> if (wantPlannedAnime) addOnce("plannedAnime", plannedMediaQuery("ANIME"))
                 4 -> if (toShow.getOrNull(4) == true) {
-                    queries.add("""currentManga: ${continueMediaQuery("MANGA", "CURRENT")}""")
-                    queries.add("""repeatingManga: ${continueMediaQuery("MANGA", "REPEATING")}""")
+                    addOnce("currentManga", continueMediaQuery("MANGA", "CURRENT"))
+                    addOnce("repeatingManga", continueMediaQuery("MANGA", "REPEATING"))
                 }
-                5 -> if (toShow.getOrNull(5) == true) queries.add("""favoriteManga: ${favMediaQuery(false, 1)}""")
-                6 -> if (toShow.getOrNull(6) == true) queries.add("""plannedManga: ${continueMediaQuery("MANGA", "PLANNING")}""")
-                7 -> if (toShow.getOrNull(7) == true) {
-                    queries.add("""recommendationQuery: ${recommendationQuery()}""")
-                    queries.add("""recommendationPlannedQueryAnime: ${recommendationPlannedQuery("ANIME")}""")
-                    queries.add("""recommendationPlannedQueryManga: ${recommendationPlannedQuery("MANGA")}""")
+                5 -> if (toShow.getOrNull(5) == true) addOnce("favoriteManga", favMediaQuery(false, 1))
+                6 -> if (wantPlannedManga) addOnce("plannedManga", plannedMediaQuery("MANGA"))
+                7 -> if (wantRecommendations) {
+                    addOnce("recommendationQuery", recommendationQuery())
+                    // Recommendations may be the only reason these are wanted — the Planned rows
+                    // themselves can be switched off, in which case their `order` cases did nothing.
+                    addOnce("plannedAnime", plannedMediaQuery("ANIME"))
+                    addOnce("plannedManga", plannedMediaQuery("MANGA"))
                 }
             }
         }
@@ -769,11 +807,17 @@ class AnilistQueries {
                 List::class.java
             ) as List<Int>
             if (list.isNotEmpty()) {
+                // Tracked by id rather than by `returnArray.contains(it)`: Media is a data class
+                // whose generated equals compares every constructor property, descriptions and tag
+                // lists included, so the old membership test was a linear scan of deep string
+                // comparisons per candidate. On a planning list of any size that was the most
+                // expensive thing on the home path, for a check that only ever meant "same entry".
+                val seen = HashSet<Int>(subMap.size * 2)
                 list.reversed().forEach { id ->
-                    subMap[id]?.let { returnArray.add(it) }
+                    subMap[id]?.let { if (seen.add(it.id)) returnArray.add(it) }
                 }
                 subMap.values.forEach {
-                    if (!returnArray.contains(it)) returnArray.add(it)
+                    if (seen.add(it.id)) returnArray.add(it)
                 }
             } else {
                 returnArray.addAll(subMap.values)
@@ -848,7 +892,7 @@ class AnilistQueries {
                 subMap[media.id] = media
             }
         }
-        response?.data?.recommendationPlannedQueryAnime?.lists?.flatMap {
+        response?.data?.plannedAnime?.lists?.flatMap {
             it.entries ?: emptyList()
         }?.forEach {
             val media = Media(it)
@@ -857,7 +901,7 @@ class AnilistQueries {
                 subMap[media.id] = media
             }
         }
-        response?.data?.recommendationPlannedQueryManga?.lists?.flatMap {
+        response?.data?.plannedManga?.lists?.flatMap {
             it.entries ?: emptyList()
         }?.forEach {
             val media = Media(it)
@@ -876,8 +920,8 @@ class AnilistQueries {
     suspend fun getRecommendations(): List<Media> {
         val query = """{
 recommendationQuery: ${recommendationQuery()}
-recommendationPlannedQueryAnime: ${recommendationPlannedQuery("ANIME")}
-recommendationPlannedQueryManga: ${recommendationPlannedQuery("MANGA")}
+plannedAnime: ${plannedMediaQuery("ANIME")}
+plannedManga: ${plannedMediaQuery("MANGA")}
 }""".prepare()
         val response = executeQuery<Query.HomePageMedia>(query, force = true)
         return mergeRecommendations(response)
@@ -918,11 +962,13 @@ recommendationPlannedQueryManga: ${recommendationPlannedQuery("MANGA")}
         sortOrder: String? = null
     ): MutableMap<String, ArrayList<Media>> {
         val response =
-            executeQuery<Query.MediaListCollection>("""{ MediaListCollection(userId: $userId, type: ${if (anime) "ANIME" else "MANGA"}) { lists { name isCustomList entries { status progress progressVolumes private score(format:POINT_100) updatedAt startedAt{year month day} completedAt{year month day} media { id idMal isAdult type status chapters volumes episodes nextAiringEpisode {episode} bannerImage genres meanScore isFavourite format coverImage{large} description startDate{year month day} title {english romaji userPreferred } synonyms tags { name } countryOfOrigin source } } } user { id mediaListOptions { rowOrder animeList { sectionOrder } mangaList { sectionOrder } } } } }""")
+            executeQuery<Query.MediaListCollection>("""{ MediaListCollection(userId: $userId, type: ${if (anime) "ANIME" else "MANGA"}) { lists { name isCustomList entries { status progress progressVolumes private score(format:POINT_100) updatedAt startedAt{year month day} completedAt{year month day} media { id idMal isAdult type status(version: 2) chapters volumes episodes nextAiringEpisode {episode} bannerImage genres meanScore isFavourite format coverImage{large} description startDate{year month day} title {english romaji userPreferred } synonyms tags { name } countryOfOrigin source } } } user { id mediaListOptions { rowOrder animeList { sectionOrder } mangaList { sectionOrder } } } } }""")
         val sorted = mutableMapOf<String, ArrayList<Media>>()
         val unsorted = mutableMapOf<String, ArrayList<Media>>()
         val all = arrayListOf<Media>()
-        val allIds = arrayListOf<Int>()
+        // A set, not a list: this is checked once per entry across every list, so a linear scan made
+        // building "All" quadratic in the size of the library.
+        val allIds = HashSet<Int>()
 
         response?.data?.mediaListCollection?.lists?.forEach { i ->
             val name = i.name.toString().trim('"')
@@ -930,10 +976,7 @@ recommendationPlannedQueryManga: ${recommendationPlannedQuery("MANGA")}
             i.entries?.forEach {
                 val a = Media(it)
                 unsorted[name]?.add(a)
-                if (!allIds.contains(a.id)) {
-                    allIds.add(a.id)
-                    all.add(a)
-                }
+                if (allIds.add(a.id)) all.add(a)
             }
         }
 

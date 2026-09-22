@@ -1,6 +1,7 @@
 package ani.dantotsu.media
 
 import android.annotation.SuppressLint
+import android.text.SpannableString
 import android.text.method.LinkMovementMethod
 import android.text.util.Linkify
 import androidx.core.text.HtmlCompat
@@ -246,10 +247,9 @@ class MediaAdaptor(
                     b.itemCompactStatus.visibility = if (!b.itemCompactStatus.text.isNullOrBlank()) View.VISIBLE else View.GONE
                     // Synopsis preview (stripped from HTML) and user progress
                     try {
-                        val rawDesc = media.description ?: ""
-                        val parsed = HtmlCompat.fromHtml(rawDesc, HtmlCompat.FROM_HTML_MODE_LEGACY)
-                        b.itemCompactSynopsis.text = if (parsed.isBlank() || parsed.toString() == "null") activity.getString(R.string.no_description_available) else parsed
-                        Linkify.addLinks(b.itemCompactSynopsis, Linkify.WEB_URLS)
+                        val synopsis = synopsisOf(media.description)
+                        b.itemCompactSynopsis.text =
+                            synopsis ?: activity.getString(R.string.no_description_available)
                         b.itemCompactSynopsis.movementMethod = LinkMovementMethod.getInstance()
                         b.itemCompactSynopsis.scrollTo(0, 0)
                         b.itemCompactSynopsis.setOnTouchListener { v, event ->
@@ -559,6 +559,33 @@ class MediaAdaptor(
         }
     }
 
+    /**
+     * The row's synopsis, parsed and linkified once.
+     *
+     * Both steps used to run inside onBindViewHolder, so every row re-parsed its whole HTML
+     * description and re-scanned it for URLs each time it scrolled into view — for a description
+     * that had not changed, on a list where the same rows come back past the viewport constantly.
+     *
+     * Keyed by the description itself rather than the media id, so a media whose description is
+     * filled in later (MangaUpdates entries resolve theirs after the row is already showing) picks
+     * up the new text instead of the placeholder it was first drawn with. String hash codes are
+     * cached after the first call, so the lookup does not re-walk the text.
+     *
+     * The returned value is shared between rows. That is safe because nothing writes to it: the
+     * spans are static URLSpans and the TextViews only render it. Null means "no description",
+     * which callers turn into the placeholder string themselves.
+     */
+    private fun synopsisOf(description: String?): CharSequence? {
+        val raw = description?.takeIf { it.isNotBlank() && it != "null" } ?: return null
+        synchronized(synopsisCache) { synopsisCache[raw] }?.let { return it }
+        val parsed = HtmlCompat.fromHtml(raw, HtmlCompat.FROM_HTML_MODE_LEGACY)
+        if (parsed.isBlank() || parsed.toString() == "null") return null
+        val linkified = SpannableString(parsed)
+        Linkify.addLinks(linkified, Linkify.WEB_URLS)
+        synchronized(synopsisCache) { synopsisCache[raw] = linkified }
+        return linkified
+    }
+
     override fun getItemCount() = mediaList!!.size
 
     override fun getItemViewType(position: Int): Int {
@@ -749,4 +776,20 @@ class MediaAdaptor(
         return Bitmap.createScaledBitmap(source, newWidth, newHeight, true)
     }
 
+    private companion object {
+        /**
+         * Shared by every adapter so the work survives switching tabs or screens, and bounded by
+         * least-recent use so a long library does not keep every description it has ever drawn.
+         * Guarded by its own monitor: binds happen on the main thread, but there is no reason for
+         * this to depend on that.
+         */
+        private const val MAX_CACHED_SYNOPSES = 300
+
+        private val synopsisCache =
+            object : LinkedHashMap<String, CharSequence>(64, 0.75f, true) {
+                override fun removeEldestEntry(
+                    eldest: MutableMap.MutableEntry<String, CharSequence>
+                ): Boolean = size > MAX_CACHED_SYNOPSES
+            }
+    }
 }

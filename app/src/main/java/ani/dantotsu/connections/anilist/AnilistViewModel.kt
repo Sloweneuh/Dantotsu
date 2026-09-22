@@ -190,6 +190,7 @@ class AnilistHomeViewModel : ViewModel() {
             }
 
             // Check each manga against the batch results
+            val unreadInfo = LinkedHashMap<Int, ani.dantotsu.connections.malsync.UnreadChapterInfo>()
             for (media in currentManga) {
                 val userProgress = media.userProgress ?: 0
                 val result = batchResults[media.id]
@@ -198,28 +199,36 @@ class AnilistHomeViewModel : ViewModel() {
                     val lastChapter = result.lastEp.total
                     if (lastChapter > userProgress) {
                         unreadList.add(media)
+                        unreadInfo[media.id] = ani.dantotsu.connections.malsync.UnreadChapterInfo(
+                            mediaId = media.id,
+                            lastChapter = lastChapter,
+                            source = result.source,
+                            userProgress = userProgress,
+                            latestChapterAt = result.lastEp.timestampMillis()
+                        )
                     }
                 }
             }
 
             unreadChapters.postValue(unreadList)
-            // Persist cached results so they are available after app restart
-            try {
-                PrefManager.setCustomVal("cached_unread_chapters", unreadList)
-            } catch (e: Exception) {
-                ani.dantotsu.util.Logger.log("Failed to cache unread chapters: ${e.message}")
-            }
+            // Through UnreadCache so this run merges with what is already stored instead of
+            // replacing it. getBatchProgressByMedia answers for as many manga as it manages to —
+            // a failed batch simply contributes nothing — so writing this list out whole would
+            // delete entries a previous, luckier run had found. It also keeps the two halves of
+            // the cache in step: cached_unread_chapters used to be written here and
+            // cached_unread_info only by the background task, so the media and the chapter counts
+            // describing them could come from different scans.
+            ani.dantotsu.notifications.unread.UnreadCache.save(
+                unreadInfo, currentManga, batchResults.keys
+            )
             unreadChaptersError.postValue(false)
             unreadChaptersLoading.postValue(false)
         } catch (e: Exception) {
-            // On error, post empty list and set error flag
+            // The row goes empty for this session and the error flag explains why, but the stored
+            // cache is left alone: an exception here says MALSync could not be reached, which is no
+            // evidence that anything has been caught up on. Clearing it meant one failed refresh
+            // threw away results the next launch had no way to recover except by scanning again.
             unreadChapters.postValue(arrayListOf())
-            // Update cache to empty on error to avoid showing stale positives
-            try {
-                PrefManager.setCustomVal("cached_unread_chapters", arrayListOf<Media>())
-            } catch (e: Exception) {
-                ani.dantotsu.util.Logger.log("Failed to clear cached unread chapters: ${e.message}")
-            }
             unreadChaptersError.postValue(true)
             unreadChaptersLoading.postValue(false)
         }
