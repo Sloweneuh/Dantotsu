@@ -72,6 +72,17 @@ class MangaReadAdapter(
     var scanlatorSelectionListener: ScanlatorSelectionListener? = null
     var options = listOf<String>()
 
+    // The picker only needs the chapter number, but MangaChapter.number is actually the source's
+    // full chapter name (e.g. "Chapter 5: The Awakening") - resolve just the number out of it,
+    // falling back to the raw string when it can't be parsed.
+    private fun MangaChapter.pickerNumber(): String {
+        val parserNumber = sChapter.chapter_number
+        val resolved = if (parserNumber > 0f) parserNumber else MediaNameAdapter.findChapterNumber(number)
+        return resolved?.let {
+            if (it == it.toLong().toFloat()) it.toLong().toString() else it.toString()
+        } ?: number
+    }
+
     private fun clearCustomValsForMedia(mediaId: String, suffix: String) {
         val customVals = PrefManager.getAllCustomValsForMedia("$mediaId$suffix")
         customVals.forEach { (key) ->
@@ -271,7 +282,7 @@ class MangaReadAdapter(
                 toast(fragment.getString(R.string.all_chapters_downloaded))
                 return@setOnClickListener
             }
-            val numbers = chapters.map { it.number }
+            val numbers = chapters.map { it.pickerNumber() }
             val pickerBinding = DialogMultiDownloadBinding.inflate(fragment.layoutInflater)
             var startIndex = 0
             var endIndex = chapters.lastIndex
