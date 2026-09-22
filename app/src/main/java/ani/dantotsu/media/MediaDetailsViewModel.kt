@@ -612,9 +612,35 @@ class MediaDetailsViewModel : ViewModel() {
     private val episodes = MutableLiveData<MutableMap<Int, MutableMap<String, Episode>>>(null)
     private val epsLoaded = mutableMapOf<Int, MutableMap<String, Episode>>()
     fun getEpisodes(): LiveData<MutableMap<Int, MutableMap<String, Episode>>> = episodes
+    /**
+     * Loads already running, by source index, so a second caller joins one instead of starting another.
+     *
+     * The watch screen asks for its episodes from two independent places on open — the fragment's
+     * own init, and the source header binding as it settles the selected language — and
+     * [epsLoaded] is only populated once a load *finishes*, so neither could see the other coming.
+     * Both went out, against the same source, for the same list: measured on AnimePahe, two
+     * concurrent fetches of the same twelve episodes, each taking about eleven and a half seconds.
+     * Sources are not usually fond of being asked twice at once either, so the duplicate is not
+     * merely wasted — it is part of why the wait is what it is.
+     *
+     * Joining is the right answer even for an `invalidate` caller: what it wants is a result that
+     * is not the cached one, and a load already in flight is exactly that.
+     */
+    private val epsInFlight = mutableMapOf<Int, Deferred<MutableMap<String, Episode>?>>()
+
     suspend fun loadEpisodes(media: Media, i: Int, invalidate: Boolean = false) {
         if (!epsLoaded.containsKey(i) || invalidate) {
-            epsLoaded[i] = watchSources?.loadEpisodesFromMedia(i, media) ?: return
+            val job = synchronized(epsInFlight) {
+                epsInFlight[i] ?: MainScope().async(Dispatchers.IO) {
+                    watchSources?.loadEpisodesFromMedia(i, media)
+                }.also { epsInFlight[i] = it }
+            }
+            val result = try {
+                job.await()
+            } finally {
+                synchronized(epsInFlight) { if (epsInFlight[i] === job) epsInFlight.remove(i) }
+            }
+            epsLoaded[i] = result ?: return
         }
         episodes.postValue(epsLoaded)
     }
@@ -827,12 +853,25 @@ class MediaDetailsViewModel : ViewModel() {
     fun getMangaChapters(): LiveData<MutableMap<Int, MutableMap<String, MangaChapter>>> =
             mangaChapters
 
+    /** The read screen's equivalent of [epsInFlight]; same two-callers-one-load problem. */
+    private val mangaInFlight = mutableMapOf<Int, Deferred<MutableMap<String, MangaChapter>?>>()
+
     suspend fun loadMangaChapters(media: Media, i: Int, invalidate: Boolean = false) {
         if (!mangaLoaded.containsKey(i) || invalidate)
                 tryWithSuspend {
-                    mangaLoaded[i] =
+                    val job = synchronized(mangaInFlight) {
+                        mangaInFlight[i] ?: MainScope().async(Dispatchers.IO) {
                             mangaReadSources?.loadChaptersFromMedia(i, media)
-                                    ?: return@tryWithSuspend
+                        }.also { mangaInFlight[i] = it }
+                    }
+                    val result = try {
+                        job.await()
+                    } finally {
+                        synchronized(mangaInFlight) {
+                            if (mangaInFlight[i] === job) mangaInFlight.remove(i)
+                        }
+                    }
+                    mangaLoaded[i] = result ?: return@tryWithSuspend
                 }
         mangaChapters.postValue(mangaLoaded)
     }

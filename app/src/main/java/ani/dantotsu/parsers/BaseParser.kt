@@ -74,11 +74,26 @@ abstract class BaseParser {
     open suspend fun autoSearch(mediaObj: Media): ShowResponse? {
         applySourceLanguage(mediaObj)
 
+        // TEMPORARY INSTRUMENTATION — grep DantotsuPerf.
+        val perfMatchStart = System.nanoTime()
         val saved = loadSavedShowResponse(mediaObj.id)
         if (saved != null) {
             if (this !is OfflineMangaParser && this !is OfflineAnimeParser) {
-                saveShowResponse(mediaObj.id, saved, true)
+                // Reported, not rewritten.
+                //
+                // This used to hand the value straight back to [saveShowResponse], which stores it
+                // again under the key it was just read from — the `selected` flag it passes only
+                // decides which word the status line uses, so the stored bytes were identical every
+                // time. That made opening any media a write (two, with the legacy-key removal) to
+                // the Irrelevant preferences file, which holds one of these per media per source
+                // and re-serialises the whole of itself on every `apply()`. See
+                // [ani.dantotsu.connections.IdCache] for the same problem, and what it cost.
+                setUserText("${currContext()!!.getString(R.string.selected)} : ${saved.name}")
             }
+            android.util.Log.i(
+                "DantotsuPerf",
+                "autoSearch[$name] cachedMatch=${(System.nanoTime() - perfMatchStart) / 1_000_000}ms"
+            )
             return saved
         }
 

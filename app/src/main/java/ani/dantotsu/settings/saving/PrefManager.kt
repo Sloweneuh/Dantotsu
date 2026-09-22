@@ -41,6 +41,21 @@ object PrefManager {
         protectedPreferences =
             context.getSharedPreferences(Location.Protected.location, Context.MODE_PRIVATE)
         Compat.importOldPrefs(context)
+        // TEMPORARY INSTRUMENTATION — grep DantotsuPerf. How big the Irrelevant file actually is,
+        // and what it costs to have it resident: SharedPreferences parses the whole XML on first
+        // touch and re-serialises all of it on every apply(), so the key count is the multiplier on
+        // every per-media write in the app.
+        try {
+            val t0 = System.nanoTime()
+            val count = irrelevantPreferences!!.all.size
+            val showResponses = irrelevantPreferences!!.all.keys.count { it.startsWith("ShowResponse") }
+            android.util.Log.i(
+                "DantotsuPerf",
+                "prefs irrelevantKeys=$count showResponses=$showResponses " +
+                    "firstRead=${(System.nanoTime() - t0) / 1_000_000}ms"
+            )
+        } catch (_: Exception) {
+        }
     }
 
     @Suppress("UNCHECKED_CAST")

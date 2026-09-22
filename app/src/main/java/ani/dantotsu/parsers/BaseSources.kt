@@ -21,9 +21,18 @@ abstract class WatchSources : BaseSources() {
     }
 
     suspend fun loadEpisodesFromMedia(i: Int, media: Media): MutableMap<String, Episode> {
+        // TEMPORARY INSTRUMENTATION — grep DantotsuPerf.
+        val perfStart = System.nanoTime()
         return tryWithSuspend(true) {
             val res = get(i).autoSearch(media) ?: return@tryWithSuspend mutableMapOf()
-            loadEpisodes(i, res.link, res.extra, res.sAnime)
+            val perfMatched = System.nanoTime()
+            val episodes = loadEpisodes(i, res.link, res.extra, res.sAnime)
+            android.util.Log.i(
+                "DantotsuPerf",
+                "episodes[${get(i).name}] match=${(perfMatched - perfStart) / 1_000_000}ms " +
+                    "fetch=${(System.nanoTime() - perfMatched) / 1_000_000}ms count=${episodes.size}"
+            )
+            episodes
         } ?: mutableMapOf()
     }
 
@@ -77,9 +86,18 @@ abstract class MangaReadSources : BaseSources() {
     }
 
     suspend fun loadChaptersFromMedia(i: Int, media: Media): MutableMap<String, MangaChapter> {
+        // TEMPORARY INSTRUMENTATION — grep DantotsuPerf.
+        val perfStart = System.nanoTime()
         return tryWithSuspend(true) {
             val res = get(i).autoSearch(media) ?: return@tryWithSuspend mutableMapOf()
-            loadChapters(i, res)
+            val perfMatched = System.nanoTime()
+            val chapters = loadChapters(i, res)
+            android.util.Log.i(
+                "DantotsuPerf",
+                "chapters[${get(i).name}] match=${(perfMatched - perfStart) / 1_000_000}ms " +
+                    "fetch=${(System.nanoTime() - perfMatched) / 1_000_000}ms count=${chapters.size}"
+            )
+            chapters
         } ?: mutableMapOf()
     }
 
