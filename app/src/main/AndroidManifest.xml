@@ -232,6 +232,11 @@
         <activity android:name=".settings.PlayerSettingsActivity" />
         <activity android:name=".settings.ReaderSettingsActivity" />
         <activity android:name=".settings.FAQActivity" />
+        <!-- Debug-only screen (FirebaseTestActivity finishes itself outside debug builds); exported
+             so it's reachable via `adb shell am start` regardless of build type. -->
+        <activity
+            android:name=".notifications.firebase.FirebaseTestActivity"
+            android:exported="true" />
         <activity
             android:name=".settings.SettingsActivity"
             android:parentActivityName=".MainActivity" />

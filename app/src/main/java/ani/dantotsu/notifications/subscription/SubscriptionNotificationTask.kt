@@ -4,8 +4,6 @@ import android.annotation.SuppressLint
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -15,6 +13,8 @@ import ani.dantotsu.MainActivity
 import ani.dantotsu.R
 import ani.dantotsu.connections.anilist.UrlMedia
 import ani.dantotsu.hasNotificationPermission
+import ani.dantotsu.notifications.MediaCoverNotificationStyle
+import ani.dantotsu.notifications.NotificationImageLoader
 import ani.dantotsu.notifications.NotificationReadState
 import ani.dantotsu.notifications.Task
 import ani.dantotsu.parsers.AnimeSources
@@ -121,7 +121,7 @@ class SubscriptionNotificationTask : Task {
                                     parser,
                                     media
                                 )
-                            if (ep != null) ep.number + " " + context.getString(R.string.just_released) to null
+                            if (ep != null) ep.number + " " + context.getString(R.string.just_released) to FileUrl[media.image]
                             else null
                         } ?: return@map
                         val readKey = addSubscriptionToStore(
@@ -195,10 +195,8 @@ class SubscriptionNotificationTask : Task {
             .setGroup(GROUP_SUBSCRIPTION_CHECK)
 
         if (thumbnail != null) {
-            val bitmap = getBitmapFromUrl(thumbnail.url)
-            if (bitmap != null) {
-                builder.setLargeIcon(bitmap)
-            }
+            val bitmap = NotificationImageLoader.loadBitmap(thumbnail.url)
+            MediaCoverNotificationStyle.apply(context, builder, media.name, text, bitmap)
         }
 
         return builder.build()
@@ -225,6 +223,9 @@ class SubscriptionNotificationTask : Task {
         return NotificationCompat.Builder(context, CHANNEL_SUBSCRIPTION_CHECK)
             .setSmallIcon(R.drawable.ic_round_notifications_active_24)
             .setContentTitle(title)
+            // Without it, the group's own header — shown above the stack, distinct from each
+            // child's — is just a bare timestamp next to the app name.
+            .setSubText(title)
             .setStyle(NotificationCompat.InboxStyle().setSummaryText(title))
             .setGroup(GROUP_SUBSCRIPTION_CHECK)
             .setGroupSummary(true)
@@ -245,16 +246,6 @@ class SubscriptionNotificationTask : Task {
             .setOngoing(true)
             .setAutoCancel(false)
     }
-
-    private fun getBitmapFromUrl(url: String): Bitmap? {
-        return try {
-            val inputStream = java.net.URL(url).openStream()
-            BitmapFactory.decodeStream(inputStream)
-        } catch (e: Exception) {
-            null
-        }
-    }
-
 
     private fun getIntent(context: Context, mediaId: Int, readKey: String): PendingIntent {
         val notifyIntent = Intent(context, UrlMedia::class.java)

@@ -1,16 +1,23 @@
 package ani.dantotsu.notifications.firebase
 
+import android.content.Context
 import android.os.Bundle
 import android.widget.Button
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import ani.dantotsu.R
+import ani.dantotsu.initActivity
+import ani.dantotsu.notifications.anilist.AnilistNotificationTask
 import ani.dantotsu.notifications.subscription.SubscriptionNotificationTask
+import ani.dantotsu.notifications.unread.MuUnreadNotificationTask
 import ani.dantotsu.notifications.unread.UnreadChapterNotificationTask
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
+import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.util.Logger
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -38,6 +45,11 @@ class FirebaseTestActivity : AppCompatActivity() {
     private lateinit var btnRefreshStatus: Button
     private lateinit var btnWriteTestLog: Button
     private lateinit var btnViewLogs: Button
+    private lateinit var btnTestAnilistImage: Button
+    private lateinit var btnTestAnilistActivityLike: Button
+    private lateinit var btnTestUnreadChapterImage: Button
+    private lateinit var btnTestUnreadEpisodeImage: Button
+    private lateinit var btnTestMuImage: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,7 +60,32 @@ class FirebaseTestActivity : AppCompatActivity() {
             return
         }
 
+        ThemeManager(this).applyTheme()
+        initActivity(this)
+
         setContentView(R.layout.activity_firebase_test)
+
+        // Self-contained rather than reusing the app-wide statusBarHeight/navBarHeight globals:
+        // those are only populated once some other activity (normally MainActivity) has computed
+        // them, which hasn't necessarily happened when this screen is opened directly. Also asks
+        // for the display cutout inset (camera punch-hole), which those globals don't cover.
+        val root = findViewById<android.view.View>(R.id.firebaseTestRoot)
+        val basePaddingLeft = root.paddingLeft
+        val basePaddingTop = root.paddingTop
+        val basePaddingRight = root.paddingRight
+        val basePaddingBottom = root.paddingBottom
+        ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
+            val bars = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+            )
+            view.setPadding(
+                basePaddingLeft + bars.left,
+                basePaddingTop + bars.top,
+                basePaddingRight + bars.right,
+                basePaddingBottom + bars.bottom
+            )
+            insets
+        }
 
         tvStatus = findViewById(R.id.tvStatus)
         btnGetToken = findViewById(R.id.btnGetToken)
@@ -59,6 +96,11 @@ class FirebaseTestActivity : AppCompatActivity() {
         btnRefreshStatus = findViewById(R.id.btnRefreshStatus)
         btnWriteTestLog = findViewById(R.id.btnWriteTestLog)
         btnViewLogs = findViewById(R.id.btnViewLogs)
+        btnTestAnilistImage = findViewById(R.id.btnTestAnilistImage)
+        btnTestAnilistActivityLike = findViewById(R.id.btnTestAnilistActivityLike)
+        btnTestUnreadChapterImage = findViewById(R.id.btnTestUnreadChapterImage)
+        btnTestUnreadEpisodeImage = findViewById(R.id.btnTestUnreadEpisodeImage)
+        btnTestMuImage = findViewById(R.id.btnTestMuImage)
 
         setupUI()
         updateStatus()
@@ -99,6 +141,51 @@ class FirebaseTestActivity : AppCompatActivity() {
 
         btnViewLogs.setOnClickListener {
             viewFullLogs()
+        }
+
+        btnTestAnilistImage.setOnClickListener {
+            sendTestNotification("AniList") { AnilistNotificationTask().sendTestNotification(this) }
+        }
+
+        btnTestAnilistActivityLike.setOnClickListener {
+            sendTestNotification("\"liked your activity\"") {
+                AnilistNotificationTask().sendTestActivityLikeNotification(this)
+            }
+        }
+
+        btnTestUnreadChapterImage.setOnClickListener {
+            sendTestNotification("unread chapter") {
+                UnreadChapterNotificationTask().sendTestNotification(this, isAnime = false)
+            }
+        }
+
+        btnTestUnreadEpisodeImage.setOnClickListener {
+            sendTestNotification("unread episode") {
+                UnreadChapterNotificationTask().sendTestNotification(this, isAnime = true)
+            }
+        }
+
+        btnTestMuImage.setOnClickListener {
+            sendTestNotification("MangaUpdates") { MuUnreadNotificationTask().sendTestNotification(this) }
+        }
+    }
+
+    /**
+     * Posts a synthetic notification carrying a real cover image, bypassing the account state
+     * (actual unread AniList notifications, actual unread chapters) that the real tasks need and
+     * that can't reliably be produced on demand — this exercises the same large-icon code with a
+     * fixed test payload instead.
+     */
+    private fun sendTestNotification(label: String, post: suspend Context.() -> Unit) {
+        tvStatus.append("\n\n🖼️ Sending test $label notification...")
+        scope.launch {
+            try {
+                withContext(Dispatchers.IO) { applicationContext.post() }
+                tvStatus.append("\n✅ Test $label notification sent — check the notification shade")
+            } catch (e: Exception) {
+                tvStatus.append("\n❌ Error: ${e.message}")
+                toast("Error: ${e.message}")
+            }
         }
     }
 
@@ -375,6 +462,11 @@ class FirebaseTestActivity : AppCompatActivity() {
 
     private fun toast(message: String) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        ThemeManager(this).applyTheme()
     }
 }
 

@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:minHeight="110dp"
+    android:orientation="horizontal"
+    android:paddingTop="4dp"
+    android:paddingBottom="4dp">
+
+    <ImageView
+        android:id="@+id/notificationCover"
+        android:layout_width="74dp"
+        android:layout_height="110dp"
+        android:layout_marginEnd="12dp"
+        android:scaleType="centerCrop"
+        android:contentDescription="@null" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginEnd="12dp"
+        android:orientation="vertical">
+
+        <!-- Hidden (gone) unless a generic label ("New Chapter Available", ...) is set. subText
+             shows this next to the app name for a genuinely standalone notification, but not for
+             a child notification expanded inside a same-app group — there, the header above this
+             content is just a bare timestamp divider, so this is the only way to still show it. -->
+        <TextView
+            android:id="@+id/notificationLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textAppearance="@android:style/TextAppearance.Material.Notification"
+            android:textSize="11sp"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/notificationTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:ellipsize="end"
+            android:maxLines="3"
+            android:textAppearance="@android:style/TextAppearance.Material.Notification.Title" />
+
+        <!-- Title (media name), chapter/count and source/language are three separate lines
+             instead of one crowded paragraph — long titles are ellipsized rather than pushing
+             the rest off, and the chapter number and source no longer run together. -->
+        <TextView
+            android:id="@+id/notificationText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:ellipsize="end"
+            android:maxLines="2"
+            android:textAppearance="@android:style/TextAppearance.Material.Notification" />
+
+        <!-- Hidden (gone) unless a dub/sub language badge is set — same icon+code pairing used
+             for language elsewhere in the app, instead of spelling "English Dub" out. -->
+        <LinearLayout
+            android:id="@+id/notificationLanguageBadge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <ImageView
+                android:id="@+id/notificationLanguageIcon"
+                android:layout_width="13dp"
+                android:layout_height="13dp"
+                android:layout_marginEnd="4dp"
+                android:contentDescription="@null" />
+
+            <TextView
+                android:id="@+id/notificationLanguageCode"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textAppearance="@android:style/TextAppearance.Material.Notification"
+                android:textSize="12sp" />
+
+        </LinearLayout>
+
+        <!-- Hidden (gone) unless a plain source string is set (manga, or an anime episode with
+             no known language) — mutually exclusive with the badge above. -->
+        <TextView
+            android:id="@+id/notificationSourceText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textAppearance="@android:style/TextAppearance.Material.Notification"
+            android:textSize="12sp"
+            android:visibility="gone" />
+
+    </LinearLayout>
+
+</LinearLayout>

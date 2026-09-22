@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -15,8 +16,11 @@ import ani.dantotsu.connections.mangaupdates.MUMedia
 import ani.dantotsu.connections.mangaupdates.MUMediaDetailsActivity
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.connections.mangaupdates.muMediaKey
+import ani.dantotsu.notifications.MediaCoverNotificationStyle
+import ani.dantotsu.notifications.NotificationImageLoader
 import ani.dantotsu.notifications.NotificationReadState
 import ani.dantotsu.notifications.Task
+import ani.dantotsu.notifications.hasOtherActiveGroupMembers
 import ani.dantotsu.hasNotificationPermission
 import eu.kanade.tachiyomi.data.notification.Notifications
 import ani.dantotsu.settings.saving.PrefManager
@@ -31,6 +35,10 @@ class MuUnreadNotificationTask : Task {
     companion object {
         @Volatile
         private var currentlyPerforming = false
+
+        private const val TEST_MEDIA_ID = -999L
+        private const val TEST_IMAGE_URL =
+            "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx21-YCDoj1EkAxFn.jpg"
     }
 
     override suspend fun execute(context: Context): Boolean {
@@ -127,8 +135,11 @@ class MuUnreadNotificationTask : Task {
         Logger.log("MuUnreadNotificationTask: ${newItems.size} new chapters to notify")
 
         if (newItems.isNotEmpty() && hasNotificationPermission(context)) {
+            // Fetched here, on the IO dispatcher this whole method already runs on — sendNotifications
+            // itself is dispatched to Main below, where blocking network reads aren't allowed.
+            val icons = newItems.associate { it.media.id to NotificationImageLoader.loadBitmap(it.media.coverUrl) }
             withContext(Dispatchers.Main) {
-                sendNotifications(context, newItems)
+                sendNotifications(context, newItems, icons)
                 storeNotifications(newItems)
             }
         }
@@ -143,21 +154,33 @@ class MuUnreadNotificationTask : Task {
     )
 
     @SuppressLint("MissingPermission")
-    private fun sendNotifications(context: Context, items: List<UnreadItem>) {
+    private fun sendNotifications(context: Context, items: List<UnreadItem>, icons: Map<Long, Bitmap?>) {
         val notificationManager = NotificationManagerCompat.from(context)
+        // Computed once for the whole batch rather than per item: checking "is anyone else
+        // active" before any of *this* batch has posted would otherwise miss that the batch
+        // itself is about to post several. Shares the group with UnreadChapterNotificationTask,
+        // so an already-active chapter/episode notification counts as "grouped" too.
+        val isGrouped = items.size > 1 ||
+            context.hasOtherActiveGroupMembers(Notifications.GROUP_NEW_CHAPTERS, excludeId = -1)
 
         items.forEach { (muMedia, latestChapter, source) ->
             val unreadCount = latestChapter - (muMedia.userChapter ?: 0)
-            val title = context.getString(R.string.notification_new_chapter_title)
-            val text = if (unreadCount == 1) {
-                "${muMedia.title}: Chapter $latestChapter"
+            // Title (media name), chapter/count and source are kept on separate lines — a long
+            // title is ellipsized on its own rather than crowding the rest of the sentence.
+            val title = muMedia.title ?: ""
+            val genericLabel = context.getString(R.string.notification_new_chapter_title)
+            val chapterText = if (unreadCount == 1) {
+                "Chapter $latestChapter"
             } else {
-                "${muMedia.title}: Chapter $latestChapter ($unreadCount unread)"
+                "Chapter $latestChapter ($unreadCount unread)"
             }
-            val subText = context.getString(
+            val sourceText = context.getString(
                 R.string.notification_source_subtext,
                 source ?: "MangaUpdates"
             )
+            // In the body rather than the header's subtext slot, which the header keeps reserved
+            // even without a cover image, and which some launchers otherwise hide entirely.
+            val plainBodyText = "$title: $chapterText · $sourceText"
 
             val notifId = muMediaKey(muMedia.id)
             val readKey = NotificationReadState.chapterKey(notifId, latestChapter)
@@ -178,20 +201,29 @@ class MuUnreadNotificationTask : Task {
                 }
             )
 
-            val notification = NotificationCompat.Builder(context, Notifications.CHANNEL_NEW_CHAPTERS_EPISODES)
+            val builder = NotificationCompat.Builder(context, Notifications.CHANNEL_NEW_CHAPTERS_EPISODES)
                 .setSmallIcon(R.drawable.notification_icon)
                 .setContentTitle(title)
-                .setContentText(text)
-                .setSubText(subText)
-                .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+                .setContentText(plainBodyText)
+                // A short, generic label rather than the (often long) media name — shown next to
+                // the app name in the header, where a long title tends to just get dropped.
+                .setSubText(genericLabel)
                 .setContentIntent(pendingIntent)
                 .setDeleteIntent(NotificationReadState.dismissIntent(context, readKey))
                 .addAction(markAsReadAction(context, muMedia, latestChapter, notifId))
                 .setAutoCancel(true)
                 .setGroup(Notifications.GROUP_NEW_CHAPTERS)
-                .build()
+            val cover = icons[muMedia.id]
+            if (cover != null) {
+                MediaCoverNotificationStyle.apply(
+                    context, builder, title, chapterText, cover,
+                    sourceText = sourceText, label = genericLabel, showLabelInExpanded = isGrouped
+                )
+            } else {
+                builder.setStyle(NotificationCompat.BigTextStyle().bigText(plainBodyText))
+            }
 
-            notificationManager.notify(notifId, notification)
+            notificationManager.notify(notifId, builder.build())
             notificationManager.notify(Notifications.ID_NEW_CHAPTERS, createGroupSummary(context))
         }
     }
@@ -236,7 +268,10 @@ class MuUnreadNotificationTask : Task {
      * the group key with UnreadChapterNotificationTask since both feed the same channel.
      */
     private fun createGroupSummary(context: Context): android.app.Notification {
-        val title = context.getString(R.string.notification_new_chapter_title)
+        // Not "New Chapter Available" — this group holds anime episodes too (via
+        // UnreadChapterNotificationTask, which shares the same group key), so a chapter-specific
+        // label would be wrong whenever the stack mixes in an episode.
+        val title = context.getString(R.string.notification_new_releases_title)
         val intent = Intent(context, MainActivity::class.java).apply {
             putExtra("FRAGMENT_TO_LOAD", "NOTIFICATIONS")
             putExtra("selectedTab", 3)
@@ -255,6 +290,9 @@ class MuUnreadNotificationTask : Task {
         return NotificationCompat.Builder(context, Notifications.CHANNEL_NEW_CHAPTERS_EPISODES)
             .setSmallIcon(R.drawable.notification_icon)
             .setContentTitle(title)
+            // Without it, the group's own header — shown above the stack, distinct from each
+            // child's — is just a bare timestamp next to the app name.
+            .setSubText(title)
             .setStyle(NotificationCompat.InboxStyle().setSummaryText(title))
             .setGroup(Notifications.GROUP_NEW_CHAPTERS)
             .setGroupSummary(true)
@@ -313,5 +351,56 @@ class MuUnreadNotificationTask : Task {
     private fun saveNotifiedSet(context: Context, key: String, notified: Set<String>) {
         val prefs = context.getSharedPreferences("unread_notifications", Context.MODE_PRIVATE)
         prefs.edit().putStringSet(key, notified).apply()
+    }
+
+    /**
+     * Debug-only: posts a MangaUpdates unread notification built from the most recently stored
+     * MangaUpdates entry — so the layout is checked against a real title/cover/chapter instead of
+     * made-up text — without needing an account that actually has unread chapters right now to
+     * trigger it for real. Falls back to a synthetic placeholder when the store has no
+     * MangaUpdates entry yet (e.g. a fresh install).
+     */
+    suspend fun sendTestNotification(context: Context) {
+        if (!hasNotificationPermission(context)) return
+        val stored = PrefManager.getNullableVal<List<UnreadChapterStore>>(
+            PrefName.UnreadChapterNotificationStore, null
+        )?.filter { it.source == "MangaUpdates" }?.maxByOrNull { it.time }
+
+        val (muMedia, item) = if (stored != null) {
+            val progress = stored.lastChapter - stored.unreadCount
+            val m = MUMedia(
+                id = stored.mediaId.toLong(),
+                title = stored.mediaName,
+                url = null,
+                coverUrl = stored.image,
+                listId = 0,
+                userChapter = progress,
+                userVolume = null,
+                latestChapter = stored.lastChapter,
+                bayesianRating = null,
+                priority = null
+            )
+            m to UnreadItem(m, stored.lastChapter, stored.source)
+        } else {
+            val m = MUMedia(
+                id = TEST_MEDIA_ID,
+                title = "Test MangaUpdates Manga",
+                url = null,
+                coverUrl = TEST_IMAGE_URL,
+                listId = 0,
+                userChapter = 5,
+                userVolume = null,
+                latestChapter = 6,
+                bayesianRating = null,
+                priority = null
+            )
+            m to UnreadItem(m, 6, "Test Source")
+        }
+        withContext(Dispatchers.IO) {
+            val icons = mapOf(muMedia.id to NotificationImageLoader.loadBitmap(muMedia.coverUrl))
+            withContext(Dispatchers.Main) {
+                sendNotifications(context, listOf(item), icons)
+            }
+        }
     }
 }

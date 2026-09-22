@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/firebaseTestRoot"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
@@ -116,6 +117,50 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="Force Scheduler Tick (Test 5min)"
+                android:layout_marginBottom="16dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Test Notification Images"
+                android:textStyle="bold"
+                android:textSize="14sp"
+                android:layout_marginBottom="8dp"
+                android:textColor="?attr/colorOnSurface" />
+
+            <Button
+                android:id="@+id/btnTestAnilistImage"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Send Test AniList Notification (with image)"
+                android:layout_marginBottom="8dp" />
+
+            <Button
+                android:id="@+id/btnTestAnilistActivityLike"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Send Test &quot;Liked Your Activity&quot; Notification (avatar icon)"
+                android:layout_marginBottom="8dp" />
+
+            <Button
+                android:id="@+id/btnTestUnreadChapterImage"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Send Test Unread Chapter Notification (with image)"
+                android:layout_marginBottom="8dp" />
+
+            <Button
+                android:id="@+id/btnTestUnreadEpisodeImage"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Send Test Unread Episode Notification (with image)"
+                android:layout_marginBottom="8dp" />
+
+            <Button
+                android:id="@+id/btnTestMuImage"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Send Test MangaUpdates Notification (with image)"
                 android:layout_marginBottom="16dp" />
 
             <TextView

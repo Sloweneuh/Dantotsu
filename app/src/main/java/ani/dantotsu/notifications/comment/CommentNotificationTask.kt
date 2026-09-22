@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import androidx.core.app.ActivityCompat
@@ -16,6 +15,8 @@ import androidx.core.content.ContextCompat
 import ani.dantotsu.MainActivity
 import ani.dantotsu.R
 import ani.dantotsu.connections.comments.CommentsAPI
+import ani.dantotsu.notifications.MediaCoverNotificationStyle
+import ani.dantotsu.notifications.NotificationImageLoader
 import ani.dantotsu.notifications.NotificationReadState
 import ani.dantotsu.notifications.Task
 import ani.dantotsu.settings.saving.PrefManager
@@ -281,10 +282,8 @@ class CommentNotificationTask : Task {
                     .setAutoCancel(true)
                     .setGroup(Notifications.GROUP_COMMENTS)
                 if (imageUrl.isNotEmpty()) {
-                    val bitmap = getBitmapFromUrl(imageUrl)
-                    if (bitmap != null) {
-                        builder.setLargeIcon(bitmap)
-                    }
+                    val bitmap = NotificationImageLoader.loadBitmap(imageUrl)
+                    MediaCoverNotificationStyle.apply(context, builder, title, message, bitmap)
                 }
                 if (color.isNotEmpty()) {
                     builder.color = Color.parseColor(color)
@@ -340,6 +339,9 @@ class CommentNotificationTask : Task {
         )
         return NotificationCompat.Builder(context, Notifications.CHANNEL_COMMENTS)
             .setContentTitle(title)
+            // Without it, the group's own header — shown above the stack, distinct from each
+            // child's — is just a bare timestamp next to the app name.
+            .setSubText(title)
             .setStyle(NotificationCompat.InboxStyle().setSummaryText(title))
             .setSmallIcon(R.drawable.notification_icon)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -361,15 +363,6 @@ class CommentNotificationTask : Task {
         drawable.setBounds(0, 0, canvas.width, canvas.height)
         drawable.draw(canvas)
         return bitmap
-    }
-
-    private fun getBitmapFromUrl(url: String): Bitmap? {
-        return try {
-            val inputStream = java.net.URL(url).openStream()
-            BitmapFactory.decodeStream(inputStream)
-        } catch (e: Exception) {
-            null
-        }
     }
 
     private fun Int?.isGlobal() = this == 3 || this == 420

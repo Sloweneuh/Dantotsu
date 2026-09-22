@@ -76,6 +76,7 @@
 
     <string name="notification_new_chapter_title">Nouveau chapitre disponible</string>
     <string name="notification_new_episode_title">Nouvel épisode disponible</string>
+    <string name="notification_new_releases_title">Nouveautés</string>
     <string name="notification_unknown_source">Source inconnue</string>
     <string name="notification_source_subtext">Source : %1$s</string>
     <string name="notification_action_mark_read">Marquer comme lu</string>

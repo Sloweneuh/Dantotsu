@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -17,8 +18,11 @@ import ani.dantotsu.connections.malsync.UnreadChapterInfo
 import ani.dantotsu.connections.sync.UnreadSync
 import ani.dantotsu.media.Media
 import ani.dantotsu.media.MediaDetailsActivity
+import ani.dantotsu.notifications.MediaCoverNotificationStyle
+import ani.dantotsu.notifications.NotificationImageLoader
 import ani.dantotsu.notifications.NotificationReadState
 import ani.dantotsu.notifications.Task
+import ani.dantotsu.notifications.hasOtherActiveGroupMembers
 import ani.dantotsu.hasNotificationPermission
 import eu.kanade.tachiyomi.data.notification.Notifications
 import ani.dantotsu.settings.saving.PrefManager
@@ -33,11 +37,6 @@ import kotlinx.coroutines.withContext
 import java.io.Serializable
 
 class UnreadChapterNotificationTask : Task {
-
-    companion object {
-        @Volatile
-        private var currentlyPerforming = false
-    }
 
     override suspend fun execute(context: Context): Boolean {
         if (currentlyPerforming) {
@@ -370,8 +369,13 @@ class UnreadChapterNotificationTask : Task {
         Logger.log("UnreadChapterNotificationTask: ${newNotifications.size} new ${if (isAnime) "episodes" else "chapters"} to notify")
 
         if (newNotifications.isNotEmpty()) {
+            // Fetched here, on the IO dispatcher this whole method already runs on — sendNotifications
+            // itself is dispatched to Main below, where blocking network reads aren't allowed.
+            val icons = newNotifications.associate { (media, _) ->
+                media.id to NotificationImageLoader.loadBitmap(media.cover)
+            }
             withContext(Dispatchers.Main) {
-                sendNotifications(context, newNotifications, isAnime)
+                sendNotifications(context, newNotifications, icons, isAnime)
                 storeNotifications(newNotifications, isAnime)
             }
         }
@@ -381,31 +385,53 @@ class UnreadChapterNotificationTask : Task {
     private fun sendNotifications(
         context: Context,
         newChapters: List<Pair<Media, UnreadChapterInfo>>,
+        icons: Map<Int, Bitmap?>,
         isAnime: Boolean = false,
     ) {
         val notificationManager = NotificationManagerCompat.from(context)
         val unitLabel = if (isAnime) "Episode" else "Chapter"
         val pendingLabel = if (isAnime) "unwatched" else "unread"
+        // Computed once for the whole batch rather than per item: checking "is anyone else
+        // active" before any of *this* batch has posted would otherwise miss that the batch
+        // itself is about to post several — e.g. 3 chapters released together are grouped with
+        // each other regardless of what (if anything) was already active beforehand.
+        val isGrouped = newChapters.size > 1 ||
+            context.hasOtherActiveGroupMembers(Notifications.GROUP_NEW_CHAPTERS, excludeId = -1)
 
         newChapters.forEach { (media, info) ->
             val unreadCount = info.lastChapter - info.userProgress
-            val title = context.getString(
+            // Title (media name), chapter/count and source/language are kept on separate lines —
+            // a long title is ellipsized on its own rather than crowding the rest of the sentence.
+            val title = media.userPreferredName
+            val genericLabel = context.getString(
                 if (isAnime) R.string.notification_new_episode_title else R.string.notification_new_chapter_title
             )
-            val text = if (unreadCount == 1) {
-                "${media.userPreferredName}: $unitLabel ${info.lastChapter}"
+            val chapterText = if (unreadCount == 1) {
+                "$unitLabel ${info.lastChapter}"
             } else {
-                "${media.userPreferredName}: $unitLabel ${info.lastChapter} ($unreadCount $pendingLabel)"
+                "$unitLabel ${info.lastChapter} ($unreadCount $pendingLabel)"
             }
             // Anime episodes come from whichever MALSync mirror has them; the language (dub/sub) is
-            // what the user actually cares about, so show that instead of the streaming source.
-            val subText = if (isAnime && !info.language.isNullOrBlank()) {
-                LanguageMapper.displayWithType(info.language)
+            // what the user actually cares about, so show that instead of the streaming source —
+            // as a dub/sub icon+code badge when there's a cover to put it next to, spelled out
+            // otherwise (the plain-text fallback has no separate lines or icon slot to use).
+            val languageBadge = if (isAnime && !info.language.isNullOrBlank()) {
+                MediaCoverNotificationStyle.LanguageBadge(
+                    LanguageMapper.mapLanguage(info.language).iconRes,
+                    LanguageMapper.shortCode(info.language)
+                )
+            } else null
+            val sourceText = if (languageBadge != null) {
+                null
             } else {
                 val sourceDisplay = if (info.source.isBlank())
                     context.getString(R.string.notification_unknown_source) else info.source
                 context.getString(R.string.notification_source_subtext, sourceDisplay)
             }
+            val fallbackSourceLine = sourceText ?: LanguageMapper.displayWithType(info.language!!)
+            // In the body rather than the header's subtext slot, which the header keeps reserved
+            // even without a cover image, and which some launchers otherwise hide entirely.
+            val plainBodyText = "$title: $chapterText · $fallbackSourceLine"
 
             val readKey = NotificationReadState.chapterKey(media.id, info.lastChapter)
             val intent = Intent(context, MediaDetailsActivity::class.java).apply {
@@ -426,20 +452,29 @@ class UnreadChapterNotificationTask : Task {
                 }
             )
 
-            val notification = NotificationCompat.Builder(context, Notifications.CHANNEL_NEW_CHAPTERS_EPISODES)
+            val builder = NotificationCompat.Builder(context, Notifications.CHANNEL_NEW_CHAPTERS_EPISODES)
                 .setSmallIcon(R.drawable.notification_icon)
                 .setContentTitle(title)
-                .setContentText(text)
-                .setSubText(subText)
-                .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+                .setContentText(plainBodyText)
+                // A short, generic label rather than the (often long) media name — shown next to
+                // the app name in the header, where a long title tends to just get dropped.
+                .setSubText(genericLabel)
                 .setContentIntent(pendingIntent)
                 .setDeleteIntent(NotificationReadState.dismissIntent(context, readKey))
                 .addAction(markAsReadAction(context, media, info.lastChapter, isAnime))
                 .setAutoCancel(true)
                 .setGroup(Notifications.GROUP_NEW_CHAPTERS)
-                .build()
+            val cover = icons[media.id]
+            if (cover != null) {
+                MediaCoverNotificationStyle.apply(
+                    context, builder, title, chapterText, cover, languageBadge, sourceText,
+                    label = genericLabel, showLabelInExpanded = isGrouped
+                )
+            } else {
+                builder.setStyle(NotificationCompat.BigTextStyle().bigText(plainBodyText))
+            }
 
-            notificationManager.notify(media.id, notification)
+            notificationManager.notify(media.id, builder.build())
             notificationManager.notify(Notifications.ID_NEW_CHAPTERS, createGroupSummary(context))
         }
     }
@@ -484,7 +519,10 @@ class UnreadChapterNotificationTask : Task {
      * just dismisses them; this summary gives the group header its own tap destination.
      */
     private fun createGroupSummary(context: Context): android.app.Notification {
-        val title = context.getString(R.string.notification_new_chapter_title)
+        // Not "New Chapter Available" — this group holds anime episodes too (and, via
+        // MuUnreadNotificationTask, MangaUpdates chapters), so a chapter-specific label would be
+        // wrong whenever the stack mixes in an episode.
+        val title = context.getString(R.string.notification_new_releases_title)
         val intent = Intent(context, MainActivity::class.java).apply {
             putExtra("FRAGMENT_TO_LOAD", "NOTIFICATIONS")
             putExtra("selectedTab", 3)
@@ -503,6 +541,9 @@ class UnreadChapterNotificationTask : Task {
         return NotificationCompat.Builder(context, Notifications.CHANNEL_NEW_CHAPTERS_EPISODES)
             .setSmallIcon(R.drawable.notification_icon)
             .setContentTitle(title)
+            // Without it, the group's own header — shown above the stack, distinct from each
+            // child's — is just a bare timestamp next to the app name.
+            .setSubText(title)
             .setStyle(NotificationCompat.InboxStyle().setSummaryText(title))
             .setGroup(Notifications.GROUP_NEW_CHAPTERS)
             .setGroupSummary(true)
@@ -572,5 +613,71 @@ class UnreadChapterNotificationTask : Task {
             .setProgress(size, 0, false)
             .setOngoing(true)
             .setAutoCancel(false)
+    }
+
+    /**
+     * Debug-only: posts an unread chapter/episode notification built from the most recently
+     * stored one of this type — so the layout is checked against a real title/cover/chapter
+     * instead of made-up text — without needing an account that actually has unread chapters
+     * right now to trigger it for real. Falls back to a synthetic placeholder when the store has
+     * no entry of this type yet (e.g. a fresh install).
+     */
+    suspend fun sendTestNotification(context: Context, isAnime: Boolean = false) {
+        if (!hasNotificationPermission(context)) return
+        val storedType = if (isAnime) "UnreadEpisode" else "UnreadChapter"
+        val stored = PrefManager.getNullableVal<List<UnreadChapterStore>>(
+            PrefName.UnreadChapterNotificationStore, null
+        )?.filter { it.type == storedType }?.maxByOrNull { it.time }
+
+        val (media, info) = if (stored != null) {
+            val progress = stored.lastChapter - stored.unreadCount
+            Media(
+                id = stored.mediaId,
+                name = stored.mediaName,
+                nameRomaji = stored.mediaName,
+                userPreferredName = stored.mediaName,
+                isAdult = false,
+                cover = stored.image,
+                banner = stored.banner,
+                userProgress = progress
+            ) to UnreadChapterInfo(
+                mediaId = stored.mediaId,
+                lastChapter = stored.lastChapter,
+                source = stored.source,
+                userProgress = progress,
+                language = stored.language
+            )
+        } else {
+            Media(
+                id = TEST_MEDIA_ID,
+                name = if (isAnime) "Test Anime" else "Test Manga",
+                nameRomaji = if (isAnime) "Test Anime" else "Test Manga",
+                userPreferredName = if (isAnime) "Test Anime" else "Test Manga",
+                isAdult = false,
+                cover = TEST_IMAGE_URL,
+                userProgress = 5
+            ) to UnreadChapterInfo(
+                mediaId = TEST_MEDIA_ID,
+                lastChapter = 6,
+                source = "Test Source",
+                userProgress = 5
+            )
+        }
+
+        withContext(Dispatchers.IO) {
+            val icons = mapOf(media.id to NotificationImageLoader.loadBitmap(media.cover))
+            withContext(Dispatchers.Main) {
+                sendNotifications(context, listOf(media to info), icons, isAnime)
+            }
+        }
+    }
+
+    companion object {
+        @Volatile
+        private var currentlyPerforming = false
+
+        private const val TEST_MEDIA_ID = -999
+        private const val TEST_IMAGE_URL =
+            "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx21-YCDoj1EkAxFn.jpg"
     }
 }

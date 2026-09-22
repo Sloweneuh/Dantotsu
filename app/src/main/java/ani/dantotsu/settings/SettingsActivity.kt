@@ -169,7 +169,27 @@ class SettingsActivity : AppCompatActivity() {
                             startActivity(Intent(context, SettingsAboutActivity::class.java))
                         },
                         isActivity = true
-                    )
+                    ),
+                    *listOfNotNull(
+                        // Debug console for manually triggering/testing background notification
+                        // tasks; the activity itself also finishes immediately outside debug
+                        // builds, so this is just keeping it out of the list release users see.
+                        if (BuildConfig.DEBUG) Settings(
+                            type = 1,
+                            name = "Firebase Test Console",
+                            desc = "Debug: test notifications and background tasks",
+                            icon = R.drawable.ic_round_bug_report_24,
+                            onClick = {
+                                startActivity(
+                                    Intent(
+                                        context,
+                                        ani.dantotsu.notifications.firebase.FirebaseTestActivity::class.java
+                                    )
+                                )
+                            },
+                            isActivity = true
+                        ) else null
+                    ).toTypedArray()
                 )
             )
 
