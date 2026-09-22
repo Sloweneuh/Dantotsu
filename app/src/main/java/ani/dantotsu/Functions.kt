@@ -1535,12 +1535,24 @@ fun snackString(r: Int, activity: Activity? = null, clipboard: String? = null): 
     return snackString(getAppString(r), activity, clipboard)
 }
 
-open class NoPaddingArrayAdapter<T>(context: Context, layoutId: Int, items: List<T>) :
-    ArrayAdapter<T>(context, layoutId, items) {
+/**
+ * [textColor] is null by default, leaving [layoutId]'s own themed text color (e.g. item_dropdown's
+ * ?android:attr/textColorSecondary) alone — right for a spinner sitting on the app's own themed
+ * background, which flips with the system light/dark setting. Pass an explicit color only for a
+ * spinner floating over arbitrary media content (a reader or player's chrome) that stays a fixed
+ * appearance regardless of system theme; forcing that same fixed color unconditionally previously
+ * left every other spinner (reader/TTS settings, etc.) with invisible white-on-light text.
+ */
+open class NoPaddingArrayAdapter<T>(
+    context: Context,
+    layoutId: Int,
+    items: List<T>,
+    private val textColor: Int? = null,
+) : ArrayAdapter<T>(context, layoutId, items) {
     override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
         val view = super.getView(position, convertView, parent)
         view.setPadding(0, view.paddingTop, view.paddingRight, view.paddingBottom)
-        (view as TextView).setTextColor(Color.WHITE)
+        textColor?.let { (view as TextView).setTextColor(it) }
         return view
     }
 }

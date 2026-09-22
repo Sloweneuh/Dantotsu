@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.PopupMenu
 import androidx.core.app.ActivityOptionsCompat
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.view.ViewCompat
@@ -35,7 +36,6 @@ import ani.dantotsu.parsers.novel.lnreader.LNReaderParser
 import ani.dantotsu.parsers.novel.lnreader.LNReaderPluginManager
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
-import ani.dantotsu.setSettingsAvailable
 import ani.dantotsu.snackString
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.stripSpansOnPaste
@@ -194,10 +194,7 @@ class ExtensionBrowseActivity : AppCompatActivity() {
             mangaExtension != null -> mangaExtension!!.sources.filterIsInstance<eu.kanade.tachiyomi.source.ConfigurableSource>()
             else -> emptyList()
         }
-        binding.extensionBrowseSettings.setSettingsAvailable(configurableSources.isNotEmpty())
-        binding.extensionBrowseSettings.setOnClickListener {
-            ExtensionSettingsOpener.openConfigurableSourcePreferences(this, configurableSources, null, sourceIndex)
-        }
+        val hasSettings = configurableSources.isNotEmpty()
 
         val hasWebViewSupport = when {
             animeExtension != null -> animeExtension!!.sources
@@ -206,14 +203,38 @@ class ExtensionBrowseActivity : AppCompatActivity() {
                 .any { it is eu.kanade.tachiyomi.source.online.HttpSource }
             else -> !novelPlugin?.plugin?.site.isNullOrBlank()
         }
-        binding.extensionBrowseWebview.setSettingsAvailable(hasWebViewSupport)
-        binding.extensionBrowseWebview.setOnClickListener {
-            val webUrl = currentBaseUrl()
-            if (webUrl.isNullOrBlank()) return@setOnClickListener
-            startActivity(Intent(this, ExtensionWebViewActivity::class.java).apply {
-                putExtra(ExtensionWebViewActivity.EXTRA_URL, webUrl)
-                putExtra(ExtensionWebViewActivity.EXTRA_TITLE, name)
-            })
+
+        // A single overflow menu instead of separate WebView/Settings buttons: with the language
+        // button also visible, four 48dp icon buttons left too little room for the extension name
+        // and it wrapped. Hidden entirely rather than shown-disabled when neither action applies.
+        binding.extensionBrowseMore.isVisible = hasSettings || hasWebViewSupport
+        binding.extensionBrowseMore.setOnClickListener { anchor ->
+            val popup = PopupMenu(this, anchor)
+            popup.menuInflater.inflate(R.menu.extension_browse_overflow_menu, popup.menu)
+            popup.menu.findItem(R.id.extensionBrowseMenuWebview)?.isVisible = hasWebViewSupport
+            popup.menu.findItem(R.id.extensionBrowseMenuSettings)?.isVisible = hasSettings
+            popup.setOnMenuItemClickListener { item ->
+                when (item.itemId) {
+                    R.id.extensionBrowseMenuWebview -> {
+                        val webUrl = currentBaseUrl()
+                        if (!webUrl.isNullOrBlank()) {
+                            startActivity(Intent(this, ExtensionWebViewActivity::class.java).apply {
+                                putExtra(ExtensionWebViewActivity.EXTRA_URL, webUrl)
+                                putExtra(ExtensionWebViewActivity.EXTRA_TITLE, name)
+                            })
+                        }
+                        true
+                    }
+                    R.id.extensionBrowseMenuSettings -> {
+                        ExtensionSettingsOpener.openConfigurableSourcePreferences(
+                            this, configurableSources, null, sourceIndex
+                        )
+                        true
+                    }
+                    else -> false
+                }
+            }
+            popup.show()
         }
 
         binding.extensionBrowseSearchIcon.setOnClickListener {

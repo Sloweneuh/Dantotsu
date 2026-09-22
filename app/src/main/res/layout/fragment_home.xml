@@ -170,7 +170,7 @@
                                     android:scaleType="center"
                                     android:scaleX="1.2"
                                     android:scaleY="1.2"
-                                    android:tint="@color/bg_white"
+                                    android:tint="@color/bg_opp"
                                     app:srcCompat="@drawable/ic_round_search_24"
                                     tools:ignore="ContentDescription,ImageContrastCheck" />
 

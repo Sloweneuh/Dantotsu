@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bottom_sheet_background">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginStart="32dp"
+        android:layout_marginEnd="32dp"
+        android:orientation="vertical"
+        android:paddingBottom="32dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="16dp"
+            android:fontFamily="@font/poppins_semi_bold"
+            android:text="@string/mtl_translation_settings"
+            android:textAlignment="center"
+            android:textSize="16sp" />
+
+        <!--
+          Name and current value in one clickable row apiece — see the ReaderMtlRow style. The
+          value line is inside the row rather than beside it, so the ripple covers the whole
+          thing a press actually lands on.
+        -->
+        <LinearLayout
+            android:id="@+id/readerMtlEngine"
+            style="@style/ReaderMtlRow">
+
+            <TextView
+                style="@style/ReaderMtlRowLabel"
+                android:drawableStart="@drawable/ic_round_translate_24"
+                android:text="@string/ocr_spike_engine" />
+
+            <TextView
+                android:id="@+id/readerMtlEngineState"
+                style="@style/ReaderMtlRowState"
+                tools:text="Gemini" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/readerMtlModel"
+            style="@style/ReaderMtlRow">
+
+            <TextView
+                style="@style/ReaderMtlRowLabel"
+                android:drawableStart="@drawable/ic_round_tune_24"
+                android:text="@string/ocr_spike_model" />
+
+            <TextView
+                android:id="@+id/readerMtlModelState"
+                style="@style/ReaderMtlRowState"
+                tools:text="gemini-3.6-flash" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/readerMtlScript"
+            style="@style/ReaderMtlRow">
+
+            <TextView
+                style="@style/ReaderMtlRowLabel"
+                android:drawableStart="@drawable/ic_round_format_text_24"
+                android:text="@string/ocr_source_script" />
+
+            <TextView
+                android:id="@+id/readerMtlScriptState"
+                style="@style/ReaderMtlRowState"
+                tools:text="Automatic" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/readerMtlTarget"
+            style="@style/ReaderMtlRow">
+
+            <TextView
+                style="@style/ReaderMtlRowLabel"
+                android:drawableStart="@drawable/ic_round_language_24"
+                android:text="@string/ocr_spike_target_language" />
+
+            <TextView
+                android:id="@+id/readerMtlTargetState"
+                style="@style/ReaderMtlRowState"
+                tools:text="English" />
+        </LinearLayout>
+
+        <!--
+          Also in the main reader settings sheet — shown here too since it's how a page's
+          long-press menu (translate this page, view image, ...) gets turned on, and that menu is
+          how a single page gets translated manually rather than automatically.
+        -->
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/readerMtlLongClickImage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:drawableStart="@drawable/ic_round_touch_app_24"
+            android:drawablePadding="16dp"
+            android:elegantTextHeight="true"
+            android:fontFamily="@font/poppins_bold"
+            android:minHeight="64dp"
+            android:text="@string/image_long_clicking"
+            android:textAlignment="viewStart"
+            android:textColor="?attr/colorOnBackground"
+            app:cornerRadius="0dp"
+            app:drawableTint="?attr/colorPrimary"
+            app:showText="false"
+            app:thumbTint="@color/button_switch_track" />
+
+        <!--
+          Translating as you scroll rather than page by page. A switch here rather than only in
+          settings for the same reason as the rows above it: whether it is worth spending a quota
+          automatically is a decision made against the chapter in front of you.
+        -->
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/readerMtlAuto"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:drawableStart="@drawable/ic_round_translate_24"
+            android:drawablePadding="16dp"
+            android:elegantTextHeight="true"
+            android:fontFamily="@font/poppins_bold"
+            android:minHeight="64dp"
+            android:text="@string/mtl_auto"
+            android:textAlignment="viewStart"
+            android:textColor="?attr/colorOnBackground"
+            app:cornerRadius="0dp"
+            app:drawableTint="?attr/colorPrimary"
+            app:showText="false"
+            app:thumbTint="@color/button_switch_track" />
+
+        <!--
+          Reading a strip of the pages either side of each one, so a bubble cut in half by the
+          boundary between two source images is recognised whole. Costs about a fifth more pixels
+          per page and matters most in longstrip, where those boundaries fall wherever the packer
+          put them rather than between panels.
+        -->
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/readerMtlStitch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:drawableStart="@drawable/ic_round_swipe_vertical_24"
+            android:drawablePadding="16dp"
+            android:elegantTextHeight="true"
+            android:fontFamily="@font/poppins_bold"
+            android:minHeight="64dp"
+            android:text="@string/mtl_stitch"
+            android:textAlignment="viewStart"
+            android:textColor="?attr/colorOnBackground"
+            app:cornerRadius="0dp"
+            app:drawableTint="?attr/colorPrimary"
+            app:showText="false"
+            app:thumbTint="@color/button_switch_track" />
+
+    </LinearLayout>
+
+</androidx.core.widget.NestedScrollView>

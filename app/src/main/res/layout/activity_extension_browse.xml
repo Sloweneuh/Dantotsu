@@ -48,6 +48,8 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
             android:layout_weight="1"
+            android:ellipsize="end"
+            android:maxLines="1"
             android:fontFamily="@font/poppins_semi_bold"
             android:textColor="?attr/colorOnBackground"
             android:textSize="16sp"
@@ -88,26 +90,18 @@
             app:srcCompat="@drawable/ic_round_translate_24"
             app:tint="?attr/colorOnBackground" />
 
+        <!-- Replaces separate WebView/Settings buttons: with the language button also visible,
+             four 48dp icon buttons left too little room for the extension name and it wrapped. -->
         <ImageButton
-            android:id="@+id/extensionBrowseWebview"
+            android:id="@+id/extensionBrowseMore"
             android:layout_width="48dp"
             android:layout_height="48dp"
             android:layout_marginStart="4dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/open_in_webview"
+            android:contentDescription="@string/more_options"
             android:padding="12dp"
-            app:srcCompat="@drawable/ic_round_public_24"
-            app:tint="?attr/colorOnBackground" />
-
-        <ImageButton
-            android:id="@+id/extensionBrowseSettings"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:layout_marginStart="4dp"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/extension_settings"
-            android:padding="12dp"
-            app:srcCompat="@drawable/ic_round_settings_24"
+            android:visibility="gone"
+            app:srcCompat="@drawable/ic_round_dots_vertical_24"
             app:tint="?attr/colorOnBackground" />
         </LinearLayout>
 

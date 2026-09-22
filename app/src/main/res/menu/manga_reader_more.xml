@@ -2,15 +2,24 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
+    <!-- android:iconTint (platform attribute, not app:iconTint): this menu is inflated by
+         android.widget.PopupMenu's own MenuInflater, not AppCompat's, and android:iconTint is
+         only understood from API 26 — this app's minSdk. @color/bg_opp (the theme's own
+         inverse-of-background color, already used correctly below by action_reader_settings) is
+         what makes these render right whether the popup ends up on a light or dark surface —
+         these icons' own vector fills (white/light-gray/transparent) only look right on a dark
+         one, which is not guaranteed. -->
     <item
         android:id="@+id/action_screenshot"
         android:icon="@drawable/ic_round_screenshot_frame_24"
+        android:iconTint="@color/bg_opp"
         android:title="@string/screenshot"
         app:showAsAction="never" />
 
     <item
         android:id="@+id/action_handoff"
         android:icon="@drawable/ic_round_cast_24"
+        android:iconTint="@color/bg_opp"
         android:title="@string/continue_on_another_device"
         app:showAsAction="never" />
 
@@ -19,6 +28,21 @@
         android:icon="@drawable/ic_round_sync_24"
         android:title="@string/track_progress"
         android:checkable="true"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_reader_settings"
+        android:icon="@drawable/ic_round_settings_24"
+        android:title="@string/reader_settings"
+        app:showAsAction="never" />
+
+    <!-- Manga-only (OCR page translation); hidden entirely in the novel reader and when the
+         feature is off, rather than shown disabled. -->
+    <item
+        android:id="@+id/action_translation_settings"
+        android:icon="@drawable/ic_round_translate_24"
+        android:iconTint="@color/bg_opp"
+        android:title="@string/mtl_translation_settings"
         app:showAsAction="never" />
 
 </menu>

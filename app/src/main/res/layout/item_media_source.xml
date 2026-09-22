@@ -86,6 +86,7 @@
                 android:contentDescription="@string/extensions"
                 android:padding="8dp"
                 app:srcCompat="@drawable/ic_extension_24"
+                app:tint="?attr/colorOnBackground"
                 tools:ignore="ImageContrastCheck" />
 
             <com.google.android.material.textfield.TextInputLayout

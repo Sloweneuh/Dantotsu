@@ -9,9 +9,11 @@ import android.content.res.Configuration
 import android.content.res.Resources
 import android.app.AlertDialog
 import android.graphics.Bitmap
+import android.graphics.Color
 import android.graphics.Rect
 import android.os.Build
 import android.os.Bundle
+import androidx.core.content.ContextCompat
 import android.view.HapticFeedbackConstants
 import android.view.KeyEvent
 import android.view.KeyEvent.ACTION_DOWN
@@ -575,7 +577,8 @@ class MangaReaderActivity : AppCompatActivity() {
 
         //ChapterSelector
         binding.mangaReaderChapterSelect.adapter =
-            NoPaddingArrayAdapter(this, R.layout.item_dropdown, chaptersTitleArr)
+            // White: this spinner floats over the manga page, not the app's own themed background.
+            NoPaddingArrayAdapter(this, R.layout.item_dropdown, chaptersTitleArr, Color.WHITE)
         binding.mangaReaderChapterSelect.setSelection(currentChapterIndex)
         binding.mangaReaderChapterSelect.onItemSelectedListener =
             object : AdapterView.OnItemSelectedListener {
@@ -591,8 +594,12 @@ class MangaReaderActivity : AppCompatActivity() {
                 override fun onNothingSelected(parent: AdapterView<*>) {}
             }
 
-        binding.mangaReaderSettings.setSafeOnClickListener {
+        fun openReaderSettings() {
             ReaderSettingsDialogFragment.newInstance().show(supportFragmentManager, "settings")
+        }
+
+        fun openTranslationSettings() {
+            ReaderMtlSettingsDialogFragment.newInstance().show(supportFragmentManager, "mtl_settings")
         }
 
         // Screenshot of the current page(s). The reader chrome is a sibling overlay, so drawing
@@ -663,6 +670,15 @@ class MangaReaderActivity : AppCompatActivity() {
             trackProgressItem.isVisible = media.id >= 0
             trackProgressItem.isChecked =
                 PrefManager.getCustomVal("${media.id}_save_progress", true)
+            popup.menu.findItem(R.id.action_translation_settings).apply {
+                isVisible = PageTranslationPipeline.enabled()
+                // The icon's own fill is transparent (it's stroke-drawn), unlike the other items'
+                // solid icons — the XML android:iconTint should cover this already, but a
+                // PopupMenu's icon tinting is inconsistent enough across OEMs to also set it here.
+                // bg_opp (not a fixed white): the popup follows the day/night theme, not a fixed
+                // dark surface, so the icon needs to invert with it too.
+                icon?.mutate()?.setTint(ContextCompat.getColor(this@MangaReaderActivity, R.color.bg_opp))
+            }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) popup.setForceShowIcon(true)
             popup.setOnMenuItemClickListener { item ->
                 when (item.itemId) {
@@ -679,6 +695,8 @@ class MangaReaderActivity : AppCompatActivity() {
                         )
                         true
                     }
+                    R.id.action_reader_settings -> { openReaderSettings(); true }
+                    R.id.action_translation_settings -> { openTranslationSettings(); true }
                     else -> false
                 }
             }

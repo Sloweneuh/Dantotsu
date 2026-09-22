@@ -2022,6 +2022,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="test_results">Test Results</string>
     <string name="open_in_browser">Open in browser</string>
     <string name="open_in_webview">Open in WebView</string>
+    <string name="more_options">More options</string>
     <string name="premium_chapter_title">Premium chapter</string>
     <string name="premium_chapter_message">This chapter is a premium chapter on %1$s.\nYou will need to pay and read it on the website.</string>
 
@@ -2964,6 +2965,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="mtl_page_unavailable">That page is not loaded</string>
     <string name="mtl_nothing_found">No translatable text found on this page</string>
     <string name="mtl_failed">Translation failed</string>
+    <string name="mtl_translation_settings">Translation Settings</string>
     <string name="mtl_auto">Translate as you scroll</string>
     <string name="mtl_auto_on">Pages will translate themselves as they come into view</string>
     <string name="mtl_auto_off">Pages will only be translated when you ask</string>

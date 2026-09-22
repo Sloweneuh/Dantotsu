@@ -1235,6 +1235,7 @@
     <string name="test_results">Résultats des tests</string>
     <string name="open_in_browser">Ouvrir dans le navigateur</string>
     <string name="open_in_webview">Ouvrir dans la WebView</string>
+    <string name="more_options">Plus d\'options</string>
     <string name="premium_chapter_title">Chapitre premium</string>
     <string name="premium_chapter_message">Ce chapitre est un chapitre premium sur %1$s. Vous devez payer et le lire sur le site web.</string>
 
@@ -2840,6 +2841,7 @@
     <string name="mtl_page_unavailable">Cette page n\'est pas chargée</string>
     <string name="mtl_nothing_found">Aucun texte traduisible sur cette page</string>
     <string name="mtl_failed">Échec de la traduction</string>
+    <string name="mtl_translation_settings">Paramètres de traduction</string>
     <string name="mtl_auto">Traduire au fil du défilement</string>
     <string name="mtl_auto_on">Les pages se traduiront d\'elles-mêmes en apparaissant</string>
     <string name="mtl_auto_off">Les pages ne seront traduites que sur demande</string>

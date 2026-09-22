@@ -19,6 +19,7 @@
             android:layout_width="32dp"
             android:layout_height="32dp"
             android:src="@drawable/ic_round_arrow_back_ios_new_24"
+            android:tint="?attr/colorOnBackground"
             android:contentDescription="Back"
             android:clickable="true"
             android:focusable="true"

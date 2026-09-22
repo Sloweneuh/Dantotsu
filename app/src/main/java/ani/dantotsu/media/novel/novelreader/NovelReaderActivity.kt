@@ -304,10 +304,6 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
         startLoadWatchdog()
 
         binding.novelReaderBack.setOnClickListener { finish() }
-        binding.novelReaderSettings.setSafeOnClickListener {
-            NovelReaderSettingsDialogFragment.newInstance()
-                .show(supportFragmentManager, NovelReaderSettingsDialogFragment.TAG)
-        }
 
         val gestureDetector = GestureDetectorCompat(this, object : GesturesListener() {
             override fun onSingleClick(event: MotionEvent) {
@@ -384,6 +380,9 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
             if (trackable) {
                 trackItem.isChecked = PrefManager.getCustomVal("${media!!.id}_save_progress", true)
             }
+            // The manga reader's OCR page-translation sheet has no novel equivalent; this menu is
+            // shared between both readers.
+            popup.menu.findItem(R.id.action_translation_settings).isVisible = false
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) popup.setForceShowIcon(true)
             popup.setOnMenuItemClickListener { item ->
                 when (item.itemId) {
@@ -401,6 +400,7 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
                         )
                         true
                     }
+                    R.id.action_reader_settings -> { openReaderSettings(); true }
                     else -> false
                 }
             }
@@ -645,6 +645,11 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
     private var currentBookUri: Uri? = null
 
     // endregion Text to speech
+
+    private fun openReaderSettings() {
+        NovelReaderSettingsDialogFragment.newInstance()
+            .show(supportFragmentManager, NovelReaderSettingsDialogFragment.TAG)
+    }
 
     private fun takeScreenshot() {
         // The controls are drawn over the page, so they would end up in the capture.
@@ -924,7 +929,8 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
             binding.novelReaderSource.text = LNReaderSession.parser?.plugin?.name.orEmpty()
             binding.novelReaderSource.isVisible = PrefManager.getVal(PrefName.ShowSource)
             binding.novelReaderChapterSelect.adapter =
-                NoPaddingArrayAdapter(this, R.layout.item_dropdown, chapters.map { it.name })
+                // White: this spinner floats over the book page, not the app's own themed background.
+                NoPaddingArrayAdapter(this, R.layout.item_dropdown, chapters.map { it.name }, Color.WHITE)
             binding.novelReaderChapterSelect.setSelection(LNReaderSession.currentIndex, false)
             binding.novelReaderChapterSelect.onItemSelectedListener =
                 object : AdapterView.OnItemSelectedListener {
@@ -940,7 +946,8 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
         } else {
             val tocLabels = book.toc.map { it.label ?: "" }
             binding.novelReaderChapterSelect.adapter =
-                NoPaddingArrayAdapter(this, R.layout.item_dropdown, tocLabels)
+                // White: this spinner floats over the book page, not the app's own themed background.
+                NoPaddingArrayAdapter(this, R.layout.item_dropdown, tocLabels, Color.WHITE)
             binding.novelReaderChapterSelect.onItemSelectedListener =
                 object : AdapterView.OnItemSelectedListener {
                     override fun onItemSelected(

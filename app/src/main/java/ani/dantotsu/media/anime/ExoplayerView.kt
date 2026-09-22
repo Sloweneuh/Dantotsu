@@ -12,6 +12,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.BroadcastReceiver
+import android.graphics.Color
 import android.graphics.drawable.Icon
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
@@ -1319,7 +1320,9 @@ class ExoplayerView :
         }
 
         // EpisodeSelector
-        episodeTitle.adapter = NoPaddingArrayAdapter(this, R.layout.item_dropdown, episodeTitleArr)
+        // White: this spinner floats over the video, not the app's own themed background.
+        episodeTitle.adapter =
+            NoPaddingArrayAdapter(this, R.layout.item_dropdown, episodeTitleArr, Color.WHITE)
         episodeTitle.setSelection(currentEpisodeIndex)
         episodeTitle.onItemSelectedListener =
             object : AdapterView.OnItemSelectedListener {

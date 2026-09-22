@@ -107,6 +107,8 @@
                             app:tint="#fff"
                             tools:ignore="ContentDescription,SpeakableTextPresentCheck,ImageContrastCheck" />
 
+                        <!-- Reader settings live in this "more" menu too (see action_reader_settings
+                             in manga_reader_more.xml) rather than a separate button next to it. -->
                         <ImageButton
                             android:id="@+id/novelReaderMore"
                             android:layout_width="48dp"
@@ -114,16 +116,6 @@
                             android:backgroundTint="#00FFFFFF"
                             android:scaleType="fitCenter"
                             android:src="@drawable/ic_round_dots_vertical_24"
-                            app:tint="#fff"
-                            tools:ignore="ContentDescription,SpeakableTextPresentCheck,ImageContrastCheck" />
-
-                        <ImageButton
-                            android:id="@+id/novelReaderSettings"
-                            android:layout_width="48dp"
-                            android:layout_height="48dp"
-                            android:backgroundTint="#00FFFFFF"
-                            android:scaleType="fitCenter"
-                            android:src="@drawable/ic_round_settings_24"
                             app:tint="#fff"
                             tools:ignore="ContentDescription,SpeakableTextPresentCheck,ImageContrastCheck" />
 

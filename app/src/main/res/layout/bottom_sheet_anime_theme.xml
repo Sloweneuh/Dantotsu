@@ -94,7 +94,8 @@
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/play"
                 android:padding="8dp"
-                app:srcCompat="@drawable/ic_round_play_arrow_24" />
+                app:srcCompat="@drawable/ic_round_play_arrow_24"
+                app:tint="?attr/colorControlNormal" />
 
             <TextView
                 android:id="@+id/themeSheetPosition"

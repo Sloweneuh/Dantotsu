@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/extensionBrowseMenuWebview"
+        android:icon="@drawable/ic_round_public_24"
+        android:title="@string/open_in_webview"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/extensionBrowseMenuSettings"
+        android:icon="@drawable/ic_round_settings_24"
+        android:title="@string/settings"
+        app:showAsAction="never" />
+
+</menu>
