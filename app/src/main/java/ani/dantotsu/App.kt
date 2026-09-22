@@ -139,6 +139,12 @@ class App : MultiDexApplication() {
         PrefManager.init(this)
         // Only names the file; nothing is read from disk until a tracker first asks.
         ani.dantotsu.connections.IdCache.init(this)
+        ani.dantotsu.connections.anilist.MediaListCache.init(this)
+        // Off the main thread: it reads a file, and the unread row asks it for release
+        // dates synchronously while binding.
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            ani.dantotsu.connections.mangaupdates.MUDetailsCache.preload()
+        }
         // Registers the NetworkHelper factory that initializeNetwork() below resolves, and must
         // therefore land before it and before TrackerSessions.start(): that call spawns an IO
         // coroutine that hits the network immediately (MAL.getSavedToken() -> client), and used to

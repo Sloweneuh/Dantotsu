@@ -503,6 +503,7 @@ enum class PrefName(val data: Pref) {
     MALUserName(Pref(Location.Protected, String::class, "")),
     MALCodeChallenge(Pref(Location.Protected, String::class, "")),
     MALToken(Pref(Location.Protected, MAL.ResponseToken::class, "")),
+    MangaUpdatesAvatar(Pref(Location.Protected, String::class, "")),
     MangaUpdatesUsername(Pref(Location.Protected, String::class, "")),
     MangaUpdatesPassword(Pref(Location.Protected, String::class, "")),
     MangaUpdatesToken(Pref(Location.Protected, String::class, "")),

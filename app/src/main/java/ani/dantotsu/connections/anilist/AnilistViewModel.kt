@@ -129,7 +129,14 @@ class AnilistHomeViewModel : ViewModel() {
             muHomeLists.postValue(emptyMap())
             return
         }
-        val result = tryWithSuspend { MangaUpdates.getAllUserLists() }
+        // Last time's answer first, then ask again — the same shape as the list screen's cache.
+        // MangaUpdates charges about 700ms for a list request whether or not the list has anything
+        // in it, so there is no version of asking that is quick; the only way to have these rows
+        // early is to have asked already.
+        MangaUpdates.cachedHomeLists()?.let { muHomeLists.postValue(it) }
+
+        // Only the buckets the home screen actually draws; see [MangaUpdates.getHomeLists].
+        val result = tryWithSuspend { MangaUpdates.getHomeLists() }
         muHomeLists.postValue(result ?: emptyMap())
     }
 
@@ -234,19 +241,37 @@ class AnilistHomeViewModel : ViewModel() {
         }
     }
 
+    /** Set once the live rows are out, so a slow disk read can never land on top of them. */
+    @Volatile
+    private var homeNetworkPublished = false
+
+    /**
+     * Publishes the stored home rows, if there are any, and reports whether it did.
+     *
+     * Kept separate from [initHomePage] rather than folded in front of it so callers can wait on
+     * the rows being *on screen* — which is what the unread row needs — without also waiting on the
+     * request that refreshes them.
+     */
+    suspend fun initHomePageCached(): Boolean {
+        return try {
+            val cached = Anilist.query.cachedHomePage() ?: return false
+            // The request is far slower than a disk read, so this is belt and braces; but if it ever
+            // did finish first, publishing here would put stale rows over fresh ones.
+            if (homeNetworkPublished) return false
+            publishHomePage(cached)
+            true
+        } catch (e: Exception) {
+            ani.dantotsu.util.Logger.log("initHomePageCached: ${e.message}")
+            false
+        }
+    }
+
     suspend fun initHomePage() {
         try {
             val res = Anilist.query.initHomePage()
             homeDataError.postValue(false)
-            // Always post a value (even if empty) to ensure UI updates and hides progress bars
-            animeContinue.postValue(res["currentAnime"] ?: arrayListOf())
-            animeFav.postValue(res["favoriteAnime"] ?: arrayListOf())
-            animePlanned.postValue(res["currentAnimePlanned"] ?: arrayListOf())
-            mangaContinue.postValue(res["currentManga"] ?: arrayListOf())
-            mangaFav.postValue(res["favoriteManga"] ?: arrayListOf())
-            mangaPlanned.postValue(res["currentMangaPlanned"] ?: arrayListOf())
-            recommendation.postValue(res["recommendations"] ?: arrayListOf())
-            hidden.postValue(res["hidden"] ?: arrayListOf())
+            homeNetworkPublished = true
+            publishHomePage(res)
         } catch (e: Exception) {
             // Posted first: see [homeDataError].
             homeDataError.postValue(true)
@@ -259,6 +284,18 @@ class AnilistHomeViewModel : ViewModel() {
             recommendation.postValue(arrayListOf())
             hidden.postValue(arrayListOf())
         }
+    }
+
+    /** Always posts every row, even an empty one, so a section's progress bar cannot be left up. */
+    private fun publishHomePage(res: Map<String, ArrayList<Media>>) {
+        animeContinue.postValue(res["currentAnime"] ?: arrayListOf())
+        animeFav.postValue(res["favoriteAnime"] ?: arrayListOf())
+        animePlanned.postValue(res["currentAnimePlanned"] ?: arrayListOf())
+        mangaContinue.postValue(res["currentManga"] ?: arrayListOf())
+        mangaFav.postValue(res["favoriteManga"] ?: arrayListOf())
+        mangaPlanned.postValue(res["currentMangaPlanned"] ?: arrayListOf())
+        recommendation.postValue(res["recommendations"] ?: arrayListOf())
+        hidden.postValue(res["hidden"] ?: arrayListOf())
     }
 
     suspend fun initHomePageWithUserStatus() {

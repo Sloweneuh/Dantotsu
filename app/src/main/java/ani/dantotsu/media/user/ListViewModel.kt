@@ -65,6 +65,19 @@ class ListViewModel : ViewModel() {
             // against the previous set can never be hit again. Changing the sort order reloads, so
             // without this they would accumulate for as long as the screen is open.
             searchKeys.clear()
+
+            // Put last time's answer up straight away, then ask again anyway.
+            //
+            // The request behind this screen takes the better part of two seconds, almost all of it
+            // waiting on AniList to assemble the collection and send it — so the first thing the
+            // screen can usefully do is show what it already has. Nothing here decides whether the
+            // stored copy is fresh enough to keep: the network call below always runs and always
+            // wins, so this can only change how soon there is something to look at, never what is
+            // eventually shown. See [ani.dantotsu.connections.anilist.MediaListCache].
+            Anilist.query.cachedMediaLists(anime, userId, sortOrder)?.let { cached ->
+                publishLists(cached)
+            }
+
             val res = Anilist.query.getMediaLists(anime, userId, sortOrder)
             unfilteredLists.postValue(res)
             val filters = currentFilters.value
@@ -137,6 +150,30 @@ class ListViewModel : ViewModel() {
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * Posts a set of lists through whatever search and filters are currently active.
+     *
+     * The same shaping the live result gets, so the cached pass cannot show a different selection
+     * than the fresh one that replaces it a moment later.
+     */
+    private fun publishLists(res: MutableMap<String, ArrayList<Media>>) {
+        unfilteredLists.postValue(res)
+        val filters = currentFilters.value
+        if (currentSearchQuery.isNotEmpty()) {
+            performSearch(currentSearchQuery, filters, res)
+            return
+        }
+        if (filters != null && !filters.isEmpty()) {
+            lists.postValue(
+                res.mapValues { entry ->
+                    ArrayList(entry.value.filter { matchesFilters(it, filters) })
+                }.toMutableMap()
+            )
+        } else {
+            lists.postValue(res)
         }
     }
 

@@ -728,22 +728,32 @@ class ListActivity : AppCompatActivity() {
         val prevTabBase = prevTabText?.replace(Regex(" \\(.+\\)$"), "")
 
         isRebuildingTabs = true
+
+        // Retire the previous mediator BEFORE the adapter changes under it.
+        //
+        // Its tab-configuration lambda closes over the previous call's tab set, and it is registered
+        // as an observer on the adapter — so an adapter that is updated rather than replaced tells
+        // that stale lambda to configure a tab set it has never seen. The moment the new tab count
+        // exceeds the old one, it indexes past the end of the lists it captured and the screen goes
+        // down with it. Detaching first means the update notifies nobody, and the new mediator
+        // populates from scratch when it attaches below. Detaching only tears down tabs; the
+        // fragments, which are the whole point of reusing the adapter, are left alone.
+        tabMediator?.detach()
+        tabMediator = null
+
         // Update the existing adapter rather than replacing it: favourites and MangaUpdates each
         // land after the AniList lists do, and a replacement rebuilds every fragment — including
         // the one being read — for a tab set that has only gained an entry. See [ListViewPagerAdapter].
+        val aniTabKeys = aniIndices.map { aniKeysList[it] }
         val existingAdapter = binding.listViewPager.adapter as? ListViewPagerAdapter
         if (existingAdapter != null) {
-            existingAdapter.update(aniIndices, muTabPosition, muSeparateTabs)
+            existingAdapter.update(aniIndices, muTabPosition, muSeparateTabs, aniTabKeys)
         } else {
             binding.listViewPager.adapter = ListViewPagerAdapter(
-                aniIndices, false, this, muTabPosition, muSeparateTabs
+                aniIndices, false, this, aniTabKeys, muTabPosition, muSeparateTabs
             )
         }
 
-        // The mediator captures this call's tab labels, so the previous one has to go — reusing the
-        // adapter means its observer is still registered and would repopulate from stale counts.
-        // Detaching only tears down tabs; it leaves the fragments alone.
-        tabMediator?.detach()
         tabMediator = TabLayoutMediator(binding.listTabLayout, binding.listViewPager) { tab, position ->
             when {
                 muTabPosition >= 0 && position == muTabPosition -> {

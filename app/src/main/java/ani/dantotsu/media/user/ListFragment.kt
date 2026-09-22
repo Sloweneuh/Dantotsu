@@ -22,6 +22,18 @@ class ListFragment : Fragment() {
     private var _binding: FragmentListBinding? = null
     private val binding get() = _binding!!
     private var pos: Int? = null
+    /**
+     * Which of the view model's lists this tab shows, by name.
+     *
+     * [pos] — the index into that map — is what this used to go by, and it is only stable while the
+     * map's shape is. It no longer is: the screen now paints a stored response before the fresh one
+     * arrives, and if the user has added, removed or renamed a list in between, the two have
+     * different keys in different places. Since fragments survive that swap now, an index would
+     * quietly start pointing at somebody else's list. The name does not move.
+     *
+     * Null for the calendar, which has no named lists and indexes its own data.
+     */
+    private var listKey: String? = null
     private var calendar = false
     private var grid: Boolean? = null
     private var list: MutableList<Media>? = null
@@ -37,6 +49,7 @@ class ListFragment : Fragment() {
         super.onCreate(savedInstanceState)
         arguments?.let {
             pos = it.getInt("list")
+            listKey = it.getString("listKey")
             calendar = it.getBoolean("calendar")
         }
     }
@@ -194,13 +207,13 @@ class ListFragment : Fragment() {
                 muMap: Map<String, List<MUMedia>>?
             ): List<MUMedia>? {
                 if (muMap == null) return null
-                val key = aniMap?.keys?.toList()?.getOrNull(pos!!) ?: return null
+                val key = keyIn(aniMap) ?: return null
                 return if (key == "All") muMap.values.flatten() else muMap[key]
             }
 
             model.getLists().observe(viewLifecycleOwner) { aniMap ->
                 if (aniMap != null) {
-                    list = aniMap.values.toList().getOrNull(pos!!)
+                    list = keyIn(aniMap)?.let { aniMap[it] as? MutableList<Media> }
                     muList = resolveMuList(aniMap, model.getFilteredMuLists().value)
                     update()
                 }
@@ -214,6 +227,16 @@ class ListFragment : Fragment() {
                 update()
             }
         }
+    }
+
+    /**
+     * This tab's key in [map], preferring the name it was created with and falling back to the
+     * positional argument for a fragment restored from before the name was recorded.
+     */
+    private fun keyIn(map: Map<String, *>?): String? {
+        if (map == null) return null
+        listKey?.let { key -> if (map.containsKey(key)) return key }
+        return map.keys.toList().getOrNull(pos ?: return null)
     }
 
     fun scrollToTop() {
@@ -233,10 +256,11 @@ class ListFragment : Fragment() {
     }
 
     companion object {
-        fun newInstance(pos: Int, calendar: Boolean = false): ListFragment =
+        fun newInstance(pos: Int, calendar: Boolean = false, listKey: String? = null): ListFragment =
             ListFragment().apply {
                 arguments = Bundle().apply {
                     putInt("list", pos)
+                    putString("listKey", listKey)
                     putBoolean("calendar", calendar)
                 }
             }

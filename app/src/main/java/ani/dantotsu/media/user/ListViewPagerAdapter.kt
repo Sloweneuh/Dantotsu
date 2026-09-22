@@ -24,6 +24,8 @@ class ListViewPagerAdapter(
     private var aniIndices: List<Int>,
     private val calendar: Boolean,
     fragment: FragmentActivity,
+    /** The list name at each entry of [aniIndices], so a tab can find its list without an index. */
+    private var aniKeys: List<String> = emptyList(),
     /** Position of the dedicated MangaUpdates aggregate tab, or -1 if not present. */
     private var muTabPosition: Int = -1,
     /** Keys of "Separate" custom MU tabs inserted just before [muTabPosition]. */
@@ -41,14 +43,21 @@ class ListViewPagerAdapter(
      * fragments to keep, which to drop and which to create.
      */
     @Suppress("NotifyDataSetChanged")
-    fun update(aniIndices: List<Int>, muTabPosition: Int, muCustomTabs: List<String>) {
+    fun update(
+        aniIndices: List<Int>,
+        muTabPosition: Int,
+        muCustomTabs: List<String>,
+        aniKeys: List<String>
+    ) {
         if (this.aniIndices == aniIndices &&
             this.muTabPosition == muTabPosition &&
-            this.muCustomTabs == muCustomTabs
+            this.muCustomTabs == muCustomTabs &&
+            this.aniKeys == aniKeys
         ) return
         this.aniIndices = aniIndices
         this.muTabPosition = muTabPosition
         this.muCustomTabs = muCustomTabs
+        this.aniKeys = aniKeys
         notifyDataSetChanged()
     }
 
@@ -70,10 +79,19 @@ class ListViewPagerAdapter(
                 return MU_SEPARATE_BASE + muCustomTabs[position - muSeparateTabsStart].hashCode()
             }
             val aniIdx = if (position > muTabPosition) position - muCustomTabs.size - 1 else position
-            return aniIndices[aniIdx].toLong()
+            return aniId(aniIdx)
         }
-        return aniIndices[position].toLong()
+        return aniId(position)
     }
+
+    /**
+     * By list name where there is one, so a tab keeps its fragment across a reload that reorders
+     * the map (the stored response is painted first and may predate a list being added or renamed)
+     * and loses it when that list is genuinely gone. Offset clear of the MangaUpdates range.
+     */
+    private fun aniId(aniIdx: Int): Long =
+        aniKeys.getOrNull(aniIdx)?.let { ANI_NAMED_BASE + it.hashCode() }
+            ?: aniIndices[aniIdx].toLong()
 
     override fun getItemId(position: Int): Long = idOf(position)
 
@@ -87,9 +105,9 @@ class ListViewPagerAdapter(
                 return MUOnlyListFragment.newInstance(muCustomTabs[position - muSeparateTabsStart])
             }
             val aniIdx = if (position > muTabPosition) position - muCustomTabs.size - 1 else position
-            return ListFragment.newInstance(aniIndices[aniIdx], calendar)
+            return ListFragment.newInstance(aniIndices[aniIdx], calendar, aniKeys.getOrNull(aniIdx))
         }
-        return ListFragment.newInstance(aniIndices[position], calendar)
+        return ListFragment.newInstance(aniIndices[position], calendar, aniKeys.getOrNull(position))
     }
 
     private companion object {
@@ -98,5 +116,8 @@ class ListViewPagerAdapter(
 
         /** Keeps per-key MangaUpdates ids clear of the small AniList list indices. */
         const val MU_SEPARATE_BASE = 1L shl 32
+
+        /** And AniList's per-name ids clear of both. */
+        const val ANI_NAMED_BASE = 1L shl 40
     }
 }

@@ -317,6 +317,9 @@ object Anilist {
         mangaMeanScore = null
         PrefManager.removeVal(PrefName.AnilistToken)
         PrefManager.removeVal(PrefName.AnilistAvatar)
+        // Signing out has to take the stored lists with it; otherwise the next account to open the
+        // list screen sees the previous one's library while its own request is still in flight.
+        MediaListCache.clear()
         //logout from comments api
         CommentsAPI.logout()
 
@@ -328,7 +331,9 @@ object Anilist {
         force: Boolean = false,
         useToken: Boolean = true,
         show: Boolean = false,
-        cache: Int? = null
+        cache: Int? = null,
+        /** Handed the raw response body before it is deserialised, for callers that cache it. */
+        noinline onRawResponse: ((String) -> Unit)? = null
     ): T? {
         return try {
             if (show) Logger.log("Anilist Query: $query")
@@ -403,6 +408,7 @@ object Anilist {
                     throw Exception(message)
                 }
 
+                onRawResponse?.invoke(json.text)
                 json.parsed()
             } else null
         } catch (e: Exception) {

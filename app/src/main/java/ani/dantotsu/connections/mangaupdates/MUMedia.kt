@@ -7,7 +7,13 @@ import java.io.Serializable
 
 /**
  * Lightweight representation of a MangaUpdates series entry as it appears in a user list.
+ *
+ * Both serialisation forms are deliberate: [java.io.Serializable] is what `PrefManager`'s stored
+ * values use, and the kotlinx annotation is what lets a whole set of lists be written to the
+ * response cache as JSON — a format that tolerates this class gaining a field, which the Java one
+ * does not.
  */
+@kotlinx.serialization.Serializable
 data class MUMedia(
     val id: Long,
     val title: String?,

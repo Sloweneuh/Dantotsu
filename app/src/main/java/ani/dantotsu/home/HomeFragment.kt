@@ -153,6 +153,56 @@ class HomeFragment : Fragment() {
     /** Everything the row knows about either half, as one map. */
     private fun combinedUnreadInfo(): Map<Int, UnreadChapterInfo> = unreadInfoMap + muUnreadInfo
 
+    /**
+     * What each row is currently showing, so an update that changes nothing can be skipped.
+     *
+     * Every row now renders twice: once from the stored copy the moment the screen opens, then again
+     * when the request behind it lands. The second pass almost always carries the same entries in
+     * the same order — a library does not usually change between opening the app twice — and
+     * rebuilding the row for it meant hiding it, swapping in a new adapter and replaying the
+     * entrance animation over content that had not moved.
+     */
+    private val shownRowIds = mutableMapOf<Int, List<Long>>()
+
+    /**
+     * True when [items] are already on screen in this row, and records them when they are not.
+     * Keyed by the RecyclerView's id, which is unique per row within the layout.
+     */
+    private fun rowUnchanged(viewId: Int, items: List<Any>): Boolean =
+        rowSignatureUnchanged(viewId, items.map(::rowIdOf))
+
+    private fun rowIdOf(item: Any): Long = when (item) {
+        is Media -> item.id.toLong()
+        is MUMedia -> item.id
+        else -> 0L
+    }
+
+    /**
+     * As [rowUnchanged], for a row whose appearance depends on more than which entries it holds.
+     *
+     * Swapping in a new adapter recreates every view holder, and a recreated holder reloads its
+     * cover — which is what the flicker on a redrawn row actually is. So a row is only rebuilt when
+     * something it displays has moved, and the signature has to cover all of it: the unread row
+     * keeps the same entries while MALSync refines their chapter counts, and those counts are on
+     * screen.
+     */
+    private fun rowSignatureUnchanged(viewId: Int, signature: List<Long>): Boolean {
+        if (shownRowIds[viewId] == signature) return true
+        shownRowIds[viewId] = signature
+        return false
+    }
+
+    /**
+     * Makes every row redraw on the next pass, animation included.
+     *
+     * Pulling to refresh is the user asking for the screen to be redone, so it should look like it
+     * is being redone — and without this the rows would recognise the incoming data as what they
+     * are already showing and skip the redraw entirely.
+     */
+    private fun resetShownRows() {
+        shownRowIds.clear()
+    }
+
     /** MangaUpdates entries with chapters the user hasn't reached. Ordered by [UnreadOrder]. */
     private fun muUnread(): List<ani.dantotsu.connections.mangaupdates.MUMedia> {
         val excludeList = PrefManager.getVal<Set<String>>(PrefName.MalSyncExcludeList)
@@ -223,13 +273,27 @@ class HomeFragment : Fragment() {
         }
 
         val rv = binding.homeUnreadChaptersRecyclerView
-        rv.visibility = View.GONE
         binding.homeUnreadChaptersEmpty.visibility = View.GONE
         if (combined.isNotEmpty()) {
-            rv.adapter = UnreadChaptersAdapter(combined, info)
-            rv.layoutManager =
-                LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
-            rv.visibility = View.VISIBLE
+            // Entries and the counts drawn beside them; see [rowSignatureUnchanged]. This row is
+            // redrawn repeatedly while its MangaUpdates half resolves, and rebuilding it each time
+            // sent every cover back through its loader.
+            val signature = combined.flatMap {
+                val id = rowIdOf(it)
+                listOf(id, (info[id.toInt()]?.lastChapter ?: -1).toLong())
+            }
+            if (rowSignatureUnchanged(rv.id, signature) && rv.adapter != null) {
+                rv.visibility = View.VISIBLE
+            } else {
+                rv.adapter = UnreadChaptersAdapter(combined, info)
+                rv.layoutManager =
+                    LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
+                rv.visibility = View.VISIBLE
+            }
+            // Once, and with its own header rather than separately from it. The header used to be
+            // animated from [applyUnreadList], which finishes at a different moment to this — so the
+            // row and the title above it slid in one after the other, and the row read as animating
+            // twice.
             if (animate) {
                 rv.layoutAnimation = LayoutAnimationController(setSlideIn(), 0.25f)
                 rv.post { if (_binding != null) rv.scheduleLayoutAnimation() }
@@ -250,6 +314,11 @@ class HomeFragment : Fragment() {
                 )
             }
         } else {
+            // Hidden here rather than up front: doing it unconditionally meant every redraw took the
+            // row away and put it back, which is a rebind and another pass through the image loader
+            // even when nothing about the row had changed.
+            rv.visibility = View.GONE
+            shownRowIds.remove(rv.id)
             binding.homeUnreadChaptersEmpty.visibility = View.VISIBLE
         }
         binding.homeUnreadChaptersMore.visibility = View.VISIBLE
@@ -808,6 +877,7 @@ class HomeFragment : Fragment() {
         binding.homeRefresh.setSlingshotDistance(height + 128)
         binding.homeRefresh.setProgressViewEndTarget(false, height + 128)
         binding.homeRefresh.setOnRefreshListener {
+            resetShownRows()
             Refresh.activity[1]!!.postValue(true)
         }
 
@@ -846,6 +916,11 @@ class HomeFragment : Fragment() {
             more.visibility = View.INVISIBLE
 
             mode.observe(viewLifecycleOwner) {
+                if (it != null && rowUnchanged(recyclerView.id, it)) {
+                    // Same entries already drawn; leave the row alone and just retire the spinner.
+                    progress.visibility = View.GONE
+                    return@observe
+                }
                 recyclerView.visibility = View.GONE
                 empty.visibility = View.GONE
                 if (it != null) {
@@ -892,6 +967,14 @@ class HomeFragment : Fragment() {
         binding.homeContinueWatchMore.visibility = View.INVISIBLE
 
         model.getAnimeContinue().observe(viewLifecycleOwner) { continueWatchingList ->
+            // Same entries as are already drawn: nothing to rebuild, and — since this row asks
+            // MALSync about every entry before it can draw — nothing to ask again either.
+            if (continueWatchingList != null &&
+                rowUnchanged(binding.homeWatchingRecyclerView.id, continueWatchingList)
+            ) {
+                binding.homeWatchingProgressBar.visibility = View.GONE
+                return@observe
+            }
             binding.homeWatchingRecyclerView.visibility = View.GONE
             binding.homeWatchingEmpty.visibility = View.GONE
             if (continueWatchingList != null) {
@@ -954,7 +1037,7 @@ class HomeFragment : Fragment() {
                                 binding.homeWatchingRecyclerView.visibility = View.VISIBLE
                                 binding.homeWatchingRecyclerView.layoutAnimation =
                                     LayoutAnimationController(setSlideIn(), 0.25f)
-                                } else {
+                            } else {
                                 // No MALSync data available or MALSync disabled, show standard adapter
                                 binding.homeWatchingRecyclerView.adapter = MediaAdaptor(0, continueWatchingList, requireActivity())
                                 binding.homeWatchingRecyclerView.layoutManager = LinearLayoutManager(
@@ -1020,6 +1103,12 @@ class HomeFragment : Fragment() {
         binding.homePlannedAnimeMore.visibility = View.INVISIBLE
 
         model.getAnimePlanned().observe(viewLifecycleOwner) { plannedList ->
+            if (plannedList != null &&
+                rowUnchanged(binding.homePlannedAnimeRecyclerView.id, plannedList)
+            ) {
+                binding.homePlannedAnimeProgressBar.visibility = View.GONE
+                return@observe
+            }
             binding.homePlannedAnimeRecyclerView.visibility = View.GONE
             binding.homePlannedAnimeEmpty.visibility = View.GONE
             if (plannedList != null) {
@@ -1174,14 +1263,30 @@ class HomeFragment : Fragment() {
         var muHomeListsData: Map<String, List<ani.dantotsu.connections.mangaupdates.MUMedia>>? = null
 
         fun renderContinueReading() {
-            // Return only if neither source has loaded yet
-            if (mangaContinueData == null && muHomeListsData == null) return
+            // Both halves, not either.
+            //
+            // This row is AniList entries and MangaUpdates entries interleaved, and it used to draw
+            // the moment one of them turned up. Once the MangaUpdates lists started coming off disk
+            // that became the normal case: the row drew MangaUpdates-only within a few milliseconds,
+            // then replaced itself when the AniList half arrived — which threw away the entrance
+            // animation the first draw had just scheduled, so the row appeared without one.
+            //
+            // Waiting costs nothing. Both sources post unconditionally, including empty and failed
+            // ones, so neither can leave this waiting forever.
+            if (mangaContinueData == null || muHomeListsData == null) return
             val aniItems: List<Media> = mangaContinueData ?: emptyList()
             val muItems = muHomeListsData?.get("Reading") ?: emptyList()
             binding.homeReadingRecyclerView.visibility = View.GONE
             binding.homeReadingEmpty.visibility = View.GONE
             if (aniItems.isNotEmpty() || muItems.isNotEmpty()) {
                 val combined: List<Any> = orderByLocalReads(aniItems, muItems)
+                if (rowUnchanged(binding.homeReadingRecyclerView.id, combined)) {
+                    binding.homeReadingRecyclerView.visibility = View.VISIBLE
+                    binding.homeContinueReadMore.visibility = View.VISIBLE
+                    binding.homeContinueRead.visibility = View.VISIBLE
+                    binding.homeReadingProgressBar.visibility = View.GONE
+                    return
+                }
                 binding.homeReadingRecyclerView.adapter = MergedReadingAdapter(combined)
                 binding.homeReadingRecyclerView.layoutManager = LinearLayoutManager(
                     requireContext(), LinearLayoutManager.HORIZONTAL, false
@@ -1244,8 +1349,8 @@ class HomeFragment : Fragment() {
         var mangaPlannedData: ArrayList<Media>? = null
 
         fun renderPlannedManga() {
-            // Return only if neither source has loaded yet
-            if (mangaPlannedData == null && muHomeListsData == null) return
+            // Both halves; see [renderContinueReading].
+            if (mangaPlannedData == null || muHomeListsData == null) return
             val aniItems: List<Media> = mangaPlannedData ?: emptyList()
             val muItems = muHomeListsData?.get("Planning") ?: emptyList()
             binding.homePlannedMangaRecyclerView.visibility = View.GONE
@@ -1256,6 +1361,13 @@ class HomeFragment : Fragment() {
                      muItems.map { it to (it.updatedAt ?: 0L) })
                         .sortedByDescending { (_, ts) -> ts }
                         .map { (item, _) -> item }
+                if (rowUnchanged(binding.homePlannedMangaRecyclerView.id, combined)) {
+                    binding.homePlannedMangaRecyclerView.visibility = View.VISIBLE
+                    binding.homePlannedMangaMore.visibility = View.VISIBLE
+                    binding.homePlannedManga.visibility = View.VISIBLE
+                    binding.homePlannedMangaProgressBar.visibility = View.GONE
+                    return
+                }
                 binding.homePlannedMangaRecyclerView.adapter = MergedReadingAdapter(combined)
                 binding.homePlannedMangaRecyclerView.layoutManager = LinearLayoutManager(
                     requireContext(), LinearLayoutManager.HORIZONTAL, false
@@ -1506,9 +1618,15 @@ class HomeFragment : Fragment() {
                     val initHomePage = async(Dispatchers.IO) { model.initHomePage() }
                     val initUserStatus = async(Dispatchers.IO) { model.initUserStatus() }
                     val initMuHomeLists = async(Dispatchers.IO) { model.initMuHomeLists() }
-                    awaitAll(initHomePage, initUserStatus, initMuHomeLists)
-
-                    // After home data is refreshed, update the unread display using cached results
+                    // The unread row is composed from the AniList reading list and the cached
+                    // MALSync counts, so it only ever needed that data — not the MangaUpdates leg,
+                    // which contributes nothing to it and is the slowest of the three. And the
+                    // stored rows satisfy it just as well as the live ones, so it waits on the
+                    // request only when there was nothing stored to go on. Its own MangaUpdates
+                    // half arrives separately and redraws when it does; see [renderUnreadRow].
+                    if (!withContext(Dispatchers.IO) { model.initHomePageCached() }) {
+                        initHomePage.await()
+                    }
                     withContext(Dispatchers.Main) {
                         refreshUnreadFromCache()
                         // An unread list that arrived while this was still loading was held back
@@ -1518,6 +1636,8 @@ class HomeFragment : Fragment() {
                             applyUnreadList(it)
                         }
                     }
+
+                    awaitAll(initHomePage, initUserStatus, initMuHomeLists)
 
                     // Do not auto-run unread chapters check here; user can trigger manually
 

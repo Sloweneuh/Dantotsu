@@ -1,6 +1,10 @@
 package ani.dantotsu.connections.mangaupdates
 
+import ani.dantotsu.Mapper
+import ani.dantotsu.connections.anilist.MediaListCache
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
@@ -20,6 +24,7 @@ import kotlin.coroutines.resume
  * Bind views synchronously via [get] — returns null until the fetch completes.
  */
 object MUDetailsCache {
+    @kotlinx.serialization.Serializable
     data class Detail(
         val coverUrl: String?,
         val description: String?,
@@ -98,6 +103,67 @@ object MUDetailsCache {
     private val gate = Semaphore(MAX_CONCURRENT)
 
     fun get(id: Long): Detail? = cache[id]
+
+    // ---- persistence -------------------------------------------------------------------------
+    //
+    // What is kept here is what the unread row waits on. Ordering it by recency needs each
+    // MangaUpdates entry's newest release date, and that costs two requests per series — the series
+    // record, then its release list — against an API that answers in about 700ms whatever you ask
+    // it. With nothing stored, every launch paid that again for the same series, and the row draws
+    // nothing until the last of them lands, which is why it trailed so far behind the rows beside
+    // it. None of those answers changes often enough to be worth re-asking on every start.
+    //
+    // Only entries whose release date actually resolved are stored. One that came back without a
+    // date — a failed request, or a series with no dated release — is left out on purpose, so it is
+    // retried on the next launch exactly as it is today rather than having its blank answer made
+    // permanent by writing it down.
+
+    private const val MAX_PERSISTED = 1500
+    private const val FLUSH_DELAY_MS = 2000L
+    private const val CACHE_KEY = "mu-details"
+
+    @kotlinx.serialization.Serializable
+    private data class Persisted(val details: Map<Long, Detail>)
+
+    @Volatile
+    private var loaded = false
+    private var flushJob: Job? = null
+
+    /** Reads the stored details. Touches the disk, so keep it off the main thread. */
+    fun preload() {
+        if (loaded) return
+        loaded = true
+        try {
+            val body = MediaListCache.read(CACHE_KEY) ?: return
+            val stored = Mapper.json.decodeFromString<Persisted>(body)
+            stored.details.forEach { (id, detail) ->
+                // Anything fetched this session is fresher than anything on disk.
+                cache.putIfAbsent(id, detail)
+                if (detail.latestReleaseAt != null) releasesResolved += id
+            }
+            ani.dantotsu.util.Logger.log("MUDetailsCache: restored ${stored.details.size} series")
+        } catch (e: Exception) {
+            ani.dantotsu.util.Logger.log("MUDetailsCache: failed to restore: ${e.message}")
+        }
+    }
+
+    /** Debounced: a prefetch resolves many series in a burst, and this writes the whole file. */
+    private fun scheduleFlush() {
+        flushJob?.cancel()
+        flushJob = fetchScope.launch {
+            delay(FLUSH_DELAY_MS)
+            try {
+                val worth = cache.entries
+                    .filter { it.value.latestReleaseAt != null }
+                    .take(MAX_PERSISTED)
+                    .associate { it.key to it.value }
+                if (worth.isEmpty()) return@launch
+                MediaListCache.write(CACHE_KEY, Mapper.json.encodeToString(Persisted(worth)))
+            } catch (e: Exception) {
+                ani.dantotsu.util.Logger.log("MUDetailsCache: failed to store: ${e.message}")
+            }
+        }
+    }
 
     /**
      * [get], but waits for the fetch instead of returning null the first time.
@@ -227,6 +293,7 @@ object MUDetailsCache {
             if (wantRelease) {
                 releasesResolved += id
                 releaseWanted -= id
+                scheduleFlush()
             }
             // Whoever this pass can answer is told now; anyone waiting on a release it didn't
             // collect stays queued for the follow-up. Holding those two apart is the point — a

@@ -43,6 +43,7 @@ import java.io.ObjectOutputStream
 import java.io.Serializable
 import java.util.Calendar
 import kotlin.system.measureTimeMillis
+import ani.dantotsu.Mapper
 import ani.dantotsu.util.Logger
 
 class AnilistQueries {
@@ -722,9 +723,6 @@ class AnilistQueries {
     }
 
     suspend fun initHomePage(): Map<String, ArrayList<Media>> {
-        val removeList = PrefManager.getVal<Set<String>>(PrefName.HiddenFromLists)
-        val hidePrivate = PrefManager.getVal<Boolean>(PrefName.HidePrivate)
-        val removedMedia = ArrayList<Media>()
         val toShow: List<Boolean> =
             PrefManager.getVal(PrefName.HomeLayout) // list of booleans for what to show
 
@@ -770,7 +768,62 @@ class AnilistQueries {
         }
 
         val query = "{${queries.joinToString(",")}}"
-        val response = executeQuery<Query.HomePageMedia>(query, show = false)
+        val response = executeQuery<Query.HomePageMedia>(
+            query, show = false,
+            onRawResponse = { body ->
+                Anilist.userid?.let { MediaListCache.write(MediaListCache.homeKey(it), body) }
+            }
+        )
+        return buildHomePage(response, toShow)
+    }
+
+    /**
+     * The home screen's rows as last stored by [initHomePage], or null if there is nothing usable.
+     *
+     * Unusable includes stored-but-incomplete. The home query is assembled from whichever sections
+     * are switched on, so a response fetched under one layout can simply not contain a row that is
+     * wanted now — and a row built from an absent alias is an empty row, which reads as "you have
+     * nothing here" rather than "this hasn't loaded". The check below is what keeps that from being
+     * shown: an alias the query never asked for parses back as null, while one that was asked for
+     * and had nothing to return is present and empty, so the two are distinguishable.
+     */
+    fun cachedHomePage(): Map<String, ArrayList<Media>>? {
+        val userId = Anilist.userid ?: return null
+        val body = MediaListCache.read(MediaListCache.homeKey(userId)) ?: return null
+        val response = try {
+            Mapper.parse<Query.HomePageMedia>(body)
+        } catch (e: Exception) {
+            Logger.log("cachedHomePage: failed to parse stored response: ${e.message}")
+            return null
+        }
+        val data = response.data ?: return null
+        val toShow: List<Boolean> = PrefManager.getVal(PrefName.HomeLayout)
+        val covers = when {
+            toShow.getOrNull(0) == true && (data.currentAnime == null || data.repeatingAnime == null) -> false
+            toShow.getOrNull(1) == true && data.favoriteAnime == null -> false
+            toShow.getOrNull(2) == true && data.plannedAnime == null -> false
+            toShow.getOrNull(4) == true && (data.currentManga == null || data.repeatingManga == null) -> false
+            toShow.getOrNull(5) == true && data.favoriteManga == null -> false
+            toShow.getOrNull(6) == true && data.plannedManga == null -> false
+            toShow.getOrNull(7) == true &&
+                (data.recommendationQuery == null || data.plannedAnime == null || data.plannedManga == null) -> false
+            else -> true
+        }
+        if (!covers) {
+            Logger.log("cachedHomePage: stored response predates the current home layout; ignoring")
+            return null
+        }
+        return buildHomePage(response, toShow)
+    }
+
+    /** Turns a home response — live or stored — into the screen's rows. */
+    private fun buildHomePage(
+        response: Query.HomePageMedia?,
+        toShow: List<Boolean>
+    ): Map<String, ArrayList<Media>> {
+        val removeList = PrefManager.getVal<Set<String>>(PrefName.HiddenFromLists)
+        val hidePrivate = PrefManager.getVal<Boolean>(PrefName.HidePrivate)
+        val removedMedia = ArrayList<Media>()
         val returnMap = mutableMapOf<String, ArrayList<Media>>()
 
         fun processMedia(
@@ -956,13 +1009,53 @@ plannedManga: ${plannedMediaQuery("MANGA")}
         return default
     }
 
+    /**
+     * The user's lists as last stored by [getMediaLists], or null if nothing is stored.
+     *
+     * Built through the same [buildMediaLists] as a live response, so a cached open and a fresh one
+     * cannot disagree about anything except how old the data is. The sort is applied here rather
+     * than having been baked in when it was stored, so changing the sort order and reopening still
+     * shows the right order out of the cache. See [MediaListCache].
+     */
+    fun cachedMediaLists(
+        anime: Boolean,
+        userId: Int,
+        sortOrder: String? = null
+    ): MutableMap<String, ArrayList<Media>>? {
+        if (userId != Anilist.userid) return null
+        val body = MediaListCache.read(MediaListCache.listKey(userId, anime)) ?: return null
+        val response = try {
+            Mapper.parse<Query.MediaListCollection>(body)
+        } catch (e: Exception) {
+            Logger.log("cachedMediaLists: failed to parse stored response: ${e.message}")
+            return null
+        }
+        if (response.data?.mediaListCollection?.lists.isNullOrEmpty()) return null
+        return buildMediaLists(response, anime, sortOrder)
+    }
+
     suspend fun getMediaLists(
         anime: Boolean,
         userId: Int,
         sortOrder: String? = null
     ): MutableMap<String, ArrayList<Media>> {
         val response =
-            executeQuery<Query.MediaListCollection>("""{ MediaListCollection(userId: $userId, type: ${if (anime) "ANIME" else "MANGA"}) { lists { name isCustomList entries { status progress progressVolumes private score(format:POINT_100) updatedAt startedAt{year month day} completedAt{year month day} media { id idMal isAdult type status(version: 2) chapters volumes episodes nextAiringEpisode {episode} bannerImage genres meanScore isFavourite format coverImage{large} description startDate{year month day} title {english romaji userPreferred } synonyms tags { name } countryOfOrigin source } } } user { id mediaListOptions { rowOrder animeList { sectionOrder } mangaList { sectionOrder } } } } }""")
+            executeQuery<Query.MediaListCollection>(
+                onRawResponse = { body ->
+                    // Only the signed-in user's own lists; another profile's is a one-off visit.
+                    if (userId == Anilist.userid) MediaListCache.write(MediaListCache.listKey(userId, anime), body)
+                },
+                query = """{ MediaListCollection(userId: $userId, type: ${if (anime) "ANIME" else "MANGA"}) { lists { name isCustomList entries { status progress progressVolumes private score(format:POINT_100) updatedAt startedAt{year month day} completedAt{year month day} media { id idMal isAdult type status(version: 2) chapters volumes episodes nextAiringEpisode {episode} bannerImage genres meanScore isFavourite format coverImage{large} description startDate{year month day} title {english romaji userPreferred } synonyms tags { name } countryOfOrigin source } } } user { id mediaListOptions { rowOrder animeList { sectionOrder } mangaList { sectionOrder } } } } }"""
+            )
+        return buildMediaLists(response, anime, sortOrder)
+    }
+
+    /** Turns a list-collection response — live or stored — into the screen's per-list buckets. */
+    private fun buildMediaLists(
+        response: Query.MediaListCollection?,
+        anime: Boolean,
+        sortOrder: String?
+    ): MutableMap<String, ArrayList<Media>> {
         val sorted = mutableMapOf<String, ArrayList<Media>>()
         val unsorted = mutableMapOf<String, ArrayList<Media>>()
         val all = arrayListOf<Media>()

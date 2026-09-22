@@ -1,6 +1,7 @@
 package ani.dantotsu.connections.mangaupdates
 
 import ani.dantotsu.Mapper
+import ani.dantotsu.connections.anilist.MediaListCache
 import ani.dantotsu.connections.anilist.MUSearchResults
 import ani.dantotsu.connections.anilist.AnilistQueries
 import ani.dantotsu.settings.saving.PrefManager
@@ -8,6 +9,11 @@ import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.tryWithSuspend
 import ani.dantotsu.util.Logger
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -115,8 +121,10 @@ object MangaUpdates {
 
             val profile = Mapper.parse<MUUserProfile>(responseBody)
 
-            // Store avatar URL if available
+            // Store avatar URL if available. Persisted as well as held, so a restored session can
+            // show it without spending a request on it — see [getSavedToken].
             avatar = profile.avatar?.url
+            PrefManager.setVal(PrefName.MangaUpdatesAvatar, avatar ?: "")
 
             profile
         }
@@ -126,13 +134,32 @@ object MangaUpdates {
      * Check if we have saved credentials and automatically login if available
      * @return true if logged in (either already or successfully), false otherwise
      */
+    /**
+     * Puts the session back in memory, logging in only if there isn't one to restore.
+     *
+     * [saveCredentials] has always stored the session token, and nothing ever read it back — so
+     * every cold start traded the saved username and password for a fresh one, and `login` follows
+     * that with a profile fetch, making two sequential round trips that everything MangaUpdates-
+     * related then queued behind. On the home screen that was most of the leg: measured against a
+     * real account, the list requests themselves took 265ms and the rest of the ~1.9s was spent
+     * getting to the point of being allowed to make them.
+     *
+     * The avatar is restored the same way and for the same reason AniList's is — it is shown beside
+     * the account name, and re-fetching it is another request in front of the one the user is
+     * waiting on.
+     *
+     * A restored token can of course have expired since; [reauthenticate] handles that where it
+     * shows up, on the first request that comes back 401.
+     */
     suspend fun getSavedToken(): Boolean {
         // If we already have a token in memory, we're good
-        if (!token.isNullOrBlank()) {
-            // Try to fetch avatar if we don't have it yet
-            if (avatar == null) {
-                getUserProfile()
-            }
+        if (!token.isNullOrBlank()) return true
+
+        val storedToken = PrefManager.getVal<String>(PrefName.MangaUpdatesToken).takeIf { it.isNotBlank() }
+        if (storedToken != null) {
+            token = storedToken
+            username = PrefManager.getNullableVal<String>(PrefName.MangaUpdatesUsername, null)
+            avatar = PrefManager.getVal<String>(PrefName.MangaUpdatesAvatar).takeIf { it.isNotBlank() }
             return true
         }
 
@@ -145,6 +172,25 @@ object MangaUpdates {
         }
 
         return false
+    }
+
+    /**
+     * Trades the saved credentials for a new session token after one was rejected.
+     *
+     * Guarded so a burst of concurrent list requests hitting the same expired token produces one
+     * login rather than one each; whoever loses the race finds a fresh token already in place.
+     */
+    private val reauthLock = Mutex()
+
+    private suspend fun reauthenticate(rejected: String?): Boolean = reauthLock.withLock {
+        if (!token.isNullOrBlank() && token != rejected) return@withLock true
+        val savedUsername = PrefManager.getNullableVal<String>(PrefName.MangaUpdatesUsername, null)
+            ?: return@withLock false
+        val savedPassword = PrefManager.getNullableVal<String>(PrefName.MangaUpdatesPassword, null)
+            ?: return@withLock false
+        Logger.log("MangaUpdates: session token rejected, logging in again")
+        token = null
+        login(savedUsername, savedPassword)
     }
 
     /**
@@ -166,6 +212,9 @@ object MangaUpdates {
         PrefManager.removeVal(PrefName.MangaUpdatesUsername)
         PrefManager.removeVal(PrefName.MangaUpdatesPassword)
         PrefManager.removeVal(PrefName.MangaUpdatesToken)
+        PrefManager.removeVal(PrefName.MangaUpdatesAvatar)
+        // The stored home buckets are this account's lists; leaving them would show them to the next.
+        MediaListCache.remove(MediaListCache.MU_HOME_KEY)
         Logger.log("MangaUpdates: Logged out")
     }
 
@@ -636,7 +685,13 @@ object MangaUpdates {
     /**
      * Fetch all entries for a specific list (0=Reading, 1=Planning, 2=Completed, 3=Dropped, 4=Paused).
      */
-    suspend fun getUserList(listId: Int, page: Int = 1, perPage: Int = -1): MUListResponse? {
+    suspend fun getUserList(
+        listId: Int,
+        page: Int = 1,
+        perPage: Int = -1,
+        /** Handed the final HTTP status, for callers that treat some of them as more than a failure. */
+        onHttpCode: ((Int) -> Unit)? = null
+    ): MUListResponse? {
         return tryWithSuspend {
             if (token.isNullOrBlank()) {
                 Logger.log("MangaUpdates GetUserList: No token available")
@@ -653,7 +708,25 @@ object MangaUpdates {
                 .addHeader("Authorization", "Bearer $token")
                 .build()
 
-            val response = withContext(Dispatchers.IO) { httpClient.newCall(request).execute() }
+            var response = withContext(Dispatchers.IO) { httpClient.newCall(request).execute() }
+
+            // A restored session token can have expired while the app was closed. One login and one
+            // retry, rather than reporting an empty list and leaving the user to work out that they
+            // have been quietly signed out.
+            if (response.code == 401 && reauthenticate(rejected = token)) {
+                val retry = Request.Builder()
+                    .url("$BASE_URL/lists/$listId/search")
+                    .post(
+                        Mapper.json.encodeToString(
+                            MUListSearchRequest(page = page, perPage = perPage)
+                        ).toRequestBody("application/json".toMediaTypeOrNull())
+                    )
+                    .addHeader("Authorization", "Bearer $token")
+                    .build()
+                response = withContext(Dispatchers.IO) { httpClient.newCall(retry).execute() }
+            }
+
+            onHttpCode?.invoke(response.code)
             val responseBody = extractBody(response)
             if (!response.isSuccessful || responseBody.isNullOrBlank()) {
                 Logger.log("MangaUpdates GetUserList[$listId]: Failed with code ${response.code}")
@@ -816,11 +889,14 @@ object MangaUpdates {
     }
 
     /** Every page of one list, as [MUMedia]. */
-    private suspend fun getUserListFully(listId: Int): List<MUMedia> {
+    private suspend fun getUserListFully(
+        listId: Int,
+        onHttpCode: ((Int) -> Unit)? = null
+    ): List<MUMedia> {
         val entries = mutableListOf<MUListEntry>()
         var page = 1
         while (true) {
-            val response = getUserList(listId, page) ?: break
+            val response = getUserList(listId, page, onHttpCode = onHttpCode) ?: break
             entries += response.results.orEmpty()
             val total = response.totalHits ?: 0
             if (entries.size >= total) break
@@ -837,42 +913,147 @@ object MangaUpdates {
      */
     suspend fun getReadingList(): List<MUMedia> = getUserListFully(READING_LIST_ID)
 
-    suspend fun getAllUserLists(): Map<String, List<MUMedia>> {
-        val statusNames = listOf("Reading", "Planning", "Completed", "Dropped", "Paused")
-        val result = mutableMapOf<String, MutableList<MUMedia>>()
+    /** The standard lists, in list-id order — the index is the id MangaUpdates uses. */
+    private val STANDARD_LISTS = listOf("Reading", "Planning", "Completed", "Dropped", "Paused")
 
-        for ((listId, name) in statusNames.withIndex()) {
-            val entries = getUserListFully(listId)
-            if (entries.isNotEmpty()) {
-                result.getOrPut(name) { mutableListOf() }.addAll(entries)
-            }
-        }
+    /** The buckets the home screen reads; see [getHomeLists]. */
+    private val HOME_BUCKETS = setOf("Reading", "Planning")
 
-        // Fetch custom lists according to user-configured mapping
+    /** The user's custom lists as (list id, bucket it feeds), from the configured mapping. */
+    private fun customListTargets(): List<Pair<Int, String>> {
         val mappingJson = PrefManager.getVal<String>(PrefName.MuCustomListMapping)
-        if (mappingJson.isNotBlank()) {
-            tryWithSuspend {
-                val mapping = Mapper.json.decodeFromString<Map<String, String>>(mappingJson)
-                for ((listIdStr, targetBucket) in mapping) {
-                    val listId = listIdStr.toIntOrNull() ?: continue
-                    val entries = mutableListOf<MUListEntry>()
-                    var page = 1
-                    while (true) {
-                        val response = getUserList(listId, page) ?: break
-                        entries += response.results.orEmpty()
-                        val total = response.totalHits ?: 0
-                        if (entries.size >= total) break
-                        page++
-                    }
-                    if (entries.isNotEmpty()) {
-                        result.getOrPut(targetBucket) { mutableListOf() }
-                            .addAll(entries.mapNotNull { it.toMUMedia(listId) })
+        if (mappingJson.isBlank()) return emptyList()
+        return try {
+            Mapper.json.decodeFromString<Map<String, String>>(mappingJson)
+                .mapNotNull { (idStr, bucket) -> idStr.toIntOrNull()?.let { it to bucket } }
+        } catch (e: Exception) {
+            Logger.log("MangaUpdates: bad custom list mapping: ${e.message}")
+            emptyList()
+        }
+    }
+
+    /**
+     * Fetches several lists at once and buckets them by name.
+     *
+     * One at a time is how this used to run — five standard lists in a loop, each paginating
+     * sequentially inside, then the custom lists after that — and on a real library the chain of
+     * round trips came to about two and a half seconds, which was the single largest thing on the
+     * home screen's load and the leg every other one waited behind. The lists are independent of
+     * each other, so the only reason for the wait was the loop.
+     *
+     * [required] failures propagate and [optional] failures come back empty, which is the behaviour
+     * the sequential version had: a standard list that would not load failed the whole call, while
+     * the custom-list pass was wrapped so a broken one could not take the rest down with it.
+     */
+    private suspend fun fetchLists(
+        required: List<Pair<Int, String>>,
+        optional: List<Pair<Int, String>>
+    ): Map<String, List<MUMedia>> {
+        val gone = java.util.Collections.synchronizedSet(mutableSetOf<Int>())
+        val fetched = coroutineScope {
+            val requiredJobs = required.map { (listId, bucket) ->
+                async { bucket to getUserListFully(listId) }
+            }
+            val optionalJobs = optional.map { (listId, bucket) ->
+                async {
+                    bucket to runCatching {
+                        getUserListFully(listId) { code ->
+                            // A list the account no longer has. Not a failure to retry — it is an
+                            // answer, and the only one that makes a stale mapping safe to drop.
+                            if (code == 404 || code == 410) gone += listId
+                        }
+                    }.getOrElse {
+                        Logger.log("MangaUpdates: custom list $listId failed: ${it.message}")
+                        emptyList()
                     }
                 }
             }
+            (requiredJobs + optionalJobs).awaitAll()
         }
+        if (gone.isNotEmpty()) forgetCustomLists(gone)
 
+        val result = mutableMapOf<String, MutableList<MUMedia>>()
+        fetched.forEach { (bucket, entries) ->
+            if (entries.isNotEmpty()) result.getOrPut(bucket) { mutableListOf() }.addAll(entries)
+        }
         return result.mapValues { it.value.toList() }
+    }
+
+    /**
+     * Drops mappings for custom lists the account no longer has.
+     *
+     * Only ever called for a list MangaUpdates answered about — a 404, not a timeout or a refused
+     * connection — because a mapping deleted on the strength of a transient failure is one the user
+     * has to go and set up again. A list that is merely unreachable keeps its mapping and is asked
+     * about next time.
+     */
+    private fun forgetCustomLists(listIds: Set<Int>) {
+        try {
+            val mappingJson = PrefManager.getVal<String>(PrefName.MuCustomListMapping)
+            if (mappingJson.isBlank()) return
+            val mapping = Mapper.json.decodeFromString<Map<String, String>>(mappingJson)
+            val kept = mapping.filterKeys { it.toIntOrNull() !in listIds }
+            if (kept.size == mapping.size) return
+            PrefManager.setVal(
+                PrefName.MuCustomListMapping,
+                if (kept.isEmpty()) "" else Mapper.json.encodeToString(kept)
+            )
+            Logger.log("MangaUpdates: dropped mapping for removed custom list(s) $listIds")
+        } catch (e: Exception) {
+            Logger.log("MangaUpdates: failed to prune custom list mapping: ${e.message}")
+        }
+    }
+
+    suspend fun getAllUserLists(): Map<String, List<MUMedia>> = fetchLists(
+        required = STANDARD_LISTS.mapIndexed { listId, name -> listId to name },
+        optional = customListTargets()
+    )
+
+    /**
+     * Just the lists the home screen draws from.
+     *
+     * It reads exactly two buckets — "Reading" for the continue row and the MangaUpdates unread
+     * row, "Planning" for the planned row — so fetching Completed, Dropped and Paused as well meant
+     * three of the five standard lists were downloaded on every home load and never looked at.
+     * Custom lists are included only where the user has mapped them into one of those two buckets.
+     *
+     * [getAllUserLists] stays as it is for the screens that genuinely want everything: the list
+     * screen's MangaUpdates tabs, list comparison, and the unread notification scan.
+     */
+    /**
+     * The home buckets as last stored by [getHomeLists], or null if there is nothing stored.
+     *
+     * Stored as the assembled buckets rather than the raw responses behind them: a bucket can be fed
+     * by several lists (a custom list mapped onto "Reading") and a list can span pages, so the
+     * responses do not map one-to-one onto what the screen reads, while the assembled form does.
+     */
+    fun cachedHomeLists(): Map<String, List<MUMedia>>? {
+        val body = MediaListCache.read(MediaListCache.MU_HOME_KEY) ?: return null
+        return try {
+            Mapper.json.decodeFromString<Map<String, List<MUMedia>>>(body)
+                .takeIf { it.isNotEmpty() }
+        } catch (e: Exception) {
+            Logger.log("MangaUpdates: failed to read stored home lists: ${e.message}")
+            null
+        }
+    }
+
+    suspend fun getHomeLists(): Map<String, List<MUMedia>> = fetchLists(
+        required = STANDARD_LISTS.mapIndexed { listId, name -> listId to name }
+            .filter { (_, name) -> name in HOME_BUCKETS },
+        optional = customListTargets().filter { (_, bucket) -> bucket in HOME_BUCKETS }
+    ).also { lists ->
+        // Only a result that actually reached MangaUpdates is worth storing. An empty map here
+        // means every request failed, and writing that would hand the next launch an empty home
+        // screen to show confidently before the real one arrives.
+        if (lists.isNotEmpty()) {
+            runCatching {
+                MediaListCache.write(
+                    MediaListCache.MU_HOME_KEY,
+                    Mapper.json.encodeToString(lists)
+                )
+            }.onFailure { Logger.log("MangaUpdates: failed to store home lists: ${it.message}") }
+        }
     }
 
     private const val READING_LIST_ID = 0
