@@ -46,6 +46,21 @@ data class MUMedia(
  */
 fun muMediaKey(muSeriesId: Long): Int = (muSeriesId and 0x7FFFFFFF).toInt()
 
+/**
+ * The publication status out of a MangaUpdates series record's `status` text.
+ *
+ * That field is prose rather than a token — "143 Chapters (Ongoing)", "Complete", "12 Volumes
+ * (Hiatus)" — and the word in brackets is the part that says what the series is doing. Returned as
+ * MangaUpdates writes it, because [ani.dantotsu.connections.anilist.api.mediaStatusOf] already
+ * reads that vocabulary: ONGOING, COMPLETE, HIATUS and DISCONTINUED all map to the same statuses
+ * their AniList spellings do.
+ */
+fun muStatusWord(raw: String?): String? {
+    val text = raw?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+    return Regex("""\(([^)]+)\)""").find(text)?.groupValues?.getOrNull(1)?.trim()?.takeIf { it.isNotEmpty() }
+        ?: text.takeIf { it.none(Char::isDigit) }
+}
+
 /** Converts a [MUMedia] into a minimal [Media] suitable for display and random-pick. */
 fun MUMedia.toMedia(): Media = Media(
     id = muMediaKey(id),

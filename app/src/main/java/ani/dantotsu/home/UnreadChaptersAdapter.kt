@@ -414,10 +414,8 @@ class UnreadChaptersAdapter(
             val showLatest = latest != null && latest > 0 && (userChapter == null || latest > userChapter)
             itemCompactTotal.text = if (showLatest) " | $latest | ~" else " | ~"
 
-            // No dot for MangaUpdates entries, matching [bindMuLargeView]. A list entry carries a
-            // status only when something else already knew it ([MUMedia.status] is populated on the
-            // way in, not by MangaUpdates itself), so for nearly all of them the dot would be
-            // asserting a release state nobody has established.
+            // No dot here, unlike [bindMuLargeView] — this row's layout has no view for one, not
+            // because the status is unknown. It is known: [MUDetailsCache] carries it now.
             itemCompactScoreContainer.visibility = View.GONE
 
             // Badge: the MU logo on its own, or — when MALSync knows where the newest chapter is —
@@ -485,10 +483,19 @@ class UnreadChaptersAdapter(
             itemCompactImage.loadImage(coverUrl)
             blurImage(itemCompactBanner, coverUrl)
             itemCompactTitle.text = item.title ?: ""
-            itemCompactOngoing.visibility = View.GONE
+            // Same dot an AniList row gets; the status rides along with the series record
+            // [MUDetailsCache] already fetches for the cover. See [muStatusWord].
+            val muStatus = cached?.status
+            val muReleasing = isReleasingStatus(muStatus)
+            val muHiatus = isHiatusStatus(muStatus)
+            itemCompactOngoing.visibility = if (muReleasing || muHiatus) View.VISIBLE else View.GONE
+            itemCompactOngoing.getChildAt(0)?.setBackgroundResource(
+                if (muHiatus) R.drawable.item_hiatus else R.drawable.item_ongoing
+            )
             itemCompactType.visibility = View.GONE
-            itemCompactStatus.text = ""
-            itemCompactStatus.visibility = View.GONE
+            itemCompactStatus.text = muStatus ?: ""
+            itemCompactStatus.visibility =
+                if (itemCompactStatus.text.isNullOrBlank()) View.GONE else View.VISIBLE
             val desc = cached?.description
             if (desc != null) {
                 itemCompactSynopsis.text = androidx.core.text.HtmlCompat.fromHtml(desc, androidx.core.text.HtmlCompat.FROM_HTML_MODE_LEGACY)

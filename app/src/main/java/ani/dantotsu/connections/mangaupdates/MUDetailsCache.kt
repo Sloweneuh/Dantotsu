@@ -34,6 +34,12 @@ object MUDetailsCache {
         val genres: Set<String> = emptySet(),
         val categories: Set<String> = emptySet(),
         val completed: Boolean? = null,
+        /**
+         * What the series is doing, as MangaUpdates words it — "Ongoing", "Complete", "Hiatus".
+         * Read straight by [ani.dantotsu.connections.anilist.api.mediaStatusOf], so a MangaUpdates
+         * row can show the same ongoing/hiatus dot an AniList one does. See [muStatusWord].
+         */
+        val status: String? = null,
         val latestChapter: Long? = null,
         /**
          * When the newest known chapter was released, epoch ms — the `release_date` of the first
@@ -266,6 +272,7 @@ object MUDetailsCache {
                             ?.toSet()
                             ?: emptySet(),
                         completed = record?.completed,
+                        status = muStatusWord(record?.status),
                         latestChapter = record?.latest_chapter,
                         // Carried over so a details refetch doesn't drop what's already resolved.
                         latestReleaseAt = cache[id]?.latestReleaseAt,

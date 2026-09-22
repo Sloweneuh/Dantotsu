@@ -205,7 +205,17 @@ class MergedReadingAdapter(
         ViewCompat.setTransitionName(b.itemCompactImage, mediaCoverTransitionName(item.id))
 
         b.itemCompactTitle.text = item.title ?: ""
-        b.itemCompactOngoing.visibility = View.GONE
+        // The same ongoing/hiatus dot an AniList row gets. MangaUpdates' list endpoint does not
+        // carry a publication status, so it comes from the series record [MUDetailsCache] fetches
+        // for the cover anyway; until that lands there is no dot, and the rebind it triggers puts
+        // one there.
+        val muStatus = MUDetailsCache.get(item.id)?.status
+        val muReleasing = isReleasingStatus(muStatus)
+        val muHiatus = isHiatusStatus(muStatus)
+        b.itemCompactOngoing.visibility = if (muReleasing || muHiatus) View.VISIBLE else View.GONE
+        b.itemCompactOngoing.getChildAt(0)?.setBackgroundResource(
+            if (muHiatus) R.drawable.item_hiatus else R.drawable.item_ongoing
+        )
         b.itemCompactType.visibility = View.GONE
 
         val userChapter = item.userChapter
@@ -375,7 +385,17 @@ class MergedReadingAdapter(
         ViewCompat.setTransitionName(b.itemCompactImage, mediaCoverTransitionName(item.id))
 
         b.itemCompactTitle.text = item.title ?: ""
-        b.itemCompactOngoing.visibility = View.GONE
+        // The same ongoing/hiatus dot an AniList row gets. MangaUpdates' list endpoint does not
+        // carry a publication status, so it comes from the series record [MUDetailsCache] fetches
+        // for the cover anyway; until that lands there is no dot, and the rebind it triggers puts
+        // one there.
+        val muStatus = MUDetailsCache.get(item.id)?.status
+        val muReleasing = isReleasingStatus(muStatus)
+        val muHiatus = isHiatusStatus(muStatus)
+        b.itemCompactOngoing.visibility = if (muReleasing || muHiatus) View.VISIBLE else View.GONE
+        b.itemCompactOngoing.getChildAt(0)?.setBackgroundResource(
+            if (muHiatus) R.drawable.item_hiatus else R.drawable.item_ongoing
+        )
         b.itemCompactType.visibility = View.GONE
         b.itemCompactStatus.text = ""
         b.itemCompactStatus.visibility = View.GONE
