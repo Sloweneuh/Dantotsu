@@ -12,6 +12,7 @@ import ani.dantotsu.App
 import ani.dantotsu.MainActivity
 import ani.dantotsu.R
 import ani.dantotsu.connections.malsync.MalSyncMu
+import ani.dantotsu.connections.mangaupdates.MUDetailsCache
 import ani.dantotsu.connections.mangaupdates.MUMedia
 import ani.dantotsu.connections.mangaupdates.MUMediaDetailsActivity
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
@@ -28,6 +29,9 @@ import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.settings.saving.containsMediaId
 import ani.dantotsu.util.Logger
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 
 class MuUnreadNotificationTask : Task {
@@ -72,48 +76,9 @@ class MuUnreadNotificationTask : Task {
             return
         }
 
-        val tokenLoaded = MangaUpdates.getSavedToken()
-        if (!tokenLoaded || MangaUpdates.token.isNullOrBlank()) {
-            Logger.log("MuUnreadNotificationTask: MangaUpdates not logged in, skipping")
-            return
-        }
-
         Logger.log("MuUnreadNotificationTask: checking MangaUpdates unread chapters")
 
-        val allLists = try {
-            MangaUpdates.getAllUserLists()
-        } catch (e: Exception) {
-            Logger.log("MuUnreadNotificationTask: getAllUserLists error: ${e.message}")
-            return
-        }
-
-        val readingList = allLists["Reading"] ?: emptyList()
-
-        // What MALSync knows about the series that could be linked to a MAL entry — often a chapter
-        // ahead of MangaUpdates' own count, and with the source it landed on. The rest are unchanged.
-        val malSyncInfo = try {
-            MalSyncMu.unreadInfo(readingList)
-        } catch (e: Exception) {
-            Logger.log("MuUnreadNotificationTask: MALSync lookup failed: ${e.message}")
-            emptyMap()
-        }
-        val excludeList = PrefManager.getVal<Set<String>>(PrefName.MalSyncExcludeList)
-
-        val unreadItems = readingList.mapNotNull { muMedia ->
-            if (excludeList.containsMediaId(muMediaKey(muMedia.id).toString())) return@mapNotNull null
-            val info = malSyncInfo[muMediaKey(muMedia.id)]
-            val latest = MalSyncMu.latestChapter(muMedia.latestChapter, info?.lastChapter)
-                ?: return@mapNotNull null
-            if (latest <= (muMedia.userChapter ?: 0)) return@mapNotNull null
-            // Where to read the chapter being announced, whenever MALSync's site actually has it —
-            // which includes the common case of the two agreeing on the number, since only MALSync
-            // names a site. It's withheld only when MALSync is *behind*, where naming its source
-            // would point at a site that doesn't carry the chapter in the notification.
-            val source = info?.source
-                ?.takeIf { it.isNotBlank() && info.lastChapter >= (muMedia.latestChapter ?: 0) }
-            UnreadItem(muMedia, latest, source)
-        }
-
+        val unreadItems = currentUnreadItems(context)
         Logger.log("MuUnreadNotificationTask: found ${unreadItems.size} items with unread chapters")
 
         if (unreadItems.isEmpty()) return
@@ -135,12 +100,26 @@ class MuUnreadNotificationTask : Task {
         Logger.log("MuUnreadNotificationTask: ${newItems.size} new chapters to notify")
 
         if (newItems.isNotEmpty() && hasNotificationPermission(context)) {
+            // MUMedia.coverUrl is only ever populated by getSeriesDetails — the reading-list fetch
+            // above never calls it, so every item here starts with a null cover. Resolve it through
+            // the same app-wide details cache the rest of the app uses for list-sourced MUMedia
+            // (MUMediaAdapter, MUMediaDetailsActivity, ...), concurrently since it's per-item.
+            val resolvedItems = coroutineScope {
+                newItems.map { item ->
+                    async {
+                        if (item.media.coverUrl != null) return@async item
+                        val coverUrl = MUDetailsCache.ensure(item.media.id)?.coverUrl
+                            ?: return@async item
+                        item.copy(media = item.media.copy(coverUrl = coverUrl))
+                    }
+                }.awaitAll()
+            }
             // Fetched here, on the IO dispatcher this whole method already runs on — sendNotifications
             // itself is dispatched to Main below, where blocking network reads aren't allowed.
-            val icons = newItems.associate { it.media.id to NotificationImageLoader.loadBitmap(it.media.coverUrl) }
+            val icons = resolvedItems.associate { it.media.id to NotificationImageLoader.loadBitmap(it.media.coverUrl) }
             withContext(Dispatchers.Main) {
-                sendNotifications(context, newItems, icons)
-                storeNotifications(newItems)
+                sendNotifications(context, resolvedItems, icons)
+                storeNotifications(resolvedItems)
             }
         }
     }
@@ -152,6 +131,55 @@ class MuUnreadNotificationTask : Task {
         /** MALSync's source, when MALSync is the one reporting [latestChapter]. */
         val source: String?,
     )
+
+    /**
+     * Fetches the reading list and returns every entry with an unread chapter right now — before
+     * the "already notified" dedup filter [checkMangaUpdatesUnread] applies on top, so this
+     * reflects genuinely current account state rather than just what hasn't been announced yet.
+     * Also used, unfiltered, by [sendTestNotification] to find a real entry to test with. Returns
+     * an empty list when logged out or a fetch fails (caller decides whether that's worth logging).
+     */
+    private suspend fun currentUnreadItems(context: Context): List<UnreadItem> {
+        val tokenLoaded = MangaUpdates.getSavedToken()
+        if (!tokenLoaded || MangaUpdates.token.isNullOrBlank()) {
+            Logger.log("MuUnreadNotificationTask: MangaUpdates not logged in, skipping")
+            return emptyList()
+        }
+
+        val allLists = try {
+            MangaUpdates.getAllUserLists()
+        } catch (e: Exception) {
+            Logger.log("MuUnreadNotificationTask: getAllUserLists error: ${e.message}")
+            return emptyList()
+        }
+
+        val readingList = allLists["Reading"] ?: emptyList()
+
+        // What MALSync knows about the series that could be linked to a MAL entry — often a chapter
+        // ahead of MangaUpdates' own count, and with the source it landed on. The rest are unchanged.
+        val malSyncInfo = try {
+            MalSyncMu.unreadInfo(readingList)
+        } catch (e: Exception) {
+            Logger.log("MuUnreadNotificationTask: MALSync lookup failed: ${e.message}")
+            emptyMap()
+        }
+        val excludeList = PrefManager.getVal<Set<String>>(PrefName.MalSyncExcludeList)
+
+        return readingList.mapNotNull { muMedia ->
+            if (excludeList.containsMediaId(muMediaKey(muMedia.id).toString())) return@mapNotNull null
+            val info = malSyncInfo[muMediaKey(muMedia.id)]
+            val latest = MalSyncMu.latestChapter(muMedia.latestChapter, info?.lastChapter)
+                ?: return@mapNotNull null
+            if (latest <= (muMedia.userChapter ?: 0)) return@mapNotNull null
+            // Where to read the chapter being announced, whenever MALSync's site actually has it —
+            // which includes the common case of the two agreeing on the number, since only MALSync
+            // names a site. It's withheld only when MALSync is *behind*, where naming its source
+            // would point at a site that doesn't carry the chapter in the notification.
+            val source = info?.source
+                ?.takeIf { it.isNotBlank() && info.lastChapter >= (muMedia.latestChapter ?: 0) }
+            UnreadItem(muMedia, latest, source)
+        }
+    }
 
     @SuppressLint("MissingPermission")
     private fun sendNotifications(context: Context, items: List<UnreadItem>, icons: Map<Long, Bitmap?>) {
@@ -354,19 +382,44 @@ class MuUnreadNotificationTask : Task {
     }
 
     /**
-     * Debug-only: posts a MangaUpdates unread notification built from the most recently stored
-     * MangaUpdates entry — so the layout is checked against a real title/cover/chapter instead of
-     * made-up text — without needing an account that actually has unread chapters right now to
-     * trigger it for real. Falls back to a synthetic placeholder when the store has no
-     * MangaUpdates entry yet (e.g. a fresh install).
+     * Debug-only: posts a MangaUpdates unread notification built from a real, currently-unread
+     * entry on the logged-in account — fetched live via [currentUnreadItems], the same way
+     * [checkMangaUpdatesUnread] does, but without its "already notified" filter, so this stays
+     * repeatable without waiting for a fresh chapter. Falls back to the most recently stored
+     * MangaUpdates entry, then to a synthetic placeholder, when there's nothing to fetch (logged
+     * out, or nothing currently unread).
      */
     suspend fun sendTestNotification(context: Context) {
         if (!hasNotificationPermission(context)) return
+        withContext(Dispatchers.IO) {
+            val (muMedia, item) = resolveTestItem(context)
+            val icons = mapOf(muMedia.id to NotificationImageLoader.loadBitmap(muMedia.coverUrl))
+            withContext(Dispatchers.Main) {
+                sendNotifications(context, listOf(item), icons)
+            }
+        }
+    }
+
+    private suspend fun resolveTestItem(context: Context): Pair<MUMedia, UnreadItem> {
+        val live = try {
+            currentUnreadItems(context).firstOrNull()
+        } catch (e: Exception) {
+            Logger.log("MuUnreadNotificationTask: sendTestNotification live fetch failed: ${e.message}")
+            null
+        }
+        if (live != null) {
+            val coverUrl = live.media.coverUrl ?: MUDetailsCache.ensure(live.media.id)?.coverUrl
+            val media = if (coverUrl != null && coverUrl != live.media.coverUrl) {
+                live.media.copy(coverUrl = coverUrl)
+            } else live.media
+            return media to live.copy(media = media)
+        }
+
         val stored = PrefManager.getNullableVal<List<UnreadChapterStore>>(
             PrefName.UnreadChapterNotificationStore, null
         )?.filter { it.source == "MangaUpdates" }?.maxByOrNull { it.time }
 
-        val (muMedia, item) = if (stored != null) {
+        if (stored != null) {
             val progress = stored.lastChapter - stored.unreadCount
             val m = MUMedia(
                 id = stored.mediaId.toLong(),
@@ -380,27 +433,21 @@ class MuUnreadNotificationTask : Task {
                 bayesianRating = null,
                 priority = null
             )
-            m to UnreadItem(m, stored.lastChapter, stored.source)
-        } else {
-            val m = MUMedia(
-                id = TEST_MEDIA_ID,
-                title = "Test MangaUpdates Manga",
-                url = null,
-                coverUrl = TEST_IMAGE_URL,
-                listId = 0,
-                userChapter = 5,
-                userVolume = null,
-                latestChapter = 6,
-                bayesianRating = null,
-                priority = null
-            )
-            m to UnreadItem(m, 6, "Test Source")
+            return m to UnreadItem(m, stored.lastChapter, stored.source)
         }
-        withContext(Dispatchers.IO) {
-            val icons = mapOf(muMedia.id to NotificationImageLoader.loadBitmap(muMedia.coverUrl))
-            withContext(Dispatchers.Main) {
-                sendNotifications(context, listOf(item), icons)
-            }
-        }
+
+        val m = MUMedia(
+            id = TEST_MEDIA_ID,
+            title = "Test MangaUpdates Manga",
+            url = null,
+            coverUrl = TEST_IMAGE_URL,
+            listId = 0,
+            userChapter = 5,
+            userVolume = null,
+            latestChapter = 6,
+            bayesianRating = null,
+            priority = null
+        )
+        return m to UnreadItem(m, 6, "Test Source")
     }
 }
