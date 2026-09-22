@@ -1056,38 +1056,44 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
         val presentChapterNumbers = chapList
             .mapNotNull { resolveChapterNumber(it)?.toInt() }
             .toHashSet()
-        val displayList = ArrayList<MangaChapterListItem>()
-        for (i in chapList.indices) {
-            displayList.add(MangaChapterListItem.Chapter(chapList[i]))
-            if (i < chapList.size - 1) {
-                val currentChapterNumber = chapList[i].number
-                val nextChapterNumber = chapList[i + 1].number
-                val isCurrentNonSequential =
-                    nonSequentialKeywords.any { currentChapterNumber.lowercase().contains(it) }
-                val isNextNonSequential =
-                    nonSequentialKeywords.any { nextChapterNumber.lowercase().contains(it) }
-                if (isCurrentNonSequential || isNextNonSequential) continue
 
-                val currNum = resolveChapterNumber(chapList[i])
-                val nextNum = resolveChapterNumber(chapList[i + 1])
-                if (currNum != null && nextNum != null) {
-                    val lo = minOf(currNum, nextNum)
-                    val hi = maxOf(currNum, nextNum)
-                    val missingNumbers = ((lo.toInt() + 1) until hi.toInt()).filterNot {
-                        it in presentChapterNumbers
-                    }
-                    if (missingNumbers.isNotEmpty()) {
-                        if (isCompact) {
-                            // One placeholder per missing chapter, each carries its chapter number
-                            missingNumbers.forEach { chNum ->
-                                displayList.add(MangaChapterListItem.Gap(chNum.toFloat(), chNum.toFloat(), 1))
-                            }
-                        } else {
-                            displayList.add(MangaChapterListItem.Gap(lo, hi, missingNumbers.size))
+        // Compare gaps between consecutive SEQUENTIAL chapters only, skipping over any
+        // special/bonus ones in between rather than just skipping the pair when a raw neighbour
+        // happens to be one - a real gap sitting right next to a bonus chapter (common on
+        // MangaDex) was otherwise never checked by either of its two bordering pairs, even
+        // though presentChapterNumbers (and the header's count) would still flag it as missing.
+        val sequentialIndices = chapList.indices.filter { idx ->
+            nonSequentialKeywords.none { chapList[idx].number.lowercase().contains(it) }
+        }
+        val gapsAfterIndex = HashMap<Int, MutableList<MangaChapterListItem.Gap>>()
+        for (pos in 0 until sequentialIndices.size - 1) {
+            val i = sequentialIndices[pos]
+            val j = sequentialIndices[pos + 1]
+            val currNum = resolveChapterNumber(chapList[i])
+            val nextNum = resolveChapterNumber(chapList[j])
+            if (currNum != null && nextNum != null) {
+                val lo = minOf(currNum, nextNum)
+                val hi = maxOf(currNum, nextNum)
+                val missingNumbers = ((lo.toInt() + 1) until hi.toInt()).filterNot {
+                    it in presentChapterNumbers
+                }
+                if (missingNumbers.isNotEmpty()) {
+                    val gaps = gapsAfterIndex.getOrPut(i) { mutableListOf() }
+                    if (isCompact) {
+                        // One placeholder per missing chapter, each carries its chapter number
+                        missingNumbers.forEach { chNum ->
+                            gaps.add(MangaChapterListItem.Gap(chNum.toFloat(), chNum.toFloat(), 1))
                         }
+                    } else {
+                        gaps.add(MangaChapterListItem.Gap(lo, hi, missingNumbers.size))
                     }
                 }
             }
+        }
+        val displayList = ArrayList<MangaChapterListItem>()
+        for (i in chapList.indices) {
+            displayList.add(MangaChapterListItem.Chapter(chapList[i]))
+            gapsAfterIndex[i]?.let { displayList.addAll(it) }
         }
         // Add gap placeholders for chapters missing before the first available chapter
         // (e.g. source starts at Ch2 but Ch1 is missing). Only on the first tab — later

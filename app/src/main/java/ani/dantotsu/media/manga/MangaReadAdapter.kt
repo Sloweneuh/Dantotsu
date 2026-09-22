@@ -697,11 +697,19 @@ class MangaReadAdapter(
                 // whenever a later scanlator's release reused an earlier number. Comparing against
                 // the full set of covered numbers instead - from 1 up to the highest chapter seen -
                 // isn't order-dependent, so it can't be fooled by that interleaving.
+                //
+                // presentNumbers is built from EVERY chapter, including specially-titled ones -
+                // a chapter titled e.g. "Chapter 13 - Extra" still legitimately covers slot 13, and
+                // excluding it would wrongly report 13 as missing. The keyword filter is only used
+                // to bound maxChapterNumber, so an outlier like "Special: 999" can't blow up the
+                // 1..max range with a huge, unrelated number.
                 val presentNumbers = orderedChapters
-                    .filterNot { chapter -> nonSequentialKeywords.any { chapter.number.lowercase().contains(it) } }
                     .mapNotNull { resolveChapterNumber(it)?.toInt() }
                     .toHashSet()
-                val maxChapterNumber = presentNumbers.maxOrNull()
+                val maxChapterNumber = orderedChapters
+                    .filterNot { chapter -> nonSequentialKeywords.any { chapter.number.lowercase().contains(it) } }
+                    .mapNotNull { resolveChapterNumber(it)?.toInt() }
+                    .maxOrNull()
                 val missingCount = if (maxChapterNumber != null) {
                     (1..maxChapterNumber).count { it !in presentNumbers }
                 } else 0
