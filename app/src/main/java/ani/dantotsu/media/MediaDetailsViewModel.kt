@@ -771,10 +771,14 @@ class MediaDetailsViewModel : ViewModel() {
             malId: Int?,
             episodeNum: Int?,
             duration: Long,
-            useProxyForTimeStamps: Boolean
+            useProxyForTimeStamps: Boolean,
+            sourceStamps: List<AniSkip.Stamp> = emptyList(),
     ) {
-        malId ?: return
-        episodeNum ?: return
+        // The source's own marks describe the exact stream being played; AniSkip's are someone's
+        // submission for a possibly different release, so they are only the fallback.
+        if (sourceStamps.isNotEmpty()) return timeStamps.postValue(sourceStamps)
+        malId ?: return timeStamps.postValue(null)
+        episodeNum ?: return timeStamps.postValue(null)
         if (timeStampsMap.containsKey(episodeNum))
                 return timeStamps.postValue(timeStampsMap[episodeNum])
         val result = AniSkip.getResult(malId, episodeNum, duration, useProxyForTimeStamps)

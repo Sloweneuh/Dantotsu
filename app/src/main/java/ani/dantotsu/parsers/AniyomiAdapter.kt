@@ -5,6 +5,7 @@ import ani.dantotsu.FileUrl
 import ani.dantotsu.currContext
 import ani.dantotsu.media.MediaNameAdapter
 import ani.dantotsu.media.manga.ImageData
+import ani.dantotsu.others.AniSkip
 import ani.dantotsu.media.manga.MangaCache
 import ani.dantotsu.snackString
 import ani.dantotsu.util.Logger
@@ -662,9 +663,12 @@ class VideoServerPassthrough(
         }
         val subList = resolvedVideos.firstOrNull()?.subtitleTracks?.map { trackToSubtitle(it) } ?: emptyList()
         val audioList = resolvedVideos.firstOrNull()?.audioTracks ?: emptyList()
+        // Every quality of one episode shares the same intro/outro, so the first video that
+        // carries marks speaks for all of them.
+        val stamps = AniSkip.fromSource(resolvedVideos.firstOrNull { it.timestamps.isNotEmpty() }?.timestamps)
 
         return if (vidList.isNotEmpty()) {
-            VideoContainer(vidList, subList, audioList)
+            VideoContainer(vidList, subList, audioList, stamps)
         } else {
             throw Exception("No videos found")
         }

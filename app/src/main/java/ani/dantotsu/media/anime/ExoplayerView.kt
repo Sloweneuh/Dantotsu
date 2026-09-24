@@ -2581,6 +2581,7 @@ class ExoplayerView :
                         ?.toIntOrNull(),
                     duration / 1000,
                     PrefManager.getVal(PrefName.UseProxyForTimeStamps),
+                    extractor?.timestamps.orEmpty(),
                 )
             }
         }
