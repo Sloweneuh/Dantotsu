@@ -11,6 +11,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.HorizontalScrollView
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.app.ActivityOptionsCompat
@@ -497,13 +498,19 @@ class AniListInfoFragment : Fragment() {
                     )
                 }
 
-                val themes = media.anime?.themes
-                if (!themes.isNullOrEmpty() && !offline) {
+                // Themes arrive after the media does (see MediaDetailsViewModel.loadThemes), so
+                // their sections go into a slot kept at this position and filled once they land.
+                val themesSlot = LinearLayout(requireContext()).apply {
+                    orientation = LinearLayout.VERTICAL
+                }
+                if (media.anime != null && !offline) parent.addView(themesSlot)
+                model.getThemes().observe(viewLifecycleOwner) { themes ->
+                    if (themes.isNullOrEmpty() || offline || themesSlot.childCount > 0) return@observe
                     fun themeSection(titleRes: Int, tracks: List<AnimeThemeTrack>) {
                         if (tracks.isEmpty()) return
                         val bind = ItemTitleRecyclerBinding.inflate(
                             LayoutInflater.from(context),
-                            parent,
+                            themesSlot,
                             false
                         )
                         bind.itemTitle.setText(titleRes)
@@ -516,7 +523,7 @@ class AniListInfoFragment : Fragment() {
                         }
                         bind.itemRecycler.adapter = themeAdapter
                         bind.itemRecycler.layoutManager = LinearLayoutManager(requireContext())
-                        parent.addView(bind.root)
+                        themesSlot.addView(bind.root)
                     }
 
                     themeSection(R.string.opening, themes.filter { it.isOpening })

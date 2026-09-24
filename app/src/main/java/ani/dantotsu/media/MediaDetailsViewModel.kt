@@ -48,6 +48,8 @@ import ani.dantotsu.util.Logger
 import com.bumptech.glide.load.resource.bitmap.BitmapTransformation
 import eu.kanade.tachiyomi.animesource.model.SEpisodeImpl
 import kotlinx.coroutines.Deferred
+import ani.dantotsu.connections.animethemes.AnimeThemeTrack
+import ani.dantotsu.connections.animethemes.AnimeThemes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.async
@@ -541,9 +543,31 @@ class MediaDetailsViewModel : ViewModel() {
     fun loadMedia(m: Media) {
         if (!loading) {
             loading = true
-            media.postValue(Anilist.query.mediaDetails(m))
+            val loaded = Anilist.query.mediaDetails(m)
+            media.postValue(loaded)
+            loadThemes(loaded)
         }
         loading = false
+    }
+
+    private val themes = MutableLiveData<ArrayList<AnimeThemeTrack>?>(null)
+    fun getThemes(): LiveData<ArrayList<AnimeThemeTrack>?> = themes
+    private var themesRequested = false
+
+    /**
+     * OP/ED songs, fetched after the media is posted rather than as part of it: they are one
+     * optional section of the info page, and AnimeThemes can take far longer to answer (or fail)
+     * than AniList does.
+     */
+    private fun loadThemes(m: Media) {
+        val anime = m.anime ?: return
+        if (themesRequested) return
+        themesRequested = true
+        MainScope().launch(Dispatchers.IO) {
+            val result = AnimeThemes.getThemes(m.id, m.idMAL)
+            anime.themes = result
+            themes.postValue(result)
+        }
     }
 
     fun setMedia(m: Media) {

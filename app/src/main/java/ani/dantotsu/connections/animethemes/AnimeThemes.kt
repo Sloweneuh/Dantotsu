@@ -5,6 +5,7 @@ import ani.dantotsu.Mapper
 import ani.dantotsu.R
 import ani.dantotsu.client
 import ani.dantotsu.tryWithSuspend
+import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import kotlinx.serialization.Serializable
@@ -36,11 +37,23 @@ object AnimeThemes {
     suspend fun getThemes(anilistId: Int?, malId: Int?): ArrayList<AnimeThemeTrack>? {
         val byAnilist = anilistId?.let { fetch("ANILIST", it) }
         if (!byAnilist.isNullOrEmpty()) return byAnilist
+        // Null here means the request itself failed, not that the anime is uncatalogued — the
+        // MAL lookup goes to the same server and would only fail the same way, a second time.
+        if (anilistId != null && byAnilist == null) return null
         val byMal = malId?.let { fetch("MAL", it) }
         return byMal ?: byAnilist
     }
 
+    /**
+     * Bounded well below OkHttp's own timeouts: when AnimeThemes' origin is down, Cloudflare holds
+     * each request about twenty seconds before answering 522, and nothing is worth that wait.
+     */
+    private const val REQUEST_TIMEOUT_MS = 8_000L
+
     private suspend fun fetch(site: String, id: Int): ArrayList<AnimeThemeTrack>? =
+        withTimeoutOrNull(REQUEST_TIMEOUT_MS) { request(site, id) }
+
+    private suspend fun request(site: String, id: Int): ArrayList<AnimeThemeTrack>? =
         tryWithSuspend(snackbar = false) {
             // The body is handed over as a RequestBody rather than through `json`: AnimeThemes
             // rejects anything that does not arrive as application/json, and this is the one
