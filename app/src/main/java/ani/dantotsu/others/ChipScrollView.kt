@@ -13,10 +13,18 @@ import android.widget.HorizontalScrollView
  * long row scroll - and a ChipGroup given an unbounded width never wraps, whatever its `singleLine`
  * says. So the expanded state needs the child measured against the viewport instead, which is all
  * [wrapChild] changes; scrolling then has nothing left to scroll.
+ *
+ * The padding is the row's margin: chips are clipped at it, and fade out as they reach it while
+ * there is more to scroll that way. Expanded, [ChipFlowGroup] fades its long chips to match.
  */
 class ChipScrollView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0,
 ) : HorizontalScrollView(context, attrs, defStyleAttr) {
+
+    init {
+        isHorizontalFadingEdgeEnabled = true
+        setFadingEdgeLength((24 * resources.displayMetrics.density).toInt())
+    }
 
     /** True while the row is expanded: measure the child against the viewport so it wraps. */
     var wrapChild: Boolean = false

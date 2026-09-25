@@ -50,7 +50,9 @@ object ChipSections {
         group.addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
             if (isExpanded) return@addOnLayoutChangeListener
             val viewport = scroll.width - scroll.paddingStart - scroll.paddingEnd
-            val overflows = viewport > 0 && group.width > viewport
+            // A lone chip has nothing to wrap onto a second line - it just scrolls.
+            val chips = (0 until group.childCount).count { group.getChildAt(it).visibility != View.GONE }
+            val overflows = chips > 1 && viewport > 0 && group.width > viewport
             if (overflows != chevron.isVisible) chevron.post { chevron.isVisible = overflows }
         }
 

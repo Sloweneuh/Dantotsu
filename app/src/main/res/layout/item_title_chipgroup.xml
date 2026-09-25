@@ -63,12 +63,11 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="8dp"
-        android:clipToPadding="false"
         android:paddingStart="28dp"
         android:paddingEnd="28dp"
         android:scrollbars="none">
 
-        <com.google.android.material.chip.ChipGroup
+        <ani.dantotsu.others.ChipFlowGroup
             xmlns:app="http://schemas.android.com/apk/res-auto"
             android:id="@+id/itemChipGroup"
             android:layout_width="wrap_content"
