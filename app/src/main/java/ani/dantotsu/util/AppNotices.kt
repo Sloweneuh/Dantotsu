@@ -11,6 +11,7 @@ import ani.dantotsu.connections.sync.ExtensionSyncNotice
 import ani.dantotsu.connections.sync.SyncConflictNotice
 import ani.dantotsu.connections.sync.SyncLinkNotice
 import ani.dantotsu.connections.sync.SyncReloadNotice
+import ani.dantotsu.offline.BackOnlineNotice
 import ani.dantotsu.settings.ExtensionObsoleteNotice
 import ani.dantotsu.settings.ExtensionUpdateNotice
 import ani.dantotsu.settings.SettingsBackupSyncActivity
@@ -22,6 +23,8 @@ import ani.dantotsu.settings.SettingsBackupSyncActivity
  * last — otherwise a low-stakes one repeatedly displaces the one that matters, and the important
  * notice is never seen. The order is by what happens if it's ignored:
  *
+ *  0. a device left in offline mode after its connection came back is cut off from everything
+ *     below — the network notices are held back while offline — and from the app besides,
  *  1. an unlinked device isn't syncing at all,
  *  2. a sync conflict leaves syncing stopped until it's settled,
  *  3. an AniList outage leaves every screen empty with nothing to explain it,
@@ -101,6 +104,7 @@ object AppNotices {
      * anything it can still act on.
      */
     private fun states(context: Context?): List<Pair<String, Boolean>> = listOf(
+        BackOnlineNotice.ID to BackOnlineNotice.isPending(),
         SyncLinkNotice.ID to SyncLinkNotice.isPending(),
         SyncConflictNotice.ID to SyncConflictNotice.isPending(),
         AnilistOutageNotice.ID to AnilistOutageNotice.isPending(),
@@ -135,6 +139,10 @@ object AppNotices {
         val states = states(activity).toMap()
         fun pending(id: String) = states[id] == true
         when {
+            pending(BackOnlineNotice.ID) -> show(activity, BackOnlineNotice.ID) {
+                TopBanner.show(activity, BackOnlineNotice.spec(activity))
+            }
+
             pending(SyncLinkNotice.ID) -> show(activity, SyncLinkNotice.ID) {
                 TopBanner.show(activity, SyncLinkNotice.spec(activity))
             }

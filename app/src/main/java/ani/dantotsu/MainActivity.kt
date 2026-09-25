@@ -389,6 +389,12 @@ class MainActivity : AppCompatActivity() {
         val offlineMode: Boolean = PrefManager.getVal(PrefName.OfflineMode)
 
         if (!isOnline(this)) {
+            // Sticks until the user turns it off: the offline home offers that once the
+            // connection is back, rather than yanking them out of whatever they are doing.
+            if (!offlineMode) {
+                PrefManager.setVal(PrefName.OfflineMode, true)
+                PrefManager.setVal(PrefName.OfflineModeAuto, true)
+            }
             snackString(this@MainActivity.getString(R.string.no_internet_connection))
             startActivity(Intent(this, NoInternet::class.java))
         } else {

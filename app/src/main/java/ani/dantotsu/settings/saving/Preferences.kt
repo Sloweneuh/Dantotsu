@@ -424,6 +424,9 @@ enum class PrefName(val data: Pref) {
     //Irrelevant
     Incognito(Pref(Location.Irrelevant, Boolean::class, false)),
     OfflineMode(Pref(Location.Irrelevant, Boolean::class, false)),
+    // Set alongside OfflineMode when a dropped connection, not the user, turned it on. The mode
+    // stays on either way; this only decides whether the offline home offers to go back online.
+    OfflineModeAuto(Pref(Location.Irrelevant, Boolean::class, false)),
 
     // Ids of the quick-settings sheet's tiles, in the order the user arranged them. Ids rather
     // than indices so that adding or retiring a tile never silently reshuffles someone's layout;

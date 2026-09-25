@@ -162,6 +162,7 @@ class App : MultiDexApplication() {
         // an expired token has to be refreshed over the network. Started here so that a session
         // opened from a notification or a deep link has its accounts by the time anything writes.
         ani.dantotsu.connections.TrackerSessions.start()
+        ani.dantotsu.offline.BackOnlineNotice.watch(this)
         AppUpdater.cleanupDownloadedApkFiles(this)
 
         val crashlytics =

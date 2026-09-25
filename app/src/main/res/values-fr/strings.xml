@@ -827,6 +827,9 @@
     <string name="copied_text">\"%1$s\" copié</string>
     <string name="back_to_exit">Appuyez à nouveau sur RETOUR pour quitter</string>
     <string name="no_internet_connection">Pas de connexion Internet</string>
+    <string name="back_online">De nouveau en ligne</string>
+    <string name="go_online">Passer en ligne</string>
+    <string name="back_online_hint">Le mode hors ligne est toujours activé</string>
     <string name="anilist_not_found">Il semble que cela n\'a pas été trouvé sur Anilist.</string>
     <string name="disabled_auto_skip">Saut automatique OP &amp; ED désactivé</string>
     <string name="auto_skip">Saut automatique OP &amp; ED</string>

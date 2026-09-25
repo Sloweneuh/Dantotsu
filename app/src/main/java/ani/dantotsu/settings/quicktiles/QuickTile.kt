@@ -31,6 +31,7 @@ import ani.dantotsu.settings.SettingsAccountActivity
 import ani.dantotsu.settings.SettingsListSyncActivity
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
+import ani.dantotsu.snackString
 import ani.dantotsu.util.AppNotices
 import ani.dantotsu.parsers.novel.lnreader.LNReaderPluginManager
 import eu.kanade.tachiyomi.extension.anime.AnimeExtensionManager
@@ -203,10 +204,21 @@ object QuickTiles : TileCatalogue(PrefName.QuickTileOrder) {
         QuickTile.Toggle(
             "offline", R.string.offline_mode, R.drawable.ic_signal_wifi_off_24,
             QuickTileCategory.MODES,
-            isOn = { PrefManager.getVal(PrefName.OfflineMode) },
+            // Lit whenever the app is actually offline. A dropped connection also writes the
+            // preference (see MainActivity), but that only happens on the way into the offline
+            // home, and a screen opened before then should already show the tile on.
+            isOn = { isOffline() },
             // Writing the preference is the sheet's job here: it has to leave the current page
             // first, and half of them do not exist on the other side of the switch.
-            setOn = { host, on -> host.setOfflineMode(on) },
+            setOn = { host, on ->
+                if (!on && currContext()?.let { isOnline(it) } == false) {
+                    // No connection to go back online to, so the switch stays on. The offline
+                    // home offers to go online once the network returns.
+                    snackString(host.activity.getString(R.string.no_internet_connection))
+                } else {
+                    host.setOfflineMode(on)
+                }
+            },
         ),
         prefToggle(
             "discord_rpc", R.string.quick_tile_discord_rpc, R.drawable.ic_discord,

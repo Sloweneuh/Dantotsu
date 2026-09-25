@@ -186,6 +186,10 @@ class SettingsDialogFragment : BottomSheetDialogFragment() {
      */
     private fun switchOfflineMode(enabled: Boolean) {
         Timer().schedule(300) {
+            // Written before navigating: the offline home leaves by itself when it finds itself
+            // online with the preference off, which it would if it started before this landed.
+            PrefManager.setVal(PrefName.OfflineMode, enabled)
+            PrefManager.setVal(PrefName.OfflineModeAuto, false)
             when (pageType) {
                 PageType.MANGA, PageType.ANIME, PageType.HOME -> {
                     // Entering offline mode: the single offline home is shown regardless of
@@ -216,7 +220,6 @@ class SettingsDialogFragment : BottomSheetDialogFragment() {
             }
 
             dismiss()
-            PrefManager.setVal(PrefName.OfflineMode, enabled)
         }
     }
 
