@@ -73,6 +73,7 @@ class CommentsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         activity = requireActivity() as MediaDetailsActivity
+        if (!activity.isNavBarReady) return
 
         binding.commentsListContainer.setBaseline(
             activity.navBar,

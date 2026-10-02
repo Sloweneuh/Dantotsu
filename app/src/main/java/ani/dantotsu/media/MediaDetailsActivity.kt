@@ -85,6 +85,9 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
     private val model: MediaDetailsViewModel by viewModels()
     var selected = 0
     lateinit var navBar: AnimatedBottomBar
+
+    /** False when onCreate bailed out early (e.g. no media), leaving restored fragments without a bar. */
+    val isNavBarReady: Boolean get() = ::navBar.isInitialized
     var anime = true
     private var adult = false
     private var enterTransitionStarted = false

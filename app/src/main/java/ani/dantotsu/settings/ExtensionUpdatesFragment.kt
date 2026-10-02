@@ -71,6 +71,8 @@ class ExtensionUpdatesFragment : Fragment() {
     }
 
     private fun loadUpdates() {
+        // runUpdates' tail can run after the view is gone (the flow completes as the scope cancels).
+        if (view == null) return
         viewLifecycleOwner.lifecycleScope.launch {
             val updates = withContext(Dispatchers.Default) {
                 ExtensionUpdateRunner.pendingUpdates()
