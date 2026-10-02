@@ -398,12 +398,11 @@ class ListActivity : AppCompatActivity() {
         }
 
         binding.random.setOnClickListener {
-            //get the current tab
-            val currentTab =
-                binding.listTabLayout.getTabAt(binding.listTabLayout.selectedTabPosition)
-            val tag = "f" + currentTab?.position.toString()
-            val currentFragment = supportFragmentManager.findFragmentByTag(tag)
-            when (currentFragment) {
+            // Fragments are tagged by the adapter's item id, which isn't the tab position.
+            val adapter = binding.listViewPager.adapter as? ListViewPagerAdapter
+                ?: return@setOnClickListener
+            val itemId = adapter.getItemId(binding.listViewPager.currentItem)
+            when (val currentFragment = supportFragmentManager.findFragmentByTag("f$itemId")) {
                 is ListFragment -> currentFragment.randomOptionClick()
                 is MUOnlyListFragment -> currentFragment.randomOptionClick()
             }
