@@ -11,15 +11,51 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
 
 object ComickApi {
+    /** Longest `Retry-After` worth sleeping through on a 429 before giving up on the request. */
+    private const val MAX_RETRY_WAIT_SECONDS = 10L
+
+    /**
+     * Comick allows 200 requests/minute per IP and answers a 429 with `Retry-After` (see
+     * https://api.comick.dev/docs/). A short wait is retried once; a longer one is passed through
+     * as the failure it is rather than stalling the caller.
+     *
+     * Cloudflare can also answer before the API does, with an HTML challenge or block page. Every
+     * route here speaks JSON, so a successful HTML response is turned into a failed one — callers
+     * then take their `isSuccessful` path instead of Gson choking on markup.
+     */
+    private val rateLimitInterceptor = Interceptor { chain ->
+        val request = chain.request()
+        var response = chain.proceed(request)
+        if (response.code == 429) {
+            val wait = response.header("Retry-After")?.trim()?.toLongOrNull()
+            if (wait != null && wait <= MAX_RETRY_WAIT_SECONDS) {
+                Logger.log("Comick: rate limited, retrying in ${wait}s for ${request.url}")
+                response.close()
+                Thread.sleep(wait.coerceAtLeast(1) * 1000)
+                response = chain.proceed(request)
+            } else {
+                Logger.log("Comick: rate limited (Retry-After: ${wait ?: "none"}) for ${request.url}")
+            }
+        }
+        if (response.isSuccessful && response.body.contentType()?.subtype == "html") {
+            Logger.log("Comick: HTML instead of JSON (Cloudflare?) for ${request.url}")
+            response.newBuilder().code(503).message("Unexpected HTML response").build()
+        } else {
+            response
+        }
+    }
+
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
+        .addInterceptor(rateLimitInterceptor)
         .build()
 
     private val gson = Gson()
@@ -27,6 +63,22 @@ object ComickApi {
     // Cache for merged comic data, keyed "$mediaType:$slug" — a slug is only unique within a
     // catalogue, so anime and comic entries can share one.
     private val mergedComicCache = mutableMapOf<String, ComickComic>()
+
+    private const val DETAILS_CACHE_SIZE = 24
+    private const val DETAILS_CACHE_TTL_MS = 10 * 60_000L
+
+    /**
+     * Recently fetched detail responses, keyed "$mediaType:$lang:$slug", with their fetch time.
+     * A full detail response is ~200 KB and the same entry is asked for back to back — once per
+     * title tried while matching, then again by the info tab and the media page — so a short-lived
+     * cache saves most of those round trips. Access-ordered so the eldest entry is the least used.
+     */
+    private val detailsCache =
+        object : LinkedHashMap<String, Pair<Long, ComickResponse>>(16, 0.75f, true) {
+            override fun removeEldestEntry(
+                eldest: MutableMap.MutableEntry<String, Pair<Long, ComickResponse>>
+            ): Boolean = size > DETAILS_CACHE_SIZE
+        }
 
     const val MEDIA_TYPE_MANGA = "manga"
     const val MEDIA_TYPE_ANIME = "anime"
@@ -363,7 +415,8 @@ object ComickApi {
             if (useCache) {
                 val cachedMergedComic = mergedComicCache["$mediaType:$slug"]
                 if (cachedMergedComic != null) {
-                    // Still need to fetch for firstChap/langList data
+                    // firstChap/langList come from the raw response — usually already in
+                    // [detailsCache] from the matching pass that produced the merge.
                     val response = fetchComicDetailsRaw(slug, lang, mediaType)
                     return@withContext ComickResponse(cachedMergedComic, response?.firstChap, response?.langList)
                 }
@@ -385,13 +438,21 @@ object ComickApi {
         getComicDetails(slug, useCache = useCache, mediaType = MEDIA_TYPE_ANIME)
 
     /**
-     * Internal function to fetch raw comic details from API without cache
+     * Internal function to fetch raw (unmerged) comic details, through [detailsCache]
      */
     private suspend fun fetchComicDetailsRaw(
         slug: String,
         lang: String = PrefManager.getVal(PrefName.ComickMangaBakaLanguage),
         mediaType: String = MEDIA_TYPE_MANGA
     ): ComickResponse? {
+        // The anime route takes no lang, so every lang shares one anime entry.
+        val cacheKey = "$mediaType:${if (mediaType == MEDIA_TYPE_ANIME) "" else lang}:$slug"
+        synchronized(detailsCache) {
+            detailsCache[cacheKey]?.let { (fetchedAt, cached) ->
+                if (System.currentTimeMillis() - fetchedAt < DETAILS_CACHE_TTL_MS) return cached
+                detailsCache.remove(cacheKey)
+            }
+        }
         try {
             val url = if (mediaType == MEDIA_TYPE_ANIME) {
                 "https://api.comick.dev/v1.0/comic/$slug/?media_type=anime"
@@ -415,7 +476,11 @@ object ComickApi {
 
             return try {
                 val comickResponse = gson.fromJson(body, ComickResponse::class.java)
-                // Log the links object to debug
+                if (comickResponse?.comic != null) {
+                    synchronized(detailsCache) {
+                        detailsCache[cacheKey] = System.currentTimeMillis() to comickResponse
+                    }
+                }
                 comickResponse
             } catch (e: Exception) {
                 Logger.log("Error parsing Comick JSON: ${e.message}")
@@ -508,6 +573,15 @@ object ComickApi {
                     }
                 }
             }
+
+            // An entry carrying our exact AniList/MAL id settles the match. Each further title
+            // costs a search plus up to five ~200 KB detail fetches, and only ever turns up extra
+            // duplicate entries to merge — which the first title's search already surfaces.
+            val exactMatch = allValidComics.any { comic ->
+                comic.links?.al == anilistId.toString() ||
+                    (malId != null && comic.links?.mal == malId.toString())
+            }
+            if (exactMatch) break
         }
 
         // Step 3: If we have any valid comics, select the best one
@@ -768,7 +842,9 @@ object ComickApi {
     private fun fetchChaptersForLang(hid: String, lang: String): List<ComickChapter> {
         val all = mutableListOf<ComickChapter>()
         val limit = 300
-        var page = 0
+        // 1-based: page=0 aliases to page 1 on this route, so starting at 0 fetched the first
+        // page twice and duplicated its rows for any title longer than one page.
+        var page = 1
         try {
             while (true) {
                 val url = "https://api.comick.dev/comic/$hid/chapters?lang=$lang&limit=$limit&page=$page&chap-order=0"
@@ -961,7 +1037,8 @@ object ComickApi {
             if (mediaType == MEDIA_TYPE_ANIME) urlBuilder.addQueryParameter("media_type", "anime")
             urlBuilder.addQueryParameter("page", page.toString())
             urlBuilder.addQueryParameter("limit", limit.toString())
-            urlBuilder.addQueryParameter("showall", "false")
+            // Exactly once: the API rejects a repeated `showall` with a 400 ("must be boolean").
+            urlBuilder.addQueryParameter("showall", (showAll ?: false).toString())
             urlBuilder.addQueryParameter("t", "false")
 
             query?.trim()?.takeIf { it.isNotBlank() }?.let {
@@ -992,7 +1069,6 @@ object ComickApi {
             toYear?.let { urlBuilder.addQueryParameter("to", it.toString()) }
             completed?.let { urlBuilder.addQueryParameter("completed", it.toString()) }
             excludeMyList?.let { urlBuilder.addQueryParameter("exclude-mylist", it.toString()) }
-            showAll?.let { urlBuilder.addQueryParameter("showall", it.toString()) }
             if (tagSlugs.isNullOrEmpty()) categorySlugs?.filter { it.isNotBlank() }?.forEach {
                 urlBuilder.addQueryParameter("tags", it)
             }
