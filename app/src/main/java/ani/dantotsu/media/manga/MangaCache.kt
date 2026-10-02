@@ -44,6 +44,16 @@ data class ImageData(
     ): Bitmap? {
         return withContext(Dispatchers.IO) {
             try {
+                // Bytes already held for this page — it is being decoded again at another size,
+                // after the window was resized — cost a decode rather than another download.
+                // Bytes already held for this page — decoded again at another size, after the
+                // window was resized — cost a decode rather than another download. Bytes that
+                // won't decode fall through to the download, so a retry can't stick on a bad copy.
+                cacheKey
+                    ?.let { runCatching { Injekt.get<MangaCache>().getPageBytes(it) }.getOrNull() }
+                    ?.let { runCatching { decodeImage(it, maxWidth, maxHeight) }.getOrNull() }
+                    ?.let { return@withContext it }
+
                 val response = httpSource.getImage(page)
                 Logger.log("Response: ${response.code} - ${response.message}")
                 val bytes = response.body.bytes()

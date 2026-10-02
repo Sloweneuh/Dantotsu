@@ -377,7 +377,12 @@ abstract class BaseImageAdapter(
                     val imageData = mangaCache.get(link.url)
                     ani.dantotsu.util.Logger.log("MangaCache GET: key='${link.url}', found=${imageData != null}")
                     if (imageData != null) {
-                        val cacheKey = buildBitmapCacheKey(link.url, transforms)
+                        // Keyed on the size it was decoded for as well: the window can change size
+                        // without the page changing (resizing or maximizing it on WSA, a desktop
+                        // mode, split screen), and a page decoded for the smaller window would
+                        // otherwise be served from here and stretched up to the larger one.
+                        val cacheKey = buildBitmapCacheKey(link.url, transforms) +
+                            "|${viewportW}x${viewportH ?: 0}|${maxW}x$maxH"
                         mangaCache.getBitmap(cacheKey)?.takeIf { !it.isRecycled }
                             ?.let { return@withContext it }
 
