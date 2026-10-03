@@ -700,6 +700,14 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
+        <!-- Clears a Discord status the process replaced by an update left showing. -->
+        <receiver
+            android:name=".notifications.PresenceCleanupReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
         <receiver android:name=".notifications.anilist.AnilistNotificationReceiver" />
         <receiver android:name=".notifications.comment.CommentNotificationReceiver" />
         <receiver android:name=".notifications.subscription.SubscriptionNotificationReceiver" />

@@ -271,6 +271,52 @@ object RPCManager {
         }
     }
 
+    @Volatile
+    private var staleCleanupJob: Job? = null
+
+    /**
+     * Deletes a session a previous process left showing.
+     *
+     * The session token is saved as soon as Discord hands it over, and a process that dies without
+     * warning — replaced by an update, killed by the system, crashed — never gets to delete it: the
+     * clears on screen exit are cut off mid-request, and [clearPresenceOnKill] only runs for a swipe
+     * from Recents. Discord then goes on showing that last status. A process that has only just
+     * started hasn't published anything, so any token still saved at that point belongs to one of
+     * those, and goes.
+     *
+     * Started from `App.onCreate`, and kept alive by the update and boot receivers so it runs even
+     * when nobody opens the app. Once per process; later callers get the same job.
+     */
+    fun cleanupStaleSession(context: Context): Job = synchronized(this) {
+        staleCleanupJob ?: scope.launch {
+            val stale = PrefManager.getNullableCustomVal("discord_activity_token", null, String::class.java)
+            if (stale.isNullOrBlank()) return@launch
+            // The delete forgets the token whatever the outcome, so it must not be spent while
+            // offline — just after boot, typically — or the session would never be deleted.
+            // Kept for the next try instead, which may well be this same process (booted offline,
+            // opened later), so this run doesn't count as the once-per-process one.
+            if (!ani.dantotsu.isOnline(context)) {
+                synchronized(this@RPCManager) { staleCleanupJob = null }
+                return@launch
+            }
+            // The Discord login is restored in the background; without it there is no bearer token.
+            ani.dantotsu.connections.TrackerSessions.await()
+            if (owner != null) {
+                Logger.log("RPCManager: presence already set this run, leaving its session alone")
+                return@launch
+            }
+            val rpc = ensureHeadlessRpc(context.applicationContext) ?: run {
+                // Logged out since: the session went with the login.
+                PrefManager.removeCustomVal("discord_activity_token")
+                return@launch
+            }
+            Logger.log("RPCManager: deleting a session left by a previous process")
+            if (rpc.activityToken == null) rpc.activityToken = stale
+            runCatching { rpc.clear() }
+                .onFailure { Logger.log("RPCManager: stale session cleanup failed — ${it.message}") }
+        }.also { staleCleanupJob = it }
+    }
+
     /**
      * Call this when the user logs out of Discord to release all resources.
      */
