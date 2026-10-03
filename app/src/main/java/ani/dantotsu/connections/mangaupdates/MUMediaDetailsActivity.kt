@@ -240,10 +240,9 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
 
         // MangaBaka titles (fetched into the shared model by MUMediaInfoContainerFragment)
         model.mangaBakaSeries.value?.let { mb ->
-            addTitle(mb.title)
-            addTitle(mb.romanizedTitle)
-            addTitle(mb.nativeTitle)
-            mb.titles?.forEach { addTitle(it.title) }
+            addTitle(mb.displayTitle())
+            addTitle(mb.romanizedTitle())
+            mb.titles?.forEach { addTitle(it.title) }   // includes the native title
         }
 
         return titles.distinctBy { it.lowercase(Locale.ROOT) }

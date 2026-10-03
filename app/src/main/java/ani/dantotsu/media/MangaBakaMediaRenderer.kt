@@ -40,6 +40,8 @@ import ani.dantotsu.media.manga.Manga
 import ani.dantotsu.openLinkInAppOrBrowser
 import ani.dantotsu.px
 import ani.dantotsu.setSafeOnClickListener
+import ani.dantotsu.settings.saving.PrefManager
+import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.util.LinkTouchListener
 import com.google.android.material.chip.Chip
 import kotlinx.coroutines.CoroutineScope
@@ -96,7 +98,7 @@ object MangaBakaMediaRenderer {
             info.mediaInfoNameContainer.visibility = View.GONE
         }
 
-        val romaji = series.romanizedTitle?.takeIf { it.isNotBlank() }
+        val romaji = series.romanizedTitle()?.takeIf { it.isNotBlank() }
         if (romaji != null) {
             info.mediaInfoNameRomajiContainer.visibility = View.VISIBLE
             info.mediaInfoNameRomaji.text = tripleTab + romaji
@@ -162,7 +164,7 @@ object MangaBakaMediaRenderer {
         }
 
         info.mediaInfoStart.text = toFuzzyDate(series.published?.startDate)?.toString()
-            ?: series.year?.toString() ?: activity.getString(R.string.unknown_value)
+            ?: activity.getString(R.string.unknown_value)
         val endFuzzy = toFuzzyDate(series.published?.endDate)
         (info.mediaInfoEnd.parent as? ViewGroup)?.visibility =
             if (endFuzzy != null) View.VISIBLE else View.GONE
@@ -213,7 +215,7 @@ object MangaBakaMediaRenderer {
     ) {
         val allowed = nativeLangs + "en"
         val primary = series.displayTitle()?.trim()
-        val romaji = series.romanizedTitle?.trim()
+        val romaji = series.romanizedTitle()?.trim()
         val shown = LinkedHashSet<String>()
         series.titles.orEmpty().forEach { t ->
             val title = t.title?.trim().orEmpty()
@@ -299,7 +301,10 @@ object MangaBakaMediaRenderer {
         parent: ViewGroup, series: MangaBakaApi.Series,
         onSearch: (String?, String?, String?) -> Unit,
     ) {
-        val genres = series.genres?.filter { it.isNotBlank() } ?: return
+        // Genres come from `tags_v2` (`is_genre`) — the API's replacement for the deprecated `genres`
+        // slugs. Search still filters genres by slug, so a chip maps its name back to the
+        // `/v1/genres` slug with the same label, and searches it as a tag when no slug matches.
+        val genres = series.genreTags()
         if (genres.isEmpty()) return
 
         val bind = ItemTitleChipgroupBinding.inflate(activity.layoutInflater, parent, false)
@@ -308,13 +313,18 @@ object MangaBakaMediaRenderer {
         parent.addView(bind.root)
 
         scope.launch {
-            val labels = withContext(Dispatchers.IO) { MangaBakaApi.getGenreLabels() }
+            val slugsByLabel = withContext(Dispatchers.IO) { MangaBakaApi.getGenreLabels() }
+                .entries.associate { (slug, label) -> label.lowercase() to slug }
             if (!isAlive()) return@launch
-            genres.forEach { slug ->
-                val display = labels[slug] ?: titleCase(slug.replace('_', ' '))
+            genres.forEach { genre ->
+                val display = genre.name!!
+                val slug = slugsByLabel[display.lowercase()]
                 val chip = ItemChipBinding.inflate(activity.layoutInflater, bind.itemChipGroup, false).root
                 chip.text = display
-                chip.setOnClickListener { onSearch(slug, display, null) }
+                chip.setOnClickListener {
+                    if (slug != null) onSearch(slug, display, null)
+                    else onSearch(null, null, display)
+                }
                 chip.setOnLongClickListener {
                     copyToClipboard(display)
                     Toast.makeText(activity, activity.getString(R.string.copied_title_toast, display), Toast.LENGTH_SHORT).show()
@@ -493,7 +503,9 @@ object MangaBakaMediaRenderer {
         val currentMuId = reco?.media?.muSeriesId
 
         scope.launch {
-            val similar = withContext(Dispatchers.IO) { MangaBakaApi.getSimilar(seriesId) }
+            val similar = withContext(Dispatchers.IO) { 
+                MangaBakaApi.getSimilar(seriesId, allowAdult = PrefManager.getVal(PrefName.AdultOnly))
+            }
             if (!isAlive() || similar.isEmpty()) return@launch
 
             val existingRecs = reco?.model?.getMedia()?.value?.recommendations?.associateBy { it.id } ?: emptyMap()

@@ -487,12 +487,10 @@ object ListCompare {
         onStats(SectionStats(sourceStats, destStats))
 
         // Prefer matching against the enumerated library (one pass gives each entry's state, cover and,
-        // via the embedded series, its cross-source ids). Fall back to per-series lookups only if the
-        // list endpoint didn't return series ids.
+        // via the embedded series, its cross-source ids). Fall back to looking the resolved series up
+        // only if the list endpoint didn't return series ids — see [lookedUp] below.
         val libBySeriesId = snapshot.entries.mapNotNull { e -> e.resolvedSeriesId()?.let { it to e } }.toMap()
         val canEnumerate = libBySeriesId.isNotEmpty()
-        suspend fun currentOf(seriesId: Long): LibraryStateEntry? =
-            if (canEnumerate) libBySeriesId[seriesId] else MangaBakaSync.getLibraryEntry(seriesId)
 
         // Reverse index over the enumerated library, keyed by the cross-source ids embedded in each
         // entry's series. Media already in the library resolve to their MangaBaka series id from this
@@ -510,18 +508,15 @@ object ListCompare {
             src.mangaUpdates?.toMuSeriesId()?.let { byMu[it] = sid }
         }
 
-        // AniList manga forward diffs.
-        val alProcessed = anilistManga.asyncMap { media ->
-            val seriesId = byAnilist[media.id]
+        // Resolve every source entry to its MangaBaka series first; the diffs are built once all the
+        // ids are known, so the no-snapshot fallback below can look them up in bulk.
+        val alResolved = anilistManga.asyncMap { media ->
+            media to (byAnilist[media.id]
                 ?: media.idMAL?.let { byMal[it] }
-                ?: MangaBakaApi.resolveFromAnilist(media.id, media.idMAL)
-            val diff = seriesId?.let { buildMangaBakaDiff(media, it, currentOf(it)) }
-            Processed(seriesId, diff)
+                ?: MangaBakaApi.resolveFromAnilist(media.id, media.idMAL))
         }
-
-        // MangaUpdates forward diffs.
-        val alSeriesIds = alProcessed.mapNotNull { it.seriesId }.toHashSet()
-        val muProcessed = muMedia
+        val alSeriesIds = alResolved.mapNotNull { it.second }.toHashSet()
+        val muResolved = muMedia
             .asyncMap { mu ->
                 mu to (byMu[mu.id] ?: MangaBakaApi.resolveSeriesId(MangaBakaApi.Source.MANGAUPDATES, mu.id))
             }
@@ -530,12 +525,31 @@ object ListCompare {
             .filter { (_, seriesId) -> seriesId == null || seriesId !in alSeriesIds }
             // Two MangaUpdates entries can map to one MangaBaka series; unresolved ones stay distinct.
             .distinctBy { (mu, seriesId) -> seriesId ?: -mu.id }
-            .asyncMap { (mu, seriesId) ->
-                // These rows carry no cover — the MangaUpdates list API has none. The adapter fills
-                // that in from MangaBaka when a row is actually shown, so nothing is fetched here.
-                val diff = seriesId?.let { buildMuMangaBakaDiff(mu, it, currentOf(it)) }
-                Processed(seriesId, diff)
-            }
+
+        // Without an enumerated library, fetch the resolved series' entries 100 at a time
+        // (`/v1/my/library/batch`) instead of one GET each — which, for a new MangaBaka user with an
+        // empty library, was one request per manga just to learn it wasn't there. Null if that
+        // lookup failed; [currentOf] then falls back to asking per series.
+        val lookedUp = if (canEnumerate) null else MangaBakaSync.getLibraryEntries(
+            alSeriesIds + muResolved.mapNotNull { it.second }
+        )
+        suspend fun currentOf(seriesId: Long): LibraryStateEntry? = when {
+            canEnumerate -> libBySeriesId[seriesId]
+            lookedUp != null -> lookedUp[seriesId]
+            else -> MangaBakaSync.getLibraryEntry(seriesId)
+        }
+
+        // AniList manga forward diffs.
+        val alProcessed = alResolved.asyncMap { (media, seriesId) ->
+            Processed(seriesId, seriesId?.let { buildMangaBakaDiff(media, it, currentOf(it)) })
+        }
+
+        // MangaUpdates forward diffs. These rows carry no cover — the MangaUpdates list API has none.
+        // The adapter fills that in from MangaBaka when a row is actually shown, so nothing is
+        // fetched here.
+        val muProcessed = muResolved.asyncMap { (mu, seriesId) ->
+            Processed(seriesId, seriesId?.let { buildMuMangaBakaDiff(mu, it, currentOf(it)) })
+        }
 
         // Deletions: library entries not represented in the source (only when we could enumerate).
         // Match on the library entry's own declared source ids (most reliable) and, as a fallback, on
@@ -692,9 +706,12 @@ object ListCompare {
         return fieldDiffs
     }
 
-    /** Title + cover for a MangaBaka series, used to flesh out deletion rows lazily (throttled). */
+    /**
+     * Title + cover for a MangaBaka series, used to flesh out deletion rows lazily. Rows binding
+     * together share one `/v1/series/batch` request (see [MangaBakaApi.getSeriesCoalesced]).
+     */
     suspend fun mangaBakaSeriesInfo(seriesId: Long): Pair<String?, String?>? =
-        MangaBakaApi.getSeries(seriesId)?.let { it.title to it.cover?.thumbUrl() }
+        MangaBakaApi.getSeriesCoalesced(seriesId)?.let { it.displayTitle() to it.cover?.thumbUrl() }
 
     /**
      * Title + cover for a MangaUpdates series, borrowed from MangaBaka: the MangaUpdates list API
@@ -702,7 +719,7 @@ object ListCompare {
      */
     suspend fun mangaUpdatesSeriesInfo(muSeriesId: Long): Pair<String?, String?>? =
         MangaBakaApi.getSeriesFromSource(MangaBakaApi.Source.MANGAUPDATES, muSeriesId)
-            ?.let { it.title to it.cover?.thumbUrl() }
+            ?.let { it.displayTitle() to it.cover?.thumbUrl() }
 
     // ---- Kitsu vs AniList (+ MangaUpdates for manga) ----
 
@@ -1118,15 +1135,52 @@ object ListCompare {
     /**
      * Reconciles many entries, a few at a time, returning each with its result in the order given.
      *
-     * Neither MyAnimeList nor MangaBaka exposes a bulk list-write route — MAL edits are a PUT per
-     * `/manga/{id}/my_list_status` and MangaBaka a PATCH/POST per `/my/library/{series_id}` — so every
-     * entry is its own round trip and overlapping them is the only thing that makes "sync all" quick.
+     * MangaBaka pushes go out first, together, through `POST /v1/my/library/batch` (100 per
+     * request). Everything else — and any MangaBaka entry its batch didn't land — is its own round
+     * trip: MAL has no bulk list-write route, so overlapping requests is what keeps those quick.
      */
     suspend fun syncAll(entries: List<DiffEntry>): List<Pair<DiffEntry, Boolean>> = coroutineScope {
+        val batched = batchMangaBakaPushes(entries)
         val limiter = Semaphore(SYNC_CONCURRENCY)
         entries
-            .map { entry -> async(Dispatchers.IO) { entry to limiter.withPermit { sync(entry) } } }
+            .map { entry ->
+                async(Dispatchers.IO) {
+                    if (entry.isBatchableMangaBakaPush() && entry.mangaBakaSeriesId in batched) entry to true
+                    else entry to limiter.withPermit { sync(entry) }
+                }
+            }
             .awaitAll()
+    }
+
+    private fun DiffEntry.isBatchableMangaBakaPush(): Boolean =
+        tracker == Tracker.MANGABAKA && !delete && mangaBakaSeriesId != null
+
+    /**
+     * Writes the MangaBaka pushes in [entries] through the library batch route; returns the series
+     * ids written. A series more than one entry points at is left out — which entry's values should
+     * win is [sync]'s call, one at a time — and so is a lone push, which gains nothing from a batch.
+     */
+    private suspend fun batchMangaBakaPushes(entries: List<DiffEntry>): Set<Long> {
+        val writes = entries.filter { it.isBatchableMangaBakaPush() }
+            .groupBy { it.mangaBakaSeriesId!! }
+            .values.mapNotNull { it.singleOrNull() }
+            .map { entry ->
+                val seriesId = entry.mangaBakaSeriesId!!
+                // Same split as [sync]: AniList-linked entries carry AniList values, the rest are
+                // MangaUpdates rows.
+                if (entry.anilistId != null || entry.malId != null) {
+                    MangaBakaSync.anilistWrite(
+                        seriesId, entry.status, entry.progress, entry.volume, entry.score,
+                        entry.startDate, entry.endDate,
+                    )
+                } else {
+                    MangaBakaSync.mangaUpdatesWrite(
+                        seriesId, entry.muListId, entry.progress, entry.volume, entry.startDate,
+                    )
+                }
+            }
+        if (writes.size < 2) return emptySet()
+        return MangaBakaSync.upsertBatch(writes, force = true)
     }
 
     /** Reconciles a single diff entry with its destination (push, or remove when [DiffEntry.delete]). */

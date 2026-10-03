@@ -254,7 +254,7 @@ class SettingsAccountActivity : AppCompatActivity() {
                 ) else knownOrOut(PrefName.MALUserName)),
             gatedCard(AccountProvider.MANGABAKA, R.drawable.ic_round_mangabaka_24, R.string.mangabaka, anilistIn,
                 if (MangaBaka.token != null) AccountState.SignedIn(
-                    MangaBaka.username ?: knownName(PrefName.MangaBakaUserName), null
+                    MangaBaka.username ?: knownName(PrefName.MangaBakaUserName), MangaBaka.avatar
                 ) else knownOrOut(PrefName.MangaBakaUserName)),
             gatedCard(AccountProvider.KITSU, R.drawable.ic_kitsu, R.string.kitsu, anilistIn,
                 if (Kitsu.token != null) AccountState.SignedIn(

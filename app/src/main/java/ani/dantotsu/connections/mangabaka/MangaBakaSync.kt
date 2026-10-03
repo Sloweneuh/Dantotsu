@@ -11,6 +11,9 @@ import ani.dantotsu.util.Logger
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
+import java.util.Locale
+import kotlin.math.roundToInt
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -66,18 +69,115 @@ object MangaBakaSync {
         val seriesId = MangaBakaApi.resolveFromAnilist(anilistId, malId) ?: return false
         return upsert(
             seriesId,
-            LibraryEntryBody(
-                state = mapAnilistStatus(status),
-                progressChapter = progressChapter,
-                progressVolume = progressVolume,
-                rating = score?.takeIf { it > 0 },
-                numberOfRereads = rereads?.takeIf { it > 0 },
-                isPrivate = isPrivate,
-                startDate = toIsoDate(startDate),
-                finishDate = toIsoDate(finishDate),
-            ),
+            anilistBody(status, progressChapter, progressVolume, score, rereads, isPrivate, startDate, finishDate),
             preferCreate,
         )
+    }
+
+    private fun anilistBody(
+        status: String?, progressChapter: Int?, progressVolume: Int?, score: Int?, rereads: Int?,
+        isPrivate: Boolean?, startDate: FuzzyDate?, finishDate: FuzzyDate?, seriesId: Long? = null,
+    ) = LibraryEntryBody(
+        state = mapAnilistStatus(status),
+        progressChapter = progressChapter,
+        progressVolume = progressVolume,
+        rating = score?.takeIf { it > 0 },
+        numberOfRereads = rereads?.takeIf { it > 0 },
+        isPrivate = isPrivate,
+        startDate = toIsoDate(startDate),
+        finishDate = toIsoDate(finishDate),
+        seriesId = seriesId,
+    )
+
+    private fun mangaUpdatesBody(
+        muListId: Int?, progressChapter: Int?, progressVolume: Int?, startDate: FuzzyDate?, seriesId: Long? = null,
+    ) = LibraryEntryBody(
+        state = mapMangaUpdatesList(muListId),
+        progressChapter = progressChapter,
+        progressVolume = progressVolume,
+        startDate = toIsoDate(startDate),
+        seriesId = seriesId,
+    )
+
+    /** One library write for [upsertBatch], built by [anilistWrite] or [mangaUpdatesWrite]. */
+    class BatchWrite internal constructor(val seriesId: Long, internal val body: LibraryEntryBody)
+
+    /** A [syncFromAnilist] write to an already-resolved series, for [upsertBatch]. */
+    fun anilistWrite(
+        seriesId: Long, status: String?, progressChapter: Int?, progressVolume: Int?, score: Int?,
+        startDate: FuzzyDate?, finishDate: FuzzyDate?,
+    ) = BatchWrite(
+        seriesId,
+        anilistBody(status, progressChapter, progressVolume, score, null, null, startDate, finishDate, seriesId),
+    )
+
+    /** A [syncFromMangaUpdates] write to an already-resolved series, for [upsertBatch]. */
+    fun mangaUpdatesWrite(
+        seriesId: Long, muListId: Int?, progressChapter: Int?, progressVolume: Int?, startDate: FuzzyDate?,
+    ) = BatchWrite(seriesId, mangaUpdatesBody(muListId, progressChapter, progressVolume, startDate, seriesId))
+
+    /** `POST /v1/my/library/batch` takes at most this many entries per request. */
+    private const val LIBRARY_BATCH_LIMIT = 100
+
+    /**
+     * Creates or patches many library entries through `POST /v1/my/library/batch`, up to
+     * [LIBRARY_BATCH_LIMIT] per request, and returns the series ids that were written. Requires a
+     * token; [force] bypasses the list-sync toggle like everywhere else.
+     *
+     * Each request is atomic on the server — one bad entry (a merged series, say) and none of that
+     * chunk is written — so a failed chunk is reported as entirely unwritten and the caller should
+     * retry those entries one by one, where the rest can still land.
+     */
+    suspend fun upsertBatch(writes: List<BatchWrite>, force: Boolean = false): Set<Long> {
+        if (writes.isEmpty() || !isEnabled(force)) return emptySet()
+        val written = HashSet<Long>()
+        writes.distinctBy { it.seriesId }.chunked(LIBRARY_BATCH_LIMIT).forEach { chunk ->
+            val ok = tryWithSuspend {
+                val json = Mapper.json.encodeToString(chunk.map { it.body })
+                val builder = Request.Builder().url("$API_URL/v1/my/library/batch")
+                MangaBaka.authHeaders()?.forEach { (k, v) -> builder.addHeader(k, v) }
+                val response = MangaBakaApi.execute(builder.post(json.toRequestBody(JSON_MEDIA)).build())
+                if (!response.isSuccessful) {
+                    Logger.log("MangaBaka batch[${chunk.size}]: HTTP ${response.code} — ${response.body?.string()?.take(300)}")
+                }
+                response.close()
+                response.isSuccessful
+            } ?: false
+            if (ok) chunk.mapTo(written) { it.seriesId }
+        }
+        return written
+    }
+
+    /** `GET /v1/my/library/batch` takes at most this many series ids per request. */
+    private const val LIBRARY_LOOKUP_LIMIT = 100
+
+    /**
+     * Library entries for many series at once via `GET /v1/my/library/batch`, keyed by series id.
+     * Series not in the library are absent from the map. Requires a token. Null when a lookup failed,
+     * so callers can tell "none of these are in the library" from "couldn't ask".
+     */
+    suspend fun getLibraryEntries(seriesIds: Collection<Long>): Map<Long, LibraryStateEntry>? {
+        TrackerSessions.await()
+        val headers = MangaBaka.authHeaders() ?: return null
+        val result = HashMap<Long, LibraryStateEntry>()
+        for (chunk in seriesIds.distinct().chunked(LIBRARY_LOOKUP_LIMIT)) {
+            val entries = tryWithSuspend {
+                val url = "$API_URL/v1/my/library/batch".toHttpUrl().newBuilder()
+                    .apply { chunk.forEach { addQueryParameter("series_id", it.toString()) } }
+                    .build()
+                val request = Request.Builder().url(url)
+                    .apply { headers.forEach { (k, v) -> addHeader(k, v) } }
+                    .get().build()
+                val response = MangaBakaApi.execute(request)
+                val body = response.body?.string()
+                val ok = response.isSuccessful
+                response.close()
+                if (!ok) Logger.log("MangaBaka library batch[${chunk.size}]: HTTP ${response.code}")
+                if (ok && body != null) Mapper.json.decodeFromString<LibraryBatchResponse>(body).data else null
+            } ?: return null
+            entries.forEach { e -> e.resolvedSeriesId()?.let { result[it] = e } }
+        }
+        return result
     }
 
     /**
@@ -99,16 +199,7 @@ object MangaBakaSync {
         if (!isEnabled(force)) return false
         val id = muSeriesId ?: return false
         val seriesId = MangaBakaApi.resolveSeriesId(MangaBakaApi.Source.MANGAUPDATES, id) ?: return false
-        return upsert(
-            seriesId,
-            LibraryEntryBody(
-                state = mapMangaUpdatesList(muListId),
-                progressChapter = progressChapter,
-                progressVolume = progressVolume,
-                startDate = toIsoDate(startDate),
-            ),
-            preferCreate,
-        )
+        return upsert(seriesId, mangaUpdatesBody(muListId, progressChapter, progressVolume, startDate), preferCreate)
     }
 
     /** Removes the AniList-linked manga from the MangaBaka library, if present. */
@@ -199,10 +290,9 @@ object MangaBakaSync {
     /**
      * Enumerates the library one state at a time. Requires a token.
      *
-     * The `/v1/my/library` list endpoint caps offset pagination at 1000 rows, so we page **per state**
-     * (each state is well under the cap) rather than over the whole library. Each state's exact size
-     * comes from `pagination.count` (immune to the row cap), so [LibrarySnapshot.counts] is reliable
-     * for totals even if a huge state can't be fully enumerated.
+     * Paging **per state** lets the states load in parallel, and each state's exact size comes from
+     * its `pagination.count`, so [LibrarySnapshot.counts] is reliable for totals even if a huge state
+     * stops at [MAX_LIBRARY_PAGES] before it's fully enumerated.
      */
     suspend fun getLibrarySnapshot(): LibrarySnapshot {
         // Same wait as [isEnabled]: the headers come from the in-memory token, and a snapshot read
@@ -216,6 +306,12 @@ object MangaBakaSync {
         )
     }
 
+    /**
+     * Safety stop for [fetchState]: 100 pages of 100 is 10,000 entries in one state. The route allows
+     * far deeper paging; this only guards against a server that never reports the end.
+     */
+    private const val MAX_LIBRARY_PAGES = 100
+
     /** Pages through a single state; returns (entries fetched, total count reported by the server). */
     private suspend fun fetchState(
         headers: Map<String, String>,
@@ -224,7 +320,7 @@ object MangaBakaSync {
         val entries = mutableListOf<LibraryStateEntry>()
         var count = 0
         var page = 1
-        while (page <= 20) {
+        while (page <= MAX_LIBRARY_PAGES) {
             val resp = tryWithSuspend {
                 val request = Request.Builder()
                     .url("$API_URL/v1/my/library?state=$state&limit=100&page=$page")
@@ -288,12 +384,16 @@ object MangaBakaSync {
         else -> null
     }
 
-    /** Formats a complete [FuzzyDate] as an ISO-8601 date-time; null when the date is incomplete. */
+    /**
+     * Formats a complete [FuzzyDate] as a bare `YYYY-MM-DD` — the request form the API prefers (and
+     * the only one v2 will take); null when the date is incomplete. Responses still come back as
+     * `YYYY-MM-DDT00:00:00.000Z`.
+     */
     private fun toIsoDate(date: FuzzyDate?): String? {
         val y = date?.year ?: return null
         val m = date.month ?: return null
         val d = date.day ?: return null
-        return "%04d-%02d-%02dT00:00:00.000Z".format(y, m, d)
+        return "%04d-%02d-%02d".format(Locale.US, y, m, d)
     }
 
     /** Paginated library list response (`GET /v1/my/library`). Series info is not embedded. */
@@ -323,23 +423,38 @@ object MangaBakaSync {
     @Serializable
     data class LibraryStateEntry(
         val state: String? = null,
-        @SerialName("progress_chapter") val progressChapter: Int? = null,
-        @SerialName("progress_volume") val progressVolume: Int? = null,
-        val rating: Int? = null,
+        // The API types these as `number`, not integer: parsed as Double so one fractional value
+        // (a chapter 12.5) can't fail the whole page, then exposed as the whole numbers we compare.
+        @SerialName("progress_chapter") val progressChapterRaw: Double? = null,
+        @SerialName("progress_volume") val progressVolumeRaw: Double? = null,
+        @SerialName("rating") val ratingRaw: Double? = null,
         // ISO-8601 date-time (e.g. "2026-07-05T00:00:00.000Z"); the date portion is what we compare.
         @SerialName("start_date") val startDate: String? = null,
         @SerialName("finish_date") val finishDate: String? = null,
         @SerialName("series_id") val seriesId: Long? = null,
         @SerialName("Series") val series: MangaBakaApi.Series? = null,
     ) {
+        val progressChapter: Int? get() = progressChapterRaw?.toInt()
+        val progressVolume: Int? get() = progressVolumeRaw?.toInt()
+        val rating: Int? get() = ratingRaw?.roundToInt()
+
         /** MangaBaka series id, taken from the top-level field or the embedded series object. */
         fun resolvedSeriesId(): Long? = seriesId ?: series?.id
         fun coverUrl(): String? = series?.cover?.thumbUrl()
-        fun title(): String? = series?.title
+        fun title(): String? = series?.displayTitle()
     }
 
+    /** `GET /v1/my/library/batch` response: the matching library entries, unpaginated. */
     @Serializable
-    private data class LibraryEntryBody(
+    data class LibraryBatchResponse(val data: List<LibraryStateEntry> = emptyList())
+
+    /**
+     * A library write. [seriesId] is only sent in batch writes, where it names the entry; the
+     * single-entry routes carry it in the path and reject unknown keys — it's left null there and
+     * `explicitNulls = false` keeps it out of the JSON.
+     */
+    @Serializable
+    internal data class LibraryEntryBody(
         val state: String? = null,
         @SerialName("progress_chapter") val progressChapter: Int? = null,
         @SerialName("progress_volume") val progressVolume: Int? = null,
@@ -348,5 +463,6 @@ object MangaBakaSync {
         @SerialName("is_private") val isPrivate: Boolean? = null,
         @SerialName("start_date") val startDate: String? = null,
         @SerialName("finish_date") val finishDate: String? = null,
+        @SerialName("series_id") val seriesId: Long? = null,
     )
 }

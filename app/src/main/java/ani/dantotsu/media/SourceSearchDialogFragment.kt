@@ -352,10 +352,9 @@ class SourceSearchDialogFragment : BottomSheetDialogFragment() {
 
                             // 5) MangaBaka titles (primary/romanized/native + alternates)
                             model.mangaBakaSeries.value?.let { mb ->
-                                addIfNotBlank(mb.title)
-                                addIfNotBlank(mb.romanizedTitle)
-                                addIfNotBlank(mb.nativeTitle)
-                                mb.titles?.forEach { addIfNotBlank(it.title) }
+                                addIfNotBlank(mb.displayTitle())
+                                addIfNotBlank(mb.romanizedTitle())
+                                mb.titles?.forEach { addIfNotBlank(it.title) }   // includes the native title
                             }
                         }
 

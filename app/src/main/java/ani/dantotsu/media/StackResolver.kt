@@ -135,7 +135,7 @@ object StackResolver {
                                 }
                                 val media = MUMedia(
                                     id = muId,
-                                    title = series.title ?: series.romanizedTitle,
+                                    title = series.displayTitle() ?: series.romanizedTitle(),
                                     url = "https://www.mangaupdates.com/series/${muId.toString(36)}",
                                     coverUrl = series.cover?.thumbUrl(),
                                     listId = -1,

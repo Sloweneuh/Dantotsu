@@ -7,9 +7,16 @@ import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.tryWithSuspend
 import ani.dantotsu.util.Logger
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
@@ -281,30 +288,13 @@ object MangaBakaApi {
         }
     }
 
-    /** In-memory cache of the genre slug → display label map (`/v1/genres`), fetched once. */
-    private var genreLabels: Map<String, String>? = null
-
     /**
      * Returns the genre slug → display-name map from `GET /v1/genres` (e.g. `slice_of_life` →
-     * "Slice of Life"). Cached after the first fetch; returns an empty map on failure.
+     * "Slice of Life"). Shares [getGenreOptions]' fetch and cache; empty on failure.
      */
-    suspend fun getGenreLabels(): Map<String, String> {
-        genreLabels?.let { return it }
-        val map = tryWithSuspend {
-            val request = Request.Builder().url("$API_URL/v1/genres").get().build()
-            val response = withContext(Dispatchers.IO) { okHttpClient.newCall(request).execute() }
-            val body = response.body?.string()
-            if (!response.isSuccessful || body.isNullOrBlank()) {
-                Logger.log("MangaBaka genres: HTTP ${response.code}")
-                return@tryWithSuspend null
-            }
-            Mapper.json.decodeFromString<GenresResponse>(body).data
-                ?.mapNotNull { g -> val v = g.value; val l = g.label; if (v != null && l != null) v to l else null }
-                ?.toMap()
-        } ?: emptyMap()
-        genreLabels = map
-        return map
-    }
+    suspend fun getGenreLabels(): Map<String, String> =
+        getGenreOptions().mapNotNull { g -> val v = g.value; val l = g.label; if (v != null && l != null) v to l else null }
+            .toMap()
 
     /** Fetches the processed series record via `GET /v1/series/{id}`. Public route — no auth. */
     suspend fun getSeries(seriesId: Long): Series? = tryWithSuspend {
@@ -319,6 +309,70 @@ object MangaBakaApi {
             return@tryWithSuspend null
         }
         Mapper.json.decodeFromString<SeriesResponse>(body).data
+    }
+
+    /** `GET /v1/series/batch` takes at most this many ids per request. */
+    private const val SERIES_BATCH_LIMIT = 50
+
+    /**
+     * Fetches many series via `GET /v1/series/batch`, [SERIES_BATCH_LIMIT] ids per request, keyed by
+     * id. Ids the server doesn't know are simply missing from the map. Public route — no auth.
+     */
+    suspend fun getSeriesBatch(ids: Collection<Long>): Map<Long, Series> {
+        val result = HashMap<Long, Series>()
+        ids.distinct().chunked(SERIES_BATCH_LIMIT).forEach { chunk ->
+            tryWithSuspend(snackbar = false) {
+                val urlBuilder = "$API_URL/v1/series/batch".toHttpUrl().newBuilder()
+                chunk.forEach { urlBuilder.addQueryParameter("id", it.toString()) }
+                val response = execute(Request.Builder().url(urlBuilder.build()).get().build())
+                val body = response.use { if (it.isSuccessful) it.body?.string() else null }
+                if (body.isNullOrBlank()) {
+                    Logger.log("MangaBaka series batch[${chunk.size}]: HTTP ${response.code}")
+                    return@tryWithSuspend
+                }
+                Mapper.json.decodeFromString<SeriesBatchResponse>(body).data.orEmpty()
+                    .forEach { result[it.id] = it }
+            }
+        }
+        return result
+    }
+
+    /** How long [getSeriesCoalesced] waits for more ids before sending the batch it has. */
+    private const val COALESCE_WINDOW_MS = 150L
+
+    private val coalesceLock = Mutex()
+    private val coalescePending = LinkedHashMap<Long, CompletableDeferred<Series?>>()
+    private var coalesceFlush: Job? = null
+    private val coalesceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    /**
+     * [getSeries] for callers that ask one id at a time but in bursts — list rows binding as they
+     * scroll in. Requests arriving within [COALESCE_WINDOW_MS] of each other share one
+     * `/v1/series/batch` call, so a screenful of rows costs one request instead of one each.
+     */
+    suspend fun getSeriesCoalesced(seriesId: Long): Series? {
+        val deferred = coalesceLock.withLock {
+            val d = coalescePending.getOrPut(seriesId) { CompletableDeferred() }
+            if (coalesceFlush == null) {
+                coalesceFlush = coalesceScope.launch {
+                    delay(COALESCE_WINDOW_MS)
+                    // Take the batch and clear the job under the lock, so an id arriving while this
+                    // batch is in flight starts the next one instead of waiting on nothing.
+                    val batch = coalesceLock.withLock {
+                        coalesceFlush = null
+                        LinkedHashMap(coalescePending).also { coalescePending.clear() }
+                    }
+                    var found: Map<Long, Series> = emptyMap()
+                    try {
+                        found = getSeriesBatch(batch.keys)
+                    } finally {
+                        batch.forEach { (id, waiter) -> waiter.complete(found[id]) }
+                    }
+                }
+            }
+            d
+        }
+        return deferred.await()
     }
 
     /**
@@ -336,7 +390,7 @@ object MangaBakaApi {
             .addQueryParameter("limit", "50")
         languages.forEach { urlBuilder.addQueryParameter("language", it) }
         val request = Request.Builder().url(urlBuilder.build()).get().build()
-        val response = withContext(Dispatchers.IO) { okHttpClient.newCall(request).execute() }
+        val response = execute(request)
         val body = response.body?.string()
         if (!response.isSuccessful || body.isNullOrBlank()) {
             Logger.log("MangaBaka images[$seriesId]: HTTP ${response.code}")
@@ -399,8 +453,10 @@ object MangaBakaApi {
         statuses?.filter { it.isNotBlank() }?.forEach { urlBuilder.addQueryParameter("status", it) }
         excludedStatuses?.filter { it.isNotBlank() }?.forEach { urlBuilder.addQueryParameter("status_not", it) }
         excludedContentRatings?.filter { it.isNotBlank() }?.forEach { urlBuilder.addQueryParameter("not_content_rating", it) }
-        fromYear?.let { urlBuilder.addQueryParameter("year_lower", it.toString()) }
-        toYear?.let { urlBuilder.addQueryParameter("year_upper", it.toString()) }
+        // `year_lower`/`year_upper` are deprecated; the publication-date bounds replace them and take a
+        // bare `YYYY` as the whole year (an upper bound of `2020` still includes all of 2020).
+        fromYear?.let { urlBuilder.addQueryParameter("published_start_date_lower", it.toString()) }
+        toYear?.let { urlBuilder.addQueryParameter("published_start_date_upper", it.toString()) }
         sort?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("sort_by", it) }
 
         val ratings = when {
@@ -428,7 +484,10 @@ object MangaBakaApi {
     /** Synchronous slug → display-name cache for genre chips (seeded from options or the info tab). */
     private val genreNameCache = HashMap<String, String>()
 
-    /** Returns the ordered genre options (value + label) from `GET /v1/genres`. Cached after first fetch. */
+    /**
+     * Returns the ordered genre options (value + label) from `GET /v1/genres`. Cached after the first
+     * successful fetch; a failure returns empty without caching, so the next caller tries again.
+     */
     suspend fun getGenreOptions(): List<GenreOption> {
         genreOptions?.let { return it }
         val list = tryWithSuspend {
@@ -443,7 +502,7 @@ object MangaBakaApi {
                 ?.filter { !it.value.isNullOrBlank() && !it.label.isNullOrBlank() }
         } ?: emptyList()
         list.forEach { o -> if (o.value != null && o.label != null) genreNameCache[o.value] = o.label }
-        genreOptions = list
+        if (list.isNotEmpty()) genreOptions = list
         return list
     }
 
@@ -541,13 +600,17 @@ object MangaBakaApi {
         @SerialName("content_rating") val contentRating: String? = null,
     )
 
-    /** Fetches similar series via `GET /v1/series/{id}/similar`. Public route — no auth. */
-    suspend fun getSimilar(seriesId: Long): List<SimilarItem> = tryWithSuspend {
-        val request = Request.Builder()
-            .url("$API_URL/v1/series/$seriesId/similar")
-            .get()
-            .build()
-        val response = withContext(Dispatchers.IO) { okHttpClient.newCall(request).execute() }
+    /**
+     * Fetches similar series via `GET /v1/series/{id}/similar`. Public route — no auth.
+     *
+     * When [allowAdult] is false, candidates are limited to `safe`/`suggestive` — the same rule
+     * [searchSeries] applies, so the Similar row can't surface what search would have hidden.
+     */
+    suspend fun getSimilar(seriesId: Long, allowAdult: Boolean = true): List<SimilarItem> = tryWithSuspend {
+        val urlBuilder = "$API_URL/v1/series/$seriesId/similar".toHttpUrl().newBuilder()
+        if (!allowAdult) listOf("safe", "suggestive").forEach { urlBuilder.addQueryParameter("content_rating", it) }
+        val request = Request.Builder().url(urlBuilder.build()).get().build()
+        val response = execute(request)
         val body = response.body?.string()
         if (!response.isSuccessful || body.isNullOrBlank()) {
             Logger.log("MangaBaka similar[$seriesId]: HTTP ${response.code}")
@@ -596,6 +659,9 @@ object MangaBakaApi {
     @Serializable
     data class SeriesResponse(val data: Series? = null)
 
+    @Serializable
+    data class SeriesBatchResponse(val data: List<Series>? = null)
+
     /** `/v1/source/{source}/{id}?with_series=true` embeds full [Series] objects under `data.series`. */
     @Serializable
     data class SeriesLookupResponse(val data: SeriesLookupData? = null)
@@ -614,14 +680,14 @@ object MangaBakaApi {
         val id: Long,
         val state: String? = null,
         @SerialName("merged_with") val mergedWith: Long? = null,
-        val title: String? = null,
-        @SerialName("native_title") val nativeTitle: String? = null,
-        @SerialName("romanized_title") val romanizedTitle: String? = null,
+        // Deprecated by the API in favour of [titles]; only a last-resort fallback — use
+        // [displayTitle] / [romanizedTitle] instead.
+        @SerialName("title") val legacyTitle: String? = null,
+        @SerialName("romanized_title") val legacyRomanizedTitle: String? = null,
         val cover: CoverImage? = null,
         val authors: List<String>? = null,
         val artists: List<String>? = null,
         val description: String? = null,
-        val year: Int? = null,
         val published: Published? = null,
         val status: String? = null,
         @SerialName("is_licensed") val isLicensed: Boolean? = null,
@@ -634,35 +700,52 @@ object MangaBakaApi {
         @SerialName("final_volume") val finalVolume: String? = null,
         @SerialName("total_chapters") val totalChapters: String? = null,
         val titles: List<TitleEntry>? = null,
-        val genres: List<String>? = null,
         @SerialName("tags_v2") val tags: List<TagEntry>? = null,
         val source: SeriesSource? = null,
     ) {
         /**
-         * [title] when no [PrefName.ComickMangaBakaLanguage] entry exists in [titles], else that
-         * entry — see [pickPreferredTitle]. What search results and media pages should show as the
-         * name.
+         * The [PrefName.ComickMangaBakaLanguage] entry in [titles], else the English one — see
+         * [pickPreferredTitle]. What search results and media pages should show as the name.
          */
-        fun displayTitle(): String? = pickPreferredTitle(title, titles)
+        fun displayTitle(): String? = pickPreferredTitle(legacyTitle, titles)
+
+        /**
+         * The romanization of the native title (e.g. `ja-Latn` "Re:Zero kara Hajimeru…"), from the
+         * native-trait `<lang>-Latn` entry in [titles] — what the deprecated `romanized_title` held.
+         */
+        fun romanizedTitle(): String? {
+            val romanized = titles.orEmpty().filter { t ->
+                t.language?.endsWith("-Latn", ignoreCase = true) == true &&
+                    t.traits?.any { it.equals("native", true) } == true && !t.title.isNullOrBlank()
+            }
+            return (romanized.firstOrNull { it.isPrimary == true } ?: romanized.firstOrNull())?.title
+                ?: legacyRomanizedTitle?.takeIf { it.isNotBlank() }
+        }
+
+        /** Genre tags from [tags] (`is_genre: true`) — what the deprecated `genres` slugs became. */
+        fun genreTags(): List<TagEntry> = tags.orEmpty().filter { it.isGenre == true && !it.name.isNullOrBlank() }
     }
 
     /**
      * The [PrefName.ComickMangaBakaLanguage] entry in a series' `titles` array, preferring one
-     * flagged primary, else the first found; null when none exists. `is_primary` is per-language (a
-     * series can have an `is_primary`-flagged native title *and* an `is_primary`-flagged preferred
-     * one), so this alone decides which of possibly several synonyms in that language is the "real"
-     * one rather than a fan title.
+     * flagged primary, else the first found; falls back to the primary English title, then to the
+     * deprecated top-level [legacyTitle] (which is that same English title) for a record whose
+     * `titles` is empty. `is_primary` is per-language (a series can have an `is_primary`-flagged
+     * native title *and* an `is_primary`-flagged preferred one), so this alone decides which of
+     * possibly several synonyms in a language is the "real" one rather than a fan title.
      *
      * Shared by [Series] and [SimilarSeries]: the `similar` route embeds the same `titles` shape as
      * every other series lookup, just under a slimmer series object.
      */
-    private fun pickPreferredTitle(title: String?, titles: List<TitleEntry>?): String? {
-        val preferredLang = PrefManager.getVal<String>(PrefName.ComickMangaBakaLanguage)
-        val matching = titles.orEmpty().filter {
-            it.language?.substringBefore('-')?.lowercase() == preferredLang && !it.title.isNullOrBlank()
+    private fun pickPreferredTitle(legacyTitle: String?, titles: List<TitleEntry>?): String? {
+        fun pick(lang: String): String? {
+            val matching = titles.orEmpty().filter {
+                it.language?.substringBefore('-')?.lowercase() == lang && !it.title.isNullOrBlank()
+            }
+            return matching.firstOrNull { it.isPrimary == true }?.title ?: matching.firstOrNull()?.title
         }
-        val matchingTitle = matching.firstOrNull { it.isPrimary == true }?.title ?: matching.firstOrNull()?.title
-        return matchingTitle ?: title
+        val preferredLang = PrefManager.getVal<String>(PrefName.ComickMangaBakaLanguage)
+        return pick(preferredLang) ?: pick("en") ?: legacyTitle
     }
 
     @Serializable
@@ -770,7 +853,7 @@ object MangaBakaApi {
     data class SimilarSeries(
         val id: Long,
         val state: String? = null,
-        val title: String? = null,
+        @SerialName("title") val legacyTitle: String? = null,   // deprecated — see [displayTitle]
         val cover: CoverImage? = null,
         val type: String? = null,
         val source: SeriesSource? = null,
@@ -779,6 +862,6 @@ object MangaBakaApi {
         val titles: List<TitleEntry>? = null,
     ) {
         /** See [Series.displayTitle] / [pickPreferredTitle] — same preference, same titles shape. */
-        fun displayTitle(): String? = pickPreferredTitle(title, titles)
+        fun displayTitle(): String? = pickPreferredTitle(legacyTitle, titles)
     }
 }

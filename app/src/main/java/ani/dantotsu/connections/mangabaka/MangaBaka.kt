@@ -47,6 +47,8 @@ object MangaBaka {
     var token: String? = null
     var username: String? = null
     var userid: String? = null
+    /** Profile picture URL from `/v1/my/profile`; null when the user hasn't set one. */
+    var avatar: String? = null
 
     /** True while [token] is a legacy PAT rather than an OAuth access token. */
     private var isPat: Boolean = false
@@ -149,8 +151,11 @@ object MangaBaka {
 
         userid = res.id
         username = res.preferredUsername ?: res.nickname ?: res.id
+        avatar = res.picture?.takeIf { it.isNotBlank() }
         PrefManager.setVal(PrefName.MangaBakaUserId, res.id)
         PrefManager.setVal(PrefName.MangaBakaUserName, username ?: "")
+        // "" (not absent) marks "fetched, no picture set", so [getSavedToken] doesn't keep re-asking.
+        PrefManager.setVal(PrefName.MangaBakaAvatar, avatar ?: "")
         Logger.log("MangaBaka: Logged in as $username")
         return true
     }
@@ -173,14 +178,22 @@ object MangaBaka {
         }
         username = PrefManager.getVal(PrefName.MangaBakaUserName, null as String?)
         userid = PrefManager.getVal(PrefName.MangaBakaUserId, null as String?)
-        return if (username.isNullOrBlank() || userid.isNullOrBlank()) getUserData() else true
+        val savedAvatar = PrefManager.getVal(PrefName.MangaBakaAvatar, null as String?)
+        avatar = savedAvatar?.takeIf { it.isNotBlank() }
+        if (username.isNullOrBlank() || userid.isNullOrBlank()) return getUserData()
+        // A null avatar pref means the profile was cached before pictures existed — fetch it once.
+        // The session is already valid, so a failed fetch (offline) mustn't fail the restore.
+        if (savedAvatar == null) getUserData()
+        return true
     }
 
     fun removeSavedToken() {
         token = null
         username = null
         userid = null
+        avatar = null
         isPat = false
+        PrefManager.removeVal(PrefName.MangaBakaAvatar)
         PrefManager.removeVal(PrefName.MangaBakaToken)
         PrefManager.removeVal(PrefName.MangaBakaOAuthToken)
         PrefManager.removeVal(PrefName.MangaBakaUserName)
@@ -230,6 +243,7 @@ object MangaBaka {
         val id: String,
         val nickname: String? = null,
         @SerialName("preferred_username") val preferredUsername: String? = null,
+        val picture: String? = null,
         val role: String? = null,
         @SerialName("auth_type") val authType: String? = null,
         val scopes: List<String>? = null,
