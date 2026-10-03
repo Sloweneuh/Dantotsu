@@ -1,5 +1,6 @@
 package ani.dantotsu.media
 
+import ani.dantotsu.connections.discord.PresenceSources
 import android.animation.ObjectAnimator
 import android.annotation.SuppressLint
 import android.content.Intent
@@ -35,6 +36,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import ani.dantotsu.GesturesListener
 import ani.dantotsu.R
+import ani.dantotsu.connections.discord.BrowsingPresence
 import ani.dantotsu.Refresh
 import ani.dantotsu.ZoomOutPageTransformer
 import ani.dantotsu.blurImage
@@ -155,6 +157,7 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
         }
 
         mediaSingleton = null
+        browsingPresence.update(browsingPage(media))
         android.util.Log.d(
             "TransitionDebug",
             "AniList onCreate: postponeEnterTransition, hasFeature=${window.hasFeature(android.view.Window.FEATURE_ACTIVITY_TRANSITIONS)}, t=${System.currentTimeMillis()}"
@@ -1293,6 +1296,18 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
      */
     private fun handoffSubtitle(): String? =
         intent.getStringExtra(HandoffNavigator.EXTRA_NUMBER)
+
+    private val browsingPresence = BrowsingPresence(this)
+
+    /** What the opt-in browsing presence shows for [media]. */
+    private fun browsingPage(media: Media): BrowsingPresence.Page {
+        val isAnime = media.anime != null
+        // A negative id is an extension-only entry, with no AniList page to point at.
+        val source = media.id.takeIf { it >= 0 }?.let {
+            PresenceSources.anilist(it, isAnime, PresenceSources.noun(isAnime, media.format == "NOVEL"))
+        }
+        return BrowsingPresence.Page(media.userPreferredName, media.cover, source)
+    }
 
     override fun onResume() {
         super.onResume()

@@ -1,5 +1,7 @@
 package ani.dantotsu.media
 
+import ani.dantotsu.connections.discord.PresenceSources
+import ani.dantotsu.connections.discord.BrowsingPresence
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
@@ -210,6 +212,9 @@ class MalMediaActivity : AppCompatActivity() {
         )
     }
 
+    /** Opt-in Discord presence for this page — see [BrowsingPresence]. */
+    private val browsingPresence = BrowsingPresence(this)
+
     private fun setupHeader(anime: MALAnimeResponse?, manga: MALMangaResponse?) {
         val mainPicture: MALPicture? = anime?.mainPicture ?: manga?.mainPicture
         val posterUrl = mainPicture?.large ?: mainPicture?.medium
@@ -221,6 +226,15 @@ class MalMediaActivity : AppCompatActivity() {
         val title = altTitles?.en?.takeIf { it.isNotBlank() } ?: altTitles?.ja?.takeIf { it.isNotBlank() }
             ?: rawTitle ?: getString(R.string.unknown)
         binding.malMediaTitle.text = title
+        (anime?.id ?: manga?.id)?.let { id ->
+            val isNovel = manga?.mediaType?.contains("novel", ignoreCase = true) == true
+            browsingPresence.update(
+                BrowsingPresence.Page(
+                    title, posterUrl,
+                    PresenceSources.mal(id, isAnime, PresenceSources.noun(isAnime, isNovel)),
+                )
+            )
+        }
         binding.malMediaTitle.setOnLongClickListener { copyToClipboard(title); true }
         binding.malMediaCover.setOnLongClickListener {
             ImageViewDialog.newInstance(this, getString(R.string.cover, title), posterUrl)

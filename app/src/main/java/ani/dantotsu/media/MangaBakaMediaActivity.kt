@@ -1,5 +1,7 @@
 package ani.dantotsu.media
 
+import ani.dantotsu.connections.discord.PresenceSources
+import ani.dantotsu.connections.discord.BrowsingPresence
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
@@ -129,6 +131,9 @@ class MangaBakaMediaActivity : AppCompatActivity() {
         }
     }
 
+    /** Opt-in Discord presence for this page — see [BrowsingPresence]. */
+    private val browsingPresence = BrowsingPresence(this)
+
     private fun setupHeader(series: MangaBakaApi.Series) {
         val coverUrl = series.cover?.fullUrl() ?: series.cover?.thumbUrl()
         if (coverUrl != null) {
@@ -137,6 +142,15 @@ class MangaBakaMediaActivity : AppCompatActivity() {
         }
         val displayTitle = series.displayTitle() ?: getString(R.string.unknown)
         binding.mangaBakaMediaTitle.text = displayTitle
+        browsingPresence.update(
+            BrowsingPresence.Page(
+                displayTitle, coverUrl,
+                PresenceSources.mangaBaka(
+                    series.id,
+                    PresenceSources.noun(false, series.type.equals("novel", ignoreCase = true)),
+                ),
+            )
+        )
         binding.mangaBakaMediaTitle.setOnLongClickListener {
             copyToClipboard(displayTitle)
             true

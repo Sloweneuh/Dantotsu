@@ -1,5 +1,7 @@
 package ani.dantotsu.connections.mangaupdates
 
+import ani.dantotsu.connections.discord.PresenceSources
+import ani.dantotsu.connections.discord.BrowsingPresence
 import android.animation.ObjectAnimator
 import android.content.Intent
 import android.content.res.Configuration
@@ -565,6 +567,9 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         }
     }
 
+    /** Opt-in Discord presence for this page — see [BrowsingPresence]. */
+    private val browsingPresence = BrowsingPresence(this)
+
     private fun launchMediaDetails(muMedia: MUMedia) {
         this.muMedia = muMedia
         extensionPkg = intent.getStringExtra(EXTRA_EXT_PKG)
@@ -902,6 +907,16 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         // Title
         binding.mediaTitle.translationX = -screenWidth
         binding.mediaTitle.text = muMedia.title ?: ""
+        browsingPresence.update(
+            BrowsingPresence.Page(
+                muMedia.title.orEmpty(),
+                muMedia.coverUrl,
+                PresenceSources.mangaUpdates(
+                    muMedia.id,
+                    PresenceSources.noun(false, muMedia.format?.contains("novel", ignoreCase = true) == true),
+                ),
+            )
+        )
         binding.mediaTitleCollapse.text = muMedia.title ?: ""
         binding.mediaTitle.setOnLongClickListener {
             copyToClipboard(muMedia.title ?: "")

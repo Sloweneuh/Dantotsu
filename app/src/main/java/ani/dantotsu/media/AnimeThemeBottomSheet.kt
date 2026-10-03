@@ -23,6 +23,10 @@ import ani.dantotsu.R
 import ani.dantotsu.connections.animethemes.AnimeThemeTrack
 import ani.dantotsu.connections.animethemes.AnimeThemeVersion
 import ani.dantotsu.connections.animethemes.AnimeThemeVideo
+import ani.dantotsu.connections.discord.Discord
+import ani.dantotsu.connections.discord.RPC
+import ani.dantotsu.connections.discord.PresenceSources
+import ani.dantotsu.connections.discord.RPCManager
 import ani.dantotsu.databinding.BottomSheetAnimeThemeBinding
 import ani.dantotsu.px
 import ani.dantotsu.setSafeOnClickListener
@@ -87,6 +91,16 @@ class AnimeThemeBottomSheet : BottomSheetDialogFragment() {
             exo.addListener(object : Player.Listener {
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
                     updatePlayPause(isPlaying)
+                    updateDiscordRPC()
+                }
+
+                override fun onPositionDiscontinuity(
+                    oldPosition: Player.PositionInfo,
+                    newPosition: Player.PositionInfo,
+                    reason: Int
+                ) {
+                    // A seek, or the repeat starting over: the progress bar has to follow.
+                    updateDiscordRPC()
                 }
 
                 override fun onPlaybackStateChanged(state: Int) {
@@ -331,7 +345,47 @@ class AnimeThemeBottomSheet : BottomSheetDialogFragment() {
         player?.pause()
     }
 
+    /**
+     * "Listening to" the theme, with a progress bar while it plays. Clears when playback stops,
+     * which hands the presence back to the page's browsing one if that is switched on — and never
+     * replaces a video or reading presence, see [RPCManager.setPresence].
+     */
+    private fun updateDiscordRPC() {
+        val ctx = context ?: return
+        val exo = player ?: return
+        val current = track ?: return
+        if (!exo.isPlaying) {
+            RPCManager.clearPresence(ctx, RPC.Kind.MUSIC)
+            return
+        }
+        if (!RPCManager.isAllowed(ctx)) return
+        val args = arguments
+        val animeTitle = args?.getString(ARG_ANIME_TITLE)
+        val anilistId = args?.getInt(ARG_ANILIST_ID, -1)?.takeIf { it >= 0 }
+        val now = System.currentTimeMillis()
+        val start = now - exo.currentPosition.coerceAtLeast(0L)
+        RPCManager.setPresence(
+            ctx,
+            RPC.Companion.RPCData(
+                applicationId = Discord.application_Id,
+                kind = RPC.Kind.MUSIC,
+                type = RPC.Type.LISTENING,
+                activityName = current.song ?: animeTitle ?: current.slug,
+                details = current.song ?: current.slug,
+                state = listOfNotNull(
+                    current.artists.joinToString(", ").takeIf { it.isNotBlank() },
+                    listOfNotNull(current.slug, animeTitle).joinToString(" · "),
+                ).joinToString(" — "),
+                largeImage = args?.getString(ARG_COVER)?.let { RPC.Link(animeTitle ?: current.slug, it) },
+                startTimestamp = start,
+                stopTimestamp = exo.duration.takeIf { it > 0 }?.let { start + it },
+                source = anilistId?.let { PresenceSources.anilist(it, isAnime = true) },
+            )
+        )
+    }
+
     override fun onDestroyView() {
+        context?.let { RPCManager.clearPresence(it, RPC.Kind.MUSIC) }
         binding.root.removeCallbacks(tick)
         binding.themeSheetPlayer.player = null
         player?.release()
@@ -373,8 +427,23 @@ class AnimeThemeBottomSheet : BottomSheetDialogFragment() {
             ),
         )
 
-        fun newInstance(track: AnimeThemeTrack) = AnimeThemeBottomSheet().apply {
-            arguments = Bundle().apply { putSerializable("track", track) }
+        private const val ARG_ANIME_TITLE = "animeTitle"
+        private const val ARG_COVER = "cover"
+        private const val ARG_ANILIST_ID = "anilistId"
+
+        /** [animeTitle], [cover] and [anilistId] describe the anime on Discord while it plays. */
+        fun newInstance(
+            track: AnimeThemeTrack,
+            animeTitle: String? = null,
+            cover: String? = null,
+            anilistId: Int? = null,
+        ) = AnimeThemeBottomSheet().apply {
+            arguments = Bundle().apply {
+                putSerializable("track", track)
+                putString(ARG_ANIME_TITLE, animeTitle)
+                putString(ARG_COVER, cover)
+                anilistId?.let { putInt(ARG_ANILIST_ID, it) }
+            }
         }
     }
 }

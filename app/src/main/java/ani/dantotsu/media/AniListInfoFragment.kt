@@ -517,8 +517,9 @@ class AniListInfoFragment : Fragment() {
                         val themeAdapter = GroupieAdapter()
                         tracks.forEach { track ->
                             themeAdapter.add(AnimeThemeAdapter(track) {
-                                AnimeThemeBottomSheet.newInstance(it)
-                                    .show(parentFragmentManager, "animeTheme")
+                                AnimeThemeBottomSheet.newInstance(
+                                    it, media.userPreferredName, media.cover, media.id
+                                ).show(parentFragmentManager, "animeTheme")
                             })
                         }
                         bind.itemRecycler.adapter = themeAdapter

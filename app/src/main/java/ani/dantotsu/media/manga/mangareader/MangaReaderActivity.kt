@@ -55,6 +55,7 @@ import ani.dantotsu.connections.handoff.HandoffPayload
 import ani.dantotsu.media.screenshot.ScreenshotDialogFragment
 import ani.dantotsu.media.screenshot.ScreenshotUtil
 import ani.dantotsu.connections.discord.Discord
+import ani.dantotsu.connections.discord.PresenceSources
 import ani.dantotsu.connections.discord.RPCManager
 import ani.dantotsu.connections.discord.RPC
 import ani.dantotsu.connections.updateProgress
@@ -364,7 +365,7 @@ class MangaReaderActivity : AppCompatActivity() {
         // back and would only redecode, and the ImageData half is what the reload path the old
         // mangaCache.clear() here was removed to protect actually reads.
         if (isFinishing) mangaCache.evictBitmaps()
-        RPCManager.clearPresence(this)
+        RPCManager.clearPresence(this, RPC.Kind.MANGA)
         super.onDestroy()
     }
 
@@ -791,40 +792,7 @@ class MangaReaderActivity : AppCompatActivity() {
                     updateChapterNavigationText()
                     applySettings()
                 }
-                val context = this
-                val offline: Boolean = PrefManager.getVal(PrefName.OfflineMode)
-                val incognito: Boolean = PrefManager.getVal(PrefName.Incognito)
-                val rpcenabled: Boolean = PrefManager.getVal(PrefName.rpcEnabled)
-                if ((isOnline(context) && !offline) && Discord.token != null && !incognito && rpcenabled) {
-                    lifecycleScope.launch {
-                        val isExtension = media.id < 0
-                        val buttons = mutableListOf<RPC.Link>()
-                        if (!isExtension) {
-                            val muUrl = if (media.muSeriesId != null) {
-                                media.shareLink?.takeIf { it.contains("mangaupdates") }
-                                    ?: "https://www.mangaupdates.com/series/${media.muSeriesId!!.toString(36)}"
-                            } else null
-                            muUrl?.let { buttons.add(RPC.Link("View on MangaUpdates", it)) }
-                            buttons.add(RPC.Link("View Manga", "https://anilist.co/manga/${media.id}/"))
-                            media.idMAL?.let {
-                                buttons.add(RPC.Link("View on MyAnimeList", "https://myanimelist.net/manga/$it"))
-                            }
-                        }
-                        val rpcData = RPC.Companion.RPCData(
-                            applicationId = Discord.application_Id,
-                            type = RPC.Type.WATCHING,
-                            activityName = media.userPreferredName,
-                            details = chap.title?.takeIf { it.isNotEmpty() } ?: chap.number,
-                            state = "Chapter ${chap.number}/${media.manga?.totalChapters ?: "??"}",
-                            largeImage = media.cover?.let { cover ->
-                                RPC.Link(media.userPreferredName, cover)
-                            },
-                            smallImage = null,
-                            buttons = buttons
-                        )
-                        RPCManager.setPresence(context, rpcData)
-                    }
-                }
+                updateDiscordRPC(chap)
             }
         }
 
@@ -1770,40 +1738,59 @@ class MangaReaderActivity : AppCompatActivity() {
         }
     }
 
+    /** The chapter on Discord, and when it started showing — the elapsed time Discord counts up from. */
+    private var rpcChapter: ani.dantotsu.media.manga.MangaChapter? = null
+    private var rpcChapterStartedAt = 0L
+
+    /**
+     * Publishes [chap] as what's being read. Called again for the same chapter keeps its elapsed
+     * time; a new chapter starts it over.
+     */
     private fun updateDiscordRPC(chap: ani.dantotsu.media.manga.MangaChapter) {
+        if (rpcChapter?.uniqueNumber() != chap.uniqueNumber() || rpcChapterStartedAt == 0L) {
+            rpcChapterStartedAt = System.currentTimeMillis()
+        }
+        rpcChapter = chap
         val context = this
-        val offline: Boolean = PrefManager.getVal(PrefName.OfflineMode)
-        val incognito: Boolean = PrefManager.getVal(PrefName.Incognito)
-        val rpcEnabled: Boolean = PrefManager.getVal(PrefName.rpcEnabled)
-        if (!isOnline(context) || offline || Discord.token == null || incognito || !rpcEnabled) return
+        if (!RPCManager.isAllowed(context)) return
         lifecycleScope.launch {
-            val isExtension = media.id < 0
-            val buttons = mutableListOf<RPC.Link>()
-            if (!isExtension) {
-                val muUrl = if (media.muSeriesId != null) {
-                    media.shareLink?.takeIf { it.contains("mangaupdates") }
-                        ?: "https://www.mangaupdates.com/series/${media.muSeriesId!!.toString(36)}"
-                } else null
-                muUrl?.let { buttons.add(RPC.Link("View on MangaUpdates", it)) }
-                buttons.add(RPC.Link("View Manga", "https://anilist.co/manga/${media.id}/"))
-                media.idMAL?.let {
-                    buttons.add(RPC.Link("View on MyAnimeList", "https://myanimelist.net/manga/$it"))
-                }
-            }
+            val source = PresenceSources.forMedia(media, model.mangaReadSources)
             val rpcData = RPC.Companion.RPCData(
                 applicationId = Discord.application_Id,
+                kind = RPC.Kind.MANGA,
                 type = RPC.Type.WATCHING,
                 activityName = media.userPreferredName,
-                details = chap.title?.takeIf { it.isNotEmpty() } ?: chap.number,
-                state = "Chapter ${chap.number}/${media.manga?.totalChapters ?: "??"}",
+                details = chap.title?.takeIf { it.isNotEmpty() }
+                    ?: if (media.id < 0) "Chapter ${chap.number}" else chap.number,
+                // An extension-only entry has no known total, so its chapter line would only
+                // ever read "/??" — the chapter itself is already in the line above.
+                state = if (media.id < 0) null
+                else "Chapter ${chap.number}/${media.manga?.totalChapters ?: "??"}",
                 largeImage = media.cover?.let { cover ->
                     RPC.Link(media.userPreferredName, cover)
                 },
                 smallImage = null,
-                buttons = buttons
+                // No end: a chapter has no fixed length, so Discord shows time elapsed instead.
+                startTimestamp = rpcChapterStartedAt,
+                source = source,
             )
             RPCManager.setPresence(context, rpcData)
         }
+    }
+
+    // Out of sight is not being read: the presence goes while the reader is in the background,
+    // and comes back — its elapsed time restarted — when the reader does.
+    override fun onStart() {
+        super.onStart()
+        rpcChapter?.let {
+            rpcChapterStartedAt = 0L
+            updateDiscordRPC(it)
+        }
+    }
+
+    override fun onStop() {
+        RPCManager.clearPresence(this, RPC.Kind.MANGA)
+        super.onStop()
     }
 
     private fun loadNextChapterInContinuous(nextIdx: Int) {

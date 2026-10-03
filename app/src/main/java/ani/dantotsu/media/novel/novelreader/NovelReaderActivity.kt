@@ -41,6 +41,10 @@ import ani.dantotsu.connections.crashlytics.CrashlyticsInterface
 import ani.dantotsu.media.screenshot.ScreenshotDialogFragment
 import ani.dantotsu.media.screenshot.ScreenshotUtil
 import ani.dantotsu.connections.updateProgress
+import ani.dantotsu.connections.discord.Discord
+import ani.dantotsu.connections.discord.RPC
+import ani.dantotsu.connections.discord.PresenceSources
+import ani.dantotsu.connections.discord.RPCManager
 import ani.dantotsu.media.Media
 import ani.dantotsu.media.MediaNameAdapter
 import ani.dantotsu.util.customAlertDialog
@@ -232,6 +236,7 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
         if (NovelTts.onFollow === ttsFollow) NovelTts.onFollow = null
         if (NovelTts.onRequestChapter === ttsRequestChapter) NovelTts.onRequestChapter = null
         if (NovelTts.onHighlight === ttsHighlight) NovelTts.onHighlight = null
+        RPCManager.clearPresence(this, RPC.Kind.NOVEL)
         super.onDestroy()
     }
 
@@ -1019,7 +1024,71 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
         // business and goes out separately, below.
         PrefManager.setCustomVal(positionKey, info.cfi)
         trackProgress(info)
+        updateDiscordRPC()
     }
+
+    // region Discord
+
+    /** The chapter on Discord, and when it started showing — the elapsed time Discord counts up from. */
+    private var rpcChapterTitle: String? = null
+    private var rpcChapterStartedAt = 0L
+
+    /**
+     * Publishes the current chapter as what's being read — only when it changes, since this runs
+     * on every page turn. A new chapter restarts the elapsed time.
+     */
+    private fun updateDiscordRPC(force: Boolean = false) {
+        val chapterTitle = currentChapterTitle().takeIf { it.isNotBlank() } ?: return
+        if (!force && chapterTitle == rpcChapterTitle) return
+        if (chapterTitle != rpcChapterTitle || rpcChapterStartedAt == 0L) {
+            rpcChapterStartedAt = System.currentTimeMillis()
+        }
+        rpcChapterTitle = chapterTitle
+        if (!RPCManager.isAllowed(this)) return
+
+        val media = LNReaderSession.media
+        val title = media?.userPreferredName ?: LNReaderSession.novel?.name ?: book.title.orEmpty()
+        val number = if (LNReaderSession.isActive) sessionChapterNumber() else null
+        val author = book.author?.joinToString(", ")?.takeIf { it.isNotBlank() }
+        lifecycleScope.launch {
+            // AniList files light novels under /manga/; without an AniList entry, the novel's page
+            // on the plugin it's read through.
+            val source = media?.takeIf { it.id >= 0 }?.let { PresenceSources.anilist(it.id, isAnime = false, noun = "Novel") }
+                ?: PresenceSources.novelPlugin()
+            RPCManager.setPresence(
+                this@NovelReaderActivity,
+                RPC.Companion.RPCData(
+                    applicationId = Discord.application_Id,
+                    kind = RPC.Kind.NOVEL,
+                    type = RPC.Type.WATCHING,
+                    activityName = title.ifBlank { "Dantotsu" },
+                    details = chapterTitle,
+                    state = number?.let { "Chapter $it" } ?: author,
+                    largeImage = media?.cover?.let { RPC.Link(title, it) },
+                    // No end: a chapter has no fixed length, so Discord shows time elapsed instead.
+                    startTimestamp = rpcChapterStartedAt,
+                    source = source,
+                )
+            )
+        }
+    }
+
+    // Out of sight is not being read: the presence goes while the reader is in the background,
+    // and comes back — its elapsed time restarted — when the reader does.
+    override fun onStart() {
+        super.onStart()
+        if (rpcChapterTitle != null) {
+            rpcChapterStartedAt = 0L
+            updateDiscordRPC(force = true)
+        }
+    }
+
+    override fun onStop() {
+        RPCManager.clearPresence(this, RPC.Kind.NOVEL)
+        super.onStop()
+    }
+
+    // endregion
 
     // region Progress
 

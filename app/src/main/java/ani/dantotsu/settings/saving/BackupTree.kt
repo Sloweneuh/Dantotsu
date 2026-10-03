@@ -158,10 +158,9 @@ object BackupTree {
                         BackupItem(PrefName.DiscordUserName, R.string.backup_discord_username),
                         BackupItem(PrefName.DiscordAvatar, R.string.backup_discord_avatar),
                         BackupItem(PrefName.rpcEnabled, R.string.enable_rpc),
-                        BackupItem(PrefName.DiscordRPCModeAnime, R.string.discord_anime_presence),
-                        BackupItem(PrefName.DiscordRPCModeManga, R.string.discord_manga_presence),
-                        BackupItem(PrefName.DiscordRPCShowIconAnime, R.string.discord_rpc_show_icon_anime),
-                        BackupItem(PrefName.DiscordRPCShowIconManga, R.string.discord_rpc_show_icon_manga),
+                        BackupItem(PrefName.DiscordRPCMode, R.string.discord_rpc_mode),
+                        BackupItem(PrefName.DiscordRPCShowSiteIcon, R.string.discord_rpc_show_site_icon),
+                        BackupItem(PrefName.DiscordRPCShowProfile, R.string.discord_rpc_show_profile),
                     )
                 ),
                 // Carried so restoring a backup onto a new device leaves it already linked, which
@@ -744,6 +743,7 @@ object BackupTree {
         PrefName.AllowOpeningLinks.name to R.string.pref_allow_opening_links,
         PrefName.AskDownloadPdf.name to R.string.pref_ask_download_pdf,
         PrefName.DiscordShowButtons.name to R.string.pref_discord_show_buttons,
+        PrefName.DiscordRPCBrowsing.name to R.string.discord_rpc_browsing,
         PrefName.DiscordStatus.name to R.string.pref_discord_status,
         PrefName.HandoffDiscoveryEnabled.name to R.string.handoff_discovery_setting,
         PrefName.HiddenFromLists.name to R.string.pref_hidden_from_lists,

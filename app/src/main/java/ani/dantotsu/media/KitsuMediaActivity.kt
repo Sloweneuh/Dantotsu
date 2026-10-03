@@ -1,5 +1,7 @@
 package ani.dantotsu.media
 
+import ani.dantotsu.connections.discord.PresenceSources
+import ani.dantotsu.connections.discord.BrowsingPresence
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
@@ -183,6 +185,9 @@ class KitsuMediaActivity : AppCompatActivity() {
         }
     }
 
+    /** Opt-in Discord presence for this page — see [BrowsingPresence]. */
+    private val browsingPresence = BrowsingPresence(this)
+
     private fun setupHeader(full: KitsuApi.KitsuMediaFull) {
         val media = full.media
         val posterUrl = media.posterImage?.original ?: media.posterImage?.medium ?: media.posterImage?.small
@@ -194,6 +199,14 @@ class KitsuMediaActivity : AppCompatActivity() {
             ?: media.titles?.values?.firstOrNull { !it.isNullOrBlank() }
             ?: getString(R.string.unknown)
         binding.kitsuMediaTitle.text = title
+        val isNovel = media.subtype.equals("novel", ignoreCase = true)
+        val kitsuId = media.slug ?: intent.getStringExtra(EXTRA_MEDIA_ID)
+        browsingPresence.update(
+            BrowsingPresence.Page(
+                title, posterUrl,
+                kitsuId?.let { PresenceSources.kitsu(it, isAnime, PresenceSources.noun(isAnime, isNovel)) },
+            )
+        )
         binding.kitsuMediaTitle.setOnLongClickListener { copyToClipboard(title); true }
         binding.kitsuMediaCover.setOnLongClickListener {
             ImageViewDialog.newInstance(this, getString(R.string.cover, title), posterUrl)

@@ -1446,6 +1446,15 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="activities">Activities</string>
     <string name="enable_rpc">Enable Discord RPC</string>
     <string name="enable_rpc_desc">Display your taste to plebs on Discord!</string>
+    <string name="discord_rpc_show_buttons">Show media button</string>
+    <string name="discord_rpc_mode">Discord presence mode</string>
+    <string name="discord_media_mode">Media mode</string>
+    <string name="discord_media_mode_desc">The button and icon show the site the anime or manga comes from: AniList, MangaUpdates, MAL, Kitsu, Simkl, MangaBaka, Comick or the extension</string>
+    <string name="discord_dantotsu_mode_desc">The button links to the anime or manga on its site, under Dantotsu\'s icon</string>
+    <string name="discord_rpc_show_site_icon">Show icon</string>
+    <string name="discord_rpc_show_profile">Show profile button</string>
+    <string name="discord_rpc_browsing">Share what you\'re browsing</string>
+    <string name="discord_browsing_details">Browsing</string>
 
     <string name="incorrect_password">Incorrect password</string>
     <string name="password_cannot_be_empty">Password cannot be empty</string>
@@ -1595,7 +1604,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
          Only the sync conflict prompt shows these, and only when two devices disagree about one. -->
     <string name="pref_allow_opening_links">Open supported links in the app</string>
     <string name="pref_ask_download_pdf">Ask before downloading as PDF</string>
-    <string name="pref_discord_show_buttons">Discord: show buttons</string>
+    <string name="pref_discord_show_buttons">Discord: show media button</string>
     <string name="pref_discord_status">Discord: online status</string>
     <string name="pref_hidden_from_lists">Titles hidden from lists</string>
     <string name="pref_info_tab_order_anime">Info tab order (anime)</string>

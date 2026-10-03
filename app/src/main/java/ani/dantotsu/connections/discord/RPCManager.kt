@@ -7,7 +7,6 @@ package ani.dantotsu.connections.discord
 
 import android.content.Context
 import ani.dantotsu.connections.discord.models.DiscordActivity
-import ani.dantotsu.connections.mal.MAL
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.util.Logger
@@ -50,8 +49,36 @@ object RPCManager {
     /** Tracks whether the DiscordService has already been started to avoid redundant calls */
     private var serviceStarted = false
 
+    /**
+     * The kind of presence on show \u2014 which also says which screen owns it \u2014 or null when none
+     * is. Screens hand off to one another (media page \u2192 player \u2192 back), and the outgoing screen's
+     * clear can land after the incoming one's set; [clearPresence] ignores a clear for any other
+     * kind, so that late clear can't wipe the new presence.
+     */
+    @Volatile
+    private var owner: RPC.Kind? = null
+
+    /**
+     * The opt-in browsing presence of the media page still on screen, kept while something else
+     * is showing so it can come back once that ends (an OP/ED stops, the player closes onto it).
+     * Dropped when the page itself clears it.
+     */
+    @Volatile
+    private var browsing: Pair<Context, RPC.Companion.RPCData>? = null
+
 
     // ΓöÇΓöÇΓöÇ Public API ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+
+    /**
+     * Whether a screen may publish presence at all: logged in to Discord, presence switched on,
+     * and neither incognito nor offline.
+     */
+    fun isAllowed(context: Context): Boolean =
+        Discord.token != null &&
+            PrefManager.getVal<Boolean>(PrefName.rpcEnabled) &&
+            !PrefManager.getVal<Boolean>(PrefName.Incognito) &&
+            !PrefManager.getVal<Boolean>(PrefName.OfflineMode) &&
+            ani.dantotsu.isOnline(context)
 
     /**
      * Set / update Discord Rich Presence.
@@ -60,6 +87,19 @@ object RPCManager {
      * @param data    The presence data built by the calling screen
      */
     fun setPresence(context: Context, data: RPC.Companion.RPCData) {
+        val current = owner
+        when (data.kind) {
+            // Remembered even when it can't show yet, so it returns when the foreground ends.
+            RPC.Kind.BROWSING -> {
+                browsing = context.applicationContext to data
+                if (current != null && current != RPC.Kind.BROWSING) return
+            }
+            // A theme song never displaces what is being watched or read.
+            RPC.Kind.MUSIC ->
+                if (current == RPC.Kind.ANIME || current == RPC.Kind.MANGA || current == RPC.Kind.NOVEL) return
+            else -> Unit
+        }
+        owner = data.kind
         if (!serviceStarted) {
             runCatching { 
                 context.startService(Intent(context, DiscordService::class.java))
@@ -76,7 +116,7 @@ object RPCManager {
             delay(DEBOUNCE_MS)
             Logger.log("RPCManager: Attempting to use Headless RPC...")
             val activity = buildDiscordActivity(data)
-            val isPaused = data.state?.contains("Paused", ignoreCase = true) == true
+            val isPaused = data.isPaused
 
             runCatching {
                 ensureHeadlessRpc(context)?.newActivity(activity)
@@ -91,11 +131,11 @@ object RPCManager {
             autoClearJob?.cancel()
 
             if (isPaused) {
-                // If paused, schedule an auto-cleanup after 5 minutes
+                // Left paused for [AUTO_CLEAR_INTERVAL_MS]: stop advertising it.
                 autoClearJob = scope.launch {
                     delay(AUTO_CLEAR_INTERVAL_MS)
                     Logger.log("RPCManager: Auto-clearing Headless RPC due to pause timeout.")
-                    clearPresence(context)
+                    clearPresence(context, data.kind)
                 }
             } else {
                 // If playing continuously, schedule heartbeat
@@ -116,21 +156,36 @@ object RPCManager {
     }
 
     /**
-     * Clear / stop Discord Rich Presence.
+     * Clear / stop Discord Rich Presence — only when [kind] is what is showing, see [owner]. When
+     * a page's browsing presence is still waiting underneath, that comes back instead.
      */
-    fun clearPresence(context: Context) {
+    fun clearPresence(context: Context, kind: RPC.Kind) {
+        if (kind == RPC.Kind.BROWSING) browsing = null
+        if (owner != kind) {
+            Logger.log("RPCManager: Ignoring clear for $kind — showing $owner")
+            return
+        }
+        owner = null
+        browsing?.let { (browsingContext, data) ->
+            Logger.log("RPCManager: $kind ended, back to browsing presence")
+            setPresence(browsingContext, data)
+            return
+        }
         Logger.log("RPCManager: Clearing presence...")
         debounceJob?.cancel()
         heartbeatJob?.cancel()
         autoClearJob?.cancel()
-        
+
         // Delay stopping the service. If the app is being abruptly killed (swiped from Recents),
         // onTaskRemoved will fire before 2 seconds elapse. If it's a normal exit (user pressed Back),
         // the service will gracefully stop after 2 seconds, preventing Android from leaving zombie service records.
         scope.launch {
             delay(2000)
-            runCatching { 
-                context.stopService(Intent(context, DiscordService::class.java)) 
+            // A presence set in the meantime (a screen hand-off) still needs the service's
+            // swipe-away cleanup.
+            if (owner != null) return@launch
+            runCatching {
+                context.stopService(Intent(context, DiscordService::class.java))
                 serviceStarted = false
             }
         }
@@ -155,6 +210,8 @@ object RPCManager {
      * and suspend functions, which can easily deadlock during process death.
      */
     fun clearPresenceOnKill(context: Context) {
+        owner = null
+        browsing = null
         debounceJob?.cancel()
         heartbeatJob?.cancel()
         autoClearJob?.cancel()
@@ -218,6 +275,8 @@ object RPCManager {
      * Call this when the user logs out of Discord to release all resources.
      */
     fun reset() {
+        owner = null
+        browsing = null
         debounceJob?.cancel()
         heartbeatJob?.cancel()
         autoClearJob?.cancel()
@@ -254,89 +313,28 @@ object RPCManager {
      * (no need to proxy through /external-assets).
      */
     private suspend fun buildDiscordActivity(data: RPC.Companion.RPCData): DiscordActivity {
-        val isManga = data.type == RPC.Type.WATCHING &&
-                (data.state?.contains("Reading", ignoreCase = true) == true ||
-                        data.state?.contains("Chapter", ignoreCase = true) == true)
-
-        val mode = if (isManga) PrefManager.getVal(PrefName.DiscordRPCModeManga, "dantotsu") else PrefManager.getVal(PrefName.DiscordRPCModeAnime, "dantotsu")
-        val useIconPref = if (isManga) PrefManager.getVal<Boolean>(PrefName.DiscordRPCShowIconManga, true) else PrefManager.getVal<Boolean>(PrefName.DiscordRPCShowIconAnime, true)
-
-        // Small icon will be chosen after we inspect available tracker links
-        var smallIconUrl: String? = null
-        var smallIconText: String? = null
-
-        // Build Buttons based on mode
+        val source = data.source
         val buttons = mutableListOf<DiscordActivity.Button>()
-        if (mode != "nothing") {
-            // Button 1: Media Link (Primary Tracker)
-            val trackers = runCatching {
-                data.buttons.filter {
-                    it.url.contains("anilist.co") || it.url.contains("myanimelist.net") || it.url.contains("mangaupdates.com")
-                }
-            }.getOrDefault(emptyList())
+        // The media's page on the site it came from — the same in either mode.
+        if (PresenceSettings.showMediaButton) {
+            source?.url?.takeIf { it.isValidUrl() }?.let { url ->
+                buttons.add(DiscordActivity.Button(label = source.buttonLabel, url = url))
+            }
+        }
+        // The user's own profile on that site, when logged in there.
+        if (PresenceSettings.showProfile) {
+            source?.let { PresenceSources.profileUrl(it.site) }?.takeIf { it.isValidUrl() }?.let { url ->
+                buttons.add(DiscordActivity.Button(label = "View Profile", url = url))
+            }
+        }
 
-            // Prefer MangaUpdates for manga reading when available, otherwise fall back to mode order
-            val primaryTracker = if (isManga) {
-                trackers.find { it.url.contains("mangaupdates.com") }
-                    ?: when (mode) {
-                        "mal" -> trackers.find { it.url.contains("myanimelist.net") }
-                            ?: trackers.find { it.url.contains("anilist.co") }
-                        "anilist" -> trackers.find { it.url.contains("anilist.co") }
-                            ?: trackers.find { it.url.contains("myanimelist.net") }
-                        else -> trackers.firstOrNull()
-                    }
-            } else {
-                when (mode) {
-                    "mal" -> trackers.find { it.url.contains("myanimelist.net") }
-                        ?: trackers.find { it.url.contains("mangaupdates.com") }
-                        ?: trackers.find { it.url.contains("anilist.co") }
-                    "anilist" -> trackers.find { it.url.contains("anilist.co") }
-                        ?: trackers.find { it.url.contains("mangaupdates.com") }
-                        ?: trackers.find { it.url.contains("myanimelist.net") }
-                    else -> trackers.firstOrNull()
-                }
-            }
-            
-            primaryTracker?.let {
-                if (it.url.isValidUrl()) {
-                    buttons.add(DiscordActivity.Button(label = it.label, url = it.url))
-                }
-            }
-
-            // Decide small icon: match the actual tracker link, fall back to Dantotsu when none exists
-            if (useIconPref && mode != "nothing") {
-                if (primaryTracker == null) {
-                    // No tracker link (e.g. extension source) — always use Dantotsu icon
-                    smallIconUrl = Discord.small_Image
-                    smallIconText = "Dantotsu"
-                } else if (primaryTracker.url.contains("mangaupdates.com")) {
-                    smallIconUrl = Discord.small_Image_MangaUpdates
-                    smallIconText = "MangaUpdates"
-                } else {
-                    when (mode) {
-                        "anilist" -> { smallIconUrl = Discord.small_Image_AniList; smallIconText = "AniList" }
-                        "mal" -> { smallIconUrl = Discord.small_Image_MAL; smallIconText = "MyAnimeList" }
-                        else -> { smallIconUrl = Discord.small_Image; smallIconText = "Dantotsu" }
-                    }
-                }
-            }
-
-            // Button 2: User Profile Link
-            val anilistUser = PrefManager.getVal(PrefName.AnilistUserName, "")
-            val malUser = MAL.username ?: PrefManager.getVal(PrefName.MALUserName, "")
-            
-            val (userProfileUrl, profileLabel) = when (mode) {
-                "mal" -> (if (malUser.isNotEmpty()) "https://myanimelist.net/profile/$malUser" else null) to "View Profile"
-                "anilist" -> (if (anilistUser.isNotEmpty()) "https://anilist.co/user/$anilistUser/" else null) to "View Profile"
-                "dantotsu" -> (if (anilistUser.isNotEmpty()) "https://dantotsu.app/u/$anilistUser" else null) to "Dantotsu Profile"
-                else -> null to null
-            }
-
-            userProfileUrl?.let { url ->
-                if (url.isValidUrl()) {
-                    buttons.add(DiscordActivity.Button(label = profileLabel ?: "View Profile", url = url))
-                }
-            }
+        // Media mode shows the site's icon; Dantotsu mode, and media from a site with no icon of
+        // its own (an extension missing from every added repo), Dantotsu's.
+        val (smallIconUrl, smallIconText) = when {
+            !PresenceSettings.showSiteIcon -> null to null
+            PresenceSettings.mode == PresenceSettings.MODE_MEDIA && source != null ->
+                PresenceSources.icon(source) ?: (Discord.small_Image to "Dantotsu")
+            else -> Discord.small_Image to "Dantotsu"
         }
 
         return DiscordActivity(

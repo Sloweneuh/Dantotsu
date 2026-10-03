@@ -1,5 +1,7 @@
 package ani.dantotsu.media
 
+import ani.dantotsu.connections.discord.PresenceSources
+import ani.dantotsu.connections.discord.BrowsingPresence
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
@@ -174,6 +176,9 @@ class SimklMediaActivity : AppCompatActivity() {
         }
     }
 
+    /** Opt-in Discord presence for this page — see [BrowsingPresence]. */
+    private val browsingPresence = BrowsingPresence(this)
+
     private fun setupHeader(full: SimklApi.SimklAnimeFull) {
         val posterUrl = SimklApi.posterUrl(full.poster, "_ca")
         val bannerUrl = SimklApi.posterUrl(full.fanart, "_w") ?: posterUrl
@@ -182,6 +187,10 @@ class SimklMediaActivity : AppCompatActivity() {
 
         val title = full.title ?: full.enTitle ?: getString(R.string.unknown)
         binding.simklMediaTitle.text = title
+        val simklId = intent.getLongExtra(EXTRA_SIMKL_ID, -1L).takeIf { it > 0 }
+        browsingPresence.update(
+            BrowsingPresence.Page(title, posterUrl, simklId?.let { PresenceSources.simkl(it) })
+        )
         binding.simklMediaTitle.setOnLongClickListener { copyToClipboard(title); true }
         binding.simklMediaCover.setOnLongClickListener {
             ImageViewDialog.newInstance(this, getString(R.string.cover, title), posterUrl)

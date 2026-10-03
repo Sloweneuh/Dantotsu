@@ -1,5 +1,7 @@
 package ani.dantotsu.settings
 
+import ani.dantotsu.connections.discord.PresenceSources
+import ani.dantotsu.connections.discord.BrowsingPresence
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.graphics.Typeface
@@ -304,6 +306,9 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
         return map
     }
 
+    /** Opt-in Discord presence for this page — see [BrowsingPresence]. */
+    private val browsingPresence = BrowsingPresence(this)
+
     private fun bindInitial() {
         val title = manga?.title ?: anime?.title ?: lnNovel?.name?.takeIf { it.isNotBlank() }
             ?: novel?.name ?: ""
@@ -314,6 +319,17 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
         }
         val cover = manga?.thumbnail_url ?: anime?.thumbnail_url
             ?: lnNovel?.cover?.takeIf { it.isNotBlank() } ?: novel?.coverUrl?.url
+        // The entry on the extension's own source; resolving its address can run a novel
+        // plugin's script, so off the main thread.
+        pkg?.let { extPkg ->
+            lifecycleScope.launch {
+                val source = PresenceSources.extensionEntry(
+                    this@ExtensionMediaInfoActivity, extPkg, langIndex,
+                    manga, anime, novel?.link, novelParser,
+                )
+                browsingPresence.update(BrowsingPresence.Page(title, cover, source))
+            }
+        }
         if (!cover.isNullOrBlank() && sourceHeaders.isNotEmpty() && (cover.startsWith("http://") || cover.startsWith("https://"))) {
             binding.extensionInfoCover.loadCoverImage(FileUrl(cover, sourceHeaders)) { maybeStartEnterTransition() }
         } else {
@@ -857,12 +873,21 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
 
                     val title = manga?.title ?: ""
                     val coverUrl = manga?.thumbnail_url
+                    // The entry on the source's own site: there is no saved series record for
+                    // media built here, so this is what Discord's media button links to.
+                    val entryUrl = manga?.let { m ->
+                        runCatching {
+                            (ext.sources.getOrNull(currentLangIndex)
+                                as? eu.kanade.tachiyomi.source.online.HttpSource)?.getMangaUrl(m)
+                        }.getOrNull()
+                    }
                     Media(
                         id = -1,
                         name = title,
                         nameRomaji = title,
                         userPreferredName = title,
                         cover = coverUrl,
+                        shareLink = entryUrl,
                         isAdult = ext.isNsfw,
                         manga = Manga(
                             chapters = chaptersMap,

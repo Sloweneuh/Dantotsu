@@ -1576,6 +1576,15 @@
     <string name="custom_interval_title">Intervalle personnalisé</string>
     <string name="custom_interval_desc">Entrez l\'intervalle en minutes (1–1440)</string>
     <string name="enable_rpc_desc">Affichez vos goûts aux plébéiens sur Discord !</string>
+    <string name="discord_rpc_show_buttons">Afficher le bouton du média</string>
+    <string name="discord_rpc_mode">Mode de présence Discord</string>
+    <string name="discord_media_mode">Mode média</string>
+    <string name="discord_media_mode_desc">Le bouton et l\'icône montrent le site d\'où vient l\'anime ou le manga : AniList, MangaUpdates, MAL, Kitsu, Simkl, MangaBaka, Comick ou l\'extension</string>
+    <string name="discord_dantotsu_mode_desc">Le bouton mène à l\'anime ou au manga sur son site, sous l\'icône de Dantotsu</string>
+    <string name="discord_rpc_show_site_icon">Afficher l\'icône</string>
+    <string name="discord_rpc_show_profile">Afficher le bouton de profil</string>
+    <string name="discord_rpc_browsing">Partager ce que vous consultez</string>
+    <string name="discord_browsing_details">Consulte</string>
     <string name="purge_confirm">Êtes-vous sûr de vouloir supprimer tous les téléchargements %1$s ?</string>
     <string name="delete_fail_reason">Échec de la suppression à cause de… %1$s</string>
     <string name="delete_comment_confirm">Êtes-vous sûr de vouloir supprimer ce commentaire ?</string>
@@ -1634,7 +1643,7 @@
     <string name="cloud_sync_conflict_label">Conflit</string>
     <string name="pref_allow_opening_links">Ouvrir les liens compatibles dans l\'application</string>
     <string name="pref_ask_download_pdf">Demander avant de télécharger en PDF</string>
-    <string name="pref_discord_show_buttons">Discord : afficher les boutons</string>
+    <string name="pref_discord_show_buttons">Discord : afficher le bouton du média</string>
     <string name="pref_discord_status">Discord : statut en ligne</string>
     <string name="pref_hidden_from_lists">Titres masqués des listes</string>
     <string name="pref_info_tab_order_anime">Ordre des onglets d\'infos (animés)</string>

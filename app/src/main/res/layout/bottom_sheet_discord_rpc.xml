@@ -32,43 +32,12 @@
             android:textSize="20sp"
             android:textStyle="bold" />
 
-        <!-- Toggle Group -->
-        <com.google.android.material.button.MaterialButtonToggleGroup
-            android:id="@+id/mediaTypeTabGroup"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="24dp"
-            android:layout_marginTop="24dp"
-            android:gravity="center_horizontal"
-            app:singleSelection="true"
-            app:selectionRequired="true"
-            app:checkedButton="@+id/btnTabAnime">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnTabAnime"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:fontFamily="@font/poppins_semi_bold"
-                android:text="ANIME" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnTabManga"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:fontFamily="@font/poppins_semi_bold"
-                android:text="MANGA" />
-        </com.google.android.material.button.MaterialButtonToggleGroup>
-
         <!-- Preview Area -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="16dp"
-            android:layout_marginTop="32dp"
+            android:layout_marginTop="24dp"
             android:orientation="vertical">
 
             <TextView
@@ -158,7 +127,7 @@
                                 android:layout_height="wrap_content"
                                 android:ellipsize="end"
                                 android:maxLines="1"
-                                android:text="Episode : 1/??"
+                                android:text="Episode 1/??"
                                 android:textColor="#dcddde"
                                 android:textSize="13sp" />
 
@@ -245,11 +214,11 @@
             android:paddingHorizontal="16dp">
 
             <com.google.android.material.radiobutton.MaterialRadioButton
-                android:id="@+id/radioNothing"
+                android:id="@+id/radioMedia"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:fontFamily="@font/poppins_semi_bold"
-                android:text="@string/discord_nothing_button" />
+                android:text="@string/discord_media_mode" />
 
             <com.google.android.material.radiobutton.MaterialRadioButton
                 android:id="@+id/radioDantotsu"
@@ -257,21 +226,20 @@
                 android:layout_height="wrap_content"
                 android:fontFamily="@font/poppins_semi_bold"
                 android:text="@string/discord_dantotsu_mode" />
-
-            <com.google.android.material.radiobutton.MaterialRadioButton
-                android:id="@+id/radioAnilist"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:fontFamily="@font/poppins_semi_bold"
-                android:text="@string/discord_anilist_mode" />
-
-            <com.google.android.material.radiobutton.MaterialRadioButton
-                android:id="@+id/radioMal"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:fontFamily="@font/poppins_semi_bold"
-                android:text="@string/discord_mal_mode" />
         </RadioGroup>
+
+        <!-- What the selected mode does; set from the fragment. -->
+        <TextView
+            android:id="@+id/modeDescription"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:alpha="0.66"
+            android:fontFamily="@font/poppins"
+            android:paddingHorizontal="16dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="8dp"
+            android:textColor="?attr/colorOnBackground"
+            android:textSize="12sp" />
 
         <com.google.android.material.materialswitch.MaterialSwitch
             android:id="@+id/switchShowIcon"
@@ -281,7 +249,43 @@
             android:fontFamily="@font/poppins_bold"
             android:minHeight="48dp"
             android:padding="16dp"
-            android:text="@string/use_anilist_icon"
+            android:text="@string/discord_rpc_show_site_icon"
+            android:textColor="?attr/colorOnBackground"
+            app:thumbTint="@color/button_switch_track" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/switchShowButtons"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:elegantTextHeight="true"
+            android:fontFamily="@font/poppins_bold"
+            android:minHeight="48dp"
+            android:padding="16dp"
+            android:text="@string/discord_rpc_show_buttons"
+            android:textColor="?attr/colorOnBackground"
+            app:thumbTint="@color/button_switch_track" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/switchShowProfile"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:elegantTextHeight="true"
+            android:fontFamily="@font/poppins_bold"
+            android:minHeight="48dp"
+            android:padding="16dp"
+            android:text="@string/discord_rpc_show_profile"
+            android:textColor="?attr/colorOnBackground"
+            app:thumbTint="@color/button_switch_track" />
+
+        <com.google.android.material.materialswitch.MaterialSwitch
+            android:id="@+id/switchShareBrowsing"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:elegantTextHeight="true"
+            android:fontFamily="@font/poppins_bold"
+            android:minHeight="48dp"
+            android:padding="16dp"
+            android:text="@string/discord_rpc_browsing"
             android:textColor="?attr/colorOnBackground"
             app:thumbTint="@color/button_switch_track" />
 

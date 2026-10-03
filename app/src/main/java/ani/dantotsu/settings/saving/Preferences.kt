@@ -449,6 +449,12 @@ enum class PrefName(val data: Pref) {
     DiscordRPCShowIconAnime(Pref(Location.Irrelevant, Boolean::class, true)),
     DiscordRPCShowIconManga(Pref(Location.Irrelevant, Boolean::class, true)),
     DiscordShowButtons(Pref(Location.Irrelevant, Boolean::class, true)),
+    /** [ani.dantotsu.connections.discord.PresenceSettings]: "media" or "dantotsu"; empty until migrated. */
+    DiscordRPCMode(Pref(Location.Irrelevant, String::class, "")),
+    DiscordRPCShowSiteIcon(Pref(Location.Irrelevant, Boolean::class, true)),
+    DiscordRPCShowProfile(Pref(Location.Irrelevant, Boolean::class, true)),
+    /** Opt-in: show the media page being looked at on Discord. */
+    DiscordRPCBrowsing(Pref(Location.Irrelevant, Boolean::class, false)),
     DownloadsKeys(Pref(Location.Irrelevant, String::class, "")),
     NovelLastExtCheck(Pref(Location.Irrelevant, Long::class, 0L)),
     ImageUrl(Pref(Location.Irrelevant, String::class, "")),

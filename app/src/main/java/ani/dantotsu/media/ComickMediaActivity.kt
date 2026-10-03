@@ -1,5 +1,7 @@
 package ani.dantotsu.media
 
+import ani.dantotsu.connections.discord.PresenceSources
+import ani.dantotsu.connections.discord.BrowsingPresence
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.net.Uri
@@ -575,6 +577,9 @@ class ComickMediaActivity : AppCompatActivity() {
         } catch (_: Exception) { "" }
     }
 
+    /** Opt-in Discord presence for this page — see [BrowsingPresence]. */
+    private val browsingPresence = BrowsingPresence(this)
+
     private fun setupHeader(comic: ComickComic) {
         val coverUrl = comic.md_covers?.firstOrNull()?.b2key?.let { "https://meo.comick.pictures/$it" }
         if (coverUrl != null) {
@@ -583,6 +588,13 @@ class ComickMediaActivity : AppCompatActivity() {
         }
         val displayTitle = comic.displayTitle() ?: getString(R.string.unknown)
         binding.comickMediaTitle.text = displayTitle
+        val noun = PresenceSources.noun(isAnimeMode, comic.media_type.equals("novel", ignoreCase = true))
+        browsingPresence.update(
+            BrowsingPresence.Page(
+                displayTitle, coverUrl,
+                comic.slug?.let { PresenceSources.comick(it, mediaType, noun) },
+            )
+        )
         binding.comickMediaTitle.setOnLongClickListener {
             copyToClipboard(displayTitle)
             true

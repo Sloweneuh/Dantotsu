@@ -95,6 +95,14 @@ object Discord {
         "https://cdn.myanimelist.net/img/sp/icon/apple-touch-icon-256.png"
     const val small_Image_Simkl: String =
         "https://eu.simkl.in/img_favicon/v2/favicon-192x192.png"
+    // Kitsu's own icons carry a build hash in their file name, so its GitHub organisation's
+    // avatar — the same fox — is the address that will still work after its next deploy.
+    const val small_Image_Kitsu: String =
+        "https://avatars.githubusercontent.com/u/7648832?s=256"
+    const val small_Image_MangaBaka: String =
+        "https://mangabaka.org/images/maomao/180x180.png"
+    const val small_Image_Comick: String =
+        "https://comick.dev/static/icons/unicorn-256_maskable.png"
     const val small_Image_MangaUpdates: String =
         "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ8HPq8qdXYifvxu8XdsbuSiE4vjlLYw4k8kg&s"
 }

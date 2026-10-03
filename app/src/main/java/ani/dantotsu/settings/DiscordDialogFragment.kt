@@ -7,8 +7,8 @@ import android.view.ViewGroup
 import ani.dantotsu.BottomSheetDialogFragment
 import ani.dantotsu.R
 import ani.dantotsu.connections.discord.Discord
+import ani.dantotsu.connections.discord.PresenceSettings
 import ani.dantotsu.connections.discord.RPCManager
-import ani.dantotsu.connections.mal.MAL
 import ani.dantotsu.databinding.BottomSheetDiscordRpcBinding
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
@@ -19,12 +19,14 @@ import kotlinx.coroutines.launch
 import androidx.lifecycle.lifecycleScope
 import java.io.File
 
+/**
+ * Rich Presence settings — one set for every kind of media, see [PresenceSettings] — with a
+ * preview of how the status looks under them.
+ */
 class DiscordDialogFragment : BottomSheetDialogFragment() {
     private var _binding: BottomSheetDiscordRpcBinding? = null
     private val binding get() = _binding!!
 
-    private var isMangaTabSelected = false
-    private var isLoadingSettings = false
     private var tokenRefreshJob: Job? = null
 
     override fun onCreateView(
@@ -39,53 +41,39 @@ class DiscordDialogFragment : BottomSheetDialogFragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Setup MAL login requirement
-        val malEnabled = MAL.token != null
-        binding.radioMal.isEnabled = malEnabled
-        if (!malEnabled) {
-            binding.radioMal.text = "${getString(R.string.discord_mal_mode)} (Login Required)"
-        }
-
-        // Listeners for Controls
-        binding.switchShowIcon.setOnCheckedChangeListener { _, isChecked ->
-            if (isLoadingSettings) return@setOnCheckedChangeListener
-            if (isMangaTabSelected) {
-                PrefManager.setVal(PrefName.DiscordRPCShowIconManga, isChecked)
-            } else {
-                PrefManager.setVal(PrefName.DiscordRPCShowIconAnime, isChecked)
-            }
-            updatePreview()
-        }
+        // Read through PresenceSettings first: that is what carries old settings over.
+        val mode = PresenceSettings.mode
+        if (mode == PresenceSettings.MODE_DANTOTSU) binding.radioDantotsu.isChecked = true
+        else binding.radioMedia.isChecked = true
+        binding.switchShowIcon.isChecked = PresenceSettings.showSiteIcon
+        binding.switchShowButtons.isChecked = PresenceSettings.showMediaButton
+        binding.switchShowProfile.isChecked = PresenceSettings.showProfile
+        binding.switchShareBrowsing.isChecked = PrefManager.getVal(PrefName.DiscordRPCBrowsing)
 
         binding.radioGroupMode.setOnCheckedChangeListener { _, checkedId ->
-            if (isLoadingSettings) return@setOnCheckedChangeListener
-            val mode = when (checkedId) {
-                binding.radioNothing.id -> "nothing"
-                binding.radioAnilist.id -> "anilist"
-                binding.radioMal.id -> "mal"
-                else -> "dantotsu"
-            }
-            if (isMangaTabSelected) {
-                PrefManager.setVal(PrefName.DiscordRPCModeManga, mode)
-            } else {
-                PrefManager.setVal(PrefName.DiscordRPCModeAnime, mode)
-            }
+            PrefManager.setVal(
+                PrefName.DiscordRPCMode,
+                if (checkedId == binding.radioDantotsu.id) PresenceSettings.MODE_DANTOTSU
+                else PresenceSettings.MODE_MEDIA
+            )
             updatePreview()
         }
-
-        // Setup Tabs
-        binding.mediaTypeTabGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
-            if (isChecked) {
-                isMangaTabSelected = checkedId == binding.btnTabManga.id
-                loadSettingsForCurrentTab()
-                updatePreview()
-            }
+        binding.switchShowIcon.setOnCheckedChangeListener { _, isChecked ->
+            PrefManager.setVal(PrefName.DiscordRPCShowSiteIcon, isChecked)
+            updatePreview()
+        }
+        binding.switchShowButtons.setOnCheckedChangeListener { _, isChecked ->
+            PrefManager.setVal(PrefName.DiscordShowButtons, isChecked)
+            updatePreview()
+        }
+        binding.switchShowProfile.setOnCheckedChangeListener { _, isChecked ->
+            PrefManager.setVal(PrefName.DiscordRPCShowProfile, isChecked)
+            updatePreview()
+        }
+        binding.switchShareBrowsing.setOnCheckedChangeListener { _, isChecked ->
+            PrefManager.setVal(PrefName.DiscordRPCBrowsing, isChecked)
         }
 
-        // Initialize with Anime tab
-        binding.mediaTypeTabGroup.check(binding.btnTabAnime.id)
-        isMangaTabSelected = false
-        loadSettingsForCurrentTab()
         updatePreview()
         updateTokenExpiry()
 
@@ -113,7 +101,7 @@ class DiscordDialogFragment : BottomSheetDialogFragment() {
             val remaining = expiresAt - System.currentTimeMillis()
             binding.tokenExpiryStatus.visibility = View.VISIBLE
             if (remaining <= 0) {
-                binding.tokenExpiryStatus.text = "\u26a0 Token expired \u2014 will auto-refresh on next RPC"
+                binding.tokenExpiryStatus.text = "⚠ Token expired — will auto-refresh on next RPC"
             } else {
                 val days = remaining / (1000 * 60 * 60 * 24)
                 val hours = (remaining / (1000 * 60 * 60)) % 24
@@ -123,100 +111,40 @@ class DiscordDialogFragment : BottomSheetDialogFragment() {
                     if (hours > 0) append("${hours}h ")
                     if (days == 0L) append("${mins}m")
                 }.trim()
-                binding.tokenExpiryStatus.text = "\ud83d\udd04 Token auto-refreshes in $timeStr"
+                binding.tokenExpiryStatus.text = "🔄 Token auto-refreshes in $timeStr"
             }
         } else {
             binding.tokenExpiryStatus.visibility = View.GONE
         }
     }
 
-    private fun loadSettingsForCurrentTab() {
-        isLoadingSettings = true
-
-        val mode = if (isMangaTabSelected) {
-            PrefManager.getVal(PrefName.DiscordRPCModeManga, "dantotsu")
-        } else {
-            PrefManager.getVal(PrefName.DiscordRPCModeAnime, "dantotsu")
-        }
-
-        when (mode) {
-            "nothing" -> binding.radioNothing.isChecked = true
-            "dantotsu" -> binding.radioDantotsu.isChecked = true
-            "anilist" -> binding.radioAnilist.isChecked = true
-            "mal" -> binding.radioMal.isChecked = true
-            else -> binding.radioDantotsu.isChecked = true
-        }
-
-        // Update radio labels depending on whether Manga tab is selected.
-        if (isMangaTabSelected) {
-            binding.radioAnilist.text = getString(R.string.discord_anilist_mode_manga)
-            binding.radioMal.text = getString(R.string.discord_mal_mode_manga)
-        } else {
-            binding.radioAnilist.text = getString(R.string.discord_anilist_mode)
-            binding.radioMal.text = getString(R.string.discord_mal_mode)
-        }
-
-        val showIcon = if (isMangaTabSelected) {
-            PrefManager.getVal(PrefName.DiscordRPCShowIconManga, true)
-        } else {
-            PrefManager.getVal(PrefName.DiscordRPCShowIconAnime, true)
-        }
-        binding.switchShowIcon.isChecked = showIcon
-
-        isLoadingSettings = false
-    }
-
+    /** An anime from AniList, as the settings would show it. */
     private fun updatePreview() {
-        val mode = if (isMangaTabSelected) PrefManager.getVal(PrefName.DiscordRPCModeManga, "dantotsu")
-                   else PrefManager.getVal(PrefName.DiscordRPCModeAnime, "dantotsu")
-        val useIcon = if (isMangaTabSelected) PrefManager.getVal(PrefName.DiscordRPCShowIconManga, true)
-                      else PrefManager.getVal(PrefName.DiscordRPCShowIconAnime, true)
+        val mediaMode = PresenceSettings.mode == PresenceSettings.MODE_MEDIA
+        binding.modeDescription.setText(
+            if (mediaMode) R.string.discord_media_mode_desc else R.string.discord_dantotsu_mode_desc
+        )
 
-        // Mock data based on tab
-        if (isMangaTabSelected) {
-            binding.previewActivityName.text = "Reading One Piece"
-            binding.previewDetails.text = "Chapter 1100"
-            binding.previewState.text = "Chapter : 1100/??"
-        } else {
-            binding.previewActivityName.text = "Watching One-Punch Man Season 3"
-            binding.previewDetails.text = "Episode 1: Strategy Meeting"
-            binding.previewState.text = "Episode : 1/??"
-        }
-
-        // Large Image
+        binding.previewActivityName.text = "Watching One-Punch Man Season 3"
+        binding.previewDetails.text = "Episode 1: Strategy Meeting"
+        binding.previewState.text = "Episode 1/??"
         Glide.with(this).load(R.mipmap.ic_launcher).into(binding.previewLargeImage)
 
-        // Small Icon
-        if (useIcon && mode != "nothing") {
+        if (PresenceSettings.showSiteIcon) {
             binding.previewSmallImage.visibility = View.VISIBLE
-            val iconUrl = when (mode) {
-                "anilist" -> Discord.small_Image_AniList
-                "mal" -> Discord.small_Image_MAL
-                else -> Discord.small_Image
-            }
-            Glide.with(this).load(iconUrl).into(binding.previewSmallImage)
+            Glide.with(this)
+                .load(if (mediaMode) Discord.small_Image_AniList else Discord.small_Image)
+                .into(binding.previewSmallImage)
         } else {
             binding.previewSmallImage.visibility = View.GONE
         }
 
-        // Buttons
-        if (mode == "nothing") {
-            binding.previewButton1.visibility = View.GONE
-            binding.previewButton2.visibility = View.GONE
-        } else {
-            binding.previewButton1.visibility = View.VISIBLE
-            binding.previewButton2.visibility = View.VISIBLE
-
-            binding.previewButton1.text = when (mode) {
-                "mal" -> "VIEW ON MYANIMELIST"
-                else -> "VIEW ON ANILIST"
-            }
-
-            binding.previewButton2.text = when (mode) {
-                "dantotsu" -> "DANTOTSU PROFILE"
-                else -> "VIEW PROFILE"
-            }
-        }
+        binding.previewButton1.visibility =
+            if (PresenceSettings.showMediaButton) View.VISIBLE else View.GONE
+        binding.previewButton1.text = "VIEW ANIME ON ANILIST"
+        binding.previewButton2.visibility =
+            if (PresenceSettings.showProfile) View.VISIBLE else View.GONE
+        binding.previewButton2.text = "VIEW PROFILE"
     }
 
     override fun onDestroy() {

@@ -123,6 +123,7 @@ import ani.dantotsu.circularReveal
 import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.crashlytics.CrashlyticsInterface
 import ani.dantotsu.connections.discord.Discord
+import ani.dantotsu.connections.discord.PresenceSources
 import ani.dantotsu.connections.discord.RPCManager
 import ani.dantotsu.connections.discord.RPC
 import ani.dantotsu.connections.updateProgress
@@ -1721,33 +1722,33 @@ class ExoplayerView :
     }
 
     private fun discordRPC() {
+        if (!this::episode.isInitialized) return
         val context = this
         val ep = episode
-        val offline: Boolean = PrefManager.getVal(PrefName.OfflineMode)
-        val incognito: Boolean = PrefManager.getVal(PrefName.Incognito)
-        val rpcenabled: Boolean = PrefManager.getVal(PrefName.rpcEnabled)
-        if ((isOnline(context) && !offline) && Discord.token != null && !incognito && rpcenabled) {
+        if (RPCManager.isAllowed(context)) {
             lifecycleScope.launch {
-                val buttons = mutableListOf<RPC.Link>()
-                buttons.add(RPC.Link("View Anime", "https://anilist.co/anime/${media.id}/"))
-                media.idMAL?.let {
-                    buttons.add(RPC.Link("View on MyAnimeList", "https://myanimelist.net/anime/$it"))
-                }
+                val source = PresenceSources.forMedia(media, model.watchSources)
 
+                // Whichever player is actually playing: while casting, the phone's own player is
+                // stopped, and reading it would report the episode paused — and auto-clear it —
+                // for as long as it plays on the TV.
+                val active: Player = castPlayer?.takeIf { playerView.player === it } ?: exoPlayer
                 val now = java.lang.System.currentTimeMillis()
-                val currentPosMs = if (exoPlayer.currentPosition > 0) exoPlayer.currentPosition else 0L
-                val safeDurationMs = if (exoPlayer.duration > 0 && exoPlayer.duration != C.TIME_UNSET) exoPlayer.duration else 1440000L // default 24 mins
-                
+                val currentPosMs = active.currentPosition.coerceAtLeast(0L)
+                val safeDurationMs = if (active.duration > 0 && active.duration != C.TIME_UNSET) active.duration else 1440000L // default 24 mins
+
                 // If paused, we don't send timestamps so the timer stops
-                val isPaused = !isPlayerPlaying
+                val isPaused = if (active === exoPlayer) !isPlayerPlaying else !active.isPlaying
                 val startTimestamp = if (isPaused) null else now - currentPosMs
                 val endTimestamp = if (isPaused) null else (now - currentPosMs) + safeDurationMs
-                
-                val stateText = "Episode : ${ep.number}/${media.anime?.totalEpisodes ?: "??"}"
+
+                val stateText = "Episode ${ep.number}/${media.anime?.totalEpisodes ?: "??"}"
                 val finalState = if (isPaused) "Paused - $stateText" else stateText
 
                 val rpcData = RPC.Companion.RPCData(
                     applicationId = Discord.application_Id,
+                    kind = RPC.Kind.ANIME,
+                    isPaused = isPaused,
                     type = RPC.Type.WATCHING,
                     activityName = media.userPreferredName,
                     details = ep.title?.takeIf { it.isNotEmpty() } ?: getString(R.string.episode_num, ep.number),
@@ -1756,7 +1757,7 @@ class ExoplayerView :
                     state = finalState,
                     largeImage = media.cover?.let { RPC.Link(media.userPreferredName, it) },
                     smallImage = null,
-                    buttons = buttons,
+                    source = source,
                 )
                 RPCManager.setPresence(context, rpcData)
             }
@@ -2363,7 +2364,7 @@ class ExoplayerView :
         // own but knows nothing about a player released by hand, so say so explicitly.
         LeakDetection.watch(exoPlayer, "ExoPlayer released by ExoplayerView.releasePlayer")
         mediaSession?.let { LeakDetection.watch(it, "MediaSession released by ExoplayerView.releasePlayer") }
-        RPCManager.clearPresence(this)
+        RPCManager.clearPresence(this, RPC.Kind.ANIME)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -3162,6 +3163,12 @@ class ExoplayerView :
                             .into(exoPlay)
                     }
                 }
+
+                // The phone's own player reports nothing while casting, so presence follows
+                // the cast session's playback instead.
+                override fun onIsPlayingChanged(isPlaying: Boolean) {
+                    discordRPC()
+                }
             },
         )
     }
@@ -3171,6 +3178,8 @@ class ExoplayerView :
         exoPlayer.prepare()
         playerView.player = exoPlayer
         castPlayer?.stop()
+        // Back on the phone: report its player, not the stopped cast session.
+        discordRPC()
     }
 
     override fun onCastSessionAvailable() {
