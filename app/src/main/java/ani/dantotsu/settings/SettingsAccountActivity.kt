@@ -16,6 +16,7 @@ import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import ani.dantotsu.R
+import ani.dantotsu.connections.TrackerSessions
 import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.discord.Discord
 import ani.dantotsu.connections.kitsu.Kitsu
@@ -228,12 +229,20 @@ class SettingsAccountActivity : AppCompatActivity() {
         // Refresh the profiles whose name/avatar the app caches, so opening this screen picks up a
         // changed avatar or username rather than showing the stale cached one indefinitely.
         lifecycleScope.launch {
-            var changed = false
-            if (MAL.token != null) changed = MAL.query.getUserData() || changed
-            if (Kitsu.token != null) changed = Kitsu.getUserData() || changed
-            if (Simkl.token != null) changed = Simkl.getUserData() || changed
-            if (MangaBaka.token != null) changed = MangaBaka.getUserData() || changed
-            if (changed) cardAdapter.submit(buildCards())
+            // Sessions restore in the background. Opened before that finishes, the cards above were
+            // built with every token still null — signed out, no avatars — and the refreshes below
+            // would all be skipped. Rebuild once they're in, from the cached names/avatars.
+            TrackerSessions.await()
+            cardAdapter.submit(buildCards())
+            // MangaUpdates fetches its profile only at login, so it needs refreshing here too: a
+            // session restored from a token saved before the avatar was persisted, or whose
+            // login-time fetch failed, otherwise never gets an avatar back.
+            if (MangaUpdates.token != null) MangaUpdates.getUserProfile()
+            if (MAL.token != null) MAL.query.getUserData()
+            if (Kitsu.token != null) Kitsu.getUserData()
+            if (Simkl.token != null) Simkl.getUserData()
+            if (MangaBaka.token != null) MangaBaka.getUserData()
+            cardAdapter.submit(buildCards())
         }
     }
 
