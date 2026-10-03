@@ -122,6 +122,8 @@ data class Notification(
     // Local-only, like image/banner: the NotificationReadState key of the stored entry this was
     // built from. Null for real AniList notifications, whose key is derived from the id.
     val readKey: String? = null,
+    // Local-only: the stored entry's [ani.dantotsu.notifications.unread.UnreadChapterStore.link].
+    val link: String? = null,
 ) : java.io.Serializable
 
 @Serializable

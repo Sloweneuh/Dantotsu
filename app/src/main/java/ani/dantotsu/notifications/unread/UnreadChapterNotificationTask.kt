@@ -52,6 +52,9 @@ class UnreadChapterNotificationTask : Task {
 
                 Logger.log("UnreadChapterNotificationTask: starting check")
 
+                // AniList manga this run checked itself — Comick leaves those to it, see below.
+                var anilistMangaIds: Set<Int> = emptySet()
+
                 // === AniList + MALSync check ===
                 run anilistCheck@{
                     val storedToken = PrefManager.getVal<String>(PrefName.AnilistToken)
@@ -92,6 +95,7 @@ class UnreadChapterNotificationTask : Task {
                         }
 
                         Logger.log("UnreadChapterNotificationTask: found ${mangaList.size} manga")
+                        anilistMangaIds = mangaList.mapTo(HashSet()) { it.id }
 
                         // If another of the user's devices already produced a fresh result, reuse it
                         // instead of re-running the costly MALSync batch scan.
@@ -299,7 +303,12 @@ class UnreadChapterNotificationTask : Task {
                 }
 
                 // === MangaUpdates unread check ===
-                MuUnreadNotificationTask().checkMangaUpdatesUnread(context)
+                val muSeriesIds = MuUnreadNotificationTask().checkMangaUpdatesUnread(context)
+
+                // === Comick unread check ===
+                // Last, so titles the AniList and MangaUpdates checks already cover are known and
+                // skipped rather than announced a second time from Comick.
+                ComickUnreadNotificationTask().checkComickUnread(context, anilistMangaIds, muSeriesIds)
 
                 currentlyPerforming = false
             }

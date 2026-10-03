@@ -1,5 +1,6 @@
 package ani.dantotsu.connections.comick
 
+import ani.dantotsu.connections.IdCache
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.util.Logger
@@ -98,6 +99,12 @@ object ComickApi {
             .header("Accept", accept)
             .header("Referer", "https://comick.dev/")
             .build()
+
+    /**
+     * [IdCache] key for the slugs an id-validated match found for an AniList entry: comma-separated,
+     * the one it settled on first.
+     */
+    fun matchedSlugKey(mediaType: String, anilistId: Int) = "comick_slug_${mediaType}_$anilistId"
 
     /** The site path for an entry: anime and comics live under different roots. */
     fun webUrl(slug: String, mediaType: String = MEDIA_TYPE_MANGA): String =
@@ -586,7 +593,19 @@ object ComickApi {
 
         // Step 3: If we have any valid comics, select the best one
         if (allValidComics.isNotEmpty()) {
-            return@withContext selectBestComic(allValidComics, mediaType)
+            return@withContext selectBestComic(allValidComics, mediaType)?.also { primary ->
+                // Every entry that validated, the chosen one first, remembered by AniList id so
+                // list sync can find them from an id alone. Comick often carries one series twice
+                // (an official release and a scanlation, say), and a user may follow either.
+                val others = allValidComics
+                    .sortedByDescending { it.user_follow_count ?: 0 }
+                    .mapNotNull { it.slug }
+                    .filter { it != primary }
+                IdCache.put(
+                    matchedSlugKey(mediaType, anilistId),
+                    (listOf(primary) + others).distinct().joinToString(",")
+                )
+            }
         }
 
         return@withContext null

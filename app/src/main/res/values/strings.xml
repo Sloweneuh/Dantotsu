@@ -943,8 +943,20 @@
     <string name="comick_account_help">How does Comick work\?</string>
     <string name="full_comick_account_help">
         Comick supplies info, chapter data and cross-source linking on media pages, fetched anonymously — no login needed for that.
-        \n\n **Account login and list sync are planned.** They will arrive once Comick\'s developers ship the account API routes they have announced.
+        \n\n **Connecting your account is optional.** It lets Dantotsu notify you when a title you\'re reading on Comick gets a new chapter, and — if you allow library changes on Comick\'s consent screen — keep your Comick list in step with AniList and MangaUpdates.
+        \n\n **List sync** sends the status and chapter progress of entries you update, decimals included (chapter 12.5). Comick has no scores or dates, so those stay behind. Progress on Comick is never lowered, and removing an entry elsewhere doesn\'t unfollow it on Comick, since that would also delete its notes, rating and custom lists there.
+        \n\n New-chapter checks run on the same interval as the other new-chapter notifications. Titles you\'re also reading on AniList or MangaUpdates are left to those notifications, so you won\'t be told twice.
     </string>
+    <string name="comick_connected">Connected</string>
+    <string name="comick_login_not_configured">Comick login isn\'t configured in this build</string>
+    <string name="comick_login_success">Connected to Comick</string>
+    <string name="comick_login_denied">Comick access was declined</string>
+    <string name="comick_login_failed">Comick login failed</string>
+    <string name="comick_list_sync">Sync list to Comick</string>
+    <string name="comick_list_sync_desc">Send status and chapter progress from AniList and MangaUpdates to your Comick library. Scores and dates aren\'t supported by Comick</string>
+    <string name="comick_list_sync_read_only">Your Comick connection is read-only. Log out and back in, allowing library changes, to sync</string>
+    <string name="comick_notifications">New chapter notifications</string>
+    <string name="comick_notifications_desc">Notify when a title you\'re reading on Comick gets a new chapter. Uses the new-chapter check interval</string>
     <string name="notification_for_checking_subscriptions">Checking Subscriptions notification</string>
     <string name="use_alarm_manager">Use Alarm Manager</string>
     <string name="use_alarm_manager_reliable">Use Alarm Manager for reliable Notifications</string>

@@ -4,6 +4,7 @@ import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.discord.Discord
 import ani.dantotsu.connections.kitsu.Kitsu
 import ani.dantotsu.connections.mal.MAL
+import ani.dantotsu.connections.comick.Comick
 import ani.dantotsu.connections.mangabaka.MangaBaka
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.connections.simkl.Simkl
@@ -60,6 +61,8 @@ object TrackerSessions {
                 async { runCatching { MangaBaka.getSavedToken() } },
                 async { runCatching { MangaUpdates.getSavedToken() } },
                 async { runCatching { Discord.getSavedToken() } },
+                // Prefs-only: an expired Comick token refreshes on first use, not here.
+                async { runCatching { Comick.getSavedToken() } },
             ).awaitAll()
             // Prefs-only and already done in `App.onCreate`; repeated here so that awaiting this is
             // the single answer to "are the accounts loaded yet".

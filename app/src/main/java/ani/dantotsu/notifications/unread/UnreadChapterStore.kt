@@ -16,7 +16,11 @@ data class UnreadChapterStore(
     val time: Long,      // Timestamp in milliseconds
     val type: String = "UnreadChapter",
     // For UnreadEpisode entries: MALSync language ID (e.g. "en/dub"), shown in place of the source.
-    val language: String? = null
+    val language: String? = null,
+    // Where tapping the entry goes, when it isn't simply the AniList media [mediaId] — Comick
+    // entries, which may resolve to a MangaUpdates series or Comick's own page instead. A link
+    // [ani.dantotsu.openLinkInApp] understands. Null for every other source.
+    val link: String? = null,
 ) : Serializable {
     companion object {
         // Pinned, like every other stored class. Java derives this from the class shape when it

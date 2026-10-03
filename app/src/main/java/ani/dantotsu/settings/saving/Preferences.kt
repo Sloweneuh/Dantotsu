@@ -133,6 +133,8 @@ enum class PrefName(val data: Pref) {
     SyncExtensionSettingsEnabled(Pref(Location.General, Boolean::class, false)),
     // Connection toggles (allow disabling external info/tabs)
     ComickEnabled(Pref(Location.General, Boolean::class, true)),
+    ComickNotificationsEnabled(Pref(Location.General, Boolean::class, true)),
+    ComickListSyncEnabled(Pref(Location.General, Boolean::class, true)),
     MalEnabled(Pref(Location.General, Boolean::class, true)),
     MangaUpdatesEnabled(Pref(Location.General, Boolean::class, true)),
     MangaUpdatesListEnabled(Pref(Location.General, Boolean::class, true)),

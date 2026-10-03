@@ -3,6 +3,7 @@ package ani.dantotsu.connections
 import ani.dantotsu.R
 import ani.dantotsu.Refresh
 import ani.dantotsu.connections.anilist.Anilist
+import ani.dantotsu.connections.comick.ComickSync
 import ani.dantotsu.connections.anilist.api.FuzzyDate
 import ani.dantotsu.connections.mal.MAL
 import ani.dantotsu.connections.mangabaka.MangaBakaSync
@@ -118,6 +119,7 @@ suspend fun updateProgressSuspending(media: Media, number: String, sourceVolume:
                         muListId = muListId,
                         progress = a,
                         startDate = muStart,
+                        exactProgress = number,
                     )
                 }
                 if (muListId != null) mirrorScope.launch {
@@ -130,6 +132,10 @@ suspend fun updateProgressSuspending(media: Media, number: String, sourceVolume:
                         startDate = muStart,
                     )
                 }
+            }
+        } else if (advancesFraction(number, a)) {
+            mirrorScope.launch {
+                ComickSync.syncFromMangaUpdates(muSeriesId, null, a, exactProgress = number)
             }
         }
         return
@@ -210,6 +216,14 @@ suspend fun updateProgressSuspending(media: Media, number: String, sourceVolume:
                     score = mirroredScore,
                     startDate = mirroredStart,
                     finishDate = mirroredEnd,
+                    exactProgress = number,
+                )
+            }
+        } else if (advancesFraction(number, a)) {
+            mirrorScope.launch {
+                ComickSync.syncFromAnilist(
+                    isAnime = media.anime != null, anilistId = media.id, malId = media.idMAL,
+                    status = null, progress = a, exactProgress = number,
                 )
             }
         }
@@ -220,6 +234,17 @@ suspend fun updateProgressSuspending(media: Media, number: String, sourceVolume:
     } else {
         toast(currContext()?.getString(R.string.login_anilist_account))
     }
+}
+
+/**
+ * Whether [number] carries a fraction past its whole part [whole] — chapter 12.5 after 12. Such a
+ * read moves no whole-number tracker, so it would otherwise reach none of the mirrors; Comick keeps
+ * decimals and gets it on its own (status untouched, and it never lowers progress — see
+ * [ComickSync]).
+ */
+private fun advancesFraction(number: String, whole: Int?): Boolean {
+    val exact = number.toDoubleOrNull() ?: return false
+    return whole != null && exact > whole
 }
 
 /**

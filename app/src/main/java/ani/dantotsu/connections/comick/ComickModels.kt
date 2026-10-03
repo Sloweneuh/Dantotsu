@@ -693,3 +693,43 @@ data class ComickCommentTraits(
     val username: String? = null,
     val gravatar: String? = null,
 ) : Serializable
+
+/** One page of `GET /integrations/v1/me/library` — see [Comick.getLibrary]. */
+data class ComickLibraryPage(
+    val data: List<ComickLibraryEntry>? = null,
+    /** Opaque; pass back unchanged. Null on the last page. */
+    val next_cursor: String? = null,
+)
+
+/**
+ * A followed title. [hid] is the stable identifier — titles and slugs can change, so sync keys on
+ * it. [status] is 1 reading/watching, 2 completed, 3 on hold, 4 dropped, 5 plan to read/watch.
+ */
+data class ComickLibraryEntry(
+    val hid: String,
+    val title: String? = null,
+    val slug: String? = null,
+    val media_type: String? = null,
+    val status: Int? = null,
+    val status_name: String? = null,
+    /** The saved chapter/episode — not the next unread one. Null when unknown. */
+    val progress: ComickLibraryProgress? = null,
+    val followed_at: String? = null,
+    val updated_at: String? = null,
+    val progressed_at: String? = null,
+)
+
+data class ComickLibraryProgress(
+    /** "chapter" or "episode". */
+    val unit: String? = null,
+    /** The chapter's/episode's own HID, distinct from the title's. */
+    val hid: String? = null,
+    /** Kept as text: values like "12.5", "0" or non-numeric labels occur. */
+    val number: String? = null,
+    val volume: String? = null,
+)
+
+/** `GET /integrations/v1/me/library/{hid}`, and what the write routes answer with. */
+data class ComickLibraryEntryResponse(
+    val data: ComickLibraryEntry? = null,
+)

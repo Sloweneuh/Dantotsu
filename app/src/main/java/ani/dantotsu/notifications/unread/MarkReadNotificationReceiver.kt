@@ -7,6 +7,7 @@ import android.content.Intent
 import androidx.core.app.NotificationManagerCompat
 import ani.dantotsu.App
 import ani.dantotsu.connections.TrackerSessions
+import ani.dantotsu.connections.comick.ComickSync
 import ani.dantotsu.connections.mangaupdates.MUMedia
 import ani.dantotsu.connections.mangaupdates.toMedia
 import ani.dantotsu.connections.updateProgressSuspending
@@ -25,8 +26,9 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 /**
  * Backs the "Mark as read" / "Mark as watched" action on a new-chapter / new-episode notification
- * (both the AniList + MALSync one from [UnreadChapterNotificationTask] and the MangaUpdates one from
- * [MuUnreadNotificationTask]).
+ * (the AniList + MALSync one from [UnreadChapterNotificationTask], the MangaUpdates one from
+ * [MuUnreadNotificationTask], and the Comick one from [ComickUnreadNotificationTask], which writes
+ * to the Comick library instead).
  *
  * Writes the announced chapter/episode as the new progress on whichever tracker backs the entry —
  * reusing [updateProgressSuspending], so MAL/MangaBaka/cloud mirrors follow exactly as they would
@@ -42,6 +44,12 @@ class MarkReadNotificationReceiver : BroadcastReceiver() {
         const val ACTION = "ani.dantotsu.notifications.MARK_READ"
         const val EXTRA_PROGRESS = "progress"
         const val EXTRA_NOTIFICATION_ID = "notificationId"
+
+        /** A Comick title HID: the progress goes to the Comick library instead of a tracker. */
+        const val EXTRA_COMICK_HID = "comickHid"
+
+        /** The exact number for Comick ("13.5"), which [EXTRA_PROGRESS] can only round down. */
+        const val EXTRA_COMICK_PROGRESS = "comickProgress"
 
         /**
          * How long the broadcast is kept alive waiting for the primary tracker write to land. Under
@@ -59,6 +67,7 @@ class MarkReadNotificationReceiver : BroadcastReceiver() {
         val notificationId = intent.getIntExtra(EXTRA_NOTIFICATION_ID, -1)
         val media = intent.getSerialized<Media>("media")
         val muMedia = intent.getSerialized<MUMedia>("muMedia")
+        val comickHid = intent.getStringExtra(EXTRA_COMICK_HID)
 
         // Clear the notification straight away so the action feels instant; the tracker write and
         // the bookkeeping below carry on in the background.
@@ -66,7 +75,7 @@ class MarkReadNotificationReceiver : BroadcastReceiver() {
         if (notificationId != -1) runCatching { notificationManager.cancel(notificationId) }
         clearGroupSummaryIfEmpty(appContext)
 
-        if (progress <= 0 || (media == null && muMedia == null)) {
+        if (progress <= 0 || (media == null && muMedia == null && comickHid == null)) {
             Logger.log("MarkReadNotificationReceiver: nothing to do (progress=$progress)")
             return
         }
@@ -78,12 +87,22 @@ class MarkReadNotificationReceiver : BroadcastReceiver() {
                 App.context = appContext
                 TrackerSessions.start()
 
-                val target = media ?: muMedia!!.toMedia()
-                if (progress > (target.userProgress ?: 0)) {
-                    withTimeoutOrNull(WRITE_TIMEOUT_MS) {
-                        // Shows its own "Setting progress to N" confirmation.
-                        updateProgressSuspending(target, progress.toString())
-                    } ?: Logger.log("MarkReadNotificationReceiver: write timed out, mirrors continue")
+                if (comickHid != null) {
+                    // Comick-only titles: the notification only exists because no tracker list
+                    // holds them, so the Comick library is the one place to record the chapter.
+                    val exact = intent.getStringExtra(EXTRA_COMICK_PROGRESS) ?: progress.toString()
+                    val written = withTimeoutOrNull(WRITE_TIMEOUT_MS) {
+                        ComickSync.markRead(comickHid, exact)
+                    }
+                    if (written != true) Logger.log("MarkReadNotificationReceiver: Comick write failed")
+                } else {
+                    val target = media ?: muMedia!!.toMedia()
+                    if (progress > (target.userProgress ?: 0)) {
+                        withTimeoutOrNull(WRITE_TIMEOUT_MS) {
+                            // Shows its own "Setting progress to N" confirmation.
+                            updateProgressSuspending(target, progress.toString())
+                        } ?: Logger.log("MarkReadNotificationReceiver: write timed out, mirrors continue")
+                    }
                 }
 
                 removeStoredNotification(notificationId, progress)

@@ -1019,20 +1019,9 @@ fun openLinkInBrowser(link: String?) {
  *   which case the caller should fall back to [openLinkInBrowser].
  */
 fun openMangaUpdatesSeriesInApp(link: String?, configure: Intent.() -> Unit = {}): Boolean {
-    val uri = link?.let { Uri.parse(it) } ?: return false
-    val host = uri.host?.lowercase()?.removePrefix("www.")
-    if (host != "mangaupdates.com") return false
-
-    val segments = uri.pathSegments ?: emptyList()
-    val slugOrId = when (segments.firstOrNull()) {
-        "series" -> segments.getOrNull(1)
-        "series.html" -> uri.getQueryParameter("id")
-        else -> null
-    }?.takeIf { it.isNotBlank() } ?: return false
-
+    val normalized = mangaUpdatesSeriesUri(link) ?: return false
     return try {
         val ctx = currContext() ?: return false
-        val normalized = Uri.parse("https://www.mangaupdates.com/series/$slugOrId")
         val intent = Intent(Intent.ACTION_VIEW, normalized).apply {
             setClass(ctx, ani.dantotsu.connections.mangaupdates.MUMediaDetailsActivity::class.java)
             if (ctx !is Activity) addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -1044,6 +1033,35 @@ fun openMangaUpdatesSeriesInApp(link: String?, configure: Intent.() -> Unit = {}
         Logger.log(e)
         false
     }
+}
+
+/** A MangaUpdates series link in the `/series/<slugOrId>` form, or null if [link] isn't one. */
+private fun mangaUpdatesSeriesUri(link: String?): Uri? {
+    val uri = link?.let { Uri.parse(it) } ?: return null
+    val host = uri.host?.lowercase()?.removePrefix("www.")
+    if (host != "mangaupdates.com") return null
+
+    val segments = uri.pathSegments ?: emptyList()
+    val slugOrId = when (segments.firstOrNull()) {
+        "series" -> segments.getOrNull(1)
+        "series.html" -> uri.getQueryParameter("id")
+        else -> null
+    }?.takeIf { it.isNotBlank() } ?: return null
+    return Uri.parse("https://www.mangaupdates.com/series/$slugOrId")
+}
+
+/**
+ * The intent [openLinkInApp] would start for [link], without starting it — for a tap target that
+ * fires later, such as a notification's. Null when the app has no screen for [link].
+ */
+fun inAppIntentForLink(ctx: Context, link: String): Intent? {
+    mangaUpdatesSeriesUri(link)?.let { uri ->
+        return Intent(Intent.ACTION_VIEW, uri)
+            .setClass(ctx, ani.dantotsu.connections.mangaupdates.MUMediaDetailsActivity::class.java)
+    }
+    val uri = Uri.parse(link)
+    if (uri.scheme != "http" && uri.scheme != "https") return null
+    return inAppIntentFor(ctx, uri)
 }
 
 /**

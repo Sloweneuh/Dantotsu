@@ -555,6 +555,13 @@ class NotificationItem(
                 (binding.notificationTextContainer.layoutParams as ViewGroup.MarginLayoutParams).marginStart = 125.toPx
 
                 binding.notificationBannerImage.setOnClickListener {
+                    if (notification.link != null && ani.dantotsu.openLinkInApp(notification.link)) {
+                        if (unread) {
+                            NotificationReadState.markRead(readKey)
+                            setRead()
+                        }
+                        return@setOnClickListener
+                    }
                     open(
                         notification.mediaId ?: 0, null, NotificationClickType.MEDIA, binding.notificationCover
                     )

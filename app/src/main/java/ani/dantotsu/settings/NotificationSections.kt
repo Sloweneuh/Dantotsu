@@ -330,6 +330,7 @@ fun AppCompatActivity.malSyncRows(onChanged: () -> Unit): List<Settings> {
                             .edit()
                             .remove("notified_unread_chapters")
                             .remove("notified_unread_episodes")
+                            .remove("notified_comick_chapters")
                             .apply()
                         Toast.makeText(
                             context, R.string.clear_unread_chapter_history_success, Toast.LENGTH_SHORT

@@ -295,7 +295,8 @@ class NotificationFragment : Fragment() {
                     createdAt = (it.time / 1000L).toInt(),
                     image = it.image,
                     banner = it.banner ?: it.image,
-                    readKey = NotificationReadState.keyOf(it)
+                    readKey = NotificationReadState.keyOf(it),
+                    link = it.link,
                 )
             }
     }

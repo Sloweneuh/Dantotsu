@@ -552,6 +552,24 @@
             </intent-filter>
         </activity>
         <activity
+            android:name=".connections.comick.ComickLogin"
+            android:configChanges="orientation|screenSize|layoutDirection"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:launchMode="singleTask">
+            <!-- Comick requires a reverse-domain callback for native apps: `<applicationId>:/oauth/comick`,
+                 so release and .beta builds each answer their own. A host-less URI can't be matched
+                 on path, hence scheme only. -->
+            <intent-filter android:label="Comick Login for Dantotsu">
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="${applicationId}" />
+            </intent-filter>
+        </activity>
+        <activity
             android:name=".connections.discord.Login"
             android:configChanges="orientation|screenSize|layoutDirection"
             android:excludeFromRecents="true"

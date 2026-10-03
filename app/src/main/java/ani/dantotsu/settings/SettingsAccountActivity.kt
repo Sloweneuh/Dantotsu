@@ -22,6 +22,7 @@ import ani.dantotsu.connections.discord.Discord
 import ani.dantotsu.connections.kitsu.Kitsu
 import ani.dantotsu.connections.kitsu.KitsuLoginDialog
 import ani.dantotsu.connections.mal.MAL
+import ani.dantotsu.connections.comick.Comick
 import ani.dantotsu.connections.mangabaka.MangaBaka
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.connections.mangaupdates.MangaUpdatesLoginDialog
@@ -282,8 +283,10 @@ class SettingsAccountActivity : AppCompatActivity() {
                 ) else knownOrOut(PrefName.DiscordUserName),
                 discordStatusRes = if (Discord.token != null) discordStatusDrawable() else null,
             ),
-            AccountCard(AccountProvider.COMICK, R.drawable.ic_round_comick_24, getString(R.string.comick),
-                AccountState.NoLogin),
+            // Comick has no profile route, so a connection has no name to show — only that it's there.
+            card(AccountProvider.COMICK, R.drawable.ic_round_comick_24, R.string.comick,
+                if (Comick.token != null) AccountState.SignedIn(getString(R.string.comick_connected), null)
+                else AccountState.SignedOut),
             AccountCard(AccountProvider.MALSYNC, R.drawable.ic_malsync, getString(R.string.malsync),
                 AccountState.NoLogin),
         )
@@ -325,7 +328,37 @@ class SettingsAccountActivity : AppCompatActivity() {
         AccountProvider.MANGAUPDATES -> mangaUpdatesRows()
         AccountProvider.MANGABAKA -> mangaBakaRows()
         AccountProvider.COMICK -> listOf(
+            header(R.string.account_group_info),
             infoRow(R.string.comick, PrefName.ComickEnabled, R.string.disable_comick_desc),
+            header(R.string.account_group_sync),
+            Settings(
+                type = 2,
+                name = getString(R.string.comick_list_sync),
+                // A connection can be read-only — write access is opt-in on Comick's consent
+                // screen — and only a fresh login can change that.
+                desc = getString(
+                    if (Comick.token != null && !Comick.canWrite()) R.string.comick_list_sync_read_only
+                    else R.string.comick_list_sync_desc
+                ),
+                icon = R.drawable.ic_round_sync_24,
+                isChecked = PrefManager.getVal(PrefName.ComickListSyncEnabled),
+                switch = { isChecked, _ -> PrefManager.setVal(PrefName.ComickListSyncEnabled, isChecked) },
+                isEnabled = Comick.token != null && Comick.canWrite(),
+                compact = true,
+                anchorKey = "sync",
+            ),
+            header(R.string.account_group_notifications),
+            Settings(
+                type = 2,
+                name = getString(R.string.comick_notifications),
+                desc = getString(R.string.comick_notifications_desc),
+                icon = R.drawable.ic_round_notifications_active_24,
+                isChecked = PrefManager.getVal(PrefName.ComickNotificationsEnabled),
+                switch = { isChecked, _ -> PrefManager.setVal(PrefName.ComickNotificationsEnabled, isChecked) },
+                isEnabled = Comick.token != null,
+                compact = true,
+                anchorKey = "comickNotifications",
+            ),
         )
         AccountProvider.MALSYNC -> malSyncRows()
         AccountProvider.DISCORD -> discordRows()
@@ -640,8 +673,9 @@ class SettingsAccountActivity : AppCompatActivity() {
                 setOnLoginSuccessListener { onLoggedIn() }
             }.show(supportFragmentManager, "mangaupdates_login")
             AccountProvider.MANGABAKA -> MangaBaka.loginIntent(this)
+            AccountProvider.COMICK -> Comick.loginIntent(this)
             AccountProvider.DISCORD -> Discord.warning(this).show(supportFragmentManager, "dialog")
-            AccountProvider.COMICK, AccountProvider.MALSYNC -> showInfoSheet(p)
+            AccountProvider.MALSYNC -> showInfoSheet(p)
         }
     }
 
@@ -669,7 +703,8 @@ class SettingsAccountActivity : AppCompatActivity() {
             AccountProvider.MANGAUPDATES -> MangaUpdates.logout()
             AccountProvider.MANGABAKA -> MangaBaka.removeSavedToken()
             AccountProvider.DISCORD -> Discord.removeSavedToken(this)
-            AccountProvider.COMICK, AccountProvider.MALSYNC -> return
+            AccountProvider.COMICK -> lifecycleScope.launch { Comick.removeSavedToken() }
+            AccountProvider.MALSYNC -> return
         }
         restartMainActivity.isEnabled = true
         reload()
@@ -902,7 +937,8 @@ class SettingsAccountActivity : AppCompatActivity() {
             AccountProvider.MANGAUPDATES -> MangaUpdates.token != null
             AccountProvider.MANGABAKA -> MangaBaka.token != null
             AccountProvider.DISCORD -> Discord.token != null
-            AccountProvider.COMICK, AccountProvider.MALSYNC -> false
+            AccountProvider.COMICK -> Comick.token != null
+            AccountProvider.MALSYNC -> false
         }
         // Resolve everything against the activity up front — inside CustomBottomDialog.apply { } the
         // `getString`/`context` receiver is the (not-yet-attached) fragment.

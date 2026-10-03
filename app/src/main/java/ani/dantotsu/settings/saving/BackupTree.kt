@@ -134,6 +134,8 @@ object BackupTree {
                     listOf(
                         BackupItem(PrefName.ComickEnabled, R.string.disable_comick),
                         BackupItem(PrefName.ComickMangaBakaLanguage, R.string.comick_mangabaka_language),
+                        BackupItem(PrefName.ComickNotificationsEnabled, R.string.comick_notifications),
+                        BackupItem(PrefName.ComickListSyncEnabled, R.string.comick_list_sync),
                     )
                 ),
                 BackupSubCategory(

@@ -66,14 +66,18 @@ class MuUnreadNotificationTask : Task {
         }
     }
 
-    suspend fun checkMangaUpdatesUnread(context: Context) {
+    /**
+     * @return the series ids on the MangaUpdates reading list this check covered — so a later
+     *   source (Comick) can leave those to it — or empty when it didn't run.
+     */
+    suspend fun checkMangaUpdatesUnread(context: Context): Set<Long> {
         if (!PrefManager.getVal<Boolean>(PrefName.MangaUpdatesNotificationsEnabled)) {
             Logger.log("MuUnreadNotificationTask: MangaUpdates notifications disabled")
-            return
+            return emptySet()
         }
         if (!PrefManager.getVal<Boolean>(PrefName.MangaUpdatesListEnabled)) {
             Logger.log("MuUnreadNotificationTask: MangaUpdates list fetch disabled")
-            return
+            return emptySet()
         }
 
         Logger.log("MuUnreadNotificationTask: checking MangaUpdates unread chapters")
@@ -81,7 +85,7 @@ class MuUnreadNotificationTask : Task {
         val unreadItems = currentUnreadItems(context)
         Logger.log("MuUnreadNotificationTask: found ${unreadItems.size} items with unread chapters")
 
-        if (unreadItems.isEmpty()) return
+        if (unreadItems.isEmpty()) return readingListIds
 
         val notifiedKey = "notified_mu_chapters"
         val notified = getNotifiedSet(context, notifiedKey)
@@ -122,7 +126,11 @@ class MuUnreadNotificationTask : Task {
                 storeNotifications(resolvedItems)
             }
         }
+        return readingListIds
     }
+
+    /** Series ids on the reading list [currentUnreadItems] last fetched. */
+    private var readingListIds: Set<Long> = emptySet()
 
     /** A MangaUpdates entry with unread chapters, over both sources that can know about them. */
     private data class UnreadItem(
@@ -154,6 +162,7 @@ class MuUnreadNotificationTask : Task {
         }
 
         val readingList = allLists["Reading"] ?: emptyList()
+        readingListIds = readingList.mapTo(HashSet()) { it.id }
 
         // What MALSync knows about the series that could be linked to a MAL entry — often a chapter
         // ahead of MangaUpdates' own count, and with the source it landed on. The rest are unchanged.
@@ -295,39 +304,8 @@ class MuUnreadNotificationTask : Task {
      * just dismisses them; this summary gives the group header its own tap destination. Shares
      * the group key with UnreadChapterNotificationTask since both feed the same channel.
      */
-    private fun createGroupSummary(context: Context): android.app.Notification {
-        // Not "New Chapter Available" — this group holds anime episodes too (via
-        // UnreadChapterNotificationTask, which shares the same group key), so a chapter-specific
-        // label would be wrong whenever the stack mixes in an episode.
-        val title = context.getString(R.string.notification_new_releases_title)
-        val intent = Intent(context, MainActivity::class.java).apply {
-            putExtra("FRAGMENT_TO_LOAD", "NOTIFICATIONS")
-            putExtra("selectedTab", 3)
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        }
-        val pendingIntent = PendingIntent.getActivity(
-            context,
-            Notifications.ID_NEW_CHAPTERS,
-            intent,
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            } else {
-                PendingIntent.FLAG_UPDATE_CURRENT
-            }
-        )
-        return NotificationCompat.Builder(context, Notifications.CHANNEL_NEW_CHAPTERS_EPISODES)
-            .setSmallIcon(R.drawable.notification_icon)
-            .setContentTitle(title)
-            // Without it, the group's own header — shown above the stack, distinct from each
-            // child's — is just a bare timestamp next to the app name.
-            .setSubText(title)
-            .setStyle(NotificationCompat.InboxStyle().setSummaryText(title))
-            .setGroup(Notifications.GROUP_NEW_CHAPTERS)
-            .setGroupSummary(true)
-            .setContentIntent(pendingIntent)
-            .setAutoCancel(true)
-            .build()
-    }
+    private fun createGroupSummary(context: Context): android.app.Notification =
+        newReleasesGroupSummary(context)
 
     private fun storeNotifications(items: List<UnreadItem>) {
         val notificationStore = PrefManager.getNullableVal<List<UnreadChapterStore>>(
@@ -450,4 +428,42 @@ class MuUnreadNotificationTask : Task {
         )
         return m to UnreadItem(m, 6, "Test Source")
     }
+}
+
+/**
+ * Summary for the shared new-chapters group: tapping the auto-collapsed stack otherwise has no
+ * target and just dismisses it. Also posted by [ComickUnreadNotificationTask].
+ */
+internal fun newReleasesGroupSummary(context: Context): android.app.Notification {
+    // Not "New Chapter Available" — this group holds anime episodes too (via
+    // UnreadChapterNotificationTask, which shares the same group key), so a chapter-specific
+    // label would be wrong whenever the stack mixes in an episode.
+    val title = context.getString(R.string.notification_new_releases_title)
+    val intent = Intent(context, MainActivity::class.java).apply {
+        putExtra("FRAGMENT_TO_LOAD", "NOTIFICATIONS")
+        putExtra("selectedTab", 3)
+        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+    }
+    val pendingIntent = PendingIntent.getActivity(
+        context,
+        Notifications.ID_NEW_CHAPTERS,
+        intent,
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        } else {
+            PendingIntent.FLAG_UPDATE_CURRENT
+        }
+    )
+    return NotificationCompat.Builder(context, Notifications.CHANNEL_NEW_CHAPTERS_EPISODES)
+        .setSmallIcon(R.drawable.notification_icon)
+        .setContentTitle(title)
+        // Without it, the group's own header — shown above the stack, distinct from each
+        // child's — is just a bare timestamp next to the app name.
+        .setSubText(title)
+        .setStyle(NotificationCompat.InboxStyle().setSummaryText(title))
+        .setGroup(Notifications.GROUP_NEW_CHAPTERS)
+        .setGroupSummary(true)
+        .setContentIntent(pendingIntent)
+        .setAutoCancel(true)
+        .build()
 }

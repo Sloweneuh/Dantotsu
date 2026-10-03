@@ -287,8 +287,20 @@
     <string name="comick_account_help">Comment fonctionne Comick \?</string>
     <string name="full_comick_account_help">
         Comick fournit des informations, des données de chapitres et la liaison multi-sources sur les pages de médias, récupérées anonymement — aucune connexion requise pour cela.
-        \n\n **La connexion au compte et la synchronisation des listes sont prévues.** Elles arriveront une fois que les développeurs de Comick auront publié les routes d\'API de compte qu\'ils ont annoncées.
+        \n\n **Connecter votre compte est facultatif.** Cela permet à Dantotsu de vous avertir quand un titre que vous lisez sur Comick reçoit un nouveau chapitre et — si vous autorisez les modifications de bibliothèque sur l\'écran de consentement de Comick — de garder votre liste Comick alignée sur AniList et MangaUpdates.
+        \n\n **La synchronisation de liste** envoie le statut et la progression des entrées que vous modifiez, décimales comprises (chapitre 12.5). Comick n\'a ni notes ni dates, elles ne sont donc pas envoyées. La progression sur Comick n\'est jamais abaissée, et retirer une entrée ailleurs ne la retire pas de Comick, car cela y supprimerait aussi ses notes, sa note et ses listes personnalisées.
+        \n\n Les vérifications de nouveaux chapitres suivent le même intervalle que les autres notifications de nouveaux chapitres. Les titres que vous lisez aussi sur AniList ou MangaUpdates sont laissés à ces notifications, pour ne pas vous prévenir deux fois.
     </string>
+    <string name="comick_connected">Connecté</string>
+    <string name="comick_login_not_configured">La connexion à Comick n\'est pas configurée dans cette version</string>
+    <string name="comick_login_success">Connecté à Comick</string>
+    <string name="comick_login_denied">L\'accès à Comick a été refusé</string>
+    <string name="comick_login_failed">Échec de la connexion à Comick</string>
+    <string name="comick_list_sync">Synchroniser la liste avec Comick</string>
+    <string name="comick_list_sync_desc">Envoyer le statut et la progression des chapitres depuis AniList et MangaUpdates vers votre bibliothèque Comick. Comick ne prend pas en charge les notes ni les dates</string>
+    <string name="comick_list_sync_read_only">Votre connexion Comick est en lecture seule. Déconnectez-vous puis reconnectez-vous en autorisant les modifications de bibliothèque pour synchroniser</string>
+    <string name="comick_notifications">Notifications de nouveaux chapitres</string>
+    <string name="comick_notifications_desc">Prévenir quand un titre que vous lisez sur Comick reçoit un nouveau chapitre. Utilise l\'intervalle de vérification des nouveaux chapitres</string>
     <string name="connections_settings">Connexions</string>
     <string name="connections_desc">Activer ou désactiver les connexions externes et les onglets d\'information</string>
     <string name="disable_comick">Afficher les infos Comick</string>
