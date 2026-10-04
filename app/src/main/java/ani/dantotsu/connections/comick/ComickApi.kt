@@ -19,32 +19,16 @@ import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
 
 object ComickApi {
-    /** Longest `Retry-After` worth sleeping through on a 429 before giving up on the request. */
-    private const val MAX_RETRY_WAIT_SECONDS = 10L
-
     /**
-     * Comick allows 200 requests/minute per IP and answers a 429 with `Retry-After` (see
-     * https://api.comick.dev/docs/). A short wait is retried once; a longer one is passed through
-     * as the failure it is rather than stalling the caller.
+     * Pacing and 429s are [ComickRateLimiter]'s, shared with the library client.
      *
      * Cloudflare can also answer before the API does, with an HTML challenge or block page. Every
      * route here speaks JSON, so a successful HTML response is turned into a failed one — callers
      * then take their `isSuccessful` path instead of Gson choking on markup.
      */
-    private val rateLimitInterceptor = Interceptor { chain ->
+    private val htmlGuardInterceptor = Interceptor { chain ->
         val request = chain.request()
-        var response = chain.proceed(request)
-        if (response.code == 429) {
-            val wait = response.header("Retry-After")?.trim()?.toLongOrNull()
-            if (wait != null && wait <= MAX_RETRY_WAIT_SECONDS) {
-                Logger.log("Comick: rate limited, retrying in ${wait}s for ${request.url}")
-                response.close()
-                Thread.sleep(wait.coerceAtLeast(1) * 1000)
-                response = chain.proceed(request)
-            } else {
-                Logger.log("Comick: rate limited (Retry-After: ${wait ?: "none"}) for ${request.url}")
-            }
-        }
+        val response = chain.proceed(request)
         if (response.isSuccessful && response.body.contentType()?.subtype == "html") {
             Logger.log("Comick: HTML instead of JSON (Cloudflare?) for ${request.url}")
             response.newBuilder().code(503).message("Unexpected HTML response").build()
@@ -56,7 +40,8 @@ object ComickApi {
     private val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
-        .addInterceptor(rateLimitInterceptor)
+        .addInterceptor(htmlGuardInterceptor)
+        .addInterceptor(ComickRateLimiter)
         .build()
 
     private val gson = Gson()

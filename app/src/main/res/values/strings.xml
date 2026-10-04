@@ -74,6 +74,12 @@
     <string name="notification_source_subtext">Source: %1$s</string>
     <string name="notification_action_mark_read">Mark as read</string>
     <string name="notification_action_mark_watched">Mark as watched</string>
+    <!-- Stops new-chapter notifications for the title by adding it to the unread exclusion list. -->
+    <string name="notification_action_mute">Mute</string>
+    <string name="notification_chapter">Chapter %1$s</string>
+    <string name="notification_chapter_unread">Chapter %1$s (%2$d unread)</string>
+    <string name="notification_episode">Episode %1$s</string>
+    <string name="notification_episode_unwatched">Episode %1$s (%2$d unwatched)</string>
 
     <string name="get_recommendations">Watch/Read some Anime or Manga to get Recommendations</string>
     <string name="empty">All caught up, when New?</string>

@@ -10,6 +10,7 @@ import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.connections.mangaupdates.isMuNovelType
 import ani.dantotsu.connections.mangaupdates.muMediaKey
 import ani.dantotsu.media.Media
+import ani.dantotsu.notifications.unread.ComickUnreadEntry
 import ani.dantotsu.notifications.unread.UnreadCache
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
@@ -81,7 +82,12 @@ data class WidgetItem(
      */
     val mediaId: Int? = null,
     /** A manga-typed recommendation that is specifically a light novel — see [ani.dantotsu.R.string.novel]. */
-    val isNovel: Boolean = false
+    val isNovel: Boolean = false,
+    /**
+     * For a row that is neither AniList media nor a MangaUpdates series — a title only Comick knows:
+     * the in-app link it opens ([ani.dantotsu.inAppIntentForLink]). [id] is then only a key.
+     */
+    val link: String? = null
 ) {
     /** Episodes or chapters out that the user hasn't reached. */
     val behind: Int get() = ((latest ?: 0) - (progress ?: 0)).coerceAtLeast(0)
@@ -423,7 +429,10 @@ object WidgetData {
         // Neither allowed: keep the anime rows from the last real fetch; they came from MALSync and
         // can't be recomputed locally.
         else cached(context, Dataset.WAITING).filter { it.isAnime }
-        val items = (unreadManga(context, networkAllowed) + unreadMangaUpdates(context, networkAllowed) + anime)
+        val tracked = unreadManga(context, networkAllowed) + unreadMangaUpdates(context, networkAllowed)
+        // A Comick title its own tracker's rows already show is left to them.
+        val shownIds = tracked.mapTo(HashSet()) { it.id }
+        val items = (tracked + unreadComick(context).filterNot { it.id in shownIds } + anime)
             .sortedWith(compareByDescending<WidgetItem> { it.latestAt ?: 0 }.thenByDescending { it.behind })
         return items.ifEmpty { if (networkAllowed) recentlyOpened() else cached(context, Dataset.WAITING) }
     }
@@ -478,6 +487,39 @@ object WidgetData {
                 total = media.manga?.totalChapters,
                 latestAt = unread.latestChapterAt,
                 source = unread.source.takeIf { it.isNotBlank() }
+            )
+        }
+    }
+
+    /**
+     * Comick titles with unread chapters, from what [ani.dantotsu.notifications.unread.ComickUnreadNotificationTask]
+     * last stored — no network, since finding them takes a request per title. Each row is the
+     * AniList media or MangaUpdates series Comick links when there is one, so it opens and counts
+     * progress like those; a title only Comick knows opens its Comick page. The source is the group
+     * behind the newest chapter.
+     */
+    private fun unreadComick(context: Context): List<WidgetItem> {
+        val excluded = PrefManager.getVal<Set<String>>(PrefName.MalSyncExcludeList)
+        return UnreadCache.cachedComick().mapNotNull { entry ->
+            if (excluded.containsMediaId(entry.rowKey.toString()) ||
+                excluded.containsMediaId(ComickUnreadEntry.excludeId(entry.hid))
+            ) return@mapNotNull null
+            val progress = progressOf(context, entry.rowKey, entry.progress)
+            if (entry.latestChapter <= progress) return@mapNotNull null
+            val al = entry.anilistMedia
+            val mu = entry.muMedia
+            WidgetItem(
+                id = entry.rowKey,
+                title = entry.title,
+                coverUrl = (entry.coverUrl ?: al?.cover).orEmpty(),
+                isAnime = false,
+                progress = progress,
+                latest = entry.latestChapter,
+                total = al?.manga?.totalChapters,
+                latestAt = entry.latestChapterAt,
+                source = entry.source,
+                muSeriesId = if (al == null) mu?.id else null,
+                link = if (al == null && mu == null) entry.webUrl else null,
             )
         }
     }

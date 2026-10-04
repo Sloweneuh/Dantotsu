@@ -12,6 +12,7 @@ import ani.dantotsu.connections.mal.MALListStatus
 import ani.dantotsu.connections.simkl.Simkl
 import ani.dantotsu.connections.simkl.SimklApi
 import ani.dantotsu.connections.simkl.SimklSync
+import ani.dantotsu.connections.IdCache
 import ani.dantotsu.connections.comick.Comick
 import ani.dantotsu.connections.comick.ComickApi
 import ani.dantotsu.connections.comick.ComickSync
@@ -1190,7 +1191,12 @@ object ListCompare {
 
         val limiter = Semaphore(COMICK_RESOLVE_CONCURRENCY)
         val resolved = source.asyncMap { media ->
-            media to limiter.withPermit { ComickSync.resolveFromAnilist(isAnime, media.id, media.idMAL) }
+            media to limiter.withPermit {
+                ComickSync.resolveFromAnilist(
+                    isAnime, media.id, media.idMAL,
+                    titles = listOfNotNull(media.userPreferredName, media.name, media.nameRomaji),
+                )
+            }
         }
         val claimed = resolved.flatMapTo(HashSet()) { it.second }
         val aniDiffs = resolved.mapNotNull { (media, hids) ->
@@ -1210,7 +1216,7 @@ object ListCompare {
             limiter.withPermit {
                 val anilistId = MangaBakaApi.getCrossIdsFromMangaUpdates(entry.id).anilistId
                     ?.takeIf { it !in sourceAnilistIds } ?: return@withPermit null
-                val hids = ComickSync.resolveFromAnilist(false, anilistId, null)
+                val hids = ComickSync.resolveFromAnilist(false, anilistId, null, titles = listOfNotNull(entry.title))
                     .takeIf { found -> found.none { it in claimed } } ?: return@withPermit null
                 buildComickDiff(
                     title = entry.title ?: "", coverUrl = entry.coverUrl, isAnime = false,
@@ -1221,6 +1227,10 @@ object ListCompare {
             }
         }.filterNotNull()
 
+        // Matches found this pass — title searches above all, the costliest thing here — are only
+        // buffered until enough build up; written now, so an app killed before then doesn't search
+        // for them all over again next time.
+        IdCache.flush()
         SubsectionResult(sourceStats, destStats, aniDiffs + muDiffs)
     }
 
@@ -1307,8 +1317,20 @@ object ListCompare {
      * MangaBaka pushes go out first, together, through `POST /v1/my/library/batch` (100 per
      * request). Everything else — and any MangaBaka entry its batch didn't land — is its own round
      * trip: MAL has no bulk list-write route, so overlapping requests is what keeps those quick.
+     *
+     * Comick pushes run against the library read once up front ([ComickSync.withLibrarySnapshot])
+     * instead of a lookup per entry, and are paced by [ani.dantotsu.connections.comick.ComickRateLimiter].
      */
-    suspend fun syncAll(entries: List<DiffEntry>): List<Pair<DiffEntry, Boolean>> = coroutineScope {
+    suspend fun syncAll(entries: List<DiffEntry>): List<Pair<DiffEntry, Boolean>> {
+        val comickTypes = entries.filter { it.tracker == Tracker.COMICK && !it.delete }
+            .mapTo(HashSet()) { if (it.isAnime) ComickApi.MEDIA_TYPE_ANIME else ComickApi.MEDIA_TYPE_MANGA }
+        // A lone entry costs one lookup either way; the whole library would cost more.
+        val needsSnapshot = entries.count { it.tracker == Tracker.COMICK && !it.delete } > 1
+        return if (needsSnapshot) ComickSync.withLibrarySnapshot(comickTypes) { syncEach(entries) }
+        else syncEach(entries)
+    }
+
+    private suspend fun syncEach(entries: List<DiffEntry>): List<Pair<DiffEntry, Boolean>> = coroutineScope {
         val batched = batchMangaBakaPushes(entries)
         val limiter = Semaphore(SYNC_CONCURRENCY)
         entries

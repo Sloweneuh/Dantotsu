@@ -6,7 +6,9 @@ import androidx.core.app.ActivityOptionsCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import ani.dantotsu.R
+import ani.dantotsu.connections.comick.ComickApi
 import ani.dantotsu.databinding.ItemSubscriptionBinding
+import ani.dantotsu.inAppIntentForLink
 import ani.dantotsu.loadImage
 import ani.dantotsu.media.MediaDetailsActivity
 import com.xwray.groupie.GroupieAdapter
@@ -28,6 +30,13 @@ class MediaExcludeItem(
         viewBinding.subscriptionCover.loadImage(coverUrl.ifBlank { null })
 
         viewBinding.root.setOnClickListener {
+            // A title known only to Comick, muted from its notification.
+            if (id.startsWith(COMICK_PREFIX)) {
+                val context = viewBinding.root.context
+                inAppIntentForLink(context, ComickApi.webUrl(id.removePrefix(COMICK_PREFIX)))
+                    ?.let { context.startActivity(it) }
+                return@setOnClickListener
+            }
             val mediaId = id.toIntOrNull() ?: return@setOnClickListener
             val activity = viewBinding.root.context as? androidx.fragment.app.FragmentActivity
             val options = if (activity != null) {
@@ -49,6 +58,11 @@ class MediaExcludeItem(
             adapter.remove(this)
             onRemoved(entry)
         }
+    }
+
+    private companion object {
+        /** See [ani.dantotsu.notifications.unread.ComickUnreadEntry.excludeId]. */
+        const val COMICK_PREFIX = "comick:"
     }
 
     override fun getLayout(): Int = R.layout.item_subscription

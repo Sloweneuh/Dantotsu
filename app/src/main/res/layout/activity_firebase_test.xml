@@ -162,6 +162,13 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="Send Test MangaUpdates Notification (with image)"
+                android:layout_marginBottom="8dp" />
+
+            <Button
+                android:id="@+id/btnTestComickImage"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Send Test Comick Notification (with image)"
                 android:layout_marginBottom="16dp" />
 
             <TextView

@@ -96,6 +96,8 @@ object Comick {
                 else request.newBuilder().header("Accept", "application/json").build()
             )
         }
+        // The library routes share the catalog's per-IP budget; the auth routes on comick.dev don't.
+        .addInterceptor(ComickRateLimiter)
         .build()
 
     /** The current access token, or null when not connected. Restored by [getSavedToken]. */

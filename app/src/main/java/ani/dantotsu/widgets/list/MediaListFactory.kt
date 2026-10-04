@@ -252,6 +252,8 @@ class MediaListFactory(
                 Intent().apply {
                     if (item.muSeriesId != null) {
                         putExtra("muUrl", MU_SERIES_URL + item.muSeriesId.toString(36))
+                    } else if (item.link != null) {
+                        putExtra("link", item.link)
                     } else if (dataset == WidgetData.Dataset.ACTIVITY) {
                         // item.id is the *activity's* id here, not a media id — a text post has no
                         // media at all, so there may be nothing to put.

@@ -81,6 +81,11 @@
     <string name="notification_source_subtext">Source : %1$s</string>
     <string name="notification_action_mark_read">Marquer comme lu</string>
     <string name="notification_action_mark_watched">Marquer comme vu</string>
+    <string name="notification_action_mute">Ignorer</string>
+    <string name="notification_chapter">Chapitre %1$s</string>
+    <string name="notification_chapter_unread">Chapitre %1$s (%2$d non lus)</string>
+    <string name="notification_episode">Épisode %1$s</string>
+    <string name="notification_episode_unwatched">Épisode %1$s (%2$d non vus)</string>
 
     <string name="get_recommendations">Regardez/Lisez des Anime ou Manga pour obtenir des recommandations</string>
     <string name="empty">Tout est à jour, quand la suite ?</string>

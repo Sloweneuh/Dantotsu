@@ -70,18 +70,24 @@ object MalSyncApi {
     }
 
     /**
-     * Pacing shared by every MALSync request in the process. MALSync rate-limits by address and
-     * says nothing about its limits — no rate headers, no Retry-After — and callers now ask it about
-     * whole lists at a time (Compare lists resolving each title's Comick entry), which burst it into
-     * 429s within seconds. One request a second keeps a long run going instead.
+     * Pacing shared by every MALSync request in the process, as a token bucket: a few at once, then
+     * one every [REFILL_MS].
+     *
+     * MALSync's limit is Cloudflare's (error 1015), counted per address at the edge — so cached
+     * responses count too — and it publishes no numbers. Measured (2026-10-04): a request every
+     * second gets about five through before a run of 429s, every two seconds about seven, and every
+     * three seconds a 20-request run went through clean. There is no batch quicklinks route to
+     * spread the load (`POST /nc/mal/{type}/POST/pr` is progress only, without site links), so a
+     * list-wide pass has to go at that pace.
      *
      * A Mutex and [delay] rather than a lock and a sleep, so a caller that times out (the info
      * tab's lookups do) can give up its place in the queue instead of waiting behind it.
      */
     private val pacing = Mutex()
-    @Volatile
-    private var lastRequestAt = 0L
-    private const val MIN_REQUEST_SPACING_MS = 1_000L
+    private var tokens = BURST
+    private var refilledAt = 0L
+    private const val BURST = 4.0
+    private const val REFILL_MS = 3_000L
 
     /**
      * Until when MALSync is left alone after a 429. Asking again straight away only extends the
@@ -89,50 +95,79 @@ object MalSyncApi {
      */
     @Volatile
     private var rateLimitedUntil = 0L
+
+    /** Assumed when a 429 names no wait. Cloudflare's own say 3 seconds. */
     private const val RATE_LIMIT_COOLDOWN_MS = 60_000L
 
+    /** Longest block worth waiting out rather than failing the request. */
+    private const val MAX_RATE_LIMIT_WAIT_MS = 10_000L
+
+    /** Takes one request's worth of budget, waiting for it. */
+    private suspend fun acquire() = pacing.withLock {
+        while (true) {
+            val now = System.currentTimeMillis()
+            val blocked = rateLimitedUntil - now
+            if (blocked > 0) {
+                delay(blocked)
+                continue
+            }
+            if (refilledAt == 0L) refilledAt = now
+            tokens = minOf(BURST, tokens + (now - refilledAt).toDouble() / REFILL_MS)
+            refilledAt = now
+            if (tokens >= 1.0) {
+                tokens -= 1.0
+                return@withLock
+            }
+            delay(((1.0 - tokens) * REFILL_MS).toLong() + 1)
+        }
+    }
+
     /**
-     * Execute a network request with proper error handling. Null on failure — including a 429,
-     * whose cooldown then answers every request with null until it lapses.
+     * Execute a network request with proper error handling. Null on failure — including a 429
+     * whose wait is too long to sit through, which then answers every request with null until it
+     * lapses. A short one (Cloudflare asks for seconds) is waited out and the request sent again.
      */
     private suspend fun executeRequest(request: Request): okhttp3.Response? {
-        if (System.currentTimeMillis() < rateLimitedUntil) {
-            Logger.log("MalSync: rate limited, skipping ${request.url.encodedPath}")
-            return null
-        }
-        pacing.withLock {
-            val wait = lastRequestAt + MIN_REQUEST_SPACING_MS - System.currentTimeMillis()
-            if (wait > 0) delay(wait)
-            lastRequestAt = System.currentTimeMillis()
-        }
-        try {
-            val response = client.newCall(request).execute()
-            recordNetworkSuccess()
-            if (response.code == 429) {
-                val cooldown = response.header("Retry-After")?.trim()?.toLongOrNull()?.times(1000)
-                    ?: RATE_LIMIT_COOLDOWN_MS
-                rateLimitedUntil = System.currentTimeMillis() + cooldown
-                Logger.log("MalSync: 429 — pausing requests for ${cooldown / 1000}s")
-                response.close()
+        repeat(2) { attempt ->
+            val blocked = rateLimitedUntil - System.currentTimeMillis()
+            if (blocked > MAX_RATE_LIMIT_WAIT_MS) {
+                Logger.log("MalSync: rate limited, skipping ${request.url.encodedPath}")
                 return null
             }
-            return response
-        } catch (e: UnknownHostException) {
-            Logger.log("MalSync: Unable to resolve host: ${e.message}")
-            recordNetworkFailure()
-            return null
-        } catch (e: SocketTimeoutException) {
-            Logger.log("MalSync: Request timeout: ${e.message}")
-            recordNetworkFailure()
-            return null
-        } catch (e: IOException) {
-            Logger.log("MalSync: Network error: ${e.message}")
-            recordNetworkFailure()
-            return null
-        } catch (e: Exception) {
-            Logger.log("MalSync: Unexpected error: ${e.message}")
-            return null
+            acquire()
+            try {
+                val response = client.newCall(request).execute()
+                recordNetworkSuccess()
+                if (response.code == 429) {
+                    val cooldown = response.header("Retry-After")?.trim()?.toLongOrNull()?.times(1000)
+                        ?: RATE_LIMIT_COOLDOWN_MS
+                    rateLimitedUntil = System.currentTimeMillis() + cooldown
+                    // Start the budget over once the block lifts, rather than bursting into another.
+                    pacing.withLock { tokens = 0.0; refilledAt = rateLimitedUntil }
+                    Logger.log("MalSync: 429 — pausing requests for ${cooldown / 1000}s")
+                    response.close()
+                    if (attempt == 0 && cooldown <= MAX_RATE_LIMIT_WAIT_MS) return@repeat
+                    return null
+                }
+                return response
+            } catch (e: UnknownHostException) {
+                Logger.log("MalSync: Unable to resolve host: ${e.message}")
+                recordNetworkFailure()
+                return null
+            } catch (e: SocketTimeoutException) {
+                Logger.log("MalSync: Request timeout: ${e.message}")
+                recordNetworkFailure()
+                return null
+            } catch (e: IOException) {
+                Logger.log("MalSync: Network error: ${e.message}")
+                recordNetworkFailure()
+                return null
+            } catch (e: Exception) {
+                Logger.log("MalSync: Unexpected error: ${e.message}")
+                return null
+            }
         }
+        return null
     }
 
     /**
@@ -674,6 +709,15 @@ object MalSyncApi {
                 }
 
                 body = response.body?.string()
+            }
+
+            // MALSync has no entry for the id: an answer, not a failure — a caller remembering
+            // misses (Comick matching) should record it rather than ask again every run.
+            if (response.code == 404) {
+                return@withContext QuicklinksResponse(
+                    id = null, type = null, title = null, url = null, total = null, image = null,
+                    Sites = emptyMap(),
+                )
             }
 
             if (!response.isSuccessful) {

@@ -119,6 +119,24 @@ object UnreadCache {
         }
     }
 
+    /**
+     * Stores the Comick half of the unread row: every title [ComickUnreadNotificationTask] found
+     * behind, announced yet or not. Replaced whole each run, since that check looks at the whole
+     * library; an empty list clears it.
+     */
+    fun saveComick(entries: List<ComickUnreadEntry>) {
+        try {
+            PrefManager.setCustomVal("cached_comick_unread", ArrayList(entries))
+            Logger.log("UnreadCache: saved Comick unread (size=${entries.size})")
+        } catch (e: Exception) {
+            Logger.log("UnreadCache: Failed to save Comick cache: ${e.message}")
+        }
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    fun cachedComick(): List<ComickUnreadEntry> =
+        read("cached_comick_unread") as? List<ComickUnreadEntry> ?: emptyList()
+
     @Suppress("UNCHECKED_CAST")
     fun cachedInfo(): Map<Int, UnreadChapterInfo> = read("cached_unread_info") as? Map<Int, UnreadChapterInfo>
         ?: emptyMap()
@@ -146,9 +164,9 @@ object UnreadCache {
     }
 
     /**
-     * Drops a single media from the cached unread row — both the AniList/MAL half and the
-     * MangaUpdates half, since the id is the same key ([ani.dantotsu.connections.mangaupdates.muMediaKey])
-     * in both — and broadcasts the change so the home row and widget redraw without it.
+     * Drops a single media from the cached unread row — the AniList/MAL half and the MangaUpdates
+     * half, since the id is the same key ([ani.dantotsu.connections.mangaupdates.muMediaKey]) in
+     * both, and the Comick half by its notification id — and broadcasts the change so the home row and widget redraw without it.
      *
      * Called when the user marks that entry read from its notification: the scheduled scan would
      * clear it on its next run anyway, this just keeps the row honest in the meantime.
@@ -173,6 +191,13 @@ object UnreadCache {
                 }
                 PrefManager.setCustomVal("cached_mu_unread_info", HashMap(muInfo))
                 PrefManager.setCustomVal("cached_mu_unread_media", ArrayList(muMedia))
+                changed = true
+            }
+
+            val comick = cachedComick()
+            val comickKept = comick.filterNot { it.notifId == mediaId }
+            if (comickKept.size != comick.size) {
+                PrefManager.setCustomVal("cached_comick_unread", ArrayList(comickKept))
                 changed = true
             }
 

@@ -19,6 +19,7 @@ import ani.dantotsu.connections.mal.MALQueries
 import ani.dantotsu.connections.malsync.UnreadChapterInfo
 import ani.dantotsu.connections.malsync.UnreleasedEpisodeInfo
 import ani.dantotsu.connections.mangaupdates.MUMedia
+import ani.dantotsu.notifications.unread.ComickUnreadEntry
 import ani.dantotsu.databinding.ActivityMediaListViewBinding
 import ani.dantotsu.getThemeColor
 import ani.dantotsu.hideSystemBarsExtendView
@@ -46,6 +47,7 @@ class MediaListViewActivity : AppCompatActivity() {
     // Filled in from the caller, or once a stack has been resolved.
     private var mediaList: MutableList<Media> = mutableListOf()
     private var muMediaList: ArrayList<MUMedia> = arrayListOf()
+    private var comickList: ArrayList<ComickUnreadEntry> = arrayListOf()
     private var unreadInfo: Map<Int, UnreadChapterInfo>? = null
     private var unreleasedInfo: Map<Int, UnreleasedEpisodeInfo>? = null
     private var description: String? = null
@@ -130,6 +132,7 @@ class MediaListViewActivity : AppCompatActivity() {
             mediaList =
                 passedMedia ?: intent.getSerialized("media") as? ArrayList<Media> ?: ArrayList()
             muMediaList = passedMuMedia ?: arrayListOf()
+            comickList = passedComick ?: arrayListOf()
             unreadInfo = passedUnreadInfo
             unreleasedInfo = passedUnreleasedInfo
             description = passedDescription
@@ -269,11 +272,11 @@ class MediaListViewActivity : AppCompatActivity() {
         // that "Continue Reading" wants.
         val localUnreadInfo = unreadInfo
         combinedItems = when {
-            muMediaList.isEmpty() -> null
+            muMediaList.isEmpty() && comickList.isEmpty() -> null
             // [isStack], not [fromMalStack] — the latter is set for any caller that passed media
             // in, which includes the unread list itself; only stackUrl marks an actual stack.
             localUnreadInfo != null && !isStack ->
-                ani.dantotsu.home.UnreadOrder.sort(mediaList + muMediaList, localUnreadInfo)
+                ani.dantotsu.home.UnreadOrder.sort(mediaList + muMediaList + comickList, localUnreadInfo)
 
             else -> (mediaList.map { it to (it.userUpdatedAt ?: 0L) } +
                 muMediaList.map { it to (it.updatedAt ?: 0L) })
@@ -397,6 +400,7 @@ class MediaListViewActivity : AppCompatActivity() {
         if (!isChangingConfigurations) {
             passedMedia = null
             passedMuMedia = null
+            passedComick = null
             passedUnreadInfo = null
             passedUnreleasedInfo = null
             passedDescription = null
@@ -412,6 +416,8 @@ class MediaListViewActivity : AppCompatActivity() {
 
         var passedMedia: ArrayList<Media>? = null
         var passedMuMedia: ArrayList<MUMedia>? = null
+        /** Unread titles only Comick knows; the rest arrive as [passedMedia]/[passedMuMedia]. */
+        var passedComick: ArrayList<ComickUnreadEntry>? = null
         var passedUnreadInfo: Map<Int, UnreadChapterInfo>? = null
         var passedUnreleasedInfo: Map<Int, UnreleasedEpisodeInfo>? = null
         var passedDescription: String? = null

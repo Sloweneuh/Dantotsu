@@ -52,7 +52,10 @@ class UnreadChapterNotificationTask : Task {
 
                 Logger.log("UnreadChapterNotificationTask: starting check")
 
-                // AniList manga this run checked itself — Comick leaves those to it, see below.
+                // AniList manga this run checked for new chapters itself — Comick leaves those to
+                // it, see below. Set only once the check really ran (a MALSync scan, or another
+                // device's result): with MALSync off or anime-only nothing announces them here, and
+                // counting them as covered left them announced by no one.
                 var anilistMangaIds: Set<Int> = emptySet()
 
                 // === AniList + MALSync check ===
@@ -95,7 +98,6 @@ class UnreadChapterNotificationTask : Task {
                         }
 
                         Logger.log("UnreadChapterNotificationTask: found ${mangaList.size} manga")
-                        anilistMangaIds = mangaList.mapTo(HashSet()) { it.id }
 
                         // If another of the user's devices already produced a fresh result, reuse it
                         // instead of re-running the costly MALSync batch scan.
@@ -116,6 +118,7 @@ class UnreadChapterNotificationTask : Task {
                             )
                             // A completed scan from another device, so it answers for the whole
                             // list — anything it does not mention is caught up, not unknown.
+                            anilistMangaIds = mangaList.mapTo(HashSet()) { it.id }
                             handleUnreadResult(
                                 context, reconciled, mangaList,
                                 answeredIds = mangaList.mapTo(HashSet()) { it.id }
@@ -224,6 +227,7 @@ class UnreadChapterNotificationTask : Task {
 
                         // Publish for the user's other devices, then cache + notify locally.
                         UnreadSync.push(unreadInfo)
+                        anilistMangaIds = mangaList.mapTo(HashSet()) { it.id }
                         handleUnreadResult(
                             context, unreadInfo, mangaList,
                             answeredIds = batchResults.keys
@@ -373,6 +377,7 @@ class UnreadChapterNotificationTask : Task {
 
         val notifiedKey = if (isAnime) "notified_unread_episodes" else "notified_unread_chapters"
         val notified = getNotifiedSet(context, notifiedKey)
+        pruneNotified(notified, mediaList.associate { it.id.toString() to (it.userProgress ?: 0) })
         val newNotifications = mutableListOf<Pair<Media, UnreadChapterInfo>>()
 
         filteredUnreadInfo.forEach { (mediaId, info) ->
@@ -411,8 +416,6 @@ class UnreadChapterNotificationTask : Task {
         isAnime: Boolean = false,
     ) {
         val notificationManager = NotificationManagerCompat.from(context)
-        val unitLabel = if (isAnime) "Episode" else "Chapter"
-        val pendingLabel = if (isAnime) "unwatched" else "unread"
         // Computed once for the whole batch rather than per item: checking "is anyone else
         // active" before any of *this* batch has posted would otherwise miss that the batch
         // itself is about to post several — e.g. 3 chapters released together are grouped with
@@ -428,11 +431,7 @@ class UnreadChapterNotificationTask : Task {
             val genericLabel = context.getString(
                 if (isAnime) R.string.notification_new_episode_title else R.string.notification_new_chapter_title
             )
-            val chapterText = if (unreadCount == 1) {
-                "$unitLabel ${info.lastChapter}"
-            } else {
-                "$unitLabel ${info.lastChapter} ($unreadCount $pendingLabel)"
-            }
+            val chapterText = context.newReleaseText(info.lastChapter.toString(), unreadCount, isAnime)
             // Anime episodes come from whichever MALSync mirror has them; the language (dub/sub) is
             // what the user actually cares about, so show that instead of the streaming source —
             // as a dub/sub icon+code badge when there's a cover to put it next to, spelled out

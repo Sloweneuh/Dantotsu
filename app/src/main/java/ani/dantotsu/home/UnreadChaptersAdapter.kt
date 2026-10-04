@@ -26,8 +26,10 @@ import ani.dantotsu.connections.mangaupdates.muMediaKey
 import ani.dantotsu.connections.mangaupdates.toMUMedia
 import ani.dantotsu.databinding.ItemMediaLargeBinding
 import ani.dantotsu.databinding.ItemUnreadChapterBinding
+import ani.dantotsu.inAppIntentForLink
 import ani.dantotsu.loadImage
 import ani.dantotsu.media.Media
+import ani.dantotsu.notifications.unread.ComickUnreadEntry
 import android.text.method.LinkMovementMethod
 import android.text.util.Linkify
 import ani.dantotsu.setSafeOnClickListener
@@ -39,7 +41,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 
 class UnreadChaptersAdapter(
-    initialItems: List<Any>,  // List<Media | MUMedia>
+    initialItems: List<Any>,  // List<Media | MUMedia | ComickUnreadEntry>
     private val unreadInfo: Map<Int, UnreadChapterInfo>,
     private var type: Int = 0, // 0 = grid/compact, 1 = list/large
     private val fromMalStack: Boolean = false
@@ -116,6 +118,10 @@ class UnreadChaptersAdapter(
             is MUMedia -> when (holder) {
                 is CompactViewHolder -> bindMuCompactView(holder.binding, item)
                 is LargeViewHolder -> bindMuLargeView(holder.binding, item)
+            }
+            is ComickUnreadEntry -> when (holder) {
+                is CompactViewHolder -> bindComickCompactView(holder.binding, item)
+                is LargeViewHolder -> bindComickLargeView(holder.binding, item)
             }
             is Media -> {
                 val info = unreadInfo[item.id] ?: run {
@@ -567,6 +573,69 @@ class UnreadChaptersAdapter(
                 true
             }
         }
+    }
+
+    /**
+     * A title only Comick knows — no AniList or MangaUpdates entry to show it as. Badged with the
+     * Comick logo and the group behind its newest chapter; opens Comick's page.
+     */
+    @SuppressLint("SetTextI18n")
+    private fun bindComickCompactView(binding: ItemUnreadChapterBinding, item: ComickUnreadEntry) {
+        binding.apply {
+            itemCompactImage.loadImage(item.coverUrl)
+            itemCompactTitle.text = item.title
+            itemCompactUserProgress.text = item.progress.toString()
+            itemCompactTotal.text = " | ${item.latestChapter} | ~"
+            itemCompactScoreContainer.visibility = View.GONE
+            itemCompactNovelContainer.visibility = View.GONE
+            itemCompactScoreBG.visibility = View.GONE
+            itemCompactSource.visibility = View.GONE
+            itemCompactSourceBadge.visibility = View.GONE
+            itemCompactLanguageIcon.setImageResource(R.drawable.ic_round_comick_24)
+            itemCompactLanguageIcon.visibility = View.VISIBLE
+            itemCompactLanguageCode.text = item.source
+            itemCompactLanguageBG.visibility = View.VISIBLE
+            bindComickClicks(root, itemCompactImage, itemCompactTitle, item)
+        }
+    }
+
+    @SuppressLint("SetTextI18n")
+    private fun bindComickLargeView(binding: ItemMediaLargeBinding, item: ComickUnreadEntry) {
+        binding.apply {
+            itemCompactImage.loadImage(item.coverUrl)
+            blurImage(itemCompactBanner, item.coverUrl)
+            itemCompactTitle.text = item.title
+            itemCompactOngoing.visibility = View.GONE
+            itemCompactType.visibility = View.GONE
+            itemCompactStatus.visibility = View.GONE
+            itemCompactSynopsis.text = ""
+            itemUserProgressLarge.text = item.progress.toString()
+            itemProgressSeparator.visibility = View.VISIBLE
+            itemCompactTotal.text = item.latestChapter.toString()
+            itemTotal.text = " " + root.context.getString(R.string.chapter_plural)
+            itemCompactScoreBG.visibility = View.GONE
+            itemCompactSourceBadge.visibility = View.GONE
+            itemCompactLanguageIcon.setImageResource(R.drawable.ic_round_comick_24)
+            itemCompactLanguageIcon.visibility = View.VISIBLE
+            itemCompactLanguageCode.text = item.source
+            itemCompactLanguageBG.visibility = View.VISIBLE
+            bindComickClicks(root, itemCompactImage, itemCompactTitle, item)
+        }
+    }
+
+    /**
+     * Opens the title's Comick page. Every target is rebound, as in [bindMuLargeView]: these
+     * holders are shared with the other binders, whose listeners would otherwise stay.
+     */
+    private fun bindComickClicks(root: View, cover: View, title: View, item: ComickUnreadEntry) {
+        val open = {
+            inAppIntentForLink(root.context, item.webUrl)?.let { root.context.startActivity(it) }
+            Unit
+        }
+        root.setSafeOnClickListener { open() }
+        cover.setSafeOnClickListener { open() }
+        title.setSafeOnClickListener { open() }
+        cover.setOnLongClickListener { open(); true }
     }
 }
 

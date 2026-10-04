@@ -6,6 +6,7 @@ import ani.dantotsu.connections.mangaupdates.MUDetailsCache
 import ani.dantotsu.connections.mangaupdates.MUMedia
 import ani.dantotsu.connections.mangaupdates.muMediaKey
 import ani.dantotsu.media.Media
+import ani.dantotsu.notifications.unread.ComickUnreadEntry
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import kotlinx.coroutines.CoroutineScope
@@ -58,7 +59,10 @@ object UnreadOrder {
         return false
     }
 
-    /** Sorts per [PrefName.UnreadChaptersSort]. [items] are [Media] and/or [MUMedia]. */
+    /**
+     * Sorts per [PrefName.UnreadChaptersSort]. [items] are [Media], [MUMedia] and/or
+     * [ComickUnreadEntry] (a title only Comick knows).
+     */
     fun sort(items: List<Any>, info: Map<Int, UnreadChapterInfo>): List<Any> =
         if (sortsByRecency()) items.sortedByDescending { latestChapterAtOf(it, info) }
         else items.sortedBy { unreadCountOf(it, info) }
@@ -67,6 +71,7 @@ object UnreadOrder {
     private fun unreadCountOf(item: Any, info: Map<Int, UnreadChapterInfo>): Int = when (item) {
         is Media -> info[item.id]?.let { it.lastChapter - it.userProgress } ?: Int.MAX_VALUE
         is MUMedia -> (latestChapterOf(item, info) ?: 0) - (item.userChapter ?: 0)
+        is ComickUnreadEntry -> item.latestChapter - item.progress
         else -> Int.MAX_VALUE
     }
 
@@ -98,6 +103,7 @@ object UnreadOrder {
                 malSync.latestChapterAt ?: muDate ?: Long.MIN_VALUE
             } else muDate ?: malSync?.latestChapterAt ?: Long.MIN_VALUE
         }
+        is ComickUnreadEntry -> item.latestChapterAt ?: Long.MIN_VALUE
         else -> Long.MIN_VALUE
     }
 }

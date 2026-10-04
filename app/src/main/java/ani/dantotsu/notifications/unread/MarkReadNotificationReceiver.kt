@@ -16,6 +16,7 @@ import ani.dantotsu.notifications.NotificationReadState
 import ani.dantotsu.others.getSerialized
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
+import ani.dantotsu.settings.saving.removeMediaId
 import ani.dantotsu.util.Logger
 import eu.kanade.tachiyomi.data.notification.Notifications
 import kotlinx.coroutines.CoroutineScope
@@ -28,7 +29,8 @@ import kotlinx.coroutines.withTimeoutOrNull
  * Backs the "Mark as read" / "Mark as watched" action on a new-chapter / new-episode notification
  * (the AniList + MALSync one from [UnreadChapterNotificationTask], the MangaUpdates one from
  * [MuUnreadNotificationTask], and the Comick one from [ComickUnreadNotificationTask], which writes
- * to the Comick library instead).
+ * to the Comick library as well as to the tracker list the title is on, if any), and the Comick
+ * notification's "Mute" ([ACTION_MUTE]).
  *
  * Writes the announced chapter/episode as the new progress on whichever tracker backs the entry —
  * reusing [updateProgressSuspending], so MAL/MangaBaka/cloud mirrors follow exactly as they would
@@ -45,7 +47,16 @@ class MarkReadNotificationReceiver : BroadcastReceiver() {
         const val EXTRA_PROGRESS = "progress"
         const val EXTRA_NOTIFICATION_ID = "notificationId"
 
-        /** A Comick title HID: the progress goes to the Comick library instead of a tracker. */
+        /** "Mute" on a Comick notification: [EXTRA_EXCLUDE_ENTRY] joins the exclusion list. */
+        const val ACTION_MUTE = "ani.dantotsu.notifications.MUTE"
+
+        /** An exclusion-list entry, "id||cover||title". */
+        const val EXTRA_EXCLUDE_ENTRY = "excludeEntry"
+
+        /**
+         * A Comick title HID: the progress is recorded in the Comick library — besides the
+         * tracker's, when "media" or "muMedia" also rides along.
+         */
         const val EXTRA_COMICK_HID = "comickHid"
 
         /** The exact number for Comick ("13.5"), which [EXTRA_PROGRESS] can only round down. */
@@ -62,6 +73,10 @@ class MarkReadNotificationReceiver : BroadcastReceiver() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action == ACTION_MUTE) {
+            mute(context.applicationContext, intent)
+            return
+        }
         val appContext = context.applicationContext
         val progress = intent.getIntExtra(EXTRA_PROGRESS, -1)
         val notificationId = intent.getIntExtra(EXTRA_NOTIFICATION_ID, -1)
@@ -88,14 +103,15 @@ class MarkReadNotificationReceiver : BroadcastReceiver() {
                 TrackerSessions.start()
 
                 if (comickHid != null) {
-                    // Comick-only titles: the notification only exists because no tracker list
-                    // holds them, so the Comick library is the one place to record the chapter.
+                    // First, with the exact number ("13.5") the tracker write below can only
+                    // round down — a list sync mirroring that write then has nothing to raise.
                     val exact = intent.getStringExtra(EXTRA_COMICK_PROGRESS) ?: progress.toString()
                     val written = withTimeoutOrNull(WRITE_TIMEOUT_MS) {
                         ComickSync.markRead(comickHid, exact)
                     }
                     if (written != true) Logger.log("MarkReadNotificationReceiver: Comick write failed")
-                } else {
+                }
+                if (media != null || muMedia != null) {
                     val target = media ?: muMedia!!.toMedia()
                     if (progress > (target.userProgress ?: 0)) {
                         withTimeoutOrNull(WRITE_TIMEOUT_MS) {
@@ -114,6 +130,29 @@ class MarkReadNotificationReceiver : BroadcastReceiver() {
                 clearGroupSummaryIfEmpty(appContext)
                 pending.finish()
             }
+        }
+    }
+
+    /**
+     * "Mute": adds the entry to the unread exclusion list — replacing any older entry for the same
+     * id — then clears the notification and everything stored for that title.
+     */
+    private fun mute(appContext: Context, intent: Intent) {
+        val entry = intent.getStringExtra(EXTRA_EXCLUDE_ENTRY) ?: return
+        val notificationId = intent.getIntExtra(EXTRA_NOTIFICATION_ID, -1)
+        if (notificationId != -1) {
+            runCatching { NotificationManagerCompat.from(appContext).cancel(notificationId) }
+        }
+        clearGroupSummaryIfEmpty(appContext)
+        try {
+            PrefManager.init(appContext)
+            val id = entry.substringBefore("||")
+            val current = PrefManager.getVal<Set<String>>(PrefName.MalSyncExcludeList)
+            PrefManager.setVal(PrefName.MalSyncExcludeList, current.removeMediaId(id) + entry)
+            removeStoredNotification(notificationId, Int.MAX_VALUE)
+            UnreadCache.removeEntry(appContext, notificationId)
+        } catch (e: Exception) {
+            Logger.log("MarkReadNotificationReceiver: mute failed: ${e.message}")
         }
     }
 

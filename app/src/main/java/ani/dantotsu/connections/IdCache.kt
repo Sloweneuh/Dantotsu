@@ -62,6 +62,7 @@ object IdCache {
     private var file: File? = null
     private var loaded = false
     private var pending = 0
+    private var lastWriteAt = 0L
 
     private val entries = object : LinkedHashMap<String, String>(512, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, String>): Boolean =
@@ -109,6 +110,16 @@ object IdCache {
     fun flush() = synchronized(lock) { if (pending > 0) writeLocked() }
 
     /**
+     * [flush], but at most once every [intervalMs] — for a long pass whose entries are each costly
+     * to find again (a title search is several requests), where waiting for [FLUSH_EVERY] or the
+     * end could lose a lot to a kill, and writing after every entry would rewrite the whole file
+     * hundreds of times over.
+     */
+    fun flushThrottled(intervalMs: Long) = synchronized(lock) {
+        if (pending > 0 && System.currentTimeMillis() - lastWriteAt >= intervalMs) writeLocked()
+    }
+
+    /**
      * [flush] off the calling thread, for callers that are on the main one — the trim-memory
      * callback that catches the app being backgrounded, in particular. Nothing waits on it, and
      * losing the write to a kill that arrives first costs a re-lookup like any other miss.
@@ -134,6 +145,7 @@ object IdCache {
 
     private fun writeLocked() {
         pending = 0
+        lastWriteAt = System.currentTimeMillis()
         val target = file ?: return
         runCatching {
             // Through a temporary file, so a kill part-way through leaves the previous cache intact

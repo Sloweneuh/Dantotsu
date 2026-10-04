@@ -85,10 +85,15 @@ class MuUnreadNotificationTask : Task {
         val unreadItems = currentUnreadItems(context)
         Logger.log("MuUnreadNotificationTask: found ${unreadItems.size} items with unread chapters")
 
-        if (unreadItems.isEmpty()) return readingListIds
-
         val notifiedKey = "notified_mu_chapters"
         val notified = getNotifiedSet(context, notifiedKey)
+        readingListProgress?.let {
+            pruneNotified(notified, it)
+            saveNotifiedSet(context, notifiedKey, notified)
+        }
+
+        if (unreadItems.isEmpty()) return readingListIds
+
         val newItems = mutableListOf<UnreadItem>()
 
         unreadItems.forEach { item ->
@@ -111,10 +116,13 @@ class MuUnreadNotificationTask : Task {
             val resolvedItems = coroutineScope {
                 newItems.map { item ->
                     async {
-                        if (item.media.coverUrl != null) return@async item
+                        val withGroup = if (item.source == null) {
+                            item.copy(source = latestGroup(item.media.id, item.latestChapter))
+                        } else item
+                        if (withGroup.media.coverUrl != null) return@async withGroup
                         val coverUrl = MUDetailsCache.ensure(item.media.id)?.coverUrl
-                            ?: return@async item
-                        item.copy(media = item.media.copy(coverUrl = coverUrl))
+                            ?: return@async withGroup
+                        withGroup.copy(media = withGroup.media.copy(coverUrl = coverUrl))
                     }
                 }.awaitAll()
             }
@@ -129,8 +137,29 @@ class MuUnreadNotificationTask : Task {
         return readingListIds
     }
 
+    /**
+     * The scanlation group(s) behind [chapter], from the series' newest releases — shown as the
+     * source when MangaUpdates is the one reporting the chapter, in place of the bare "MangaUpdates".
+     * Asked fresh rather than through [MUDetailsCache], whose stored release may predate the chapter
+     * being announced. Null when the releases don't name one; the label then stays "MangaUpdates".
+     */
+    private suspend fun latestGroup(seriesId: Long, chapter: Int): String? {
+        val releases = runCatching { MangaUpdates.getSeriesGroups(seriesId)?.releaseList }
+            .onFailure { Logger.log("MuUnreadNotificationTask: releases for $seriesId failed: ${it.message}") }
+            .getOrNull().orEmpty()
+        // The release for this chapter ("12", or a range like "10-12" ending on it); else the newest.
+        val release = releases.firstOrNull { r ->
+            r.chapter?.substringAfterLast('-')?.trim()?.toDoubleOrNull()?.toInt() == chapter
+        } ?: releases.firstOrNull()
+        return release?.groups.orEmpty().mapNotNull { it.name?.trim()?.takeIf { n -> n.isNotEmpty() } }
+            .distinct().joinToString(", ").ifEmpty { null }
+    }
+
     /** Series ids on the reading list [currentUnreadItems] last fetched. */
     private var readingListIds: Set<Long> = emptySet()
+
+    /** Saved chapter by series id, as [pruneNotified] takes it; null until a fetch succeeds. */
+    private var readingListProgress: Map<String, Int>? = null
 
     /** A MangaUpdates entry with unread chapters, over both sources that can know about them. */
     private data class UnreadItem(
@@ -163,6 +192,10 @@ class MuUnreadNotificationTask : Task {
 
         val readingList = allLists["Reading"] ?: emptyList()
         readingListIds = readingList.mapTo(HashSet()) { it.id }
+        // Only a list that actually came back; a missing "Reading" key is a failed fetch.
+        if (allLists.containsKey("Reading")) {
+            readingListProgress = readingList.associate { it.id.toString() to (it.userChapter ?: 0) }
+        }
 
         // What MALSync knows about the series that could be linked to a MAL entry — often a chapter
         // ahead of MangaUpdates' own count, and with the source it landed on. The rest are unchanged.
@@ -206,11 +239,7 @@ class MuUnreadNotificationTask : Task {
             // title is ellipsized on its own rather than crowding the rest of the sentence.
             val title = muMedia.title ?: ""
             val genericLabel = context.getString(R.string.notification_new_chapter_title)
-            val chapterText = if (unreadCount == 1) {
-                "Chapter $latestChapter"
-            } else {
-                "Chapter $latestChapter ($unreadCount unread)"
-            }
+            val chapterText = context.newReleaseText(latestChapter.toString(), unreadCount)
             val sourceText = context.getString(
                 R.string.notification_source_subtext,
                 source ?: "MangaUpdates"
@@ -390,7 +419,8 @@ class MuUnreadNotificationTask : Task {
             val media = if (coverUrl != null && coverUrl != live.media.coverUrl) {
                 live.media.copy(coverUrl = coverUrl)
             } else live.media
-            return media to live.copy(media = media)
+            val source = live.source ?: latestGroup(live.media.id, live.latestChapter)
+            return media to live.copy(media = media, source = source)
         }
 
         val stored = PrefManager.getNullableVal<List<UnreadChapterStore>>(

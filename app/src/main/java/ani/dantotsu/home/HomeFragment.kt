@@ -76,6 +76,7 @@ class HomeFragment : Fragment() {
     private val unreadCacheReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             try {
+                comickCache = null
                 refreshUnreadFromCache()
             } catch (e: Exception) {
                 ani.dantotsu.util.Logger.log("unreadCacheReceiver error: ${e.message}")
@@ -174,6 +175,7 @@ class HomeFragment : Fragment() {
     private fun rowIdOf(item: Any): Long = when (item) {
         is Media -> item.id.toLong()
         is MUMedia -> item.id
+        is ani.dantotsu.notifications.unread.ComickUnreadEntry -> item.notifId.toLong()
         else -> 0L
     }
 
@@ -219,6 +221,58 @@ class HomeFragment : Fragment() {
     }
 
     /**
+     * What the background Comick check last stored, read once per broadcast rather than on every
+     * redraw — the row redraws often, and each read deserialises the whole list.
+     */
+    private var comickCache: List<ani.dantotsu.notifications.unread.ComickUnreadEntry>? = null
+
+    /**
+     * The Comick half of the row: titles the Comick check found behind, each shown as the AniList
+     * media or MangaUpdates series Comick links when there is one, else as itself. Returns the
+     * items and their unread info, keyed as each is shown.
+     *
+     * Anything the other halves already show is left to them, and progress is brought up to the
+     * live lists where they hold the title — the cache is only as fresh as the last check.
+     */
+    private fun comickUnread(): Pair<List<Any>, Map<Int, UnreadChapterInfo>> {
+        val cached = comickCache
+            ?: ani.dantotsu.notifications.unread.UnreadCache.cachedComick().also { comickCache = it }
+        if (cached.isEmpty()) return emptyList<Any>() to emptyMap()
+        val shownAniList = unreadAniList.mapTo(HashSet()) { it.id }
+        val shownMu = muUnread().mapTo(HashSet()) { it.id }
+        val continueById = model.getMangaContinue().value?.associateBy { it.id }
+        val muById = model.getMuHomeLists().value?.values?.flatten()?.associateBy { it.id }
+        val excludeList = PrefManager.getVal<Set<String>>(PrefName.MalSyncExcludeList)
+
+        val items = ArrayList<Any>()
+        val info = HashMap<Int, UnreadChapterInfo>()
+        cached.forEach { entry ->
+            val al = entry.anilistMedia
+            val mu = entry.muMedia
+            if (al != null && al.id in shownAniList) return@forEach
+            if (mu != null && mu.id in shownMu) return@forEach
+            if (excludeList.containsMediaId(entry.rowKey.toString()) ||
+                excludeList.containsMediaId(
+                    ani.dantotsu.notifications.unread.ComickUnreadEntry.excludeId(entry.hid)
+                )
+            ) return@forEach
+            val progress = maxOf(
+                entry.progress,
+                al?.let { continueById?.get(it.id)?.userProgress } ?: 0,
+                mu?.let { muById?.get(it.id)?.userChapter } ?: 0,
+            )
+            if (entry.latestChapter <= progress) return@forEach
+            items += when {
+                al != null -> al.copy().also { it.userProgress = progress }
+                mu != null -> mu.copy(userChapter = progress)
+                else -> entry.copy(progress = progress)
+            }
+            info[entry.rowKey] = entry.info(progress)
+        }
+        return items to info
+    }
+
+    /**
      * Asks MALSync about the MangaUpdates reading list, then redraws the row with whatever came
      * back. Cheap to call repeatedly: it skips a list it has already asked about, and the id
      * resolution behind it is cached per series (misses included).
@@ -250,8 +304,9 @@ class HomeFragment : Fragment() {
      */
     private fun renderUnreadRow(animate: Boolean = true) {
         if (_binding == null) return
-        val info = combinedUnreadInfo()
-        val items: List<Any> = unreadAniList + muUnread()
+        val (comickItems, comickInfo) = comickUnread()
+        val info = combinedUnreadInfo() + comickInfo
+        val items: List<Any> = unreadAniList + muUnread() + comickItems
         renderedSort = UnreadOrder.current()
         // MangaUpdates entries can't be placed until their release dates are in; drawing without
         // them and re-sorting afterwards is what made the row visibly shuffle itself.
@@ -306,6 +361,8 @@ class HomeFragment : Fragment() {
                     ArrayList(combined.filterIsInstance<Media>())
                 MediaListViewActivity.passedMuMedia =
                     ArrayList(combined.filterIsInstance<ani.dantotsu.connections.mangaupdates.MUMedia>())
+                MediaListViewActivity.passedComick =
+                    ArrayList(combined.filterIsInstance<ani.dantotsu.notifications.unread.ComickUnreadEntry>())
                 MediaListViewActivity.passedUnreadInfo = info
                 ContextCompat.startActivity(
                     i.context, Intent(i.context, MediaListViewActivity::class.java)

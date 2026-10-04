@@ -13,6 +13,7 @@ import ani.dantotsu.R
 import ani.dantotsu.initActivity
 import ani.dantotsu.notifications.anilist.AnilistNotificationTask
 import ani.dantotsu.notifications.subscription.SubscriptionNotificationTask
+import ani.dantotsu.notifications.unread.ComickUnreadNotificationTask
 import ani.dantotsu.notifications.unread.MuUnreadNotificationTask
 import ani.dantotsu.notifications.unread.UnreadChapterNotificationTask
 import ani.dantotsu.settings.saving.PrefManager
@@ -50,6 +51,7 @@ class FirebaseTestActivity : AppCompatActivity() {
     private lateinit var btnTestUnreadChapterImage: Button
     private lateinit var btnTestUnreadEpisodeImage: Button
     private lateinit var btnTestMuImage: Button
+    private lateinit var btnTestComickImage: Button
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -101,6 +103,7 @@ class FirebaseTestActivity : AppCompatActivity() {
         btnTestUnreadChapterImage = findViewById(R.id.btnTestUnreadChapterImage)
         btnTestUnreadEpisodeImage = findViewById(R.id.btnTestUnreadEpisodeImage)
         btnTestMuImage = findViewById(R.id.btnTestMuImage)
+        btnTestComickImage = findViewById(R.id.btnTestComickImage)
 
         setupUI()
         updateStatus()
@@ -167,6 +170,10 @@ class FirebaseTestActivity : AppCompatActivity() {
 
         btnTestMuImage.setOnClickListener {
             sendTestNotification("MangaUpdates") { MuUnreadNotificationTask().sendTestNotification(this) }
+        }
+
+        btnTestComickImage.setOnClickListener {
+            sendTestNotification("Comick") { ComickUnreadNotificationTask().sendTestNotification(this) }
         }
     }
 

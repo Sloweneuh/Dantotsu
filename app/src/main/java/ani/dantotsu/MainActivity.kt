@@ -424,6 +424,10 @@ class MainActivity : AppCompatActivity() {
                                 )
                             )
                         }
+                        // A waiting-widget row for a title only Comick knows: its Comick page.
+                        intent.extras?.getString("link")?.let { link ->
+                            inAppIntentForLink(this@MainActivity, link)?.let { startActivity(it) }
+                        }
                         if (id != null && id != 0) {
                             val media = withContext(Dispatchers.IO) {
                                 Anilist.query.getMedia(id, isMAL, mediaType)
