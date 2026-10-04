@@ -268,6 +268,7 @@
         </com.google.android.material.appbar.AppBarLayout>
 
         <LinearLayout
+            android:id="@+id/mediaViewPagerContainer"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="vertical"
@@ -468,6 +469,23 @@
                     tools:visibility="visible" />
             </LinearLayout>
         </LinearLayout>
+
+        <!-- Discovery queue bar, only in queue mode; see DiscoverQueueSheet. The tab rail sits
+             outside this layout here, so nothing has to draw over the sheet. -->
+        <FrameLayout
+            android:id="@+id/discoverSheetContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:clipToPadding="false"
+            android:paddingTop="12dp"
+            android:visibility="gone"
+            app:behavior_hideable="false"
+            app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior">
+
+            <include
+                android:id="@+id/discoverSheet"
+                layout="@layout/layout_discover_sheet" />
+        </FrameLayout>
 
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
 

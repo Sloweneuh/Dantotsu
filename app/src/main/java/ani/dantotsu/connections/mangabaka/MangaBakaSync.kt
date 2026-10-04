@@ -181,6 +181,69 @@ object MangaBakaSync {
     }
 
     /**
+     * Whether the account's For-You profile can produce recommendations yet, via
+     * `GET /v1/my/series/recommendations/status`. Cheap — it doesn't run the re-rank. Null when the
+     * request failed or there is no token.
+     */
+    suspend fun getRecommendationStatus(): RecommendationStatus? {
+        TrackerSessions.await()
+        val headers = MangaBaka.authHeaders() ?: return null
+        return tryWithSuspend(snackbar = false) {
+            val request = Request.Builder().url("$API_URL/v1/my/series/recommendations/status")
+                .apply { headers.forEach { (k, v) -> addHeader(k, v) } }
+                .get().build()
+            val response = MangaBakaApi.execute(request)
+            val body = response.body?.string()
+            val ok = response.isSuccessful
+            response.close()
+            if (!ok) Logger.log("MangaBaka recommendation status: HTTP ${response.code}")
+            if (ok && body != null) Mapper.json.decodeFromString<RecommendationStatus>(body) else null
+        }
+    }
+
+    /** `exclude_ids` on the recommendations route takes at most this many ids. */
+    const val RECOMMENDATION_EXCLUDE_LIMIT = 100
+
+    /**
+     * Personalised For-You recommendations via `GET /v1/my/series/recommendations` — the feed the
+     * site's discovery queue is cut from. Needs the `library.read` scope. [excludeIds] beyond
+     * [RECOMMENDATION_EXCLUDE_LIMIT] are dropped (most recent kept); callers filter the rest out of
+     * the results themselves. Null when the request failed.
+     */
+    suspend fun getRecommendations(
+        page: Int = 1,
+        limit: Int = 12,
+        excludeIds: Collection<Long> = emptyList(),
+        allowAdult: Boolean = true,
+    ): RecommendationsResponse? {
+        TrackerSessions.await()
+        val headers = MangaBaka.authHeaders() ?: return null
+        return tryWithSuspend(snackbar = false) {
+            val url = "$API_URL/v1/my/series/recommendations".toHttpUrl().newBuilder()
+                .addQueryParameter("page", page.toString())
+                .addQueryParameter("limit", limit.toString())
+                .apply {
+                    excludeIds.toList().takeLast(RECOMMENDATION_EXCLUDE_LIMIT)
+                        .forEach { addQueryParameter("exclude_ids", it.toString()) }
+                    // Same default the search screen applies: without the adult toggle, keep to
+                    // the two non-explicit ratings.
+                    if (!allowAdult) listOf("safe", "suggestive")
+                        .forEach { addQueryParameter("content_rating", it) }
+                }
+                .build()
+            val request = Request.Builder().url(url)
+                .apply { headers.forEach { (k, v) -> addHeader(k, v) } }
+                .get().build()
+            val response = MangaBakaApi.execute(request)
+            val body = response.body?.string()
+            val ok = response.isSuccessful
+            response.close()
+            if (!ok) Logger.log("MangaBaka recommendations: HTTP ${response.code} — ${body?.take(300)}")
+            if (ok && body != null) Mapper.json.decodeFromString<RecommendationsResponse>(body) else null
+        }
+    }
+
+    /**
      * Pushes a MangaUpdates entry to MangaBaka, resolving the series by MangaUpdates id.
      * [muListId] is a MangaUpdates list index (0=Reading, 1=Planning, 2=Completed, 3=Dropped, 4=Paused).
      * [startDate] is what MangaUpdates knows as the date the series was added — see
@@ -442,6 +505,62 @@ object MangaBakaSync {
         fun resolvedSeriesId(): Long? = seriesId ?: series?.id
         fun coverUrl(): String? = series?.cover?.thumbUrl()
         fun title(): String? = series?.displayTitle()
+    }
+
+    /**
+     * `GET /v1/my/series/recommendations/status`. [coldStart] means the library is too small to
+     * build a taste profile from (under ~10 entries); [profileStale] means it is still being built.
+     */
+    @Serializable
+    data class RecommendationStatus(
+        @SerialName("cold_start") val coldStart: Boolean = false,
+        @SerialName("profile_stale") val profileStale: Boolean = false,
+        @SerialName("library_count") val libraryCount: Int = 0,
+    )
+
+    /** `GET /v1/my/series/recommendations`. Carries the same readiness flags as the status probe. */
+    @Serializable
+    data class RecommendationsResponse(
+        val results: List<Recommendation> = emptyList(),
+        @SerialName("cold_start") val coldStart: Boolean = false,
+        @SerialName("profile_stale") val profileStale: Boolean = false,
+    )
+
+    @Serializable
+    data class Recommendation(
+        val id: Long,
+        val titles: List<MangaBakaApi.TitleEntry>? = null,
+        @SerialName("media_type") val mediaType: String? = null,
+        @SerialName("cover_image") val cover: MangaBakaApi.CoverImage? = null,
+        @SerialName("published_year") val publishedYear: Int? = null,
+        val reason: RecommendationReason? = null,
+    ) {
+        fun displayTitle(): String? = MangaBakaApi.pickPreferredTitle(null, titles)
+    }
+
+    /**
+     * Why a series was picked. [reasonType] is `tag_match`, `similar_to` or `hidden_gem`;
+     * [reasonSeeds] are the library series it was matched from, with their library state.
+     */
+    @Serializable
+    data class RecommendationReason(
+        @SerialName("reason_type") val reasonType: String? = null,
+        @SerialName("top_tags") val topTags: List<ReasonTag> = emptyList(),
+        /** Tags the user tends to dislike that lowered this series' score. */
+        @SerialName("suppressed_tags") val suppressedTags: List<ReasonTag> = emptyList(),
+        @SerialName("reason_seeds") val reasonSeeds: List<ReasonSeed> = emptyList(),
+    )
+
+    @Serializable
+    data class ReasonTag(val id: Int? = null, val name: String? = null, val weight: String? = null)
+
+    @Serializable
+    data class ReasonSeed(
+        val id: Long? = null,
+        val state: String? = null,
+        val titles: List<MangaBakaApi.TitleEntry>? = null,
+    ) {
+        fun displayTitle(): String? = MangaBakaApi.pickPreferredTitle(null, titles)
     }
 
     /** `GET /v1/my/library/batch` response: the matching library entries, unpaginated. */

@@ -316,6 +316,23 @@
             tools:ignore="SpeakableTextPresentCheck" />
     </LinearLayout>
 
+    <!-- Discovery queue bar, only in queue mode. Declared before the tab bar's container so the bar
+         draws over the sheet's lower edge; see DiscoverQueueSheet. -->
+    <FrameLayout
+        android:id="@+id/discoverSheetContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:clipToPadding="false"
+        android:paddingTop="12dp"
+        android:visibility="gone"
+        app:behavior_hideable="false"
+        app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior">
+
+        <include
+            android:id="@+id/discoverSheet"
+            layout="@layout/layout_discover_sheet" />
+    </FrameLayout>
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

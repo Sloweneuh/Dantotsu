@@ -367,6 +367,8 @@
         <activity
             android:name=".media.ComickListActivity" />
         <activity
+            android:name=".media.discover.DiscoverActivity" />
+        <activity
             android:name=".media.MangaBakaMediaActivity"
             android:exported="true">
             <intent-filter android:label="@string/app_name">

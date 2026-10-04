@@ -45,6 +45,19 @@ object SimklApi {
         return null
     }
 
+    /**
+     * True when Simkl answered "no such title" for every id [resolve] would try — as opposed to a
+     * lookup that failed outright, which is never recorded as a miss. Only meaningful after
+     * [resolve] has run for the same ids.
+     */
+    fun isConfirmedMissing(anilistId: Int?, malId: Int?): Boolean {
+        val keys = listOfNotNull(
+            anilistId?.let { "${CACHE_PREFIX}anilist_$it" },
+            malId?.let { "${CACHE_PREFIX}mal_$it" },
+        )
+        return keys.isNotEmpty() && synchronized(negativeCache) { keys.all { it in negativeCache } }
+    }
+
     private suspend fun lookup(param: String, id: Int): Match? {
         val cacheKey = "$CACHE_PREFIX${param}_$id"
         val cached = IdCache.getLong(cacheKey) ?: 0L
@@ -52,7 +65,7 @@ object SimklApi {
             val eps = IdCache.getInt("$EP_CACHE_PREFIX${param}_$id") ?: 0
             return Match(cached, eps.takeIf { it > 0 })
         }
-        if (cacheKey in negativeCache) return null
+        if (synchronized(negativeCache) { cacheKey in negativeCache }) return null
 
         // Distinguish "Simkl has no such id" (cache the miss) from "the request failed" (don't — a
         // 429 or a dropped connection shouldn't blacklist the id for the rest of the session).
@@ -81,7 +94,7 @@ object SimklApi {
             return Match(simklId, match.totalEpisodes)
         }
         Logger.log("Simkl id miss: $param/$id")
-        negativeCache.add(cacheKey)
+        synchronized(negativeCache) { negativeCache.add(cacheKey) }
         return null
     }
 

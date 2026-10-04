@@ -1055,10 +1055,16 @@ object ListCompare {
         simklId: Long?,
         resolvedTotalEps: Int?,
     ): DiffEntry? {
-        // A special/OVA that isn't already a distinct Simkl entry can't become one — pushing its id
-        // resolves to the parent season (which is usually already synced), so the "diff" would never
-        // close. Skip it. One that *does* exist on Simkl (current != null) is diffed normally.
-        if (current == null && simklId == null && media.format in SIMKL_NON_DISTINCT_FORMATS) return null
+        if (current == null && simklId == null) {
+            // A special/OVA that isn't already a distinct Simkl entry can't become one — pushing its
+            // id resolves to the parent season (which is usually already synced), so the "diff"
+            // would never close.
+            if (media.format in SIMKL_NON_DISTINCT_FORMATS) return null
+            // Not in the library and Simkl has no record of the title at all (often one that's only
+            // just been announced): there is nothing on Simkl to sync it to, so it isn't a diff. A
+            // lookup that merely failed isn't a confirmed miss and still shows.
+            if (SimklApi.isConfirmedMissing(media.id, media.idMAL)) return null
+        }
 
         val expectedCanon = media.userStatus ?: "CURRENT"
         val actualCanon = current?.let { SimklSync.toCanon(it.status) }

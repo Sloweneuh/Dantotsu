@@ -18,6 +18,9 @@ import ani.dantotsu.home.SearchBottomSheet
 import ani.dantotsu.incognitoNotification
 import ani.dantotsu.isOnline
 import ani.dantotsu.media.CalendarActivity
+import ani.dantotsu.media.discover.AniListAnimeDiscovery
+import ani.dantotsu.media.discover.DiscoverActivity
+import ani.dantotsu.media.discover.MangaBakaDiscovery
 import ani.dantotsu.media.user.ListActivity
 import ani.dantotsu.profile.activity.FeedActivity
 import ani.dantotsu.settings.DiscordDialogFragment
@@ -296,6 +299,26 @@ object QuickTiles : TileCatalogue(PrefName.QuickTileOrder) {
             "calendar", R.string.release_calendar, R.drawable.ic_round_calendar_today_24,
             QuickTileCategory.LIBRARY, needsNetwork = true,
         ) { it.open(CalendarActivity::class.java) },
+        QuickTile.Action(
+            "discover_manga", R.string.quick_tile_discover_manga, R.drawable.ic_manga_discover_24,
+            QuickTileCategory.LIBRARY, needsNetwork = true,
+            // The queue is cut from MangaBaka's For-You feed, which is per account.
+            isAvailable = { MangaBaka.token != null },
+            unavailableReason = R.string.quick_tile_needs_mangabaka,
+        ) { host ->
+            host.activity.startActivity(DiscoverActivity.intent(host.activity, MangaBakaDiscovery))
+            host.dismiss()
+        },
+        QuickTile.Action(
+            "discover_anime", R.string.quick_tile_discover_anime, R.drawable.ic_anime_discover_24,
+            QuickTileCategory.LIBRARY, needsNetwork = true,
+            // Built from the AniList account's own list and stats.
+            isAvailable = { Anilist.token != null },
+            unavailableReason = R.string.quick_tile_needs_anilist,
+        ) { host ->
+            host.activity.startActivity(DiscoverActivity.intent(host.activity, AniListAnimeDiscovery))
+            host.dismiss()
+        },
         QuickTile.Action(
             "downloads", R.string.downloads, R.drawable.ic_download_24,
             QuickTileCategory.LIBRARY,

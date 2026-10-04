@@ -55,6 +55,10 @@ import ani.dantotsu.isOnline
 import ani.dantotsu.loadCoverImage
 import ani.dantotsu.loadImage
 import ani.dantotsu.media.anime.AnimeWatchFragment
+import ani.dantotsu.media.discover.DiscoverQueueSheet
+import ani.dantotsu.media.discover.DiscoveryQueue
+import ani.dantotsu.media.discover.DiscoverySource
+import com.google.android.material.bottomsheet.BottomSheetBehavior
 import ani.dantotsu.media.comments.CommentsFragment
 import ani.dantotsu.media.manga.MangaReadFragment
 import ani.dantotsu.media.novel.NovelReadFragment
@@ -1243,6 +1247,8 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
             selected = 1
         }
         if (intent.getStringExtra("FRAGMENT_TO_LOAD") != null) selected = 2
+        // A queue pick always opens on Info, where its "why" is — whatever tab the last one was on.
+        if (discoverSource != null) selected = 0
         if (viewPager.currentItem != selected)
                 viewPager.post { viewPager.setCurrentItem(selected, false) }
         binding.commentInputLayout.isVisible = selected == 2
@@ -1258,12 +1264,19 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                         selected = newIndex
                         binding.commentInputLayout.isVisible = selected == 2
                         viewPager.setCurrentItem(selected, true)
+                        queueSheet?.let {
+                            it.setPageMode(queuePageMode(selected))
+                            applyQueuePadding()
+                        }
+                        // Queue picks aren't the user's to remember a tab for.
+                        if (discoverSource != null) return
                         val sel = model.loadSelected(media, isDownload)
                         sel.window = selected
                         model.saveSelected(media.id, sel)
                     }
                 }
         )
+        discoverSource?.let { setUpQueue(it, media) }
 
         val live = Refresh.activity.getOrPut(this.hashCode()) { MutableLiveData(true) }
         live.observe(this) {
@@ -1280,8 +1293,97 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
             if (updatedMedia != null) {
                 media = updatedMedia
                 progress()
+                // Added from this page's list editor, or started from the Watch tab: the queue
+                // takes that as the pick's verdict.
+                if (updatedMedia.userStatus != null) queueSheet?.markOnList(updatedMedia.id.toLong())
             }
         }
+    }
+
+    // ---- Discovery queue mode ----
+
+    /** Set when this page shows a discovery queue pick (see [DiscoverySource.queuePageIntent]). */
+    private val discoverSource: DiscoverySource? by lazy {
+        DiscoverySource.byId(intent.getStringExtra(DiscoverySource.EXTRA_SOURCE))
+    }
+    private var queueSheet: DiscoverQueueSheet? = null
+    /** The pager container's own bottom padding (room for the tab bar), before the sheet adds to it. */
+    private var basePagerPadding = -1
+    private var sheetPagerPadding = 0
+
+    private fun queuePageMode(tab: Int) = when (tab) {
+        0 -> DiscoverQueueSheet.PageMode.INFO
+        2 -> DiscoverQueueSheet.PageMode.HIDDEN
+        else -> DiscoverQueueSheet.PageMode.BROWSE
+    }
+
+    private fun setUpQueue(source: DiscoverySource, media: Media) {
+        val container = binding.mediaViewPagerContainer
+        if (basePagerPadding < 0) basePagerPadding = container.paddingBottom
+        val sheet = DiscoverQueueSheet(
+            activity = this,
+            source = source,
+            container = binding.discoverSheetContainer,
+            sheet = binding.discoverSheet,
+            // Measured from where the tab bar actually sits rather than its height: the insets
+            // listener grows the bar over the system navigation inset some time after layout, so
+            // a height read too early leaves the sheet's last lines under it. In landscape the bar
+            // is a side rail outside the sheet's layout.
+            bottomChrome = {
+                if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) 0
+                else {
+                    val bar = IntArray(2).also { navBar.getLocationInWindow(it) }[1]
+                    val sheetParent = IntArray(2).also { binding.discoverSheetContainer.rootView.getLocationInWindow(it) }[1]
+                    (sheetParent + binding.discoverSheetContainer.rootView.height - bar).coerceAtLeast(0)
+                }
+            },
+            onPeekHeight = { peek ->
+                sheetPagerPadding = peek
+                applyQueuePadding()
+            },
+            showItem = { next -> replaceWithQueuePick(source, next) },
+            finish = { completed ->
+                setResult(if (completed) RESULT_OK else RESULT_CANCELED)
+                finish()
+            },
+        )
+        queueSheet = sheet
+        // Insets and rotation resize the tab bar after this runs; the sheet follows.
+        navBar.addOnLayoutChangeListener { _, _, top, _, bottom, _, oldTop, _, oldBottom ->
+            if (top != oldTop || bottom != oldBottom) sheet.applyInsets()
+        }
+        lifecycleScope.launch {
+            val queue = source.accountId()?.let { source.load(it) } ?: return@launch
+            sheet.start(
+                queue,
+                shownId = media.id.toLong(),
+                initialState = intent.getIntExtra(EXTRA_SHEET_STATE, BottomSheetBehavior.STATE_EXPANDED),
+            )
+            if (media.userStatus != null) sheet.markOnList(media.id.toLong())
+        }
+    }
+
+    /** Keeps the bottom of the pages clear of the collapsed sheet, except where the sheet is hidden. */
+    private fun applyQueuePadding() {
+        val container = binding.mediaViewPagerContainer
+        val extra = if (selected == 2) 0 else sheetPagerPadding
+        container.setPadding(container.paddingLeft, container.paddingTop, container.paddingRight, basePagerPadding + extra)
+    }
+
+    /**
+     * The next pick replaces this page rather than stacking on it, without an animation, keeping
+     * the sheet as the user had it. The queue's result is forwarded to [DiscoverActivity], which
+     * started the first page for it.
+     */
+    private fun replaceWithQueuePick(source: DiscoverySource, next: DiscoveryQueue.Item) {
+        startActivity(
+            source.queuePageIntent(this, next)
+                .putExtra(EXTRA_SHEET_STATE, queueSheet?.state ?: BottomSheetBehavior.STATE_EXPANDED)
+                .addFlags(Intent.FLAG_ACTIVITY_FORWARD_RESULT)
+        )
+        finish()
+        @Suppress("DEPRECATION")
+        overridePendingTransition(0, 0)
     }
 
     override fun onStop() {
@@ -1713,5 +1815,7 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
 
     companion object {
         var mediaSingleton: Media? = null
+        /** Queue mode: the sheet's expanded/collapsed state carried over from the previous pick. */
+        const val EXTRA_SHEET_STATE = "discover_sheet_state"
     }
 }

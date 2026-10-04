@@ -19,7 +19,14 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.widget.ViewPager2
 import ani.dantotsu.MediaPageTransformer
 import ani.dantotsu.R
+import ani.dantotsu.connections.TrackerSessions
 import ani.dantotsu.connections.anilist.Anilist
+import ani.dantotsu.connections.mangabaka.MangaBaka
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.lifecycleScope
+import ani.dantotsu.media.discover.DiscoverActivity
+import ani.dantotsu.media.discover.MangaBakaDiscovery
+import kotlinx.coroutines.launch
 import ani.dantotsu.databinding.ItemMangaPageBinding
 import ani.dantotsu.databinding.LayoutTrendingBinding
 import ani.dantotsu.getAppString
@@ -138,6 +145,12 @@ class MangaPageAdapter : RecyclerView.Adapter<MangaPageAdapter.MangaPageViewHold
                 null
             )
         }
+
+        binding.mangaDiscoverImage.loadImage("https://s4.anilist.co/file/anilistcdn/media/manga/banner/30013-hbbRZqC5MjYh.jpg")
+        binding.mangaDiscover.setOnClickListener {
+            ContextCompat.startActivity(it.context, DiscoverActivity.intent(it.context, MangaBakaDiscovery), null)
+        }
+        updateDiscover()
 
         binding.mangaIncludeList.isVisible = Anilist.token != null
 
@@ -294,6 +307,20 @@ class MangaPageAdapter : RecyclerView.Adapter<MangaPageAdapter.MangaPageViewHold
         more.startAnimation(setSlideUp())
         recyclerView.layoutAnimation =
             LayoutAnimationController(setSlideIn(), 0.25f)
+    }
+
+    /**
+     * The MangaBaka session is restored in the background and can land after this page binds, so
+     * the card waits for it rather than reading a token that isn't there yet.
+     */
+    fun updateDiscover() {
+        if (!this::binding.isInitialized) return
+        val card = binding.mangaDiscover
+        val owner = card.context as? LifecycleOwner ?: return
+        owner.lifecycleScope.launch {
+            TrackerSessions.await()
+            card.isVisible = MangaBaka.token != null
+        }
     }
 
     fun updateAvatar() {

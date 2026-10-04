@@ -26,6 +26,8 @@ import ani.dantotsu.getAppString
 import ani.dantotsu.getThemeColor
 import ani.dantotsu.loadImage
 import ani.dantotsu.media.CalendarActivity
+import ani.dantotsu.media.discover.AniListAnimeDiscovery
+import ani.dantotsu.media.discover.DiscoverActivity
 import ani.dantotsu.media.GenreActivity
 import ani.dantotsu.media.Media
 import ani.dantotsu.media.MediaAdaptor
@@ -147,6 +149,14 @@ class AnimePageAdapter : RecyclerView.Adapter<AnimePageAdapter.AnimePageViewHold
                 null
             )
         }
+
+        binding.animeDiscoverImage.loadImage("https://s4.anilist.co/file/anilistcdn/media/anime/banner/21-wf37VakJmZqs.jpg")
+        binding.animeDiscover.setOnClickListener {
+            ContextCompat.startActivity(
+                it.context, DiscoverActivity.intent(it.context, AniListAnimeDiscovery), null
+            )
+        }
+        binding.animeDiscover.isVisible = Anilist.token != null
 
         binding.animeIncludeList.isVisible = Anilist.token != null
 

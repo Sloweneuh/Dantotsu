@@ -871,6 +871,28 @@ object MangaUpdates {
     }
 
     /**
+     * Whether a series is on any of the user's lists (`GET /lists/series/{id}`, which 404s for one
+     * that isn't). Null when there is no token or the request failed, so callers can tell "not on a
+     * list" from "couldn't ask".
+     */
+    suspend fun isOnList(seriesId: Long): Boolean? = tryWithSuspend(snackbar = false) {
+        ani.dantotsu.connections.TrackerSessions.await() // see addToList
+        if (token.isNullOrBlank()) return@tryWithSuspend null
+        val request = Request.Builder()
+            .url("$BASE_URL/lists/series/$seriesId")
+            .get()
+            .addHeader("Authorization", "Bearer $token")
+            .build()
+        withContext(Dispatchers.IO) { httpClient.newCall(request).execute() }.use { response ->
+            when {
+                response.isSuccessful -> true
+                response.code == 404 -> false
+                else -> null
+            }
+        }
+    }
+
+    /**
      * Fetch all lists for the authenticated user from /v1/lists,
      * including custom lists.
      */

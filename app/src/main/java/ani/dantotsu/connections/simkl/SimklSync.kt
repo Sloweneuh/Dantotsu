@@ -78,14 +78,14 @@ object SimklSync {
         }
         val onSimkl = post(
             "/sync/add-to-list",
-            SyncBody(anime = listOf(AnimeItem(to = simklStatus, ids = ids))),
+            SyncBody(shows = listOf(AnimeItem(to = simklStatus, ids = ids))),
             titleCheck = true,
         )
         if (!onSimkl) return false
 
         val rating = score?.takeIf { it > 0 }?.let { (it + 5) / 10 }?.coerceIn(1, 10)
         if (rating != null) {
-            post("/sync/ratings", SyncBody(anime = listOf(AnimeItem(ids = ids, rating = rating))))
+            post("/sync/ratings", SyncBody(shows = listOf(AnimeItem(ids = ids, rating = rating))))
         }
         return true
     }
@@ -129,7 +129,7 @@ object SimklSync {
                     runCatching { Mapper.json.decodeFromString<SyncResult>(it).notFound }.getOrNull()
                 }
                 if (notFound?.titleMissing() == true) {
-                    Logger.log("Simkl POST $path: title not on Simkl")
+                    Logger.log("Simkl POST $path: title not on Simkl — sent $json, not_found $notFound")
                     return@tryWithSuspend false
                 }
             }
@@ -240,9 +240,9 @@ object SimklSync {
     )
 
     /**
-     * Sync write body. `/sync/add-to-list` and `/sync/ratings` take anime under `anime`;
-     * `/sync/history` and `/sync/history/remove` take it under `shows`. Only one is ever set;
-     * the null one is omitted (explicitNulls = false).
+     * Sync write body. Every write route takes anime under `shows` — the API docs say so outright
+     * ("Anime are `shows` too"); `anime` is only a bucket in *responses* (all-items, not_found), so
+     * nothing writes [anime]. The null one is omitted (explicitNulls = false).
      */
     @Serializable
     data class SyncBody(

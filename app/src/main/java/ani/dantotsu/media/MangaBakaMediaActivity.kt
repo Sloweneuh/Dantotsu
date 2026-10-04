@@ -10,6 +10,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.doOnPreDraw
 import androidx.core.view.updateLayoutParams
+import androidx.core.view.updatePadding
 import androidx.core.view.ViewCompat
 import androidx.lifecycle.lifecycleScope
 import ani.dantotsu.R
@@ -20,6 +21,8 @@ import ani.dantotsu.connections.mangabaka.MangaBakaApi
 import ani.dantotsu.copyToClipboard
 import ani.dantotsu.databinding.ActivityMangabakaMediaBinding
 import ani.dantotsu.databinding.FragmentMediaInfoBinding
+import ani.dantotsu.media.discover.DiscoverQueueSheet
+import ani.dantotsu.media.discover.MangaBakaDiscovery
 import ani.dantotsu.initActivity
 import ani.dantotsu.loadCoverImage
 import ani.dantotsu.loadImage
@@ -50,6 +53,11 @@ class MangaBakaMediaActivity : AppCompatActivity() {
         // Lets the shared-element transition show the real cover immediately instead of an
         // empty view while the full series details are still being fetched over the network.
         const val EXTRA_COVER_URL = "mangabaka_cover_url"
+        /**
+         * Queue mode: shows the saved discovery queue's items in turn under [DiscoverQueueSheet].
+         * Finishes with RESULT_OK once every item is answered, RESULT_CANCELED when left early.
+         */
+        const val EXTRA_DISCOVER_QUEUE = "mangabaka_discover_queue"
     }
 
     private lateinit var binding: ActivityMangabakaMediaBinding
@@ -106,7 +114,32 @@ class MangaBakaMediaActivity : AppCompatActivity() {
         // Plain finish() skips the reverse shared-element transition — the default
         // Activity.onBackPressed() (which this dispatches to) calls finishAfterTransition()
         // instead, which is what actually plays the cover flying back to the list.
-        binding.mangaBakaMediaClose.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
+        binding.mangaBakaMediaClose.setOnClickListener {
+            if (queueSheet != null) finishQueue(completed = false)
+            else onBackPressedDispatcher.onBackPressed()
+        }
+
+        if (intent.getBooleanExtra(EXTRA_DISCOVER_QUEUE, false)) {
+            val queueSheet = DiscoverQueueSheet(
+                activity = this,
+                source = MangaBakaDiscovery,
+                container = binding.discoverSheetContainer,
+                sheet = binding.discoverSheet,
+                onPeekHeight = { peek ->
+                    // Padding (not a margin) so the page still scrolls behind the sheet.
+                    binding.mangaBakaMediaInfoScroll.updatePadding(bottom = peek)
+                    binding.mangaBakaMediaInfoScroll.clipToPadding = false
+                },
+                showItem = { loadSeries(it.id, isQueueItem = true) },
+                finish = ::finishQueue,
+            )
+            this.queueSheet = queueSheet
+            lifecycleScope.launch {
+                val queue = MangaBakaDiscovery.accountId()?.let { MangaBakaDiscovery.load(it) }
+                if (queue == null) finish() else queueSheet.start(queue)
+            }
+            return
+        }
 
         val seriesId = intent.getLongExtra(EXTRA_SERIES_ID, -1L)
             .takeIf { it > 0 }
@@ -114,21 +147,55 @@ class MangaBakaMediaActivity : AppCompatActivity() {
                 val fromPath = intent.data?.pathSegments?.getOrNull(1)?.toLongOrNull()
                 fromPath ?: run { finish(); return }
             }
+        loadSeries(seriesId, isQueueItem = false)
+    }
 
+    /** Set in queue mode, where the page shows each queue item in turn under the queue bar. */
+    private var queueSheet: DiscoverQueueSheet? = null
+
+    /** Bumped per load, so a slower previous series can't paint into the page after a queue step. */
+    private var loadGeneration = 0
+
+    private fun finishQueue(completed: Boolean) {
+        setResult(if (completed) RESULT_OK else RESULT_CANCELED)
+        finish()
+    }
+
+    private fun loadSeries(seriesId: Long, isQueueItem: Boolean) {
+        val generation = ++loadGeneration
+        if (generation > 1) resetPage()
         lifecycleScope.launch {
             val series = withContext(Dispatchers.IO) { MangaBakaApi.getSeries(seriesId) }
+            if (generation != loadGeneration) return@launch
             if (series == null) {
                 binding.mangaBakaMediaProgress.visibility = View.GONE
                 Toast.makeText(this@MangaBakaMediaActivity, getString(R.string.mangabaka_no_data_title), Toast.LENGTH_SHORT).show()
-                finish()
+                // In the queue the bar stays usable to skip past a series that won't load.
+                if (!isQueueItem) finish()
                 return@launch
             }
             setupHeader(series)
             setupSourceButtons(series)
             binding.mangaBakaMediaProgress.visibility = View.GONE
             binding.mangaBakaMediaInfoScroll.visibility = View.VISIBLE
-            displaySeriesInfo(series)
+            displaySeriesInfo(series, generation)
         }
+    }
+
+    /** Back to the loading state for the next queue item, scrolled to the top. */
+    private fun resetPage() {
+        binding.mangaBakaMediaAppBar.setExpanded(true, false)
+        binding.mangaBakaMediaInfoScroll.scrollTo(0, 0)
+        binding.mangaBakaMediaInfoScroll.visibility = View.GONE
+        binding.mangaBakaMediaProgress.visibility = View.VISIBLE
+        binding.mangaBakaMediaContent.removeAllViews()
+        binding.mangaBakaMediaSourceButtons.visibility = View.GONE
+        binding.mangaBakaMediaAnilistBtn.visibility = View.GONE
+        binding.mangaBakaMediaMuBtn.visibility = View.GONE
+        binding.mangaBakaMediaTitle.text = ""
+        binding.mangaBakaMediaScore.text = ""
+        binding.mangaBakaMediaCover.setImageDrawable(null)
+        binding.mangaBakaMediaBanner.setImageDrawable(null)
     }
 
     /** Opt-in Discord presence for this page — see [BrowsingPresence]. */
@@ -190,12 +257,12 @@ class MangaBakaMediaActivity : AppCompatActivity() {
         binding.mangaBakaMediaSourceButtons.visibility = if (anyShown) View.VISIBLE else View.GONE
     }
 
-    private fun displaySeriesInfo(series: MangaBakaApi.Series) {
+    private fun displaySeriesInfo(series: MangaBakaApi.Series, generation: Int) {
         val info = FragmentMediaInfoBinding.inflate(layoutInflater)
         MangaBakaMediaRenderer.render(
             activity = this,
             scope = lifecycleScope,
-            isAlive = { !isDestroyed },
+            isAlive = { !isDestroyed && generation == loadGeneration },
             info = info,
             contentHost = binding.mangaBakaMediaContent,
             series = series,

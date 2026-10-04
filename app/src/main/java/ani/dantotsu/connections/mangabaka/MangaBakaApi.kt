@@ -737,7 +737,7 @@ object MangaBakaApi {
      * Shared by [Series] and [SimilarSeries]: the `similar` route embeds the same `titles` shape as
      * every other series lookup, just under a slimmer series object.
      */
-    private fun pickPreferredTitle(legacyTitle: String?, titles: List<TitleEntry>?): String? {
+    internal fun pickPreferredTitle(legacyTitle: String?, titles: List<TitleEntry>?): String? {
         fun pick(lang: String): String? {
             val matching = titles.orEmpty().filter {
                 it.language?.substringBefore('-')?.lowercase() == lang && !it.title.isNullOrBlank()
