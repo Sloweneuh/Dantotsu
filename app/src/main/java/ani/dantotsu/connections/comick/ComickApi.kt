@@ -888,6 +888,41 @@ object ComickApi {
     }
 
     /**
+     * The HID of the title's chapter [number] ("54.1"), for recording progress against Comick's own
+     * chapter rather than a bare number — see [Comick.putEntry]. The route's `chap` filter returns
+     * that chapter's uploads only; several groups can have uploaded it, and any of them names the
+     * same chapter, so the best-received one is taken. Preferred language first, then English, as
+     * [getChapters] does. Null when Comick has no such chapter.
+     */
+    suspend fun findChapterHid(
+        comicHid: String,
+        number: String,
+        lang: String = PrefManager.getVal(PrefName.ComickMangaBakaLanguage),
+    ): String? = withContext(Dispatchers.IO) {
+        fun find(language: String): String? = runCatching {
+            val url = "https://api.comick.dev/comic/$comicHid/chapters".toHttpUrlOrNull()?.newBuilder()
+                ?.addQueryParameter("lang", language)
+                ?.addQueryParameter("chap", number)
+                ?.addQueryParameter("limit", "20")
+                ?.build()?.toString() ?: return@runCatching null
+            client.newCall(request(url)).execute().use { response ->
+                if (!response.isSuccessful) return@runCatching null
+                val arr = gson.fromJson(response.body.string(), com.google.gson.JsonObject::class.java)
+                    ?.getAsJsonArray("chapters") ?: return@runCatching null
+                arr.mapNotNull { it.takeIf { e -> e.isJsonObject }?.asJsonObject }
+                    // The filter is exact today; checked anyway, since a stray row would record
+                    // the wrong chapter.
+                    .filter { it.get("chap")?.takeIf { c -> !c.isJsonNull }?.asString == number }
+                    .maxByOrNull { it.get("up_count")?.takeIf { c -> !c.isJsonNull }?.asInt ?: 0 }
+                    ?.get("hid")?.takeIf { !it.isJsonNull }?.asString
+            }
+        }.onFailure { Logger.log("Comick chapter lookup failed for $comicHid ch.$number: ${it.message}") }
+            .getOrNull()
+
+        find(lang) ?: if (!lang.equals("en", ignoreCase = true)) find("en") else null
+    }
+
+    /**
      * Fetch the latest (highest-numbered) chapter for a comic.
      * Pass [nearChapter] (from ComickComic.last_chapter) to query near that number
      * so the small fetch window is guaranteed to include it.

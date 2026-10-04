@@ -1,5 +1,6 @@
 package ani.dantotsu.settings
 
+import ani.dantotsu.connections.comick.Comick
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
@@ -74,7 +75,8 @@ class SettingsListSyncActivity : AppCompatActivity() {
         (MAL.token != null && PrefManager.getVal(PrefName.MalListSyncEnabled)) ||
             (Kitsu.token != null && PrefManager.getVal(PrefName.KitsuListSyncEnabled)) ||
             (Simkl.token != null && PrefManager.getVal(PrefName.SimklListSyncEnabled)) ||
-            (MangaBaka.token != null && PrefManager.getVal(PrefName.MangaBakaListSyncEnabled))
+            (MangaBaka.token != null && PrefManager.getVal(PrefName.MangaBakaListSyncEnabled)) ||
+            (Comick.token != null && Comick.canWrite() && PrefManager.getVal(PrefName.ComickListSyncEnabled))
 
     /**
      * Applies a change to one of the per-tracker switches and redraws around it.

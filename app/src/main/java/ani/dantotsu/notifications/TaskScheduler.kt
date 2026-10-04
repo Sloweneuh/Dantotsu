@@ -46,7 +46,10 @@ interface TaskScheduler {
                 // the point this runs, which would cancel the schedule of a signed-in user.
                 TaskType.AUTO_LIST_SYNC ->
                     if (PrefManager.getVal<Boolean>(PrefName.MalListSyncEnabled) ||
-                        PrefManager.getVal<Boolean>(PrefName.MangaBakaListSyncEnabled)
+                        PrefManager.getVal<Boolean>(PrefName.MangaBakaListSyncEnabled) ||
+                        PrefManager.getVal<Boolean>(PrefName.KitsuListSyncEnabled) ||
+                        PrefManager.getVal<Boolean>(PrefName.SimklListSyncEnabled) ||
+                        PrefManager.getVal<Boolean>(PrefName.ComickListSyncEnabled)
                     ) PrefManager.getVal(PrefName.AutoListSyncInterval) else 0L
 
                 TaskType.MU_NOTIFICATION -> {

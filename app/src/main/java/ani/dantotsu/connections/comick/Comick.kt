@@ -383,27 +383,54 @@ object Comick {
 
     /**
      * Follows [hid] or updates its existing entry (`PUT`). [status] is required when the title
-     * isn't followed yet; anything left null is preserved on Comick. [progressNumber] is a
-     * chapter/episode number as text ("12", "12.5"), never an identifier.
+     * isn't followed yet; anything left null is preserved on Comick.
+     *
+     * Progress is [progressChapterHid] — the HID of one of the title's own chapters, which is how
+     * Comick records reading done on it, and what its site displays — when there is one, else
+     * [progressNumber], a chapter/episode number as text ("12", "12.5"). Comick stores a bare
+     * number, but its site doesn't show progress that isn't tied to a chapter, so to the user it
+     * reads as progress erased.
      */
-    suspend fun putEntry(hid: String, status: Int?, progressNumber: String?): Boolean =
-        write("PUT", hid, status, progressNumber)
+    suspend fun putEntry(
+        hid: String,
+        status: Int?,
+        progressNumber: String?,
+        progressChapterHid: String? = null,
+    ): Boolean = write("PUT", hid, status, progressNumber, progressChapterHid)
 
     /** Updates an entry that already exists (`PATCH`); false when the title isn't followed. */
-    suspend fun patchEntry(hid: String, status: Int?, progressNumber: String?): Boolean =
-        write("PATCH", hid, status, progressNumber)
+    suspend fun patchEntry(
+        hid: String,
+        status: Int?,
+        progressNumber: String?,
+        progressChapterHid: String? = null,
+    ): Boolean = write("PATCH", hid, status, progressNumber, progressChapterHid)
 
-    private suspend fun write(method: String, hid: String, status: Int?, progressNumber: String?): Boolean {
+    private suspend fun write(
+        method: String,
+        hid: String,
+        status: Int?,
+        progressNumber: String?,
+        progressChapterHid: String?,
+    ): Boolean {
         if (!canWrite()) return false
         val body = JsonObject().apply {
             status?.let { addProperty("status", it) }
-            progressNumber?.let { number ->
-                add("progress", JsonObject().apply { addProperty("number", number) })
+            when {
+                progressChapterHid != null ->
+                    add("progress", JsonObject().apply { addProperty("hid", progressChapterHid) })
+                progressNumber != null ->
+                    add("progress", JsonObject().apply { addProperty("number", progressNumber) })
             }
         }
         if (body.size() == 0) return true
-        val res = call(entryUrl(hid), method, gson.toJson(body)) ?: return false
-        if (res.code in 200..299) return true
+        val json = gson.toJson(body)
+        val res = call(entryUrl(hid), method, json) ?: return false
+        if (res.code in 200..299) {
+            // What Comick says it saved, not only what was sent.
+            Logger.log("Comick: $method $hid $json → ${res.code} ${res.body.take(400)}")
+            return true
+        }
         logFailure("$method entry", res)
         return false
     }

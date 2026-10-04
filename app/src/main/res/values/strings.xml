@@ -816,7 +816,7 @@
     <string name="discord_rpc_settings">RPC settings</string>
     <string name="discord_rpc_settings_desc">Presence text, buttons and images</string>
     <string name="compare_lists">Compare lists</string>
-    <string name="compare_lists_desc">Check MyAnimeList, Kitsu, Simkl and MangaBaka against your source lists and sync differences</string>
+    <string name="compare_lists_desc">Check MyAnimeList, Kitsu, Simkl, MangaBaka and Comick against your source lists and sync differences</string>
     <string name="auto_list_sync">Automatic compare</string>
     <string name="auto_list_sync_desc">Run the comparison in the background and push the differences by itself</string>
     <string name="auto_list_sync_frequency">Automatic compare frequency</string>
@@ -827,7 +827,7 @@
     <string name="auto_list_sync_removals">Include removals</string>
     <!-- Same setting, named for lists that show it away from its screen (backup, sync conflicts). -->
     <string name="auto_list_sync_removals_label">Automatic compare : include removals</string>
-    <string name="auto_list_sync_removals_desc">Also delete tracker entries that are in neither source list. Off by default: automatic runs push additions and updates only</string>
+    <string name="auto_list_sync_removals_desc">Also delete tracker entries that are in neither source list. Off by default: automatic runs push additions and updates only. Comick entries are never removed</string>
     <plurals name="interval_seconds">
         <item quantity="one">%d second</item>
         <item quantity="other">%d seconds</item>
@@ -855,7 +855,7 @@
     <string name="list_sync_up_to_date">List is up to date</string>
     <string name="list_compare_failed">Couldn\'t load this comparison</string>
     <string name="list_compare_login_anilist">Log in to AniList to compare your lists</string>
-    <string name="list_compare_login_trackers">Log in to MyAnimeList, Kitsu, Simkl or MangaBaka to compare lists</string>
+    <string name="list_compare_login_trackers">Log in to MyAnimeList, Kitsu, Simkl, MangaBaka or Comick to compare lists</string>
     <string name="list_diff_status">Status</string>
     <string name="list_diff_chapters">Chapters</string>
     <string name="list_diff_episodes">Episodes</string>

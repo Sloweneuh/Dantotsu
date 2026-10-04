@@ -8,6 +8,8 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -68,12 +70,52 @@ object MalSyncApi {
     }
 
     /**
-     * Execute a network request with proper error handling
+     * Pacing shared by every MALSync request in the process. MALSync rate-limits by address and
+     * says nothing about its limits — no rate headers, no Retry-After — and callers now ask it about
+     * whole lists at a time (Compare lists resolving each title's Comick entry), which burst it into
+     * 429s within seconds. One request a second keeps a long run going instead.
+     *
+     * A Mutex and [delay] rather than a lock and a sleep, so a caller that times out (the info
+     * tab's lookups do) can give up its place in the queue instead of waiting behind it.
      */
-    private fun executeRequest(request: Request): okhttp3.Response? {
+    private val pacing = Mutex()
+    @Volatile
+    private var lastRequestAt = 0L
+    private const val MIN_REQUEST_SPACING_MS = 1_000L
+
+    /**
+     * Until when MALSync is left alone after a 429. Asking again straight away only extends the
+     * block — and a 429 never counted as a network failure, so nothing used to back off at all.
+     */
+    @Volatile
+    private var rateLimitedUntil = 0L
+    private const val RATE_LIMIT_COOLDOWN_MS = 60_000L
+
+    /**
+     * Execute a network request with proper error handling. Null on failure — including a 429,
+     * whose cooldown then answers every request with null until it lapses.
+     */
+    private suspend fun executeRequest(request: Request): okhttp3.Response? {
+        if (System.currentTimeMillis() < rateLimitedUntil) {
+            Logger.log("MalSync: rate limited, skipping ${request.url.encodedPath}")
+            return null
+        }
+        pacing.withLock {
+            val wait = lastRequestAt + MIN_REQUEST_SPACING_MS - System.currentTimeMillis()
+            if (wait > 0) delay(wait)
+            lastRequestAt = System.currentTimeMillis()
+        }
         try {
             val response = client.newCall(request).execute()
             recordNetworkSuccess()
+            if (response.code == 429) {
+                val cooldown = response.header("Retry-After")?.trim()?.toLongOrNull()?.times(1000)
+                    ?: RATE_LIMIT_COOLDOWN_MS
+                rateLimitedUntil = System.currentTimeMillis() + cooldown
+                Logger.log("MalSync: 429 — pausing requests for ${cooldown / 1000}s")
+                response.close()
+                return null
+            }
             return response
         } catch (e: UnknownHostException) {
             Logger.log("MalSync: Unable to resolve host: ${e.message}")

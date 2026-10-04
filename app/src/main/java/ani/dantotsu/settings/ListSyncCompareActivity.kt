@@ -115,12 +115,17 @@ class ListSyncCompareActivity : AppCompatActivity() {
                 "${getString(R.string.simkl)} · ${getString(R.string.anime)}" to R.drawable.ic_simkl
             ListCompare.Section.MANGABAKA ->
                 getString(R.string.mangabaka) to R.drawable.ic_round_mangabaka_24
+            ListCompare.Section.COMICK_ANIME ->
+                "${getString(R.string.comick)} · ${getString(R.string.anime)}" to R.drawable.ic_round_comick_24
+            ListCompare.Section.COMICK_MANGA ->
+                "${getString(R.string.comick)} · ${getString(R.string.manga)}" to R.drawable.ic_round_comick_24
         }
         // MangaUpdates contributes to the manga comparisons when it's active — never to the
         // anime-only sections (MAL anime, Simkl).
         val animeOnly = section == ListCompare.Section.MAL_ANIME ||
             section == ListCompare.Section.KITSU_ANIME ||
-            section == ListCompare.Section.SIMKL_ANIME
+            section == ListCompare.Section.SIMKL_ANIME ||
+            section == ListCompare.Section.COMICK_ANIME
         val sourceIcons = if (animeOnly || !muActive)
             listOf(R.drawable.ic_anilist)
         else listOf(R.drawable.ic_anilist, R.drawable.ic_round_mangaupdates_24)

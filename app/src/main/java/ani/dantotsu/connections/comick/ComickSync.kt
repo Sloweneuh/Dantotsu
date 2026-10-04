@@ -31,12 +31,36 @@ import kotlinx.coroutines.withTimeoutOrNull
  */
 object ComickSync {
 
-    /** Waits for the session restore first, like the other trackers — see [TrackerSessions]. */
-    suspend fun isEnabled(): Boolean {
+    /**
+     * Waits for the session restore first, like the other trackers — see [TrackerSessions].
+     * [force] bypasses the sync switch for an explicit user action (Compare lists), so it only
+     * needs a connection with write access.
+     */
+    suspend fun isEnabled(force: Boolean = false): Boolean {
         TrackerSessions.await()
-        return Comick.token != null && Comick.canWrite() &&
-            PrefManager.getVal(PrefName.ComickListSyncEnabled)
+        val connected = Comick.token != null
+        val canWrite = Comick.canWrite()
+        val switchedOn = force || PrefManager.getVal<Boolean>(PrefName.ComickListSyncEnabled)
+        if (!(connected && canWrite && switchedOn)) {
+            Logger.log("ComickSync: off (connected=$connected, canWrite=$canWrite, switch=$switchedOn)")
+        }
+        return connected && canWrite && switchedOn
     }
+
+    /** Comick's library status (1 reading … 5 plan to read) in AniList's vocabulary. */
+    fun toCanon(status: Int?): String = when (status) {
+        2 -> "COMPLETED"
+        3 -> "PAUSED"
+        4 -> "DROPPED"
+        5 -> "PLANNING"
+        else -> "CURRENT"
+    }
+
+    /**
+     * What an AniList status becomes on Comick, back in AniList's vocabulary: everything but a
+     * reread, which Comick has no status for and records as reading.
+     */
+    fun comparableCanon(anilistStatus: String?): String = toCanon(mapAnilistStatus(anilistStatus))
 
     /**
      * @param progress the whole chapter/episode AniList holds.
@@ -50,10 +74,16 @@ object ComickSync {
         status: String?,
         progress: Int?,
         exactProgress: String? = null,
+        force: Boolean = false,
     ): Boolean {
-        if (!isEnabled()) return false
+        Logger.log(
+            "ComickSync: AniList ${if (isAnime) "anime" else "manga"} $anilistId → " +
+                "status=$status progress=$progress exact=$exactProgress"
+        )
+        if (!isEnabled(force)) return false
         val hids = resolveFromAnilist(isAnime, anilistId ?: return false, malId)
-        return pushToSeries(hids, mapAnilistStatus(status), exactProgress ?: progress?.toString())
+        Logger.log("ComickSync: AniList $anilistId resolved to $hids")
+        return pushToSeries(hids, mapAnilistStatus(status), exactProgress ?: progress?.toString(), isAnime)
     }
 
     /** See [syncFromAnilist] for [exactProgress]. */
@@ -62,11 +92,17 @@ object ComickSync {
         muListId: Int?,
         progress: Int?,
         exactProgress: String? = null,
+        force: Boolean = false,
     ): Boolean {
-        if (!isEnabled()) return false
+        Logger.log("ComickSync: MangaUpdates $muSeriesId → list=$muListId progress=$progress exact=$exactProgress")
+        if (!isEnabled(force)) return false
         val cross = MangaBakaApi.getCrossIdsFromMangaUpdates(muSeriesId ?: return false)
-        val hids = resolveFromAnilist(false, cross.anilistId ?: return false, cross.malId)
-        return pushToSeries(hids, mapMangaUpdatesList(muListId), exactProgress ?: progress?.toString())
+        val hids = resolveFromAnilist(false, cross.anilistId ?: run {
+            Logger.log("ComickSync: no AniList id for MangaUpdates $muSeriesId")
+            return false
+        }, cross.malId)
+        Logger.log("ComickSync: MangaUpdates $muSeriesId resolved to $hids")
+        return pushToSeries(hids, mapMangaUpdatesList(muListId), exactProgress ?: progress?.toString(), isAnime = false)
     }
 
     /**
@@ -77,7 +113,7 @@ object ComickSync {
         TrackerSessions.await()
         if (Comick.token == null || !Comick.canWrite()) return false
         val current = Comick.getEntry(hid) ?: return false
-        return push(hid, current, status = null, progress = progress)
+        return push(hid, current, status = null, progress = progress, isAnime = false)
     }
 
     /**
@@ -88,9 +124,10 @@ object ComickSync {
      * when none is does the preferred one get followed: following them all would fill the library
      * with duplicates.
      */
-    private suspend fun pushToSeries(hids: List<String>, status: Int?, progress: String?): Boolean {
+    private suspend fun pushToSeries(hids: List<String>, status: Int?, progress: String?, isAnime: Boolean): Boolean {
         if (hids.isEmpty()) return false
         val lookups = hids.map { it to Comick.getEntry(it) }
+        Logger.log("ComickSync: library entries ${lookups.map { (hid, l) -> "$hid=${l ?: "lookup failed"}" }}")
         val followed = lookups.filter { it.second is Comick.EntryLookup.Followed }
         val targets = followed.ifEmpty {
             // Only safe to follow the preferred entry once every lookup answered: one that
@@ -100,28 +137,49 @@ object ComickSync {
         }
         var ok = true
         for ((hid, lookup) in targets) {
-            if (!push(hid, lookup ?: continue, status, progress)) ok = false
+            if (!push(hid, lookup ?: continue, status, progress, isAnime)) ok = false
         }
         return ok
     }
 
-    /** Follows or updates one entry, applying the rules in the class doc. */
-    private suspend fun push(hid: String, current: Comick.EntryLookup, status: Int?, progress: String?): Boolean {
+    /**
+     * Follows or updates one entry, applying the rules in the class doc.
+     *
+     * Manga progress is recorded against Comick's own chapter when it has one by that number —
+     * a bare number is stored, but Comick's site shows no progress without a chapter behind it.
+     * For the same reason a push at the number already saved still goes out when the saved one
+     * has no chapter and this can supply it. Anime episodes keep the plain number.
+     */
+    private suspend fun push(
+        hid: String,
+        current: Comick.EntryLookup,
+        status: Int?,
+        progress: String?,
+        isAnime: Boolean,
+    ): Boolean {
         val followed = (current as? Comick.EntryLookup.Followed)?.entry
         // A title isn't followed without a status to follow it under.
         if (followed == null && status == null) return false
 
         // Compared as numbers, so "12" from an AniList edit can't overwrite "12.5" read here.
-        val remote = followed?.progress?.number
+        val remote = followed?.progress
+        val remoteNumber = remote?.number?.toDoubleOrNull()
         val local = progress?.trim()?.toDoubleOrNull()?.takeIf { it > 0 }
-        val sendProgress = local?.takeIf {
-            remote == null || remote.toDoubleOrNull()?.let { saved -> it > saved } == true
-        }?.let { formatNumber(it, progress) }
+        val number = local?.let { formatNumber(it, progress) }
+        val raises = local != null && (remote?.number == null || (remoteNumber != null && local > remoteNumber))
+        val unlinkedSame = local != null && remoteNumber == local && remote.hid == null
+        val chapterHid = number?.takeIf { !isAnime && (raises || unlinkedSame) }
+            ?.let { ComickApi.findChapterHid(hid, it) }
+        val sendProgress = number?.takeIf { raises || (unlinkedSame && chapterHid != null) }
         // Only what differs — though a new follow always carries its status.
         val sendStatus = if (followed == null) status else status?.takeIf { it != followed.status }
+        Logger.log(
+            "ComickSync: $hid saved=${remote?.number}/${remote?.hid} local=$number raises=$raises " +
+                "unlinkedSame=$unlinkedSame chapter=$chapterHid → status=$sendStatus progress=$sendProgress"
+        )
         if (sendStatus == null && sendProgress == null) return true
 
-        return Comick.putEntry(hid, sendStatus, sendProgress)
+        return Comick.putEntry(hid, sendStatus, sendProgress, chapterHid.takeIf { sendProgress != null })
             .also { ok -> if (!ok) Logger.log("ComickSync: push failed for $hid") }
     }
 
@@ -139,7 +197,10 @@ object ComickSync {
     suspend fun resolveFromAnilist(isAnime: Boolean, anilistId: Int, malId: Int?): List<String> {
         val mediaType = if (isAnime) ComickApi.MEDIA_TYPE_ANIME else ComickApi.MEDIA_TYPE_MANGA
         val hidsKey = "comick_hids_${mediaType}_$anilistId"
-        IdCache[hidsKey]?.split(',')?.filter { it.isNotBlank() }?.takeIf { it.isNotEmpty() }
+        val cached = IdCache[hidsKey]
+        // "-<time>" marks a recent miss; anything else is the HIDs found.
+        cached?.takeIf { !it.startsWith(MISS_PREFIX) }
+            ?.split(',')?.filter { it.isNotBlank() }?.takeIf { it.isNotEmpty() }
             ?.let { return it }
 
         val pinnedKey = if (isAnime) ComickEpisodes.savedSlugKey(anilistId) else "comick_slug_$anilistId"
@@ -153,9 +214,18 @@ object ComickSync {
         }.distinct()
         if (known.isNotEmpty()) return known.also { IdCache.put(hidsKey, it.joinToString(",")) }
 
-        val malSyncSlugs = withTimeoutOrNull(MALSYNC_TIMEOUT_MS) {
+        // A miss is remembered for a while: Compare lists and the automatic pass resolve the whole
+        // list every run, and asking MALSync about every unmatched title each time would cost a
+        // request apiece for nothing. Checked only after the known slugs above, so opening the
+        // media page (which records its match) still links a title straight away.
+        cached?.takeIf { it.startsWith(MISS_PREFIX) }?.removePrefix(MISS_PREFIX)?.toLongOrNull()
+            ?.takeIf { System.currentTimeMillis() - it < MISS_TTL_MS }
+            ?.let { return emptyList() }
+
+        val quicklinks = withTimeoutOrNull(MALSYNC_TIMEOUT_MS) {
             MalSyncApi.getQuicklinks(anilistId, malId, mediaType)
-        }?.Sites?.entries
+        }
+        val malSyncSlugs = quicklinks?.Sites?.entries
             ?.firstOrNull { it.key.contains("comick", ignoreCase = true) }
             ?.value?.values?.mapNotNull { it.identifier }
             .orEmpty()
@@ -172,6 +242,8 @@ object ComickSync {
         if (validated.isNotEmpty()) return validated.also { IdCache.put(hidsKey, it.joinToString(",")) }
 
         Logger.log("ComickSync: no Comick entry known for AniList $mediaType $anilistId")
+        // Only a real answer is a miss; a MALSync that didn't answer leaves it to the next try.
+        if (quicklinks != null) IdCache.put(hidsKey, "$MISS_PREFIX${System.currentTimeMillis()}")
         return emptyList()
     }
 
@@ -197,4 +269,6 @@ object ComickSync {
     }
 
     private const val MALSYNC_TIMEOUT_MS = 10_000L
+    private const val MISS_PREFIX = "-"
+    private const val MISS_TTL_MS = 7L * 24 * 60 * 60 * 1000
 }

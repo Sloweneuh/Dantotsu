@@ -23,8 +23,8 @@ import kotlinx.coroutines.withContext
  *    pushes a status or progress is one the user can see and correct on the next run; a deletion
  *    isn't, and a source list that comes back short for any reason would look exactly like "these
  *    entries were removed".
- *  - **The per-tracker sync switches are honoured.** [PrefName.MalListSyncEnabled] and
- *    [PrefName.MangaBakaListSyncEnabled] mean "don't write to this tracker" everywhere else, and a
+ *  - **The per-tracker sync switches are honoured.** [PrefName.MalListSyncEnabled],
+ *    [PrefName.MangaBakaListSyncEnabled] and the rest mean "don't write to this tracker" everywhere else, and a
  *    background pass that ignored them would be the one place the app wrote to a tracker the user
  *    had switched off. The manual screen is exempt because pressing sync *is* the permission.
  *  - **A failed section is skipped, not guessed at.** [ListCompare.compareStreaming] reports each
@@ -132,6 +132,9 @@ class AutoListSyncTask : Task {
 
         ListCompare.Section.MANGABAKA ->
             PrefManager.getVal(PrefName.MangaBakaListSyncEnabled)
+
+        ListCompare.Section.COMICK_ANIME, ListCompare.Section.COMICK_MANGA ->
+            PrefManager.getVal(PrefName.ComickListSyncEnabled)
     }
 
     /**

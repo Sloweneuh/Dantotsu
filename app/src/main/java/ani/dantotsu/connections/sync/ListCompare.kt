@@ -12,6 +12,9 @@ import ani.dantotsu.connections.mal.MALListStatus
 import ani.dantotsu.connections.simkl.Simkl
 import ani.dantotsu.connections.simkl.SimklApi
 import ani.dantotsu.connections.simkl.SimklSync
+import ani.dantotsu.connections.comick.Comick
+import ani.dantotsu.connections.comick.ComickApi
+import ani.dantotsu.connections.comick.ComickSync
 import ani.dantotsu.connections.mangabaka.MangaBaka
 import ani.dantotsu.connections.mangabaka.MangaBakaApi
 import ani.dantotsu.connections.mangabaka.MangaBakaSync
@@ -53,7 +56,7 @@ import kotlinx.coroutines.sync.withPermit
 object ListCompare {
 
     /** Which destination a [DiffEntry] targets. */
-    enum class Tracker { MAL, MANGABAKA, KITSU, SIMKL }
+    enum class Tracker { MAL, MANGABAKA, KITSU, SIMKL, COMICK }
 
     /** A single field that differs between source and destination. */
     enum class DiffField { STATUS, PROGRESS, VOLUME, SCORE, START_DATE, END_DATE }
@@ -86,6 +89,8 @@ object ListCompare {
         val kitsuMediaId: String? = null,
         val kitsuEntryId: String? = null,
         val simklId: Long? = null,
+        /** The Comick entries the source title resolved to, preferred first. */
+        val comickHids: List<String>? = null,
         val status: String?,   // AniList-style status ("CURRENT", "PLANNING", ...)
         val progress: Int?,
         val volume: Int?,
@@ -112,7 +117,9 @@ object ListCompare {
     )
 
     /** One comparison the screen can show, in display order. */
-    enum class Section { MAL_ANIME, MAL_MANGA, KITSU_ANIME, KITSU_MANGA, SIMKL_ANIME, MANGABAKA }
+    enum class Section {
+        MAL_ANIME, MAL_MANGA, KITSU_ANIME, KITSU_MANGA, SIMKL_ANIME, MANGABAKA, COMICK_ANIME, COMICK_MANGA
+    }
 
     /** Both sides' totals for one section, published ahead of its (much slower) diff pass. */
     data class SectionStats(val source: SideStats, val dest: SideStats)
@@ -142,6 +149,11 @@ object ListCompare {
             }
             if (Simkl.token != null) add(Section.SIMKL_ANIME)
             if (MangaBaka.token != null) add(Section.MANGABAKA)
+            // Read-only connections can be compared but never synced, so they aren't offered.
+            if (Comick.token != null && Comick.canWrite()) {
+                add(Section.COMICK_ANIME)
+                add(Section.COMICK_MANGA)
+            }
         }
     }
 
@@ -172,10 +184,12 @@ object ListCompare {
         val onKitsu = Section.KITSU_ANIME in sections || Section.KITSU_MANGA in sections
         val onSimkl = Section.SIMKL_ANIME in sections
         val onMangaBaka = Section.MANGABAKA in sections
+        val onComickAnime = Section.COMICK_ANIME in sections
+        val onComickManga = Section.COMICK_MANGA in sections
         val muActive = muActive()
 
-        val needAnime = onMal || onKitsu || onSimkl
-        val needManga = onMal || onKitsu || onMangaBaka
+        val needAnime = onMal || onKitsu || onSimkl || onComickAnime
+        val needManga = onMal || onKitsu || onMangaBaka || onComickManga
         val anilistAnime = async { runCatching { if (needAnime) anilistList(true, userId) else emptyList() } }
         val anilistManga =
             async { runCatching { if (needManga) anilistList(false, userId) else emptyList() } }
@@ -214,6 +228,12 @@ object ListCompare {
         }
         if (onMangaBaka) section(Section.MANGABAKA) {
             compareMangaBaka(anilistManga, muMedia) { onStats(Section.MANGABAKA, it) }
+        }
+        if (onComickAnime) section(Section.COMICK_ANIME) {
+            compareComick(true, anilistAnime, null) { onStats(Section.COMICK_ANIME, it) }
+        }
+        if (onComickManga) section(Section.COMICK_MANGA) {
+            compareComick(false, anilistManga, muMedia) { onStats(Section.COMICK_MANGA, it) }
         }
     }
 
@@ -1122,6 +1142,149 @@ object ListCompare {
         delete = true,
     )
 
+    // ---- Comick vs AniList (+ MangaUpdates) ----
+
+    /**
+     * How many titles resolve to their Comick entry at once. Each can cost a MALSync lookup and a
+     * ~200 KB Comick details fetch the first time (cached after), against Comick's 200 requests a
+     * minute per address — so a few at a time, not the whole list.
+     */
+    private const val COMICK_RESOLVE_CONCURRENCY = 3
+
+    /**
+     * Comick against AniList, with MangaUpdates joining the manga side as it does elsewhere.
+     *
+     * Follows [ComickSync]'s rules so the screen offers only what a sync would actually do: status
+     * differences, and progress only where the source is *ahead* — Comick's progress is never
+     * lowered, and its decimals ("54.1" read on Comick against AniList's 54) aren't behind. Nothing
+     * is offered for removal: unfollowing on Comick also deletes the entry's notes, rating and
+     * custom-list memberships.
+     *
+     * A title resolves to its Comick entries by AniList id alone ([ComickSync.resolveFromAnilist]);
+     * one that doesn't resolve has no row, since there is nothing to push it to.
+     */
+    private suspend fun compareComick(
+        isAnime: Boolean,
+        sourceList: Deferred<Result<List<Media>>>,
+        muList: Deferred<Result<List<MUMedia>>>?,
+        onStats: suspend (SectionStats) -> Unit,
+    ): SubsectionResult = coroutineScope {
+        val libAsync = async {
+            Comick.getLibrary(if (isAnime) ComickApi.MEDIA_TYPE_ANIME else ComickApi.MEDIA_TYPE_MANGA, null)
+                ?: throw IllegalStateException("Comick library unavailable")
+        }
+        val source = sourceList.await().getOrThrow()
+        val mu = muList?.await()?.getOrThrow().orEmpty()
+        val lib = libAsync.await()
+        val byHid = lib.associateBy { it.hid }
+
+        val destStats = statsOf(lib.map { ComickSync.toCanon(it.status) })
+        val sourceStats = statsOf(source.map { it.userStatus ?: "CURRENT" } + mu.map { muListToCanon(it.listId) })
+        onStats(SectionStats(sourceStats, destStats))
+
+        val limiter = Semaphore(COMICK_RESOLVE_CONCURRENCY)
+        val resolved = source.asyncMap { media ->
+            media to limiter.withPermit { ComickSync.resolveFromAnilist(isAnime, media.id, media.idMAL) }
+        }
+        val claimed = resolved.flatMapTo(HashSet()) { it.second }
+        val aniDiffs = resolved.mapNotNull { (media, hids) ->
+            buildComickDiff(
+                title = media.userPreferredName, coverUrl = media.cover, isAnime = isAnime,
+                hids = hids, byHid = byHid,
+                expected = media.userStatus ?: "CURRENT", progress = media.userProgress ?: 0,
+                anilistId = media.id, malId = media.idMAL,
+            )
+        }
+
+        // MangaUpdates rows go through MangaBaka's AniList mapping, as [ComickSync] does. One that
+        // lands on a Comick entry an AniList row already covers is dropped: AniList wins, as in the
+        // other sections.
+        val sourceAnilistIds = source.mapTo(HashSet()) { it.id }
+        val muDiffs = mu.asyncMap { entry ->
+            limiter.withPermit {
+                val anilistId = MangaBakaApi.getCrossIdsFromMangaUpdates(entry.id).anilistId
+                    ?.takeIf { it !in sourceAnilistIds } ?: return@withPermit null
+                val hids = ComickSync.resolveFromAnilist(false, anilistId, null)
+                    .takeIf { found -> found.none { it in claimed } } ?: return@withPermit null
+                buildComickDiff(
+                    title = entry.title ?: "", coverUrl = entry.coverUrl, isAnime = false,
+                    hids = hids, byHid = byHid,
+                    expected = muListToCanon(entry.listId), progress = entry.userChapter ?: 0,
+                    anilistId = null, malId = null, muSeriesId = entry.id, muListId = entry.listId,
+                )
+            }
+        }.filterNotNull()
+
+        SubsectionResult(sourceStats, destStats, aniDiffs + muDiffs)
+    }
+
+    /**
+     * The row for one source title, or null when Comick already agrees or the title has no Comick
+     * entry. Compared against the first of [hids] the user follows — the one a sync updates along
+     * with any other followed duplicate — or, followed nowhere, as an addition.
+     */
+    private fun buildComickDiff(
+        title: String,
+        coverUrl: String?,
+        isAnime: Boolean,
+        hids: List<String>,
+        byHid: Map<String, ani.dantotsu.connections.comick.ComickLibraryEntry>,
+        expected: String,
+        progress: Int,
+        anilistId: Int?,
+        malId: Int?,
+        muSeriesId: Long? = null,
+        muListId: Int? = null,
+    ): DiffEntry? {
+        if (hids.isEmpty()) return null
+        val current = hids.firstNotNullOfOrNull { byHid[it] }
+        val target = ComickSync.comparableCanon(expected)
+        val actualCanon = current?.let { ComickSync.toCanon(it.status) }
+        val remoteText = current?.progress?.number
+        val remote = remoteText?.toDoubleOrNull()
+
+        val fieldDiffs = mutableListOf<FieldDiff>()
+        if (current == null) {
+            fieldDiffs += FieldDiff(DiffField.STATUS, DASH, formatStatus(target) ?: DASH)
+            if (progress > 0) fieldDiffs += FieldDiff(DiffField.PROGRESS, DASH, progress.toString())
+        } else {
+            if (actualCanon != target)
+                fieldDiffs += FieldDiff(DiffField.STATUS, formatStatus(actualCanon) ?: DASH, formatStatus(target) ?: DASH)
+            // Ahead only: a sync never lowers Comick's progress, so a row for it could never close.
+            // Saved progress that isn't a plain number is left alone too, as a sync leaves it.
+            val ahead = progress > 0 && (remoteText == null || (remote != null && progress > remote))
+            if (ahead) fieldDiffs += FieldDiff(DiffField.PROGRESS, remoteText ?: DASH, progress.toString())
+        }
+        if (fieldDiffs.isEmpty()) return null
+
+        val differing = fieldDiffs.mapTo(HashSet()) { it.field }
+        fun dest(v: String?) = if (current != null) v else null
+        val detail = listOf(
+            DetailRow(DiffField.STATUS, formatStatus(target), dest(formatStatus(actualCanon)), DiffField.STATUS in differing),
+            DetailRow(DiffField.PROGRESS, progress.toString(), dest(remoteText), DiffField.PROGRESS in differing),
+        )
+        return DiffEntry(
+            title = title,
+            coverUrl = coverUrl,
+            isAnime = isAnime,
+            tracker = Tracker.COMICK,
+            diffs = fieldDiffs,
+            anilistId = anilistId,
+            malId = malId,
+            muSeriesId = muSeriesId,
+            muListId = muListId,
+            mangaBakaSeriesId = null,
+            comickHids = hids,
+            status = expected,
+            progress = progress,
+            volume = null,
+            score = null,
+            detail = detail,
+            fromStatusCanon = actualCanon,
+            toStatusCanon = target,
+        )
+    }
+
     // ---- Sync (explicit user action → force past the on/off toggle) ----
 
     /**
@@ -1193,6 +1356,8 @@ object ListCompare {
             Tracker.MANGABAKA -> MangaBakaSync.deleteById(entry.mangaBakaSeriesId, force = true)
             Tracker.KITSU -> KitsuSync.deleteByEntryId(entry.kitsuEntryId, force = true)
             Tracker.SIMKL -> SimklSync.deleteFromAnilist(entry.anilistId, entry.malId, entry.simklId, force = true)
+            // Never offered — see [compareComick].
+            Tracker.COMICK -> false
         }
         return when (entry.tracker) {
             Tracker.MAL -> {
@@ -1219,6 +1384,17 @@ object ListCompare {
                 anilistId = entry.anilistId, malId = entry.malId, status = entry.status,
                 progress = entry.progress, score = entry.score, simklId = entry.simklId, force = true,
             )
+            Tracker.COMICK -> if (entry.anilistId != null) {
+                ComickSync.syncFromAnilist(
+                    isAnime = entry.isAnime, anilistId = entry.anilistId, malId = entry.malId,
+                    status = entry.status, progress = entry.progress, force = true,
+                )
+            } else {
+                ComickSync.syncFromMangaUpdates(
+                    muSeriesId = entry.muSeriesId, muListId = entry.muListId,
+                    progress = entry.progress, force = true,
+                )
+            }
             // No status on the destination means the entry isn't in the library, so create it
             // outright instead of paying for a PATCH that can only 404 first.
             Tracker.MANGABAKA -> if (entry.anilistId != null || entry.malId != null) {

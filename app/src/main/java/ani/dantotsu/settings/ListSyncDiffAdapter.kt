@@ -154,6 +154,7 @@ class ListSyncDiffAdapter(
         ListCompare.Tracker.KITSU -> R.drawable.ic_kitsu
         ListCompare.Tracker.SIMKL -> R.drawable.ic_simkl
         ListCompare.Tracker.MANGABAKA -> R.drawable.ic_round_mangabaka_24
+        ListCompare.Tracker.COMICK -> R.drawable.ic_round_comick_24
     }
 
     private fun trackerNameRes(tracker: ListCompare.Tracker): Int = when (tracker) {
@@ -161,6 +162,7 @@ class ListSyncDiffAdapter(
         ListCompare.Tracker.KITSU -> R.string.kitsu
         ListCompare.Tracker.SIMKL -> R.string.simkl
         ListCompare.Tracker.MANGABAKA -> R.string.mangabaka
+        ListCompare.Tracker.COMICK -> R.string.comick
     }
 
     private fun iconHeader(ctx: Context, iconRes: Int): ImageView {

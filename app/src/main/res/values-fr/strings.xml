@@ -717,7 +717,7 @@
     <string name="discord_rpc_settings">Paramètres RPC</string>
     <string name="discord_rpc_settings_desc">Texte de présence, boutons et images</string>
     <string name="compare_lists">Comparer les listes</string>
-    <string name="compare_lists_desc">Comparez MyAnimeList, Kitsu, Simkl et MangaBaka à vos listes source et synchronisez les différences</string>
+    <string name="compare_lists_desc">Comparez MyAnimeList, Kitsu, Simkl, MangaBaka et Comick à vos listes source et synchronisez les différences</string>
     <string name="auto_list_sync">Comparaison automatique</string>
     <string name="auto_list_sync_desc">Lancer la comparaison en arrière-plan et envoyer les différences automatiquement</string>
     <string name="auto_list_sync_frequency">Fréquence de la comparaison automatique</string>
@@ -727,7 +727,7 @@
     <string name="auto_list_sync_last_run_failures">%1$s · dernière exécution %2$s, %3$d synchronisées, %4$d échouées</string>
     <string name="auto_list_sync_removals">Inclure les suppressions</string>
     <string name="auto_list_sync_removals_label">Comparaison automatique : inclure les suppressions</string>
-    <string name="auto_list_sync_removals_desc">Supprimer aussi les entrées du tracker absentes des deux listes source. Désactivé par défaut : les exécutions automatiques n\'envoient que les ajouts et les mises à jour</string>
+    <string name="auto_list_sync_removals_desc">Supprimer aussi les entrées du tracker absentes des deux listes source. Désactivé par défaut : les exécutions automatiques n\'envoient que les ajouts et les mises à jour. Les entrées Comick ne sont jamais supprimées</string>
     <plurals name="interval_seconds">
         <item quantity="one">%d seconde</item>
         <item quantity="other">%d secondes</item>
@@ -755,7 +755,7 @@
     <string name="list_sync_up_to_date">La liste est à jour</string>
     <string name="list_compare_failed">Impossible de charger cette comparaison</string>
     <string name="list_compare_login_anilist">Connectez-vous à AniList pour comparer vos listes</string>
-    <string name="list_compare_login_trackers">Connectez-vous à MyAnimeList, Kitsu, Simkl ou MangaBaka pour comparer les listes</string>
+    <string name="list_compare_login_trackers">Connectez-vous à MyAnimeList, Kitsu, Simkl, MangaBaka ou Comick pour comparer les listes</string>
     <string name="list_diff_status">Statut</string>
     <string name="list_diff_chapters">Chapitres</string>
     <string name="list_diff_episodes">Épisodes</string>
