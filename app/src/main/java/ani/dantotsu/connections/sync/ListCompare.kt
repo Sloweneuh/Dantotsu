@@ -1163,7 +1163,9 @@ object ListCompare {
      *
      * Follows [ComickSync]'s rules so the screen offers only what a sync would actually do: status
      * differences, and progress only where the source is *ahead* — Comick's progress is never
-     * lowered, and its decimals ("54.1" read on Comick against AniList's 54) aren't behind. Nothing
+     * lowered, and its decimals ("54.1" read on Comick against AniList's 54) aren't behind. Scores
+     * differ only where AniList has a whole 1–10 equivalent to write ([ComickSync.ratingToSend]);
+     * an unrated AniList entry isn't offered against a Comick rating, as for the others. Nothing
      * is offered for removal: unfollowing on Comick also deletes the entry's notes, rating and
      * custom-list memberships.
      *
@@ -1204,7 +1206,7 @@ object ListCompare {
                 title = media.userPreferredName, coverUrl = media.cover, isAnime = isAnime,
                 hids = hids, byHid = byHid,
                 expected = media.userStatus ?: "CURRENT", progress = media.userProgress ?: 0,
-                anilistId = media.id, malId = media.idMAL,
+                score = media.userScore, anilistId = media.id, malId = media.idMAL,
             )
         }
 
@@ -1251,6 +1253,8 @@ object ListCompare {
         malId: Int?,
         muSeriesId: Long? = null,
         muListId: Int? = null,
+        /** AniList's, out of 100; MangaUpdates rows have none to push. */
+        score: Int = 0,
     ): DiffEntry? {
         if (hids.isEmpty()) return null
         val current = hids.firstNotNullOfOrNull { byHid[it] }
@@ -1258,11 +1262,15 @@ object ListCompare {
         val actualCanon = current?.let { ComickSync.toCanon(it.status) }
         val remoteText = current?.progress?.number
         val remote = remoteText?.toDoubleOrNull()
+        val remoteScore = current?.rating?.let { Math.round(it * 10).toInt() }
+        // Only a score a sync would write — an unrated AniList entry clears nothing from here.
+        val scoreDiffers = score > 0 && ComickSync.ratingToSend(score, current?.rating) != null
 
         val fieldDiffs = mutableListOf<FieldDiff>()
         if (current == null) {
             fieldDiffs += FieldDiff(DiffField.STATUS, DASH, formatStatus(target) ?: DASH)
             if (progress > 0) fieldDiffs += FieldDiff(DiffField.PROGRESS, DASH, progress.toString())
+            if (scoreDiffers) fieldDiffs += FieldDiff(DiffField.SCORE, DASH, formatScore(score) ?: DASH)
         } else {
             if (actualCanon != target)
                 fieldDiffs += FieldDiff(DiffField.STATUS, formatStatus(actualCanon) ?: DASH, formatStatus(target) ?: DASH)
@@ -1270,6 +1278,8 @@ object ListCompare {
             // Saved progress that isn't a plain number is left alone too, as a sync leaves it.
             val ahead = progress > 0 && (remoteText == null || (remote != null && progress > remote))
             if (ahead) fieldDiffs += FieldDiff(DiffField.PROGRESS, remoteText ?: DASH, progress.toString())
+            if (scoreDiffers)
+                fieldDiffs += FieldDiff(DiffField.SCORE, formatScore(remoteScore) ?: DASH, formatScore(score) ?: DASH)
         }
         if (fieldDiffs.isEmpty()) return null
 
@@ -1278,6 +1288,7 @@ object ListCompare {
         val detail = listOf(
             DetailRow(DiffField.STATUS, formatStatus(target), dest(formatStatus(actualCanon)), DiffField.STATUS in differing),
             DetailRow(DiffField.PROGRESS, progress.toString(), dest(remoteText), DiffField.PROGRESS in differing),
+            DetailRow(DiffField.SCORE, formatScore(score), dest(formatScore(remoteScore)), DiffField.SCORE in differing),
         )
         return DiffEntry(
             title = title,
@@ -1294,7 +1305,7 @@ object ListCompare {
             status = expected,
             progress = progress,
             volume = null,
-            score = null,
+            score = score.takeIf { it > 0 },
             detail = detail,
             fromStatusCanon = actualCanon,
             toStatusCanon = target,
@@ -1415,7 +1426,7 @@ object ListCompare {
             Tracker.COMICK -> if (entry.anilistId != null) {
                 ComickSync.syncFromAnilist(
                     isAnime = entry.isAnime, anilistId = entry.anilistId, malId = entry.malId,
-                    status = entry.status, progress = entry.progress, force = true,
+                    status = entry.status, progress = entry.progress, score = entry.score, force = true,
                 )
             } else {
                 ComickSync.syncFromMangaUpdates(

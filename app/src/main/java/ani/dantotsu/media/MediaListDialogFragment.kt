@@ -514,6 +514,9 @@ class MediaListDialogFragment : BottomSheetDialogFragment() {
                                                         status = status,
                                                         progress = progress,
                                                         score = score,
+                                                        // A score emptied in this edit clears Comick's rating; one left
+                                                        // empty doesn't, so a rating set on Comick survives other edits.
+                                                        comickScore = if (score != initialScore) score ?: 0 else score,
                                                         startDate = startD,
                                                         finishDate = endD,
                                                     )

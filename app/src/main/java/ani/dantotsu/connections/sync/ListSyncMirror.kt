@@ -16,7 +16,7 @@ import kotlinx.coroutines.launch
  * `isEnabled()` — a logged-out or switched-off tracker is a cheap no-op.
  *
  * Anime changes go to Kitsu + Simkl; manga changes go to Kitsu only (Simkl has no manga). Both go
- * to Comick too, which takes status and progress only and never mirrors a removal — see
+ * to Comick too, which takes status, progress and score, and never mirrors a removal — see
  * [ComickSync].
  */
 object ListSyncMirror {
@@ -32,6 +32,11 @@ object ListSyncMirror {
         finishDate: FuzzyDate? = null,
         /** The chapter/episode as the reader had it ("12.5"); only Comick can store decimals. */
         exactProgress: String? = null,
+        /**
+         * The score for Comick, which unlike the others can clear a rating: 0 clears it, null
+         * leaves it alone. Defaults to [score], where null only ever means "not rated".
+         */
+        comickScore: Int? = score,
     ) = coroutineScope {
         launch {
             KitsuSync.syncFromAnilist(
@@ -49,6 +54,7 @@ object ListSyncMirror {
             ComickSync.syncFromAnilist(
                 isAnime = isAnime, anilistId = anilistId, malId = malId,
                 status = status, progress = progress, exactProgress = exactProgress,
+                score = comickScore,
             )
         }
     }

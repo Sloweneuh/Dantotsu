@@ -12,14 +12,18 @@ import java.util.concurrent.ConcurrentHashMap
 /**
  * One-way list synchronisation to Comick (manga and anime).
  *
- * Whenever the user updates an entry on AniList (or MangaUpdates), its status and chapter/episode
- * progress are pushed to their Comick library. Only those two exist on Comick's side: scores,
- * dates, privacy and reread counts have no field there and are left out.
+ * Whenever the user updates an entry on AniList (or MangaUpdates), its status, chapter/episode
+ * progress and (from AniList) score are pushed to their Comick library. Dates, privacy and reread
+ * counts have no field there and are left out.
  *
  * Two rules keep a push from damaging what is already on Comick, both from Comick's own tracker
  * guidance:
  *  - **Progress never goes down.** Comick may well be ahead — the user reads there too — so a push
  *    only ever raises it, and leaves alone progress Comick holds that isn't a plain number.
+ *  - **Ratings are never rounded.** Comick takes whole 1–10 ratings; an AniList score with no
+ *    whole equivalent (75 out of 100) isn't sent, and a fractional rating already on Comick (one
+ *    imported from elsewhere) stays until AniList holds a whole score to replace it — see
+ *    [ratingToSend].
  *  - **Removals aren't mirrored.** Unfollowing on Comick also deletes the entry's notes, rating
  *    and custom-list memberships, which is too much to do on the strength of an edit made
  *    elsewhere.
@@ -66,6 +70,8 @@ object ComickSync {
      * @param progress the whole chapter/episode AniList holds.
      * @param exactProgress the number as the reader had it ("12.5"), when known. Comick keeps
      *   decimals where AniList can't, so this wins over [progress] whenever it is given.
+     * @param score AniList's score out of 100: 0 is unrated, and clears Comick's rating; null
+     *   leaves the rating out of the push altogether.
      */
     suspend fun syncFromAnilist(
         isAnime: Boolean,
@@ -74,16 +80,17 @@ object ComickSync {
         status: String?,
         progress: Int?,
         exactProgress: String? = null,
+        score: Int? = null,
         force: Boolean = false,
     ): Boolean {
         Logger.log(
             "ComickSync: AniList ${if (isAnime) "anime" else "manga"} $anilistId → " +
-                "status=$status progress=$progress exact=$exactProgress"
+                "status=$status progress=$progress exact=$exactProgress score=$score"
         )
         if (!isEnabled(force)) return false
         val hids = resolveFromAnilist(isAnime, anilistId ?: return false, malId)
         Logger.log("ComickSync: AniList $anilistId resolved to $hids")
-        return pushToSeries(hids, mapAnilistStatus(status), exactProgress ?: progress?.toString(), isAnime)
+        return pushToSeries(hids, mapAnilistStatus(status), exactProgress ?: progress?.toString(), isAnime, score)
     }
 
     /** See [syncFromAnilist] for [exactProgress]. */
@@ -192,7 +199,13 @@ object ComickSync {
      * when none is does the preferred one get followed: following them all would fill the library
      * with duplicates.
      */
-    private suspend fun pushToSeries(hids: List<String>, status: Int?, progress: String?, isAnime: Boolean): Boolean {
+    private suspend fun pushToSeries(
+        hids: List<String>,
+        status: Int?,
+        progress: String?,
+        isAnime: Boolean,
+        score: Int? = null,
+    ): Boolean {
         if (hids.isEmpty()) return false
         val lookups = hids.map { it to lookup(it, isAnime) }
         Logger.log("ComickSync: library entries ${lookups.map { (hid, l) -> "$hid=${l ?: "lookup failed"}" }}")
@@ -205,7 +218,7 @@ object ComickSync {
         }
         var ok = true
         for ((hid, lookup) in targets) {
-            if (!push(hid, lookup ?: continue, status, progress, isAnime)) ok = false
+            if (!push(hid, lookup ?: continue, status, progress, isAnime, score)) ok = false
         }
         return ok
     }
@@ -224,6 +237,7 @@ object ComickSync {
         status: Int?,
         progress: String?,
         isAnime: Boolean,
+        score: Int? = null,
     ): Boolean {
         val followed = (current as? Comick.EntryLookup.Followed)?.entry
         // A title isn't followed without a status to follow it under.
@@ -244,26 +258,52 @@ object ComickSync {
         val chapterHid = number?.takeIf { !isAnime && (raises || unlinkedSame) }
             ?.let { ComickApi.findChapterHid(hid, it) }
         val sendProgress = number?.takeIf { raises || (unlinkedSame && chapterHid != null) }
+        val sendRating = ratingToSend(score, followed?.rating)
         Logger.log(
             "ComickSync: $hid saved=${remote?.number}/${remote?.hid} local=$number raises=$raises " +
-                "unlinkedSame=$unlinkedSame chapter=$chapterHid → status=$sendStatus progress=$sendProgress"
+                "unlinkedSame=$unlinkedSame chapter=$chapterHid rating=${followed?.rating}/$score → " +
+                "status=$sendStatus progress=$sendProgress rating=${sendRating?.value ?: if (sendRating != null) "clear" else null}"
         )
-        if (sendStatus == null && sendProgress == null) return true
+        if (sendStatus == null && sendProgress == null && sendRating == null) return true
 
-        return Comick.putEntry(hid, sendStatus, sendProgress, chapterHid.takeIf { sendProgress != null })
-            .also { ok ->
-                if (!ok) Logger.log("ComickSync: push failed for $hid")
-                // What was written, so the bulk sync's snapshot doesn't go stale under it.
-                else snapshot?.second?.let { library ->
-                    val before = followed ?: ComickLibraryEntry(hid = hid)
-                    library[hid] = before.copy(
-                        status = sendStatus ?: before.status,
-                        progress = sendProgress?.let { ComickLibraryProgress(hid = chapterHid, number = it) }
-                            ?: before.progress,
-                    )
-                }
+        return Comick.putEntry(
+            hid, sendStatus, sendProgress, chapterHid.takeIf { sendProgress != null }, sendRating,
+        ).also { ok ->
+            if (!ok) Logger.log("ComickSync: push failed for $hid")
+            // What was written, so the bulk sync's snapshot doesn't go stale under it.
+            else snapshot?.second?.let { library ->
+                val before = followed ?: ComickLibraryEntry(hid = hid)
+                library[hid] = before.copy(
+                    status = sendStatus ?: before.status,
+                    progress = sendProgress?.let { ComickLibraryProgress(hid = chapterHid, number = it) }
+                        ?: before.progress,
+                    rating = if (sendRating != null) sendRating.value?.toDouble() else before.rating,
+                )
             }
+        }
     }
+
+    /**
+     * What an AniList [score] (out of 100; 0 unrated, null not part of the change) makes of the
+     * [remote] Comick rating — null when it stays as it is:
+     *  - a whole score (10, 20 … 100) becomes its 1–10 rating;
+     *  - one without a whole equivalent (75) isn't rounded: the rating is left alone;
+     *  - unrated clears the rating — except a fractional one, which Comick can only have imported
+     *    from elsewhere and which stays until a whole score replaces it.
+     */
+    fun ratingToSend(score: Int?, remote: Double?): Comick.RatingWrite? {
+        score ?: return null
+        if (score <= 0) {
+            val wholeRemote = remote != null && remote % 1.0 == 0.0
+            return if (wholeRemote) Comick.RatingWrite(null) else null
+        }
+        val rating = toComickRating(score) ?: return null
+        return if (remote == rating.toDouble()) null else Comick.RatingWrite(rating)
+    }
+
+    /** [score] (out of 100) as a Comick rating, or null when it has no whole 1–10 equivalent. */
+    fun toComickRating(score: Int?): Int? =
+        score?.takeIf { it in 10..100 && it % 10 == 0 }?.div(10)
 
     /** "12.0" → "12"; anything with a real fraction is sent the way the source wrote it. */
     private fun formatNumber(value: Double, original: String): String =

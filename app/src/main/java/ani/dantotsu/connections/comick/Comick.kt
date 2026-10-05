@@ -38,9 +38,10 @@ import java.util.concurrent.TimeUnit
  * Comick account connection, through Comick's third-party app API (https://comick.dev/docs).
  *
  * **Permissions.** `library:read` covers followed manga/anime, their follow status and the saved
- * chapter/episode; `library:write` adds following, status and progress changes. Ratings, notes,
- * custom lists, dates and the profile are outside both — so there is no username to show, only
- * "connected". Write access is requested at login, but the consent screen leaves it unticked
+ * chapter/episode and rating; `library:write` adds following, status, progress and rating changes.
+ * Notes, custom lists and dates are outside both, and so is the profile: there are no identity
+ * scopes, ID tokens or profile route, so there is no username to show, only "connected". Write
+ * access is requested at login, but the consent screen leaves it unticked
  * until the user opts in, so a connection may well be read-only: see [canWrite].
  *
  * **Login is OAuth 2.0 authorization code + S256 PKCE**, as a public client (no secret). It runs in
@@ -392,13 +393,16 @@ object Comick {
      * [progressNumber], a chapter/episode number as text ("12", "12.5"). Comick stores a bare
      * number, but its site doesn't show progress that isn't tied to a chapter, so to the user it
      * reads as progress erased.
+     *
+     * [rating], when given, sets the rating — see [RatingWrite]; null leaves it as it is.
      */
     suspend fun putEntry(
         hid: String,
         status: Int?,
         progressNumber: String?,
         progressChapterHid: String? = null,
-    ): Boolean = write("PUT", hid, status, progressNumber, progressChapterHid)
+        rating: RatingWrite? = null,
+    ): Boolean = write("PUT", hid, status, progressNumber, progressChapterHid, rating)
 
     /** Updates an entry that already exists (`PATCH`); false when the title isn't followed. */
     suspend fun patchEntry(
@@ -406,7 +410,18 @@ object Comick {
         status: Int?,
         progressNumber: String?,
         progressChapterHid: String? = null,
-    ): Boolean = write("PATCH", hid, status, progressNumber, progressChapterHid)
+        rating: RatingWrite? = null,
+    ): Boolean = write("PATCH", hid, status, progressNumber, progressChapterHid, rating)
+
+    /**
+     * A rating to write: a whole [value] from 1 to 10, or null to clear it. Comick takes integers
+     * only — reads can return a fractional one, imported from elsewhere — so nothing else exists.
+     */
+    class RatingWrite(val value: Int?) {
+        init {
+            require(value == null || value in 1..10) { "Comick ratings are 1–10, got $value" }
+        }
+    }
 
     private suspend fun write(
         method: String,
@@ -414,6 +429,7 @@ object Comick {
         status: Int?,
         progressNumber: String?,
         progressChapterHid: String?,
+        rating: RatingWrite?,
     ): Boolean {
         if (!canWrite()) return false
         val body = JsonObject().apply {
@@ -424,9 +440,12 @@ object Comick {
                 progressNumber != null ->
                     add("progress", JsonObject().apply { addProperty("number", progressNumber) })
             }
+            rating?.let { addProperty("rating", it.value) }
         }
         if (body.size() == 0) return true
-        val json = gson.toJson(body)
+        // toString(), not gson.toJson: the latter drops null members, turning a cleared rating
+        // into an omitted one.
+        val json = body.toString()
         val res = call(entryUrl(hid), method, json) ?: return false
         if (res.code in 200..299) {
             // What Comick says it saved, not only what was sent.

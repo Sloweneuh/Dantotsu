@@ -714,6 +714,11 @@ data class ComickLibraryEntry(
     val status_name: String? = null,
     /** The saved chapter/episode — not the next unread one. Null when unknown. */
     val progress: ComickLibraryProgress? = null,
+    /**
+     * The user's rating, null when unrated. Ratings set through the API are whole 1–10, but one
+     * imported from elsewhere can be fractional (7.5), so it's read as a decimal.
+     */
+    val rating: Double? = null,
     val followed_at: String? = null,
     val updated_at: String? = null,
     val progressed_at: String? = null,
