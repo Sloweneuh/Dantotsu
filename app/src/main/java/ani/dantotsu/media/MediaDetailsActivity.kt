@@ -1357,7 +1357,7 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
             sheet.start(
                 queue,
                 shownId = media.id.toLong(),
-                initialState = intent.getIntExtra(EXTRA_SHEET_STATE, BottomSheetBehavior.STATE_EXPANDED),
+                initialState = intent.getIntExtra(EXTRA_SHEET_STATE, BottomSheetBehavior.STATE_COLLAPSED),
             )
             if (media.userStatus != null) sheet.markOnList(media.id.toLong())
         }
@@ -1378,7 +1378,7 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
     private fun replaceWithQueuePick(source: DiscoverySource, next: DiscoveryQueue.Item) {
         startActivity(
             source.queuePageIntent(this, next)
-                .putExtra(EXTRA_SHEET_STATE, queueSheet?.state ?: BottomSheetBehavior.STATE_EXPANDED)
+                .putExtra(EXTRA_SHEET_STATE, queueSheet?.state ?: BottomSheetBehavior.STATE_COLLAPSED)
                 .addFlags(Intent.FLAG_ACTIVITY_FORWARD_RESULT)
         )
         finish()

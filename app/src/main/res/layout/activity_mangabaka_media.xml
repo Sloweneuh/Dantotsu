@@ -19,7 +19,7 @@
             android:id="@+id/mangaBakaMediaHeader"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:layout_scrollFlags="scroll|snap">
+            app:layout_scrollFlags="scroll|exitUntilCollapsed|snap">
 
             <ImageView
                 android:id="@+id/mangaBakaMediaBanner"
@@ -29,6 +29,7 @@
                 tools:ignore="ContentDescription" />
 
             <ImageView
+                android:id="@+id/mangaBakaMediaBannerGradient"
                 android:layout_width="match_parent"
                 android:layout_height="220dp"
                 android:alpha="0.7"
@@ -229,5 +230,16 @@
             android:id="@+id/discoverSheet"
             layout="@layout/layout_discover_sheet" />
     </FrameLayout>
+
+    <!-- Queue mode: a solid bar behind the system navigation, drawn over the sheet's lower edge the
+         way the AniList page's tab bar is. Height is the navigation inset, set in code. -->
+    <View
+        android:id="@+id/mangaBakaMediaNavScrim"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_gravity="bottom"
+        android:background="?attr/colorSurface"
+        android:translationZ="17dp"
+        android:visibility="gone" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

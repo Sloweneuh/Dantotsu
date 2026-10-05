@@ -7,6 +7,8 @@ import android.view.ViewGroup
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.lifecycleScope
@@ -50,8 +52,20 @@ class DiscoverActivity : AppCompatActivity() {
         initActivity(this)
         source = DiscoverySource.byId(intent.getStringExtra(DiscoverySource.EXTRA_SOURCE)) ?: MangaBakaDiscovery
 
+        val baseTopMargin = (binding.discoverTopBar.layoutParams as ViewGroup.MarginLayoutParams).topMargin
         binding.discoverTopBar.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-            topMargin += statusBarHeight
+            topMargin = baseTopMargin + statusBarHeight
+        }
+        // A cold start from the quick tile may only have a guessed status bar height until now.
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, insets ->
+            val status = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top
+            if (status > 0) {
+                statusBarHeight = status
+                binding.discoverTopBar.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+                    topMargin = baseTopMargin + status
+                }
+            }
+            insets
         }
         binding.discoverTitle.setText(
             if (source == AniListAnimeDiscovery) R.string.quick_tile_discover_anime else R.string.quick_tile_discover_manga

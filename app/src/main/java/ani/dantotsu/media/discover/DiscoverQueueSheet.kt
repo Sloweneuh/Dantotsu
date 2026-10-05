@@ -78,7 +78,7 @@ class DiscoverQueueSheet(
     enum class PageMode { INFO, BROWSE, HIDDEN }
     private var pageMode = PageMode.INFO
     /** The user's own expanded/collapsed choice on the info page, restored when they come back to it. */
-    private var infoState = BottomSheetBehavior.STATE_EXPANDED
+    private var infoState = BottomSheetBehavior.STATE_COLLAPSED
 
     /** Expanded or collapsed, for carrying across a page replacement. */
     val state: Int get() = if (pageMode == PageMode.INFO) behavior.state else infoState
@@ -97,7 +97,7 @@ class DiscoverQueueSheet(
      * [shownId] is the pick the page already shows (the AniList page is opened for one); without
      * it the first unanswered pick is handed to [showItem].
      */
-    fun start(queue: DiscoveryQueue, shownId: Long? = null, initialState: Int = BottomSheetBehavior.STATE_EXPANDED) {
+    fun start(queue: DiscoveryQueue, shownId: Long? = null, initialState: Int = BottomSheetBehavior.STATE_COLLAPSED) {
         this.queue = queue
         infoState = initialState
         container.isVisible = true

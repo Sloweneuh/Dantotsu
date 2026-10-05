@@ -12,6 +12,7 @@ import androidx.core.view.doOnPreDraw
 import androidx.core.view.updateLayoutParams
 import androidx.core.view.updatePadding
 import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import ani.dantotsu.R
 import ani.dantotsu.blurImage
@@ -101,14 +102,20 @@ class MangaBakaMediaActivity : AppCompatActivity() {
         binding.root.postDelayed({ maybeStartEnterTransition() }, 300)
         initActivity(this)
 
-        binding.mangaBakaMediaPages.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-            bottomMargin += navBarHeight
-        }
-        binding.mangaBakaMediaClose.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-            topMargin = statusBarHeight + 16f.px
-        }
-        binding.quickSettings.root.updateLayoutParams<ViewGroup.MarginLayoutParams> {
-            topMargin = statusBarHeight + 16f.px
+        applyBarInsets(statusBarHeight, navBarHeight)
+        // The globals can be a resource-dimension guess on a cold start straight into this screen
+        // (a discovery quick tile); the real insets correct them once they arrive.
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, insets ->
+            // Immersive mode hides the status bar, leaving only the camera cutout to clear.
+            val status = insets.getInsets(
+                WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.displayCutout()
+            ).top
+            val nav = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
+            if (status > 0) statusBarHeight = status
+            if (nav > 0) navBarHeight = nav
+            applyBarInsets(status.takeIf { it > 0 } ?: statusBarHeight, nav)
+            queueSheet?.applyInsets()
+            insets
         }
         binding.quickSettings.bindQuickSettings(this)
         // Plain finish() skips the reverse shared-element transition — the default
@@ -134,6 +141,7 @@ class MangaBakaMediaActivity : AppCompatActivity() {
                 finish = ::finishQueue,
             )
             this.queueSheet = queueSheet
+            binding.mangaBakaMediaNavScrim.visibility = View.VISIBLE
             lifecycleScope.launch {
                 val queue = MangaBakaDiscovery.accountId()?.let { MangaBakaDiscovery.load(it) }
                 if (queue == null) finish() else queueSheet.start(queue)
@@ -155,6 +163,30 @@ class MangaBakaMediaActivity : AppCompatActivity() {
 
     /** Bumped per load, so a slower previous series can't paint into the page after a queue step. */
     private var loadGeneration = 0
+
+    /**
+     * Keeps the floating chips below the status bar, the page above the navigation bar, and a
+     * status-bar strip of the header on screen once it scrolls away, so content never runs under
+     * the clock.
+     */
+    private fun applyBarInsets(status: Int, nav: Int) {
+        binding.mangaBakaMediaPages.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+            bottomMargin = nav
+        }
+        binding.mangaBakaMediaClose.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+            topMargin = status + 16f.px
+        }
+        binding.quickSettings.root.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+            topMargin = status + 16f.px
+        }
+        binding.mangaBakaMediaHeader.minimumHeight = status
+        // The header draws under the status bar/cutout; grow it by that so the cover and title
+        // keep their place below it.
+        val bannerHeight = 220f.px + status
+        binding.mangaBakaMediaBanner.updateLayoutParams { height = bannerHeight }
+        binding.mangaBakaMediaBannerGradient.updateLayoutParams { height = bannerHeight }
+        binding.mangaBakaMediaNavScrim.updateLayoutParams { height = nav }
+    }
 
     private fun finishQueue(completed: Boolean) {
         setResult(if (completed) RESULT_OK else RESULT_CANCELED)
