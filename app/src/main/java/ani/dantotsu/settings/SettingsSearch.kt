@@ -579,6 +579,7 @@ object SettingsSearch {
         l += SearchableSetting(SettingsNotificationActivity::class.java, R.string.comment_notifications, R.string.notifications, R.drawable.ic_round_notif_comments_24, R.string.comment_notifications_desc, keywordsRes = R.string.search_kw_comment_notifications, anchorSection = NotificationSection.COMMENTS)
 
         l += SearchableSetting(SettingsNotificationActivity::class.java, R.string.mu_notifications, R.string.notifications, R.drawable.ic_round_notif_mangaupdates_24, R.string.mu_notifications_desc, keywordsRes = R.string.search_kw_mu_notifications, anchorSection = NotificationSection.MANGAUPDATES)
+        l += SearchableSetting(SettingsNotificationActivity::class.java, R.string.comick_notifications_section, R.string.notifications, R.drawable.ic_round_comick_24, R.string.comick_notifications_section_desc, keywordsRes = R.string.search_kw_comick_notifications, anchorSection = NotificationSection.COMICK)
 
         l += SearchableSetting(SettingsNotificationActivity::class.java, R.string.use_alarm_manager_reliable, R.string.notifications, R.drawable.ic_round_alarm_24, R.string.use_alarm_manager_reliable_desc, keywordsRes = R.string.search_kw_use_alarm_manager_reliable)
 
@@ -594,6 +595,7 @@ object SettingsSearch {
         l += SearchableSetting(SettingsNotificationActivity::class.java, R.string.unread_chapter_notification_checking_time_label, R.string.unread_chapter_notifications, R.drawable.ic_round_notif_unread_24, R.string.unread_chapter_notification_checking_time_desc, keywordsRes = R.string.search_kw_unread_chapter_notification_checking_time_label, anchorSection = NotificationSection.MALSYNC, anchorRowKey = "malsync_interval")
 
         l += SearchableSetting(SettingsNotificationActivity::class.java, R.string.mu_notification_interval_label, R.string.mu_notifications, R.drawable.ic_round_notif_mangaupdates_24, R.string.mu_notification_interval_desc, keywordsRes = R.string.search_kw_mu_notification_interval_label, anchorSection = NotificationSection.MANGAUPDATES, anchorRowKey = "mu_interval")
+        l += SearchableSetting(SettingsNotificationActivity::class.java, R.string.mu_notification_interval_label, R.string.comick_notifications_section, R.drawable.ic_round_comick_24, R.string.mu_notification_interval_desc, keywordsRes = R.string.search_kw_comick_notification_interval, anchorSection = NotificationSection.COMICK, anchorRowKey = "comick_interval")
 
         l += SearchableSetting(SettingsNotificationActivity::class.java, R.string.anilist_notification_filters, R.string.anilist_notifications, R.drawable.ic_anilist, R.string.anilist_notification_filters_desc, keywordsRes = R.string.search_kw_anilist_notification_filters, anchorSection = NotificationSection.ANILIST, anchorRowKey = "anilist_filters")
 
@@ -610,6 +612,7 @@ object SettingsSearch {
         l += SearchableSetting(SettingsNotificationActivity::class.java, R.string.clear_unread_chapter_history, R.string.unread_chapter_notifications, R.drawable.ic_round_delete_sweep_24, R.string.clear_unread_chapter_history_desc, keywordsRes = R.string.search_kw_clear_unread_chapter_history, anchorSection = NotificationSection.MALSYNC, anchorRowKey = "malsync_clear")
 
         l += SearchableSetting(SettingsNotificationActivity::class.java, R.string.mu_notifications_enabled, R.string.mu_notifications, R.drawable.ic_round_mangaupdates_24, R.string.mu_notifications_enabled_desc, keywordsRes = R.string.search_kw_mu_notifications_enabled, anchorSection = NotificationSection.MANGAUPDATES, anchorRowKey = "mu_enabled")
+        l += SearchableSetting(SettingsNotificationActivity::class.java, R.string.mu_notifications_enabled, R.string.comick_notifications_section, R.drawable.ic_round_comick_24, R.string.comick_notifications_enabled_desc, keywordsRes = R.string.search_kw_comick_notifications_enabled, anchorSection = NotificationSection.COMICK, anchorRowKey = "comick_enabled")
 
         // ---- About ----
         l += SearchableSetting(FAQActivity::class.java, R.string.faq, R.string.about, R.drawable.ic_round_quiz_24, R.string.faq_desc, keywordsRes = R.string.search_kw_faq)

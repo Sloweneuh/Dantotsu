@@ -8,7 +8,9 @@ import android.graphics.Bitmap
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import ani.dantotsu.App
 import ani.dantotsu.R
+import ani.dantotsu.notifications.Task
 import ani.dantotsu.connections.IdCache
 import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.comick.Comick
@@ -57,9 +59,13 @@ import kotlin.math.floor
  * announced. Titles on the unread-chapter exclusion list —
  * under their AniList id, MangaUpdates key, or [ComickUnreadEntry.excludeId] — are never announced.
  *
- * Runs inside [UnreadChapterNotificationTask], after the AniList and MangaUpdates checks, and skips
- * any title those just covered — matched through the AniList/MangaUpdates ids Comick lists for
- * it — so a series tracked in two places isn't announced twice.
+ * Runs inside [UnreadChapterNotificationTask], after the AniList and MangaUpdates checks — or on its
+ * own schedule while that one is off ([execute], with nothing known from them). A title
+ * one of those also follows — matched through the AniList/MangaUpdates ids Comick lists for it — is
+ * left to it up to the newest chapter it knows, and announced from here only past that: their
+ * chapter counts come from MALSync and MangaUpdates, which often have nothing for a title or lag
+ * Comick by days. What this announces is marked as announced for that check too, so the chapter
+ * isn't announced a second time when its count catches up.
  *
  * A notification opens the series where the user tracks it: the AniList page when they use
  * AniList (or MangaUpdates isn't an option), else the MangaUpdates page, else Comick's own. Its
@@ -69,7 +75,27 @@ import kotlin.math.floor
  * Every title found behind, announced or not, is also kept for the home screen's unread row
  * ([UnreadCache.saveComick]).
  */
-class ComickUnreadNotificationTask {
+class ComickUnreadNotificationTask : Task {
+
+    /** The standalone run: nothing is known from the other checks, which aren't running. */
+    override suspend fun execute(context: Context): Boolean {
+        if (currentlyPerforming) {
+            Logger.log("ComickUnreadNotificationTask: already running")
+            return false
+        }
+        return try {
+            currentlyPerforming = true
+            PrefManager.init(context)
+            App.context = context
+            checkComickUnread(context, emptyMap(), emptyMap())
+            true
+        } catch (e: Exception) {
+            Logger.log("ComickUnreadNotificationTask: error: ${e.message}")
+            false
+        } finally {
+            currentlyPerforming = false
+        }
+    }
 
     private data class UnreadItem(
         val entry: ComickLibraryEntry,
@@ -91,6 +117,10 @@ class ComickUnreadNotificationTask {
         val muListEntry: MUMedia?,
         /** The MangaUpdates series Comick links, for showing the title as one. */
         val muSeriesId: Long?,
+        /** The AniList id Comick links, whether or not it's on the account's list. */
+        val anilistId: Int? = null,
+        /** Every MangaUpdates id Comick's link can stand for (see [Links.mangaUpdatesIds]). */
+        val muSeriesIds: Set<Long> = emptySet(),
     ) {
         val onAnilistList: Boolean get() = anilistMedia?.userStatus != null
 
@@ -141,13 +171,13 @@ class ComickUnreadNotificationTask {
     }
 
     /**
-     * @param trackedAnilistIds AniList manga the AniList check just covered.
-     * @param trackedMuSeriesIds MangaUpdates series the MangaUpdates check just covered.
+     * @param anilistKnownLatest the newest chapter the AniList check knows, by AniList id.
+     * @param muKnownLatest the newest chapter the MangaUpdates check knows, by series id.
      */
     suspend fun checkComickUnread(
         context: Context,
-        trackedAnilistIds: Set<Int>,
-        trackedMuSeriesIds: Set<Long>,
+        anilistKnownLatest: Map<Int, Int>,
+        muKnownLatest: Map<Long, Int>,
     ) = withContext(Dispatchers.IO) {
         if (!PrefManager.getVal<Boolean>(PrefName.ComickNotificationsEnabled)) {
             Logger.log("ComickUnreadNotificationTask: notifications disabled")
@@ -159,7 +189,7 @@ class ComickUnreadNotificationTask {
             clearRow(context)
             return@withContext
         }
-        val unread = currentUnread(trackedAnilistIds, trackedMuSeriesIds) ?: return@withContext
+        val unread = currentUnread(anilistKnownLatest, muKnownLatest) ?: return@withContext
 
         UnreadCache.saveComick(unread.map { it.toEntry() })
         UnreadCache.broadcastUpdate(context)
@@ -170,7 +200,19 @@ class ComickUnreadNotificationTask {
         // Keys are "<hid>:<chapter>"; a title no longer behind can't be announced again.
         pruneNotified(notified, unread.associate { it.entry.hid to it.userChapter })
         val newItems = unread.filter { notified.add("${it.entry.hid}:${it.latestChapter}") }
-        prefs.edit().putStringSet(notifiedKey, notified).apply()
+        // Announced here, so the AniList/MangaUpdates check mustn't announce it again once its own
+        // count reaches it. Their keys are "<id>:<chapter>" too.
+        val anilistNotified = prefs.getStringSet(ANILIST_NOTIFIED_KEY, emptySet()).orEmpty().toMutableSet()
+        val muNotified = prefs.getStringSet(MU_NOTIFIED_KEY, emptySet()).orEmpty().toMutableSet()
+        newItems.forEach { item ->
+            item.anilistId?.let { anilistNotified += "$it:${item.latestChapter}" }
+            item.muSeriesIds.forEach { muNotified += "$it:${item.latestChapter}" }
+        }
+        prefs.edit()
+            .putStringSet(notifiedKey, notified)
+            .putStringSet(ANILIST_NOTIFIED_KEY, anilistNotified)
+            .putStringSet(MU_NOTIFIED_KEY, muNotified)
+            .apply()
         Logger.log("ComickUnreadNotificationTask: ${newItems.size} new chapters to notify")
 
         if (newItems.isEmpty() || !hasNotificationPermission(context)) return@withContext
@@ -193,8 +235,8 @@ class ComickUnreadNotificationTask {
      * announced" filter. Null when the library can't be read, so the last answer stands.
      */
     private suspend fun currentUnread(
-        trackedAnilistIds: Set<Int>,
-        trackedMuSeriesIds: Set<Long>,
+        anilistKnownLatest: Map<Int, Int>,
+        muKnownLatest: Map<Long, Int>,
     ): List<UnreadItem>? {
         val library = Comick.getLibrary(ComickApi.MEDIA_TYPE_MANGA, Comick.STATUS_READING) ?: run {
             Logger.log("ComickUnreadNotificationTask: library unavailable")
@@ -261,12 +303,22 @@ class ComickUnreadNotificationTask {
             if (links.anilistId != null && excludeList.containsMediaId(links.anilistId.toString())) return@mapNotNull null
             if (links.mangaUpdatesIds.any { excludeList.containsMediaId(muMediaKey(it).toString()) }) return@mapNotNull null
             if (excludeList.containsMediaId(ComickUnreadEntry.excludeId(entry.hid))) return@mapNotNull null
-            if (links.anilistId != null && links.anilistId in trackedAnilistIds) return@mapNotNull null
-            if (links.mangaUpdatesIds.any { it in trackedMuSeriesIds }) return@mapNotNull null
             Candidate(entry, links, floor(saved).toInt(), media, muEntry)
         }
 
-        val behind = titlesBehind(candidates)
+        val behind = titlesBehind(candidates).filter { b ->
+            val links = b.candidate.links
+            // The newest chapter the AniList or MangaUpdates check already knows for this title.
+            val known = listOfNotNull(links.anilistId?.let { anilistKnownLatest[it] })
+                .plus(links.mangaUpdatesIds.mapNotNull { muKnownLatest[it] })
+                .maxOrNull()
+            (known == null || b.latestWhole > known).also { ahead ->
+                if (!ahead) Logger.log(
+                    "ComickUnreadNotificationTask: ${b.candidate.entry.hid} ch ${b.latestWhole} already known " +
+                        "to the AniList/MangaUpdates check ($known), leaving it there"
+                )
+            }
+        }
         Logger.log("ComickUnreadNotificationTask: ${behind.size} titles with unread chapters")
 
         val anilistIn = PrefManager.getVal<String>(PrefName.AnilistToken).isNotEmpty()
@@ -298,6 +350,8 @@ class ComickUnreadNotificationTask {
                 anilistMedia = media,
                 muListEntry = muEntry,
                 muSeriesId = muEntry?.id ?: links.muSeriesId,
+                anilistId = links.anilistId,
+                muSeriesIds = links.mangaUpdatesIds,
             )
         }
             // Two Comick entries of one series (an official release and a scanlation, both
@@ -628,7 +682,14 @@ class ComickUnreadNotificationTask {
     }
 
     private companion object {
+        @Volatile
+        var currentlyPerforming = false
+
         const val SOURCE = "Comick"
+
+        /** The AniList and MangaUpdates checks' "already announced" sets. */
+        const val ANILIST_NOTIFIED_KEY = "notified_unread_chapters"
+        const val MU_NOTIFIED_KEY = "notified_mu_chapters"
 
         /** How long each catalog request keeps its slot past the response; see [titlesBehind]. */
         const val REQUEST_SPACING_MS = 400L

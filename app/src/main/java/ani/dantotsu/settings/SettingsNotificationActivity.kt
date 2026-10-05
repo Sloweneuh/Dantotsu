@@ -93,6 +93,13 @@ class SettingsNotificationActivity : AppCompatActivity() {
                     summary = { mangaUpdatesSummary() },
                     rows = { mangaUpdatesRows(onChanged) },
                 ),
+                SettingsSection(
+                    key = NotificationSection.COMICK,
+                    title = getString(R.string.comick_notifications_section),
+                    icon = R.drawable.ic_round_comick_24,
+                    summary = { comickSummary() },
+                    rows = { comickRows(onChanged) },
+                ),
             ),
             stateKey = SettingsSectionAdapter.STATE_NOTIFICATIONS,
             keepExpanded = SettingsRouter.hasAnchor(this),

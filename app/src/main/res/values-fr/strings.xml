@@ -305,7 +305,13 @@
     <string name="comick_list_sync_desc">Envoyer le statut et la progression des chapitres depuis AniList et MangaUpdates vers votre bibliothèque Comick. Comick ne prend pas en charge les notes ni les dates</string>
     <string name="comick_list_sync_read_only">Votre connexion Comick est en lecture seule. Déconnectez-vous puis reconnectez-vous en autorisant les modifications de bibliothèque pour synchroniser</string>
     <string name="comick_notifications">Notifications de nouveaux chapitres</string>
-    <string name="comick_notifications_desc">Prévenir quand un titre que vous lisez sur Comick reçoit un nouveau chapitre. Utilise l\'intervalle de vérification des nouveaux chapitres</string>
+    <string name="comick_notifications_section">Notifications Comick</string>
+    <string name="comick_notifications_section_desc">Configurer les notifications des nouveaux chapitres des titres que vous lisez sur Comick</string>
+    <string name="comick_notifications_enabled_desc">Envoyer une notification pour les nouveaux chapitres des titres que vous lisez sur Comick</string>
+    <string name="comick_notification_interval_title">Fréquence des notifications Comick</string>
+    <string name="search_kw_comick_notifications">comick chapitre sortie</string>
+    <string name="search_kw_comick_notification_interval">intervalle fréquence planification heures vérification arrière-plan comick</string>
+    <string name="search_kw_comick_notifications_enabled">comick notifier chapitre sortie activer</string>
     <string name="connections_settings">Connexions</string>
     <string name="connections_desc">Activer ou désactiver les connexions externes et les onglets d\'information</string>
     <string name="disable_comick">Afficher les infos Comick</string>

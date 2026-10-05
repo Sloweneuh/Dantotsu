@@ -56,7 +56,9 @@ class UnreadChapterNotificationTask : Task {
                 // it, see below. Set only once the check really ran (a MALSync scan, or another
                 // device's result): with MALSync off or anime-only nothing announces them here, and
                 // counting them as covered left them announced by no one.
-                var anilistMangaIds: Set<Int> = emptySet()
+                // AniList id -> the newest chapter the AniList check knows for it. Only titles it
+                // actually has an answer for: one MALSync couldn't place is not "covered".
+                var anilistKnownLatest: Map<Int, Int> = emptyMap()
 
                 // === AniList + MALSync check ===
                 run anilistCheck@{
@@ -118,7 +120,11 @@ class UnreadChapterNotificationTask : Task {
                             )
                             // A completed scan from another device, so it answers for the whole
                             // list — anything it does not mention is caught up, not unknown.
-                            anilistMangaIds = mangaList.mapTo(HashSet()) { it.id }
+                            // The shared result lists only titles behind; the rest were caught up,
+                            // so their saved progress is as far as that scan knew.
+                            anilistKnownLatest = mangaList.associate { media ->
+                                media.id to (reconciled[media.id]?.lastChapter ?: media.userProgress ?: 0)
+                            }
                             handleUnreadResult(
                                 context, reconciled, mangaList,
                                 answeredIds = mangaList.mapTo(HashSet()) { it.id }
@@ -227,7 +233,9 @@ class UnreadChapterNotificationTask : Task {
 
                         // Publish for the user's other devices, then cache + notify locally.
                         UnreadSync.push(unreadInfo)
-                        anilistMangaIds = mangaList.mapTo(HashSet()) { it.id }
+                        anilistKnownLatest = mangaList.mapNotNull { media ->
+                            batchResults[media.id]?.lastEp?.total?.let { media.id to it }
+                        }.toMap()
                         handleUnreadResult(
                             context, unreadInfo, mangaList,
                             answeredIds = batchResults.keys
@@ -307,12 +315,12 @@ class UnreadChapterNotificationTask : Task {
                 }
 
                 // === MangaUpdates unread check ===
-                val muSeriesIds = MuUnreadNotificationTask().checkMangaUpdatesUnread(context)
+                val muKnownLatest = MuUnreadNotificationTask().checkMangaUpdatesUnread(context)
 
                 // === Comick unread check ===
                 // Last, so titles the AniList and MangaUpdates checks already cover are known and
                 // skipped rather than announced a second time from Comick.
-                ComickUnreadNotificationTask().checkComickUnread(context, anilistMangaIds, muSeriesIds)
+                ComickUnreadNotificationTask().checkComickUnread(context, anilistKnownLatest, muKnownLatest)
 
                 currentlyPerforming = false
             }

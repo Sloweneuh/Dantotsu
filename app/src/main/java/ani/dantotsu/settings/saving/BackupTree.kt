@@ -135,6 +135,7 @@ object BackupTree {
                         BackupItem(PrefName.ComickEnabled, R.string.disable_comick),
                         BackupItem(PrefName.ComickMangaBakaLanguage, R.string.comick_mangabaka_language),
                         BackupItem(PrefName.ComickNotificationsEnabled, R.string.comick_notifications),
+                        BackupItem(PrefName.ComickNotificationInterval, R.string.comick_notification_interval_title),
                         BackupItem(PrefName.ComickListSyncEnabled, R.string.comick_list_sync),
                     )
                 ),

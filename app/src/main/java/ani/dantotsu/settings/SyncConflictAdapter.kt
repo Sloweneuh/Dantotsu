@@ -70,6 +70,7 @@ class SyncConflictAdapter(
         private val DURATION_TO_MINUTES: Map<String, (Long) -> Long?> = mapOf(
             PrefName.UnreadChapterNotificationInterval.name to { it },
             PrefName.MangaUpdatesNotificationInterval.name to { it },
+            PrefName.ComickNotificationInterval.name to { it },
             PrefName.SubscriptionNotificationIntervalMinutes.name to { it },
             PrefName.AutoListSyncInterval.name to { it },
             PrefName.AnilistNotificationInterval.name to

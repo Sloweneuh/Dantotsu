@@ -962,7 +962,13 @@
     <string name="comick_list_sync_desc">Send status and chapter progress from AniList and MangaUpdates to your Comick library. Scores and dates aren\'t supported by Comick</string>
     <string name="comick_list_sync_read_only">Your Comick connection is read-only. Log out and back in, allowing library changes, to sync</string>
     <string name="comick_notifications">New chapter notifications</string>
-    <string name="comick_notifications_desc">Notify when a title you\'re reading on Comick gets a new chapter. Uses the new-chapter check interval</string>
+    <string name="comick_notifications_section">Comick Notifications</string>
+    <string name="comick_notifications_section_desc">Configure notifications for new chapters in the titles you\'re reading on Comick</string>
+    <string name="comick_notifications_enabled_desc">Send notifications for new chapters found in the titles you\'re reading on Comick</string>
+    <string name="comick_notification_interval_title">Comick Notification Frequency</string>
+    <string name="search_kw_comick_notifications">comick chapter release</string>
+    <string name="search_kw_comick_notification_interval">interval frequency how often schedule period every hours background check comick</string>
+    <string name="search_kw_comick_notifications_enabled">comick notify chapter release enable</string>
     <string name="notification_for_checking_subscriptions">Checking Subscriptions notification</string>
     <string name="use_alarm_manager">Use Alarm Manager</string>
     <string name="use_alarm_manager_reliable">Use Alarm Manager for reliable Notifications</string>

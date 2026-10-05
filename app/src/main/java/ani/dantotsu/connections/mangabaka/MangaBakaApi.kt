@@ -162,6 +162,10 @@ object MangaBakaApi {
         else -> id
     }
 
+    /** The AniList id a MangaUpdates series is already known to map to, without asking anything. */
+    fun cachedAnilistIdForMu(muSeriesId: Long): Int? =
+        IdCache.getInt("$AL_CACHE_PREFIX${Source.MANGAUPDATES.path}_$muSeriesId")?.takeIf { it > 0 }
+
     /**
      * Resolves the AniList id for a MangaUpdates series through MangaBaka's cross-source mapping.
      * Public route — no auth required. Returns null when MangaBaka has no matching series or the

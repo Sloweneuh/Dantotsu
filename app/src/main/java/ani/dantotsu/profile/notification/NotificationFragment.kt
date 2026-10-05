@@ -259,9 +259,22 @@ class NotificationFragment : Fragment() {
             PrefName.UnreadChapterNotificationStore,
             null
         ) ?: listOf()
-        return list
+        // One per series, its highest chapter: each check posts its own notification for a new
+        // chapter, and the same series can reach the list from AniList, MangaUpdates and Comick —
+        // under the AniList id, or the MangaUpdates key, which the reading list maps back.
+        val muByKey = context?.let { ctx ->
+            ani.dantotsu.widgets.MuListCache.load(ctx)
+                .associate { ani.dantotsu.connections.mangaupdates.muMediaKey(it.id) to it.id }
+        }.orEmpty()
+        val keys = ani.dantotsu.notifications.unread.UnreadDedup.Keys()
+        val newestFirst = list
             .sortedByDescending { (it.time / 1000L).toInt() }
             .filter { it.image != null } // Remove old/invalid data
+        return ani.dantotsu.notifications.unread.UnreadDedup.keepHighest(
+            newestFirst,
+            key = { "${it.type}|" + (muByKey[it.mediaId]?.let(keys::mu) ?: keys.anilist(it.mediaId)) },
+            latest = { it.lastChapter },
+        )
             .map {
                 // Format with HTML for better styling - each on separate line
                 val title = "<b>${it.mediaName}</b>"

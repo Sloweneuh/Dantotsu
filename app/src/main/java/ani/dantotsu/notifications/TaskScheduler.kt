@@ -5,6 +5,7 @@ import ani.dantotsu.connections.sync.AutoListSyncWorker
 import ani.dantotsu.notifications.anilist.AnilistNotificationWorker
 import ani.dantotsu.notifications.comment.CommentNotificationWorker
 import ani.dantotsu.notifications.subscription.SubscriptionNotificationWorker
+import ani.dantotsu.notifications.unread.ComickUnreadNotificationWorker
 import ani.dantotsu.notifications.unread.MuUnreadNotificationWorker
 import ani.dantotsu.notifications.unread.UnreadChapterNotificationWorker
 import ani.dantotsu.settings.saving.PrefManager
@@ -61,6 +62,9 @@ interface TaskScheduler {
                         PrefManager.getVal(PrefName.MangaUpdatesNotificationInterval)
                     }
                 }
+
+                // As MangaUpdates: checked inside UnreadChapterNotificationTask while that runs.
+                TaskType.COMICK_NOTIFICATION -> comickInterval()
             }
             scheduleRepeatingTask(taskType, interval)
         }
@@ -68,6 +72,16 @@ interface TaskScheduler {
 
     companion object {
         /** The worker a task runs, shared by its repeating schedule and any one-off run of it. */
+        /**
+         * The standalone Comick check's interval: none while the new-chapter check (which runs the
+         * Comick check itself) is scheduled, or while Comick notifications are off.
+         */
+        fun comickInterval(): Long = when {
+            !PrefManager.getVal<Boolean>(PrefName.ComickNotificationsEnabled) -> 0L
+            PrefManager.getVal<Long>(PrefName.UnreadChapterNotificationInterval) > 0L -> 0L
+            else -> PrefManager.getVal(PrefName.ComickNotificationInterval)
+        }
+
         fun workerFor(taskType: TaskType): Class<out androidx.work.ListenableWorker> =
             when (taskType) {
                 TaskType.COMMENT_NOTIFICATION -> CommentNotificationWorker::class.java
@@ -75,6 +89,7 @@ interface TaskScheduler {
                 TaskType.SUBSCRIPTION_NOTIFICATION -> SubscriptionNotificationWorker::class.java
                 TaskType.UNREAD_CHAPTER_NOTIFICATION -> UnreadChapterNotificationWorker::class.java
                 TaskType.MU_NOTIFICATION -> MuUnreadNotificationWorker::class.java
+                TaskType.COMICK_NOTIFICATION -> ComickUnreadNotificationWorker::class.java
                 TaskType.AUTO_LIST_SYNC -> AutoListSyncWorker::class.java
             }
 
@@ -85,6 +100,7 @@ interface TaskScheduler {
             TaskType.SUBSCRIPTION_NOTIFICATION -> SubscriptionNotificationWorker.WORK_NAME
             TaskType.UNREAD_CHAPTER_NOTIFICATION -> UnreadChapterNotificationWorker.WORK_NAME
             TaskType.MU_NOTIFICATION -> MuUnreadNotificationWorker.WORK_NAME
+            TaskType.COMICK_NOTIFICATION -> ComickUnreadNotificationWorker.WORK_NAME
             TaskType.AUTO_LIST_SYNC -> AutoListSyncWorker.WORK_NAME
         }
 
@@ -147,7 +163,8 @@ interface TaskScheduler {
         SUBSCRIPTION_NOTIFICATION,
         UNREAD_CHAPTER_NOTIFICATION,
         MU_NOTIFICATION,
-        AUTO_LIST_SYNC
+        AUTO_LIST_SYNC,
+        COMICK_NOTIFICATION,
     }
 }
 

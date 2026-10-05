@@ -10,6 +10,7 @@ import ani.dantotsu.notifications.TaskScheduler.TaskType
 import ani.dantotsu.notifications.anilist.AnilistNotificationReceiver
 import ani.dantotsu.notifications.comment.CommentNotificationReceiver
 import ani.dantotsu.notifications.subscription.SubscriptionNotificationReceiver
+import ani.dantotsu.notifications.unread.ComickUnreadNotificationReceiver
 import ani.dantotsu.notifications.unread.MuUnreadNotificationReceiver
 import ani.dantotsu.notifications.unread.UnreadChapterNotificationReceiver
 import ani.dantotsu.settings.saving.PrefManager
@@ -64,6 +65,9 @@ class AlarmManagerScheduler(private val context: Context) : TaskScheduler {
 
             taskType == TaskType.MU_NOTIFICATION ->
                 Intent(context, MuUnreadNotificationReceiver::class.java)
+
+            taskType == TaskType.COMICK_NOTIFICATION ->
+                Intent(context, ComickUnreadNotificationReceiver::class.java)
 
             taskType == TaskType.AUTO_LIST_SYNC ->
                 Intent(context, AutoListSyncReceiver::class.java)
@@ -182,6 +186,9 @@ class AlarmManagerScheduler(private val context: Context) : TaskScheduler {
 
             taskType == TaskType.MU_NOTIFICATION ->
                 Intent(context, MuUnreadNotificationReceiver::class.java)
+
+            taskType == TaskType.COMICK_NOTIFICATION ->
+                Intent(context, ComickUnreadNotificationReceiver::class.java)
 
             taskType == TaskType.AUTO_LIST_SYNC ->
                 Intent(context, AutoListSyncReceiver::class.java)

@@ -228,29 +228,25 @@ class HomeFragment : Fragment() {
 
     /**
      * The Comick half of the row: titles the Comick check found behind, each shown as the AniList
-     * media or MangaUpdates series Comick links when there is one, else as itself. Returns the
-     * items and their unread info, keyed as each is shown.
+     * media or MangaUpdates series Comick links when there is one, else as itself — with its unread
+     * info, keyed as it's shown.
      *
-     * Anything the other halves already show is left to them, and progress is brought up to the
-     * live lists where they hold the title — the cache is only as fresh as the last check.
+     * Progress is brought up to the live lists where they hold the title — the cache is only as
+     * fresh as the last check. Which of the halves shows a series it shares is [renderUnreadRow]'s
+     * call: whichever found the highest chapter.
      */
-    private fun comickUnread(): Pair<List<Any>, Map<Int, UnreadChapterInfo>> {
+    private fun comickUnread(): List<Pair<Any, UnreadChapterInfo>> {
         val cached = comickCache
             ?: ani.dantotsu.notifications.unread.UnreadCache.cachedComick().also { comickCache = it }
-        if (cached.isEmpty()) return emptyList<Any>() to emptyMap()
-        val shownAniList = unreadAniList.mapTo(HashSet()) { it.id }
-        val shownMu = muUnread().mapTo(HashSet()) { it.id }
+        if (cached.isEmpty()) return emptyList()
         val continueById = model.getMangaContinue().value?.associateBy { it.id }
         val muById = model.getMuHomeLists().value?.values?.flatten()?.associateBy { it.id }
         val excludeList = PrefManager.getVal<Set<String>>(PrefName.MalSyncExcludeList)
 
-        val items = ArrayList<Any>()
-        val info = HashMap<Int, UnreadChapterInfo>()
+        val items = ArrayList<Pair<Any, UnreadChapterInfo>>()
         cached.forEach { entry ->
             val al = entry.anilistMedia
             val mu = entry.muMedia
-            if (al != null && al.id in shownAniList) return@forEach
-            if (mu != null && mu.id in shownMu) return@forEach
             if (excludeList.containsMediaId(entry.rowKey.toString()) ||
                 excludeList.containsMediaId(
                     ani.dantotsu.notifications.unread.ComickUnreadEntry.excludeId(entry.hid)
@@ -266,10 +262,51 @@ class HomeFragment : Fragment() {
                 al != null -> al.copy().also { it.userProgress = progress }
                 mu != null -> mu.copy(userChapter = progress)
                 else -> entry.copy(progress = progress)
-            }
-            info[entry.rowKey] = entry.info(progress)
+            } to entry.info(progress)
         }
-        return items to info
+        return items
+    }
+
+    /**
+     * Every half of the row together, one entry per series: the AniList list (MALSync), the
+     * MangaUpdates list and Comick can each hold the same series, and whichever found the highest
+     * chapter is the one shown. Returns the entries and their unread info, keyed as each is shown.
+     */
+    private fun unreadRowEntries(): Pair<List<Any>, Map<Int, UnreadChapterInfo>> {
+        val comick = comickUnread()
+        val keys = ani.dantotsu.notifications.unread.UnreadDedup.Keys(
+            (unreadAniList + model.getMangaContinue().value.orEmpty())
+                .mapNotNull { m -> m.idMAL?.let { it to m.id } }.toMap()
+        )
+        // The AniList and MangaUpdates halves first, so they win a tie with Comick's copy.
+        val candidates: List<Pair<Any, UnreadChapterInfo?>> =
+            unreadAniList.map { it to unreadInfoMap[it.id] } +
+                muUnread().map { it to muUnreadInfo[muMediaKey(it.id)] } +
+                comick
+        val kept = ani.dantotsu.notifications.unread.UnreadDedup.keepHighest(
+            candidates,
+            key = { (item, _) ->
+                when (item) {
+                    is Media -> keys.anilist(item.id)
+                    is MUMedia -> keys.mu(item.id)
+                    is ani.dantotsu.notifications.unread.ComickUnreadEntry -> keys.comick(item.hid)
+                    else -> item.toString()
+                }
+            },
+            latest = { (item, info) ->
+                when (item) {
+                    is MUMedia -> MalSyncMu.latestChapter(item.latestChapter, info?.lastChapter) ?: 0
+                    else -> info?.lastChapter ?: 0
+                }
+            },
+        )
+        // The other halves' info for what they kept; Comick's for what it won, which may share a
+        // key with a dropped AniList entry and has to be the one drawn beside it.
+        val info = combinedUnreadInfo().toMutableMap()
+        val comickPairs: MutableSet<Any> = java.util.Collections.newSetFromMap(java.util.IdentityHashMap())
+        comickPairs.addAll(comick)
+        kept.filter { it in comickPairs }.forEach { (_, unread) -> unread?.let { info[it.mediaId] = it } }
+        return kept.map { it.first } to info
     }
 
     /**
@@ -304,9 +341,7 @@ class HomeFragment : Fragment() {
      */
     private fun renderUnreadRow(animate: Boolean = true) {
         if (_binding == null) return
-        val (comickItems, comickInfo) = comickUnread()
-        val info = combinedUnreadInfo() + comickInfo
-        val items: List<Any> = unreadAniList + muUnread() + comickItems
+        val (items, info) = unreadRowEntries()
         renderedSort = UnreadOrder.current()
         // MangaUpdates entries can't be placed until their release dates are in; drawing without
         // them and re-sorting afterwards is what made the row visibly shuffle itself.

@@ -44,6 +44,7 @@ object NotificationSection {
     const val ANILIST = "notif_anilist"
     const val COMMENTS = "notif_comments"
     const val MANGAUPDATES = "notif_mangaupdates"
+    const val COMICK = "notif_comick"
 }
 
 /**
@@ -109,11 +110,18 @@ fun AppCompatActivity.commentsSummary(): String =
         PrefManager.getVal<Int>(PrefName.CommentNotificationInterval)
     ) { 0L })
 
-fun AppCompatActivity.mangaUpdatesSummary(): String {
+fun AppCompatActivity.mangaUpdatesSummary(): String =
+    linkedIntervalSummary(PrefName.MangaUpdatesNotificationsEnabled, PrefName.MangaUpdatesNotificationInterval)
+
+fun AppCompatActivity.comickSummary(): String =
+    linkedIntervalSummary(PrefName.ComickNotificationsEnabled, PrefName.ComickNotificationInterval)
+
+/** For a source checked inside the MALSync task while that one runs, which makes its own interval moot. */
+private fun AppCompatActivity.linkedIntervalSummary(enabled: PrefName, interval: PrefName): String {
+    if (!PrefManager.getVal<Boolean>(enabled)) return intervalLabel(0L)
     val unread = PrefManager.getVal<Long>(PrefName.UnreadChapterNotificationInterval)
-    // Checked inside the MALSync task while that one is running, so its own interval is moot.
     if (unread > 0L) return getString(R.string.mu_notification_interval_linked, formatIntervalMinutes(unread))
-    return intervalLabel(PrefManager.getVal(PrefName.MangaUpdatesNotificationInterval))
+    return intervalLabel(PrefManager.getVal(interval))
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -438,13 +446,49 @@ fun AppCompatActivity.commentRows(onChanged: () -> Unit): List<Settings> {
 // MangaUpdates
 // ---------------------------------------------------------------------------------------------
 
-fun AppCompatActivity.mangaUpdatesRows(onChanged: () -> Unit): List<Settings> {
+fun AppCompatActivity.mangaUpdatesRows(onChanged: () -> Unit): List<Settings> = linkedIntervalRows(
+    enabledPref = PrefName.MangaUpdatesNotificationsEnabled,
+    intervalPref = PrefName.MangaUpdatesNotificationInterval,
+    enabledDesc = R.string.mu_notifications_enabled_desc,
+    enabledIcon = R.drawable.ic_round_mangaupdates_24,
+    dialogTitle = R.string.mu_notification_interval_title,
+    anchorPrefix = "mu",
+    onChanged = onChanged,
+)
+
+// ---------------------------------------------------------------------------------------------
+// Comick
+// ---------------------------------------------------------------------------------------------
+
+fun AppCompatActivity.comickRows(onChanged: () -> Unit): List<Settings> = linkedIntervalRows(
+    enabledPref = PrefName.ComickNotificationsEnabled,
+    intervalPref = PrefName.ComickNotificationInterval,
+    enabledDesc = R.string.comick_notifications_enabled_desc,
+    enabledIcon = R.drawable.ic_round_comick_24,
+    dialogTitle = R.string.comick_notification_interval_title,
+    anchorPrefix = "comick",
+    onChanged = onChanged,
+)
+
+/**
+ * An on/off switch and a check interval, for a source the MALSync task also checks while it runs
+ * (MangaUpdates, Comick): its own schedule only applies while that one is off.
+ */
+private fun AppCompatActivity.linkedIntervalRows(
+    enabledPref: PrefName,
+    intervalPref: PrefName,
+    enabledDesc: Int,
+    enabledIcon: Int,
+    dialogTitle: Int,
+    anchorPrefix: String,
+    onChanged: () -> Unit,
+): List<Settings> {
     val context = this
     val unreadInterval = PrefManager.getVal<Long>(PrefName.UnreadChapterNotificationInterval)
-    val muInterval = PrefManager.getVal<Long>(PrefName.MangaUpdatesNotificationInterval)
+    val ownInterval = PrefManager.getVal<Long>(intervalPref)
 
     val intervalRow: Settings = if (unreadInterval > 0L) {
-        // MangaUpdates is checked inside the MALSync task while that one runs, so its standalone
+        // Checked inside the MALSync task while that one runs, so its standalone
         // schedule is cancelled and its own interval would be misleading.
         Settings(
             type = 1,
@@ -452,15 +496,15 @@ fun AppCompatActivity.mangaUpdatesRows(onChanged: () -> Unit): List<Settings> {
             desc = getString(R.string.mu_notification_interval_linked_desc),
             icon = R.drawable.ic_round_notif_schedule_24,
             compact = true,
-            anchorKey = "mu_interval",
+            anchorKey = "${anchorPrefix}_interval",
             isEnabled = false,
         )
     } else {
         val intervals = mutableListOf(0L, 60L, 120L, 180L, 360L, 720L, 1440L)
         var customIndex = -1
-        if (muInterval > 0L && !intervals.contains(muInterval)) {
+        if (ownInterval > 0L && !intervals.contains(ownInterval)) {
             customIndex = intervals.size
-            intervals.add(muInterval)
+            intervals.add(ownInterval)
         }
         val items = intervals.mapIndexed { index, it ->
             if (it > 0L) {
@@ -468,7 +512,7 @@ fun AppCompatActivity.mangaUpdatesRows(onChanged: () -> Unit): List<Settings> {
             } else getString(R.string.do_not_update)
         }.toMutableList()
         items.add(getString(R.string.custom))
-        val currentIndex = intervals.indexOf(muInterval).let { if (it == -1) 0 else it }
+        val currentIndex = intervals.indexOf(ownInterval).let { if (it == -1) 0 else it }
 
         Settings(
             type = 1,
@@ -476,18 +520,18 @@ fun AppCompatActivity.mangaUpdatesRows(onChanged: () -> Unit): List<Settings> {
             desc = getString(R.string.mu_notification_interval_desc),
             icon = R.drawable.ic_round_notif_schedule_24,
             compact = true,
-            anchorKey = "mu_interval",
+            anchorKey = "${anchorPrefix}_interval",
             onClick = {
                 context.customAlertDialog().apply {
-                    setTitle(R.string.mu_notification_interval_title)
+                    setTitle(dialogTitle)
                     singleChoiceItems(items.toTypedArray(), currentIndex) { i ->
                         if (i == items.size - 1) {
                             showCustomIntervalDialog(
-                                PrefName.MangaUpdatesNotificationInterval, it,
+                                intervalPref, it,
                                 R.string.mu_notification_interval, onChanged
                             )
                         } else {
-                            PrefManager.setVal(PrefName.MangaUpdatesNotificationInterval, intervals[i])
+                            PrefManager.setVal(intervalPref, intervals[i])
                             it.settingsTitle.text =
                                 getString(R.string.mu_notification_interval, items[i])
                             rescheduleAll()
@@ -504,13 +548,15 @@ fun AppCompatActivity.mangaUpdatesRows(onChanged: () -> Unit): List<Settings> {
         Settings(
             type = 2,
             name = getString(R.string.mu_notifications_enabled),
-            desc = getString(R.string.mu_notifications_enabled_desc),
-            icon = R.drawable.ic_round_mangaupdates_24,
+            desc = getString(enabledDesc),
+            icon = enabledIcon,
             compact = true,
-            anchorKey = "mu_enabled",
-            isChecked = PrefManager.getVal<Boolean>(PrefName.MangaUpdatesNotificationsEnabled),
+            anchorKey = "${anchorPrefix}_enabled",
+            isChecked = PrefManager.getVal<Boolean>(enabledPref),
             switch = { isChecked, _ ->
-                PrefManager.setVal(PrefName.MangaUpdatesNotificationsEnabled, isChecked)
+                PrefManager.setVal(enabledPref, isChecked)
+                rescheduleAll()
+                onChanged()
             }
         ),
         intervalRow,

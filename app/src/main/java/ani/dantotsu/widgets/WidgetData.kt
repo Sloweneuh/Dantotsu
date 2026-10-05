@@ -12,6 +12,7 @@ import ani.dantotsu.connections.mangaupdates.muMediaKey
 import ani.dantotsu.media.Media
 import ani.dantotsu.notifications.unread.ComickUnreadEntry
 import ani.dantotsu.notifications.unread.UnreadCache
+import ani.dantotsu.notifications.unread.UnreadDedup
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.settings.saving.containsMediaId
@@ -429,10 +430,24 @@ object WidgetData {
         // Neither allowed: keep the anime rows from the last real fetch; they came from MALSync and
         // can't be recomputed locally.
         else cached(context, Dataset.WAITING).filter { it.isAnime }
-        val tracked = unreadManga(context, networkAllowed) + unreadMangaUpdates(context, networkAllowed)
-        // A Comick title its own tracker's rows already show is left to them.
-        val shownIds = tracked.mapTo(HashSet()) { it.id }
-        val items = (tracked + unreadComick(context).filterNot { it.id in shownIds } + anime)
+        // One row per series: the AniList, MangaUpdates and Comick halves can each hold the same one,
+        // and whichever found the highest chapter is shown (on a tie, the earlier half).
+        val keys = UnreadDedup.Keys(
+            UnreadCache.cachedMedia().mapNotNull { m -> m.idMAL?.let { it to m.id } }.toMap()
+        )
+        val manga = UnreadDedup.keepHighest(
+            unreadManga(context, networkAllowed) + unreadMangaUpdates(context, networkAllowed) +
+                unreadComick(context),
+            key = { item ->
+                when {
+                    item.muSeriesId != null -> keys.mu(item.muSeriesId)
+                    item.link != null -> "ck:${item.id}"
+                    else -> keys.anilist(item.id)
+                }
+            },
+            latest = { it.latest ?: 0 },
+        )
+        val items = (manga + anime)
             .sortedWith(compareByDescending<WidgetItem> { it.latestAt ?: 0 }.thenByDescending { it.behind })
         return items.ifEmpty { if (networkAllowed) recentlyOpened() else cached(context, Dataset.WAITING) }
     }

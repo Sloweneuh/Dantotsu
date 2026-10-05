@@ -134,6 +134,7 @@ enum class PrefName(val data: Pref) {
     // Connection toggles (allow disabling external info/tabs)
     ComickEnabled(Pref(Location.General, Boolean::class, true)),
     ComickNotificationsEnabled(Pref(Location.General, Boolean::class, true)),
+    ComickNotificationInterval(Pref(Location.General, Long::class, 0L)),
     ComickListSyncEnabled(Pref(Location.General, Boolean::class, true)),
     MalEnabled(Pref(Location.General, Boolean::class, true)),
     MangaUpdatesEnabled(Pref(Location.General, Boolean::class, true)),

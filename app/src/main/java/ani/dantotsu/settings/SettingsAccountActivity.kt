@@ -349,15 +349,17 @@ class SettingsAccountActivity : AppCompatActivity() {
             ),
             header(R.string.account_group_notifications),
             Settings(
-                type = 2,
-                name = getString(R.string.comick_notifications),
-                desc = getString(R.string.comick_notifications_desc),
-                icon = R.drawable.ic_round_notifications_active_24,
-                isChecked = PrefManager.getVal(PrefName.ComickNotificationsEnabled),
-                switch = { isChecked, _ -> PrefManager.setVal(PrefName.ComickNotificationsEnabled, isChecked) },
+                type = 1,
+                name = getString(R.string.comick_notifications_section),
+                desc = getString(R.string.comick_notifications_section_desc),
+                icon = R.drawable.ic_round_notifications_none_24,
+                isActivity = true,
                 isEnabled = Comick.token != null,
                 compact = true,
                 anchorKey = "comickNotifications",
+                onClick = {
+                    startActivity(notificationSettingsIntent(this, NotificationSection.COMICK))
+                },
             ),
         )
         AccountProvider.MALSYNC -> malSyncRows()

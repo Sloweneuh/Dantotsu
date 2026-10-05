@@ -67,17 +67,18 @@ class MuUnreadNotificationTask : Task {
     }
 
     /**
-     * @return the series ids on the MangaUpdates reading list this check covered — so a later
-     *   source (Comick) can leave those to it — or empty when it didn't run.
+     * @return the newest chapter this check knows for each reading-list series it could place —
+     *   so a later source (Comick) leaves those chapters to it and announces only ones past them —
+     *   or empty when it didn't run.
      */
-    suspend fun checkMangaUpdatesUnread(context: Context): Set<Long> {
+    suspend fun checkMangaUpdatesUnread(context: Context): Map<Long, Int> {
         if (!PrefManager.getVal<Boolean>(PrefName.MangaUpdatesNotificationsEnabled)) {
             Logger.log("MuUnreadNotificationTask: MangaUpdates notifications disabled")
-            return emptySet()
+            return emptyMap()
         }
         if (!PrefManager.getVal<Boolean>(PrefName.MangaUpdatesListEnabled)) {
             Logger.log("MuUnreadNotificationTask: MangaUpdates list fetch disabled")
-            return emptySet()
+            return emptyMap()
         }
 
         Logger.log("MuUnreadNotificationTask: checking MangaUpdates unread chapters")
@@ -92,7 +93,7 @@ class MuUnreadNotificationTask : Task {
             saveNotifiedSet(context, notifiedKey, notified)
         }
 
-        if (unreadItems.isEmpty()) return readingListIds
+        if (unreadItems.isEmpty()) return readingListLatest
 
         val newItems = mutableListOf<UnreadItem>()
 
@@ -134,7 +135,7 @@ class MuUnreadNotificationTask : Task {
                 storeNotifications(resolvedItems)
             }
         }
-        return readingListIds
+        return readingListLatest
     }
 
     /**
@@ -155,8 +156,11 @@ class MuUnreadNotificationTask : Task {
             .distinct().joinToString(", ").ifEmpty { null }
     }
 
-    /** Series ids on the reading list [currentUnreadItems] last fetched. */
-    private var readingListIds: Set<Long> = emptySet()
+    /**
+     * The newest chapter known (MangaUpdates' count or MALSync's) for each series on the reading
+     * list [currentUnreadItems] last fetched; series with neither are left out.
+     */
+    private var readingListLatest: Map<Long, Int> = emptyMap()
 
     /** Saved chapter by series id, as [pruneNotified] takes it; null until a fetch succeeds. */
     private var readingListProgress: Map<String, Int>? = null
@@ -191,7 +195,6 @@ class MuUnreadNotificationTask : Task {
         }
 
         val readingList = allLists["Reading"] ?: emptyList()
-        readingListIds = readingList.mapTo(HashSet()) { it.id }
         // Only a list that actually came back; a missing "Reading" key is a failed fetch.
         if (allLists.containsKey("Reading")) {
             readingListProgress = readingList.associate { it.id.toString() to (it.userChapter ?: 0) }
@@ -206,6 +209,10 @@ class MuUnreadNotificationTask : Task {
             emptyMap()
         }
         val excludeList = PrefManager.getVal<Set<String>>(PrefName.MalSyncExcludeList)
+        readingListLatest = readingList.mapNotNull { muMedia ->
+            val info = malSyncInfo[muMediaKey(muMedia.id)]
+            MalSyncMu.latestChapter(muMedia.latestChapter, info?.lastChapter)?.let { muMedia.id to it }
+        }.toMap()
 
         return readingList.mapNotNull { muMedia ->
             if (excludeList.containsMediaId(muMediaKey(muMedia.id).toString())) return@mapNotNull null
