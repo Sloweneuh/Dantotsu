@@ -638,11 +638,25 @@ object CloudSync {
                         Logger.log("CloudSync: no baseline; deferring to the user")
                         PrefManager.setCustomVal(BOOTSTRAP_PROMPT_KEY, true)
                         return@runCatching
-                    } else if (packLocal().hashCode() != lastHash()) {
-                        // Correct not to guess, but from the user's side this was sync going quiet
-                        // with nothing to explain it. Say so, and let them settle it when they want.
-                        Logger.log("CloudSync: divergent (both changed); leaving for manual resolution")
-                        SyncConflictNotice.raiseDivergent()
+                    }
+                    val local = packLocal()
+                    if (local.hashCode() != lastHash()) {
+                        // Both changed. Usually different settings on each side, which merge without
+                        // asking — the same merge the banner's "Review" runs. Raising the banner
+                        // before trying it made the banner fire for clean merges, and tapping it then
+                        // found nothing to ask about. Only a genuine collision needs the user.
+                        when (val outcome = resolveDivergence(local, remote, allowRetry = true)) {
+                            is SyncOutcome.Conflict -> {
+                                Logger.log("CloudSync: divergent (both changed); leaving for manual resolution")
+                                SyncConflictNotice.raiseDivergent()
+                            }
+                            is SyncOutcome.Merged, is SyncOutcome.Pulled -> {
+                                SyncConflictNotice.clear()
+                                SyncReloadNotice.raise()
+                            }
+                            is SyncOutcome.Pushed, is SyncOutcome.UpToDate -> SyncConflictNotice.clear()
+                            else -> Logger.log("CloudSync: background merge didn't complete: $outcome")
+                        }
                         return@runCatching
                     }
                     // Live screens have already read the old values, so an applied pull is
