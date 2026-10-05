@@ -57,7 +57,7 @@ object AniListAnimeDiscovery : DiscoverySource {
         return Anilist.userid?.takeIf { Anilist.token != null }?.toString()
     }
 
-    override suspend fun build(context: Context, jitter: Boolean, carrySkipped: List<Long>): DiscoveryBuildResult {
+    override suspend fun build(context: Context, jitter: Boolean, carrySkipped: List<Long>, filters: String?): DiscoveryBuildResult {
         val userId = accountId() ?: return DiscoveryBuildResult.Failed
         val profile = fetchProfile(userId.toInt()) ?: return DiscoveryBuildResult.Failed
         val stats = profile.viewer?.statistics?.anime

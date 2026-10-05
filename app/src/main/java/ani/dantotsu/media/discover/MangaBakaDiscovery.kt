@@ -2,7 +2,9 @@ package ani.dantotsu.media.discover
 
 import android.content.Context
 import android.content.Intent
+import ani.dantotsu.Mapper
 import ani.dantotsu.R
+import ani.dantotsu.connections.anilist.MangaBakaSearchResults
 import ani.dantotsu.connections.TrackerSessions
 import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.mangabaka.MangaBaka
@@ -12,11 +14,14 @@ import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.media.MangaBakaMediaActivity
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
 
 /**
  * Manga queues from MangaBaka's For-You recommendations — the same feed, size and re-roll rules as
  * the site's queue: [QUEUE_SIZE] picks, page 1 for a first queue, a random page of the first
- * [JITTER_PAGES] for later ones, and the previous queue's skips sent as exclusions. Picks are shown
+ * [JITTER_PAGES] for later ones, and the previous queue's skips sent as exclusions. A queue can be
+ * narrowed with the search filter set first, as the site's "Start filtered queue". Picks are shown
  * on [MangaBakaMediaActivity], which reloads in place between them.
  */
 object MangaBakaDiscovery : DiscoverySource {
@@ -36,19 +41,33 @@ object MangaBakaDiscovery : DiscoverySource {
         return MangaBaka.userid?.takeIf { MangaBaka.token != null }
     }
 
-    override suspend fun build(context: Context, jitter: Boolean, carrySkipped: List<Long>): DiscoveryBuildResult {
+    override val supportsFilters = true
+
+    override suspend fun build(
+        context: Context,
+        jitter: Boolean,
+        carrySkipped: List<Long>,
+        filters: String?,
+    ): DiscoveryBuildResult {
         val userId = accountId() ?: return DiscoveryBuildResult.Failed
         val excluded = store.excludedIds()
         // Skips go last so they survive the API's 100-id cap: they are what would otherwise come
         // straight back, while the oldest hides have usually fallen out of the top pages anyway.
         val exclude = (excluded - carrySkipped.toSet()) + carrySkipped
         val page = if (jitter) (1..JITTER_PAGES).random() else 1
-        val response = MangaBakaSync.getRecommendations(
+        val filterState = filters?.let(::decodeFilters)
+        suspend fun fetch(page: Int) = MangaBakaSync.getRecommendations(
             page = page,
             limit = QUEUE_SIZE,
             excludeIds = exclude,
             allowAdult = PrefManager.getVal(PrefName.AdultOnly),
-        ) ?: return DiscoveryBuildResult.Failed
+            filters = filterState,
+        )
+        var response = fetch(page) ?: return DiscoveryBuildResult.Failed
+        // A narrow filter can run out before the re-roll's page; its first page may still have picks.
+        if (page > 1 && response.results.isEmpty() && !response.coldStart && !response.profileStale) {
+            response = fetch(1) ?: return DiscoveryBuildResult.Failed
+        }
         if (response.coldStart) {
             val count = MangaBakaSync.getRecommendationStatus()?.libraryCount ?: 0
             return DiscoveryBuildResult.ColdStart(
@@ -64,7 +83,7 @@ object MangaBakaDiscovery : DiscoverySource {
             .distinctBy { it.id }
             .map { it.toItem(context) }
         if (items.isEmpty()) return DiscoveryBuildResult.Empty
-        val queue = DiscoveryQueue(System.currentTimeMillis(), userId, items)
+        val queue = DiscoveryQueue(System.currentTimeMillis(), userId, items, filters)
         store.save(queue)
         return DiscoveryBuildResult.Ready(queue)
     }
@@ -103,6 +122,73 @@ object MangaBakaDiscovery : DiscoverySource {
     /** The recommendation route's seeds carry titles only; one batch lookup fills in the covers. */
     override suspend fun seedCovers(ids: List<Long>): Map<Long, String> =
         MangaBakaApi.getSeriesBatch(ids).mapNotNull { (id, series) -> series.cover?.thumbUrl()?.let { id to it } }.toMap()
+
+    // ---- Filters ----
+
+    /**
+     * The search filter set, which is also what the recommendations route takes — the site's
+     * filtered queue is the recommendations page's filters spread into the same call.
+     */
+    @Serializable
+    private data class Filters(
+        val genres: List<String>? = null,
+        val excludedGenres: List<String>? = null,
+        val tags: List<String>? = null,
+        val excludedTags: List<String>? = null,
+        val types: List<String>? = null,
+        val excludedTypes: List<String>? = null,
+        val statuses: List<String>? = null,
+        val excludedStatuses: List<String>? = null,
+        val contentRatings: List<String>? = null,
+        val excludedContentRatings: List<String>? = null,
+        val fromYear: Int? = null,
+        val toYear: Int? = null,
+        val sort: String? = null,
+    )
+
+    /** The filter sheet's state, encoded for the queue; null when nothing is set. */
+    fun encodeFilters(state: MangaBakaSearchResults): String? {
+        if (state.toChipList().isEmpty() && state.sort.isNullOrBlank()) return null
+        return Mapper.json.encodeToString(
+            Filters(
+                state.genres, state.excludedGenres, state.tags, state.excludedTags,
+                state.types, state.excludedTypes, state.statuses, state.excludedStatuses,
+                state.contentRatings, state.excludedContentRatings,
+                state.fromYear, state.toYear, state.sort,
+            )
+        )
+    }
+
+    /** A filter sheet state holding [filters] (empty for null or unreadable ones). */
+    fun decodeFilters(filters: String?): MangaBakaSearchResults {
+        val f = filters?.let { runCatching { Mapper.json.decodeFromString<Filters>(it) }.getOrNull() }
+        return MangaBakaSearchResults(
+            search = null, results = mutableListOf(), hasNextPage = false,
+            genres = f?.genres?.toMutableList(), excludedGenres = f?.excludedGenres?.toMutableList(),
+            tags = f?.tags?.toMutableList(), excludedTags = f?.excludedTags?.toMutableList(),
+            types = f?.types?.toMutableList(), excludedTypes = f?.excludedTypes?.toMutableList(),
+            statuses = f?.statuses?.toMutableList(), excludedStatuses = f?.excludedStatuses?.toMutableList(),
+            contentRatings = f?.contentRatings?.toMutableList(),
+            excludedContentRatings = f?.excludedContentRatings?.toMutableList(),
+            fromYear = f?.fromYear, toYear = f?.toYear, sort = f?.sort,
+        )
+    }
+
+    override fun describeFilters(filters: String?): List<DiscoverySource.FilterLabel> {
+        if (filters == null) return emptyList()
+        val f = decodeFilters(filters)
+        fun labels(included: List<String>?, excluded: List<String>?, label: (String) -> String) =
+            included.orEmpty().map { DiscoverySource.FilterLabel(label(it)) } +
+                excluded.orEmpty().map { DiscoverySource.FilterLabel(label(it), excluded = true) }
+        val years = if (f.fromYear != null || f.toYear != null)
+            listOf(DiscoverySource.FilterLabel("${f.fromYear ?: "…"}–${f.toYear ?: "…"}")) else emptyList()
+        return labels(f.types, f.excludedTypes, f::labelForType) +
+            labels(f.statuses, f.excludedStatuses, f::labelForStatus) +
+            labels(f.contentRatings, f.excludedContentRatings, f::titleCase) +
+            labels(f.genres, f.excludedGenres, MangaBakaApi::resolveGenreName) +
+            labels(f.tags, f.excludedTags) { it } +
+            years
+    }
 
     private fun MangaBakaSync.Recommendation.toItem(context: Context) = DiscoveryQueue.Item(
         id = id,

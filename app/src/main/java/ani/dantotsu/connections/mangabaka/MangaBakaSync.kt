@@ -14,6 +14,8 @@ import kotlinx.serialization.encodeToString
 import java.util.Locale
 import kotlin.math.roundToInt
 import okhttp3.HttpUrl.Companion.toHttpUrl
+import ani.dantotsu.connections.mangabaka.MangaBakaApi.addSeriesFilters
+import ani.dantotsu.connections.anilist.MangaBakaSearchResults
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -215,6 +217,7 @@ object MangaBakaSync {
         limit: Int = 12,
         excludeIds: Collection<Long> = emptyList(),
         allowAdult: Boolean = true,
+        filters: MangaBakaSearchResults? = null,
     ): RecommendationsResponse? {
         TrackerSessions.await()
         val headers = MangaBaka.authHeaders() ?: return null
@@ -225,11 +228,19 @@ object MangaBakaSync {
                 .apply {
                     excludeIds.toList().takeLast(RECOMMENDATION_EXCLUDE_LIMIT)
                         .forEach { addQueryParameter("exclude_ids", it.toString()) }
-                    // Same default the search screen applies: without the adult toggle, keep to
-                    // the two non-explicit ratings.
-                    if (!allowAdult) listOf("safe", "suggestive")
-                        .forEach { addQueryParameter("content_rating", it) }
                 }
+                // The route takes the search filter set; with none, this still applies the search
+                // screen's default of the two non-explicit ratings when the adult toggle is off.
+                .addSeriesFilters(
+                    genres = filters?.genres, excludedGenres = filters?.excludedGenres,
+                    tags = filters?.tags, excludedTags = filters?.excludedTags,
+                    types = filters?.types, excludedTypes = filters?.excludedTypes,
+                    statuses = filters?.statuses, excludedStatuses = filters?.excludedStatuses,
+                    contentRatings = filters?.contentRatings,
+                    excludedContentRatings = filters?.excludedContentRatings,
+                    fromYear = filters?.fromYear, toYear = filters?.toYear,
+                    sort = filters?.sort, allowAdult = allowAdult,
+                )
                 .build()
             val request = Request.Builder().url(url)
                 .apply { headers.forEach { (k, v) -> addHeader(k, v) } }

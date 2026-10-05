@@ -526,7 +526,7 @@ data class MangaBakaSearchResults(
     private fun String.rawNotPrefixed(context: android.content.Context): String =
         removePrefix(context.getString(R.string.filter_exclude, ""))
 
-    private fun labelForType(type: String): String = when (type.lowercase()) {
+    fun labelForType(type: String): String = when (type.lowercase()) {
         "manga" -> currContext()!!.getString(R.string.manga)
         "manhwa" -> currContext()!!.getString(R.string.manhwa)
         "manhua" -> currContext()!!.getString(R.string.manhua)
@@ -534,7 +534,7 @@ data class MangaBakaSearchResults(
         else -> titleCase(type)
     }
 
-    private fun labelForStatus(status: String): String = when (status.lowercase()) {
+    fun labelForStatus(status: String): String = when (status.lowercase()) {
         "releasing" -> currContext()!!.getString(R.string.ongoing)
         "completed" -> currContext()!!.getString(R.string.completed)
         "hiatus" -> currContext()!!.getString(R.string.hiatus)
@@ -543,7 +543,7 @@ data class MangaBakaSearchResults(
         else -> titleCase(status)
     }
 
-    private fun titleCase(text: String): String =
+    fun titleCase(text: String): String =
         text.split('_', '-').filter { it.isNotBlank() }
             .joinToString(" ") { p -> p.replaceFirstChar { c -> c.uppercase() } }
 }

@@ -21,6 +21,7 @@ import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Request
 import okhttp3.Response
@@ -435,7 +436,6 @@ object MangaBakaApi {
         allowAdult: Boolean = true,
     ): SearchPage? = tryWithSuspend {
         val q = query?.trim()?.takeIf { it.isNotBlank() }
-        val userPickedRating = !contentRatings.isNullOrEmpty()
 
         // A bare search (no query, no filters) is a valid "browse everything" request — the route
         // accepts an empty `q`, so we always send it rather than short-circuiting to no results.
@@ -443,28 +443,11 @@ object MangaBakaApi {
             .addQueryParameter("page", page.toString())
             .addQueryParameter("limit", limit.toString())
         urlBuilder.addQueryParameter("q", q ?: "")
-        genres?.filter { it.isNotBlank() }?.forEach { urlBuilder.addQueryParameter("genre", it) }
-        excludedGenres?.filter { it.isNotBlank() }?.forEach { urlBuilder.addQueryParameter("genre_not", it) }
-        resolveTagIds(tags, keepUnresolved = true).forEach { urlBuilder.addQueryParameter("tag", it) }
-        resolveTagIds(excludedTags, keepUnresolved = false).forEach { urlBuilder.addQueryParameter("tag_not", it) }
-        if (!tags.isNullOrEmpty()) urlBuilder.addQueryParameter("tag_mode", tagMode ?: "and")
-        types?.filter { it.isNotBlank() }?.forEach { urlBuilder.addQueryParameter("type", it) }
-        excludedTypes?.filter { it.isNotBlank() }?.forEach { urlBuilder.addQueryParameter("type_not", it) }
-        statuses?.filter { it.isNotBlank() }?.forEach { urlBuilder.addQueryParameter("status", it) }
-        excludedStatuses?.filter { it.isNotBlank() }?.forEach { urlBuilder.addQueryParameter("status_not", it) }
-        excludedContentRatings?.filter { it.isNotBlank() }?.forEach { urlBuilder.addQueryParameter("not_content_rating", it) }
-        // `year_lower`/`year_upper` are deprecated; the publication-date bounds replace them and take a
-        // bare `YYYY` as the whole year (an upper bound of `2020` still includes all of 2020).
-        fromYear?.let { urlBuilder.addQueryParameter("published_start_date_lower", it.toString()) }
-        toYear?.let { urlBuilder.addQueryParameter("published_start_date_upper", it.toString()) }
-        sort?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("sort_by", it) }
-
-        val ratings = when {
-            userPickedRating -> contentRatings!!.filter { it.isNotBlank() }
-            !allowAdult -> listOf("safe", "suggestive")
-            else -> emptyList()
-        }
-        ratings.forEach { urlBuilder.addQueryParameter("content_rating", it) }
+        urlBuilder.addSeriesFilters(
+            genres, excludedGenres, tags, excludedTags, tagMode, types, excludedTypes,
+            statuses, excludedStatuses, contentRatings, excludedContentRatings,
+            fromYear, toYear, sort, allowAdult,
+        )
 
         val request = Request.Builder().url(urlBuilder.build()).get().build()
         val response = execute(request)
@@ -476,6 +459,53 @@ object MangaBakaApi {
         val parsed = Mapper.json.decodeFromString<SearchResponse>(body)
         val results = parsed.data.orEmpty().filter { it.state != "deleted" }
         SearchPage(results, parsed.pagination?.next != null)
+    }
+
+    /**
+     * The series filter parameters `/v1/series/search` and `/v1/my/series/recommendations` share
+     * (the site's recommendations page uses the search filter set as-is). When [allowAdult] is false
+     * and no content rating was picked, results are limited to `safe`/`suggestive`.
+     */
+    suspend fun HttpUrl.Builder.addSeriesFilters(
+        genres: List<String>? = null,
+        excludedGenres: List<String>? = null,
+        tags: List<String>? = null,
+        excludedTags: List<String>? = null,
+        tagMode: String? = null,
+        types: List<String>? = null,
+        excludedTypes: List<String>? = null,
+        statuses: List<String>? = null,
+        excludedStatuses: List<String>? = null,
+        contentRatings: List<String>? = null,
+        excludedContentRatings: List<String>? = null,
+        fromYear: Int? = null,
+        toYear: Int? = null,
+        sort: String? = null,
+        allowAdult: Boolean = true,
+    ): HttpUrl.Builder = apply {
+        genres?.filter { it.isNotBlank() }?.forEach { addQueryParameter("genre", it) }
+        excludedGenres?.filter { it.isNotBlank() }?.forEach { addQueryParameter("genre_not", it) }
+        resolveTagIds(tags, keepUnresolved = true).forEach { addQueryParameter("tag", it) }
+        resolveTagIds(excludedTags, keepUnresolved = false).forEach { addQueryParameter("tag_not", it) }
+        if (!tags.isNullOrEmpty()) addQueryParameter("tag_mode", tagMode ?: "and")
+        types?.filter { it.isNotBlank() }?.forEach { addQueryParameter("type", it) }
+        excludedTypes?.filter { it.isNotBlank() }?.forEach { addQueryParameter("type_not", it) }
+        statuses?.filter { it.isNotBlank() }?.forEach { addQueryParameter("status", it) }
+        excludedStatuses?.filter { it.isNotBlank() }?.forEach { addQueryParameter("status_not", it) }
+        excludedContentRatings?.filter { it.isNotBlank() }?.forEach { addQueryParameter("not_content_rating", it) }
+        // `year_lower`/`year_upper` are deprecated; the publication-date bounds replace them and take a
+        // bare `YYYY` as the whole year (an upper bound of `2020` still includes all of 2020).
+        fromYear?.let { addQueryParameter("published_start_date_lower", it.toString()) }
+        toYear?.let { addQueryParameter("published_start_date_upper", it.toString()) }
+        sort?.takeIf { it.isNotBlank() }?.let { addQueryParameter("sort_by", it) }
+
+        val picked = contentRatings?.filter { it.isNotBlank() }.orEmpty()
+        val ratings = when {
+            picked.isNotEmpty() -> picked
+            !allowAdult -> listOf("safe", "suggestive")
+            else -> emptyList()
+        }
+        ratings.forEach { addQueryParameter("content_rating", it) }
     }
 
     /** In-memory cache of the genre options (`/v1/genres`), preserving order. */

@@ -58,7 +58,7 @@ import kotlinx.coroutines.launch
 import java.util.Timer
 import java.util.TimerTask
 
-class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
+class SearchActivity : AppCompatActivity(), AniMangaFilterHost, MangaBakaSearchFilterBottomSheet.Host {
     private lateinit var binding: ActivitySearchBinding
     private val scope = lifecycleScope
     val model: AnilistSearch by viewModels()
@@ -100,6 +100,12 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost {
     var updateMuChips: (() -> Unit)? = null
     var updateComickChips: (() -> Unit)? = null
     var updateMangaBakaChips: (() -> Unit)? = null
+
+    override val mangaBakaFilters: MangaBakaSearchResults get() = mangaBakaSearchResult
+    override fun onMangaBakaFiltersChanged() {
+        updateMangaBakaChips?.invoke()
+        search()
+    }
     var updateKitsuChips: (() -> Unit)? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {

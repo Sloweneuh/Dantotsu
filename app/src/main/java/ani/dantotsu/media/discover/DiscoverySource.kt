@@ -27,8 +27,22 @@ interface DiscoverySource {
     @get:StringRes val helpBody: Int
     @get:StringRes val failedBody: Int
 
-    /** Builds and saves a new queue. */
-    suspend fun build(context: Context, jitter: Boolean, carrySkipped: List<Long>): DiscoveryBuildResult
+    /** Builds and saves a new queue, narrowed by [filters] (see [supportsFilters]) when given. */
+    suspend fun build(
+        context: Context,
+        jitter: Boolean,
+        carrySkipped: List<Long>,
+        filters: String? = null,
+    ): DiscoveryBuildResult
+
+    /** Whether queues can be narrowed with filters before they are built (MangaBaka only). */
+    val supportsFilters: Boolean get() = false
+
+    /** [filters] as chip labels for the screens around the queue; empty when unfiltered. */
+    fun describeFilters(filters: String?): List<FilterLabel> = emptyList()
+
+    /** One filter value, bare (no "Format:" prefix); [excluded] is drawn as an exclusion. */
+    data class FilterLabel(val text: String, val excluded: Boolean = false)
 
     /** The first page to open in queue mode, showing [item]. */
     fun queuePageIntent(context: Context, item: DiscoveryQueue.Item): Intent

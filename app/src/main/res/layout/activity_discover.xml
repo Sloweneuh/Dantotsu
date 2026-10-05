@@ -93,6 +93,17 @@
             android:textSize="14sp"
             tools:text="3 added · 2 hidden · 7 skipped" />
 
+        <!-- The queue's filters, one chip per value, styled as the filter sheet draws them. -->
+        <com.google.android.flexbox.FlexboxLayout
+            android:id="@+id/discoverMessageFilters"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:visibility="gone"
+            app:flexWrap="wrap"
+            app:justifyContent="center"
+            tools:visibility="visible" />
+
         <com.google.android.material.button.MaterialButton
             android:id="@+id/discoverMessagePrimary"
             style="@style/Widget.Material3.Button"
@@ -101,6 +112,30 @@
             android:layout_marginTop="24dp"
             android:fontFamily="@font/poppins_bold"
             tools:text="@string/discover_start_another" />
+
+        <!-- Filter choices on the start, end and empty screens (filterable sources only). -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/discoverMessageAlt"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:fontFamily="@font/poppins_bold"
+            android:visibility="gone"
+            app:icon="@drawable/ic_round_filter_list_24"
+            tools:text="@string/discover_start_filtered"
+            tools:visibility="visible" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/discoverMessageAlt2"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:fontFamily="@font/poppins_bold"
+            android:visibility="gone"
+            tools:text="@string/discover_start_unfiltered"
+            tools:visibility="visible" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/discoverMessageSecondary"

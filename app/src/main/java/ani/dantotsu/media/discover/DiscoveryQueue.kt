@@ -19,6 +19,12 @@ data class DiscoveryQueue(
     /** The account the queue was built for; a queue for another account is discarded on load. */
     val userId: String,
     val items: List<Item>,
+    /**
+     * The filters the queue was built with, as the source encodes them (the site keeps the
+     * recommendations page's query string); null for an unfiltered queue. "Start another queue"
+     * reuses them.
+     */
+    val filters: String? = null,
 ) {
     @Serializable
     data class Item(

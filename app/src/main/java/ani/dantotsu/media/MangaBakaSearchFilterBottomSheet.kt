@@ -20,6 +20,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.BottomSheetDialogFragment
 import ani.dantotsu.R
+import ani.dantotsu.connections.anilist.MangaBakaSearchResults
 import ani.dantotsu.connections.mangabaka.MangaBakaApi
 import ani.dantotsu.databinding.BottomSheetMangabakaSearchFilterBinding
 import ani.dantotsu.databinding.ItemChipBinding
@@ -47,7 +48,18 @@ class MangaBakaSearchFilterBottomSheet : BottomSheetDialogFragment() {
     private var _binding: BottomSheetMangabakaSearchFilterBinding? = null
     private val binding get() = _binding!!
 
-    private lateinit var activity: SearchActivity
+    /** Whoever owns the filter state: the search screen, or a discovery queue being set up. */
+    interface Host {
+        val mangaBakaFilters: MangaBakaSearchResults
+        /** The live state changed (applied here, or a chip removed in the manage popup). */
+        fun onMangaBakaFiltersChanged()
+        /** Replaces the Apply label (discovery: "Start queue"). */
+        val mangaBakaFilterApplyLabel: Int? get() = null
+        /** The active-filters popup edits the live state on its own; off where Apply starts something. */
+        val mangaBakaManageFilters: Boolean get() = true
+    }
+
+    private lateinit var host: Host
 
     private var selectedGenres = mutableListOf<String>()
     private var excludedGenres = mutableListOf<String>()
@@ -92,9 +104,10 @@ class MangaBakaSearchFilterBottomSheet : BottomSheetDialogFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        activity = requireActivity() as SearchActivity
+        host = (parentFragment as? Host) ?: requireActivity() as Host
+        host.mangaBakaFilterApplyLabel?.let { binding.mbFilterApply.setText(it) }
 
-        val r = activity.mangaBakaSearchResult
+        val r = host.mangaBakaFilters
         selectedGenres = r.genres?.toMutableList() ?: mutableListOf()
         excludedGenres = r.excludedGenres?.toMutableList() ?: mutableListOf()
         selectedTags = r.tags?.toMutableList() ?: mutableListOf()
@@ -120,7 +133,7 @@ class MangaBakaSearchFilterBottomSheet : BottomSheetDialogFragment() {
         binding.mbSavedFiltersButton.setOnClickListener { showSavedFiltersDialog() }
 
         fun refreshManageFiltersButton() {
-            val count = activity.mangaBakaSearchResult.toChipList().size
+            val count = if (host.mangaBakaManageFilters) host.mangaBakaFilters.toChipList().size else 0
             binding.manageFiltersButton.visibility = if (count == 0) View.GONE else View.VISIBLE
             binding.manageFiltersCount.visibility = if (count == 0) View.GONE else View.VISIBLE
             binding.manageFiltersCount.text = count.toString()
@@ -131,20 +144,19 @@ class MangaBakaSearchFilterBottomSheet : BottomSheetDialogFragment() {
             // with — applying those afterwards would put back whatever was cleared in the popup.
             // So the sheet goes first and the popup edits the live search state on its own.
             dismiss()
+            val host = host
             ManageFiltersDialog.show(
-                activity,
-                activity.mangaBakaSearchResult.toChipList().map { chip ->
+                requireActivity(),
+                host.mangaBakaFilters.toChipList().map { chip ->
                     ActiveFilterChip(chip.text.replace("_", " ")) {
-                        activity.mangaBakaSearchResult.removeChip(chip)
-                        activity.updateMangaBakaChips?.invoke()
-                        activity.search()
+                        host.mangaBakaFilters.removeChip(chip)
+                        host.onMangaBakaFiltersChanged()
                     }
                 }
             ) {
-                activity.mangaBakaSearchResult.toChipList()
-                    .forEach { activity.mangaBakaSearchResult.removeChip(it) }
-                activity.updateMangaBakaChips?.invoke()
-                activity.search()
+                host.mangaBakaFilters.toChipList()
+                    .forEach { host.mangaBakaFilters.removeChip(it) }
+                host.onMangaBakaFiltersChanged()
             }
         }
     }
@@ -330,7 +342,7 @@ class MangaBakaSearchFilterBottomSheet : BottomSheetDialogFragment() {
     }
 
     private fun writeUiStateToResult() {
-        val r = activity.mangaBakaSearchResult
+        val r = host.mangaBakaFilters
         r.genres = selectedGenres.toMutableList().ifEmpty { null }
         r.excludedGenres = excludedGenres.toMutableList().ifEmpty { null }
         r.tags = selectedTags.toMutableList().ifEmpty { null }
@@ -356,8 +368,7 @@ class MangaBakaSearchFilterBottomSheet : BottomSheetDialogFragment() {
 
     private fun applyFilters() {
         writeUiStateToResult()
-        activity.updateMangaBakaChips?.invoke()
-        activity.search()
+        host.onMangaBakaFiltersChanged()
     }
 
     private fun showSavedFiltersDialog() {
@@ -368,13 +379,12 @@ class MangaBakaSearchFilterBottomSheet : BottomSheetDialogFragment() {
             },
             onSaveCurrent = { name ->
                 writeUiStateToResult()
-                SavedFiltersStore.saveMangaBaka(SavedMangaBakaFilter.from(name, activity.mangaBakaSearchResult))
+                SavedFiltersStore.saveMangaBaka(SavedMangaBakaFilter.from(name, host.mangaBakaFilters))
             },
             onApply = { name ->
                 val preset = SavedFiltersStore.loadMangaBaka().firstOrNull { it.name == name } ?: return@show
-                preset.applyTo(activity.mangaBakaSearchResult)
-                activity.updateMangaBakaChips?.invoke()
-                activity.search()
+                preset.applyTo(host.mangaBakaFilters)
+                host.onMangaBakaFiltersChanged()
                 dismiss()
             },
             onDelete = { name -> SavedFiltersStore.deleteMangaBaka(name) },
