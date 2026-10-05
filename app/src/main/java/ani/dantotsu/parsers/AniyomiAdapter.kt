@@ -357,9 +357,9 @@ class DynamicAnimeParser(extension: AnimeExtension.Installed) : AnimeParser() {
             },
             sEpisode.url,
             sEpisode.name,
-            null,
-            null,
-            false,
+            sEpisode.preview_url?.let { FileUrl(it) },
+            sEpisode.summary,
+            sEpisode.fillermark,
             null,
             sEpisode
         )
