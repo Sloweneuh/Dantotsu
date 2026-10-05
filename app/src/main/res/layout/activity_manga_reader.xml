@@ -227,111 +227,153 @@
                 android:orientation="vertical"
                 android:padding="8dp">
 
-                <LinearLayout
+                <!-- The top row, with the source and scanlation group overlaid under its buttons: the
+                     space below them is empty whenever the title column is the taller side. -->
+                <FrameLayout
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:gravity="end"
-                    android:orientation="horizontal">
-
-                    <ImageButton
-                        android:id="@+id/mangaReaderBack"
-                        android:layout_width="48dp"
-                        android:layout_height="48dp"
-                        android:backgroundTint="#00FFFFFF"
-                        android:src="@drawable/ic_round_arrow_back_ios_new_24"
-                        tools:ignore="ContentDescription,SpeakableTextPresentCheck,ImageContrastCheck" />
+                    android:layout_height="wrap_content">
 
                     <LinearLayout
-                        android:layout_width="0dp"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:gravity="center_vertical"
-                        android:orientation="vertical">
+                        android:gravity="end"
+                        android:orientation="horizontal">
 
-                        <ani.dantotsu.SpinnerNoSwipe
-                            android:id="@+id/mangaReaderChapterSelect"
-                            android:layout_width="match_parent"
+                        <ImageButton
+                            android:id="@+id/mangaReaderBack"
+                            android:layout_width="48dp"
                             android:layout_height="48dp"
-                            android:layout_marginEnd="0dp"
-                            android:layout_marginBottom="-10dp"
-                            android:entries="@array/tips"
-                            android:popupBackground="@drawable/round_corner"
-                            tools:ignore="SpeakableTextPresentCheck" />
+                            android:backgroundTint="#00FFFFFF"
+                            android:src="@drawable/ic_round_arrow_back_ios_new_24"
+                            tools:ignore="ContentDescription,SpeakableTextPresentCheck,ImageContrastCheck" />
 
-                        <TextView
-                            android:id="@+id/mangaReaderTitle"
-                            android:layout_width="match_parent"
+                        <LinearLayout
+                            android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:layout_marginEnd="48dp"
-                            android:fontFamily="@font/poppins"
-                            android:shadowColor="#000"
-                            android:shadowDx="1"
-                            android:shadowDy="1"
-                            android:shadowRadius="1"
-                            android:singleLine="false"
-                            android:textColor="@color/bg_white"
-                            android:textSize="12sp"
-                            android:maxLines="3"
-                            android:ellipsize="end"
-                            tools:ignore="TextContrastCheck"
-                            tools:text="@string/popular_anime" />
+                            android:layout_weight="1"
+                            android:gravity="center_vertical"
+                            android:orientation="vertical">
+
+                            <ani.dantotsu.SpinnerNoSwipe
+                                android:id="@+id/mangaReaderChapterSelect"
+                                android:layout_width="match_parent"
+                                android:layout_height="48dp"
+                                android:layout_marginEnd="0dp"
+                                android:layout_marginBottom="-10dp"
+                                android:entries="@array/tips"
+                                android:popupBackground="@drawable/round_corner"
+                                tools:ignore="SpeakableTextPresentCheck" />
+
+                            <TextView
+                                android:id="@+id/mangaReaderTitle"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginEnd="48dp"
+                                android:fontFamily="@font/poppins"
+                                android:shadowColor="#000"
+                                android:shadowDx="1"
+                                android:shadowDy="1"
+                                android:shadowRadius="1"
+                                android:singleLine="false"
+                                android:textColor="@color/bg_white"
+                                android:textSize="12sp"
+                                android:maxLines="3"
+                                android:ellipsize="end"
+                                tools:ignore="TextContrastCheck"
+                                tools:text="@string/popular_anime" />
+
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal">
+
+                            <ImageButton
+                                android:id="@+id/mangaReaderDownload"
+                                android:layout_width="wrap_content"
+                                android:layout_height="48dp"
+                                android:backgroundTint="#00FFFFFF"
+                                android:src="@drawable/ic_download_24"
+                                android:visibility="gone"
+                                app:layout_constraintBottom_toBottomOf="parent"
+                                app:layout_constraintEnd_toEndOf="parent"
+                                tools:ignore="ContentDescription,SpeakableTextPresentCheck,ImageContrastCheck" />
+
+                            <ImageButton
+                                android:id="@+id/mangaReaderAutoscroll"
+                                android:layout_width="48dp"
+                                android:layout_height="48dp"
+                                android:backgroundTint="#00FFFFFF"
+                                android:scaleType="fitCenter"
+                                android:src="@drawable/ic_round_play_arrow_24"
+                                app:tint="#fff"
+                                tools:ignore="ContentDescription,SpeakableTextPresentCheck,ImageContrastCheck" />
+
+                            <!-- Reader settings live in this "more" menu too (see action_reader_settings
+                                 in manga_reader_more.xml) rather than a separate button next to it. -->
+                            <ImageButton
+                                android:id="@+id/mangaReaderMore"
+                                android:layout_width="48dp"
+                                android:layout_height="48dp"
+                                android:backgroundTint="#00FFFFFF"
+                                android:scaleType="fitCenter"
+                                android:src="@drawable/ic_round_dots_vertical_24"
+                                app:tint="#fff"
+                                tools:ignore="ContentDescription,SpeakableTextPresentCheck,ImageContrastCheck" />
+
+                        </LinearLayout>
 
                     </LinearLayout>
 
                     <LinearLayout
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal">
+                        android:layout_gravity="top|end"
+                        android:layout_marginTop="40dp"
+                        android:layout_marginEnd="16dp"
+                        android:gravity="end"
+                        android:orientation="vertical">
 
-                        <ImageButton
-                            android:id="@+id/mangaReaderDownload"
+                        <TextView
+                            android:id="@+id/mangaReaderSource"
                             android:layout_width="wrap_content"
-                            android:layout_height="48dp"
-                            android:backgroundTint="#00FFFFFF"
-                            android:src="@drawable/ic_download_24"
+                            android:layout_height="wrap_content"
+                            android:ellipsize="end"
+                            android:fontFamily="@font/poppins_bold"
+                            android:maxWidth="180dp"
+                            android:shadowColor="#000"
+                            android:shadowDx="1"
+                            android:shadowDy="1"
+                            android:shadowRadius="1"
+                            android:singleLine="true"
+                            android:textColor="#fff"
+                            android:textSize="12sp"
+                            tools:ignore="TextContrastCheck"
+                            tools:text="@string/server_selector" />
+
+                        <TextView
+                            android:id="@+id/mangaReaderGroup"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="-4dp"
+                            android:alpha="0.8"
+                            android:ellipsize="end"
+                            android:fontFamily="@font/poppins"
+                            android:maxWidth="180dp"
+                            android:shadowColor="#000"
+                            android:shadowDx="1"
+                            android:shadowDy="1"
+                            android:shadowRadius="1"
+                            android:singleLine="true"
+                            android:textColor="#fff"
+                            android:textSize="11sp"
                             android:visibility="gone"
-                            app:layout_constraintBottom_toBottomOf="parent"
-                            app:layout_constraintEnd_toEndOf="parent"
-                            tools:ignore="ContentDescription,SpeakableTextPresentCheck,ImageContrastCheck" />
-
-                        <ImageButton
-                            android:id="@+id/mangaReaderAutoscroll"
-                            android:layout_width="48dp"
-                            android:layout_height="48dp"
-                            android:backgroundTint="#00FFFFFF"
-                            android:scaleType="fitCenter"
-                            android:src="@drawable/ic_round_play_arrow_24"
-                            app:tint="#fff"
-                            tools:ignore="ContentDescription,SpeakableTextPresentCheck,ImageContrastCheck" />
-
-                        <!-- Reader settings live in this "more" menu too (see action_reader_settings
-                             in manga_reader_more.xml) rather than a separate button next to it. -->
-                        <ImageButton
-                            android:id="@+id/mangaReaderMore"
-                            android:layout_width="48dp"
-                            android:layout_height="48dp"
-                            android:backgroundTint="#00FFFFFF"
-                            android:scaleType="fitCenter"
-                            android:src="@drawable/ic_round_dots_vertical_24"
-                            app:tint="#fff"
-                            tools:ignore="ContentDescription,SpeakableTextPresentCheck,ImageContrastCheck" />
-
+                            tools:ignore="TextContrastCheck"
+                            tools:text="Scanlation group"
+                            tools:visibility="visible" />
                     </LinearLayout>
-
-                </LinearLayout>
-
-                <TextView
-                    android:id="@+id/mangaReaderSource"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="-8dp"
-                    android:layout_marginEnd="16dp"
-                    android:fontFamily="@font/poppins_bold"
-                    android:textAlignment="textEnd"
-                    android:textColor="#fff"
-                    android:textSize="12sp"
-                    tools:ignore="TextContrastCheck"
-                    tools:text="@string/server_selector" />
+                </FrameLayout>
 
             </LinearLayout>
         </FrameLayout>

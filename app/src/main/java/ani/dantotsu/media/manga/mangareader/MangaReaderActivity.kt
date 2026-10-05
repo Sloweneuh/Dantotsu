@@ -543,6 +543,7 @@ class MangaReaderActivity : AppCompatActivity() {
         binding.mangaReaderSource.isVisible = PrefManager.getVal(PrefName.ShowSource)
         binding.mangaReaderSource.text =
             model.mangaReadSources!!.names[media.selected!!.sourceIndex]
+        updateGroupText()
 
         binding.mangaReaderTitle.text = media.userPreferredName
 
@@ -2732,6 +2733,7 @@ class MangaReaderActivity : AppCompatActivity() {
     }
 
     private fun updateChapterNavigationText() {
+        updateGroupText()
         if (directionRLBT) {
             binding.mangaReaderNextChap.text =
                 chaptersTitleArr.getOrNull(currentChapterIndex - 1) ?: ""
@@ -2743,5 +2745,12 @@ class MangaReaderActivity : AppCompatActivity() {
             binding.mangaReaderPrevChap.text =
                 chaptersTitleArr.getOrNull(currentChapterIndex - 1) ?: ""
         }
+    }
+
+    /** The current chapter's scanlation group under the source, shown with it (same setting). */
+    private fun updateGroupText() {
+        val group = if (::chapter.isInitialized) chapter.scanlator?.takeIf { it.isNotBlank() } else null
+        binding.mangaReaderGroup.text = group
+        binding.mangaReaderGroup.isVisible = group != null && binding.mangaReaderSource.isVisible
     }
 }
