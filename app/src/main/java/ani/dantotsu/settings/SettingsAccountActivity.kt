@@ -243,6 +243,7 @@ class SettingsAccountActivity : AppCompatActivity() {
             if (Kitsu.token != null) Kitsu.getUserData()
             if (Simkl.token != null) Simkl.getUserData()
             if (MangaBaka.token != null) MangaBaka.getUserData()
+            if (Comick.token != null) Comick.getUserData()
             cardAdapter.submit(buildCards())
         }
     }
@@ -283,10 +284,11 @@ class SettingsAccountActivity : AppCompatActivity() {
                 ) else knownOrOut(PrefName.DiscordUserName),
                 discordStatusRes = if (Discord.token != null) discordStatusDrawable() else null,
             ),
-            // Comick has no profile route, so a connection has no name to show — only that it's there.
+            // An account without a public username (or not fetched yet) still shows as connected.
             card(AccountProvider.COMICK, R.drawable.ic_round_comick_24, R.string.comick,
-                if (Comick.token != null) AccountState.SignedIn(getString(R.string.comick_connected), null)
-                else AccountState.SignedOut),
+                if (Comick.token != null) AccountState.SignedIn(
+                    Comick.username ?: getString(R.string.comick_connected), Comick.avatar
+                ) else AccountState.SignedOut),
             AccountCard(AccountProvider.MALSYNC, R.drawable.ic_malsync, getString(R.string.malsync),
                 AccountState.NoLogin),
         )

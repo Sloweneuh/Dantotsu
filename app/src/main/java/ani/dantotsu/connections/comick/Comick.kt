@@ -39,10 +39,10 @@ import java.util.concurrent.TimeUnit
  *
  * **Permissions.** `library:read` covers followed manga/anime, their follow status and the saved
  * chapter/episode and rating; `library:write` adds following, status, progress and rating changes.
- * Notes, custom lists and dates are outside both, and so is the profile: there are no identity
- * scopes, ID tokens or profile route, so there is no username to show, only "connected". Write
- * access is requested at login, but the consent screen leaves it unticked
- * until the user opts in, so a connection may well be read-only: see [canWrite].
+ * Notes, custom lists and dates are outside both. `library:read` also covers the public profile —
+ * username and Gravatar avatar, both possibly null — from `GET /me` ([getUserData]); there are no
+ * identity scopes or ID tokens. Write access is requested at login, but the consent screen leaves
+ * it unticked until the user opts in, so a connection may well be read-only: see [canWrite].
  *
  * **Login is OAuth 2.0 authorization code + S256 PKCE**, as a public client (no secret). It runs in
  * a Custom Tab, never a WebView: Comick's docs forbid loading the authorization page in an
@@ -59,7 +59,8 @@ object Comick {
     private const val AUTHORIZE_URL = "https://comick.dev/api/auth/oauth2/authorize"
     private const val TOKEN_URL = "https://comick.dev/api/auth/oauth2/token"
     private const val REVOKE_URL = "https://comick.dev/api/auth/oauth2/revoke"
-    private const val LIBRARY_URL = "https://api.comick.dev/integrations/v1/me/library"
+    private const val ME_URL = "https://api.comick.dev/integrations/v1/me"
+    private const val LIBRARY_URL = "$ME_URL/library"
 
     /** The OAuth resource identifier, required on authorize, token and refresh requests alike. */
     private const val RESOURCE = "https://api.comick.dev/integrations/v1"
@@ -81,6 +82,7 @@ object Comick {
     private const val KEY_TOKEN = "token"
     private const val KEY_VERIFIER = "verifier"
     private const val KEY_STATE = "state"
+    private const val KEY_PROFILE = "profile"
 
     private val gson = Gson()
     private val JSON_MEDIA = "application/json".toMediaType()
@@ -104,6 +106,16 @@ object Comick {
     /** The current access token, or null when not connected. Restored by [getSavedToken]. */
     @Volatile
     var token: String? = null
+        private set
+
+    /** The connected account's public username, when Comick has one. Restored by [getSavedToken]. */
+    @Volatile
+    var username: String? = null
+        private set
+
+    /** The connected account's Gravatar URL, when Comick has one. */
+    @Volatile
+    var avatar: String? = null
         private set
 
     fun isConfigured(): Boolean = CLIENT_ID.isNotBlank()
@@ -200,6 +212,8 @@ object Comick {
             Logger.log("Comick: offline access declined — background checks stop when this token expires")
         }
         Logger.log("Comick: connected (scope: ${saved.scope})")
+        // Only for display: a failed fetch leaves the card at "connected" until the next refresh.
+        getUserData()
         LoginResult.SUCCESS
     }
 
@@ -208,8 +222,35 @@ object Comick {
     /** Loads a saved connection into memory. No network: an expired token refreshes on first use. */
     fun getSavedToken(): Boolean {
         token?.let { return true }
-        token = readSaved()?.accessToken
-        return token != null
+        token = readSaved()?.accessToken ?: return false
+        runCatching {
+            prefs()?.getString(KEY_PROFILE, null)?.let { gson.fromJson(it, ConnectedUser::class.java) }
+        }.getOrNull()?.let(::applyProfile)
+        return true
+    }
+
+    /**
+     * Fetches the connected account's public profile (`GET /me`) into [username] and [avatar], and
+     * keeps it for [getSavedToken]. False when not connected or the request fails; what was known
+     * before is left as it is.
+     */
+    suspend fun getUserData(): Boolean {
+        val res = call(ME_URL) ?: return false
+        if (res.code !in 200..299) {
+            logFailure("profile", res)
+            return false
+        }
+        val user = runCatching { gson.fromJson(res.body, ConnectedUser::class.java) }.getOrNull()
+            ?: return false
+        applyProfile(user)
+        prefs()?.edit { putString(KEY_PROFILE, gson.toJson(user)) }
+        Logger.log("Comick: profile is ${user.username ?: "(no username)"}")
+        return true
+    }
+
+    private fun applyProfile(user: ConnectedUser) {
+        username = user.username?.takeIf { it.isNotBlank() }
+        avatar = user.avatarUrl?.takeIf { it.isNotBlank() }
     }
 
     /**
@@ -308,7 +349,9 @@ object Comick {
 
     private fun clearLocal() {
         token = null
-        prefs()?.edit(commit = true) { remove(KEY_TOKEN) }
+        username = null
+        avatar = null
+        prefs()?.edit(commit = true) { remove(KEY_TOKEN); remove(KEY_PROFILE) }
     }
 
     private fun readSaved(): SavedToken? = runCatching {
@@ -515,6 +558,13 @@ object Comick {
         @SerializedName("refresh_token") val refreshToken: String?,
         @SerializedName("expires_in") val expiresIn: Long?,
         val scope: String?,
+    )
+
+    /** `GET /me`: the public account UUID, and username and avatar, either of which can be null. */
+    private data class ConnectedUser(
+        val id: String?,
+        val username: String?,
+        @SerializedName("avatar_url") val avatarUrl: String?,
     )
 
     private data class SavedToken(
