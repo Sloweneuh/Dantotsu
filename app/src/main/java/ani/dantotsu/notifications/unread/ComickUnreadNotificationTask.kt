@@ -121,6 +121,8 @@ class ComickUnreadNotificationTask : Task {
         val anilistId: Int? = null,
         /** Every MangaUpdates id Comick's link can stand for (see [Links.mangaUpdatesIds]). */
         val muSeriesIds: Set<Long> = emptySet(),
+        /** Every followed Comick entry of this series behind on this chapter, [entry] included. */
+        val seriesHids: List<String> = listOf(entry.hid),
     ) {
         val onAnilistList: Boolean get() = anilistMedia?.userStatus != null
 
@@ -189,7 +191,7 @@ class ComickUnreadNotificationTask : Task {
             clearRow(context)
             return@withContext
         }
-        val unread = currentUnread(anilistKnownLatest, muKnownLatest) ?: return@withContext
+        val (unread, savedByHid) = currentUnread(anilistKnownLatest, muKnownLatest) ?: return@withContext
 
         UnreadCache.saveComick(unread.map { it.toEntry() })
         UnreadCache.broadcastUpdate(context)
@@ -197,9 +199,16 @@ class ComickUnreadNotificationTask : Task {
         val notifiedKey = "notified_comick_chapters"
         val prefs = context.getSharedPreferences("unread_notifications", Context.MODE_PRIVATE)
         val notified = prefs.getStringSet(notifiedKey, emptySet())?.toMutableSet() ?: mutableSetOf()
-        // Keys are "<hid>:<chapter>"; a title no longer behind can't be announced again.
-        pruneNotified(notified, unread.associate { it.entry.hid to it.userChapter })
-        val newItems = unread.filter { notified.add("${it.entry.hid}:${it.latestChapter}") }
+        // Keys are "<hid>:<chapter>", pruned against the whole library rather than this run's
+        // unread titles: one left out for a run (a failed lookup, or the AniList/MangaUpdates check
+        // knowing the chapter for now) would otherwise lose its key and be announced again.
+        pruneNotified(notified, savedByHid)
+        // Any entry of the series having announced the chapter counts, so which of two followed
+        // entries wins the de-dup in [currentUnread] can change without a repeat.
+        val newItems = unread.filter { item ->
+            val keys = item.seriesHids.map { "$it:${item.latestChapter}" }
+            keys.none { it in notified }.also { notified += keys }
+        }
         // Announced here, so the AniList/MangaUpdates check mustn't announce it again once its own
         // count reaches it. Their keys are "<id>:<chapter>" too.
         val anilistNotified = prefs.getStringSet(ANILIST_NOTIFIED_KEY, emptySet()).orEmpty().toMutableSet()
@@ -231,13 +240,21 @@ class ComickUnreadNotificationTask : Task {
     }
 
     /**
+     * What [currentUnread] found: the titles behind, and the saved chapter of every title in the
+     * library by hid — the furthest of Comick's and the tracker's where that's known — for pruning
+     * the "already announced" keys. A title without saved progress anywhere maps to
+     * [Int.MIN_VALUE], so its keys are kept.
+     */
+    private data class UnreadResult(val items: List<UnreadItem>, val savedByHid: Map<String, Int>)
+
+    /**
      * Every followed title with a chapter past the furthest saved progress, before the "already
      * announced" filter. Null when the library can't be read, so the last answer stands.
      */
     private suspend fun currentUnread(
         anilistKnownLatest: Map<Int, Int>,
         muKnownLatest: Map<Long, Int>,
-    ): List<UnreadItem>? {
+    ): UnreadResult? {
         val library = Comick.getLibrary(ComickApi.MEDIA_TYPE_MANGA, Comick.STATUS_READING) ?: run {
             Logger.log("ComickUnreadNotificationTask: library unavailable")
             return null
@@ -324,7 +341,14 @@ class ComickUnreadNotificationTask : Task {
         val anilistIn = PrefManager.getVal<String>(PrefName.AnilistToken).isNotEmpty()
         val muIn = MangaUpdates.getSavedToken() && !MangaUpdates.token.isNullOrBlank()
 
-        return behind.map { (candidate, latest, latestExact, group, latestAt) ->
+        val candidateSaved = candidates.associate { it.entry.hid to it.savedWhole }
+        val savedByHid = library.associate { entry ->
+            entry.hid to (candidateSaved[entry.hid]
+                ?: entry.progress?.number?.toDoubleOrNull()?.let { floor(it).toInt() }
+                ?: Int.MIN_VALUE)
+        }
+
+        val items = behind.map { (candidate, latest, latestExact, group, latestAt) ->
             val (entry, links, userChapter, media, muEntry) = candidate
             val link = when {
                 links.anilistId != null && (anilistIn || !muIn || links.mangaUpdates == null) ->
@@ -358,7 +382,11 @@ class ComickUnreadNotificationTask : Task {
             // followed) share an AniList id, so they'd post the same notification twice: keep
             // whichever is furthest along.
             .groupBy { it.notifId }
-            .map { (_, sameSeries) -> sameSeries.maxBy { it.latestChapter } }
+            .map { (_, sameSeries) ->
+                val best = sameSeries.maxBy { it.latestChapter }
+                best.copy(seriesHids = sameSeries.map { it.entry.hid }.distinct())
+            }
+        return UnreadResult(items, savedByHid)
     }
 
     /**
