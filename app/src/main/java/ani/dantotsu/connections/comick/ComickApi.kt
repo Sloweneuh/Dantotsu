@@ -77,6 +77,13 @@ object ComickApi {
      * needs to look like the web client. The legacy unversioned paths don't care, but sending the
      * same headers there is harmless, so every request goes through this.
      */
+    /**
+     * A title's chapter list. The `/v1.0/` route, which the docs replace the legacy
+     * `/comic/{hid}/chapters` with: same rows, paging and filters, plus a `previews` field per row.
+     * It defaults to chapters; episodes need `entry_type=episode` (see [getEpisodes]).
+     */
+    private fun chaptersUrl(hid: String) = "https://api.comick.dev/v1.0/comic/$hid/chapters"
+
     private fun request(url: String, accept: String = "application/json"): Request =
         Request.Builder()
             .url(url)
@@ -851,7 +858,7 @@ object ComickApi {
         var page = 1
         try {
             while (true) {
-                val url = "https://api.comick.dev/comic/$hid/chapters?lang=$lang&limit=$limit&page=$page&chap-order=0"
+                val url = "${chaptersUrl(hid)}?lang=$lang&limit=$limit&page=$page&chap-order=0"
                 val request = request(url)
                 val response = client.newCall(request).execute()
                 if (!response.isSuccessful) break
@@ -885,7 +892,7 @@ object ComickApi {
         lang: String = PrefManager.getVal(PrefName.ComickMangaBakaLanguage),
     ): String? = withContext(Dispatchers.IO) {
         fun find(language: String): String? = runCatching {
-            val url = "https://api.comick.dev/comic/$comicHid/chapters".toHttpUrlOrNull()?.newBuilder()
+            val url = chaptersUrl(comicHid).toHttpUrlOrNull()?.newBuilder()
                 ?.addQueryParameter("lang", language)
                 ?.addQueryParameter("chap", number)
                 ?.addQueryParameter("limit", "20")
@@ -930,7 +937,7 @@ object ComickApi {
             val chapParam = nearChapter?.let {
                 "&chap=${if (it % 1.0 == 0.0) it.toInt() else it}"
             } ?: ""
-            val url = "https://api.comick.dev/comic/$hid/chapters?lang=$lang&limit=10$chapParam&chap-order=0"
+            val url = "${chaptersUrl(hid)}?lang=$lang&limit=10$chapParam&chap-order=0"
             val request = request(url)
             val response = client.newCall(request).execute()
             if (!response.isSuccessful) return null
@@ -1187,7 +1194,7 @@ object ComickApi {
         try {
             while (true) {
                 val url =
-                    "https://api.comick.dev/v1.0/comic/$hid/chapters?entry_type=episode&limit=$limit&page=$page&chap-order=0"
+                    "${chaptersUrl(hid)}?entry_type=episode&limit=$limit&page=$page&chap-order=0"
                 val request = request(url)
                 val response = client.newCall(request).execute()
                 if (!response.isSuccessful) break
