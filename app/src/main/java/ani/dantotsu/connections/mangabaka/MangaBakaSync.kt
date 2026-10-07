@@ -238,6 +238,7 @@ object MangaBakaSync {
                     statuses = filters?.statuses, excludedStatuses = filters?.excludedStatuses,
                     contentRatings = filters?.contentRatings,
                     excludedContentRatings = filters?.excludedContentRatings,
+                    hasAnime = filters?.hasAnime,
                     fromYear = filters?.fromYear, toYear = filters?.toYear,
                     sort = filters?.sort, allowAdult = allowAdult,
                 )

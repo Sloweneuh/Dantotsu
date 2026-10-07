@@ -434,6 +434,7 @@ object MangaBakaApi {
         excludedStatuses: List<String>? = null,
         contentRatings: List<String>? = null,
         excludedContentRatings: List<String>? = null,
+        hasAnime: Boolean? = null,
         fromYear: Int? = null,
         toYear: Int? = null,
         sort: String? = null,
@@ -450,7 +451,7 @@ object MangaBakaApi {
         urlBuilder.addSeriesFilters(
             genres, excludedGenres, tags, excludedTags, tagMode, types, excludedTypes,
             statuses, excludedStatuses, contentRatings, excludedContentRatings,
-            fromYear, toYear, sort, allowAdult,
+            hasAnime, fromYear, toYear, sort, allowAdult,
         )
 
         val request = Request.Builder().url(urlBuilder.build()).get().build()
@@ -482,6 +483,8 @@ object MangaBakaApi {
         excludedStatuses: List<String>? = null,
         contentRatings: List<String>? = null,
         excludedContentRatings: List<String>? = null,
+        /** Only series with an anime adaptation (true), only those without (false), or either. */
+        hasAnime: Boolean? = null,
         fromYear: Int? = null,
         toYear: Int? = null,
         sort: String? = null,
@@ -497,6 +500,7 @@ object MangaBakaApi {
         statuses?.filter { it.isNotBlank() }?.forEach { addQueryParameter("status", it) }
         excludedStatuses?.filter { it.isNotBlank() }?.forEach { addQueryParameter("status_not", it) }
         excludedContentRatings?.filter { it.isNotBlank() }?.forEach { addQueryParameter("not_content_rating", it) }
+        hasAnime?.let { addQueryParameter("has_anime", it.toString()) }
         // `year_lower`/`year_upper` are deprecated; the publication-date bounds replace them and take a
         // bare `YYYY` as the whole year (an upper bound of `2020` still includes all of 2020).
         fromYear?.let { addQueryParameter("published_start_date_lower", it.toString()) }

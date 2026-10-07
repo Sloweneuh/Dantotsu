@@ -716,6 +716,7 @@ class SearchActivity : AppCompatActivity(), AniMangaFilterHost, MangaBakaSearchF
                             excludedStatuses = it.excludedStatuses
                             contentRatings = it.contentRatings
                             excludedContentRatings = it.excludedContentRatings
+                            hasAnime = it.hasAnime
                             fromYear = it.fromYear
                             toYear = it.toYear
                             sort = it.sort

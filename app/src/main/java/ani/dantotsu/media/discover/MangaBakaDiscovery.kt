@@ -141,6 +141,7 @@ object MangaBakaDiscovery : DiscoverySource {
         val excludedStatuses: List<String>? = null,
         val contentRatings: List<String>? = null,
         val excludedContentRatings: List<String>? = null,
+        val hasAnime: Boolean? = null,
         val fromYear: Int? = null,
         val toYear: Int? = null,
         val sort: String? = null,
@@ -153,7 +154,7 @@ object MangaBakaDiscovery : DiscoverySource {
             Filters(
                 state.genres, state.excludedGenres, state.tags, state.excludedTags,
                 state.types, state.excludedTypes, state.statuses, state.excludedStatuses,
-                state.contentRatings, state.excludedContentRatings,
+                state.contentRatings, state.excludedContentRatings, state.hasAnime,
                 state.fromYear, state.toYear, state.sort,
             )
         )
@@ -170,6 +171,7 @@ object MangaBakaDiscovery : DiscoverySource {
             statuses = f?.statuses?.toMutableList(), excludedStatuses = f?.excludedStatuses?.toMutableList(),
             contentRatings = f?.contentRatings?.toMutableList(),
             excludedContentRatings = f?.excludedContentRatings?.toMutableList(),
+            hasAnime = f?.hasAnime,
             fromYear = f?.fromYear, toYear = f?.toYear, sort = f?.sort,
         )
     }
@@ -185,6 +187,7 @@ object MangaBakaDiscovery : DiscoverySource {
         return labels(f.types, f.excludedTypes, f::labelForType) +
             labels(f.statuses, f.excludedStatuses, f::labelForStatus) +
             labels(f.contentRatings, f.excludedContentRatings, f::titleCase) +
+            listOfNotNull(f.hasAnime?.let { DiscoverySource.FilterLabel(f.hasAnimeLabel()) }) +
             labels(f.genres, f.excludedGenres, MangaBakaApi::resolveGenreName) +
             labels(f.tags, f.excludedTags) { it } +
             years

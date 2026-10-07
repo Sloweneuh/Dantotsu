@@ -287,6 +287,7 @@ data class SavedMangaBakaFilter(
     val fromYear: Int? = null,
     val toYear: Int? = null,
     val sort: String? = null,
+    val hasAnime: Boolean? = null,
 ) : Serializable {
     companion object {
         private const val serialVersionUID: Long = 1L
@@ -306,6 +307,7 @@ data class SavedMangaBakaFilter(
             fromYear = r.fromYear,
             toYear = r.toYear,
             sort = r.sort,
+            hasAnime = r.hasAnime,
         )
     }
 
@@ -320,6 +322,7 @@ data class SavedMangaBakaFilter(
         r.excludedStatuses = excludedStatuses?.toMutableList()
         r.contentRatings = contentRatings?.toMutableList()
         r.excludedContentRatings = excludedContentRatings?.toMutableList()
+        r.hasAnime = hasAnime
         r.fromYear = fromYear
         r.toYear = toYear
         r.sort = sort
@@ -334,6 +337,7 @@ data class SavedMangaBakaFilter(
         excludedStatuses?.forEach { out += excludeLabel(it.replace('_', ' ')) }
         contentRatings?.forEach { out += "Rating: $it" }
         excludedContentRatings?.forEach { out += excludeLabel(it) }
+        hasAnime?.let { out += if (it) "Has anime" else "No anime" }
         if (fromYear != null || toYear != null) {
             out += "Year: ${fromYear ?: "?"}-${toYear ?: "?"}"
         }

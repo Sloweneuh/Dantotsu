@@ -2956,4 +2956,6 @@
     <string name="discover_anime_cold_start_body">La file est construite à partir des animes que vous avez terminés ou que vous regardez. Vous en avez %1$d utilisables ; il en faut au moins %2$d.</string>
     <string name="discover_anime_reason_help_body"><b>Vous avez regardé / Vous regardez / Similaire à :</b> animes de votre liste AniList dont les recommandations de la communauté incluent celui-ci.\n\n<b>Pépite cachée :</b> très bien noté sur AniList, mais par moins de personnes.\n\n<b>Tags positifs :</b> tags que vous notez au-dessus de votre moyenne et que cet anime possède.\n\n<b>Tags négatifs :</b> tags que vous notez bien en dessous de votre moyenne. Ils ont fait baisser son classement.</string>
     <string name="quick_tile_needs_mangabaka">MangaBaka requis</string>
+    <string name="mb_has_anime">A un anime</string>
+    <string name="mb_no_anime">Sans anime</string>
 </resources>

@@ -3081,4 +3081,6 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="discover_anime_cold_start_body">The queue is built from anime you\'ve completed or are watching. You have %1$d it can use; it needs at least %2$d.</string>
     <string name="discover_anime_reason_help_body"><b>You watched / are watching / Similar to:</b> anime on your AniList list whose community recommendations include this one.\n\n<b>Hidden gem:</b> rated highly on AniList, but by fewer people.\n\n<b>Positive tags:</b> tags you score above your average that this anime has.\n\n<b>Negative tags:</b> tags you score well below your average. They lowered this anime\'s rank.</string>
     <string name="quick_tile_needs_mangabaka">Needs MangaBaka</string>
+    <string name="mb_has_anime">Has anime</string>
+    <string name="mb_no_anime">No anime</string>
 </resources>

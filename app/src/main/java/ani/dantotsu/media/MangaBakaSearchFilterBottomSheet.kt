@@ -15,6 +15,7 @@ import android.view.ViewGroup
 import android.widget.PopupMenu
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.ConcatAdapter
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -71,6 +72,9 @@ class MangaBakaSearchFilterBottomSheet : BottomSheetDialogFragment() {
     private var excludedStatuses = mutableListOf<String>()
     private var selectedContentRatings = mutableListOf<String>()
     private var excludedContentRatings = mutableListOf<String>()
+    /** The one "has anime" chip: included means `has_anime=true`, excluded `has_anime=false`. */
+    private var selectedAnime = mutableListOf<String>()
+    private var excludedAnime = mutableListOf<String>()
     private var selectedSort: String? = null
 
     private var allGenres: List<FilterOption> = emptyList()
@@ -118,6 +122,8 @@ class MangaBakaSearchFilterBottomSheet : BottomSheetDialogFragment() {
         excludedStatuses = r.excludedStatuses?.toMutableList() ?: mutableListOf()
         selectedContentRatings = r.contentRatings?.toMutableList() ?: mutableListOf()
         excludedContentRatings = r.excludedContentRatings?.toMutableList() ?: mutableListOf()
+        selectedAnime = if (r.hasAnime == true) mutableListOf(HAS_ANIME) else mutableListOf()
+        excludedAnime = if (r.hasAnime == false) mutableListOf(HAS_ANIME) else mutableListOf()
         selectedSort = r.sort
 
         setupEnumFilters()
@@ -187,6 +193,14 @@ class MangaBakaSearchFilterBottomSheet : BottomSheetDialogFragment() {
         )
         includeExclude(binding.mbFilterTypeRecycler, types, selectedTypes, excludedTypes, grid = false)
         includeExclude(binding.mbFilterStatusRecycler, statuses, selectedStatuses, excludedStatuses, grid = false)
+        // "Has anime" rides at the end of the status row rather than taking a section of its own;
+        // it keeps its own include/exclude lists, since it maps to `has_anime`, not `status`.
+        binding.mbFilterStatusRecycler.adapter = ConcatAdapter(
+            binding.mbFilterStatusRecycler.adapter!!,
+            IncludeExcludeAdapter(
+                listOf(FilterOption(HAS_ANIME, getString(R.string.mb_has_anime))), selectedAnime, excludedAnime
+            ),
+        )
         includeExclude(binding.mbFilterContentRecycler, contentRatings, selectedContentRatings, excludedContentRatings, grid = false)
     }
 
@@ -353,6 +367,11 @@ class MangaBakaSearchFilterBottomSheet : BottomSheetDialogFragment() {
         r.excludedStatuses = excludedStatuses.toMutableList().ifEmpty { null }
         r.contentRatings = selectedContentRatings.toMutableList().ifEmpty { null }
         r.excludedContentRatings = excludedContentRatings.toMutableList().ifEmpty { null }
+        r.hasAnime = when {
+            selectedAnime.isNotEmpty() -> true
+            excludedAnime.isNotEmpty() -> false
+            else -> null
+        }
         r.sort = selectedSort
         val values = binding.mbFilterYearRange.values
         val from = values[0].toInt()
@@ -398,6 +417,7 @@ class MangaBakaSearchFilterBottomSheet : BottomSheetDialogFragment() {
         selectedTypes.clear(); excludedTypes.clear()
         selectedStatuses.clear(); excludedStatuses.clear()
         selectedContentRatings.clear(); excludedContentRatings.clear()
+        selectedAnime.clear(); excludedAnime.clear()
         selectedSort = null
         binding.mbGenreSearchText.setText("")
         binding.mbTagSearchText.setText("")
@@ -413,6 +433,8 @@ class MangaBakaSearchFilterBottomSheet : BottomSheetDialogFragment() {
     }
 
     companion object {
+        private const val HAS_ANIME = "has_anime"
+
         fun newInstance() = MangaBakaSearchFilterBottomSheet()
     }
 

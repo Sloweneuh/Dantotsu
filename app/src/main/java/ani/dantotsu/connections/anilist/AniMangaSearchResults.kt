@@ -459,6 +459,8 @@ data class MangaBakaSearchResults(
     var excludedStatuses: MutableList<String>? = null,
     var contentRatings: MutableList<String>? = null,
     var excludedContentRatings: MutableList<String>? = null,
+    /** `has_anime`: true for only adapted series, false for only unadapted ones, null for either. */
+    var hasAnime: Boolean? = null,
     var fromYear: Int? = null,
     var toYear: Int? = null,
     var sort: String? = null,
@@ -473,6 +475,7 @@ data class MangaBakaSearchResults(
         excludedStatuses?.forEach { list.add(AniMangaSearchResults.SearchChip("MB_EXCL_STATUS", context.getString(R.string.filter_exclude, labelForStatus(it)))) }
         contentRatings?.forEach { list.add(AniMangaSearchResults.SearchChip("MB_CONTENT", context.getString(R.string.comick_content_rating) + ": " + titleCase(it))) }
         excludedContentRatings?.forEach { list.add(AniMangaSearchResults.SearchChip("MB_EXCL_CONTENT", context.getString(R.string.filter_exclude, titleCase(it)))) }
+        hasAnime?.let { list.add(AniMangaSearchResults.SearchChip("MB_HAS_ANIME", hasAnimeLabel())) }
         genres?.forEach { list.add(AniMangaSearchResults.SearchChip("MB_GENRE", MangaBakaApi.resolveGenreName(it))) }
         excludedGenres?.forEach {
             list.add(AniMangaSearchResults.SearchChip("MB_EXCL_GENRE", context.getString(R.string.filter_exclude, MangaBakaApi.resolveGenreName(it))))
@@ -516,9 +519,14 @@ data class MangaBakaSearchResults(
                 val label = chip.text.rawNotPrefixed(context)
                 excludedContentRatings?.remove(excludedContentRatings?.firstOrNull { titleCase(it).equals(label, true) })
             }
+            "MB_HAS_ANIME" -> hasAnime = null
             "MB_YEAR_RANGE" -> { fromYear = null; toYear = null }
         }
     }
+
+    /** "Has anime" or "No anime", for a set [hasAnime]. */
+    fun hasAnimeLabel(): String =
+        currContext()!!.getString(if (hasAnime == false) R.string.mb_no_anime else R.string.mb_has_anime)
 
     private fun findGenreSlug(displayText: String, values: MutableList<String>?): String =
         values?.firstOrNull { MangaBakaApi.resolveGenreName(it).equals(displayText, true) } ?: displayText
