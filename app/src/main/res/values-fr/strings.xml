@@ -2958,4 +2958,5 @@
     <string name="quick_tile_needs_mangabaka">MangaBaka requis</string>
     <string name="mb_has_anime">A un anime</string>
     <string name="mb_no_anime">Sans anime</string>
+    <string name="discover_remove_filter">Retirer le filtre %1$s</string>
 </resources>

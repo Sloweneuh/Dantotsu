@@ -41,6 +41,12 @@ interface DiscoverySource {
     /** [filters] as chip labels for the screens around the queue; empty when unfiltered. */
     fun describeFilters(filters: String?): List<FilterLabel> = emptyList()
 
+    /**
+     * [filters] without the one [describeFilters] lists at [index]; null once nothing is left.
+     * What a filter chip's close icon does.
+     */
+    fun removeFilter(filters: String, index: Int): String? = filters
+
     /** One filter value, bare (no "Format:" prefix); [excluded] is drawn as an exclusion. */
     data class FilterLabel(val text: String, val excluded: Boolean = false)
 

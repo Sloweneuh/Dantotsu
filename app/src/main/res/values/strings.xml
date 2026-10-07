@@ -3083,4 +3083,5 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="quick_tile_needs_mangabaka">Needs MangaBaka</string>
     <string name="mb_has_anime">Has anime</string>
     <string name="mb_no_anime">No anime</string>
+    <string name="discover_remove_filter">Remove filter %1$s</string>
 </resources>

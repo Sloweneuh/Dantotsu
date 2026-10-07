@@ -146,6 +146,8 @@ class DiscoverActivity : AppCompatActivity(), MangaBakaSearchFilterBottomSheet.H
                     getString(R.string.discover_filtered_empty_body),
                     R.string.discover_change_filters,
                     filters = filters,
+                    // Nothing was built, so a looser set is simply tried straight away.
+                    onFiltersEdited = { lifecycleScope.launch { build(jitter, carrySkipped, it) } },
                     alt2 = R.string.discover_start_unfiltered to { build(jitter = true, carrySkipped) },
                 ) { editFilters(filters, carrySkipped) }
             } else showMessage(
@@ -165,14 +167,15 @@ class DiscoverActivity : AppCompatActivity(), MangaBakaSearchFilterBottomSheet.H
      * A queue left part-way, as the site's "Pick up where you left off": carry on, or drop it for a
      * new one (same filters, or changed ones). A new queue replaces it once built.
      */
-    private fun showResume(queue: DiscoveryQueue) {
+    private fun showResume(queue: DiscoveryQueue, filters: String? = queue.filters) {
         val skipped = queue.skippedIds()
-        val filters = queue.filters
         showMessage(
             R.string.discover_resume_title,
             getString(R.string.discover_resume_body, queue.items.count { it.action == null }),
             R.string.discover_resume,
             filters = filters,
+            // What a new queue would use; resuming carries on with the queue as it was built.
+            onFiltersEdited = { showResume(queue, it) },
             alt = if (!source.supportsFilters) null
             else (if (filters != null) R.string.discover_change_filters else R.string.discover_start_filtered) to
                 { editFilters(filters, skipped) },
@@ -214,9 +217,8 @@ class DiscoverActivity : AppCompatActivity(), MangaBakaSearchFilterBottomSheet.H
      * Another queue with the same filters (as the site does), plus, where the source has filters,
      * changing them or dropping them for an unfiltered queue.
      */
-    private fun showComplete(queue: DiscoveryQueue) {
+    private fun showComplete(queue: DiscoveryQueue, filters: String? = queue.filters) {
         val skipped = queue.skippedIds()
-        val filters = queue.filters
         showMessage(
             R.string.discover_complete_title,
             getString(
@@ -227,6 +229,7 @@ class DiscoverActivity : AppCompatActivity(), MangaBakaSearchFilterBottomSheet.H
             ),
             R.string.discover_start_another,
             filters = filters,
+            onFiltersEdited = { showComplete(queue, it) },
             alt = if (!source.supportsFilters) null
             else (if (filters != null) R.string.discover_change_filters else R.string.discover_start_filtered) to
                 { editFilters(filters, skipped) },
@@ -240,6 +243,8 @@ class DiscoverActivity : AppCompatActivity(), MangaBakaSearchFilterBottomSheet.H
         body: String,
         @StringRes primary: Int,
         filters: String? = null,
+        /** Given [filters] less a chip's filter when its close icon is tapped; no close icons without it. */
+        onFiltersEdited: ((String?) -> Unit)? = null,
         alt: Pair<Int, suspend () -> Unit>? = null,
         alt2: Pair<Int, suspend () -> Unit>? = null,
         onPrimary: suspend () -> Unit,
@@ -248,7 +253,12 @@ class DiscoverActivity : AppCompatActivity(), MangaBakaSearchFilterBottomSheet.H
         binding.discoverMessage.isVisible = true
         binding.discoverMessageTitle.setText(title)
         binding.discoverMessageBody.text = body
-        bindFilters(source.describeFilters(filters))
+        bindFilters(
+            source.describeFilters(filters),
+            onRemove = if (filters != null && onFiltersEdited != null) {
+                { index -> onFiltersEdited(source.removeFilter(filters, index)) }
+            } else null,
+        )
         binding.discoverMessagePrimary.setText(primary)
         binding.discoverMessagePrimary.setOnClickListener { lifecycleScope.launch { onPrimary() } }
         listOf(binding.discoverMessageAlt to alt, binding.discoverMessageAlt2 to alt2).forEach { (button, action) ->
@@ -259,21 +269,30 @@ class DiscoverActivity : AppCompatActivity(), MangaBakaSearchFilterBottomSheet.H
         }
     }
 
-    private fun bindFilters(labels: List<DiscoverySource.FilterLabel>) {
+    /** The filter chips; with [onRemove], each has a close icon that drops its filter (by index). */
+    private fun bindFilters(labels: List<DiscoverySource.FilterLabel>, onRemove: ((Int) -> Unit)? = null) {
         val row = binding.discoverMessageFilters
         row.removeAllViews()
         row.isVisible = labels.isNotEmpty()
-        labels.forEach { label ->
+        labels.forEachIndexed { index, label ->
             val chip = ItemChipBinding.inflate(layoutInflater, row, false).root as Chip
             chip.text = label.text
             chip.isClickable = false
             chip.isCheckable = false
-            if (label.excluded) {
+            val textColor = if (label.excluded) {
                 chip.chipBackgroundColor = ColorStateList.valueOf(getThemeColor(com.google.android.material.R.attr.colorErrorContainer))
-                chip.setTextColor(getThemeColor(com.google.android.material.R.attr.colorOnErrorContainer))
+                getThemeColor(com.google.android.material.R.attr.colorOnErrorContainer)
             } else {
                 chip.chipBackgroundColor = ColorStateList.valueOf(ContextCompat.getColor(this, R.color.filter_chip_include_bg))
-                chip.setTextColor(ContextCompat.getColor(this, R.color.filter_chip_include_text))
+                ContextCompat.getColor(this, R.color.filter_chip_include_text)
+            }
+            chip.setTextColor(textColor)
+            chip.isCloseIconVisible = onRemove != null
+            if (onRemove != null) {
+                chip.setCloseIconResource(R.drawable.ic_round_close_24)
+                chip.closeIconTint = ColorStateList.valueOf(textColor)
+                chip.closeIconContentDescription = getString(R.string.discover_remove_filter, label.text)
+                chip.setOnCloseIconClickListener { onRemove(index) }
             }
             (chip.layoutParams as ViewGroup.MarginLayoutParams).setMargins(4f.px, 2f.px, 4f.px, 2f.px)
             row.addView(chip)

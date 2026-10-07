@@ -176,18 +176,29 @@ object MangaBakaDiscovery : DiscoverySource {
         )
     }
 
-    override fun describeFilters(filters: String?): List<DiscoverySource.FilterLabel> {
-        if (filters == null) return emptyList()
+    override fun describeFilters(filters: String?): List<DiscoverySource.FilterLabel> =
+        filters?.let { labelled(decodeFilters(it)).map { (label, _) -> label } }.orEmpty()
+
+    override fun removeFilter(filters: String, index: Int): String? {
         val f = decodeFilters(filters)
-        fun labels(included: List<String>?, excluded: List<String>?, label: (String) -> String) =
-            included.orEmpty().map { DiscoverySource.FilterLabel(label(it)) } +
-                excluded.orEmpty().map { DiscoverySource.FilterLabel(label(it), excluded = true) }
-        val years = if (f.fromYear != null || f.toYear != null)
-            listOf(DiscoverySource.FilterLabel("${f.fromYear ?: "…"}–${f.toYear ?: "…"}")) else emptyList()
+        labelled(f).getOrNull(index)?.second?.invoke()
+        return encodeFilters(f)
+    }
+
+    /** Each filter set in [f] as its chip label, beside what takes it back out of [f]. */
+    private fun labelled(f: MangaBakaSearchResults): List<Pair<DiscoverySource.FilterLabel, () -> Unit>> {
+        fun labels(included: MutableList<String>?, excluded: MutableList<String>?, label: (String) -> String) =
+            included.orEmpty().map { v -> DiscoverySource.FilterLabel(label(v)) to { included!!.remove(v); Unit } } +
+                excluded.orEmpty().map { v ->
+                    DiscoverySource.FilterLabel(label(v), excluded = true) to { excluded!!.remove(v); Unit }
+                }
+        val years = if (f.fromYear != null || f.toYear != null) listOf(
+            DiscoverySource.FilterLabel("${f.fromYear ?: "…"}–${f.toYear ?: "…"}") to { f.fromYear = null; f.toYear = null }
+        ) else emptyList()
         return labels(f.types, f.excludedTypes, f::labelForType) +
             labels(f.statuses, f.excludedStatuses, f::labelForStatus) +
             labels(f.contentRatings, f.excludedContentRatings, f::titleCase) +
-            listOfNotNull(f.hasAnime?.let { DiscoverySource.FilterLabel(f.hasAnimeLabel()) }) +
+            listOfNotNull(f.hasAnime?.let { DiscoverySource.FilterLabel(f.hasAnimeLabel()) to { f.hasAnime = null } }) +
             labels(f.genres, f.excludedGenres, MangaBakaApi::resolveGenreName) +
             labels(f.tags, f.excludedTags) { it } +
             years
