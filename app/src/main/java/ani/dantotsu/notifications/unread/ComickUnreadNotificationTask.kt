@@ -17,6 +17,7 @@ import ani.dantotsu.connections.comick.Comick
 import ani.dantotsu.connections.comick.ComickApi
 import ani.dantotsu.connections.comick.ComickLibraryEntry
 import ani.dantotsu.connections.comick.ComickSync
+import ani.dantotsu.connections.mangaupdates.MUDetailsCache
 import ani.dantotsu.connections.mangaupdates.MUMedia
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.connections.mangaupdates.muMediaKey
@@ -67,7 +68,8 @@ import kotlin.math.floor
  * Comick by days. What this announces is marked as announced for that check too, so the chapter
  * isn't announced a second time when its count catches up.
  *
- * A notification opens the series where the user tracks it: the AniList page when they use
+ * A notification shows the title and cover of the AniList media Comick links (when AniList is
+ * connected), else of the MangaUpdates series, else Comick's own. It opens the series where the user tracks it: the AniList page when they use
  * AniList (or MangaUpdates isn't an option), else the MangaUpdates page, else Comick's own. Its
  * "Mark as read" records the chapter on Comick (given write access) and on the AniList or
  * MangaUpdates entry when the title is on one of those lists; "Mute" adds it to the exclusion list.
@@ -225,11 +227,28 @@ class ComickUnreadNotificationTask : Task {
         Logger.log("ComickUnreadNotificationTask: ${newItems.size} new chapters to notify")
 
         if (newItems.isEmpty() || !hasNotificationPermission(context)) return@withContext
-        val icons = newItems.associate { it.notifId to NotificationImageLoader.loadBitmap(it.coverUrl) }
+        val announced = withMuCovers(newItems)
+        val icons = announced.associate { it.notifId to NotificationImageLoader.loadBitmap(it.coverUrl) }
         withContext(Dispatchers.Main) {
-            sendNotifications(context, newItems, icons)
-            storeNotifications(newItems)
+            sendNotifications(context, announced, icons)
+            storeNotifications(announced)
         }
+    }
+
+    /**
+     * [items] with the MangaUpdates cover in place of Comick's for a title shown as a MangaUpdates
+     * series: the reading-list fetch carries no covers, so it comes from [MUDetailsCache].
+     */
+    private suspend fun withMuCovers(items: List<UnreadItem>): List<UnreadItem> = coroutineScope {
+        items.map { item ->
+            async {
+                if (item.anilistMedia?.cover != null) return@async item
+                val muId = item.muSeriesId ?: return@async item
+                val cover = item.muListEntry?.coverUrl ?: MUDetailsCache.ensure(muId)?.coverUrl
+                    ?: return@async item
+                item.copy(coverUrl = cover)
+            }
+        }.awaitAll()
     }
 
     /** Takes the Comick half off the home row once this check no longer runs. */
@@ -359,7 +378,10 @@ class ComickUnreadNotificationTask : Task {
             }
             UnreadItem(
                 entry = entry,
-                title = entry.title ?: media?.userPreferredName ?: "",
+                // Shown as what it's tracked as: the AniList media, else the MangaUpdates series,
+                // else Comick's own title and cover.
+                title = media?.userPreferredName?.takeIf { it.isNotBlank() }
+                    ?: muEntry?.title?.takeIf { it.isNotBlank() } ?: entry.title ?: "",
                 latestChapter = latest,
                 userChapter = userChapter,
                 latestExact = latestExact,
@@ -368,7 +390,11 @@ class ComickUnreadNotificationTask : Task {
                 // older AniList notification for the same series; otherwise one derived from the
                 // hid, far outside the range AniList ids occupy.
                 notifId = links.anilistId ?: (("comick:" + entry.hid).hashCode() and 0x7FFFFFFF),
-                coverUrl = links.coverUrl ?: media?.cover,
+                // The MangaUpdates cover only as far as it's already cached here; announced titles
+                // fetch it in [withMuCovers].
+                coverUrl = media?.cover ?: muEntry?.coverUrl
+                    ?: (muEntry?.id ?: links.muSeriesId)?.let { MUDetailsCache.get(it)?.coverUrl }
+                    ?: links.coverUrl,
                 source = group ?: SOURCE,
                 latestChapterAt = latestAt,
                 anilistMedia = media,
