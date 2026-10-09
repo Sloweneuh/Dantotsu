@@ -17,6 +17,7 @@ import ani.dantotsu.connections.comick.Comick
 import ani.dantotsu.connections.comick.ComickApi
 import ani.dantotsu.connections.comick.ComickLibraryEntry
 import ani.dantotsu.connections.comick.ComickSync
+import ani.dantotsu.connections.mangabaka.MangaBakaApi
 import ani.dantotsu.connections.mangaupdates.MUDetailsCache
 import ani.dantotsu.connections.mangaupdates.MUMedia
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
@@ -68,9 +69,12 @@ import kotlin.math.floor
  * Comick by days. What this announces is marked as announced for that check too, so the chapter
  * isn't announced a second time when its count catches up.
  *
- * A notification shows the title and cover of the AniList media Comick links (when AniList is
- * connected), else of the MangaUpdates series, else Comick's own. It opens the series where the user tracks it: the AniList page when they use
- * AniList (or MangaUpdates isn't an option), else the MangaUpdates page, else Comick's own. Its
+ * A title is shown, and opened, as what it's tracked on: the AniList media Comick links — or
+ * MangaBaka maps its MangaUpdates link to — when it's on the AniList list, else the MangaUpdates
+ * series when it's on the MangaUpdates lists (an AniList media not yet moved over included). Off
+ * both lists it's the AniList media (when AniList is connected), else the MangaUpdates series,
+ * else Comick's own; it opens the AniList page when they use AniList (or MangaUpdates isn't an
+ * option), else the MangaUpdates page, else Comick's own. Its
  * "Mark as read" records the chapter on Comick (given write access) and on the AniList or
  * MangaUpdates entry when the title is on one of those lists; "Mute" adds it to the exclusion list.
  *
@@ -113,7 +117,10 @@ class ComickUnreadNotificationTask : Task {
         /** Who uploaded the new chapter — its scanlation group, else Comick itself. */
         val source: String,
         val latestChapterAt: Long?,
-        /** The AniList media Comick links, with the account's list state when it's on the list. */
+        /**
+         * The AniList media Comick links, with the account's list state when it's on the list —
+         * null when the title is shown as the MangaUpdates series it's tracked as instead.
+         */
         val anilistMedia: Media?,
         /** The series' entry on the account's MangaUpdates lists, when it has one. */
         val muListEntry: MUMedia?,
@@ -205,12 +212,30 @@ class ComickUnreadNotificationTask : Task {
         // unread titles: one left out for a run (a failed lookup, or the AniList/MangaUpdates check
         // knowing the chapter for now) would otherwise lose its key and be announced again.
         pruneNotified(notified, savedByHid)
+        // The id each announced chapter went out under, as "<hid>:<chapter>=<id>".
+        val announcedIds = prefs.getStringSet(ANNOUNCED_IDS_KEY, emptySet()).orEmpty()
+            .mapNotNull { e ->
+                val id = e.substringAfterLast('=', "").toIntOrNull() ?: return@mapNotNull null
+                e.substringBeforeLast('=') to id
+            }.toMap().toMutableMap()
+        // Announced already, but shown as something else now — converted from MangaUpdates to
+        // AniList since — so the notification still out moves over to the new id, by its old one.
+        val moved = unread.mapNotNull { item ->
+            val keys = item.seriesHids.map { "$it:${item.latestChapter}" }
+            if (keys.none { it in notified }) return@mapNotNull null
+            val oldId = keys.firstNotNullOfOrNull { announcedIds[it] } ?: return@mapNotNull null
+            if (oldId == item.notifId) null else item to oldId
+        }
         // Any entry of the series having announced the chapter counts, so which of two followed
         // entries wins the de-dup in [currentUnread] can change without a repeat.
         val newItems = unread.filter { item ->
             val keys = item.seriesHids.map { "$it:${item.latestChapter}" }
             keys.none { it in notified }.also { notified += keys }
         }
+        (newItems + moved.map { it.first }).forEach { item ->
+            item.seriesHids.forEach { announcedIds["$it:${item.latestChapter}"] = item.notifId }
+        }
+        announcedIds.keys.retainAll(notified)
         // Announced here, so the AniList/MangaUpdates check mustn't announce it again once its own
         // count reaches it. Their keys are "<id>:<chapter>" too.
         val anilistNotified = prefs.getStringSet(ANILIST_NOTIFIED_KEY, emptySet()).orEmpty().toMutableSet()
@@ -223,9 +248,11 @@ class ComickUnreadNotificationTask : Task {
             .putStringSet(notifiedKey, notified)
             .putStringSet(ANILIST_NOTIFIED_KEY, anilistNotified)
             .putStringSet(MU_NOTIFIED_KEY, muNotified)
+            .putStringSet(ANNOUNCED_IDS_KEY, announcedIds.map { (k, id) -> "$k=$id" }.toSet())
             .apply()
-        Logger.log("ComickUnreadNotificationTask: ${newItems.size} new chapters to notify")
+        Logger.log("ComickUnreadNotificationTask: ${newItems.size} new chapters to notify, ${moved.size} moved")
 
+        if (moved.isNotEmpty()) moveNotifications(context, moved)
         if (newItems.isEmpty() || !hasNotificationPermission(context)) return@withContext
         val announced = withMuCovers(newItems)
         val icons = announced.associate { it.notifId to NotificationImageLoader.loadBitmap(it.coverUrl) }
@@ -233,6 +260,60 @@ class ComickUnreadNotificationTask : Task {
             sendNotifications(context, announced, icons)
             storeNotifications(announced)
         }
+    }
+
+    /**
+     * Brings notifications already out up to how their titles are shown now — the AniList media
+     * a MangaUpdates series was converted to. One still on screen is reposted under its new id
+     * without sound, then the old one cancelled; a dismissed one stays dismissed. The entry in the
+     * notification centre follows either way, keeping its time and read state.
+     */
+    private suspend fun moveNotifications(context: Context, moved: List<Pair<UnreadItem, Int>>) {
+        val active = runCatching {
+            (context.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager)
+                .activeNotifications.map { it.id }.toSet()
+        }.getOrDefault(emptySet())
+        val items = withMuCovers(moved.map { it.first })
+        val oldIds = moved.associate { (item, oldId) -> item.notifId to oldId }
+        val onScreen = items.filter { oldIds[it.notifId] in active }
+        val icons = onScreen.associate { it.notifId to NotificationImageLoader.loadBitmap(it.coverUrl) }
+        withContext(Dispatchers.Main) {
+            if (onScreen.isNotEmpty() && hasNotificationPermission(context)) {
+                // Posted before the old ones go, so the group summary always has a child.
+                sendNotifications(context, onScreen, icons, silent = true)
+                val nm = NotificationManagerCompat.from(context)
+                onScreen.forEach { nm.cancel(oldIds.getValue(it.notifId)) }
+            }
+            moveStoredNotifications(items, oldIds)
+        }
+    }
+
+    private fun moveStoredNotifications(items: List<UnreadItem>, oldIds: Map<Int, Int>) {
+        val store = PrefManager.getNullableVal<List<UnreadChapterStore>>(
+            PrefName.UnreadChapterNotificationStore, null
+        ) ?: return
+        val byOld = items.associateBy { oldIds.getValue(it.notifId) to it.latestChapter }
+        val unreadNow = mutableListOf<String>()
+        val readOld = mutableListOf<String>()
+        val updated = store.map { stored ->
+            val item = byOld[stored.mediaId to stored.lastChapter] ?: return@map stored
+            val oldKey = NotificationReadState.keyOf(stored)
+            readOld += oldKey
+            if (NotificationReadState.isUnread(oldKey)) {
+                unreadNow += NotificationReadState.chapterKey(item.notifId, item.latestChapter)
+            }
+            stored.copy(
+                mediaId = item.notifId,
+                mediaName = item.title,
+                image = item.coverUrl,
+                banner = item.coverUrl,
+                link = item.link,
+            )
+        }
+        if (readOld.isEmpty()) return
+        PrefManager.setVal(PrefName.UnreadChapterNotificationStore, updated)
+        NotificationReadState.markRead(readOld)
+        NotificationReadState.markUnread(unreadNow)
     }
 
     /**
@@ -369,7 +450,14 @@ class ComickUnreadNotificationTask : Task {
 
         val items = behind.map { (candidate, latest, latestExact, group, latestAt) ->
             val (entry, links, userChapter, media, muEntry) = candidate
+            // Shown as the list it's tracked on: a title with an AniList media but kept only on
+            // the MangaUpdates lists (not yet moved over) is the MangaUpdates series — opened,
+            // muted and replaced as the MangaUpdates check's own notification would be. Off both
+            // lists it's the AniList media when there is one.
+            val shownMedia = media?.takeIf { it.userStatus != null || muEntry == null }
+            val shownAsMu = shownMedia == null && muEntry != null
             val link = when {
+                shownAsMu -> "https://www.mangaupdates.com/series/${muEntry!!.id.toString(36)}"
                 links.anilistId != null && (anilistIn || !muIn || links.mangaUpdates == null) ->
                     "https://anilist.co/manga/${links.anilistId}"
                 links.mangaUpdates != null && muIn ->
@@ -380,24 +468,25 @@ class ComickUnreadNotificationTask : Task {
                 entry = entry,
                 // Shown as what it's tracked as: the AniList media, else the MangaUpdates series,
                 // else Comick's own title and cover.
-                title = media?.userPreferredName?.takeIf { it.isNotBlank() }
+                title = shownMedia?.userPreferredName?.takeIf { it.isNotBlank() }
                     ?: muEntry?.title?.takeIf { it.isNotBlank() } ?: entry.title ?: "",
                 latestChapter = latest,
                 userChapter = userChapter,
                 latestExact = latestExact,
                 link = link,
-                // The AniList id where there is one, so this replaces rather than stacks on an
-                // older AniList notification for the same series; otherwise one derived from the
-                // hid, far outside the range AniList ids occupy.
-                notifId = links.anilistId ?: (("comick:" + entry.hid).hashCode() and 0x7FFFFFFF),
+                // The id the AniList or MangaUpdates check posts the series under, so this
+                // replaces rather than stacks on its older notification; otherwise one derived
+                // from the hid, far outside the range AniList ids occupy.
+                notifId = if (shownAsMu) muMediaKey(muEntry!!.id)
+                else links.anilistId ?: (("comick:" + entry.hid).hashCode() and 0x7FFFFFFF),
                 // The MangaUpdates cover only as far as it's already cached here; announced titles
                 // fetch it in [withMuCovers].
-                coverUrl = media?.cover ?: muEntry?.coverUrl
+                coverUrl = shownMedia?.cover ?: muEntry?.coverUrl
                     ?: (muEntry?.id ?: links.muSeriesId)?.let { MUDetailsCache.get(it)?.coverUrl }
                     ?: links.coverUrl,
                 source = group ?: SOURCE,
                 latestChapterAt = latestAt,
-                anilistMedia = media,
+                anilistMedia = shownMedia,
                 muListEntry = muEntry,
                 muSeriesId = muEntry?.id ?: links.muSeriesId,
                 anilistId = links.anilistId,
@@ -503,7 +592,24 @@ class ComickUnreadNotificationTask : Task {
      * kept, since only the full details response carries them. Null when that fetch fails.
      * Fetches are spaced like [titlesBehind]'s, since a first run looks up the whole library.
      */
-    private suspend fun linksFor(entry: ComickLibraryEntry): Links? {
+    private suspend fun linksFor(entry: ComickLibraryEntry): Links? =
+        comickLinksFor(entry)?.let { withMangaBakaAnilist(entry.hid, it) }
+
+    /**
+     * [links] with the AniList id MangaBaka maps its MangaUpdates series to, when Comick links only
+     * MangaUpdates — otherwise a title the account reads on AniList would be shown, opened and
+     * de-duplicated as a MangaUpdates series. MangaBaka keeps a found id, so this asks it once.
+     */
+    private suspend fun withMangaBakaAnilist(hid: String, links: Links): Links {
+        if (links.anilistId != null) return links
+        val muId = links.muSeriesId ?: return links
+        val anilistId = runCatching { MangaBakaApi.getCrossIdsFromMangaUpdates(muId).anilistId }
+            .onFailure { Logger.log("ComickUnreadNotificationTask: MangaBaka lookup failed for $hid: ${it.message}") }
+            .getOrNull() ?: return links
+        return links.copy(anilistId = anilistId)
+    }
+
+    private suspend fun comickLinksFor(entry: ComickLibraryEntry): Links? {
         val hid = entry.hid
         IdCache["comick_al_$hid"]?.let { al ->
             return Links(
@@ -531,7 +637,13 @@ class ComickUnreadNotificationTask : Task {
     }
 
     @SuppressLint("MissingPermission")
-    private fun sendNotifications(context: Context, items: List<UnreadItem>, icons: Map<Int, Bitmap?>) {
+    private fun sendNotifications(
+        context: Context,
+        items: List<UnreadItem>,
+        icons: Map<Int, Bitmap?>,
+        /** A repost of one already announced ([moveNotifications]): no sound or vibration. */
+        silent: Boolean = false,
+    ) {
         val notificationManager = NotificationManagerCompat.from(context)
         // Once for the batch: see MuUnreadNotificationTask.sendNotifications.
         val isGrouped = items.size > 1 ||
@@ -572,6 +684,7 @@ class ComickUnreadNotificationTask : Task {
                 .setDeleteIntent(NotificationReadState.dismissIntent(context, readKey))
                 .setAutoCancel(true)
                 .setGroup(Notifications.GROUP_NEW_CHAPTERS)
+                .setSilent(silent)
             // Somewhere to record the chapter: Comick given write access, or the tracker list
             // the title is on.
             if (canWrite || item.onAnilistList || item.muListEntry != null) {
@@ -589,7 +702,11 @@ class ComickUnreadNotificationTask : Task {
             }
 
             notificationManager.notify(item.notifId, builder.build())
-            notificationManager.notify(Notifications.ID_NEW_CHAPTERS, newReleasesGroupSummary(context))
+            // A repost's summary is already out with the notification it replaces; posting it
+            // again would sound, the summary not being silent.
+            if (!silent) {
+                notificationManager.notify(Notifications.ID_NEW_CHAPTERS, newReleasesGroupSummary(context))
+            }
         }
     }
 
@@ -606,7 +723,11 @@ class ComickUnreadNotificationTask : Task {
             }
             when {
                 item.onAnilistList -> putExtra("media", item.anilistMedia as Serializable)
-                item.muListEntry != null -> putExtra("muMedia", item.muListEntry as Serializable)
+                item.muListEntry != null -> {
+                    putExtra("muMedia", item.muListEntry as Serializable)
+                    // Converted to AniList by the time it's tapped, the chapter goes there.
+                    item.anilistId?.let { putExtra(MarkReadNotificationReceiver.EXTRA_ANILIST_ID, it) }
+                }
             }
             putExtra(MarkReadNotificationReceiver.EXTRA_PROGRESS, item.latestChapter)
             putExtra(MarkReadNotificationReceiver.EXTRA_NOTIFICATION_ID, item.notifId)
@@ -744,6 +865,9 @@ class ComickUnreadNotificationTask : Task {
         /** The AniList and MangaUpdates checks' "already announced" sets. */
         const val ANILIST_NOTIFIED_KEY = "notified_unread_chapters"
         const val MU_NOTIFIED_KEY = "notified_mu_chapters"
+
+        /** The notification id each announced chapter went out under; see [moveNotifications]. */
+        const val ANNOUNCED_IDS_KEY = "notified_comick_ids"
 
         /** How long each catalog request keeps its slot past the response; see [titlesBehind]. */
         const val REQUEST_SPACING_MS = 400L

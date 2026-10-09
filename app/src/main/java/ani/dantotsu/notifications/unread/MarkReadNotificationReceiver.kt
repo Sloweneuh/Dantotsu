@@ -7,6 +7,7 @@ import android.content.Intent
 import androidx.core.app.NotificationManagerCompat
 import ani.dantotsu.App
 import ani.dantotsu.connections.TrackerSessions
+import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.comick.ComickSync
 import ani.dantotsu.connections.mangaupdates.MUMedia
 import ani.dantotsu.connections.mangaupdates.toMedia
@@ -63,6 +64,16 @@ class MarkReadNotificationReceiver : BroadcastReceiver() {
         const val EXTRA_COMICK_PROGRESS = "comickProgress"
 
         /**
+         * The AniList media a "muMedia" entry also has. When the series has since been converted
+         * onto the AniList list, the chapter is written there instead of to MangaUpdates, which
+         * no longer holds it.
+         */
+        const val EXTRA_ANILIST_ID = "anilistId"
+
+        /** How long the "converted since?" AniList lookup may take before MangaUpdates is used. */
+        private const val LOOKUP_TIMEOUT_MS = 3_000L
+
+        /**
          * How long the broadcast is kept alive waiting for the primary tracker write to land. Under
          * the ~10s foreground-queue deadline that [goAsync] does not extend; the mirror writes run
          * on their own scope and are not waited on.
@@ -112,7 +123,7 @@ class MarkReadNotificationReceiver : BroadcastReceiver() {
                     if (written != true) Logger.log("MarkReadNotificationReceiver: Comick write failed")
                 }
                 if (media != null || muMedia != null) {
-                    val target = media ?: muMedia!!.toMedia()
+                    val target = media ?: convertedMedia(intent) ?: muMedia!!.toMedia()
                     if (progress > (target.userProgress ?: 0)) {
                         withTimeoutOrNull(WRITE_TIMEOUT_MS) {
                             // Shows its own "Setting progress to N" confirmation.
@@ -131,6 +142,22 @@ class MarkReadNotificationReceiver : BroadcastReceiver() {
                 pending.finish()
             }
         }
+    }
+
+    /**
+     * The AniList media behind [EXTRA_ANILIST_ID], when the series is on the AniList list now — it
+     * was converted after the notification went out. Null when it isn't, or the lookup doesn't
+     * answer in time; the MangaUpdates entry the notification carries is written then.
+     */
+    private suspend fun convertedMedia(intent: Intent): Media? {
+        val anilistId = intent.getIntExtra(EXTRA_ANILIST_ID, -1).takeIf { it > 0 } ?: return null
+        TrackerSessions.await()
+        if (Anilist.token.isNullOrEmpty()) return null
+        val media = withTimeoutOrNull(LOOKUP_TIMEOUT_MS) {
+            runCatching { Anilist.query.getMedia(anilistId, type = "MANGA") }.getOrNull()
+        }
+        return media?.takeIf { it.userStatus != null }
+            ?.also { Logger.log("MarkReadNotificationReceiver: $anilistId converted to AniList, writing there") }
     }
 
     /**
