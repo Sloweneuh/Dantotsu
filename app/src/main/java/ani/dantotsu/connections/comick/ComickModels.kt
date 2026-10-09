@@ -722,7 +722,28 @@ data class ComickLibraryEntry(
     val followed_at: String? = null,
     val updated_at: String? = null,
     val progressed_at: String? = null,
-)
+    /** The title's public cover thumbnail, null when it has none. */
+    val cover_url: String? = null,
+    /** Comick's site-wide score, 0–10; unrelated to [rating]. */
+    val bayesian_rating: Double? = null,
+    /** Publication, not library, status: 1 ongoing, 2 completed, 3 cancelled, 4 hiatus. */
+    val publication_status: Int? = null,
+    /**
+     * The newest released number the site shows ("13.5"), across its chapters — not the final
+     * total. The spec doesn't say which languages count, so it only rules titles out, never in.
+     */
+    val last_released_number: String? = null,
+) {
+    /** [publication_status] in AniList's words, for the status helpers the media rows use. */
+    val publicationStatusWord: String?
+        get() = when (publication_status) {
+            1 -> "RELEASING"
+            2 -> "FINISHED"
+            3 -> "CANCELLED"
+            4 -> "HIATUS"
+            else -> null
+        }
+}
 
 data class ComickLibraryProgress(
     /** "chapter" or "episode". */

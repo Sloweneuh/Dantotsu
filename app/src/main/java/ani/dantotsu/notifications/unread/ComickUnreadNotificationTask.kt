@@ -164,6 +164,8 @@ class ComickUnreadNotificationTask : Task {
             source = source,
             latestChapterAt = latestChapterAt,
             notifId = notifId,
+            publicationStatus = entry.publicationStatusWord,
+            bayesianRating = entry.bayesian_rating,
         )
     }
 
@@ -483,7 +485,7 @@ class ComickUnreadNotificationTask : Task {
                 // fetch it in [withMuCovers].
                 coverUrl = shownMedia?.cover ?: muEntry?.coverUrl
                     ?: (muEntry?.id ?: links.muSeriesId)?.let { MUDetailsCache.get(it)?.coverUrl }
-                    ?: links.coverUrl,
+                    ?: entry.cover_url?.takeIf { it.isNotBlank() } ?: links.coverUrl,
                 source = group ?: SOURCE,
                 latestChapterAt = latestAt,
                 anilistMedia = shownMedia,
@@ -528,8 +530,9 @@ class ComickUnreadNotificationTask : Task {
     /**
      * Every candidate whose newest chapter is past the saved one.
      *
-     * One catalog request per title, so it is paced to stay inside Comick's 200 requests/minute
-     * per IP — two at a time, each holding its slot a little past the response.
+     * One catalog request per title the library's newest release doesn't already rule out, paced
+     * to stay inside Comick's 200 requests/minute per IP — two at a time, each holding its slot a
+     * little past the response.
      */
     private suspend fun titlesBehind(
         candidates: List<Candidate>,
@@ -537,6 +540,11 @@ class ComickUnreadNotificationTask : Task {
         val slots = Semaphore(2)
         candidates.map { candidate ->
             async {
+                // The library already names the newest release; a title it puts at or before the
+                // saved chapter costs no catalog request. Its languages are unspecified, so it only
+                // ever rules a title out — the chapter list below has the final say.
+                val listed = candidate.entry.last_released_number?.toDoubleOrNull()
+                if (listed != null && floor(listed).toInt() <= candidate.savedWhole) return@async null
                 val chapter = slots.withPermit {
                     ComickApi.getLatestChapter(candidate.entry.hid).also { delay(REQUEST_SPACING_MS) }
                 } ?: return@async null

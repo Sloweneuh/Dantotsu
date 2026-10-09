@@ -6,6 +6,7 @@ import android.content.res.ColorStateList
 import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.View
+import android.widget.TextView
 import android.view.ViewGroup
 import androidx.core.app.ActivityOptionsCompat
 import androidx.core.view.ViewCompat
@@ -586,9 +587,11 @@ class UnreadChaptersAdapter(
             itemCompactTitle.text = item.title
             itemCompactUserProgress.text = item.progress.toString()
             itemCompactTotal.text = " | ${item.latestChapter} | ~"
-            itemCompactScoreContainer.visibility = View.GONE
+            // The releasing dot, as an AniList row has it; this layout has no hiatus variant.
+            itemCompactScoreContainer.visibility =
+                if (isReleasingStatus(item.publicationStatus)) View.VISIBLE else View.GONE
             itemCompactNovelContainer.visibility = View.GONE
-            itemCompactScoreBG.visibility = View.GONE
+            bindComickScore(itemCompactScoreBG, itemCompactScore, itemCompactLanguageBG, item)
             itemCompactSource.visibility = View.GONE
             itemCompactSourceBadge.visibility = View.GONE
             itemCompactLanguageIcon.setImageResource(R.drawable.ic_round_comick_24)
@@ -605,7 +608,12 @@ class UnreadChaptersAdapter(
             itemCompactImage.loadImage(item.coverUrl)
             blurImage(itemCompactBanner, item.coverUrl)
             itemCompactTitle.text = item.title
-            itemCompactOngoing.visibility = View.GONE
+            val releasing = isReleasingStatus(item.publicationStatus)
+            val hiatus = isHiatusStatus(item.publicationStatus)
+            itemCompactOngoing.visibility = if (releasing || hiatus) View.VISIBLE else View.GONE
+            itemCompactOngoing.getChildAt(0)?.setBackgroundResource(
+                if (hiatus) R.drawable.item_hiatus else R.drawable.item_ongoing
+            )
             itemCompactType.visibility = View.GONE
             itemCompactStatus.visibility = View.GONE
             itemCompactSynopsis.text = ""
@@ -613,7 +621,7 @@ class UnreadChaptersAdapter(
             itemProgressSeparator.visibility = View.VISIBLE
             itemCompactTotal.text = item.latestChapter.toString()
             itemTotal.text = " " + root.context.getString(R.string.chapter_plural)
-            itemCompactScoreBG.visibility = View.GONE
+            bindComickScore(itemCompactScoreBG, itemCompactScore, itemCompactLanguageBG, item)
             itemCompactSourceBadge.visibility = View.GONE
             itemCompactLanguageIcon.setImageResource(R.drawable.ic_round_comick_24)
             itemCompactLanguageIcon.visibility = View.VISIBLE
@@ -621,6 +629,24 @@ class UnreadChaptersAdapter(
             itemCompactLanguageBG.visibility = View.VISIBLE
             bindComickClicks(root, itemCompactImage, itemCompactTitle, item)
         }
+    }
+
+    /**
+     * Comick's site-wide score in the score badge, styled as a MangaUpdates row's (also not the
+     * user's own), and the source badge given the matching corners. Hidden when Comick has none.
+     */
+    private fun bindComickScore(scoreBg: View, score: TextView, sourceBadge: View, item: ComickUnreadEntry) {
+        val rating = item.bayesianRating?.takeIf { it > 0.0 }
+        if (rating == null) {
+            scoreBg.visibility = View.GONE
+            return
+        }
+        score.text = String.format("%.1f", rating)
+        scoreBg.setBackgroundResource(R.drawable.item_score)
+        scoreBg.backgroundTintList = ColorStateList.valueOf(Color.WHITE)
+        sourceBadge.setBackgroundResource(R.drawable.item_language_badge)
+        sourceBadge.backgroundTintList = scoreBg.backgroundTintList
+        scoreBg.visibility = View.VISIBLE
     }
 
     /**

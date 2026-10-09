@@ -31,6 +31,13 @@ data class ComickUnreadEntry(
     val latestChapterAt: Long?,
     /** The notification id, also the key [UnreadCache.removeEntry] is given on "Mark as read". */
     val notifId: Int,
+    /**
+     * Publication status in AniList's words ("RELEASING", "HIATUS"…), for the dot a Comick-only
+     * card wears. Null when unknown — and in entries cached before Comick listed it.
+     */
+    val publicationStatus: String? = null,
+    /** Comick's site-wide score, 0–10, for a Comick-only card's score badge. */
+    val bayesianRating: Double? = null,
 ) : Serializable {
 
     /** The id this title's unread info is keyed by in the row, matching what it is shown as. */
