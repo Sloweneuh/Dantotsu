@@ -17,7 +17,6 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
 import ani.dantotsu.Refresh
-import ani.dantotsu.connections.comick.ComickApi
 import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.mangaupdates.AniListQuickSearchDialogFragment
 import ani.dantotsu.connections.mangaupdates.MUMedia
@@ -52,7 +51,6 @@ class MediaEquivalentsActivity : AppCompatActivity() {
     data class EquivalentItem(
         val mu: MUMedia,
         var matchedTitle: String? = null,
-        var matchedCoverB2key: String? = null,
         var matchedAniCoverUrl: String? = null,
         var matchedAniId: Int? = null,
         var matchedAniType: String? = null // "anime" or "manga"
@@ -128,72 +126,28 @@ class MediaEquivalentsActivity : AppCompatActivity() {
         items.forEachIndexed { idx, it ->
             lifecycleScope.launch {
                 try {
-                    val title = it.mu.title
-                    if (title == null) {
-                        it.matchedTitle = getString(R.string.no_anilist_id_found)
-                    } else {
-                    // Check for a user-saved Comick slug for this MU series.
-                    // Different parts of the app may store the key as the masked int id or the raw MU id,
-                    // so try a few variants to be resilient.
-                    val maskedId = ((it.mu.id) and 0x7FFFFFFF).toInt()
-                    val candidateKeys = listOf(
-                        "comick_slug_$maskedId",
-                        "comick_slug_${it.mu.id}",
-                        "comick_slug_${it.mu.id.toInt()}"
-                    )
-                    var savedSlug: String? = null
-                    for (k in candidateKeys) {
-                        try {
-                            savedSlug = PrefManager.getNullableCustomVal(k, null, String::class.java)
-                        } catch (e: Exception) {
-                            Logger.log("MediaEquivalents: Pref lookup error for key=$k -> ${e.message}")
-                        }
-                        Logger.log("MediaEquivalents: tried pref key=$k -> ${if (savedSlug.isNullOrBlank()) "<null>" else savedSlug}")
-                        if (!savedSlug.isNullOrBlank()) {
-                            break
-                        }
-                    }
-
-                    // Resolve the AniList equivalent of this MangaUpdates series. Prefer MangaBaka's
-                    // cross-source mapping (reliable id linking); fall back to Comick when MangaBaka
-                    // has no matching series or no AniList link.
-                    var usedAni: ani.dantotsu.media.Media? = null
-
+                    // Resolve the AniList equivalent of this MangaUpdates series through MangaBaka's
+                    // cross-source mapping. Comick was once a fallback, but whatever it links
+                    // MangaBaka almost always has too, and its paced search made the screen crawl.
                     val mbAniId = withContext(Dispatchers.IO) {
                         ani.dantotsu.connections.mangabaka.MangaBakaApi.getAnilistIdFromMangaUpdates(it.mu.id)
                     }
-                    if (mbAniId != null) {
-                        usedAni = try {
-                            withContext(Dispatchers.IO) { Anilist.query.getMedia(mbAniId, false) }
+                    val usedAni = mbAniId?.let { id ->
+                        try {
+                            withContext(Dispatchers.IO) { Anilist.query.getMedia(id, false) }
                         } catch (_: Exception) { null }
-                    }
-
-                    if (usedAni == null) {
-                        val slug = if (!savedSlug.isNullOrBlank()) savedSlug else withContext(Dispatchers.IO) { ComickApi.searchAndMatchComicByMuId(listOf(title), it.mu.id) }
-                        if (!slug.isNullOrBlank()) {
-                            val comic = withContext(Dispatchers.IO) { ComickApi.getComicDetails(slug) }?.comic
-                            val alId = comic?.links?.al?.takeIf { s -> s.isNotBlank() }?.toIntOrNull()
-                            if (alId != null) {
-                                usedAni = try {
-                                    withContext(Dispatchers.IO) { Anilist.query.getMedia(alId, false) }
-                                } catch (_: Exception) { null }
-                            }
-                        }
                     }
 
                     if (usedAni != null) {
                         it.matchedTitle = usedAni.userPreferredName.ifBlank { usedAni.mainName() }
                         it.matchedAniCoverUrl = usedAni.cover
-                        it.matchedCoverB2key = null
                         it.matchedAniId = usedAni.id
                         it.matchedAniType = if (usedAni.anime != null) "anime" else "manga"
                     } else {
                         it.matchedTitle = getString(R.string.no_anilist_id_found)
                         it.matchedAniCoverUrl = null
-                        it.matchedCoverB2key = null
                         it.matchedAniId = null
                         it.matchedAniType = null
-                    }
                     }
                 } catch (_: Exception) {
                     if (it.matchedTitle == null) it.matchedTitle = getString(R.string.no_anilist_id_found)
@@ -348,7 +302,6 @@ class MediaEquivalentsActivity : AppCompatActivity() {
                     holder.matchTitle.setOnClickListener(null)
                 }
                 val aniCover = item.matchedAniCoverUrl
-                val b2 = item.matchedCoverB2key
                 when {
                     !aniCover.isNullOrBlank() -> {
                         // real AniList cover: clear card background and show image cropped
@@ -357,15 +310,6 @@ class MediaEquivalentsActivity : AppCompatActivity() {
                         holder.matchCover.scaleType = ImageView.ScaleType.CENTER_CROP
                         Glide.with(holder.matchCover.context).clear(holder.matchCover)
                         holder.matchCover.loadImage(aniCover)
-                    }
-                    !b2.isNullOrBlank() -> {
-                        // Comick thumb (shouldn't be used per recent change, but keep fallback defensive)
-                        holder.matchCoverCard.setCardBackgroundColor(Color.TRANSPARENT)
-                        holder.matchCover.imageTintList = null
-                        holder.matchCover.scaleType = ImageView.ScaleType.CENTER_CROP
-                        Glide.with(holder.matchCover.context).clear(holder.matchCover)
-                        val thumb = buildThumbUrl(b2)
-                        holder.matchCover.loadImage(thumb)
                     }
                     else -> {
                         // No AniList match: gray card with the AniList search icon (tap to quick-search)
@@ -426,15 +370,5 @@ class MediaEquivalentsActivity : AppCompatActivity() {
                 .show(supportFragmentManager, "equiv_row_quick_sheet_$position")
         }
 
-        private fun buildThumbUrl(b2key: String): String {
-            val dotIdx = b2key.lastIndexOf('.')
-            return if (dotIdx >= 0) {
-                val base = b2key.substring(0, dotIdx)
-                val ext = b2key.substring(dotIdx)
-                "https://meo.comick.pictures/${base}-s${ext}"
-            } else {
-                "https://meo.comick.pictures/$b2key"
-            }
-        }
     }
 }
