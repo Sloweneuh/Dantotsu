@@ -1386,6 +1386,9 @@ class HomeFragment : Fragment() {
                 binding.homeContinueReadMore.setOnClickListener { i ->
                     MediaListViewActivity.passedMedia = ArrayList(aniItems)
                     MediaListViewActivity.passedMuMedia = ArrayList(muItems)
+                    // The row's own order: last read in the app first, which the screen can't
+                    // work out from update times alone.
+                    MediaListViewActivity.passedOrder = ArrayList(combined)
                     // Not an unread list. The screen now picks its adapter off this, so a stale
                     // one left by the unread row would relabel these as unread chapters.
                     MediaListViewActivity.passedUnreadInfo = null

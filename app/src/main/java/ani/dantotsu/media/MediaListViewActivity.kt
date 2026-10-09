@@ -271,7 +271,10 @@ class MediaListViewActivity : AppCompatActivity() {
         // touched it, so it uses the same rule the home row does instead of the last-read merge
         // that "Continue Reading" wants.
         val localUnreadInfo = unreadInfo
+        val order = passedOrder
         combinedItems = when {
+            // The caller's row already settled the order; show it as it was.
+            order != null -> order
             muMediaList.isEmpty() && comickList.isEmpty() -> null
             // [isStack], not [fromMalStack] — the latter is set for any caller that passed media
             // in, which includes the unread list itself; only stackUrl marks an actual stack.
@@ -401,6 +404,7 @@ class MediaListViewActivity : AppCompatActivity() {
             passedMedia = null
             passedMuMedia = null
             passedComick = null
+            passedOrder = null
             passedUnreadInfo = null
             passedUnreleasedInfo = null
             passedDescription = null
@@ -418,6 +422,12 @@ class MediaListViewActivity : AppCompatActivity() {
         var passedMuMedia: ArrayList<MUMedia>? = null
         /** Unread titles only Comick knows; the rest arrive as [passedMedia]/[passedMuMedia]. */
         var passedComick: ArrayList<ComickUnreadEntry>? = null
+        /**
+         * The exact order to show [passedMedia] and [passedMuMedia] in, as the home row that opened
+         * this has them — for a row sorted by something this screen can't recompute (the reader's
+         * local history). Null lets the screen sort them itself.
+         */
+        var passedOrder: ArrayList<Any>? = null
         var passedUnreadInfo: Map<Int, UnreadChapterInfo>? = null
         var passedUnreleasedInfo: Map<Int, UnreleasedEpisodeInfo>? = null
         var passedDescription: String? = null
