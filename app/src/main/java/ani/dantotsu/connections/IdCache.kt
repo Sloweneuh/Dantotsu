@@ -83,6 +83,16 @@ object IdCache {
 
     fun getLong(key: String): Long? = get(key)?.toLongOrNull()
 
+    /**
+     * Every entry whose key starts with [prefix], for reading a mapping backwards. A scan of the
+     * whole cache, so it's for a once-per-pass index rather than a per-title lookup. Doesn't count
+     * as a use of the entries for eviction.
+     */
+    fun withPrefix(prefix: String): Map<String, String> = synchronized(lock) {
+        load()
+        entries.filterKeys { it.startsWith(prefix) }
+    }
+
     fun put(key: String, value: Any) = putAll(mapOf(key to value))
 
     /** Stores every entry, flushing once if enough has built up since the last write. */

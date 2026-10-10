@@ -16,6 +16,7 @@ import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.comick.Comick
 import ani.dantotsu.connections.comick.ComickApi
 import ani.dantotsu.connections.comick.ComickLibraryEntry
+import ani.dantotsu.connections.comick.ComickMatches
 import ani.dantotsu.connections.comick.ComickSync
 import ani.dantotsu.connections.mangabaka.MangaBakaApi
 import ani.dantotsu.connections.mangaupdates.MUDetailsCache
@@ -69,8 +70,9 @@ import kotlin.math.floor
  * Comick by days. What this announces is marked as announced for that check too, so the chapter
  * isn't announced a second time when its count catches up.
  *
- * A title is shown, and opened, as what it's tracked on: the AniList media Comick links — or
- * MangaBaka maps its MangaUpdates link to — when it's on the AniList list, else the MangaUpdates
+ * A title is shown, and opened, as what it's tracked on: the AniList media Comick links — or, where
+ * Comick links none, the one it was matched to in the app ([ComickMatches]: picked by hand, or
+ * matched automatically), or MangaBaka maps its MangaUpdates link to — when it's on the AniList list, else the MangaUpdates
  * series when it's on the MangaUpdates lists (an AniList media not yet moved over included). Off
  * both lists it's the AniList media (when AniList is connected), else the MangaUpdates series,
  * else Comick's own; it opens the AniList page when they use AniList (or MangaUpdates isn't an
@@ -363,9 +365,30 @@ class ComickUnreadNotificationTask : Task {
         }
         Logger.log("ComickUnreadNotificationTask: ${library.size} titles being read")
 
+        // Fetched at most once, by whichever needs it first.
+        var fetchedMuLists: Map<Long, MUMedia>? = null
+        suspend fun muLists() = fetchedMuLists ?: muListEntries().also { fetchedMuLists = it }
+
+        val matches = ComickMatches.index()
+        val matchFor = library.associate { it.hid to matches.of(it.hid, it.slug) }
+        // A pick from a MangaUpdates page saved before its series was: found again on the lists by
+        // its key, and recorded, so it's looked for only once.
+        val byMuKey = if (matchFor.values.any { it?.muKey != null && it.muSeriesId == null }) {
+            muLists().values.associateBy { muMediaKey(it.id) }
+        } else emptyMap()
+        val resolvedMatch = matchFor.mapValues { (_, match) ->
+            val muKey = match?.muKey
+            if (muKey == null || match.muSeriesId != null) return@mapValues match
+            val series = byMuKey[muKey] ?: return@mapValues match
+            ComickMatches.recordMuPick(muKey, series.id)
+            match.copy(muSeriesId = series.id)
+        }
+
         // A catalog lookup failing leaves the title for the next run rather than guessing where it
         // should link, or whether another check already covers it.
-        val linked = library.mapNotNull { entry -> linksFor(entry)?.let { entry to it } }
+        val linked = library.mapNotNull { entry ->
+            linksFor(entry, resolvedMatch[entry.hid])?.let { entry to it }
+        }
         // Every followed title Comick links to AniList is a ready-made match for list sync.
         linked.forEach { (entry, links) -> links.anilistId?.let { ComickSync.rememberMatch(it, entry.hid) } }
         IdCache.flush()
@@ -375,7 +398,7 @@ class ComickUnreadNotificationTask : Task {
         val needMu = linked.any { (_, links) ->
             links.mangaUpdatesIds.isNotEmpty() && links.anilistId?.let { anilistMedia[it] }?.userStatus == null
         }
-        val muEntries = if (needMu) muListEntries() else emptyMap()
+        val muEntries = if (needMu) muLists() else emptyMap()
 
         val excludeList = PrefManager.getVal<Set<String>>(PrefName.MalSyncExcludeList)
         val candidates = linked.mapNotNull { (entry, links) ->
@@ -600,8 +623,24 @@ class ComickUnreadNotificationTask : Task {
      * kept, since only the full details response carries them. Null when that fetch fails.
      * Fetches are spaced like [titlesBehind]'s, since a first run looks up the whole library.
      */
-    private suspend fun linksFor(entry: ComickLibraryEntry): Links? =
-        comickLinksFor(entry)?.let { withMangaBakaAnilist(entry.hid, it) }
+    private suspend fun linksFor(entry: ComickLibraryEntry, match: ComickMatches.Target?): Links? =
+        comickLinksFor(entry)?.let { withMatch(entry.hid, it, match) }?.let { withMangaBakaAnilist(entry.hid, it) }
+
+    /**
+     * [links] with what the title was matched to in the app ([match]) where Comick's catalog has no
+     * link of its own: no AniList id, or no MangaUpdates id a screen can open. Comick's own link
+     * stands wherever it has one. Not cached with the links, so unlinking a pick takes effect.
+     */
+    private fun withMatch(hid: String, links: Links, match: ComickMatches.Target?): Links {
+        match ?: return links
+        val anilistId = links.anilistId ?: match.anilistId
+        val mangaUpdates = if (links.muSeriesId == null) {
+            match.muSeriesId?.toString(36) ?: links.mangaUpdates
+        } else links.mangaUpdates
+        if (anilistId == links.anilistId && mangaUpdates == links.mangaUpdates) return links
+        Logger.log("ComickUnreadNotificationTask: $hid: Comick link missing, matched to AniList $anilistId / MU $mangaUpdates")
+        return links.copy(anilistId = anilistId, mangaUpdates = mangaUpdates)
+    }
 
     /**
      * [links] with the AniList id MangaBaka maps its MangaUpdates series to, when Comick links only

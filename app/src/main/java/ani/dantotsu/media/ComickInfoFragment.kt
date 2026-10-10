@@ -19,6 +19,7 @@ import ani.dantotsu.connections.anilist.AnilistSearch.SearchType
 import ani.dantotsu.connections.anilist.AnilistSearch.SearchType.Companion.toAnilistString
 import ani.dantotsu.connections.comick.ComickApi
 import ani.dantotsu.connections.comick.ComickEpisodes
+import ani.dantotsu.connections.comick.ComickMatches
 import ani.dantotsu.connections.comick.broadcastDisplayZone
 import ani.dantotsu.connections.comick.ComickResponse
 import ani.dantotsu.connections.comick.displayTitle
@@ -170,6 +171,8 @@ class ComickInfoFragment : Fragment() {
                     if (savedSlug != null) {
                         comickSlug = savedSlug
                         model.comickSlug.postValue(savedSlug)
+                        // A pick made before its series was recorded; see ComickMatches.muPickKey.
+                        if (!isAnimeMode) media.muSeriesId?.let { ComickMatches.recordMuPick(media.id, it) }
                     } else {
                         // Data not preloaded yet, fetch it now
 
@@ -579,6 +582,8 @@ class ComickInfoFragment : Fragment() {
 
         // Save the slug to preferences - user selected this, so we trust it
         PrefManager.setCustomVal(slugKey(media.id), slug)
+        // The pick is keyed by the truncated MangaUpdates key; the notification check needs the id.
+        if (!isAnimeMode) media.muSeriesId?.let { ComickMatches.recordMuPick(media.id, it) }
 
         // Update ViewModel
         model.comickSlug.postValue(slug)
@@ -676,6 +681,7 @@ class ComickInfoFragment : Fragment() {
         // Remove the saved slug from preferences. Also drop the remembered auto-match, so
         // unlinking really does start over instead of falling back to a cached guess.
         PrefManager.removeCustomVal(slugKey(media.id))
+        if (!isAnimeMode && media.muSeriesId != null) ComickMatches.clearMuPick(media.id)
         if (isAnimeMode) ComickEpisodes.clearAutoSlug(media.id)
 
         // Clear ViewModel
