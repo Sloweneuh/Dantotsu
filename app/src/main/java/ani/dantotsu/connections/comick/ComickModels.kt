@@ -448,7 +448,22 @@ data class ComickSearchResult(
     val status: Int?,
     val last_chapter: Double?,
     val demographic: Int?,
-    val year: Int?
+    val year: Int?,
+    /** The trackers Comick links the title to — null when the response predates them. */
+    val external_ids: ComickExternalIds? = null,
+    val user_follow_count: Int? = null,
+) : Serializable
+
+/**
+ * A search result's tracker ids, each null when Comick has none. Unlike [ComickLinks] these include
+ * the AniList/MAL mappings Comick keeps for sync after a public link was removed. MangaUpdates may
+ * be the legacy numeric id or the base-36 series id, as in [ComickLinks.mu].
+ */
+data class ComickExternalIds(
+    val anilist: String? = null,
+    val myanimelist: String? = null,
+    val mangabaka: String? = null,
+    val mangaupdates: String? = null,
 ) : Serializable
 
 data class ComickCustomList(
@@ -758,4 +773,20 @@ data class ComickLibraryProgress(
 /** `GET /integrations/v1/me/library/{hid}`, and what the write routes answer with. */
 data class ComickLibraryEntryResponse(
     val data: ComickLibraryEntry? = null,
+)
+
+/**
+ * `GET /integrations/v1/titles/{hid}`: a title's public metadata for tracking — a small fraction of
+ * the catalog's details response, and with [external_ids], which that response's links lack.
+ */
+data class ComickTitle(
+    val hid: String,
+    val slug: String? = null,
+    val title: String? = null,
+    val cover_url: String? = null,
+    val external_ids: ComickExternalIds? = null,
+)
+
+data class ComickTitleResponse(
+    val data: ComickTitle? = null,
 )

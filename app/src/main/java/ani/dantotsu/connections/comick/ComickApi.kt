@@ -695,19 +695,38 @@ object ComickApi {
             existingValidMuIds?.let { validMuIds.addAll(it) }
             val potentialComics = mutableListOf<Pair<ComickComic, String?>>() // Comics with their MU IDs
 
+            // The tracker ids on each result settle most of them without the ~200 KB detail
+            // fetch, which is now only paid for a result worth keeping (its full entry is what
+            // [selectBestComic] picks and merges from) or one to check against [externalLinks]. A
+            // result linking another AniList or MAL entry isn't this one, so it's fetched only if it
+            // shares a MangaUpdates id with one that is. A response without the ids goes by the
+            // details, as before.
+            val skipped = mutableListOf<ComickSearchResult>()
+
             // First pass: Find entries that match by AniList or MAL ID
             for (result in searchResults) {
+                val slug = result.slug ?: continue
+                val ids = result.external_ids
+                val idMatch = ids != null && (ids.anilist == anilistId.toString() ||
+                    (malId != null && ids.myanimelist == malId.toString()))
+                val otherEntry = ids != null && !idMatch &&
+                    (ids.anilist != null || (malId != null && ids.myanimelist != null))
+                if (ids != null && !idMatch && (otherEntry || externalLinks.isNullOrEmpty())) {
+                    skipped += result
+                    continue
+                }
+
                 // Fetch full details WITHOUT cache to get raw follower counts
-                val details = getComicDetails(result.slug ?: continue, useCache = false, mediaType = mediaType)
+                val details = getComicDetails(slug, useCache = false, mediaType = mediaType)
                 val links = details?.comic?.links
                 val comic = details?.comic
 
                 if (comic == null) {
-                    Logger.log("Comick: Failed to get details for slug: ${result.slug}")
+                    Logger.log("Comick: Failed to get details for slug: $slug")
                     continue
                 }
 
-                var isMatch = false
+                var isMatch = idMatch
 
                 // Check if AniList ID matches
                 if (links?.al == anilistId.toString()) {
@@ -724,15 +743,14 @@ object ComickApi {
                     isMatch = true
                 }
 
+                val muId = links?.mu ?: ids?.mangaupdates
                 if (isMatch) {
                     validComics.add(comic)
                     // Track the MU ID of this valid entry
-                    links?.mu?.let { muId ->
-                        validMuIds.add(muId)
-                    }
+                    muId?.let { validMuIds.add(it) }
                 } else {
                     // Store for potential validation by MU ID in second pass
-                    potentialComics.add(Pair(comic, links?.mu))
+                    potentialComics.add(Pair(comic, muId))
                 }
             }
 
@@ -742,6 +760,12 @@ object ComickApi {
                     if (muId != null && muId in validMuIds) {
                         validComics.add(comic)
                     }
+                }
+                for (result in skipped) {
+                    if (result.external_ids?.mangaupdates !in validMuIds) continue
+                    val comic = getComicDetails(result.slug ?: continue, useCache = false, mediaType = mediaType)
+                        ?.comic ?: continue
+                    validComics.add(comic)
                 }
             }
 
@@ -1004,9 +1028,10 @@ object ComickApi {
     }
 
     /**
-     * Search for a Comick entry matching a MangaUpdates series by checking only [ComickLinks.mu].
-     * Tries each title in order, fetches full details for each result, and returns the slug of
-     * the comic whose `links.mu` equals the numeric or base-36 representation of [muSeriesId].
+     * Search for a Comick entry matching a MangaUpdates series by its MangaUpdates id alone.
+     * Tries each title in order and returns the slug of the most-followed result whose
+     * MangaUpdates id ([ComickExternalIds.mangaupdates], or `links.mu` from its details when the
+     * search response has no ids) is the numeric or base-36 form of [muSeriesId].
      */
     suspend fun searchAndMatchComicByMuId(
         titles: List<String>,
@@ -1027,11 +1052,20 @@ object ComickApi {
             val type = object : TypeToken<List<ComickSearchResult>>() {}.type
             val results: List<ComickSearchResult> = try { gson.fromJson(body, type) } catch (e: Exception) { continue }
 
+            fun String.isThisSeries() = trim().let { it == muIdNumeric || it == muIdBase36 }
+            // The tracker ids and follow counts the results carry answer this outright; only a
+            // response without them is checked through each result's details.
+            if (results.all { it.external_ids != null }) {
+                results.filter { it.external_ids?.mangaupdates?.isThisSeries() == true }
+                    .maxByOrNull { it.user_follow_count ?: 0 }?.slug
+                    ?.let { return@withContext it }
+                continue
+            }
             val candidates = mutableListOf<ComickComic>()
             for (result in results) {
                 val details = getComicDetails(result.slug ?: continue, useCache = false) ?: continue
-                val mu = details.comic?.links?.mu?.trim() ?: continue
-                if (mu == muIdNumeric || mu == muIdBase36) {
+                val mu = details.comic?.links?.mu ?: continue
+                if (mu.isThisSeries()) {
                     details.comic?.let { candidates.add(it) }
                 }
             }

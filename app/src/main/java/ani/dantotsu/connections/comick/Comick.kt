@@ -499,6 +499,22 @@ object Comick {
         return false
     }
 
+    // ---- titles ----
+
+    /**
+     * The title [hid]'s tracking metadata, its tracker ids included — the AniList/MAL mappings
+     * Comick keeps for sync after a public link was removed among them. Null when not connected,
+     * the title isn't found, or the request fails.
+     */
+    suspend fun getTitle(hid: String): ComickTitle? {
+        val res = call("$RESOURCE/titles/${Uri.encode(hid)}") ?: return null
+        if (res.code in 200..299) {
+            return runCatching { gson.fromJson(res.body, ComickTitleResponse::class.java)?.data }.getOrNull()
+        }
+        logFailure("title", res)
+        return null
+    }
+
     private fun entryUrl(hid: String) = "$LIBRARY_URL/${Uri.encode(hid)}"
 
     private class ApiResponse(val code: Int, val body: String)

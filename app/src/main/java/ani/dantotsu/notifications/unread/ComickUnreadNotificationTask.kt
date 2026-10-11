@@ -171,7 +171,7 @@ class ComickUnreadNotificationTask : Task {
         )
     }
 
-    /** What a Comick title links to elsewhere, from its catalog entry. Cached in [IdCache]. */
+    /** What a Comick title links to elsewhere, from its title lookup. Cached in [IdCache]. */
     private data class Links(val anilistId: Int?, val mangaUpdates: String?, val coverUrl: String?) {
         /** Comick stores the MangaUpdates id either as the old number or in base 36. */
         val mangaUpdatesIds: Set<Long>
@@ -619,8 +619,9 @@ class ComickUnreadNotificationTask : Task {
     }
 
     /**
-     * The title's AniList/MangaUpdates ids and cover, from its catalog entry — fetched once and
-     * kept, since only the full details response carries them. Null when that fetch fails.
+     * The title's AniList/MangaUpdates ids and cover, from Comick's title lookup — kept, since the
+     * library doesn't carry them, and looked up again weekly while either id is missing. Null when
+     * the first fetch fails.
      * Fetches are spaced like [titlesBehind]'s, since a first run looks up the whole library.
      */
     private suspend fun linksFor(entry: ComickLibraryEntry, match: ComickMatches.Target?): Links? =
@@ -658,26 +659,37 @@ class ComickUnreadNotificationTask : Task {
 
     private suspend fun comickLinksFor(entry: ComickLibraryEntry): Links? {
         val hid = entry.hid
-        IdCache["comick_al_$hid"]?.let { al ->
-            return Links(
+        val cached = IdCache["$LINKS_KEY_AL$hid"]?.let { al ->
+            Links(
                 anilistId = al.toIntOrNull(),
-                mangaUpdates = IdCache["comick_mu_$hid"]?.takeIf { it.isNotBlank() },
-                coverUrl = IdCache["comick_cover_$hid"]?.takeIf { it.isNotBlank() },
+                mangaUpdates = IdCache["$LINKS_KEY_MU$hid"]?.takeIf { it.isNotBlank() },
+                coverUrl = IdCache["$LINKS_KEY_COVER$hid"]?.takeIf { it.isNotBlank() },
             )
         }
-        val comic = ComickApi.getComicDetails(entry.slug ?: hid).also { delay(REQUEST_SPACING_MS) }
-            ?.comic ?: return null
+        // A title missing a link is asked about again now and then, in case Comick has added it
+        // since; one with both is settled.
+        if (cached != null) {
+            val complete = cached.anilistId != null && cached.mangaUpdates != null
+            val checkedAt = IdCache.getLong("$LINKS_KEY_CHECKED$hid") ?: 0L
+            if (complete || System.currentTimeMillis() - checkedAt < MISSING_LINK_RECHECK_MS) return cached
+        }
+        // The tracking lookup rather than the catalog's details: a fraction of the size, and its
+        // ids include the AniList/MAL mappings Comick keeps after a public link was removed. A
+        // re-check that fails keeps what was known.
+        val title = Comick.getTitle(hid).also { delay(REQUEST_SPACING_MS) } ?: return cached
+        val ids = title.external_ids
         val links = Links(
-            anilistId = comic.links?.al?.trim()?.toIntOrNull()?.takeIf { it > 0 },
-            mangaUpdates = comic.links?.mu?.trim()?.takeIf { it.isNotBlank() },
-            coverUrl = comic.md_covers?.firstOrNull()?.b2key?.let { "https://meo.comick.pictures/$it" },
+            anilistId = ids?.anilist?.trim()?.toIntOrNull()?.takeIf { it > 0 },
+            mangaUpdates = ids?.mangaupdates?.trim()?.takeIf { it.isNotBlank() },
+            coverUrl = title.cover_url?.takeIf { it.isNotBlank() },
         )
         // Blank marks "looked up, none" so a title without links isn't fetched again every run.
         IdCache.putAll(
             mapOf(
-                "comick_al_$hid" to (links.anilistId?.toString() ?: ""),
-                "comick_mu_$hid" to (links.mangaUpdates ?: ""),
-                "comick_cover_$hid" to (links.coverUrl ?: ""),
+                "$LINKS_KEY_AL$hid" to (links.anilistId?.toString() ?: ""),
+                "$LINKS_KEY_MU$hid" to (links.mangaUpdates ?: ""),
+                "$LINKS_KEY_COVER$hid" to (links.coverUrl ?: ""),
+                "$LINKS_KEY_CHECKED$hid" to System.currentTimeMillis(),
             )
         )
         return links
@@ -915,6 +927,20 @@ class ComickUnreadNotificationTask : Task {
 
         /** The notification id each announced chapter went out under; see [moveNotifications]. */
         const val ANNOUNCED_IDS_KEY = "notified_comick_ids"
+
+        /**
+         * [comickLinksFor]'s cache keys, each followed by the hid. Not the `comick_al_` ones the
+         * catalog's details filled: those lack the mappings Comick keeps for sync, so every title is
+         * looked up once more.
+         */
+        const val LINKS_KEY_AL = "comick_ids_al_"
+        const val LINKS_KEY_MU = "comick_ids_mu_"
+        const val LINKS_KEY_COVER = "comick_ids_cover_"
+        /** When the links were last looked up, for re-checking incomplete ones. */
+        const val LINKS_KEY_CHECKED = "comick_ids_at_"
+
+        /** How often a title missing its AniList or MangaUpdates link is looked up again. */
+        const val MISSING_LINK_RECHECK_MS = 7 * 24 * 60 * 60 * 1000L
 
         /** How long each catalog request keeps its slot past the response; see [titlesBehind]. */
         const val REQUEST_SPACING_MS = 400L
