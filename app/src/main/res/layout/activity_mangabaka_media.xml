@@ -105,8 +105,11 @@
     </com.google.android.material.appbar.AppBarLayout>
 
     <!-- Content -->
+    <!-- transitionGroup: the enter transition re-shows every child it captured when the screen
+         turns off, which would bring back the long-hidden loading spinner. -->
     <FrameLayout
         android:id="@+id/mangaBakaMediaPages"
+        android:transitionGroup="true"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
