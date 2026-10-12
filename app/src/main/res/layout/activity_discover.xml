@@ -122,7 +122,7 @@
             android:layout_marginTop="8dp"
             android:fontFamily="@font/poppins_bold"
             android:visibility="gone"
-            app:icon="@drawable/ic_round_filter_list_24"
+            app:icon="@drawable/ic_round_filter_alt_24"
             tools:text="@string/discover_start_filtered"
             tools:visibility="visible" />
 
