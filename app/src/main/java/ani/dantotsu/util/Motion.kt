@@ -10,6 +10,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.withResumed
 import androidx.interpolator.view.animation.FastOutSlowInInterpolator
 import androidx.viewpager2.widget.ViewPager2
+import ani.dantotsu.R
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import kotlinx.coroutines.launch
@@ -53,6 +54,9 @@ fun ViewPager2.useSharedAxisTransitions() {
             last = position
             // A swipe animated itself; only a jump (no scroll at all) needs the motion played.
             if (dragging || scrollState != ViewPager2.SCROLL_STATE_IDLE || from == position) return
+            // Opening on a tab isn't switching to it. Playing the motion then also races the
+            // activity's enter transition, which can leave the pager stuck mid-travel.
+            if (getTag(R.id.pager_quiet_jump) == true || !isShown) return
             animate().cancel()
             alpha = 0f
             translationX = if (position > from) travel else -travel
@@ -60,6 +64,16 @@ fun ViewPager2.useSharedAxisTransitions() {
                 .setInterpolator(FastOutSlowInInterpolator()).start()
         }
     })
+}
+
+/** Moves to [item] without the shared-axis motion: for opening on a page, not switching to one. */
+fun ViewPager2.jumpTo(item: Int) {
+    setTag(R.id.pager_quiet_jump, true)
+    try {
+        setCurrentItem(item, false)
+    } finally {
+        setTag(R.id.pager_quiet_jump, null)
+    }
 }
 
 /** Shows or hides a bottom-anchored view (a floating toolbar) by springing it up from below the screen edge. */

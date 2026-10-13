@@ -67,6 +67,7 @@ import ani.dantotsu.others.AndroidBug5497Workaround
 import ani.dantotsu.others.ImageViewDialog
 import ani.dantotsu.others.getSerialized
 import ani.dantotsu.settings.bindQuickSettings
+import ani.dantotsu.util.jumpTo
 import ani.dantotsu.util.useSharedAxisTransitions
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
@@ -1250,7 +1251,7 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
         // A queue pick always opens on Info, where its "why" is — whatever tab the last one was on.
         if (discoverSource != null) selected = 0
         if (viewPager.currentItem != selected)
-                viewPager.post { viewPager.setCurrentItem(selected, false) }
+                viewPager.post { viewPager.jumpTo(selected) }
         binding.commentInputLayout.isVisible = selected == 2
         navBar.selectTabAt(selected)
         navBar.setOnTabSelectListener(

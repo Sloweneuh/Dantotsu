@@ -24,4 +24,7 @@
     -->
     <item name="page_render_zoom" type="id" />
     <item name="page_zoom_listener" type="id" />
+
+    <!-- Set on a ViewPager2 while ViewPager2.jumpTo moves it, so the shared-axis motion skips it. -->
+    <item name="pager_quiet_jump" type="id" />
 </resources>

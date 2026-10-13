@@ -1,6 +1,8 @@
 package ani.dantotsu.others
 
 import android.content.Context
+import android.graphics.drawable.Animatable
+import android.graphics.drawable.DrawableWrapper
 import android.util.AttributeSet
 import android.view.ViewGroup
 import android.widget.ProgressBar
@@ -69,9 +71,33 @@ class MaterialProgressBar @JvmOverloads constructor(
     private fun applySpecs() {
         linearSpec?.let {
             progressDrawable = DeterminateDrawable.createLinearDrawable(context, it)
-            indeterminateDrawable = IndeterminateDrawable.createLinearDrawable(context, it)
+            indeterminateDrawable = Spinning(IndeterminateDrawable.createLinearDrawable(context, it))
         }
-        circularSpec?.let { indeterminateDrawable = IndeterminateDrawable.createCircularDrawable(context, it) }
+        circularSpec?.let {
+            indeterminateDrawable = Spinning(IndeterminateDrawable.createCircularDrawable(context, it))
+        }
+    }
+
+    /**
+     * Gives the platform ProgressBar an Animatable it can drive. It starts a spinner by calling
+     * start() (on attach, on becoming visible, after a rebind), but Material's start() shows the
+     * drawable without animating, and on API 23+ that path cancels the spin and never restarts
+     * it: the spinner froze on its first frame. Showing it animated is what runs the spin.
+     */
+    private class Spinning(private val inner: IndeterminateDrawable<*>) : DrawableWrapper(inner), Animatable {
+        private var running = false
+
+        override fun start() {
+            running = true
+            inner.setVisible(true, true, true)
+        }
+
+        override fun stop() {
+            running = false
+            inner.setVisible(false, true, false)
+        }
+
+        override fun isRunning() = running
     }
 
     override fun setVisibility(visibility: Int) {
