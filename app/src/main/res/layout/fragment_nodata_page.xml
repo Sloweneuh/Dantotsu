@@ -1,56 +1,68 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- Pattern: the tracker's own logo (whatever the code sets on @id/logo), drifting behind. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:gravity="center"
-    android:orientation="vertical"
-    android:padding="32dp">
+    android:layout_height="match_parent">
 
-    <ImageView
-        android:id="@+id/logo"
-        android:layout_width="96dp"
-        android:layout_height="96dp"
-        android:layout_marginBottom="16dp"
-        android:contentDescription="@string/mangaupdates"
-        app:srcCompat="@drawable/ic_round_mangaupdates_24"
-        app:tint="?attr/colorPrimary"/>
+    <!-- Follows the logo below. -->
+    <ani.dantotsu.others.PatternBackgroundView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:patternAnchor="@id/logo" />
 
-    <TextView
-        android:id="@+id/title"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp"
-        android:fontFamily="@font/poppins_bold"
-        android:textAlignment="center"
-        android:text="@string/mu_search_title"
-        android:textSize="18sp" />
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="32dp">
 
-    <!-- Small subtitle message shown under the title (set by each fragment) -->
-    <TextView
-        android:id="@+id/subtitle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
-        android:text=""
-        android:textAlignment="center"
-        android:textSize="14sp"
-        android:fontFamily="@font/poppins"
-        android:textColor="?attr/colorOnSurfaceVariant" />
+        <ImageView
+            android:id="@+id/logo"
+            android:layout_width="96dp"
+            android:layout_height="96dp"
+            android:layout_marginBottom="16dp"
+            android:contentDescription="@string/mangaupdates"
+            app:srcCompat="@drawable/ic_round_mangaupdates_24"
+            app:tint="?attr/colorPrimary"/>
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/quickSearchButton"
-        style="@style/Widget.Material3.Button.OutlinedButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp"
-        android:paddingHorizontal="32dp"
-        android:text="@string/quick_search"
-        android:textSize="14sp"
-        app:icon="@drawable/ic_round_search_24"
-        app:iconGravity="textStart"
-        app:cornerRadius="8dp"
-        app:strokeColor="?attr/colorPrimary"
-        app:strokeWidth="2dp" />
+        <TextView
+            android:id="@+id/title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:fontFamily="@font/poppins_bold"
+            android:textAlignment="center"
+            android:text="@string/mu_search_title"
+            android:textSize="18sp" />
 
-</LinearLayout>
+        <!-- Small subtitle message shown under the title (set by each fragment) -->
+        <TextView
+            android:id="@+id/subtitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:text=""
+            android:textAlignment="center"
+            android:textSize="14sp"
+            android:fontFamily="@font/poppins"
+            android:textColor="?attr/colorOnSurfaceVariant" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/quickSearchButton"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:paddingHorizontal="32dp"
+            android:text="@string/quick_search"
+            android:textSize="14sp"
+            app:icon="@drawable/ic_round_search_24"
+            app:iconGravity="textStart"
+            app:cornerRadius="8dp"
+            app:strokeColor="?attr/colorPrimary"
+            app:strokeWidth="2dp" />
+
+    </LinearLayout>
+</FrameLayout>

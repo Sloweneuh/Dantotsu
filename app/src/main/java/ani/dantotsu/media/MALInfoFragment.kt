@@ -39,6 +39,7 @@ import ani.dantotsu.media.StackAdapter
 import ani.dantotsu.others.MalScraper
 import ani.dantotsu.others.MALReview
 import ani.dantotsu.util.Logger
+import ani.dantotsu.util.whenViewResumed
 import com.xwray.groupie.GroupieAdapter
 
 class MALInfoFragment : Fragment() {
@@ -104,16 +105,19 @@ class MALInfoFragment : Fragment() {
         }
 
         // Check if MAL is logged in
-        lifecycleScope.launch {
-            val isLoggedIn = withContext(Dispatchers.IO) {
-                MAL.getSavedToken()
-            }
+        // Not during the pager's slide: wait until this tab is on screen and settled.
+        whenViewResumed {
+            lifecycleScope.launch {
+                val isLoggedIn = withContext(Dispatchers.IO) {
+                    MAL.getSavedToken()
+                }
 
-            model.getMedia().observe(viewLifecycleOwner) { load(model, isLoggedIn, offline) }
-            // MangaUpdates-backed media have no MAL id of their own — it's resolved in the
-            // background from a cross-source mapping, so the first pass above usually has to wait.
-            // Re-run once that lands.
-            model.muMalLoaded.observe(viewLifecycleOwner) { load(model, isLoggedIn, offline) }
+                model.getMedia().observe(viewLifecycleOwner) { load(model, isLoggedIn, offline) }
+                // MangaUpdates-backed media have no MAL id of their own — it's resolved in the
+                // background from a cross-source mapping, so the first pass above usually has to wait.
+                // Re-run once that lands.
+                model.muMalLoaded.observe(viewLifecycleOwner) { load(model, isLoggedIn, offline) }
+            }
         }
     }
 

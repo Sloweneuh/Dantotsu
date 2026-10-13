@@ -58,7 +58,7 @@
             android:text="@string/mu_custom_list_mapping_hint"
             android:textSize="13sp" />
 
-        <ProgressBar
+        <ani.dantotsu.others.MaterialProgressBar
             android:id="@+id/muCustomMappingProgress"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

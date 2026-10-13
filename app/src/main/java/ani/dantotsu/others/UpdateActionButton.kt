@@ -66,7 +66,7 @@ class UpdateActionButton @JvmOverloads constructor(
     private var pending: Content? = null
 
     init {
-        val primary = context.getThemeColor(com.google.android.material.R.attr.colorPrimary)
+        val primary = context.getThemeColor(androidx.appcompat.R.attr.colorPrimary)
         val onPrimary = context.getThemeColor(com.google.android.material.R.attr.colorOnPrimary)
 
         pill.setColor(primary)

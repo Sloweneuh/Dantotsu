@@ -68,6 +68,7 @@ import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.util.AudioHelper
 import ani.dantotsu.util.Logger
 import ani.dantotsu.util.customAlertDialog
+import ani.dantotsu.util.useSharedAxisTransitions
 import com.google.android.material.snackbar.BaseTransientBottomBar
 import com.google.android.material.snackbar.Snackbar
 import io.noties.markwon.Markwon
@@ -322,7 +323,7 @@ class MainActivity : AppCompatActivity() {
             mainViewPager.isUserInputEnabled = false
             mainViewPager.adapter =
                 ViewPagerAdapter(supportFragmentManager, lifecycle, visibleTabs)
-            mainViewPager.setPageTransformer(ZoomOutPageTransformer())
+            mainViewPager.useSharedAxisTransitions()
             if (!onlyHomeVisible) {
                 // Remove disabled tabs from navbar (reverse order to avoid index shifting)
                 if (!showManga) navbar.removeTabAt(2)

@@ -46,7 +46,7 @@
             android:textSize="18sp"
             tools:text="Anime" />
 
-        <ProgressBar
+        <ani.dantotsu.others.MaterialProgressBar
             android:id="@+id/sectionProgress"
             style="?android:attr/progressBarStyleSmall"
             android:layout_width="20dp"

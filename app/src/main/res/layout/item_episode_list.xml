@@ -39,7 +39,7 @@
                 app:cardBackgroundColor="#000000"
                 app:cardCornerRadius="16dp">
 
-                <ProgressBar
+                <ani.dantotsu.others.MaterialProgressBar
                     style="?android:attr/progressBarStyle"
                     android:layout_width="32dp"
                     android:layout_height="32dp"
@@ -171,14 +171,31 @@
                 android:visibility="gone"
                 tools:ignore="ContentDescription" />
 
-            <ImageButton
-                android:id="@+id/itemDownload"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:background="@android:color/transparent"
-                app:srcCompat="@drawable/ic_download_24"
-                app:tint="?attr/colorOnBackground"
-                tools:ignore="ContentDescription" />
+            <!-- While downloading, the ring takes the icon's place (the button stays under it,
+                 still tappable to stop the download). -->
+            <FrameLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content">
+
+                <ImageButton
+                    android:id="@+id/itemDownload"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="@android:color/transparent"
+                    app:srcCompat="@drawable/ic_download_24"
+                    app:tint="?attr/colorOnBackground"
+                    tools:ignore="ContentDescription" />
+
+                <com.google.android.material.progressindicator.CircularProgressIndicator
+                    android:id="@+id/itemDownloadProgress"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:indeterminate="true"
+                    android:visibility="gone"
+                    app:indicatorSize="22dp"
+                    app:trackThickness="3dp" />
+            </FrameLayout>
 
         </LinearLayout>
 

@@ -119,7 +119,7 @@ data class WidgetStyle(
                 fade = false,
                 title = themed.getThemeColor(com.google.android.material.R.attr.colorOnSurface),
                 subtitle = themed.getThemeColor(com.google.android.material.R.attr.colorOnSurfaceVariant),
-                accent = themed.getThemeColor(com.google.android.material.R.attr.colorPrimary)
+                accent = themed.getThemeColor(androidx.appcompat.R.attr.colorPrimary)
             )
         }
     }

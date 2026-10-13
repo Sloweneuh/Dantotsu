@@ -45,6 +45,13 @@
             android:paddingTop="8dp"
             android:paddingBottom="24dp" />
 
+        <!-- Shown with the empty message only. -->
+        <ani.dantotsu.others.PatternBackgroundView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            app:patternIcon="@drawable/ic_download_24"
+            app:patternAnchor="@id/downloadQueueEmpty" />
+
         <TextView
             android:id="@+id/downloadQueueEmpty"
             android:layout_width="wrap_content"

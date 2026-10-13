@@ -442,7 +442,8 @@
         app:outlineWidth="1"
         tools:text="1/10" />
 
-    <ProgressBar
+    <ani.dantotsu.others.MaterialProgressBar
+        app:fadeContentOnHide="false"
         android:id="@+id/progress"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

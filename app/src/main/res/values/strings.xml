@@ -3084,4 +3084,17 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="mb_has_anime">Has anime</string>
     <string name="mb_no_anime">No anime</string>
     <string name="discover_remove_filter">Remove filter %1$s</string>
+    <!-- Read tab chapter selection (long-press a chapter) -->
+    <string name="mark_as_read">Mark as read</string>
+    <string name="delete_downloads">Delete downloads</string>
+    <string name="clear_selection">Clear selection</string>
+    <string name="chapters_already_read">Already read up to here</string>
+    <string name="chapters_queued_for_download">%1$d chapters queued for download</string>
+    <string name="chapters_nothing_to_download">Already downloaded</string>
+    <string name="chapters_no_downloads">None of these are downloaded</string>
+    <string name="delete_downloaded_chapters">Delete %1$d downloaded chapters?</string>
+    <string name="mark_as_watched">Mark as watched</string>
+    <string name="episodes_already_watched">Already watched up to here</string>
+    <string name="episodes_no_downloads">None of these are downloaded</string>
+    <string name="delete_downloaded_episodes">Delete %1$d downloaded episodes?</string>
 </resources>

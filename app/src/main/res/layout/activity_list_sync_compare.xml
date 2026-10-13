@@ -42,7 +42,7 @@
             android:text="@string/compare_lists"
             android:textSize="28sp" />
 
-        <ProgressBar
+        <ani.dantotsu.others.MaterialProgressBar
             android:id="@+id/compareProgress"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

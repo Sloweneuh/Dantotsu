@@ -77,7 +77,7 @@ internal fun ItemQuickTileBinding.paintQuickTile(
     // editing — there the lit colour would fight the add/remove affordances.
     val lit = !editing && tile is QuickTile.Toggle && tile.isOn()
     val background = context.getThemeColor(
-        if (lit) com.google.android.material.R.attr.colorPrimary
+        if (lit) androidx.appcompat.R.attr.colorPrimary
         else com.google.android.material.R.attr.colorSurfaceVariant
     )
     val foreground = context.getThemeColor(

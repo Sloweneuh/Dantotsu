@@ -374,7 +374,7 @@ class ComickSearchFilterBottomSheet : BottomSheetDialogFragment() {
         binding.comickFilterSortButton.setOnClickListener { anchor ->
             val popup = PopupMenu(requireContext(), anchor)
             val typedValue = TypedValue()
-            requireContext().theme.resolveAttribute(com.google.android.material.R.attr.colorPrimary, typedValue, true)
+            requireContext().theme.resolveAttribute(androidx.appcompat.R.attr.colorPrimary, typedValue, true)
             val primaryColor = typedValue.data
 
             options.forEachIndexed { index, option ->

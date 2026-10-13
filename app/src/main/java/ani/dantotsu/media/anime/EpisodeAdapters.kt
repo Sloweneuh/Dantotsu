@@ -3,20 +3,19 @@ package ani.dantotsu.media.anime
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.animation.LinearInterpolator
 import android.widget.LinearLayout
 import androidx.annotation.OptIn
 import androidx.core.view.isVisible
-import androidx.lifecycle.coroutineScope
 import androidx.media3.common.util.UnstableApi
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
-import ani.dantotsu.connections.updateProgress
 import ani.dantotsu.databinding.ItemEpisodeCompactBinding
 import ani.dantotsu.databinding.ItemEpisodeGridBinding
 import ani.dantotsu.databinding.ItemEpisodeListBinding
 import ani.dantotsu.media.Media
 import ani.dantotsu.media.MediaNameAdapter
+import ani.dantotsu.media.bindSelectionTint
+import ani.dantotsu.media.popIn
 import ani.dantotsu.media.MediaType
 import ani.dantotsu.parsers.DynamicAnimeParser
 import ani.dantotsu.setAnimation
@@ -25,8 +24,6 @@ import ani.dantotsu.util.customAlertDialog
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.model.GlideUrl
 import eu.kanade.tachiyomi.animesource.online.AnimeHttpSource
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import android.widget.NumberPicker
 import ani.dantotsu.currContext
 import ani.dantotsu.download.anime.AnimeDownloader
@@ -63,6 +60,84 @@ class EpisodeAdapter(
     var offlineMode: Boolean
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     val context = fragment.requireContext()
+
+    private companion object {
+        /** Payload: only the download button / status changed (progress ticks). */
+        const val PAYLOAD_DOWNLOAD_STATE = "download_state"
+
+        /** Payload: only the selection highlight changed. */
+        const val PAYLOAD_SELECTION = "selection"
+    }
+
+    /**
+     * Episodes picked by long-press, by number. Kept as episodes rather than numbers so a
+     * selection spans the episode-range tabs. While any are picked, a tap toggles an episode
+     * instead of playing it, and the Watch tab shows its selection toolbar.
+     */
+    val selection = linkedMapOf<String, Episode>()
+
+    /** Called whenever [selection] changes. */
+    var onSelectionChanged: (() -> Unit)? = null
+
+    fun selectedEpisodes(): List<Episode> = selection.values.toList()
+
+    fun toggleSelection(episode: Episode) {
+        if (selection.remove(episode.number) == null) selection[episode.number] = episode
+        val index = arr.indexOfFirst { it.number == episode.number }
+        if (index >= 0) notifyItemChanged(index, PAYLOAD_SELECTION)
+        onSelectionChanged?.invoke()
+    }
+
+    fun selectAll() {
+        arr.forEach { selection[it.number] = it }
+        notifyItemRangeChanged(0, arr.size, PAYLOAD_SELECTION)
+        onSelectionChanged?.invoke()
+    }
+
+    fun clearSelection() {
+        if (selection.isEmpty()) return
+        selection.clear()
+        notifyItemRangeChanged(0, arr.size, PAYLOAD_SELECTION)
+        onSelectionChanged?.invoke()
+    }
+
+    /** Drops selected episodes that are no longer listed at all (e.g. after a source change). */
+    fun keepSelectionWithin(episodes: Collection<Episode>) {
+        val listed = episodes.mapTo(HashSet()) { it.number }
+        if (selection.keys.retainAll(listed)) onSelectionChanged?.invoke()
+    }
+
+    fun isDownloading(episodeNumber: String) = AnimeDownloader.isDownloading(media.id, episodeNumber)
+
+    /** True for an episode that's downloaded or currently downloading. */
+    fun hasDownload(episodeNumber: String) =
+        downloadedEpisodes.contains(episodeNumber) || isDownloading(episodeNumber)
+
+    /** Tap: toggles while selecting, plays otherwise. Long-press: starts or extends a selection. */
+    private fun bindEpisodeClicks(holder: RecyclerView.ViewHolder) {
+        holder.itemView.setOnClickListener {
+            val episode = arr.getOrNull(holder.bindingAdapterPosition) ?: return@setOnClickListener
+            if (selection.isNotEmpty()) toggleSelection(episode)
+            else fragment.onEpisodeClick(episode.number)
+        }
+        holder.itemView.setOnLongClickListener {
+            val episode = arr.getOrNull(holder.bindingAdapterPosition) ?: return@setOnLongClickListener false
+            toggleSelection(episode)
+            true
+        }
+    }
+
+    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int, payloads: MutableList<Any>) {
+        val ep = arr.getOrNull(position)
+        if (ep != null && payloads.isNotEmpty() && payloads.all { it == PAYLOAD_SELECTION || it == PAYLOAD_DOWNLOAD_STATE }) {
+            if (PAYLOAD_SELECTION in payloads) holder.itemView.bindSelectionTint(ep.number in selection, animate = true)
+            if (PAYLOAD_DOWNLOAD_STATE in payloads && holder is EpisodeListViewHolder) {
+                holder.bind(ep.number, ep.downloadProgress, ep.desc)
+            }
+            return
+        }
+        super.onBindViewHolder(holder, position, payloads)
+    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         return (when (viewType) {
@@ -132,22 +207,10 @@ class EpisodeAdapter(
                 binding.itemEpisodeDesc.text = ep.desc ?: ""
                 holder.bind(ep.number, ep.downloadProgress, ep.desc)
 
-                if (media.userProgress != null) {
-                    if ((ep.number.toFloatOrNull() ?: 9999f) <= media.userProgress!!.toFloat()) {
-                        binding.itemEpisodeViewedCover.visibility = View.VISIBLE
-                        binding.itemEpisodeViewed.visibility = View.VISIBLE
-                    } else {
-                        binding.itemEpisodeViewedCover.visibility = View.GONE
-                        binding.itemEpisodeViewed.visibility = View.GONE
-                        binding.itemEpisodeCont.setOnLongClickListener {
-                            updateProgress(media, ep.number)
-                            true
-                        }
-                    }
-                } else {
-                    binding.itemEpisodeViewedCover.visibility = View.GONE
-                    binding.itemEpisodeViewed.visibility = View.GONE
-                }
+                // Watched episodes are dimmed; no eye icon, the dim says it.
+                binding.itemEpisodeViewed.visibility = View.GONE
+                binding.itemEpisodeViewedCover.isVisible = isWatched(ep)
+                holder.itemView.bindSelectionTint(ep.number in selection, animate = false)
 
                 handleProgress(
                     binding.itemMediaProgressCont,
@@ -180,22 +243,10 @@ class EpisodeAdapter(
                     binding.itemEpisodeFiller.visibility = View.GONE
                     binding.itemEpisodeFillerView.visibility = View.GONE
                 }
-                if (media.userProgress != null) {
-                    if ((ep.number.toFloatOrNull() ?: 9999f) <= media.userProgress!!.toFloat()) {
-                        binding.itemEpisodeViewedCover.visibility = View.VISIBLE
-                        binding.itemEpisodeViewed.visibility = View.VISIBLE
-                    } else {
-                        binding.itemEpisodeViewedCover.visibility = View.GONE
-                        binding.itemEpisodeViewed.visibility = View.GONE
-                        binding.itemEpisodeCont.setOnLongClickListener {
-                            updateProgress(media, ep.number)
-                            true
-                        }
-                    }
-                } else {
-                    binding.itemEpisodeViewedCover.visibility = View.GONE
-                    binding.itemEpisodeViewed.visibility = View.GONE
-                }
+                // Watched episodes are dimmed; no eye icon, the dim says it.
+                binding.itemEpisodeViewed.visibility = View.GONE
+                binding.itemEpisodeViewedCover.isVisible = isWatched(ep)
+                holder.itemView.bindSelectionTint(ep.number in selection, animate = false)
                 handleProgress(
                     binding.itemMediaProgressCont,
                     binding.itemMediaProgress,
@@ -214,17 +265,8 @@ class EpisodeAdapter(
                 // Show browser button if it's a dynamic parser with HttpSource
                 setupEpisodeBrowserButton(binding.itemEpisodeBrowser)
 
-                if (media.userProgress != null) {
-                    if ((ep.number.toFloatOrNull() ?: 9999f) <= media.userProgress!!.toFloat())
-                        binding.itemEpisodeViewedCover.visibility = View.VISIBLE
-                    else {
-                        binding.itemEpisodeViewedCover.visibility = View.GONE
-                        binding.itemEpisodeCont.setOnLongClickListener {
-                            updateProgress(media, ep.number)
-                            true
-                        }
-                    }
-                }
+                binding.itemEpisodeViewedCover.isVisible = isWatched(ep)
+                holder.itemView.bindSelectionTint(ep.number in selection, animate = false)
                 handleProgress(
                     binding.itemMediaProgressCont,
                     binding.itemMediaProgress,
@@ -236,8 +278,22 @@ class EpisodeAdapter(
         }
     }
 
+    private fun isWatched(ep: Episode): Boolean =
+        media.userProgress != null && (ep.number.toFloatOrNull() ?: 9999f) <= media.userProgress!!.toFloat()
+
     override fun getItemCount(): Int = arr.size
     private val downloadedEpisodes = mutableSetOf<String>()
+
+    /** Last reported percentage per downloading episode; the ring spins until there is one. */
+    private val downloadPercent = mutableMapOf<String, Int>()
+
+    /** Episodes whose download just completed: their icon pops in once on the next bind. */
+    private val justDownloaded = mutableSetOf<String>()
+
+    private fun notifyDownloadState(episodeNumber: String) {
+        val position = arr.indexOfFirst { it.number == episodeNumber }
+        if (position != -1) notifyItemChanged(position, PAYLOAD_DOWNLOAD_STATE)
+    }
 
     fun startDownload(episodeNumber: String) {
         if (downloadedEpisodes.contains(episodeNumber) ||
@@ -248,51 +304,56 @@ class EpisodeAdapter(
         val position = arr.indexOfFirst { it.number == episodeNumber }
         if (position != -1) {
             arr[position].downloadProgress = ""
-            notifyItemChanged(position)
+            notifyItemChanged(position, PAYLOAD_DOWNLOAD_STATE)
         }
     }
 
     @OptIn(UnstableApi::class)
     fun addToDownloadedEpisodes(episodeNumber: String, size: Double) {
+        if (AnimeDownloader.isDownloading(media.id, episodeNumber)) justDownloaded.add(episodeNumber)
+        downloadPercent.remove(episodeNumber)
         AnimeDownloader.stopDownload(media.id, episodeNumber)
         downloadedEpisodes.add(episodeNumber)
         // Find the position of the chapter and notify only that item
         val position = arr.indexOfFirst { it.number == episodeNumber }
         if (position != -1) {
             arr[position].downloadProgress = "Downloaded" + ": (${"%.1f".format(size)} MB)"
-            notifyItemChanged(position)
+            notifyItemChanged(position, PAYLOAD_DOWNLOAD_STATE)
         }
     }
 
     fun deleteDownload(episodeNumber: String) {
         downloadedEpisodes.remove(episodeNumber)
+        downloadPercent.remove(episodeNumber)
         // Find the position of the chapter and notify only that item
         val position = arr.indexOfFirst { it.number == episodeNumber }
         if (position != -1) {
             arr[position].downloadProgress = null
-            notifyItemChanged(position)
+            notifyItemChanged(position, PAYLOAD_DOWNLOAD_STATE)
         }
     }
 
     fun purgeDownload(episodeNumber: String) {
         AnimeDownloader.stopDownload(media.id, episodeNumber)
+        downloadPercent.remove(episodeNumber)
         downloadedEpisodes.remove(episodeNumber)
         // Find the position of the chapter and notify only that item
         val position = arr.indexOfFirst { it.number == episodeNumber }
         if (position != -1) {
             arr[position].downloadProgress = "Failed"
-            notifyItemChanged(position)
+            notifyItemChanged(position, PAYLOAD_DOWNLOAD_STATE)
         }
     }
 
     fun updateDownloadProgress(episodeNumber: String, progress: Int, stats: String = "") {
+        downloadPercent[episodeNumber] = progress
         // Find the position of the chapter and notify only that item
         val position = arr.indexOfFirst { it.number == episodeNumber }
         if (position != -1) {
             arr[position].downloadProgress =
                 if (stats.isEmpty()) "Downloading: $progress%"
                 else "Downloading: $progress% · $stats"
-            notifyItemChanged(position)
+            notifyItemChanged(position, PAYLOAD_DOWNLOAD_STATE)
         }
     }
 
@@ -300,10 +361,7 @@ class EpisodeAdapter(
     inner class EpisodeCompactViewHolder(val binding: ItemEpisodeCompactBinding) :
         RecyclerView.ViewHolder(binding.root) {
         init {
-            itemView.setOnClickListener {
-                if (bindingAdapterPosition < arr.size && bindingAdapterPosition >= 0)
-                    fragment.onEpisodeClick(arr[bindingAdapterPosition].number)
-            }
+            bindEpisodeClicks(this)
 
             binding.itemEpisodeBrowser.setOnClickListener {
                 if (bindingAdapterPosition < arr.size && bindingAdapterPosition >= 0) {
@@ -316,10 +374,7 @@ class EpisodeAdapter(
     inner class EpisodeGridViewHolder(val binding: ItemEpisodeGridBinding) :
         RecyclerView.ViewHolder(binding.root) {
         init {
-            itemView.setOnClickListener {
-                if (bindingAdapterPosition < arr.size && bindingAdapterPosition >= 0)
-                    fragment.onEpisodeClick(arr[bindingAdapterPosition].number)
-            }
+            bindEpisodeClicks(this)
 
             binding.itemEpisodeBrowser.setOnClickListener {
                 if (bindingAdapterPosition < arr.size && bindingAdapterPosition >= 0) {
@@ -331,13 +386,8 @@ class EpisodeAdapter(
 
     inner class EpisodeListViewHolder(val binding: ItemEpisodeListBinding) :
         RecyclerView.ViewHolder(binding.root) {
-        private val activeCoroutines = mutableSetOf<String>()
-
         init {
-            itemView.setOnClickListener {
-                if (bindingAdapterPosition < arr.size && bindingAdapterPosition >= 0)
-                    fragment.onEpisodeClick(arr[bindingAdapterPosition].number)
-            }
+            bindEpisodeClicks(this)
             binding.itemDownload.setOnClickListener {
                 if (0 <= bindingAdapterPosition && bindingAdapterPosition < arr.size) {
                     val episodeNumber = arr[bindingAdapterPosition].number
@@ -440,49 +490,48 @@ class EpisodeAdapter(
                 binding.itemDownloadStatus.visibility = View.GONE
                 binding.itemDownloadStatus.text = ""
             }
-            if(AnimeDownloader.isDownloading(media.id, episodeNumber)){
-                // Show spinner
-                binding.itemDownload.setImageResource(R.drawable.ic_sync)
-                startOrContinueRotation(episodeNumber) {
-                    binding.itemDownload.rotation = 0f
-                }
-            } else if (downloadedEpisodes.contains(episodeNumber)) {
-                // Show checkmark
-                binding.itemDownload.setImageResource(R.drawable.ic_circle_check)
-                binding.itemDownload.postDelayed({
-                    binding.itemDownload.setImageResource(R.drawable.ic_round_delete_24)
-                    binding.itemDownload.rotation = 0f
-                }, 1000)
-            } else {
-                // Show download icon
-                binding.itemDownload.setImageResource(R.drawable.ic_download_24)
-                binding.itemDownload.rotation = 0f
-            }
-
-        }
-
-        private fun startOrContinueRotation(episodeNumber: String, resetRotation: () -> Unit) {
-            if (!isRotationCoroutineRunningFor(episodeNumber)) {
-                val scope = fragment.lifecycle.coroutineScope
-                scope.launch {
-                    // Add chapter number to active coroutines set
-                    activeCoroutines.add(episodeNumber)
-                    while(AnimeDownloader.isDownloading(media.id, episodeNumber)){
-                        binding.itemDownload.animate().rotationBy(360f).setDuration(1000)
-                            .setInterpolator(
-                                LinearInterpolator()
-                            ).start()
-                        delay(1000)
+            val ring = binding.itemDownloadProgress
+            if (AnimeDownloader.isDownloading(media.id, episodeNumber)) {
+                // The ring stands in for the icon; the button stays under it to stop the download.
+                binding.itemDownload.alpha = 0f
+                val percent = downloadPercent[episodeNumber]
+                if (percent == null) {
+                    if (!ring.isIndeterminate) {
+                        ring.isVisible = false
+                        ring.isIndeterminate = true
                     }
-                    // Remove chapter number from active coroutines set
-                    activeCoroutines.remove(episodeNumber)
-                    resetRotation()
+                } else {
+                    if (ring.isIndeterminate) {
+                        ring.isVisible = false
+                        ring.isIndeterminate = false
+                    }
+                    ring.setProgressCompat(percent, true)
                 }
+                ring.isVisible = true
+                return
             }
-        }
-
-        private fun isRotationCoroutineRunningFor(episodeNumber: String): Boolean {
-            return episodeNumber in activeCoroutines
+            ring.isVisible = false
+            binding.itemDownload.alpha = 1f
+            binding.itemDownload.rotation = 0f
+            binding.itemDownload.tag = episodeNumber
+            if (downloadedEpisodes.contains(episodeNumber)) {
+                if (justDownloaded.remove(episodeNumber)) {
+                    // A download that just completed: pop in a check, then settle on delete.
+                    binding.itemDownload.setImageResource(R.drawable.ic_circle_check)
+                    binding.itemDownload.popIn()
+                    binding.itemDownload.postDelayed({
+                        // The row may have been recycled for another episode meanwhile.
+                        if (binding.itemDownload.tag == episodeNumber &&
+                            downloadedEpisodes.contains(episodeNumber)
+                        ) binding.itemDownload.setImageResource(R.drawable.ic_round_delete_24)
+                    }, 1000)
+                } else {
+                    // Already on disk when the list loaded: straight to delete.
+                    binding.itemDownload.setImageResource(R.drawable.ic_round_delete_24)
+                }
+            } else {
+                binding.itemDownload.setImageResource(R.drawable.ic_download_24)
+            }
         }
     }
 

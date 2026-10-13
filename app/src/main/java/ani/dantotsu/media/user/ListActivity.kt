@@ -1,5 +1,6 @@
 package ani.dantotsu.media.user
 
+import ani.dantotsu.util.useSharedAxisTransitions
 import android.os.Bundle
 import android.text.SpannableString
 import android.text.style.ForegroundColorSpan
@@ -81,7 +82,7 @@ class ListActivity : AppCompatActivity() {
         initActivity(this)
 
         val primaryColor = getThemeColor(com.google.android.material.R.attr.colorSurface)
-        val primaryTextColor = getThemeColor(com.google.android.material.R.attr.colorPrimary)
+        val primaryTextColor = getThemeColor(androidx.appcompat.R.attr.colorPrimary)
         val secondaryTextColor = getThemeColor(com.google.android.material.R.attr.colorOutline)
 
         window.statusBarColor = primaryColor
@@ -351,7 +352,7 @@ class ListActivity : AppCompatActivity() {
                 else        -> null
             }
             if (activeItemId != null) {
-                val primary = getThemeColor(com.google.android.material.R.attr.colorPrimary)
+                val primary = getThemeColor(androidx.appcompat.R.attr.colorPrimary)
                 val activeItem = popup.menu.findItem(activeItemId)
                 activeItem?.let { menuItem ->
                     val span = SpannableString(menuItem.title)
@@ -753,6 +754,7 @@ class ListActivity : AppCompatActivity() {
             )
         }
 
+        binding.listViewPager.useSharedAxisTransitions()
         tabMediator = TabLayoutMediator(binding.listTabLayout, binding.listViewPager) { tab, position ->
             when {
                 muTabPosition >= 0 && position == muTabPosition -> {

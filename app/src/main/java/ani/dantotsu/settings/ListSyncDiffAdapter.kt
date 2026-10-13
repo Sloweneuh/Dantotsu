@@ -171,7 +171,7 @@ class ListSyncDiffAdapter(
             layoutParams = LinearLayout.LayoutParams(size, size).apply { bottomMargin = dp(ctx, 6) }
             setImageResource(iconRes)
             ImageViewCompat.setImageTintList(
-                this, ColorStateList.valueOf(ctx.getThemeColor(MaterialR.attr.colorPrimary))
+                this, ColorStateList.valueOf(ctx.getThemeColor(androidx.appcompat.R.attr.colorPrimary))
             )
         }
     }

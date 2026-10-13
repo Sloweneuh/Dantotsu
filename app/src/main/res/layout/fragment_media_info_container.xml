@@ -16,7 +16,8 @@
         app:tabGravity="center"
         app:tabMaxWidth="0dp"
         app:tabTextColor="?attr/colorOnBackground"
-        app:tabIconTint="?attr/colorOnBackground" />
+        app:tabIconTint="?attr/colorOnBackground"
+        app:tabRippleColor="@null" />
 
     <androidx.viewpager2.widget.ViewPager2
         android:id="@+id/mediaInfoViewPager"

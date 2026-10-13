@@ -71,7 +71,7 @@ class InfoTabOrderAdapter(private val items: MutableList<InfoTabOrderItem>) :
             append(note)
             setSpan(RelativeSizeSpan(0.85f), start, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
             setSpan(
-                ForegroundColorSpan(context.getThemeColor(com.google.android.material.R.attr.colorError)),
+                ForegroundColorSpan(context.getThemeColor(androidx.appcompat.R.attr.colorError)),
                 start, length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
             )
         }

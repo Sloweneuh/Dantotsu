@@ -1044,7 +1044,7 @@ object SettingsRouter {
             return
         }
         val color = MaterialColors.getColor(
-            anchor, com.google.android.material.R.attr.colorPrimary, Color.CYAN
+            anchor, androidx.appcompat.R.attr.colorPrimary, Color.CYAN
         )
         val highlight = ColorDrawable(color).apply { setBounds(left, top, right, bottom) }
         val overlay = parent.overlay
@@ -1069,7 +1069,7 @@ object SettingsRouter {
         val left = anchorLoc[0] - rootLoc[0]
         val top = anchorLoc[1] - rootLoc[1]
         val color = MaterialColors.getColor(
-            view, com.google.android.material.R.attr.colorPrimary, Color.CYAN
+            view, androidx.appcompat.R.attr.colorPrimary, Color.CYAN
         )
         val highlight = GradientDrawable().apply {
             setColor(color)

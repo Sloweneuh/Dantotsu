@@ -708,7 +708,7 @@
                         android:text="@string/mu_filter_categories"
                         android:textSize="16sp" />
 
-                    <ProgressBar
+                    <ani.dantotsu.others.MaterialProgressBar
                         android:id="@+id/listMuFilterCategoryProgress"
                         style="?android:attr/progressBarStyle"
                         android:layout_width="20dp"

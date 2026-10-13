@@ -480,7 +480,7 @@ class MUMediaInfoFragment : Fragment() {
             quelStartCard.visibility = View.VISIBLE
             quelStartLabel.setText(R.string.news)
             quelStartAccent.setBackgroundColor(
-                requireContext().getThemeColor(com.google.android.material.R.attr.colorPrimary)
+                requireContext().getThemeColor(androidx.appcompat.R.attr.colorPrimary)
             )
             quelStartImage.loadImage(series.image?.url?.original ?: series.image?.url?.thumb)
             quelStartCard.setSafeOnClickListener {

@@ -31,6 +31,7 @@ import ani.dantotsu.util.choiceBottomSheet
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.stripSpansOnPaste
 import ani.dantotsu.themes.ThemeManager
+import ani.dantotsu.util.useSharedAxisTransitions
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.textfield.TextInputLayout
 import android.widget.FrameLayout
@@ -92,6 +93,7 @@ class ExtensionsActivity : AppCompatActivity() {
 
         tabLayout = findViewById(R.id.tabLayout)
         viewPager = findViewById(R.id.viewPager)
+        viewPager.useSharedAxisTransitions()
         viewPager.offscreenPageLimit = 1
 
         // Check if there are any extension updates

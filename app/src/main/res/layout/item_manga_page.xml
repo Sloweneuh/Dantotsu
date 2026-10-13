@@ -214,7 +214,8 @@
         android:layout_height="wrap_content"
         android:minHeight="250dp">
 
-        <ProgressBar
+        <ani.dantotsu.others.MaterialProgressBar
+            app:fadeContentOnHide="false"
             android:id="@+id/mangaTrendingMangaProgressBar"
             style="?android:attr/progressBarStyle"
             android:layout_width="wrap_content"
@@ -273,7 +274,8 @@
         android:layout_height="wrap_content"
         android:minHeight="250dp">
 
-        <ProgressBar
+        <ani.dantotsu.others.MaterialProgressBar
+            app:fadeContentOnHide="false"
             android:id="@+id/mangaTrendingManhwaProgressBar"
             style="?android:attr/progressBarStyle"
             android:layout_width="wrap_content"
@@ -332,7 +334,8 @@
         android:layout_height="wrap_content"
         android:minHeight="250dp">
 
-        <ProgressBar
+        <ani.dantotsu.others.MaterialProgressBar
+            app:fadeContentOnHide="false"
             android:id="@+id/mangaNovelProgressBar"
             style="?android:attr/progressBarStyle"
             android:layout_width="wrap_content"
@@ -391,7 +394,8 @@
         android:layout_height="wrap_content"
         android:minHeight="250dp">
 
-        <ProgressBar
+        <ani.dantotsu.others.MaterialProgressBar
+            app:fadeContentOnHide="false"
             android:id="@+id/mangaTopRatedProgressBar"
             style="?android:attr/progressBarStyle"
             android:layout_width="wrap_content"
@@ -450,7 +454,8 @@
         android:layout_height="wrap_content"
         android:minHeight="250dp">
 
-        <ProgressBar
+        <ani.dantotsu.others.MaterialProgressBar
+            app:fadeContentOnHide="false"
             android:id="@+id/mangaMostFavProgressBar"
             style="?android:attr/progressBarStyle"
             android:layout_width="wrap_content"

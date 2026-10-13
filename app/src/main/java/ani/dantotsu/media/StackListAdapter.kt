@@ -136,7 +136,7 @@ class StackListAdapter(private val items: List<MALStack>, private val isAnime: B
         // Replace URLSpans with custom spans that open in-app when possible
         interceptLinks(
             b.itemCompactSynopsis,
-            b.root.context.getThemeColor(com.google.android.material.R.attr.colorPrimary),
+            b.root.context.getThemeColor(androidx.appcompat.R.attr.colorPrimary),
             isAnime
         )
         // Allow inner TextView to handle vertical scroll inside RecyclerView

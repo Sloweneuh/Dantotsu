@@ -38,7 +38,8 @@
                     tools:ignore="ContentDescription,ImageContrastCheck"
                     tools:src="@tools:sample/backgrounds/scenic[0]" />
 
-                <ProgressBar
+                <ani.dantotsu.others.MaterialProgressBar
+                    app:fadeContentOnHide="false"
                     android:id="@+id/imgProgProgress2"
                     style="?android:attr/progressBarStyle"
                     android:layout_width="wrap_content"
@@ -67,7 +68,8 @@
                     tools:ignore="ContentDescription,ImageContrastCheck"
                     tools:src="@tools:sample/backgrounds/scenic[0]" />
 
-                <ProgressBar
+                <ani.dantotsu.others.MaterialProgressBar
+                    app:fadeContentOnHide="false"
                     android:id="@+id/imgProgProgress1"
                     style="?android:attr/progressBarStyle"
                     android:layout_width="wrap_content"

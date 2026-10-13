@@ -20,6 +20,7 @@ import ani.dantotsu.settings.bindQuickSettings
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.util.LauncherWrapper
+import ani.dantotsu.util.useSharedAxisTransitions
 import nl.joery.animatedbottombar.AnimatedBottomBar
 
 class DownloadActivity : AppCompatActivity() {
@@ -49,6 +50,7 @@ class DownloadActivity : AppCompatActivity() {
         }
 
         val pager = binding.downloadViewPager
+        pager.useSharedAxisTransitions()
         pager.adapter = object : FragmentStateAdapter(this) {
             override fun getItemCount() = 2
             override fun createFragment(position: Int) =

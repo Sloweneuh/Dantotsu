@@ -7,7 +7,7 @@
     android:layout_height="wrap_content"
     android:background="@drawable/bottom_sheet_background">
 
-    <ProgressBar
+    <ani.dantotsu.others.MaterialProgressBar
         android:id="@+id/mediaListProgressBar"
         style="?android:attr/progressBarStyle"
         android:layout_width="wrap_content"
@@ -85,7 +85,7 @@
             android:visibility="gone"
             tools:visibility="visible">
 
-            <ProgressBar
+            <ani.dantotsu.others.MaterialProgressBar
                 android:id="@+id/searchProgress"
                 style="?android:attr/progressBarStyle"
                 android:layout_width="48dp"

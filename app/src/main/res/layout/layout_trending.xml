@@ -96,7 +96,7 @@
 
         </LinearLayout>
 
-        <ProgressBar
+        <ani.dantotsu.others.MaterialProgressBar
             android:id="@+id/trendingProgressBar"
             style="?android:attr/progressBarStyle"
             android:layout_width="wrap_content"

@@ -19,6 +19,7 @@ import ani.dantotsu.settings.bindQuickSettings
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.themes.ThemeManager
+import ani.dantotsu.util.useSharedAxisTransitions
 import nl.joery.animatedbottombar.AnimatedBottomBar
 
 class FeedActivity : AppCompatActivity() {
@@ -90,6 +91,7 @@ class FeedActivity : AppCompatActivity() {
         binding.notificationViewPager.isUserInputEnabled = false
         pagerAdapter = ViewPagerAdapter(supportFragmentManager, lifecycle, getOne)
         binding.notificationViewPager.adapter = pagerAdapter
+        binding.notificationViewPager.useSharedAxisTransitions()
         binding.notificationViewPager.setOffscreenPageLimit(4)
         binding.notificationViewPager.setCurrentItem(selected, false)
         navBar.selectTabAt(selected)

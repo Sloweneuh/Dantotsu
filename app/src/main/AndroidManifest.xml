@@ -237,6 +237,10 @@
         <activity
             android:name=".notifications.firebase.FirebaseTestActivity"
             android:exported="true" />
+        <!-- Debug-only design playground; finishes itself outside debug builds like the above. -->
+        <activity
+            android:name=".settings.DesignLabActivity"
+            android:exported="true" />
         <activity
             android:name=".settings.SettingsActivity"
             android:parentActivityName=".MainActivity" />

@@ -6,7 +6,7 @@
     android:layout_height="match_parent"
     tools:context=".media.user.ListActivity">
 
-    <ProgressBar
+    <ani.dantotsu.others.MaterialProgressBar
         android:id="@+id/listProgressBar"
         style="?android:attr/progressBarStyle"
         android:layout_width="wrap_content"

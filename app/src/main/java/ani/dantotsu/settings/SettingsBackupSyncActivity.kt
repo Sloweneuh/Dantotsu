@@ -260,8 +260,8 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
                     )
                     b.settingsIcon.imageTintList = ColorStateList.valueOf(
                         getThemeColor(
-                            if (conflict) com.google.android.material.R.attr.colorError
-                            else com.google.android.material.R.attr.colorPrimary
+                            if (conflict) androidx.appcompat.R.attr.colorError
+                            else androidx.appcompat.R.attr.colorPrimary
                         )
                     )
 

@@ -7,7 +7,7 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
-    <ProgressBar
+    <ani.dantotsu.others.MaterialProgressBar
         android:id="@+id/mainProgressBar"
         style="?android:attr/progressBarStyle"
         android:layout_width="wrap_content"

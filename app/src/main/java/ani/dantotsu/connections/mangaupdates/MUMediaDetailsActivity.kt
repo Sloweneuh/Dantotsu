@@ -35,7 +35,6 @@ import ani.dantotsu.connections.handoff.HandoffLoadingOverlay
 import ani.dantotsu.connections.handoff.HandoffNavigator
 import ani.dantotsu.connections.handoff.HandoffPayload
 import ani.dantotsu.Refresh
-import ani.dantotsu.ZoomOutPageTransformer
 import ani.dantotsu.blurImage
 import ani.dantotsu.copyToClipboard
 import ani.dantotsu.connections.anilist.api.FuzzyDate
@@ -59,6 +58,7 @@ import ani.dantotsu.others.ImageViewDialog
 import ani.dantotsu.others.getSerialized
 import ani.dantotsu.Mapper
 import ani.dantotsu.settings.bindQuickSettings
+import ani.dantotsu.util.useSharedAxisTransitions
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.snackString
@@ -322,7 +322,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
             // Show loading overlay, hide main content
             binding.loadingOverlay?.visibility = View.VISIBLE
             // Ensure loading bar uses colorPrimary
-            binding.loadingProgressBar?.indeterminateTintList = android.content.res.ColorStateList.valueOf(getThemeColor(com.google.android.material.R.attr.colorPrimary))
+            binding.loadingProgressBar?.indeterminateTintList = android.content.res.ColorStateList.valueOf(getThemeColor(androidx.appcompat.R.attr.colorPrimary))
             binding.mediaAppBar?.visibility = View.INVISIBLE
             binding.mediaViewPagerContainer?.visibility = View.INVISIBLE
             binding.mediaBottomBar?.visibility = View.INVISIBLE
@@ -1070,7 +1070,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         // ViewPager
         val viewPager = binding.mediaViewPager
         viewPager.isUserInputEnabled = false
-        viewPager.setPageTransformer(ZoomOutPageTransformer())
+        viewPager.useSharedAxisTransitions()
         viewPager.adapter = ViewPagerAdapter(supportFragmentManager, lifecycle, useNovelReader)
 
         // Bottom tab bar: Info + Read

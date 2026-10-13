@@ -565,7 +565,7 @@
             android:layout_height="match_parent"
             android:background="?android:colorBackground"
             android:visibility="gone">
-            <ProgressBar
+            <ani.dantotsu.others.MaterialProgressBar
                 android:id="@+id/loadingProgressBar"
                 android:layout_width="64dp"
                 android:layout_height="64dp"

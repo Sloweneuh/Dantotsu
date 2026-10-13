@@ -41,6 +41,7 @@ import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.setSafeOnClickListener
 import ani.dantotsu.stripSpansOnPaste
 import ani.dantotsu.util.Logger
+import ani.dantotsu.util.whenViewResumed
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -138,11 +139,14 @@ class ComickInfoFragment : Fragment() {
             return
         }
 
-        model.getMedia().observe(viewLifecycleOwner) { media ->
-            val m = media ?: return@observe
-            isAnimeMode = m.anime != null
-            if (!loaded) {
-                loadComickData(m, model)
+        // Not during the pager's slide: wait until this tab is on screen and settled.
+        whenViewResumed {
+            model.getMedia().observe(viewLifecycleOwner) { media ->
+                val m = media ?: return@observe
+                isAnimeMode = m.anime != null
+                if (!loaded) {
+                    loadComickData(m, model)
+                }
             }
         }
     }

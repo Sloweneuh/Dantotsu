@@ -287,7 +287,7 @@ class DiscoverQueueSheet(
         sheet.discoverSheetSeeds.isVisible = first != null
         if (first == null) return
         val onSurface = activity.getThemeColor(com.google.android.material.R.attr.colorOnSurface)
-        val primary = activity.getThemeColor(com.google.android.material.R.attr.colorPrimary)
+        val primary = activity.getThemeColor(androidx.appcompat.R.attr.colorPrimary)
 
         val verb = source.seedVerb(first.state)
         val sentence = activity.getString(verb, first.title)
@@ -316,8 +316,8 @@ class DiscoverQueueSheet(
     private fun addTagBlock(label: Int, tags: List<DiscoveryQueue.Tag>, negative: Boolean) {
         if (tags.isEmpty()) return
         val accent = activity.getThemeColor(
-            if (negative) com.google.android.material.R.attr.colorError
-            else com.google.android.material.R.attr.colorPrimary
+            if (negative) androidx.appcompat.R.attr.colorError
+            else androidx.appcompat.R.attr.colorPrimary
         )
         sheet.discoverSheetTagBlocks.addView(textLine("– " + activity.getString(label), topMargin = 6))
         val (defining, other) = tags.partition { it.isDefining }

@@ -42,8 +42,8 @@
     <include
         android:id="@+id/imageSearchEmptyState"
         layout="@layout/layout_search_empty_state"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
         android:layout_gravity="center"
         android:layout_marginTop="32dp" />
 
@@ -61,7 +61,7 @@
         app:icon="@drawable/ic_round_image_search_24"
         app:iconTint="?attr/colorOnPrimary" />
 
-    <ProgressBar
+    <ani.dantotsu.others.MaterialProgressBar
         android:id="@+id/progressBar"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

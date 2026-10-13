@@ -28,7 +28,7 @@
             android:textAllCaps="true"
             android:textSize="20sp" />
 
-        <ProgressBar
+        <ani.dantotsu.others.MaterialProgressBar
             style="?android:attr/progressBarStyle"
             android:layout_width="match_parent"
             android:layout_height="50dp"
@@ -98,7 +98,7 @@
             tools:itemCount="4"
             tools:listitem="@layout/item_stream" />
 
-        <ProgressBar
+        <ani.dantotsu.others.MaterialProgressBar
             android:id="@+id/selectorProgressBar"
             style="?android:attr/progressBarStyle"
             android:layout_width="match_parent"

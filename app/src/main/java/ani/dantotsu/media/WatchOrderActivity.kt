@@ -122,7 +122,7 @@ class WatchOrderActivity : AppCompatActivity() {
                     (entry.anilistId != null && entry.anilistId == currentAnilistId)
             holder.position.setTextColor(
                 getThemeColor(
-                    if (isCurrent) com.google.android.material.R.attr.colorPrimary
+                    if (isCurrent) androidx.appcompat.R.attr.colorPrimary
                     else com.google.android.material.R.attr.colorOnBackground
                 )
             )

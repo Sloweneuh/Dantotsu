@@ -12,7 +12,7 @@
         android:gravity="center"
         tools:visibility="gone">
 
-        <ProgressBar
+        <ani.dantotsu.others.MaterialProgressBar
             style="?android:attr/progressBarStyle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content" />
@@ -53,13 +53,28 @@
                 app:tint="?attr/colorPrimary" />
         </LinearLayout>
 
-        <TextView
-            android:id="@+id/emptyTextView"
+        <!-- The empty message over its pattern; shown and hidden with the message by the code. -->
+        <FrameLayout
+            android:id="@+id/emptyStateFrame"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:fontFamily="@font/poppins_semi_bold"
-            android:gravity="center"
-            android:visibility="gone" />
+            android:visibility="gone">
+
+            <!-- Shown with the empty message only. -->
+            <ani.dantotsu.others.PatternBackgroundView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                app:patternIcon="@drawable/ic_round_notifications_none_24"
+                app:patternAnchor="@id/emptyTextView" />
+
+            <TextView
+                android:id="@+id/emptyTextView"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:fontFamily="@font/poppins_semi_bold"
+                android:gravity="center"
+                android:visibility="gone" />
+        </FrameLayout>
 
         <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
             android:id="@+id/feedSwipeRefresh"
@@ -81,7 +96,7 @@
 
         </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
-        <ProgressBar
+        <ani.dantotsu.others.MaterialProgressBar
             android:id="@+id/feedRefresh"
             style="?android:attr/progressBarStyle"
             android:layout_width="wrap_content"

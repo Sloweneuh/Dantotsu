@@ -47,7 +47,7 @@
                 android:textSize="16sp"
                 android:text="@string/search_equivalents" />
 
-            <ProgressBar
+            <ani.dantotsu.others.MaterialProgressBar
                 android:id="@+id/equivalentsSearchProgress"
                 android:layout_width="24dp"
                 android:layout_height="24dp"

@@ -6,6 +6,14 @@
     android:layout_height="match_parent"
     tools:context=".home.LoginFragment">
 
+    <!-- Drifting Dantotsu logo pattern behind the login prompt. -->
+    <ani.dantotsu.others.PatternBackgroundView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:patternIcon="@drawable/ic_dantotsu_round"
+        app:patternSize="36dp"
+        app:patternSpacing="92dp" />
+
     <ImageView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

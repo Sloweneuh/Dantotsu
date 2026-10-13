@@ -71,7 +71,7 @@
             app:tint="?attr/colorOnBackground" />
     </LinearLayout>
 
-    <ProgressBar
+    <ani.dantotsu.others.MaterialProgressBar
         android:id="@+id/extensionWebViewProgress"
         style="?android:attr/progressBarStyleHorizontal"
         android:layout_width="match_parent"

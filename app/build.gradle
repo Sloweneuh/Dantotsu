@@ -167,7 +167,7 @@ dependencies {
 // Clip export (trims the played stream back into an mp4 / GIF)
     implementation "androidx.media3:media3-transformer:$exo_version"
 //  UI
-    implementation 'com.google.android.material:material:1.12.0'
+    implementation 'com.google.android.material:material:1.14.0'
     implementation files('libs/AnimatedBottomBar-7fcb9af.aar')
     implementation 'com.google.android.flexbox:flexbox:3.0.0'
     implementation 'com.flaviofaria:kenburnsview:1.0.7'

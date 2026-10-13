@@ -247,7 +247,7 @@ class ListSyncCompareActivity : AppCompatActivity() {
         container.removeAllViews()
         val size = (20 * resources.displayMetrics.density).toInt()
         val gap = (6 * resources.displayMetrics.density).toInt()
-        val tint = ColorStateList.valueOf(getThemeColor(com.google.android.material.R.attr.colorPrimary))
+        val tint = ColorStateList.valueOf(getThemeColor(androidx.appcompat.R.attr.colorPrimary))
         for (res in icons) {
             val icon = ImageView(this)
             icon.layoutParams = LinearLayout.LayoutParams(size, size).apply { marginEnd = gap }

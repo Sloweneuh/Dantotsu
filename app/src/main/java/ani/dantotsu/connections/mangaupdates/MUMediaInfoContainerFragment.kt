@@ -19,6 +19,7 @@ import ani.dantotsu.media.MediaDetailsViewModel
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.util.customAlertDialog
+import ani.dantotsu.util.useSharedAxisTransitions
 import com.google.android.material.tabs.TabLayoutMediator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -153,6 +154,7 @@ class MUMediaInfoContainerFragment : Fragment() {
 
         binding.mediaInfoTabLayout.visibility = View.VISIBLE
 
+        binding.mediaInfoViewPager.useSharedAxisTransitions()
         TabLayoutMediator(binding.mediaInfoTabLayout, binding.mediaInfoViewPager) { tab, position ->
             tab.setIcon(tabs[position].iconRes)
 

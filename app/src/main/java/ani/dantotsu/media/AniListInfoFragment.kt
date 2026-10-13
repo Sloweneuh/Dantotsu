@@ -62,6 +62,7 @@ import kotlinx.coroutines.withContext
 import java.io.Serializable
 import ani.dantotsu.connections.malsync.MalSyncApi
 import ani.dantotsu.connections.mangaupdates.MUMediaDetailsActivity
+import ani.dantotsu.util.whenViewResumed
 
 class AniListInfoFragment : Fragment() {
     private var _binding: FragmentMediaInfoBinding? = null
@@ -173,675 +174,678 @@ class AniListInfoFragment : Fragment() {
             if (it) binding.mediaInfoScroll.scrollTo(0, 0)
         }
 
-        model.getMedia().observe(viewLifecycleOwner) { media ->
-            if (media != null && !loaded) {
-                loaded = true
+        // Not during the pager's slide: wait until this tab is on screen and settled.
+        whenViewResumed {
+            model.getMedia().observe(viewLifecycleOwner) { media ->
+                if (media != null && !loaded) {
+                    loaded = true
 
-                binding.mediaInfoProgressBar.visibility = View.GONE
-                binding.mediaInfoContainer.visibility = View.VISIBLE
-                val infoName = tripleTab + (media.name ?: media.nameRomaji)
-                binding.mediaInfoName.text = infoName
-                binding.mediaInfoName.setOnLongClickListener {
-                    copyToClipboard(media.name ?: media.nameRomaji)
-                    true
-                }
-                if (media.name != null) binding.mediaInfoNameRomajiContainer.visibility =
-                    View.VISIBLE
-                val infoNameRomaji = tripleTab + media.nameRomaji
-                binding.mediaInfoNameRomaji.text = infoNameRomaji
-                binding.mediaInfoNameRomaji.setOnLongClickListener {
-                    copyToClipboard(media.nameRomaji)
-                    true
-                }
-                binding.mediaInfoMeanScore.text =
-                    if (media.meanScore != null) (media.meanScore / 10.0).toString() else "??"
-                binding.mediaInfoStatus.text = media.status
-                binding.mediaInfoFormat.text = media.format
-                binding.mediaInfoSource.text = media.source
-                binding.mediaInfoStart.text = media.startDate?.toString() ?: "??"
-                binding.mediaInfoEnd.text = media.endDate?.toString() ?: "??"
-                binding.mediaInfoPopularity.text = media.popularity.toString()
-                binding.mediaInfoFavorites.text = media.favourites.toString()
-                if (media.anime != null) {
-                    val episodeDuration = media.anime.episodeDuration
+                    binding.mediaInfoProgressBar.visibility = View.GONE
+                    binding.mediaInfoContainer.visibility = View.VISIBLE
+                    val infoName = tripleTab + (media.name ?: media.nameRomaji)
+                    binding.mediaInfoName.text = infoName
+                    binding.mediaInfoName.setOnLongClickListener {
+                        copyToClipboard(media.name ?: media.nameRomaji)
+                        true
+                    }
+                    if (media.name != null) binding.mediaInfoNameRomajiContainer.visibility =
+                        View.VISIBLE
+                    val infoNameRomaji = tripleTab + media.nameRomaji
+                    binding.mediaInfoNameRomaji.text = infoNameRomaji
+                    binding.mediaInfoNameRomaji.setOnLongClickListener {
+                        copyToClipboard(media.nameRomaji)
+                        true
+                    }
+                    binding.mediaInfoMeanScore.text =
+                        if (media.meanScore != null) (media.meanScore / 10.0).toString() else "??"
+                    binding.mediaInfoStatus.text = media.status
+                    binding.mediaInfoFormat.text = media.format
+                    binding.mediaInfoSource.text = media.source
+                    binding.mediaInfoStart.text = media.startDate?.toString() ?: "??"
+                    binding.mediaInfoEnd.text = media.endDate?.toString() ?: "??"
+                    binding.mediaInfoPopularity.text = media.popularity.toString()
+                    binding.mediaInfoFavorites.text = media.favourites.toString()
+                    if (media.anime != null) {
+                        val episodeDuration = media.anime.episodeDuration
 
-                    binding.mediaInfoDuration.text = when {
-                        episodeDuration != null -> {
-                            val hours = episodeDuration / 60
-                            val minutes = episodeDuration % 60
+                        binding.mediaInfoDuration.text = when {
+                            episodeDuration != null -> {
+                                val hours = episodeDuration / 60
+                                val minutes = episodeDuration % 60
 
-                            val formattedDuration = buildString {
-                                if (hours > 0) {
-                                    append("$hours hour")
-                                    if (hours > 1) append("s")
+                                val formattedDuration = buildString {
+                                    if (hours > 0) {
+                                        append("$hours hour")
+                                        if (hours > 1) append("s")
+                                    }
+
+                                    if (minutes > 0) {
+                                        if (hours > 0) append(", ")
+                                        append("$minutes min")
+                                        if (minutes > 1) append("s")
+                                    }
                                 }
 
-                                if (minutes > 0) {
-                                    if (hours > 0) append(", ")
-                                    append("$minutes min")
-                                    if (minutes > 1) append("s")
+                                formattedDuration
+                            }
+
+                            else -> "??"
+                        }
+                        binding.mediaInfoDurationContainer.visibility = View.VISIBLE
+                        binding.mediaInfoSeasonContainer.visibility = View.VISIBLE
+                        val seasonInfo =
+                            "${(media.anime.season ?: "??")} ${(media.anime.seasonYear ?: "??")}"
+                        binding.mediaInfoSeason.text = seasonInfo
+
+                        if (media.anime.mainStudio != null) {
+                            binding.mediaInfoStudioContainer.visibility = View.VISIBLE
+                            binding.mediaInfoStudio.text = media.anime.mainStudio!!.name
+                            if (!offline) {
+                                binding.mediaInfoStudioContainer.setOnClickListener {
+                                    ContextCompat.startActivity(
+                                        requireActivity(),
+                                        Intent(activity, StudioActivity::class.java).putExtra(
+                                            "studio",
+                                            media.anime.mainStudio!! as Serializable
+                                        ),
+                                        null
+                                    )
                                 }
                             }
-
-                            formattedDuration
                         }
+                        if (media.anime.author != null) {
+                            binding.mediaInfoAuthorContainer.visibility = View.VISIBLE
+                            binding.mediaInfoAuthor.text = media.anime.author!!.name
+                            if (!offline) {
+                                binding.mediaInfoAuthorContainer.setOnClickListener {
+                                    ContextCompat.startActivity(
+                                        requireActivity(),
+                                        Intent(activity, AuthorActivity::class.java).putExtra(
+                                            "author",
+                                            media.anime.author!! as Serializable
+                                        ),
+                                        null
+                                    )
+                                }
+                            }
+                        }
+                        binding.mediaInfoTotalTitle.setText(R.string.total_eps)
+                        val infoTotal = if (media.anime.displayReleaseProgress != null)
+                            "${media.anime.displayReleaseProgress} | ${media.anime.totalEpisodes ?: "~"}"
+                        else
+                            (media.anime.totalEpisodes ?: "~").toString()
+                        binding.mediaInfoTotal.text = infoTotal
 
-                        else -> "??"
-                    }
-                    binding.mediaInfoDurationContainer.visibility = View.VISIBLE
-                    binding.mediaInfoSeasonContainer.visibility = View.VISIBLE
-                    val seasonInfo =
-                        "${(media.anime.season ?: "??")} ${(media.anime.seasonYear ?: "??")}"
-                    binding.mediaInfoSeason.text = seasonInfo
+                    } else if (media.manga != null) {
+                        type = "MANGA"
+                        binding.mediaInfoTotalTitle.setText(R.string.total_chaps)
+                        binding.mediaInfoTotal.text = (media.manga.totalChapters ?: "~").toString()
 
-                    if (media.anime.mainStudio != null) {
-                        binding.mediaInfoStudioContainer.visibility = View.VISIBLE
-                        binding.mediaInfoStudio.text = media.anime.mainStudio!!.name
-                        if (!offline) {
-                            binding.mediaInfoStudioContainer.setOnClickListener {
-                                ContextCompat.startActivity(
-                                    requireActivity(),
-                                    Intent(activity, StudioActivity::class.java).putExtra(
-                                        "studio",
-                                        media.anime.mainStudio!! as Serializable
-                                    ),
-                                    null
-                                )
+                        if (media.manga.author != null) {
+                            binding.mediaInfoAuthorContainer.visibility = View.VISIBLE
+                            binding.mediaInfoAuthor.text = media.manga.author!!.name
+                            if (!offline) {
+                                binding.mediaInfoAuthorContainer.setOnClickListener {
+                                    ContextCompat.startActivity(
+                                        requireActivity(),
+                                        Intent(activity, AuthorActivity::class.java).putExtra(
+                                            "author",
+                                            media.manga.author!! as Serializable
+                                        ),
+                                        null
+                                    )
+                                }
                             }
                         }
                     }
-                    if (media.anime.author != null) {
-                        binding.mediaInfoAuthorContainer.visibility = View.VISIBLE
-                        binding.mediaInfoAuthor.text = media.anime.author!!.name
-                        if (!offline) {
-                            binding.mediaInfoAuthorContainer.setOnClickListener {
-                                ContextCompat.startActivity(
-                                    requireActivity(),
-                                    Intent(activity, AuthorActivity::class.java).putExtra(
-                                        "author",
-                                        media.anime.author!! as Serializable
-                                    ),
-                                    null
-                                )
-                            }
-                        }
-                    }
-                    binding.mediaInfoTotalTitle.setText(R.string.total_eps)
-                    val infoTotal = if (media.anime.displayReleaseProgress != null)
-                        "${media.anime.displayReleaseProgress} | ${media.anime.totalEpisodes ?: "~"}"
-                    else
-                        (media.anime.totalEpisodes ?: "~").toString()
-                    binding.mediaInfoTotal.text = infoTotal
 
-                } else if (media.manga != null) {
-                    type = "MANGA"
-                    binding.mediaInfoTotalTitle.setText(R.string.total_chaps)
-                    binding.mediaInfoTotal.text = (media.manga.totalChapters ?: "~").toString()
-
-                    if (media.manga.author != null) {
-                        binding.mediaInfoAuthorContainer.visibility = View.VISIBLE
-                        binding.mediaInfoAuthor.text = media.manga.author!!.name
-                        if (!offline) {
-                            binding.mediaInfoAuthorContainer.setOnClickListener {
-                                ContextCompat.startActivity(
-                                    requireActivity(),
-                                    Intent(activity, AuthorActivity::class.java).putExtra(
-                                        "author",
-                                        media.manga.author!! as Serializable
-                                    ),
-                                    null
-                                )
-                            }
-                        }
-                    }
-                }
-
-                val desc = HtmlCompat.fromHtml(
-                    (media.description ?: "null").replace("\\n", "<br>").replace("\\\"", "\""),
-                    HtmlCompat.FROM_HTML_MODE_LEGACY
-                )
-                val infoDesc =
-                    tripleTab + if (desc.toString() != "null") desc else getString(R.string.no_description_available)
-                binding.mediaInfoDescription.text = infoDesc
-
-                binding.mediaInfoDescription.setOnClickListener {
-                    if (binding.mediaInfoDescription.maxLines == 5) {
-                        ObjectAnimator.ofInt(binding.mediaInfoDescription, "maxLines", 100)
-                            .setDuration(950).start()
-                    } else {
-                        ObjectAnimator.ofInt(binding.mediaInfoDescription, "maxLines", 5)
-                            .setDuration(400).start()
-                    }
-                }
-                displayTimer(media, binding.mediaInfoContainer)
-                val parent = _binding?.mediaInfoContainer!!
-                val screenWidth = resources.displayMetrics.run { widthPixels / density }
-
-                if (media.externalLinks.isNotEmpty() && !offline) {
-                    val bind = ItemTitleChipgroupBinding.inflate(
-                        LayoutInflater.from(context),
-                        parent,
-                        false
+                    val desc = HtmlCompat.fromHtml(
+                        (media.description ?: "null").replace("\\n", "<br>").replace("\\\"", "\""),
+                        HtmlCompat.FROM_HTML_MODE_LEGACY
                     )
-                    bind.itemTitle.setText(R.string.external_links)
-                    for (position in media.externalLinks.indices) {
-                        val chip = ItemChipBinding.inflate(
-                            LayoutInflater.from(context),
-                            bind.itemChipGroup,
-                            false
-                        ).root
+                    val infoDesc =
+                        tripleTab + if (desc.toString() != "null") desc else getString(R.string.no_description_available)
+                    binding.mediaInfoDescription.text = infoDesc
 
-                        val siteName = media.externalLinks[position][0]
-                        val language = media.externalLinks[position].getOrNull(2)
-                        
-                        // Use flag emojis for language indication
-                        val languageFlag = when {
-                            language.isNullOrBlank() -> ""
-                            language.equals("English", ignoreCase = true) -> " 🇬🇧"
-                            language.equals("Japanese", ignoreCase = true) -> " 🇯🇵"
-                            language.equals("Korean", ignoreCase = true) -> " 🇰🇷"
-                            language.equals("Chinese", ignoreCase = true) -> " 🇨🇳"
-                            language.equals("Spanish", ignoreCase = true) -> " 🇪🇸"
-                            language.equals("French", ignoreCase = true) -> " 🇫🇷"
-                            language.equals("German", ignoreCase = true) -> " 🇩🇪"
-                            language.equals("Italian", ignoreCase = true) -> " 🇮🇹"
-                            language.equals("Portuguese", ignoreCase = true) -> " 🇵🇹"
-                            language.equals("Brazilian Portuguese", ignoreCase = true) -> " 🇧🇷"
-                            language.equals("Russian", ignoreCase = true) -> " 🇷🇺"
-                            language.equals("Thai", ignoreCase = true) -> " 🇹🇭"
-                            language.equals("Indonesian", ignoreCase = true) -> " 🇮🇩"
-                            language.equals("Vietnamese", ignoreCase = true) -> " 🇻🇳"
-                            language.equals("Polish", ignoreCase = true) -> " 🇵🇱"
-                            language.equals("Turkish", ignoreCase = true) -> " 🇹🇷"
-                            language.equals("Dutch", ignoreCase = true) -> " 🇳🇱"
-                            language.equals("Swedish", ignoreCase = true) -> " 🇸🇪"
-                            language.equals("Arabic", ignoreCase = true) -> " 🇸🇦"
-                            language.equals("Hebrew", ignoreCase = true) -> " 🇮🇱"
-                            else -> " 🌐" // Globe emoji for unknown languages
+                    binding.mediaInfoDescription.setOnClickListener {
+                        if (binding.mediaInfoDescription.maxLines == 5) {
+                            ObjectAnimator.ofInt(binding.mediaInfoDescription, "maxLines", 100)
+                                .setDuration(950).start()
+                        } else {
+                            ObjectAnimator.ofInt(binding.mediaInfoDescription, "maxLines", 5)
+                                .setDuration(400).start()
                         }
-                        
-                        chip.text = "$siteName$languageFlag"
-                        chip.setSafeOnClickListener {
-                            val url = media.externalLinks[position][1]
-                            val uri = url?.toUri()
-                            val isMuSeries = uri?.host == "www.mangaupdates.com" &&
-                                uri.pathSegments?.firstOrNull() == "series"
-                            if (isMuSeries) {
-                                startActivity(Intent(Intent.ACTION_VIEW, uri).apply {
-                                    setClass(requireContext(), MUMediaDetailsActivity::class.java)
-                                })
-                            } else {
-                                startActivity(Intent(Intent.ACTION_VIEW, uri))
-                            }
-                        }
-                        chip.setOnLongClickListener { copyToClipboard(media.externalLinks[position][1]!!);true }
-                        bind.itemChipGroup.addView(chip)
                     }
-                    // Tag the external links block so quicklinks can be inserted right after it
-                    bind.root.tag = "external_links"
-                    parent.addView(bind.root)
-                }
+                    displayTimer(media, binding.mediaInfoContainer)
+                    val parent = _binding?.mediaInfoContainer!!
+                    val screenWidth = resources.displayMetrics.run { widthPixels / density }
 
-                    // Fetch MALSync quicklinks and show them under External Links (if enabled)
-                    try {
-                        val mediaTypeLower = if (media.anime != null) "anime" else "manga"
-                        // Show quicklinks whenever MALSync info is enabled (include anime and manga)
-                        if (PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled) && !offline) {
-                            lifecycleScope.launch {
-                                val quicklinks = withContext(Dispatchers.IO) {
-                                    try {
-                                        MalSyncApi.getQuicklinks(media.id, media.idMAL, mediaTypeLower)
-                                    } catch (_: Throwable) { null }
-                                }
-                                if (quicklinks?.Sites != null && quicklinks.Sites.isNotEmpty()) {
-                                    try {
-                                        // Create a chips block for quicklinks (one chip per site). Clicking a chip opens a bottom sheet with that site's entries.
-                                        val bindQuick = ItemTitleChipgroupBinding.inflate(LayoutInflater.from(context), parent, false)
-                                        bindQuick.itemTitle.setText(R.string.quicklinks)
-
-                                        quicklinks.Sites.entries.forEach { (siteName, entriesMap) ->
-                                            // Skip Comick quicklinks (handled separately)
-                                            if (siteName.equals("Comick", true) || siteName.contains("comick", true)) return@forEach
-                                            try {
-                                                val chip = ItemChipBinding.inflate(LayoutInflater.from(context), bindQuick.itemChipGroup, false).root
-                                                val displayName = if (entriesMap.size > 1) "$siteName (${entriesMap.size})" else siteName
-                                                chip.text = displayName
-                                                chip.setOnClickListener {
-                                                    try {
-                                                        val list = ArrayList(entriesMap.values)
-                                                        QuicklinksBottomSheetFragment.newInstance(siteName, list).show(childFragmentManager, "quicklinks_$siteName")
-                                                    } catch (_: Throwable) {}
-                                                }
-                                                bindQuick.itemChipGroup.addView(chip)
-                                            } catch (_: Throwable) {}
-                                        }
-
-                                        // Insert after external_links block if present. If not present,
-                                        // insert right after the synopsis text so quicklinks appear under it.
-                                        val extIndex = (0 until parent.childCount).firstOrNull { parent.getChildAt(it).tag == "external_links" } ?: -1
-                                        bindQuick.root.tag = "quicklinks_chips"
-                                        if (extIndex >= 0) {
-                                            parent.addView(bindQuick.root, extIndex + 1)
-                                        } else {
-                                            // Find the synopsis view and insert after it, otherwise append
-                                            val synopsisIndex = (0 until parent.childCount).firstOrNull {
-                                                parent.getChildAt(it).id == R.id.mediaInfoDescription
-                                            } ?: -1
-                                            if (synopsisIndex >= 0) parent.addView(bindQuick.root, synopsisIndex + 1) else parent.addView(bindQuick.root)
-                                        }
-                                    } catch (_: Throwable) {}
-                                }
-                            }
-                        }
-                    } catch (_: Throwable) {}
-
-                // Quicklinks removed - use tabs instead
-
-                if (media.synonyms.isNotEmpty()) {
-                    val bind = ItemTitleChipgroupBinding.inflate(
-                        LayoutInflater.from(context),
-                        parent,
-                        false
-                    )
-                    for (position in media.synonyms.indices) {
-                        val chip = ItemChipSynonymBinding.inflate(
-                            LayoutInflater.from(context),
-                            bind.itemChipGroup,
-                            false
-                        ).root
-                        chip.text = media.synonyms[position]
-                        chip.setOnLongClickListener { copyToClipboard(media.synonyms[position]);true }
-                        bind.itemChipGroup.addView(chip)
-                    }
-                    parent.addView(bind.root)
-                }
-                if (!media.users.isNullOrEmpty() && !offline) {
-                    val users: ArrayList<User> = media.users ?: arrayListOf()
-                    if (Anilist.token != null && media.userStatus != null) {
-                        users.add(
-                            0,
-                            User(
-                                id = Anilist.userid!!,
-                                name = getString(R.string.you),
-                                pfp = Anilist.avatar,
-                                banner = "",
-                                status = media.userStatus,
-                                score = media.userScore.toFloat(),
-                                progress = media.userProgress,
-                                totalEpisodes = media.anime?.totalEpisodes
-                                    ?: media.manga?.totalChapters,
-                                nextAiringEpisode = media.anime?.displayReleaseProgress
-                            )
-                        )
-                    }
-                    ItemTitleRecyclerBinding.inflate(
-                        LayoutInflater.from(context),
-                        parent,
-                        false
-                    ).apply {
-                        itemTitle.visibility = View.GONE
-                        itemRecycler.adapter =
-                            MediaSocialAdapter(users, type, requireActivity())
-                        itemRecycler.layoutManager = LinearLayoutManager(
-                            requireContext(),
-                            LinearLayoutManager.HORIZONTAL,
-                            false
-                        )
-                        parent.addView(root)
-                    }
-                }
-                if (media.trailer != null && !offline) {
-                    parent.addView(
-                        TrailerWebView.create(
-                            requireActivity(), LayoutInflater.from(context), parent, media.trailer!!
-                        )
-                    )
-                }
-
-                // Themes arrive after the media does (see MediaDetailsViewModel.loadThemes), so
-                // their sections go into a slot kept at this position and filled once they land.
-                val themesSlot = LinearLayout(requireContext()).apply {
-                    orientation = LinearLayout.VERTICAL
-                }
-                if (media.anime != null && !offline) parent.addView(themesSlot)
-                model.getThemes().observe(viewLifecycleOwner) { themes ->
-                    if (themes.isNullOrEmpty() || offline || themesSlot.childCount > 0) return@observe
-                    fun themeSection(titleRes: Int, tracks: List<AnimeThemeTrack>) {
-                        if (tracks.isEmpty()) return
-                        val bind = ItemTitleRecyclerBinding.inflate(
-                            LayoutInflater.from(context),
-                            themesSlot,
-                            false
-                        )
-                        bind.itemTitle.setText(titleRes)
-                        val themeAdapter = GroupieAdapter()
-                        tracks.forEach { track ->
-                            themeAdapter.add(AnimeThemeAdapter(track) {
-                                AnimeThemeBottomSheet.newInstance(
-                                    it, media.userPreferredName, media.cover, media.id
-                                ).show(parentFragmentManager, "animeTheme")
-                            })
-                        }
-                        bind.itemRecycler.adapter = themeAdapter
-                        bind.itemRecycler.layoutManager = LinearLayoutManager(requireContext())
-                        themesSlot.addView(bind.root)
-                    }
-
-                    themeSection(R.string.opening, themes.filter { it.isOpening })
-                    themeSection(R.string.ending, themes.filter { it.isEnding })
-                    // Whatever is neither — insert songs, and the odd unlabelled theme.
-                    themeSection(
-                        R.string.insert_songs,
-                        themes.filter { !it.isOpening && !it.isEnding })
-                }
-
-                if (media.genres.isNotEmpty()) {
-                    if (offline) {
-                        // The online view renders each genre as a card with a network-loaded
-                        // thumbnail; offline we fall back to plain text chips of the stored genres.
+                    if (media.externalLinks.isNotEmpty() && !offline) {
                         val bind = ItemTitleChipgroupBinding.inflate(
                             LayoutInflater.from(context),
                             parent,
                             false
                         )
-                        bind.itemTitle.setText(R.string.genres)
-                        for (genre in media.genres) {
+                        bind.itemTitle.setText(R.string.external_links)
+                        for (position in media.externalLinks.indices) {
                             val chip = ItemChipBinding.inflate(
                                 LayoutInflater.from(context),
                                 bind.itemChipGroup,
                                 false
                             ).root
-                            chip.text = genre
-                            chip.setOnLongClickListener { copyToClipboard(genre); true }
+
+                            val siteName = media.externalLinks[position][0]
+                            val language = media.externalLinks[position].getOrNull(2)
+                        
+                            // Use flag emojis for language indication
+                            val languageFlag = when {
+                                language.isNullOrBlank() -> ""
+                                language.equals("English", ignoreCase = true) -> " 🇬🇧"
+                                language.equals("Japanese", ignoreCase = true) -> " 🇯🇵"
+                                language.equals("Korean", ignoreCase = true) -> " 🇰🇷"
+                                language.equals("Chinese", ignoreCase = true) -> " 🇨🇳"
+                                language.equals("Spanish", ignoreCase = true) -> " 🇪🇸"
+                                language.equals("French", ignoreCase = true) -> " 🇫🇷"
+                                language.equals("German", ignoreCase = true) -> " 🇩🇪"
+                                language.equals("Italian", ignoreCase = true) -> " 🇮🇹"
+                                language.equals("Portuguese", ignoreCase = true) -> " 🇵🇹"
+                                language.equals("Brazilian Portuguese", ignoreCase = true) -> " 🇧🇷"
+                                language.equals("Russian", ignoreCase = true) -> " 🇷🇺"
+                                language.equals("Thai", ignoreCase = true) -> " 🇹🇭"
+                                language.equals("Indonesian", ignoreCase = true) -> " 🇮🇩"
+                                language.equals("Vietnamese", ignoreCase = true) -> " 🇻🇳"
+                                language.equals("Polish", ignoreCase = true) -> " 🇵🇱"
+                                language.equals("Turkish", ignoreCase = true) -> " 🇹🇷"
+                                language.equals("Dutch", ignoreCase = true) -> " 🇳🇱"
+                                language.equals("Swedish", ignoreCase = true) -> " 🇸🇪"
+                                language.equals("Arabic", ignoreCase = true) -> " 🇸🇦"
+                                language.equals("Hebrew", ignoreCase = true) -> " 🇮🇱"
+                                else -> " 🌐" // Globe emoji for unknown languages
+                            }
+                        
+                            chip.text = "$siteName$languageFlag"
+                            chip.setSafeOnClickListener {
+                                val url = media.externalLinks[position][1]
+                                val uri = url?.toUri()
+                                val isMuSeries = uri?.host == "www.mangaupdates.com" &&
+                                    uri.pathSegments?.firstOrNull() == "series"
+                                if (isMuSeries) {
+                                    startActivity(Intent(Intent.ACTION_VIEW, uri).apply {
+                                        setClass(requireContext(), MUMediaDetailsActivity::class.java)
+                                    })
+                                } else {
+                                    startActivity(Intent(Intent.ACTION_VIEW, uri))
+                                }
+                            }
+                            chip.setOnLongClickListener { copyToClipboard(media.externalLinks[position][1]!!);true }
                             bind.itemChipGroup.addView(chip)
                         }
+                        // Tag the external links block so quicklinks can be inserted right after it
+                        bind.root.tag = "external_links"
                         parent.addView(bind.root)
-                    } else {
-                        val bind = ActivityGenreBinding.inflate(
+                    }
+
+                        // Fetch MALSync quicklinks and show them under External Links (if enabled)
+                        try {
+                            val mediaTypeLower = if (media.anime != null) "anime" else "manga"
+                            // Show quicklinks whenever MALSync info is enabled (include anime and manga)
+                            if (PrefManager.getVal<Boolean>(PrefName.MalSyncInfoEnabled) && !offline) {
+                                lifecycleScope.launch {
+                                    val quicklinks = withContext(Dispatchers.IO) {
+                                        try {
+                                            MalSyncApi.getQuicklinks(media.id, media.idMAL, mediaTypeLower)
+                                        } catch (_: Throwable) { null }
+                                    }
+                                    if (quicklinks?.Sites != null && quicklinks.Sites.isNotEmpty()) {
+                                        try {
+                                            // Create a chips block for quicklinks (one chip per site). Clicking a chip opens a bottom sheet with that site's entries.
+                                            val bindQuick = ItemTitleChipgroupBinding.inflate(LayoutInflater.from(context), parent, false)
+                                            bindQuick.itemTitle.setText(R.string.quicklinks)
+
+                                            quicklinks.Sites.entries.forEach { (siteName, entriesMap) ->
+                                                // Skip Comick quicklinks (handled separately)
+                                                if (siteName.equals("Comick", true) || siteName.contains("comick", true)) return@forEach
+                                                try {
+                                                    val chip = ItemChipBinding.inflate(LayoutInflater.from(context), bindQuick.itemChipGroup, false).root
+                                                    val displayName = if (entriesMap.size > 1) "$siteName (${entriesMap.size})" else siteName
+                                                    chip.text = displayName
+                                                    chip.setOnClickListener {
+                                                        try {
+                                                            val list = ArrayList(entriesMap.values)
+                                                            QuicklinksBottomSheetFragment.newInstance(siteName, list).show(childFragmentManager, "quicklinks_$siteName")
+                                                        } catch (_: Throwable) {}
+                                                    }
+                                                    bindQuick.itemChipGroup.addView(chip)
+                                                } catch (_: Throwable) {}
+                                            }
+
+                                            // Insert after external_links block if present. If not present,
+                                            // insert right after the synopsis text so quicklinks appear under it.
+                                            val extIndex = (0 until parent.childCount).firstOrNull { parent.getChildAt(it).tag == "external_links" } ?: -1
+                                            bindQuick.root.tag = "quicklinks_chips"
+                                            if (extIndex >= 0) {
+                                                parent.addView(bindQuick.root, extIndex + 1)
+                                            } else {
+                                                // Find the synopsis view and insert after it, otherwise append
+                                                val synopsisIndex = (0 until parent.childCount).firstOrNull {
+                                                    parent.getChildAt(it).id == R.id.mediaInfoDescription
+                                                } ?: -1
+                                                if (synopsisIndex >= 0) parent.addView(bindQuick.root, synopsisIndex + 1) else parent.addView(bindQuick.root)
+                                            }
+                                        } catch (_: Throwable) {}
+                                    }
+                                }
+                            }
+                        } catch (_: Throwable) {}
+
+                    // Quicklinks removed - use tabs instead
+
+                    if (media.synonyms.isNotEmpty()) {
+                        val bind = ItemTitleChipgroupBinding.inflate(
                             LayoutInflater.from(context),
                             parent,
                             false
                         )
-                        val adapter = GenreAdapter(type)
-                        genreModel.doneListener = {
-                            MainScope().launch {
-                                bind.mediaInfoGenresProgressBar.visibility = View.GONE
-                            }
-                        }
-                        if (genreModel.genres != null) {
-                            adapter.genres = genreModel.genres!!
-                            adapter.pos = ArrayList(genreModel.genres!!.keys)
-                            if (genreModel.done) genreModel.doneListener?.invoke()
-                        }
-                        bind.mediaInfoGenresRecyclerView.adapter = adapter
-                        bind.mediaInfoGenresRecyclerView.layoutManager =
-                            GridLayoutManager(requireActivity(), (screenWidth / 156f).toInt())
-
-                        lifecycleScope.launch(Dispatchers.IO) {
-                            genreModel.loadGenres(media.genres) {
-                                MainScope().launch {
-                                    adapter.addGenre(it)
-                                }
-                            }
+                        for (position in media.synonyms.indices) {
+                            val chip = ItemChipSynonymBinding.inflate(
+                                LayoutInflater.from(context),
+                                bind.itemChipGroup,
+                                false
+                            ).root
+                            chip.text = media.synonyms[position]
+                            chip.setOnLongClickListener { copyToClipboard(media.synonyms[position]);true }
+                            bind.itemChipGroup.addView(chip)
                         }
                         parent.addView(bind.root)
                     }
-                }
-
-                // Full tag data (rank, description, spoiler flags) once the media page has
-                // loaded; media cached for offline before that existed only keeps the flat
-                // "name : rank%" strings, so those are parsed back into tags instead.
-                val tagChips = media.tagsInfo?.takeIf { it.isNotEmpty() }?.map { AnilistTagChips.of(it) }
-                    ?: media.tags.map { AnilistTagChips.ofLabel(it) }
-                // The tag search needs the network, so only wire it up when online.
-                val onTagClick: ((AnilistTagChips.Tag) -> Unit)? =
-                    if (offline) null else fun(tag: AnilistTagChips.Tag) {
-                        ContextCompat.startActivity(
-                            requireContext(),
-                            Intent(requireContext(), SearchActivity::class.java)
-                                .putExtra("type", type)
-                                .putExtra("sortBy", Anilist.sortBy[2])
-                                .putExtra("tag", tag.name)
-                                .putExtra("search", true)
-                                .also {
-                                    if (media.isAdult) {
-                                        if (!Anilist.adult) Toast.makeText(
-                                            requireContext(),
-                                            currActivity()?.getString(R.string.content_18),
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                        it.putExtra("hentai", true)
-                                    }
-                                },
-                            null
-                        )
-                    }
-                AnilistTagChips.render(requireContext(), parent, tagChips, onTagClick)
-
-                // Watch order (anime only) and news, as button cards laid out like the
-                // prequel/sequel pair below. Neither id is resolved here: the screens themselves
-                // work out the MAL / MangaBaka id they need, so opening one costs no request now.
-                if (!offline && (media.anime != null || media.manga != null)) {
-                    ItemQuelsBinding.inflate(
-                        LayoutInflater.from(context),
-                        parent,
-                        false
-                    ).apply {
-                        val artwork = media.banner ?: media.cover
-                        // These cards are buttons, not covers - leaving them named would give the
-                        // shared element transition four views called "mediaCover" to choose from.
-                        ViewCompat.setTransitionName(quelStartImage, null)
-                        ViewCompat.setTransitionName(quelEndImage, null)
-
-                        val titles = ArrayList(media.mainTitleOptions())
-                        if (media.anime != null) {
-                            quelStartCard.visibility = View.VISIBLE
-                            quelStartLabel.setText(R.string.watch_order)
-                            quelStartImage.loadImage(artwork)
-                            quelStartCard.setSafeOnClickListener {
-                                startActivity(
-                                    Intent(requireContext(), WatchOrderActivity::class.java)
-                                        .putExtra("mediaId", media.id)
-                                        .putExtra("malId", media.idMAL ?: -1)
-                                        .putExtra("startYear", media.startDate?.year ?: -1)
-                                        .putStringArrayListExtra("titles", titles)
+                    if (!media.users.isNullOrEmpty() && !offline) {
+                        val users: ArrayList<User> = media.users ?: arrayListOf()
+                        if (Anilist.token != null && media.userStatus != null) {
+                            users.add(
+                                0,
+                                User(
+                                    id = Anilist.userid!!,
+                                    name = getString(R.string.you),
+                                    pfp = Anilist.avatar,
+                                    banner = "",
+                                    status = media.userStatus,
+                                    score = media.userScore.toFloat(),
+                                    progress = media.userProgress,
+                                    totalEpisodes = media.anime?.totalEpisodes
+                                        ?: media.manga?.totalChapters,
+                                    nextAiringEpisode = media.anime?.displayReleaseProgress
                                 )
-                            }
-                        }
-
-                        // Manga and novels have no watch order, so news takes the start slot and
-                        // balanceQuelRow() centres it rather than leaving the row half empty.
-                        val onStart = media.anime == null
-                        val newsCard = if (onStart) quelStartCard else quelEndCard
-                        val newsLabel = if (onStart) quelStartLabel else quelEndLabel
-                        val newsImage = if (onStart) quelStartImage else quelEndImage
-                        if (onStart) quelStartAccent.setBackgroundColor(
-                            requireContext().getThemeColor(com.google.android.material.R.attr.colorPrimary)
-                        )
-
-                        newsCard.visibility = View.VISIBLE
-                        newsLabel.setText(R.string.news)
-                        newsImage.loadImage(artwork)
-                        newsCard.setSafeOnClickListener {
-                            startActivity(
-                                Intent(requireContext(), MediaNewsActivity::class.java)
-                                    .putExtra("mediaId", media.id)
-                                    .putExtra("malId", media.idMAL ?: -1)
-                                    .putExtra("startYear", media.startDate?.year ?: -1)
-                                    .putExtra("isAnime", media.anime != null)
-                                    .putStringArrayListExtra("titles", titles)
                             )
                         }
-                        balanceQuelRow()
-                        parent.addView(root)
+                        ItemTitleRecyclerBinding.inflate(
+                            LayoutInflater.from(context),
+                            parent,
+                            false
+                        ).apply {
+                            itemTitle.visibility = View.GONE
+                            itemRecycler.adapter =
+                                MediaSocialAdapter(users, type, requireActivity())
+                            itemRecycler.layoutManager = LinearLayoutManager(
+                                requireContext(),
+                                LinearLayoutManager.HORIZONTAL,
+                                false
+                            )
+                            parent.addView(root)
+                        }
                     }
-                }
+                    if (media.trailer != null && !offline) {
+                        parent.addView(
+                            TrailerWebView.create(
+                                requireActivity(), LayoutInflater.from(context), parent, media.trailer!!
+                            )
+                        )
+                    }
 
-                if (!media.relations.isNullOrEmpty() && !offline) {
-                    if (media.sequel != null || media.prequel != null) {
+                    // Themes arrive after the media does (see MediaDetailsViewModel.loadThemes), so
+                    // their sections go into a slot kept at this position and filled once they land.
+                    val themesSlot = LinearLayout(requireContext()).apply {
+                        orientation = LinearLayout.VERTICAL
+                    }
+                    if (media.anime != null && !offline) parent.addView(themesSlot)
+                    model.getThemes().observe(viewLifecycleOwner) { themes ->
+                        if (themes.isNullOrEmpty() || offline || themesSlot.childCount > 0) return@observe
+                        fun themeSection(titleRes: Int, tracks: List<AnimeThemeTrack>) {
+                            if (tracks.isEmpty()) return
+                            val bind = ItemTitleRecyclerBinding.inflate(
+                                LayoutInflater.from(context),
+                                themesSlot,
+                                false
+                            )
+                            bind.itemTitle.setText(titleRes)
+                            val themeAdapter = GroupieAdapter()
+                            tracks.forEach { track ->
+                                themeAdapter.add(AnimeThemeAdapter(track) {
+                                    AnimeThemeBottomSheet.newInstance(
+                                        it, media.userPreferredName, media.cover, media.id
+                                    ).show(parentFragmentManager, "animeTheme")
+                                })
+                            }
+                            bind.itemRecycler.adapter = themeAdapter
+                            bind.itemRecycler.layoutManager = LinearLayoutManager(requireContext())
+                            themesSlot.addView(bind.root)
+                        }
+
+                        themeSection(R.string.opening, themes.filter { it.isOpening })
+                        themeSection(R.string.ending, themes.filter { it.isEnding })
+                        // Whatever is neither — insert songs, and the odd unlabelled theme.
+                        themeSection(
+                            R.string.insert_songs,
+                            themes.filter { !it.isOpening && !it.isEnding })
+                    }
+
+                    if (media.genres.isNotEmpty()) {
+                        if (offline) {
+                            // The online view renders each genre as a card with a network-loaded
+                            // thumbnail; offline we fall back to plain text chips of the stored genres.
+                            val bind = ItemTitleChipgroupBinding.inflate(
+                                LayoutInflater.from(context),
+                                parent,
+                                false
+                            )
+                            bind.itemTitle.setText(R.string.genres)
+                            for (genre in media.genres) {
+                                val chip = ItemChipBinding.inflate(
+                                    LayoutInflater.from(context),
+                                    bind.itemChipGroup,
+                                    false
+                                ).root
+                                chip.text = genre
+                                chip.setOnLongClickListener { copyToClipboard(genre); true }
+                                bind.itemChipGroup.addView(chip)
+                            }
+                            parent.addView(bind.root)
+                        } else {
+                            val bind = ActivityGenreBinding.inflate(
+                                LayoutInflater.from(context),
+                                parent,
+                                false
+                            )
+                            val adapter = GenreAdapter(type)
+                            genreModel.doneListener = {
+                                MainScope().launch {
+                                    bind.mediaInfoGenresProgressBar.visibility = View.GONE
+                                }
+                            }
+                            if (genreModel.genres != null) {
+                                adapter.genres = genreModel.genres!!
+                                adapter.pos = ArrayList(genreModel.genres!!.keys)
+                                if (genreModel.done) genreModel.doneListener?.invoke()
+                            }
+                            bind.mediaInfoGenresRecyclerView.adapter = adapter
+                            bind.mediaInfoGenresRecyclerView.layoutManager =
+                                GridLayoutManager(requireActivity(), (screenWidth / 156f).toInt())
+
+                            lifecycleScope.launch(Dispatchers.IO) {
+                                genreModel.loadGenres(media.genres) {
+                                    MainScope().launch {
+                                        adapter.addGenre(it)
+                                    }
+                                }
+                            }
+                            parent.addView(bind.root)
+                        }
+                    }
+
+                    // Full tag data (rank, description, spoiler flags) once the media page has
+                    // loaded; media cached for offline before that existed only keeps the flat
+                    // "name : rank%" strings, so those are parsed back into tags instead.
+                    val tagChips = media.tagsInfo?.takeIf { it.isNotEmpty() }?.map { AnilistTagChips.of(it) }
+                        ?: media.tags.map { AnilistTagChips.ofLabel(it) }
+                    // The tag search needs the network, so only wire it up when online.
+                    val onTagClick: ((AnilistTagChips.Tag) -> Unit)? =
+                        if (offline) null else fun(tag: AnilistTagChips.Tag) {
+                            ContextCompat.startActivity(
+                                requireContext(),
+                                Intent(requireContext(), SearchActivity::class.java)
+                                    .putExtra("type", type)
+                                    .putExtra("sortBy", Anilist.sortBy[2])
+                                    .putExtra("tag", tag.name)
+                                    .putExtra("search", true)
+                                    .also {
+                                        if (media.isAdult) {
+                                            if (!Anilist.adult) Toast.makeText(
+                                                requireContext(),
+                                                currActivity()?.getString(R.string.content_18),
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                            it.putExtra("hentai", true)
+                                        }
+                                    },
+                                null
+                            )
+                        }
+                    AnilistTagChips.render(requireContext(), parent, tagChips, onTagClick)
+
+                    // Watch order (anime only) and news, as button cards laid out like the
+                    // prequel/sequel pair below. Neither id is resolved here: the screens themselves
+                    // work out the MAL / MangaBaka id they need, so opening one costs no request now.
+                    if (!offline && (media.anime != null || media.manga != null)) {
                         ItemQuelsBinding.inflate(
                             LayoutInflater.from(context),
                             parent,
                             false
                         ).apply {
+                            val artwork = media.banner ?: media.cover
+                            // These cards are buttons, not covers - leaving them named would give the
+                            // shared element transition four views called "mediaCover" to choose from.
+                            ViewCompat.setTransitionName(quelStartImage, null)
+                            ViewCompat.setTransitionName(quelEndImage, null)
 
-                            if (media.sequel != null) {
-                                quelEndCard.visibility = View.VISIBLE
-                                quelEndImage.loadImage(
-                                    media.sequel!!.banner ?: media.sequel!!.cover
-                                )
-                                quelEndCard.setSafeOnClickListener {
-                                    val options = ActivityOptionsCompat.makeSceneTransitionAnimation(
-                                        requireActivity(),
-                                        quelEndImage,
-                                        ViewCompat.getTransitionName(quelEndImage)!!
-                                    ).toBundle()
-                                    ContextCompat.startActivity(
-                                        requireContext(),
-                                        Intent(
-                                            requireContext(),
-                                            MediaDetailsActivity::class.java
-                                        ).putExtra(
-                                            "media",
-                                            media.sequel as Serializable
-                                        ), options
+                            val titles = ArrayList(media.mainTitleOptions())
+                            if (media.anime != null) {
+                                quelStartCard.visibility = View.VISIBLE
+                                quelStartLabel.setText(R.string.watch_order)
+                                quelStartImage.loadImage(artwork)
+                                quelStartCard.setSafeOnClickListener {
+                                    startActivity(
+                                        Intent(requireContext(), WatchOrderActivity::class.java)
+                                            .putExtra("mediaId", media.id)
+                                            .putExtra("malId", media.idMAL ?: -1)
+                                            .putExtra("startYear", media.startDate?.year ?: -1)
+                                            .putStringArrayListExtra("titles", titles)
                                     )
                                 }
                             }
-                            if (media.prequel != null) {
-                                quelStartCard.visibility = View.VISIBLE
-                                quelStartImage.loadImage(
-                                    media.prequel!!.banner ?: media.prequel!!.cover
+
+                            // Manga and novels have no watch order, so news takes the start slot and
+                            // balanceQuelRow() centres it rather than leaving the row half empty.
+                            val onStart = media.anime == null
+                            val newsCard = if (onStart) quelStartCard else quelEndCard
+                            val newsLabel = if (onStart) quelStartLabel else quelEndLabel
+                            val newsImage = if (onStart) quelStartImage else quelEndImage
+                            if (onStart) quelStartAccent.setBackgroundColor(
+                                requireContext().getThemeColor(androidx.appcompat.R.attr.colorPrimary)
+                            )
+
+                            newsCard.visibility = View.VISIBLE
+                            newsLabel.setText(R.string.news)
+                            newsImage.loadImage(artwork)
+                            newsCard.setSafeOnClickListener {
+                                startActivity(
+                                    Intent(requireContext(), MediaNewsActivity::class.java)
+                                        .putExtra("mediaId", media.id)
+                                        .putExtra("malId", media.idMAL ?: -1)
+                                        .putExtra("startYear", media.startDate?.year ?: -1)
+                                        .putExtra("isAnime", media.anime != null)
+                                        .putStringArrayListExtra("titles", titles)
                                 )
-                                quelStartCard.setSafeOnClickListener {
-                                    val options = ActivityOptionsCompat.makeSceneTransitionAnimation(
-                                        requireActivity(),
-                                        quelStartImage,
-                                        ViewCompat.getTransitionName(quelStartImage)!!
-                                    ).toBundle()
-                                    ContextCompat.startActivity(
-                                        requireContext(),
-                                        Intent(
-                                            requireContext(),
-                                            MediaDetailsActivity::class.java
-                                        ).putExtra(
-                                            "media",
-                                            media.prequel as Serializable
-                                        ), options
-                                    )
-                                }
                             }
                             balanceQuelRow()
                             parent.addView(root)
                         }
                     }
 
-                    ItemTitleRecyclerBinding.inflate(
+                    if (!media.relations.isNullOrEmpty() && !offline) {
+                        if (media.sequel != null || media.prequel != null) {
+                            ItemQuelsBinding.inflate(
+                                LayoutInflater.from(context),
+                                parent,
+                                false
+                            ).apply {
+
+                                if (media.sequel != null) {
+                                    quelEndCard.visibility = View.VISIBLE
+                                    quelEndImage.loadImage(
+                                        media.sequel!!.banner ?: media.sequel!!.cover
+                                    )
+                                    quelEndCard.setSafeOnClickListener {
+                                        val options = ActivityOptionsCompat.makeSceneTransitionAnimation(
+                                            requireActivity(),
+                                            quelEndImage,
+                                            ViewCompat.getTransitionName(quelEndImage)!!
+                                        ).toBundle()
+                                        ContextCompat.startActivity(
+                                            requireContext(),
+                                            Intent(
+                                                requireContext(),
+                                                MediaDetailsActivity::class.java
+                                            ).putExtra(
+                                                "media",
+                                                media.sequel as Serializable
+                                            ), options
+                                        )
+                                    }
+                                }
+                                if (media.prequel != null) {
+                                    quelStartCard.visibility = View.VISIBLE
+                                    quelStartImage.loadImage(
+                                        media.prequel!!.banner ?: media.prequel!!.cover
+                                    )
+                                    quelStartCard.setSafeOnClickListener {
+                                        val options = ActivityOptionsCompat.makeSceneTransitionAnimation(
+                                            requireActivity(),
+                                            quelStartImage,
+                                            ViewCompat.getTransitionName(quelStartImage)!!
+                                        ).toBundle()
+                                        ContextCompat.startActivity(
+                                            requireContext(),
+                                            Intent(
+                                                requireContext(),
+                                                MediaDetailsActivity::class.java
+                                            ).putExtra(
+                                                "media",
+                                                media.prequel as Serializable
+                                            ), options
+                                        )
+                                    }
+                                }
+                                balanceQuelRow()
+                                parent.addView(root)
+                            }
+                        }
+
+                        ItemTitleRecyclerBinding.inflate(
+                            LayoutInflater.from(context),
+                            parent,
+                            false
+                        ).apply {
+
+                            itemRecycler.adapter =
+                                MediaAdaptor(0, media.relations!!, requireActivity())
+                            itemRecycler.layoutManager = LinearLayoutManager(
+                                requireContext(),
+                                LinearLayoutManager.HORIZONTAL,
+                                false
+                            )
+                            parent.addView(root)
+                        }
+                    }
+                    if (!offline) ItemTitleRecyclerBinding.inflate(
                         LayoutInflater.from(context),
                         parent,
                         false
                     ).apply {
-
-                        itemRecycler.adapter =
-                            MediaAdaptor(0, media.relations!!, requireActivity())
-                        itemRecycler.layoutManager = LinearLayoutManager(
-                            requireContext(),
-                            LinearLayoutManager.HORIZONTAL,
-                            false
-                        )
-                        parent.addView(root)
-                    }
-                }
-                if (!offline) ItemTitleRecyclerBinding.inflate(
-                    LayoutInflater.from(context),
-                    parent,
-                    false
-                ).apply {
-                    val reviewAdapter = GroupieAdapter()
-                    media.review?.forEach { reviewAdapter.add(ReviewAdapter(it)) }
-                    itemTitle.setText(R.string.reviews)
-                    if (media.review.isNullOrEmpty()) {
-                        itemEmpty.setText(R.string.no_reviews)
-                        itemEmptyContainer.visibility = View.VISIBLE
-                    }
-                    itemRecycler.adapter = reviewAdapter
-                    itemRecycler.layoutManager = LinearLayoutManager(requireContext())
-                    itemMore.visibility = View.VISIBLE
-                    itemMore.setSafeOnClickListener {
-                        startActivity(
-                            Intent(requireContext(), ReviewActivity::class.java)
-                                .putExtra("mediaId", media.id)
-                        )
-                    }
-                    if (Anilist.token != null) {
-                        itemAdd.visibility = View.VISIBLE
-                        itemAdd.setSafeOnClickListener {
+                        val reviewAdapter = GroupieAdapter()
+                        media.review?.forEach { reviewAdapter.add(ReviewAdapter(it)) }
+                        itemTitle.setText(R.string.reviews)
+                        if (media.review.isNullOrEmpty()) {
+                            itemEmpty.setText(R.string.no_reviews)
+                            itemEmptyContainer.visibility = View.VISIBLE
+                        }
+                        itemRecycler.adapter = reviewAdapter
+                        itemRecycler.layoutManager = LinearLayoutManager(requireContext())
+                        itemMore.visibility = View.VISIBLE
+                        itemMore.setSafeOnClickListener {
                             startActivity(
-                                Intent(requireContext(), ReviewWriteActivity::class.java)
+                                Intent(requireContext(), ReviewActivity::class.java)
                                     .putExtra("mediaId", media.id)
                             )
                         }
-                    }
-                    parent.addView(root)
-                }
-                if (!media.characters.isNullOrEmpty() && !offline) {
-                    ItemTitleRecyclerBinding.inflate(
-                        LayoutInflater.from(context),
-                        parent,
-                        false
-                    ).apply {
-                        itemTitle.setText(R.string.characters)
-                        itemRecycler.adapter =
-                            CharacterAdapter(media.characters!!)
-                        itemRecycler.layoutManager = LinearLayoutManager(
-                            requireContext(),
-                            LinearLayoutManager.HORIZONTAL,
-                            false
-                        )
-                        parent.addView(root)
-                    }
-                }
-                if (!media.staff.isNullOrEmpty() && !offline) {
-                    ItemTitleRecyclerBinding.inflate(
-                        LayoutInflater.from(context),
-                        parent,
-                        false
-                    ).apply {
-                        itemTitle.setText(R.string.staff)
-                        itemRecycler.adapter =
-                            AuthorAdapter(media.staff!!)
-                        itemRecycler.layoutManager = LinearLayoutManager(
-                            requireContext(),
-                            LinearLayoutManager.HORIZONTAL,
-                            false
-                        )
-                        parent.addView(root)
-                    }
-                }
-                if (!media.recommendations.isNullOrEmpty() && !offline) {
-                    ItemTitleRecyclerBinding.inflate(
-                        LayoutInflater.from(context),
-                        parent,
-                        false
-                    ).apply {
-                        itemTitle.setText(R.string.recommended)
-                        itemRecycler.adapter =
-                            MediaAdaptor(0, media.recommendations!!, requireActivity(), currentMedia = media)
-                        itemRecycler.layoutManager = LinearLayoutManager(
-                            requireContext(),
-                            LinearLayoutManager.HORIZONTAL,
-                            false
-                        )
-                        itemMore.visibility = View.VISIBLE
-                        itemMore.setSafeOnClickListener {
-                            MediaListViewActivity.passedMedia = ArrayList(media.recommendations!!)
-                            MediaListViewActivity.passedRecommendationSource = media
-                            startActivity(
-                                Intent(requireContext(), MediaListViewActivity::class.java)
-                                    .putExtra("title", getString(R.string.recommended))
-                            )
+                        if (Anilist.token != null) {
+                            itemAdd.visibility = View.VISIBLE
+                            itemAdd.setSafeOnClickListener {
+                                startActivity(
+                                    Intent(requireContext(), ReviewWriteActivity::class.java)
+                                        .putExtra("mediaId", media.id)
+                                )
+                            }
                         }
                         parent.addView(root)
+                    }
+                    if (!media.characters.isNullOrEmpty() && !offline) {
+                        ItemTitleRecyclerBinding.inflate(
+                            LayoutInflater.from(context),
+                            parent,
+                            false
+                        ).apply {
+                            itemTitle.setText(R.string.characters)
+                            itemRecycler.adapter =
+                                CharacterAdapter(media.characters!!)
+                            itemRecycler.layoutManager = LinearLayoutManager(
+                                requireContext(),
+                                LinearLayoutManager.HORIZONTAL,
+                                false
+                            )
+                            parent.addView(root)
+                        }
+                    }
+                    if (!media.staff.isNullOrEmpty() && !offline) {
+                        ItemTitleRecyclerBinding.inflate(
+                            LayoutInflater.from(context),
+                            parent,
+                            false
+                        ).apply {
+                            itemTitle.setText(R.string.staff)
+                            itemRecycler.adapter =
+                                AuthorAdapter(media.staff!!)
+                            itemRecycler.layoutManager = LinearLayoutManager(
+                                requireContext(),
+                                LinearLayoutManager.HORIZONTAL,
+                                false
+                            )
+                            parent.addView(root)
+                        }
+                    }
+                    if (!media.recommendations.isNullOrEmpty() && !offline) {
+                        ItemTitleRecyclerBinding.inflate(
+                            LayoutInflater.from(context),
+                            parent,
+                            false
+                        ).apply {
+                            itemTitle.setText(R.string.recommended)
+                            itemRecycler.adapter =
+                                MediaAdaptor(0, media.recommendations!!, requireActivity(), currentMedia = media)
+                            itemRecycler.layoutManager = LinearLayoutManager(
+                                requireContext(),
+                                LinearLayoutManager.HORIZONTAL,
+                                false
+                            )
+                            itemMore.visibility = View.VISIBLE
+                            itemMore.setSafeOnClickListener {
+                                MediaListViewActivity.passedMedia = ArrayList(media.recommendations!!)
+                                MediaListViewActivity.passedRecommendationSource = media
+                                startActivity(
+                                    Intent(requireContext(), MediaListViewActivity::class.java)
+                                        .putExtra("title", getString(R.string.recommended))
+                                )
+                            }
+                            parent.addView(root)
+                        }
                     }
                 }
             }

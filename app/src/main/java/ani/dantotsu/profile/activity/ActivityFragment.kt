@@ -69,6 +69,7 @@ class ActivityFragment : Fragment() {
             getList()
             if (adapter.itemCount == 0) {
                 binding.emptyTextView.isVisible = true
+                binding.emptyStateFrame.isVisible = binding.emptyTextView.isVisible
             }
             binding.listProgressBar.isVisible = false
         }
@@ -142,6 +143,7 @@ class ActivityFragment : Fragment() {
             binding.listProgressBar.isVisible = true
             getList()
             binding.emptyTextView.isVisible = adapter.itemCount == 0
+            binding.emptyStateFrame.isVisible = binding.emptyTextView.isVisible
             binding.listProgressBar.isVisible = false
         }
     }

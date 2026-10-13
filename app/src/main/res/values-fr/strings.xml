@@ -2959,4 +2959,17 @@
     <string name="mb_has_anime">A un anime</string>
     <string name="mb_no_anime">Sans anime</string>
     <string name="discover_remove_filter">Retirer le filtre %1$s</string>
+    <!-- Read tab chapter selection (long-press a chapter) -->
+    <string name="mark_as_read">Marquer comme lu</string>
+    <string name="delete_downloads">Supprimer les téléchargements</string>
+    <string name="clear_selection">Effacer la sélection</string>
+    <string name="chapters_already_read">Déjà lu jusqu\'ici</string>
+    <string name="chapters_queued_for_download">%1$d chapitres ajoutés aux téléchargements</string>
+    <string name="chapters_nothing_to_download">Déjà téléchargés</string>
+    <string name="chapters_no_downloads">Aucun de ces chapitres n\'est téléchargé</string>
+    <string name="delete_downloaded_chapters">Supprimer %1$d chapitres téléchargés ?</string>
+    <string name="mark_as_watched">Marquer comme vu</string>
+    <string name="episodes_already_watched">Déjà vu jusqu’ici</string>
+    <string name="episodes_no_downloads">Aucun de ces épisodes n’est téléchargé</string>
+    <string name="delete_downloaded_episodes">Supprimer %1$d épisodes téléchargés ?</string>
 </resources>

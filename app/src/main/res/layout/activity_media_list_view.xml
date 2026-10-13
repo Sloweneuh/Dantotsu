@@ -129,7 +129,7 @@
             tools:listitem="@layout/item_media_compact"
             tools:orientation="horizontal" />
 
-        <ProgressBar
+        <ani.dantotsu.others.MaterialProgressBar
             android:id="@+id/mediaListProgress"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

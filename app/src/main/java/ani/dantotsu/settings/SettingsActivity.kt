@@ -188,6 +188,18 @@ class SettingsActivity : AppCompatActivity() {
                                 )
                             },
                             isActivity = true
+                        ) else null,
+                        // Debug playground comparing current components and motion with the
+                        // proposed modernisation (Material 1.14 Expressive, transitions, springs).
+                        if (DesignLabActivity.enabled) Settings(
+                            type = 1,
+                            name = "Design Lab",
+                            desc = "Debug: compare current UI with proposed changes",
+                            icon = R.drawable.ic_round_bug_report_24,
+                            onClick = {
+                                startActivity(Intent(context, DesignLabActivity::class.java))
+                            },
+                            isActivity = true
                         ) else null
                     ).toTypedArray()
                 )

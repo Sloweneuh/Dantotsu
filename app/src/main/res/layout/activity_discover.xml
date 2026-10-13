@@ -8,6 +8,12 @@
     android:layout_height="match_parent"
     android:background="?android:attr/colorBackground">
 
+    <!-- Drifting compass pattern behind the queue's start, empty and end screens. -->
+    <ani.dantotsu.others.PatternBackgroundView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:patternIcon="@drawable/ic_round_explore_24" />
+
     <LinearLayout
         android:id="@+id/discoverTopBar"
         android:layout_width="match_parent"
@@ -46,7 +52,7 @@
             android:textSize="18sp" />
     </LinearLayout>
 
-    <ProgressBar
+    <ani.dantotsu.others.MaterialProgressBar
         android:id="@+id/discoverLoading"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

@@ -824,7 +824,7 @@ class ListFilterBottomDialog(
             )!!.mutate()
             DrawableCompat.setTint(
                 DrawableCompat.wrap(drawable),
-                requireContext().getResourceColor(com.google.android.material.R.attr.colorPrimary)
+                requireContext().getResourceColor(androidx.appcompat.R.attr.colorPrimary)
             )
             val size = (35 * resources.displayMetrics.density).toInt()
             drawable.setBounds(0, 0, size, size)

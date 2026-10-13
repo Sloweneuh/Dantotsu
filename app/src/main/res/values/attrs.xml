@@ -1,4 +1,18 @@
 <resources>
+    <declare-styleable name="PatternBackgroundView">
+        <attr name="patternIcon" format="reference" />
+        <attr name="patternSize" format="dimension" />
+        <attr name="patternSpacing" format="dimension" />
+        <attr name="patternOpacity" format="float" />
+        <attr name="patternSpeed" format="dimension" />
+        <attr name="patternAnchor" format="reference" />
+    </declare-styleable>
+
+    <declare-styleable name="MaterialProgressBar">
+        <!-- Fade the parent's content through when this spinner hides (default true). -->
+        <attr name="fadeContentOnHide" format="boolean" />
+    </declare-styleable>
+
     <declare-styleable name="AppWidgetAttrs">
         <attr name="appWidgetPadding" format="dimension" />
         <attr name="appWidgetInnerRadius" format="dimension" />

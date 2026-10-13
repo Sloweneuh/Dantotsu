@@ -33,7 +33,7 @@
         tools:orientation="vertical"
         tools:spanCount="2" />
 
-    <ProgressBar
+    <ani.dantotsu.others.MaterialProgressBar
         android:id="@+id/mediaInfoGenresProgressBar"
         style="?android:attr/progressBarStyle"
         android:layout_width="match_parent"

@@ -382,7 +382,7 @@
             app:singleSelection="true" />
     </HorizontalScrollView>
 
-    <ProgressBar
+    <ani.dantotsu.others.MaterialProgressBar
         android:id="@+id/sourceProgressBar"
         style="?android:attr/progressBarStyle"
         android:layout_width="match_parent"

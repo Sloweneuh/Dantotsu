@@ -30,6 +30,7 @@ import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.statusBarHeight
 import ani.dantotsu.themes.ThemeManager
+import ani.dantotsu.util.useSharedAxisTransitions
 import nl.joery.animatedbottombar.AnimatedBottomBar
 
 class NotificationActivity : AppCompatActivity() {
@@ -104,6 +105,7 @@ class NotificationActivity : AppCompatActivity() {
         binding.notificationViewPager.isUserInputEnabled = false
         binding.notificationViewPager.adapter =
             ViewPagerAdapter(supportFragmentManager, lifecycle, getOne, CommentsEnabled)
+        binding.notificationViewPager.useSharedAxisTransitions()
         binding.notificationViewPager.setCurrentItem(selected, false)
         navBar.selectTabAt(selected)
         navBar.setOnTabSelectListener(object : AnimatedBottomBar.OnTabSelectListener {

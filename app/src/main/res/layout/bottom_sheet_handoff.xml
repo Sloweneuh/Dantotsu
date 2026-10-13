@@ -40,7 +40,7 @@
             android:textSize="13sp"
             tools:text="@string/handoff_media_title" />
 
-        <ProgressBar
+        <ani.dantotsu.others.MaterialProgressBar
             android:id="@+id/handoffProgress"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

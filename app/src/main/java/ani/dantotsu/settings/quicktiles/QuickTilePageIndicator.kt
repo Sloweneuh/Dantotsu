@@ -37,7 +37,7 @@ class QuickTilePageIndicator @JvmOverloads constructor(
     private var positionOffset = 0f
 
     private val activeColor
-        get() = context.getThemeColor(com.google.android.material.R.attr.colorPrimary)
+        get() = context.getThemeColor(androidx.appcompat.R.attr.colorPrimary)
     private val inactiveColor
         get() = context.getThemeColor(com.google.android.material.R.attr.colorOutline)
 

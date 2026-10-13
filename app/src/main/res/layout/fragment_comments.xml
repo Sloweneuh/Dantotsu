@@ -57,7 +57,7 @@
                     app:tint="?attr/colorOnBackground" />
             </LinearLayout>
 
-            <ProgressBar
+            <ani.dantotsu.others.MaterialProgressBar
                 android:id="@+id/commentsProgressBar"
                 style="?android:attr/progressBarStyle"
                 android:layout_width="wrap_content"
@@ -81,7 +81,7 @@
                     tools:listitem="@layout/item_comments"
                     tools:visibility="visible" />
 
-                <ProgressBar
+                <ani.dantotsu.others.MaterialProgressBar
                     android:id="@+id/commentBottomRefresh"
                     style="?android:attr/progressBarStyle"
                     android:layout_width="wrap_content"

@@ -549,24 +549,6 @@ class InputFilterMinMax(
 }
 
 
-class ZoomOutPageTransformer :
-    ViewPager2.PageTransformer {
-    override fun transformPage(view: View, position: Float) {
-        if (position == 0.0f && PrefManager.getVal(PrefName.LayoutAnimations)) {
-            setAnimation(
-                view.context,
-                view,
-                300,
-                floatArrayOf(1.3f, 1f, 1.3f, 1f),
-                0.5f to 0f
-            )
-            ObjectAnimator.ofFloat(view, "alpha", 0f, 1.0f)
-                .setDuration((200 * (PrefManager.getVal(PrefName.AnimationSpeed) as Float)).toLong())
-                .start()
-        }
-    }
-}
-
 fun setAnimation(
     context: Context,
     viewToAnimate: View,

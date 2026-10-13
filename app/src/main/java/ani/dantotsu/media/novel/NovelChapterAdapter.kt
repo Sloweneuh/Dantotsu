@@ -5,6 +5,7 @@ import android.view.ViewGroup
 import androidx.core.view.isVisible
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.databinding.ItemChapterListBinding
+import ani.dantotsu.media.bindSelectionTint
 import ani.dantotsu.parsers.novel.lnreader.LNReaderChapter
 import ani.dantotsu.parsers.novel.lnreader.LNReaderDates
 import ani.dantotsu.setAnimation
@@ -19,10 +20,49 @@ import ani.dantotsu.setAnimation
  */
 class NovelChapterAdapter(
     private val onChapterClicked: (Int) -> Unit,
-    private val onChapterLongClicked: (Int) -> Unit,
     private val onOpenInBrowser: (Int) -> Unit,
     private val onDownload: (Int) -> Unit,
 ) : RecyclerView.Adapter<NovelChapterAdapter.Holder>() {
+
+    /**
+     * Chapters picked by long-press, keyed by their index in the novel, so a selection spans the
+     * chapter-range tabs. While any are picked, a tap toggles a chapter instead of opening it,
+     * and the Read tab shows its selection toolbar.
+     */
+    val selection = linkedMapOf<Int, LNReaderChapter>()
+
+    /** Called whenever [selection] changes. */
+    var onSelectionChanged: (() -> Unit)? = null
+
+    fun toggleSelection(row: Row) {
+        if (selection.remove(row.indexInNovel) == null) selection[row.indexInNovel] = row.chapter
+        val position = rows.indexOfFirst { it.indexInNovel == row.indexInNovel }
+        if (position >= 0) notifyItemChanged(position, PAYLOAD_SELECTION)
+        onSelectionChanged?.invoke()
+    }
+
+    fun selectAll() {
+        rows.forEach { selection[it.indexInNovel] = it.chapter }
+        notifyItemRangeChanged(0, rows.size, PAYLOAD_SELECTION)
+        onSelectionChanged?.invoke()
+    }
+
+    fun clearSelection() {
+        if (selection.isEmpty()) return
+        selection.clear()
+        notifyItemRangeChanged(0, rows.size, PAYLOAD_SELECTION)
+        onSelectionChanged?.invoke()
+    }
+
+    /** Drops selected chapters that are no longer in the novel (e.g. after a source change). */
+    fun keepSelectionWithin(chapterCount: Int) {
+        if (selection.keys.retainAll { it < chapterCount }) onSelectionChanged?.invoke()
+    }
+
+    private companion object {
+        /** Payload: only the selection highlight changed. */
+        const val PAYLOAD_SELECTION = "selection"
+    }
 
     /** The slice currently on screen, together with each chapter's index in the full list. */
     private var rows: List<Row> = emptyList()
@@ -55,9 +95,9 @@ class NovelChapterAdapter(
         b.itemChapterTitle.isVisible = false
 
         // Read state comes from the list and nothing else, exactly as it does for manga and anime:
-        // the eye and its dimming overlay say "your list counts this", and having opened a chapter
-        // on this device is not a claim the row makes.
-        b.itemEpisodeViewed.isVisible = row.tracked
+        // the dimming overlay says "your list counts this", and having opened a chapter on this
+        // device is not a claim the row makes. (No eye icon: the dim says it, as for manga.)
+        b.itemEpisodeViewed.isVisible = false
         b.itemEpisodeViewedCover.isVisible = row.tracked
 
         // A row saves just its own chapter; the header's button is for a run of them. Neither is
@@ -76,11 +116,23 @@ class NovelChapterAdapter(
         b.itemChapterScan.text = if (row.downloaded) "Saved" else ""
         b.itemChapterDateDivider.isVisible = hasDate && row.downloaded
 
-        b.root.setOnClickListener { onChapterClicked(row.indexInNovel) }
+        b.root.bindSelectionTint(row.indexInNovel in selection, animate = false)
+        b.root.setOnClickListener {
+            if (selection.isNotEmpty()) toggleSelection(row) else onChapterClicked(row.indexInNovel)
+        }
         b.root.setOnLongClickListener {
-            onChapterLongClicked(row.indexInNovel)
+            toggleSelection(row)
             true
         }
+    }
+
+    override fun onBindViewHolder(holder: Holder, position: Int, payloads: MutableList<Any>) {
+        val row = rows.getOrNull(position)
+        if (row != null && payloads.isNotEmpty() && payloads.all { it == PAYLOAD_SELECTION }) {
+            holder.binding.root.bindSelectionTint(row.indexInNovel in selection, animate = true)
+            return
+        }
+        super.onBindViewHolder(holder, position, payloads)
     }
 
     class Holder(val binding: ItemChapterListBinding) : RecyclerView.ViewHolder(binding.root)

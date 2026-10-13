@@ -136,7 +136,7 @@
 
                             </LinearLayout>
 
-                            <ProgressBar
+                            <ani.dantotsu.others.MaterialProgressBar
                                 android:id="@+id/homeUserDataProgressBar"
                                 style="?android:attr/progressBarStyleHorizontal"
                                 android:layout_width="match_parent"
@@ -351,7 +351,7 @@
                 android:minHeight="120dp"
                 android:layout_marginVertical="8dp"
                 android:visibility="gone">
-                <ProgressBar
+                <ani.dantotsu.others.MaterialProgressBar
                     android:id="@+id/homeUserStatusProgressBar"
                     style="?android:attr/progressBarStyle"
                     android:layout_width="wrap_content"
@@ -495,7 +495,7 @@
                             tools:ignore="TextContrastCheck" />
                     </LinearLayout>
 
-                    <ProgressBar
+                    <ani.dantotsu.others.MaterialProgressBar
                         android:id="@+id/homeWatchingProgressBar"
                         style="?android:attr/progressBarStyle"
                         android:layout_width="wrap_content"
@@ -589,7 +589,7 @@
 
                     </LinearLayout>
 
-                    <ProgressBar
+                    <ani.dantotsu.others.MaterialProgressBar
                         android:id="@+id/homeFavAnimeProgressBar"
                         style="?android:attr/progressBarStyle"
                         android:layout_width="wrap_content"
@@ -686,7 +686,7 @@
                             tools:ignore="TextContrastCheck" />
                     </LinearLayout>
 
-                    <ProgressBar
+                    <ani.dantotsu.others.MaterialProgressBar
                         android:id="@+id/homePlannedAnimeProgressBar"
                         style="?android:attr/progressBarStyle"
                         android:layout_width="wrap_content"
@@ -791,7 +791,7 @@
 
                     </LinearLayout>
 
-                    <ProgressBar
+                    <ani.dantotsu.others.MaterialProgressBar
                         android:id="@+id/homeUnreadChaptersProgressBar"
                         style="?android:attr/progressBarStyle"
                         android:layout_width="wrap_content"
@@ -888,7 +888,7 @@
                             tools:ignore="TextContrastCheck" />
                     </LinearLayout>
 
-                    <ProgressBar
+                    <ani.dantotsu.others.MaterialProgressBar
                         android:id="@+id/homeReadingProgressBar"
                         style="?android:attr/progressBarStyle"
                         android:layout_width="wrap_content"
@@ -981,7 +981,7 @@
 
                     </LinearLayout>
 
-                    <ProgressBar
+                    <ani.dantotsu.others.MaterialProgressBar
                         android:id="@+id/homeFavMangaProgressBar"
                         style="?android:attr/progressBarStyle"
                         android:layout_width="wrap_content"
@@ -1079,7 +1079,7 @@
                             tools:ignore="TextContrastCheck" />
                     </LinearLayout>
 
-                    <ProgressBar
+                    <ani.dantotsu.others.MaterialProgressBar
                         android:id="@+id/homePlannedMangaProgressBar"
                         style="?android:attr/progressBarStyle"
                         android:layout_width="wrap_content"
@@ -1171,7 +1171,7 @@
 
                     </LinearLayout>
 
-                    <ProgressBar
+                    <ani.dantotsu.others.MaterialProgressBar
                         android:id="@+id/homeRecommendedProgressBar"
                         style="?android:attr/progressBarStyle"
                         android:layout_width="wrap_content"

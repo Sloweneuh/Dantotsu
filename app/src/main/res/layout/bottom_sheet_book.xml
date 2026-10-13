@@ -38,7 +38,7 @@
                 app:cardBackgroundColor="#000000"
                 app:cardCornerRadius="16dp">
 
-                <ProgressBar
+                <ani.dantotsu.others.MaterialProgressBar
                     style="?android:attr/progressBarStyle"
                     android:layout_width="32dp"
                     android:layout_height="32dp"

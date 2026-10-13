@@ -64,7 +64,7 @@
                     android:visibility="gone"
                     app:srcCompat="@drawable/ic_round_heart_broken_24" />
 
-                <ProgressBar
+                <ani.dantotsu.others.MaterialProgressBar
                     android:id="@+id/bottomImageProgress"
                     style="?android:attr/progressBarStyle"
                     android:layout_width="wrap_content"

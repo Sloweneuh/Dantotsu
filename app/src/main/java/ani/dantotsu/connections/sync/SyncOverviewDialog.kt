@@ -32,7 +32,7 @@ fun Activity.showSyncOverviewDialog() {
         findViewById(android.R.id.content), com.google.android.material.R.attr.colorOnBackground
     )
     val error = MaterialColors.getColor(
-        findViewById(android.R.id.content), com.google.android.material.R.attr.colorError
+        findViewById(android.R.id.content), androidx.appcompat.R.attr.colorError
     )
 
     val container = LinearLayout(this).apply {

@@ -63,6 +63,9 @@ import ani.dantotsu.toast
 import ani.dantotsu.util.Logger
 import ani.dantotsu.util.StoragePermissions.Companion.accessAlertDialog
 import ani.dantotsu.util.StoragePermissions.Companion.hasDirAccess
+import ani.dantotsu.util.customAlertDialog
+import ani.dantotsu.connections.updateProgress
+import ani.dantotsu.media.ChapterSelectionToolbar
 import com.anggrayudi.storage.file.extension
 import com.google.android.material.appbar.AppBarLayout
 import eu.kanade.tachiyomi.animesource.ConfigurableAnimeSource
@@ -171,7 +174,7 @@ class AnimeWatchFragment : Fragment() {
                 super.onScrolled(recyclerView, dx, dy)
 
                 val position = gridLayoutManager.findFirstVisibleItemPosition()
-                if (position > 2) {
+                if (position > 2 && !isSelectingEpisodes) {
                     binding.ScrollTop.translationY = -navBarHeight.toFloat()
                     binding.ScrollTop.visibility = View.VISIBLE
                 } else {
@@ -231,6 +234,7 @@ class AnimeWatchFragment : Fragment() {
                             model.watchSources!!,
                             offlineMode = offlineMode
                         )
+                    setUpEpisodeSelection()
 
                     binding.mediaSourceRecycler.adapter =
                         ConcatAdapter(headerAdapter, episodeAdapter)
@@ -930,6 +934,7 @@ class AnimeWatchFragment : Fragment() {
         headerAdapter.handleEpisodes()
         val isDownloaded = model.watchSources!!.isDownloadedSource(media.selected!!.sourceIndex)
         episodeAdapter.offlineMode = isDownloaded
+        episodeAdapter.keepSelectionWithin(media.anime?.episodes?.values.orEmpty())
         episodeAdapter.notifyItemRangeRemoved(0, episodeAdapter.arr.size)
         var arr: ArrayList<Episode> = arrayListOf()
         if (media.anime!!.episodes != null) {
@@ -951,7 +956,83 @@ class AnimeWatchFragment : Fragment() {
         }
     }
 
+    private lateinit var selectionToolbar: ChapterSelectionToolbar
+
+    private val isSelectingEpisodes: Boolean
+        get() = ::selectionToolbar.isInitialized && selectionToolbar.isActive
+
+    /**
+     * Long-press selection on the episode list: the shared floating toolbar, with mark as
+     * watched, download, delete downloads and select all.
+     */
+    private fun setUpEpisodeSelection() {
+        selectionToolbar = ChapterSelectionToolbar(
+            this, binding,
+            onMarkRead = ::markSelectedWatched,
+            onDownload = ::downloadSelected,
+            onDelete = ::deleteSelectedDownloads,
+            onSelectAll = { episodeAdapter.selectAll() },
+            onClear = { episodeAdapter.clearSelection() },
+        )
+        binding.chapterSelectionRead.contentDescription = getString(R.string.mark_as_watched)
+        binding.chapterSelectionRead.tooltipText = getString(R.string.mark_as_watched)
+        episodeAdapter.onSelectionChanged = {
+            selectionToolbar.update(
+                episodeAdapter.selection.size,
+                canDelete = episodeAdapter.selection.keys.any { episodeAdapter.hasDownload(it) },
+            )
+        }
+    }
+
+    private fun markSelectedWatched() {
+        // Progress is one number, so "watched" means watched up to the furthest selected episode.
+        val furthest = episodeAdapter.selectedEpisodes().maxByOrNull { it.number.toFloatOrNull() ?: -1f }
+        episodeAdapter.clearSelection()
+        val number = furthest?.number?.toFloatOrNull() ?: return
+        if (number <= (media.userProgress ?: 0)) {
+            snackString(R.string.episodes_already_watched)
+            return
+        }
+        updateProgress(media, furthest.number)
+    }
+
+    private fun downloadSelected() {
+        // In list order, minus anything already downloaded or downloading. The usual download
+        // flow then asks for the server/quality, as the header's batch download does.
+        val toDownload = media.anime?.episodes?.values.orEmpty()
+            .filter { it.number in episodeAdapter.selection && !episodeAdapter.hasDownload(it.number) }
+            .map { it.number }
+        episodeAdapter.clearSelection()
+        if (toDownload.isEmpty()) {
+            snackString(R.string.chapters_nothing_to_download)
+            return
+        }
+        onAnimeEpisodesDownload(ArrayList(toDownload))
+    }
+
+    private fun deleteSelectedDownloads() {
+        val withDownloads = episodeAdapter.selection.keys.filter { episodeAdapter.hasDownload(it) }
+        if (withDownloads.isEmpty()) {
+            snackString(R.string.episodes_no_downloads)
+            return
+        }
+        requireContext().customAlertDialog().apply {
+            setTitle(getString(R.string.delete_downloads))
+            setMessage(getString(R.string.delete_downloaded_episodes, withDownloads.size))
+            setPosButton(R.string.delete) {
+                withDownloads.forEach { number ->
+                    if (episodeAdapter.isDownloading(number)) onAnimeEpisodeStopDownloadClick(number)
+                    else onAnimeEpisodeRemoveDownloadClick(number)
+                }
+                episodeAdapter.clearSelection()
+            }
+            setNegButton(R.string.cancel)
+            show()
+        }
+    }
+
     override fun onDestroyView() {
+        if (::selectionToolbar.isInitialized) selectionToolbar.detach()
         // Parsers outlive this screen, so a listener left pointing at the header keeps the whole
         // fragment — and the Activity behind it — alive with it. Unconditional, unlike the text
         // flush below: a configuration change destroys these views too, and the rebind installs a
@@ -994,6 +1075,8 @@ class AnimeWatchFragment : Fragment() {
     override fun onPause() {
         super.onPause()
         state = binding.mediaSourceRecycler.layoutManager?.onSaveInstanceState()
+        // The selection toolbar lives on the activity while shown; don't leave it over another tab.
+        if (::episodeAdapter.isInitialized) episodeAdapter.clearSelection()
     }
 
     companion object {

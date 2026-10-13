@@ -143,6 +143,7 @@ class NotificationFragment : Fragment() {
             if (unreadOnly()) R.string.no_unread_notifications else R.string.nothing_here
         )
         binding.emptyTextView.isVisible = adapter.itemCount == 0
+        binding.emptyStateFrame.isVisible = binding.emptyTextView.isVisible
     }
 
     private suspend fun reload() {
@@ -150,6 +151,7 @@ class NotificationFragment : Fragment() {
         currentPage = 1
         hasNextPage = false
         binding.emptyTextView.isVisible = false
+        binding.emptyStateFrame.isVisible = binding.emptyTextView.isVisible
         getList()
     }
 

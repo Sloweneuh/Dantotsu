@@ -313,7 +313,7 @@ class MangaBakaSearchFilterBottomSheet : BottomSheetDialogFragment() {
         binding.mbFilterSortButton.setOnClickListener { anchor ->
             val popup = PopupMenu(requireContext(), anchor)
             val tv = TypedValue()
-            requireContext().theme.resolveAttribute(com.google.android.material.R.attr.colorPrimary, tv, true)
+            requireContext().theme.resolveAttribute(androidx.appcompat.R.attr.colorPrimary, tv, true)
             val primary = tv.data
             sortOptions.forEachIndexed { index, option ->
                 val title = if (option.value == (selectedSort ?: "")) {

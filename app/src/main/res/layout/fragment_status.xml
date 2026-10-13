@@ -253,7 +253,7 @@
         </LinearLayout>
     </LinearLayout>
 
-    <ProgressBar
+    <ani.dantotsu.others.MaterialProgressBar
         android:id="@+id/androidStoriesLoadingView"
         android:layout_width="40dp"
         android:layout_height="40dp"

@@ -40,6 +40,7 @@ import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.snackString
 import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.toast
+import ani.dantotsu.util.useSharedAxisTransitions
 import com.google.android.material.appbar.AppBarLayout
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -179,6 +180,7 @@ class ProfileActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedListene
                 binding.profileViewPager.adapter =
                     ViewPagerAdapter(supportFragmentManager, lifecycle, user)
                 binding.profileViewPager.setOffscreenPageLimit(3)
+                binding.profileViewPager.useSharedAxisTransitions()
                 binding.profileViewPager.setCurrentItem(selected, false)
                 navBar.visibility = View.VISIBLE
                 navBar.selectTabAt(selected)

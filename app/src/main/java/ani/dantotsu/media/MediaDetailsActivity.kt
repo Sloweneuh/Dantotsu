@@ -38,7 +38,6 @@ import ani.dantotsu.GesturesListener
 import ani.dantotsu.R
 import ani.dantotsu.connections.discord.BrowsingPresence
 import ani.dantotsu.Refresh
-import ani.dantotsu.ZoomOutPageTransformer
 import ani.dantotsu.blurImage
 import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.handoff.HandoffBottomSheet
@@ -68,6 +67,7 @@ import ani.dantotsu.others.AndroidBug5497Workaround
 import ani.dantotsu.others.ImageViewDialog
 import ani.dantotsu.others.getSerialized
 import ani.dantotsu.settings.bindQuickSettings
+import ani.dantotsu.util.useSharedAxisTransitions
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.snackString
@@ -399,7 +399,7 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
         val banner = if (bannerAnimations) binding.mediaBanner else binding.mediaBannerNoKen
         val viewPager = binding.mediaViewPager
         viewPager.isUserInputEnabled = false
-        viewPager.setPageTransformer(ZoomOutPageTransformer())
+        viewPager.useSharedAxisTransitions()
 
         val isDownload = intent.getBooleanExtra("download", false)
         media.selected = model.loadSelected(media, isDownload)

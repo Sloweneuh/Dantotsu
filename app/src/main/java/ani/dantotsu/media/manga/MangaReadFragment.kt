@@ -13,17 +13,18 @@ import android.os.Parcelable
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.FrameLayout
 import android.widget.CheckBox
+import android.widget.FrameLayout
 import android.widget.Toast
 import androidx.cardview.widget.CardView
 import androidx.core.app.ActivityCompat
-import androidx.documentfile.provider.DocumentFile
 import androidx.core.content.ContextCompat
 import androidx.core.math.MathUtils.clamp
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
+import androidx.core.view.updateLayoutParams
 import androidx.core.view.updatePadding
+import androidx.documentfile.provider.DocumentFile
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
@@ -34,9 +35,9 @@ import androidx.viewpager2.widget.ViewPager2
 import ani.dantotsu.R
 import ani.dantotsu.connections.handoff.HandoffLoadingOverlay
 import ani.dantotsu.connections.handoff.HandoffNavigator
+import ani.dantotsu.connections.updateProgress
+import ani.dantotsu.databinding.DialogMultiDownloadBinding
 import ani.dantotsu.databinding.FragmentMediaSourceBinding
-import ani.dantotsu.downloadStats
-import ani.dantotsu.formatBytes
 import ani.dantotsu.download.DownloadItem
 import ani.dantotsu.download.DownloadTracker
 import ani.dantotsu.download.DownloadedType
@@ -44,15 +45,21 @@ import ani.dantotsu.download.DownloadsManager
 import ani.dantotsu.download.DownloadsManager.Companion.compareName
 import ani.dantotsu.download.manga.MangaDownloaderService
 import ani.dantotsu.download.manga.MangaServiceDataSingleton
+import ani.dantotsu.downloadStats
 import ani.dantotsu.dp
+import ani.dantotsu.formatBytes
 import ani.dantotsu.isOnMeteredNetwork
 import ani.dantotsu.isOnline
 import ani.dantotsu.media.Media
 import ani.dantotsu.media.MediaDetailsActivity
 import ani.dantotsu.media.MediaDetailsViewModel
+import ani.dantotsu.media.ChapterSelectionToolbar
 import ani.dantotsu.media.MediaNameAdapter
 import ani.dantotsu.media.MediaType
 import ani.dantotsu.media.manga.mangareader.ChapterLoaderDialog
+import ani.dantotsu.media.manga.mangareader.PDF_CHAPTERS_FILE
+import ani.dantotsu.media.manga.mangareader.PdfChapterMetadata
+import ani.dantotsu.media.manga.mangareader.PdfPageRenderer
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.notifications.subscription.SubscriptionHelper
 import ani.dantotsu.notifications.subscription.SubscriptionHelper.Companion.saveSubscription
@@ -60,34 +67,32 @@ import ani.dantotsu.parsers.DynamicMangaParser
 import ani.dantotsu.parsers.HMangaSources
 import ani.dantotsu.parsers.MangaParser
 import ani.dantotsu.parsers.MangaSources
-import ani.dantotsu.media.manga.mangareader.PDF_CHAPTERS_FILE
-import ani.dantotsu.media.manga.mangareader.PdfChapterMetadata
-import ani.dantotsu.media.manga.mangareader.PdfPageRenderer
 import ani.dantotsu.parsers.OfflineMangaParser
 import ani.dantotsu.parsers.ShowResponse
+import ani.dantotsu.px
 import ani.dantotsu.setNavigationTheme
 import ani.dantotsu.settings.extensionprefs.MangaSourcePreferencesFragment
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.snackString
 import ani.dantotsu.util.Logger
-import com.google.gson.Gson
 import ani.dantotsu.util.StoragePermissions.Companion.accessAlertDialog
 import ani.dantotsu.util.StoragePermissions.Companion.hasDirAccess
 import ani.dantotsu.util.customAlertDialog
 import com.google.android.material.appbar.AppBarLayout
+import com.google.gson.Gson
 import eu.kanade.tachiyomi.extension.manga.model.MangaExtension
 import eu.kanade.tachiyomi.source.ConfigurableSource
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import kotlin.math.ceil
 import kotlin.math.max
 import kotlin.math.roundToInt
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
     private var _binding: FragmentMediaSourceBinding? = null
@@ -185,7 +190,7 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
                 super.onScrolled(recyclerView, dx, dy)
 
                 val position = gridLayoutManager.findFirstVisibleItemPosition()
-                if (position > 2) {
+                if (position > 2 && !isSelectingChapters) {
                     binding.ScrollTop.translationY = -navBarHeight.toFloat()
                     binding.ScrollTop.visibility = View.VISIBLE
                 } else {
@@ -241,6 +246,7 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
                                 this,
                                 model.mangaReadSources!!
                             )
+                        setUpChapterSelection()
 
                         for (download in downloadManager.mangaDownloadedTypes) {
                             if (media.compareName(download.titleName)) {
@@ -1028,6 +1034,7 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
 
         model.saveSelected(media.id, selected)
         headerAdapter.handleChapters()
+        chapterAdapter.keepSelectionWithin(media.manga?.chapters?.values.orEmpty())
         chapterAdapter.notifyItemRangeRemoved(0, chapterAdapter.arr.size)
         var chapList: ArrayList<MangaChapter> = arrayListOf()
         if (media.manga!!.chapters != null) {
@@ -1215,7 +1222,104 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
         return result
     }
 
+    private lateinit var selectionToolbar: ChapterSelectionToolbar
+
+    private val isSelectingChapters: Boolean
+        get() = ::selectionToolbar.isInitialized && selectionToolbar.isActive
+
+    /**
+     * Long-press selection on the chapter list: the shared floating toolbar, with mark as read,
+     * download, delete downloads and select all.
+     */
+    private fun setUpChapterSelection() {
+        selectionToolbar = ChapterSelectionToolbar(
+            this, binding,
+            onMarkRead = ::markSelectedRead,
+            onDownload = ::downloadSelected,
+            onDelete = ::deleteSelectedDownloads,
+            onSelectAll = { chapterAdapter.selectAll() },
+            onClear = { chapterAdapter.clearSelection() },
+        )
+        chapterAdapter.onSelectionChanged = {
+            selectionToolbar.update(
+                chapterAdapter.selection.size,
+                canDelete = chapterAdapter.selectedChapters().any { chapterAdapter.hasDownload(it) },
+            )
+        }
+    }
+
+    private fun markSelectedRead() {
+        // Progress is one number, so "read" means read up to the furthest selected chapter.
+        val furthest = chapterAdapter.selectedChapters()
+            .maxByOrNull { MediaNameAdapter.findChapterNumber(it.number) ?: -1f }
+        val number = furthest?.let { MediaNameAdapter.findChapterNumber(it.number) }
+        chapterAdapter.clearSelection()
+        if (furthest == null || number == null) return
+        if (number <= (media.userProgress ?: 0)) {
+            snackString(R.string.chapters_already_read)
+            return
+        }
+        updateProgress(media, number.toString(), MediaNameAdapter.findVolumeNumber(furthest.number))
+    }
+
+    private fun downloadSelected() {
+        // In chapter order, minus anything already downloaded or downloading.
+        val picked = chapterAdapter.selection.keys
+        val toDownload = downloadableChapters()
+            .filter { it.uniqueNumber() in picked && !it.isPremium() }
+        if (toDownload.isEmpty()) {
+            chapterAdapter.clearSelection()
+            snackString(R.string.chapters_nothing_to_download)
+            return
+        }
+        // The header's batch download dialog, minus its range: the selection is the range.
+        val options = DialogMultiDownloadBinding.inflate(layoutInflater)
+        options.downloadRangeStartContainer.visibility = View.GONE
+        options.downloadRangeEndContainer.visibility = View.GONE
+        options.downloadPdf.isChecked = PrefManager.getVal(PrefName.MangaDownloadPdf)
+        options.downloadOneFile.isEnabled = options.downloadPdf.isChecked
+        options.downloadPdf.setOnCheckedChangeListener { _, isChecked ->
+            options.downloadOneFile.isEnabled = isChecked
+            if (!isChecked) options.downloadOneFile.isChecked = false
+        }
+        requireContext().customAlertDialog().apply {
+            setTitle(getString(R.string.multi_chapter_downloader))
+            setCustomView(options.root)
+            setPosButton(R.string.ok) {
+                val asPdf = options.downloadPdf.isChecked
+                PrefManager.setVal(PrefName.MangaDownloadPdf, asPdf)
+                chapterAdapter.clearSelection()
+                multiDownload(toDownload, asPdf, asPdf && options.downloadOneFile.isChecked)
+                snackString(getString(R.string.chapters_queued_for_download, toDownload.size))
+            }
+            setNegButton(R.string.cancel)
+            show()
+        }
+    }
+
+    private fun deleteSelectedDownloads() {
+        val withDownloads = chapterAdapter.selectedChapters().filter { chapterAdapter.hasDownload(it) }
+        if (withDownloads.isEmpty()) {
+            snackString(R.string.chapters_no_downloads)
+            return
+        }
+        requireContext().customAlertDialog().apply {
+            setTitle(getString(R.string.delete_downloads))
+            setMessage(getString(R.string.delete_downloaded_chapters, withDownloads.size))
+            setPosButton(R.string.delete) {
+                withDownloads.forEach { chapter ->
+                    if (chapterAdapter.isDownloading(chapter)) onMangaChapterStopDownloadClick(chapter)
+                    else onMangaChapterRemoveDownloadClick(chapter)
+                }
+                chapterAdapter.clearSelection()
+            }
+            setNegButton(R.string.cancel)
+            show()
+        }
+    }
+
     override fun onDestroyView() {
+        if (::selectionToolbar.isInitialized) selectionToolbar.detach()
         // Parsers outlive this screen, so a listener left pointing at the header keeps the whole
         // fragment — and the Activity behind it — alive with it. Unconditional, unlike the text
         // flush below: a configuration change destroys these views too, and the rebind installs a
@@ -1255,6 +1359,8 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
     override fun onPause() {
         super.onPause()
         state = binding.mediaSourceRecycler.layoutManager?.onSaveInstanceState()
+        // The selection toolbar lives on the activity while shown; don't leave it over another tab.
+        if (::chapterAdapter.isInitialized) chapterAdapter.clearSelection()
     }
 
     companion object {

@@ -20,6 +20,7 @@ import ani.dantotsu.px
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.util.Logger
+import ani.dantotsu.util.whenViewResumed
 import com.google.android.material.button.MaterialButton
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -98,9 +99,12 @@ abstract class TrackerInfoFragment<T> : Fragment() {
             return
         }
 
-        model.getMedia().observe(viewLifecycleOwner) { media ->
-            val m = media ?: return@observe
-            if (!loaded) load(m, model)
+        // Not during the pager's slide: wait until this tab is on screen and settled.
+        whenViewResumed {
+            model.getMedia().observe(viewLifecycleOwner) { media ->
+                val m = media ?: return@observe
+                if (!loaded) load(m, model)
+            }
         }
     }
 

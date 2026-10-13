@@ -85,7 +85,7 @@ class AccountCardAdapter(
         val b = holder.b
         val ctx = b.root.context
         val state = card.state
-        val accent = ctx.getThemeColor(com.google.android.material.R.attr.colorPrimary)
+        val accent = ctx.getThemeColor(androidx.appcompat.R.attr.colorPrimary)
 
         // ---- avatar / mark / badge ----
         when {

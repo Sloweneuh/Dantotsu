@@ -57,7 +57,7 @@
             tools:orientation="vertical"
             android:visibility="gone" />
 
-        <ProgressBar
+        <ani.dantotsu.others.MaterialProgressBar
             android:id="@+id/devsProgressBar"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

@@ -1,5 +1,6 @@
 package ani.dantotsu.media
 
+import ani.dantotsu.util.useSharedAxisTransitions
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -153,6 +154,7 @@ class MediaInfoFragment : Fragment() {
 
     private fun setupTabs(model: MediaDetailsViewModel, media: Media) {
         // Setup TabLayout - all tabs long-clickable
+        binding.mediaInfoViewPager.useSharedAxisTransitions()
         TabLayoutMediator(binding.mediaInfoTabLayout, binding.mediaInfoViewPager) { tab, position ->
             val iconRes = (binding.mediaInfoViewPager.adapter as? androidx.viewpager2.adapter.FragmentStateAdapter)?.let {
                 // tabs list captured above through closure

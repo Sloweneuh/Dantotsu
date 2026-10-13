@@ -95,7 +95,7 @@ class MediaListViewActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         val primaryColor = getThemeColor(com.google.android.material.R.attr.colorSurface)
-        val primaryTextColor = getThemeColor(com.google.android.material.R.attr.colorPrimary)
+        val primaryTextColor = getThemeColor(androidx.appcompat.R.attr.colorPrimary)
 
         window.statusBarColor = primaryColor
         window.navigationBarColor = primaryColor
@@ -239,7 +239,7 @@ class MediaListViewActivity : AppCompatActivity() {
             Linkify.addLinks(descView, Linkify.WEB_URLS)
             StackListAdapter.interceptLinks(
                 descView,
-                getThemeColor(com.google.android.material.R.attr.colorPrimary),
+                getThemeColor(androidx.appcompat.R.attr.colorPrimary),
                 intent.getBooleanExtra("isAnime", false)
             )
             CustomBottomDialog.newInstance().apply {

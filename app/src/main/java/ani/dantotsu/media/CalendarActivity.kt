@@ -24,6 +24,7 @@ import ani.dantotsu.settings.enableSettingsLongPress
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.themes.ThemeManager
+import ani.dantotsu.util.useSharedAxisTransitions
 import com.google.android.material.chip.Chip
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
@@ -63,7 +64,7 @@ class CalendarActivity : AppCompatActivity(), AniMangaFilterHost {
         binding = ActivityListBinding.inflate(layoutInflater)
 
         val primaryColor = getThemeColor(com.google.android.material.R.attr.colorSurface)
-        val primaryTextColor = getThemeColor(com.google.android.material.R.attr.colorPrimary)
+        val primaryTextColor = getThemeColor(androidx.appcompat.R.attr.colorPrimary)
         val secondaryTextColor = getThemeColor(com.google.android.material.R.attr.colorOutline)
 
         window.statusBarColor = primaryColor
@@ -130,6 +131,7 @@ class CalendarActivity : AppCompatActivity(), AniMangaFilterHost {
             if (it != null) {
                 binding.listProgressBar.visibility = View.GONE
                 binding.listViewPager.adapter = ListViewPagerAdapter((0 until it.size).toList(), true, this)
+                binding.listViewPager.useSharedAxisTransitions()
                 val keys = it.keys.toList()
                 val values = it.values.toList()
                 val savedTab = this.selectedTabIdx

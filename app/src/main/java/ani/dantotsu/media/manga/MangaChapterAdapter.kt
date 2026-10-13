@@ -3,12 +3,10 @@ package ani.dantotsu.media.manga
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.animation.LinearInterpolator
 import android.widget.NumberPicker
-import androidx.lifecycle.coroutineScope
+import androidx.core.view.isVisible
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
-import ani.dantotsu.connections.updateProgress
 import ani.dantotsu.currContext
 import ani.dantotsu.databinding.ItemChapterGapBinding
 import ani.dantotsu.databinding.ItemChapterGapCompactBinding
@@ -16,13 +14,13 @@ import ani.dantotsu.databinding.ItemChapterListBinding
 import ani.dantotsu.databinding.ItemEpisodeCompactBinding
 import ani.dantotsu.media.Media
 import ani.dantotsu.media.MediaNameAdapter
+import ani.dantotsu.media.bindSelectionTint
+import ani.dantotsu.media.popIn
 import ani.dantotsu.media.manga.mangareader.PdfPageRenderer
 import ani.dantotsu.parsers.DynamicMangaParser
 import ani.dantotsu.setAnimation
 import ani.dantotsu.util.customAlertDialog
 import eu.kanade.tachiyomi.source.online.HttpSource
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -49,6 +47,73 @@ class MangaChapterAdapter(
          * chapter row to visibly flash and bounce on every download progress update.
          */
         private const val PAYLOAD_DOWNLOAD_STATE = "download_state"
+
+        /** Payload marker for a selection-highlight-only change. */
+        private const val PAYLOAD_SELECTION = "selection"
+    }
+
+    /**
+     * Chapters picked by long-press, keyed by unique number. Kept as chapters rather than numbers
+     * so a selection spans the chapter-range tabs: switching tabs swaps [arr] but keeps these.
+     * While any are picked, a tap toggles a chapter instead of opening it, and the read tab shows
+     * its selection toolbar.
+     */
+    val selection = linkedMapOf<String, MangaChapter>()
+
+    /** Called whenever [selection] changes. */
+    var onSelectionChanged: (() -> Unit)? = null
+
+    fun selectedChapters(): List<MangaChapter> = selection.values.toList()
+
+    fun toggleSelection(chapter: MangaChapter) {
+        val number = chapter.uniqueNumber()
+        if (selection.remove(number) == null) selection[number] = chapter
+        val index = chapterIndexOf(number)
+        if (index >= 0) notifyItemChanged(index, PAYLOAD_SELECTION)
+        onSelectionChanged?.invoke()
+    }
+
+    fun selectAll() {
+        arr.forEach { if (it is MangaChapterListItem.Chapter) selection[it.chapter.uniqueNumber()] = it.chapter }
+        notifyItemRangeChanged(0, arr.size, PAYLOAD_SELECTION)
+        onSelectionChanged?.invoke()
+    }
+
+    /** Drops selected chapters that are no longer listed at all (e.g. after a source change). */
+    fun keepSelectionWithin(chapters: Collection<MangaChapter>) {
+        val listed = chapters.mapTo(HashSet()) { it.uniqueNumber() }
+        if (selection.keys.retainAll(listed)) onSelectionChanged?.invoke()
+    }
+
+    fun clearSelection() {
+        if (selection.isEmpty()) return
+        selection.clear()
+        notifyItemRangeChanged(0, arr.size, PAYLOAD_SELECTION)
+        onSelectionChanged?.invoke()
+    }
+
+    /** True for a chapter that's downloaded or currently downloading. */
+    fun hasDownload(chapter: MangaChapter): Boolean {
+        val number = chapter.uniqueNumber()
+        return activeDownloads.contains(number) || isDownloaded(number)
+    }
+
+    fun isDownloading(chapter: MangaChapter): Boolean = activeDownloads.contains(chapter.uniqueNumber())
+
+    /** Tap: toggles while selecting, opens otherwise. Long-press: starts or extends a selection. */
+    private fun bindChapterClicks(holder: RecyclerView.ViewHolder) {
+        holder.itemView.setOnClickListener {
+            val item = arr.getOrNull(holder.bindingAdapterPosition) as? MangaChapterListItem.Chapter
+                ?: return@setOnClickListener
+            if (selection.isNotEmpty()) toggleSelection(item.chapter)
+            else fragment.onMangaChapterClick(item.chapter)
+        }
+        holder.itemView.setOnLongClickListener {
+            val item = arr.getOrNull(holder.bindingAdapterPosition) as? MangaChapterListItem.Chapter
+                ?: return@setOnLongClickListener false
+            toggleSelection(item.chapter)
+            true
+        }
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
@@ -110,19 +175,18 @@ class MangaChapterAdapter(
     inner class ChapterCompactViewHolder(val binding: ItemEpisodeCompactBinding) :
         RecyclerView.ViewHolder(binding.root) {
         init {
-            itemView.setOnClickListener {
-                val pos = bindingAdapterPosition
-                if (pos in 0 until arr.size) {
-                    val item = arr[pos]
-                    if (item is MangaChapterListItem.Chapter)
-                        fragment.onMangaChapterClick(item.chapter)
-                }
-            }
+            bindChapterClicks(this)
         }
     }
 
     private val activeDownloads = mutableSetOf<String>()
     private val downloadedChapters = mutableSetOf<String>()
+
+    /** Last reported percentage per downloading chapter; the ring spins until there is one. */
+    private val downloadPercent = mutableMapOf<String, Int>()
+
+    /** Chapters whose download just completed: their icon pops in once on the next bind. */
+    private val justDownloaded = mutableSetOf<String>()
 
     /**
      * When reading from the offline source, every listed chapter is local by definition, so
@@ -166,7 +230,8 @@ class MangaChapterAdapter(
     }
 
     fun stopDownload(chapterNumber: String) {
-        activeDownloads.remove(chapterNumber)
+        if (activeDownloads.remove(chapterNumber)) justDownloaded.add(chapterNumber)
+        downloadPercent.remove(chapterNumber)
         downloadedChapters.add(chapterNumber)
         val position = chapterIndexOf(chapterNumber)
         if (position != -1) {
@@ -182,6 +247,7 @@ class MangaChapterAdapter(
      */
     fun markDownloaded(chapterNumber: String) {
         activeDownloads.remove(chapterNumber)
+        downloadPercent.remove(chapterNumber)
         downloadedChapters.add(chapterNumber)
         val position = chapterIndexOf(chapterNumber)
         if (position != -1) notifyItemChanged(position, PAYLOAD_DOWNLOAD_STATE)
@@ -198,6 +264,7 @@ class MangaChapterAdapter(
 
     fun purgeDownload(chapterNumber: String) {
         activeDownloads.remove(chapterNumber)
+        downloadPercent.remove(chapterNumber)
         downloadedChapters.remove(chapterNumber)
         val position = chapterIndexOf(chapterNumber)
         if (position != -1) {
@@ -214,6 +281,7 @@ class MangaChapterAdapter(
         // frozen "Downloading: ..." text regardless of broadcast arrival order. This check makes
         // the fix independent of that race instead of trying to win it.
         if (!activeDownloads.contains(chapterNumber)) return
+        downloadPercent[chapterNumber] = progress
         val position = chapterIndexOf(chapterNumber)
         if (position != -1) {
             val text = if (stats.isEmpty()) "Downloading: ${progress}%"
@@ -266,8 +334,6 @@ class MangaChapterAdapter(
 
     inner class ChapterListViewHolder(val binding: ItemChapterListBinding) :
         RecyclerView.ViewHolder(binding.root) {
-        private val activeCoroutines = mutableSetOf<String>()
-
         fun bind(chapter: MangaChapter) {
             val chapterNumber = chapter.uniqueNumber()
             val progress = chapter.progress
@@ -290,56 +356,58 @@ class MangaChapterAdapter(
                 binding.itemChapterTitle.visibility = View.GONE
                 binding.itemChapterTitle.text = ""
             }
+            val ring = binding.itemDownloadProgress
             if (activeDownloads.contains(chapterNumber)) {
-                binding.itemDownload.setImageResource(R.drawable.ic_sync)
-                startOrContinueRotation(chapterNumber) {
-                    binding.itemDownload.rotation = 0f
+                // The ring stands in for the icon; the button stays under it to stop the download.
+                binding.itemDownload.alpha = 0f
+                val percent = downloadPercent[chapterNumber]
+                if (percent == null) {
+                    if (!ring.isIndeterminate) {
+                        ring.isVisible = false
+                        ring.isIndeterminate = true
+                    }
+                } else {
+                    if (ring.isIndeterminate) {
+                        ring.isVisible = false
+                        ring.isIndeterminate = false
+                    }
+                    ring.setProgressCompat(percent, true)
                 }
-            } else if (offlineMode) {
+                ring.isVisible = true
+                return
+            }
+            ring.isVisible = false
+            binding.itemDownload.alpha = 1f
+            binding.itemDownload.tag = chapterNumber
+            val justFinished = justDownloaded.remove(chapterNumber)
+            if (offlineMode) {
                 // Everything is local; show the delete affordance directly (no check flash).
                 binding.itemDownload.setImageResource(R.drawable.ic_round_delete_24)
                 binding.itemDownload.rotation = 0f
             } else if (isDownloaded(chapterNumber)) {
-                binding.itemDownload.setImageResource(R.drawable.ic_circle_check)
-                binding.itemDownload.postDelayed({
+                if (justFinished) {
+                    // A download that just completed: pop in a check, then settle on delete.
+                    binding.itemDownload.setImageResource(R.drawable.ic_circle_check)
+                    binding.itemDownload.popIn()
+                    binding.itemDownload.postDelayed({
+                        // The row may have been recycled for another chapter meanwhile.
+                        if (binding.itemDownload.tag == chapterNumber &&
+                            !activeDownloads.contains(chapterNumber)
+                        ) binding.itemDownload.setImageResource(R.drawable.ic_round_delete_24)
+                    }, 1000)
+                } else {
+                    // Already on disk when the list loaded: straight to delete.
                     binding.itemDownload.setImageResource(R.drawable.ic_round_delete_24)
-                    binding.itemDownload.rotation = 0f
-                }, 1000)
+                }
+                binding.itemDownload.rotation = 0f
             } else {
                 binding.itemDownload.setImageResource(R.drawable.ic_download_24)
                 binding.itemDownload.rotation = 0f
             }
         }
 
-        private fun startOrContinueRotation(chapterNumber: String, resetRotation: () -> Unit) {
-            if (!isRotationCoroutineRunningFor(chapterNumber)) {
-                val scope = fragment.lifecycle.coroutineScope
-                scope.launch {
-                    activeCoroutines.add(chapterNumber)
-                    while (activeDownloads.contains(chapterNumber)) {
-                        binding.itemDownload.animate().rotationBy(360f).setDuration(1000)
-                            .setInterpolator(LinearInterpolator()).start()
-                        delay(1000)
-                    }
-                    activeCoroutines.remove(chapterNumber)
-                    resetRotation()
-                }
-            }
-        }
-
-        private fun isRotationCoroutineRunningFor(chapterNumber: String): Boolean {
-            return chapterNumber in activeCoroutines
-        }
-
         init {
-            itemView.setOnClickListener {
-                val pos = bindingAdapterPosition
-                if (pos in 0 until arr.size) {
-                    val item = arr[pos]
-                    if (item is MangaChapterListItem.Chapter)
-                        fragment.onMangaChapterClick(item.chapter)
-                }
-            }
+            bindChapterClicks(this)
             binding.itemDownload.setOnClickListener {
                 val pos = bindingAdapterPosition
                 if (pos in 0 until arr.size) {
@@ -456,6 +524,11 @@ class MangaChapterAdapter(
             holder.bind(item.chapter)
             return
         }
+        if (payloads.isNotEmpty() && payloads.all { it == PAYLOAD_SELECTION }) {
+            val item = arr.getOrNull(position) as? MangaChapterListItem.Chapter ?: return
+            holder.itemView.bindSelectionTint(item.chapter.uniqueNumber() in selection, animate = true)
+            return
+        }
         super.onBindViewHolder(holder, position, payloads)
     }
 
@@ -488,16 +561,9 @@ class MangaChapterAdapter(
                         binding.itemEpisodeViewedCover.visibility = View.VISIBLE
                     } else {
                         binding.itemEpisodeViewedCover.visibility = View.GONE
-                        binding.itemEpisodeCont.setOnLongClickListener {
-                            updateProgress(
-                                media,
-                                MediaNameAdapter.findChapterNumber(ep.number).toString(),
-                                MediaNameAdapter.findVolumeNumber(ep.number)
-                            )
-                            true
-                        }
                     }
                 }
+                holder.itemView.bindSelectionTint(ep.uniqueNumber() in selection, animate = false)
             }
 
             is ChapterListViewHolder -> {
@@ -524,26 +590,13 @@ class MangaChapterAdapter(
                     binding.itemChapterDateDivider.visibility = View.GONE
                 } else binding.itemChapterDateDivider.visibility = View.VISIBLE
 
-                if (media.userProgress != null) {
-                    if ((MediaNameAdapter.findChapterNumber(ep.number) ?: 9999f) <= media.userProgress!!.toFloat()) {
-                        binding.itemEpisodeViewedCover.visibility = View.VISIBLE
-                        binding.itemEpisodeViewed.visibility = View.VISIBLE
-                    } else {
-                        binding.itemEpisodeViewedCover.visibility = View.GONE
-                        binding.itemEpisodeViewed.visibility = View.GONE
-                        binding.root.setOnLongClickListener {
-                            updateProgress(
-                                media,
-                                MediaNameAdapter.findChapterNumber(ep.number).toString(),
-                                MediaNameAdapter.findVolumeNumber(ep.number)
-                            )
-                            true
-                        }
-                    }
-                } else {
-                    binding.itemEpisodeViewedCover.visibility = View.GONE
-                    binding.itemEpisodeViewed.visibility = View.GONE
-                }
+                // Read chapters are dimmed; the eye icon is left off, the dim says it.
+                binding.itemEpisodeViewed.visibility = View.GONE
+                binding.itemEpisodeViewedCover.visibility =
+                    if (media.userProgress != null &&
+                        (MediaNameAdapter.findChapterNumber(ep.number) ?: 9999f) <= media.userProgress!!.toFloat()
+                    ) View.VISIBLE else View.GONE
+                holder.itemView.bindSelectionTint(ep.uniqueNumber() in selection, animate = false)
             }
         }
     }

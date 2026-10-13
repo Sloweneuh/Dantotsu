@@ -525,7 +525,7 @@ class ExtensionFilterBottomSheet : BottomSheetDialogFragment() {
                         android.content.res.ColorStateList.valueOf(
                             com.google.android.material.color.MaterialColors.getColor(
                                 b.filterTriStateBox,
-                                com.google.android.material.R.attr.colorPrimary
+                                androidx.appcompat.R.attr.colorPrimary
                             )
                         )
                 }
@@ -537,7 +537,7 @@ class ExtensionFilterBottomSheet : BottomSheetDialogFragment() {
                         android.content.res.ColorStateList.valueOf(
                             com.google.android.material.color.MaterialColors.getColor(
                                 b.filterTriStateBox,
-                                com.google.android.material.R.attr.colorError
+                                androidx.appcompat.R.attr.colorError
                             )
                         )
                 }

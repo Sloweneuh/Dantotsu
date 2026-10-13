@@ -195,7 +195,7 @@
                 tools:spanCount="3" />
         </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
-        <ProgressBar
+        <ani.dantotsu.others.MaterialProgressBar
             android:id="@+id/extensionBrowseProgress"
             style="?android:attr/progressBarStyle"
             android:layout_width="wrap_content"
@@ -208,8 +208,8 @@
         <include
             android:id="@+id/extensionBrowseEmptyState"
             layout="@layout/layout_search_empty_state"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
             android:layout_gravity="center" />
         <FrameLayout
             android:id="@+id/fragmentExtensionsContainer"

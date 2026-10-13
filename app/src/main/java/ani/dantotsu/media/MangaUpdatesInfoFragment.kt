@@ -34,6 +34,7 @@ import ani.dantotsu.util.LinkTouchListener
 import ani.dantotsu.util.Logger
 import androidx.core.view.isVisible
 import ani.dantotsu.databinding.ItemChapterListBinding
+import ani.dantotsu.util.whenViewResumed
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -93,10 +94,13 @@ class MangaUpdatesInfoFragment : Fragment() {
         // Observe both media and MU link
         var currentMedia: Media? = null
 
-        model.getMedia().observe(viewLifecycleOwner) { media ->
-            currentMedia = media
-            if (media != null) {
-                checkAndDisplay(model, media)
+        // Not during the pager's slide: wait until this tab is on screen and settled.
+        whenViewResumed {
+            model.getMedia().observe(viewLifecycleOwner) { media ->
+                currentMedia = media
+                if (media != null) {
+                    checkAndDisplay(model, media)
+                }
             }
         }
 

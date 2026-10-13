@@ -44,6 +44,7 @@ import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.snackString
 import ani.dantotsu.util.Logger
 import ani.dantotsu.util.customAlertDialog
+import ani.dantotsu.media.ChapterSelectionToolbar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -121,9 +122,9 @@ class NovelReadFragment : Fragment() {
 
                 headerAdapter = NovelReadAdapter(media, this, model.novelSources)
                 chapterAdapter = NovelChapterAdapter(
-                    ::onChapterClick, ::markProgressUpTo,
-                    ::openChapterInBrowser, ::downloadChapter,
+                    ::onChapterClick, ::openChapterInBrowser, ::downloadChapter,
                 )
+                setUpChapterSelection()
                 binding.mediaSourceRecycler.adapter = ConcatAdapter(headerAdapter, chapterAdapter)
 
                 resolveAndLoad()
@@ -315,6 +316,7 @@ class NovelReadFragment : Fragment() {
         val from = start.coerceIn(0, ordered.lastIndex)
         val to = (end ?: ordered.lastIndex).coerceIn(from, ordered.lastIndex)
 
+        chapterAdapter.keepSelectionWithin(details.chapters.size)
         val progress = media.userProgress?.toFloat()
         val rows = ordered.slice(from..to).map { chapter ->
             NovelChapterAdapter.Row(
@@ -554,7 +556,8 @@ class NovelReadFragment : Fragment() {
     }
 
     /**
-     * Long press: move the list on to this chapter, which is what it does on the manga tab.
+     * Moves the list on to this chapter ("Mark as read" on the selection toolbar, as on the manga
+     * tab). Never moves it back.
      *
      * A chapter the tracker cannot name — no number in the plugin's data and none in its title — is
      * left alone rather than pushing a meaningless value, the same as manga.
@@ -564,6 +567,10 @@ class NovelReadFragment : Fragment() {
         val chapter = details.chapters.getOrNull(index) ?: return
         val number = chapterNumberOf(chapter).takeIf { it > 0f && it < 9999f } ?: run {
             snackString(getString(R.string.no_chapter))
+            return
+        }
+        if (number <= (media.userProgress ?: 0)) {
+            snackString(getString(R.string.chapters_already_read))
             return
         }
         val text = if (number == number.toLong().toFloat()) number.toLong().toString()
@@ -623,6 +630,69 @@ class NovelReadFragment : Fragment() {
                 PrefManager.setVal(PrefName.NovelDownloadEpub, asEpub)
                 PrefManager.setVal(PrefName.NovelDownloadOneFile, oneFile)
                 startDownload(current, details, ordered.subList(from, to + 1), asEpub, oneFile)
+            }
+            setNegButton(R.string.cancel)
+            show()
+        }
+    }
+
+    private lateinit var selectionToolbar: ChapterSelectionToolbar
+
+    /**
+     * Long-press selection on the chapter list: the shared floating toolbar, with mark as read,
+     * download and select all. No delete: saved novel chapters aren't tracked per row.
+     */
+    private fun setUpChapterSelection() {
+        selectionToolbar = ChapterSelectionToolbar(
+            this, binding,
+            onMarkRead = {
+                // Progress is one number: read up to the furthest selected chapter.
+                val furthest = chapterAdapter.selection.entries
+                    .maxByOrNull { chapterNumberOf(it.value).takeIf { n -> n < 9999f } ?: -1f }
+                chapterAdapter.clearSelection()
+                furthest?.let { markProgressUpTo(it.key) }
+            },
+            onDownload = ::downloadSelected,
+            onDelete = {},
+            onSelectAll = { chapterAdapter.selectAll() },
+            onClear = { chapterAdapter.clearSelection() },
+        )
+        chapterAdapter.onSelectionChanged = {
+            selectionToolbar.update(chapterAdapter.selection.size, canDelete = false)
+        }
+    }
+
+    /** The header's save dialog, minus its range: the selection is the range. */
+    private fun downloadSelected() {
+        val current = parser ?: return
+        val details = novel ?: return
+        val picked = orderedChapters().filter { details.chapters.indexOf(it) in chapterAdapter.selection }
+        chapterAdapter.clearSelection()
+        if (picked.isEmpty()) return
+
+        val options = DialogMultiDownloadBinding.inflate(layoutInflater)
+        options.downloadRangeStartContainer.visibility = View.GONE
+        options.downloadRangeEndContainer.visibility = View.GONE
+        options.downloadPdf.setText(R.string.download_as_epub)
+        options.downloadOneFile.setText(R.string.one_file_download_novel)
+        options.downloadPdf.isChecked = PrefManager.getVal(PrefName.NovelDownloadEpub)
+        // An EPUB run is one book by construction, so the choice only means anything for HTML.
+        options.downloadOneFile.isEnabled = !options.downloadPdf.isChecked
+        options.downloadOneFile.isChecked = options.downloadOneFile.isEnabled &&
+                PrefManager.getVal(PrefName.NovelDownloadOneFile)
+        options.downloadPdf.setOnCheckedChangeListener { _, isChecked ->
+            options.downloadOneFile.isEnabled = !isChecked
+            if (isChecked) options.downloadOneFile.isChecked = false
+        }
+        requireContext().customAlertDialog().apply {
+            setTitle(getString(R.string.multi_chapter_downloader))
+            setCustomView(options.root)
+            setPosButton(R.string.ok) {
+                val asEpub = options.downloadPdf.isChecked
+                val oneFile = !asEpub && options.downloadOneFile.isChecked
+                PrefManager.setVal(PrefName.NovelDownloadEpub, asEpub)
+                PrefManager.setVal(PrefName.NovelDownloadOneFile, oneFile)
+                startDownload(current, details, picked, asEpub, oneFile)
             }
             setNegButton(R.string.cancel)
             show()
@@ -713,9 +783,12 @@ class NovelReadFragment : Fragment() {
     override fun onPause() {
         super.onPause()
         state = _binding?.mediaSourceRecycler?.layoutManager?.onSaveInstanceState()
+        // The selection toolbar lives on the activity while shown; don't leave it over another tab.
+        if (::chapterAdapter.isInitialized) chapterAdapter.clearSelection()
     }
 
     override fun onDestroyView() {
+        if (::selectionToolbar.isInitialized) selectionToolbar.detach()
         super.onDestroyView()
         // Parsers outlive this screen, so a listener left pointing at the header keeps the whole
         // fragment alive with it.
