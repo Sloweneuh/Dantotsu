@@ -30,27 +30,47 @@ class MaterialProgressBar @JvmOverloads constructor(
 ) : ProgressBar(context, attrs, defStyleAttr) {
 
     private var fadeContentOnHide = true
+    private var linearSpec: LinearProgressIndicatorSpec? = null
+    private var circularSpec: CircularProgressIndicatorSpec? = null
 
     init {
         val tint = (progressTintList ?: indeterminateTintList)?.defaultColor
         progressTintList = null
         indeterminateTintList = null
         if (isHorizontal(attrs, defStyleAttr)) {
-            val spec = LinearProgressIndicatorSpec(
+            linearSpec = LinearProgressIndicatorSpec(
                 context, null, 0, com.google.android.material.R.style.Widget_Material3Expressive_LinearProgressIndicator_Wavy
-            )
-            tint?.let { spec.indicatorColors = intArrayOf(it) }
-            progressDrawable = DeterminateDrawable.createLinearDrawable(context, spec)
-            indeterminateDrawable = IndeterminateDrawable.createLinearDrawable(context, spec)
+            ).apply { tint?.let { indicatorColors = intArrayOf(it) } }
         } else {
-            val spec = CircularProgressIndicatorSpec(context, null)
-            tint?.let { spec.indicatorColors = intArrayOf(it) }
-            indeterminateDrawable = IndeterminateDrawable.createCircularDrawable(context, spec)
+            circularSpec = CircularProgressIndicatorSpec(context, null)
+                .apply { tint?.let { indicatorColors = intArrayOf(it) } }
         }
+        applySpecs()
         context.obtainStyledAttributes(attrs, R.styleable.MaterialProgressBar).apply {
             fadeContentOnHide = getBoolean(R.styleable.MaterialProgressBar_fadeContentOnHide, true)
             recycle()
         }
+    }
+
+    /**
+     * Colours for the indicator and (horizontal bars) the track. Use this rather than the
+     * platform tints: a tint colours the whole Material drawable, track included.
+     */
+    fun setIndicatorColors(indicator: Int, track: Int? = null) {
+        linearSpec?.apply {
+            indicatorColors = intArrayOf(indicator)
+            track?.let { trackColor = it }
+        }
+        circularSpec?.apply { indicatorColors = intArrayOf(indicator) }
+        applySpecs()
+    }
+
+    private fun applySpecs() {
+        linearSpec?.let {
+            progressDrawable = DeterminateDrawable.createLinearDrawable(context, it)
+            indeterminateDrawable = IndeterminateDrawable.createLinearDrawable(context, it)
+        }
+        circularSpec?.let { indeterminateDrawable = IndeterminateDrawable.createCircularDrawable(context, it) }
     }
 
     override fun setVisibility(visibility: Int) {

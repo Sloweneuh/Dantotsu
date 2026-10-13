@@ -3,7 +3,6 @@ package ani.dantotsu.home.status
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
-import android.content.res.ColorStateList
 import android.util.AttributeSet
 import android.view.LayoutInflater
 import android.view.MotionEvent
@@ -17,6 +16,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.isVisible
 import androidx.fragment.app.FragmentActivity
 import ani.dantotsu.R
+import ani.dantotsu.others.MaterialProgressBar
 import ani.dantotsu.blurImage
 import ani.dantotsu.buildMarkwon
 import ani.dantotsu.connections.anilist.Anilist
@@ -90,12 +90,11 @@ class Stories @JvmOverloads constructor(
         var idCounter = 1
         for (story in storiesList) {
             binding.progressBarContainer.removeView(findViewWithTag<ProgressBar>("story${idCounter}"))
-            val progressBar = ProgressBar(context, null, android.R.attr.progressBarStyleHorizontal)
+            val progressBar = MaterialProgressBar(context, null, android.R.attr.progressBarStyleHorizontal)
             progressBar.visibility = View.VISIBLE
             progressBar.id = idCounter
             progressBar.tag = "story${idCounter++}"
-            progressBar.progressBackgroundTintList = ColorStateList.valueOf(primaryColor)
-            progressBar.progressTintList = ColorStateList.valueOf(onPrimaryColor)
+            progressBar.setIndicatorColors(indicator = onPrimaryColor, track = primaryColor)
             val params = LayoutParams(0, LayoutParams.WRAP_CONTENT)
             params.marginEnd = 5
             params.marginStart = 5

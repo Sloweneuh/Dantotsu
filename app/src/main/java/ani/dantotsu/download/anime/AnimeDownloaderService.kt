@@ -1,5 +1,6 @@
 package ani.dantotsu.download.anime
 
+import ani.dantotsu.download.setDownloadProgress
 import android.Manifest
 import android.app.Service
 import android.content.BroadcastReceiver
@@ -311,6 +312,7 @@ class AnimeDownloaderService : Service() {
                                 )
                             } Download failed"
                         )
+                        builder.setDownloadProgress(this@AnimeDownloaderService, 0, 0, false)
                         if (notifi) {
                             withContext(Dispatchers.Main) {
                                 notificationManager.notify(NOTIFICATION_ID, builder.build())
@@ -344,7 +346,7 @@ class AnimeDownloaderService : Service() {
                     // ETA from percent-over-time (FFmpeg exposes no byte total mid-download).
                     val etaMs = if (p in 1..99) elapsed * (100 - p) / p else -1L
 
-                    builder.setProgress(100, p, false)
+                    builder.setDownloadProgress(this@AnimeDownloaderService, 100, p, false)
                         .setContentText(
                             downloadProgressText(task, p, bytesDone, 0, speed, etaMs)
                         )
@@ -376,6 +378,7 @@ class AnimeDownloaderService : Service() {
                                 )
                             } Download failed"
                         )
+                        builder.setDownloadProgress(this@AnimeDownloaderService, 0, 0, false)
                         if (notifi) {
                             withContext(Dispatchers.Main) {
                                 notificationManager.notify(NOTIFICATION_ID, builder.build())
@@ -406,6 +409,7 @@ class AnimeDownloaderService : Service() {
                             )
                         } Download completed"
                     )
+                    builder.setDownloadProgress(this@AnimeDownloaderService, 0, 0, false)
                     if (notifi) {
                         withContext(Dispatchers.Main) {
                             notificationManager.notify(NOTIFICATION_ID, builder.build())

@@ -1,5 +1,6 @@
 package ani.dantotsu.download.novel
 
+import ani.dantotsu.download.setDownloadProgress
 import android.Manifest
 import android.app.Service
 import android.content.BroadcastReceiver
@@ -332,7 +333,7 @@ class NovelDownloaderService : Service() {
             DownloadTracker.remove(itemId)
             withContext(Dispatchers.Main) {
                 builder.setContentText("Saved ${task.title} - ${task.chapter}")
-                    .setProgress(0, 0, false)
+                    .setDownloadProgress(this@NovelDownloaderService, 0, 0, false)
                 notifyIfAllowed()
             }
         } catch (e: kotlinx.coroutines.CancellationException) {
@@ -348,7 +349,7 @@ class NovelDownloaderService : Service() {
 
     private fun notifyProgress(task: DownloadTask, done: Int, total: Int) {
         builder.setContentText("${task.title} - ${task.chapter} ($done/$total)")
-            .setProgress(total, done, false)
+            .setDownloadProgress(this@NovelDownloaderService, total, done, false)
         notifyIfAllowed()
     }
 
@@ -466,7 +467,7 @@ class NovelDownloaderService : Service() {
                                             (downloadedBytes * 100 / totalBytes).toInt() else 0
                                     if (downloadedBytes - lastNotificationUpdate >= notificationUpdateInterval) {
                                         withContext(Dispatchers.Main) {
-                                            builder.setProgress(100, progress, false)
+                                            builder.setDownloadProgress(this@NovelDownloaderService, 100, progress, false)
                                                 .setContentText(
                                                     downloadProgressText(
                                                         task, progress, downloadedBytes,
@@ -510,7 +511,7 @@ class NovelDownloaderService : Service() {
 
                 // Update notification for download completion
                 builder.setContentText("${task.title} - ${task.chapter} Download complete")
-                    .setProgress(0, 0, false)
+                    .setDownloadProgress(this@NovelDownloaderService, 0, 0, false)
                 if (notifi) {
                     notificationManager.notify(NOTIFICATION_ID, builder.build())
                 }

@@ -1,5 +1,6 @@
 package ani.dantotsu.download.manga
 
+import ani.dantotsu.download.setDownloadProgress
 import android.Manifest
 import android.app.Service
 import android.content.BroadcastReceiver
@@ -286,7 +287,7 @@ class MangaDownloaderService : Service() {
                         // ETA estimate: remaining pages at the current average page time.
                         val etaMs = if (pages > 0) (elapsed / pages) * (total - pages) else -1L
 
-                        builder.setProgress(total, pages, false)
+                        builder.setDownloadProgress(this@MangaDownloaderService, total, pages, false)
                             .setContentText(downloadProgressText(task, percent, done, 0, speed, etaMs))
                         DownloadTracker.updateProgress(itemId, percent, done, 0, speed, etaMs)
                         broadcastDownloadProgress(task.uniqueName, percent, done, 0, speed, etaMs)
@@ -320,7 +321,7 @@ class MangaDownloaderService : Service() {
 
                 withContext(Dispatchers.Main) {
                     builder.setContentText("${task.title} - ${task.chapter} Download complete")
-                        .setProgress(0, 0, false)
+                        .setDownloadProgress(this@MangaDownloaderService, 0, 0, false)
                     if (notifi) {
                         notificationManager.notify(NOTIFICATION_ID, builder.build())
                     }
