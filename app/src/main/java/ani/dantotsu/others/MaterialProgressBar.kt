@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.AttributeSet
 import android.view.ViewGroup
 import android.widget.ProgressBar
+import androidx.recyclerview.widget.RecyclerView
 import androidx.transition.TransitionManager
 import ani.dantotsu.R
 import ani.dantotsu.util.animationsEnabled
@@ -79,7 +80,13 @@ class MaterialProgressBar @JvmOverloads constructor(
         if (fadeContentOnHide && animationsEnabled && getVisibility() == VISIBLE && visibility != VISIBLE &&
             isAttachedToWindow && isLaidOut
         ) {
-            (parent as? ViewGroup)?.let { TransitionManager.beginDelayedTransition(it, MaterialFadeThrough()) }
+            // Lists fade in whole, never item by item: a transition animating RecyclerView items
+            // can leave one it recycles mid-fade invisible.
+            (parent as? ViewGroup)?.let {
+                TransitionManager.beginDelayedTransition(
+                    it, MaterialFadeThrough().excludeChildren(RecyclerView::class.java, true)
+                )
+            }
         }
         super.setVisibility(visibility)
     }

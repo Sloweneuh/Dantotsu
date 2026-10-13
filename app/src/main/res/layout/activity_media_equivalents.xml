@@ -47,12 +47,15 @@
                 android:textSize="16sp"
                 android:text="@string/search_equivalents" />
 
-            <ani.dantotsu.others.MaterialProgressBar
+            <!-- Fills as each entry's search resolves (done / total). -->
+            <com.google.android.material.progressindicator.CircularProgressIndicator
                 android:id="@+id/equivalentsSearchProgress"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
                 android:layout_marginEnd="16dp"
-                android:indeterminate="true" />
+                android:indeterminate="false"
+                app:indicatorSize="24dp"
+                app:trackThickness="3dp" />
         </LinearLayout>
     </com.google.android.material.appbar.AppBarLayout>
 

@@ -192,7 +192,7 @@ class ProfileActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedListene
                         newTab: AnimatedBottomBar.Tab
                     ) {
                         selected = newIndex
-                        binding.profileViewPager.setCurrentItem(selected, true)
+                        binding.profileViewPager.setCurrentItem(selected, false)
                     }
                 })
 

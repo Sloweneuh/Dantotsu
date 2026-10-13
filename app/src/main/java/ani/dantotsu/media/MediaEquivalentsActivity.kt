@@ -111,6 +111,8 @@ class MediaEquivalentsActivity : AppCompatActivity() {
         recycler.adapter = adapter
 
         binding.equivalentsSearchProgress.visibility = if (items.isEmpty()) View.GONE else View.VISIBLE
+        binding.equivalentsSearchProgress.max = items.size.coerceAtLeast(1)
+        binding.equivalentsSearchProgress.progress = 0
 
         // Prefetch MU details (covers) for items that lack a coverUrl
         val idsToFetch = items.mapNotNull { item -> item.mu.id.takeIf { item.mu.coverUrl.isNullOrBlank() } }
@@ -185,10 +187,12 @@ class MediaEquivalentsActivity : AppCompatActivity() {
         super.finish()
     }
 
-    /** Hides the searching indicator once every entry has resolved. */
+    /** Fills the searching indicator by how many entries have resolved; hides it when all have. */
     private fun checkAllSearchesComplete() {
-        if (items.any { it.matchedTitle == null }) return
-        binding.equivalentsSearchProgress.visibility = View.GONE
+        val done = items.count { it.matchedTitle != null }
+        binding.equivalentsSearchProgress.setProgressCompat(done, true)
+        if (done < items.size) return
+        binding.equivalentsSearchProgress.hide()
     }
 
     private fun buildQuickCandidates(mu: MUMedia): List<String> {

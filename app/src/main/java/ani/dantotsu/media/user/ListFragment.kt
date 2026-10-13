@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.recyclerview.widget.ConcatAdapter
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.GridLayoutManager
 import ani.dantotsu.connections.mangaupdates.MUMedia
 import ani.dantotsu.connections.mangaupdates.MUMediaAdapter
@@ -42,8 +43,31 @@ class ListFragment : Fragment() {
     private var mergedAdaptor: MergedReadingAdapter? = null
     private var currentAdapterType: Int? = null
     private var currentSpanCount: Int? = null
-    /** The exact list instance [mediaAdaptor] was built around; see the identity check in update(). */
-    private var currentAniList: MutableList<Media>? = null
+    /** The list [mediaAdaptor] shows — the tab's own copy, so updates can be diffed into it. */
+    private val shownList = ArrayList<Media>()
+
+    /** What each shown row displays, as of the last update; see [RowKey]. */
+    private var shownRows: List<RowKey> = emptyList()
+
+    /**
+     * Everything a list row shows. Each pass the screen gets (cache, network, favourites,
+     * MangaUpdates) brings fresh Media objects, so rows are compared by what they display.
+     */
+    private data class RowKey(
+        val id: Int,
+        val title: String,
+        val cover: String?,
+        val progress: Int?,
+        val score: Int,
+        val status: String?,
+        val favourite: Boolean,
+        val meanScore: Int?,
+    )
+
+    private fun rowKey(media: Media) = RowKey(
+        media.id, media.userPreferredName, media.cover, media.userProgress, media.userScore,
+        media.userStatus, media.isFav, media.meanScore,
+    )
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -162,29 +186,33 @@ class ListFragment : Fragment() {
                 }
             } else {
                 val type = if (g) 0 else 1
-                // The MangaUpdates branch above already refuses to swap adapters when it doesn't
-                // have to; this one always did, and that is why an ordinary AniList tab jumped back
-                // to the top a moment after it opened. update() runs once per observer — the lists
-                // themselves, the MU map, and the grid toggle — plus once more when favourites land,
-                // and every one of those assignments detached the rows and dropped the scroll
-                // position even though the tab's contents had not moved.
-                //
-                // Identity is the right test: when nothing was refiltered the view model re-posts
-                // the very same ArrayList instances, and the adapter is already holding this one.
-                // A rebind still goes out, since entries can be updated in place (favourites fill in
-                // userProgress), and notifyDataSetChanged keeps the scroll offset that a fresh
-                // adapter would have thrown away.
-                if (mediaAdaptor != null && mergedAdaptor == null &&
-                    currentAdapterType == type && currentAniList === aniList
-                ) {
-                    @Suppress("NotifyDataSetChanged")
-                    mediaAdaptor?.notifyDataSetChanged()
+                // Each pass the screen gets (cached lists, the network's, favourites, MangaUpdates)
+                // used to rebuild or re-bind every row, replaying every cover load and entrance
+                // animation: the list flashed once per pass. Rows are diffed instead, so only those
+                // that actually changed rebind, and a pass that changed nothing does nothing. The
+                // adapter and its scroll position are kept unless the display mode changed.
+                val newRows = aniList.map(::rowKey)
+                val adaptor = mediaAdaptor
+                if (adaptor != null && mergedAdaptor == null && currentAdapterType == type) {
+                    val oldRows = shownRows
+                    val diff = DiffUtil.calculateDiff(object : DiffUtil.Callback() {
+                        override fun getOldListSize() = oldRows.size
+                        override fun getNewListSize() = newRows.size
+                        override fun areItemsTheSame(o: Int, n: Int) = oldRows[o].id == newRows[n].id
+                        override fun areContentsTheSame(o: Int, n: Int) = oldRows[o] == newRows[n]
+                    })
+                    shownList.clear()
+                    shownList.addAll(aniList)
+                    shownRows = newRows
+                    diff.dispatchUpdatesTo(adaptor)
                 } else {
                     mergedAdaptor = null
-                    val anilistAdaptor = MediaAdaptor(type, aniList, requireActivity(), true)
+                    shownList.clear()
+                    shownList.addAll(aniList)
+                    shownRows = newRows
+                    val anilistAdaptor = MediaAdaptor(type, shownList, requireActivity(), true)
                     mediaAdaptor = anilistAdaptor
                     currentAdapterType = type
-                    currentAniList = aniList
                     binding.listRecyclerView.adapter = anilistAdaptor
                 }
             }

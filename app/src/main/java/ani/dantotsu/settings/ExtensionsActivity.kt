@@ -306,7 +306,7 @@ class ExtensionsActivity : AppCompatActivity() {
         }
 
         tabLayoutMediator?.detach()
-        tabLayoutMediator = TabLayoutMediator(tabLayout, viewPager) { tab, position ->
+        tabLayoutMediator = TabLayoutMediator(tabLayout, viewPager, true, false) { tab, position ->
             tab.text = if (hasUpdates) {
                 when (position) {
                     0 -> "Updates"

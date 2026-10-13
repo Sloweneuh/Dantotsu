@@ -135,7 +135,7 @@ class CalendarActivity : AppCompatActivity(), AniMangaFilterHost {
                 val keys = it.keys.toList()
                 val values = it.values.toList()
                 val savedTab = this.selectedTabIdx
-                TabLayoutMediator(binding.listTabLayout, binding.listViewPager) { tab, position ->
+                TabLayoutMediator(binding.listTabLayout, binding.listViewPager, true, false) { tab, position ->
                     tab.text = "${keys[position]} (${values[position].size})"
                 }.attach()
                 binding.listViewPager.setCurrentItem(savedTab, false)

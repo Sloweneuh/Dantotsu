@@ -11,6 +11,7 @@ import androidx.core.app.ActivityOptionsCompat
 import androidx.core.content.ContextCompat
 import androidx.core.text.HtmlCompat
 import androidx.core.view.ViewCompat
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
 import ani.dantotsu.blurImage
@@ -60,9 +61,31 @@ class MergedReadingAdapter(
      * tapped item's actual on-screen position.
      */
     fun submitList(newItems: List<Any>) {
+        // Diffed rather than notifyDataSetChanged: the list screen re-posts after each pass
+        // (cache, network, favourites, MangaUpdates), each with fresh objects, and re-binding every
+        // row each time made the whole list flash. Only rows whose shown content changed rebind.
+        val oldKeys = items.map(::rowKey)
+        val newKeys = newItems.map(::rowKey)
+        val diff = DiffUtil.calculateDiff(object : DiffUtil.Callback() {
+            override fun getOldListSize() = oldKeys.size
+            override fun getNewListSize() = newKeys.size
+            override fun areItemsTheSame(o: Int, n: Int) = oldKeys[o].first == newKeys[n].first
+            override fun areContentsTheSame(o: Int, n: Int) = oldKeys[o] == newKeys[n]
+        })
         items = newItems
-        notifyDataSetChanged()
+        diff.dispatchUpdatesTo(this)
         prefetchUncachedMuCovers()
+    }
+
+    /** A row's identity and what it shows: (source:id, displayed fields). */
+    private fun rowKey(item: Any): Pair<String, Any?> = when (item) {
+        is Media -> "ani:${item.id}" to listOf(
+            item.userPreferredName, item.cover, item.userProgress, item.userScore,
+            item.userStatus, item.isFav, item.meanScore, item.status,
+        )
+        // A data class: compares by every field it shows.
+        is MUMedia -> "mu:${item.id}" to item
+        else -> item.toString() to item
     }
 
     private fun prefetchUncachedMuCovers() {

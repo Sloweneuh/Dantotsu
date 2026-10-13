@@ -155,7 +155,7 @@ class MediaInfoFragment : Fragment() {
     private fun setupTabs(model: MediaDetailsViewModel, media: Media) {
         // Setup TabLayout - all tabs long-clickable
         binding.mediaInfoViewPager.useSharedAxisTransitions()
-        TabLayoutMediator(binding.mediaInfoTabLayout, binding.mediaInfoViewPager) { tab, position ->
+        TabLayoutMediator(binding.mediaInfoTabLayout, binding.mediaInfoViewPager, true, false) { tab, position ->
             val iconRes = (binding.mediaInfoViewPager.adapter as? androidx.viewpager2.adapter.FragmentStateAdapter)?.let {
                 // tabs list captured above through closure
                 // Use tabs built earlier; safe to cast adapter as our anonymous adapter

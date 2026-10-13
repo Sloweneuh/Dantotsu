@@ -1091,7 +1091,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
                 newTab: AnimatedBottomBar.Tab
             ) {
                 selected = newIndex
-                viewPager.setCurrentItem(selected, true)
+                viewPager.setCurrentItem(selected, false)
             }
         })
 

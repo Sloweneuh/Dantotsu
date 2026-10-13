@@ -8,6 +8,7 @@ import androidx.dynamicanimation.animation.SpringForce
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.withResumed
+import androidx.interpolator.view.animation.FastOutSlowInInterpolator
 import androidx.viewpager2.widget.ViewPager2
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
@@ -21,15 +22,44 @@ val animationsEnabled: Boolean
 /**
  * Shared-axis feel for a pager's tab switches and swipes: pages overlap, cross-fade and travel
  * only about 30dp instead of sliding the full width.
+ *
+ * Swipes get it live from the page transformer. A tab tap should jump (`setCurrentItem(i, false)`,
+ * TabLayoutMediator with smoothScroll off) rather than smooth-scroll — that passes through every
+ * page in between, each flashing past in the cross-fade — and the jump then plays the same motion
+ * once, from the side of the tab it came from.
  */
 fun ViewPager2.useSharedAxisTransitions() {
     if (!animationsEnabled) return
+    val travel = 30f * resources.displayMetrics.density
     setPageTransformer { page, position ->
         val offset = abs(position)
         page.alpha = if (offset >= 1f) 0f else 1f - offset
-        page.translationX = -position * page.width + position * 30f * page.resources.displayMetrics.density
+        page.translationX = -position * page.width + position * travel
         page.translationZ = -offset
     }
+    // Pages are faded by position; one laid out without a scroll (tabs rebuilt, adapter swapped)
+    // could otherwise keep the alpha it had off-screen and stay invisible.
+    addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ -> post { requestTransform() } }
+    var dragging = false
+    var last = currentItem
+    registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
+        override fun onPageScrollStateChanged(state: Int) {
+            if (state == ViewPager2.SCROLL_STATE_DRAGGING) dragging = true
+            else if (state == ViewPager2.SCROLL_STATE_IDLE) dragging = false
+        }
+
+        override fun onPageSelected(position: Int) {
+            val from = last
+            last = position
+            // A swipe animated itself; only a jump (no scroll at all) needs the motion played.
+            if (dragging || scrollState != ViewPager2.SCROLL_STATE_IDLE || from == position) return
+            animate().cancel()
+            alpha = 0f
+            translationX = if (position > from) travel else -travel
+            animate().alpha(1f).translationX(0f).setDuration(250)
+                .setInterpolator(FastOutSlowInInterpolator()).start()
+        }
+    })
 }
 
 /** Shows or hides a bottom-anchored view (a floating toolbar) by springing it up from below the screen edge. */

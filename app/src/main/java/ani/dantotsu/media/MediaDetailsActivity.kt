@@ -1263,7 +1263,7 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                     ) {
                         selected = newIndex
                         binding.commentInputLayout.isVisible = selected == 2
-                        viewPager.setCurrentItem(selected, true)
+                        viewPager.setCurrentItem(selected, false)
                         queueSheet?.let {
                             it.setPageMode(queuePageMode(selected))
                             applyQueuePadding()

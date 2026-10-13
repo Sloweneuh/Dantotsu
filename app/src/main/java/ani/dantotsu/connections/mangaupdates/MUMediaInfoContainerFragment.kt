@@ -155,7 +155,7 @@ class MUMediaInfoContainerFragment : Fragment() {
         binding.mediaInfoTabLayout.visibility = View.VISIBLE
 
         binding.mediaInfoViewPager.useSharedAxisTransitions()
-        TabLayoutMediator(binding.mediaInfoTabLayout, binding.mediaInfoViewPager) { tab, position ->
+        TabLayoutMediator(binding.mediaInfoTabLayout, binding.mediaInfoViewPager, true, false) { tab, position ->
             tab.setIcon(tabs[position].iconRes)
 
             // Long-press the tab icon to open the corresponding external page in browser

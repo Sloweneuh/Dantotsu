@@ -755,7 +755,7 @@ class ListActivity : AppCompatActivity() {
         }
 
         binding.listViewPager.useSharedAxisTransitions()
-        tabMediator = TabLayoutMediator(binding.listTabLayout, binding.listViewPager) { tab, position ->
+        tabMediator = TabLayoutMediator(binding.listTabLayout, binding.listViewPager, true, false) { tab, position ->
             when {
                 muTabPosition >= 0 && position == muTabPosition -> {
                     tab.text = "MangaUpdates ($totalMu)"

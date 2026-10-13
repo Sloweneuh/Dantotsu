@@ -77,7 +77,7 @@ class DownloadActivity : AppCompatActivity() {
                 newIndex: Int,
                 newTab: AnimatedBottomBar.Tab
             ) {
-                pager.setCurrentItem(newIndex, true)
+                pager.setCurrentItem(newIndex, false)
             }
         })
         pager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
