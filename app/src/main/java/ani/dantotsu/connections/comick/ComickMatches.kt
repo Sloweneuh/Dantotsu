@@ -103,6 +103,99 @@ object ComickMatches {
             .mapNotNull { (id, anilistIds) -> anilistIds.distinct().singleOrNull()?.let { id to Target(anilistId = it) } }
             .toMap()
 
+    // ---- titles list sync couldn't match ----------------------------------------------------
+
+    /**
+     * A title list sync found no Comick entry for: an AniList title ([anilistId]), or a
+     * MangaUpdates series AniList doesn't have ([muSeriesId], always manga).
+     */
+    data class Unmatched(
+        val anilistId: Int? = null,
+        val muSeriesId: Long? = null,
+        val isAnime: Boolean = false,
+        /** Marked "not on Comick": listed apart, since Comick may add it later. */
+        val notOnComick: Boolean = false,
+    )
+
+    /** Where list sync keeps the Comick HIDs (or a "-<time>" miss) of a MangaUpdates-only series. */
+    fun muHidsKey(muSeriesId: Long) = "comick_hids_mu_$muSeriesId"
+
+    /**
+     * Every title list sync last failed to match ("-<time>" misses), minus those picked by hand
+     * since; those marked [markNotOnComick] are flagged rather than left out. Sync keeps retrying
+     * all of them, so a marked title Comick adds later and sync confirms stops being a miss and
+     * drops off. A miss only exists for titles sync, Compare lists or the Comick checks tried, so
+     * this is the user's list, not the whole catalog.
+     */
+    fun unmatched(): List<Unmatched> {
+        val dismissed = PrefManager.getAllCustomValsForMedia(NOT_ON_COMICK_PREFIX).keys
+        val anilist = listOf(false, true).flatMap { isAnime ->
+            val type = mediaType(isAnime)
+            val prefix = "comick_hids_${type}_"
+            IdCache.withPrefix(prefix).mapNotNull { (key, value) ->
+                val id = key.removePrefix(prefix).toIntOrNull() ?: return@mapNotNull null
+                if (!value.startsWith("-")) return@mapNotNull null
+                if (pinnedSlug(id, isAnime) != null) return@mapNotNull null
+                Unmatched(anilistId = id, isAnime = isAnime, notOnComick = notOnComickKey(id, isAnime) in dismissed)
+            }
+        }
+        val muPrefix = muHidsKey(0).removeSuffix("0")
+        val mangaUpdates = IdCache.withPrefix(muPrefix).mapNotNull { (key, value) ->
+            val id = key.removePrefix(muPrefix).toLongOrNull() ?: return@mapNotNull null
+            if (!value.startsWith("-")) return@mapNotNull null
+            if (muPinnedSlug(id) != null) return@mapNotNull null
+            Unmatched(muSeriesId = id, notOnComick = muNotOnComickKey(id) in dismissed)
+        }
+        return anilist + mangaUpdates
+    }
+
+    /** Links a MangaUpdates-only series by hand; see [link]. */
+    fun linkMangaUpdates(muSeriesId: Long, slug: String, hid: String) {
+        val muKey = ani.dantotsu.connections.mangaupdates.muMediaKey(muSeriesId)
+        // The same pick its MangaUpdates page's Comick tab makes, with the series recorded.
+        PrefManager.setCustomVal("$PICK_PREFIX$muKey", slug)
+        recordMuPick(muKey, muSeriesId)
+        IdCache.put(muHidsKey(muSeriesId), hid)
+        IdCache.flush()
+    }
+
+    fun markNotOnComick(unmatched: Unmatched) = PrefManager.setCustomVal(notOnComickKey(unmatched), true)
+
+    fun unmarkNotOnComick(unmatched: Unmatched) = PrefManager.removeCustomVal(notOnComickKey(unmatched))
+
+    private fun notOnComickKey(unmatched: Unmatched) = unmatched.muSeriesId?.let { muNotOnComickKey(it) }
+        ?: notOnComickKey(unmatched.anilistId ?: 0, unmatched.isAnime)
+
+    private fun muPinnedSlug(muSeriesId: Long) = PrefManager.getNullableCustomVal(
+        "$PICK_PREFIX${ani.dantotsu.connections.mangaupdates.muMediaKey(muSeriesId)}", null, String::class.java
+    )?.takeIf { it.isNotBlank() }
+
+    private fun muNotOnComickKey(muSeriesId: Long) = "${NOT_ON_COMICK_PREFIX}mu_$muSeriesId"
+
+    /**
+     * Links an AniList title to a Comick entry by hand: the same pick a media page's Comick tab
+     * makes, plus the resolved [hid] in place of the miss, so the next sync uses it straight away.
+     */
+    fun link(anilistId: Int, isAnime: Boolean, slug: String, hid: String) {
+        PrefManager.setCustomVal(pinnedKey(anilistId, isAnime), slug)
+        IdCache.put("comick_hids_${mediaType(isAnime)}_$anilistId", hid)
+        IdCache.flush()
+    }
+
+    private fun mediaType(isAnime: Boolean) =
+        if (isAnime) ComickApi.MEDIA_TYPE_ANIME else ComickApi.MEDIA_TYPE_MANGA
+
+    private fun pinnedKey(anilistId: Int, isAnime: Boolean) =
+        if (isAnime) ComickEpisodes.savedSlugKey(anilistId) else "$PICK_PREFIX$anilistId"
+
+    private fun pinnedSlug(anilistId: Int, isAnime: Boolean) =
+        PrefManager.getNullableCustomVal(pinnedKey(anilistId, isAnime), null, String::class.java)
+            ?.takeIf { it.isNotBlank() }
+
+    private fun notOnComickKey(anilistId: Int, isAnime: Boolean) =
+        "$NOT_ON_COMICK_PREFIX${mediaType(isAnime)}_$anilistId"
+
+    private const val NOT_ON_COMICK_PREFIX = "comick_not_on_comick_"
     private const val PICK_PREFIX = "comick_slug_"
     private const val MU_SERIES_PREFIX = "comick_slug_mu_series_"
 

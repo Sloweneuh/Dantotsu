@@ -70,14 +70,24 @@ object ProgressSync {
     private val NOVEL_RE =
         Regex("""^(?:${LNReaderReadState.PREFIX}|lnreader_pos)-(\d+)-.+$""")
 
+    /**
+     * Comick matching choices beyond the manga pick ([SELECTION_RE]'s `comick_slug`): anime picks,
+     * the MangaUpdates series a MangaUpdates page's pick is for, and titles marked "not on Comick"
+     * on the unmatched titles screen (MangaUpdates ones keyed by series id). Its own family so a
+     * peer on a build without them can't prune them away (see [applyMedia]).
+     */
+    private val COMICK_RE =
+        Regex("""^(?:comick_anime_slug|comick_slug_mu_series|comick_not_on_comick_(?:manga|anime|mu))_(\d+)$""")
+
     /** The families above, kept apart so a pull only prunes within one it can see (see [applyMedia]). */
-    private enum class Kind { PROGRESS, SELECTION, SHOW, NOVEL }
+    private enum class Kind { PROGRESS, SELECTION, SHOW, NOVEL, COMICK }
 
     private fun kindOf(key: String): Kind? = when {
         PROGRESS_RE.matches(key) -> Kind.PROGRESS
         SELECTION_RE.matches(key) -> Kind.SELECTION
         SHOW_RE.matches(key) -> Kind.SHOW
         NOVEL_RE.matches(key) -> Kind.NOVEL
+        COMICK_RE.matches(key) -> Kind.COMICK
         else -> null
     }
 
@@ -87,7 +97,8 @@ object ProgressSync {
      */
     private fun mediaIdOf(key: String): String? {
         val match = PROGRESS_RE.matchEntire(key) ?: SELECTION_RE.matchEntire(key)
-            ?: SHOW_RE.matchEntire(key) ?: NOVEL_RE.matchEntire(key) ?: return null
+            ?: SHOW_RE.matchEntire(key) ?: NOVEL_RE.matchEntire(key) ?: COMICK_RE.matchEntire(key)
+            ?: return null
         // SELECTION_RE is an alternation, so the id lands in whichever branch matched.
         return match.groupValues.drop(1).firstOrNull { it.isNotEmpty() }
     }

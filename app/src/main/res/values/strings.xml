@@ -3097,4 +3097,21 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="episodes_already_watched">Already watched up to here</string>
     <string name="episodes_no_downloads">None of these are downloaded</string>
     <string name="delete_downloaded_episodes">Delete %1$d downloaded episodes?</string>
+    <!-- Comick: titles list sync couldn't match -->
+    <string name="comick_unmatched_title">Unmatched Comick titles</string>
+    <string name="comick_unmatched_desc">Titles list sync couldn\'t find on Comick, to match by hand</string>
+    <plurals name="comick_unmatched_summary">
+        <item quantity="one">%1$d title in your lists couldn\'t be matched to Comick. Find it on Comick to link it, or mark it as not on Comick.</item>
+        <item quantity="other">%1$d titles in your lists couldn\'t be matched to Comick. Find each on Comick to link it, or mark it as not on Comick.</item>
+    </plurals>
+    <string name="comick_unmatched_empty">Every title list sync tried is matched to Comick</string>
+    <string name="comick_unmatched_find">Find</string>
+    <string name="comick_unmatched_not_on_comick">Not on Comick</string>
+    <string name="comick_unmatched_dismissed">%1$s marked as not on Comick</string>
+    <string name="comick_unmatched_linked">%1$s linked to %2$s</string>
+    <string name="comick_unmatched_hidden_title">Marked not on Comick (%1$d)</string>
+    <string name="comick_unmatched_hidden_desc">Sync keeps checking these and links any Comick adds later. Find one by hand if it’s there now.</string>
+    <string name="comick_unmatched_restore">Back to the list</string>
+    <string name="comick_unmatched_none_waiting">No titles waiting to be matched.</string>
+    <string name="undo">Undo</string>
 </resources>

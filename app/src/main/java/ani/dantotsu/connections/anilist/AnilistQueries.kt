@@ -66,8 +66,14 @@ class AnilistQueries {
      * Batch fetch AniList media by a list of AniList or MAL IDs (for recommendations, etc.)
      * @param ids List of IDs
      * @param mal If true, treat IDs as MAL IDs, otherwise AniList IDs
+     * @param extraFields GraphQL fields to fetch beyond [standardMediaInformation] (e.g. synonyms)
      */
-    suspend fun getMediaBatch(ids: List<Int>, mal: Boolean = false, mediaType: String? = null): List<Media> {
+    suspend fun getMediaBatch(
+        ids: List<Int>,
+        mal: Boolean = false,
+        mediaType: String? = null,
+        extraFields: String = "",
+    ): List<Media> {
         if (ids.isEmpty()) return emptyList()
         val idsString = ids.joinToString(",")
         val idField = if (mal) "idMal" else "id"
@@ -80,6 +86,7 @@ class AnilistQueries {
                 Page(perPage: ${ids.size}) {
                     media(${typeClause}${fieldClause}) {
                         ${standardMediaInformation()}
+                        $extraFields
                     }
                 }
             }

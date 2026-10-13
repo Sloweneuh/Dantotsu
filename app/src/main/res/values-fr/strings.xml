@@ -2972,4 +2972,21 @@
     <string name="episodes_already_watched">Déjà vu jusqu’ici</string>
     <string name="episodes_no_downloads">Aucun de ces épisodes n’est téléchargé</string>
     <string name="delete_downloaded_episodes">Supprimer %1$d épisodes téléchargés ?</string>
+    <!-- Comick : titres que la synchronisation n'a pas trouvés -->
+    <string name="comick_unmatched_title">Titres Comick non associés</string>
+    <string name="comick_unmatched_desc">Titres que la synchronisation n’a pas trouvés sur Comick, à associer à la main</string>
+    <plurals name="comick_unmatched_summary">
+        <item quantity="one">%1$d titre de vos listes n’a pas pu être associé à Comick. Cherchez-le sur Comick pour l’associer, ou indiquez qu’il n’y est pas.</item>
+        <item quantity="other">%1$d titres de vos listes n’ont pas pu être associés à Comick. Cherchez chacun sur Comick pour l’associer, ou indiquez qu’il n’y est pas.</item>
+    </plurals>
+    <string name="comick_unmatched_empty">Tous les titres essayés par la synchronisation sont associés à Comick</string>
+    <string name="comick_unmatched_find">Chercher</string>
+    <string name="comick_unmatched_not_on_comick">Pas sur Comick</string>
+    <string name="comick_unmatched_dismissed">%1$s marqué comme absent de Comick</string>
+    <string name="comick_unmatched_linked">%1$s associé à %2$s</string>
+    <string name="comick_unmatched_hidden_title">Marqués absents de Comick (%1$d)</string>
+    <string name="comick_unmatched_hidden_desc">La synchronisation continue de les vérifier et associe ceux que Comick ajoute plus tard. Cherchez-en un à la main s’il y est déjà.</string>
+    <string name="comick_unmatched_restore">Remettre dans la liste</string>
+    <string name="comick_unmatched_none_waiting">Aucun titre en attente d’association.</string>
+    <string name="undo">Annuler</string>
 </resources>

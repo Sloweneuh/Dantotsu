@@ -4,6 +4,7 @@ import ani.dantotsu.connections.IdCache
 import ani.dantotsu.connections.TrackerSessions
 import ani.dantotsu.connections.malsync.MalSyncApi
 import ani.dantotsu.connections.mangabaka.MangaBakaApi
+import ani.dantotsu.connections.mangaupdates.muMediaKey
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.util.Logger
@@ -104,10 +105,9 @@ object ComickSync {
         Logger.log("ComickSync: MangaUpdates $muSeriesId → list=$muListId progress=$progress exact=$exactProgress")
         if (!isEnabled(force)) return false
         val cross = MangaBakaApi.getCrossIdsFromMangaUpdates(muSeriesId ?: return false)
-        val hids = resolveFromAnilist(false, cross.anilistId ?: run {
-            Logger.log("ComickSync: no AniList id for MangaUpdates $muSeriesId")
-            return false
-        }, cross.malId)
+        val hids = cross.anilistId?.let { resolveFromAnilist(false, it, cross.malId) }
+            ?: resolveMangaUpdatesOnly(muSeriesId)
+            ?: return false
         Logger.log("ComickSync: MangaUpdates $muSeriesId resolved to $hids")
         return pushToSeries(hids, mapMangaUpdatesList(muListId), exactProgress ?: progress?.toString(), isAnime = false)
     }
@@ -408,6 +408,27 @@ object ComickSync {
         // Only a real answer is a miss; a MALSync that didn't answer leaves it to the next try.
         if (quicklinks != null) IdCache.put(hidsKey, "$MISS_PREFIX${System.currentTimeMillis()}")
         return emptyList()
+    }
+
+    /**
+     * The Comick entry for a MangaUpdates series AniList doesn't have: only one picked by hand
+     * (on its MangaUpdates page's Comick tab, or from the unmatched titles list) — there's no
+     * id to validate a search against. With no pick, records a miss so the series shows up in
+     * that list ([ComickMatches.unmatched]) and returns null.
+     */
+    private suspend fun resolveMangaUpdatesOnly(muSeriesId: Long): List<String>? {
+        val hidsKey = ComickMatches.muHidsKey(muSeriesId)
+        IdCache[hidsKey]?.takeIf { !it.startsWith(MISS_PREFIX) }
+            ?.split(',')?.filter { it.isNotBlank() }?.takeIf { it.isNotEmpty() }
+            ?.let { return it }
+        val pinned = PrefManager.getNullableCustomVal(
+            "comick_slug_${muMediaKey(muSeriesId)}", null, String::class.java
+        )?.takeIf { it.isNotBlank() }
+        val hid = pinned?.let { ComickApi.getComicDetails(it)?.comic?.hid }
+        if (hid != null) return listOf(hid).also { IdCache.put(hidsKey, hid) }
+        Logger.log("ComickSync: no AniList id and no Comick pick for MangaUpdates $muSeriesId")
+        IdCache.put(hidsKey, "$MISS_PREFIX${System.currentTimeMillis()}")
+        return null
     }
 
     /** AniList status → Comick's 1 reading, 2 completed, 3 on hold, 4 dropped, 5 plan to read. */

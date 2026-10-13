@@ -343,9 +343,8 @@ class ComickInfoFragment : Fragment() {
             titles.add(media.userPreferredName)
             if (media.nameRomaji != media.userPreferredName) titles.add(media.nameRomaji)
 
-            // Filter English titles from media synonyms
-            val englishSynonyms = filterEnglishTitles(media.synonyms)
-            englishSynonyms.forEach { if (!titles.contains(it)) titles.add(it) }
+            // Every synonym: a picker is for the user to choose from, so none is filtered out.
+            media.synonyms.forEach { if (it.isNotBlank() && !titles.contains(it)) titles.add(it) }
 
             // If this media is linked to a MangaUpdates series, try to include MU associated titles
             val muId = media.muSeriesId
@@ -356,8 +355,7 @@ class ComickInfoFragment : Fragment() {
                     MangaUpdates.getSeriesDetails(muId)?.associated?.mapNotNull { it.title } ?: emptyList()
                 }
                 muTitles.forEach { t ->
-                    // Filter English-ish titles and avoid duplicates
-                    if (!titles.contains(t) && filterEnglishTitles(listOf(t)).isNotEmpty()) titles.add(t)
+                    if (t.isNotBlank() && !titles.contains(t)) titles.add(t)
                 }
             }
 
@@ -440,9 +438,8 @@ class ComickInfoFragment : Fragment() {
                 }
             }
 
-            // Add English synonyms from Media
-            val englishSynonyms = filterEnglishTitles(media.synonyms)
-            englishSynonyms.forEach { if (!titleOptions.contains(it)) titleOptions.add(it) }
+            // Every synonym, not just English-looking ones: this list is for the user to pick from.
+            media.synonyms.forEach { if (it.isNotBlank() && !titleOptions.contains(it)) titleOptions.add(it) }
 
             // Set up RecyclerView
             recyclerView.layoutManager =

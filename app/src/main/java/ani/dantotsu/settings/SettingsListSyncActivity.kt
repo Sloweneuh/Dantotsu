@@ -113,6 +113,17 @@ class SettingsListSyncActivity : AppCompatActivity() {
             ),
             Settings(
                 type = 1,
+                name = getString(R.string.comick_unmatched_title),
+                desc = getString(R.string.comick_unmatched_desc),
+                icon = R.drawable.ic_round_comick_24,
+                onClick = {
+                    startActivity(Intent(this, ComickUnmatchedActivity::class.java))
+                },
+                isActivity = true,
+                isVisible = Comick.token != null,
+            ),
+            Settings(
+                type = 1,
                 name = getString(R.string.auto_list_sync),
                 desc = autoSyncDesc(autoInterval),
                 icon = R.drawable.ic_round_compare_schedule_24,
