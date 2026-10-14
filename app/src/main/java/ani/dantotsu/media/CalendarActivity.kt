@@ -27,7 +27,7 @@ import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.util.useSharedAxisTransitions
 import com.google.android.material.chip.Chip
 import com.google.android.material.tabs.TabLayout
-import com.google.android.material.tabs.TabLayoutMediator
+import ani.dantotsu.util.PagerTabsMediator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -135,7 +135,7 @@ class CalendarActivity : AppCompatActivity(), AniMangaFilterHost {
                 val keys = it.keys.toList()
                 val values = it.values.toList()
                 val savedTab = this.selectedTabIdx
-                TabLayoutMediator(binding.listTabLayout, binding.listViewPager, true, false) { tab, position ->
+                PagerTabsMediator(binding.listTabLayout, binding.listViewPager) { tab, position ->
                     tab.text = "${keys[position]} (${values[position].size})"
                 }.attach()
                 binding.listViewPager.setCurrentItem(savedTab, false)

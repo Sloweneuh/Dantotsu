@@ -15,7 +15,7 @@ import ani.dantotsu.isOnline
 import ani.dantotsu.openLinkInBrowser
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
-import com.google.android.material.tabs.TabLayoutMediator
+import ani.dantotsu.util.PagerTabsMediator
 
 class MediaInfoFragment : Fragment() {
     private var _binding: FragmentMediaInfoContainerBinding? = null
@@ -155,7 +155,7 @@ class MediaInfoFragment : Fragment() {
     private fun setupTabs(model: MediaDetailsViewModel, media: Media) {
         // Setup TabLayout - all tabs long-clickable
         binding.mediaInfoViewPager.useSharedAxisTransitions()
-        TabLayoutMediator(binding.mediaInfoTabLayout, binding.mediaInfoViewPager, true, false) { tab, position ->
+        PagerTabsMediator(binding.mediaInfoTabLayout, binding.mediaInfoViewPager) { tab, position ->
             val iconRes = (binding.mediaInfoViewPager.adapter as? androidx.viewpager2.adapter.FragmentStateAdapter)?.let {
                 // tabs list captured above through closure
                 // Use tabs built earlier; safe to cast adapter as our anonymous adapter

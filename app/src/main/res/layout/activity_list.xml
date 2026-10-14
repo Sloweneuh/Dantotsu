@@ -18,7 +18,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="?attr/colorSurface"
-        android:theme="@style/Theme.Dantotsu.AppBarOverlay">
+        android:theme="@style/Theme.Dantotsu.AppBarOverlay"
+        app:liftOnScroll="false">
 
         <LinearLayout
             android:id="@+id/settingsContainer"
@@ -201,6 +202,14 @@
 
     <androidx.viewpager2.widget.ViewPager2
         android:id="@+id/listViewPager"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_behavior="@string/appbar_scrolling_view_behavior" />
+
+    <!-- A search or filter that matches nothing leaves no tabs, so the pager has no page to say so. -->
+    <include
+        android:id="@+id/listEmptyState"
+        layout="@layout/layout_search_empty_state"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         app:layout_behavior="@string/appbar_scrolling_view_behavior" />

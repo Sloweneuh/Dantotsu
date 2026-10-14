@@ -1,5 +1,7 @@
 package ani.dantotsu.media.user
 
+import ani.dantotsu.util.hideEmptyState
+import ani.dantotsu.util.showNoResults
 import ani.dantotsu.util.useSharedAxisTransitions
 import android.os.Bundle
 import android.text.SpannableString
@@ -37,7 +39,7 @@ import ani.dantotsu.stripSpansOnPaste
 import ani.dantotsu.themes.ThemeManager
 import ani.dantotsu.toast
 import com.google.android.material.tabs.TabLayout
-import com.google.android.material.tabs.TabLayoutMediator
+import ani.dantotsu.util.PagerTabsMediator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -68,7 +70,7 @@ class ListActivity : AppCompatActivity() {
     private var lastTabSignature: String = ""
     private var isRebuildingTabs = false
     /** Held so each rebuild can retire the previous one; see buildTabs. */
-    private var tabMediator: TabLayoutMediator? = null
+    private var tabMediator: PagerTabsMediator? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -686,6 +688,13 @@ class ListActivity : AppCompatActivity() {
         val totalSize = aniIndices.size + muSeparateTabs.size + (if (muTabPosition >= 0) 1 else 0)
         val savedTab = selectedTabIdx.coerceIn(0, (totalSize - 1).coerceAtLeast(0))
 
+        // Nothing matched the search or filters: every tab is gone, so say so in their place.
+        val narrowed = binding.searchViewText.text.isNotBlank() || binding.genreChipsGroup.childCount > 0
+        if (totalSize == 0 && narrowed) binding.listEmptyState.showNoResults()
+        else binding.listEmptyState.hideEmptyState()
+        // An empty tab row would still hold its height above the placeholder.
+        binding.listTabLayout.isVisible = totalSize > 0
+
         // When only tab counts change (not the tab structure itself), update text in-place
         // instead of replacing the adapter — adapter replacement destroys and recreates all
         // fragment instances, which is the main cause of visible list flickering.
@@ -755,7 +764,7 @@ class ListActivity : AppCompatActivity() {
         }
 
         binding.listViewPager.useSharedAxisTransitions()
-        tabMediator = TabLayoutMediator(binding.listTabLayout, binding.listViewPager, true, false) { tab, position ->
+        tabMediator = PagerTabsMediator(binding.listTabLayout, binding.listViewPager) { tab, position ->
             when {
                 muTabPosition >= 0 && position == muTabPosition -> {
                     tab.text = "MangaUpdates ($totalMu)"

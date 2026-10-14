@@ -8,7 +8,9 @@ import androidx.dynamicanimation.animation.SpringForce
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.withResumed
+import androidx.interpolator.view.animation.FastOutLinearInInterpolator
 import androidx.interpolator.view.animation.FastOutSlowInInterpolator
+import androidx.interpolator.view.animation.LinearOutSlowInInterpolator
 import androidx.viewpager2.widget.ViewPager2
 import ani.dantotsu.R
 import ani.dantotsu.settings.saving.PrefManager
@@ -25,16 +27,20 @@ val animationsEnabled: Boolean
  * only about 30dp instead of sliding the full width.
  *
  * Swipes get it live from the page transformer. A tab tap should jump (`setCurrentItem(i, false)`,
- * TabLayoutMediator with smoothScroll off) rather than smooth-scroll — that passes through every
+ * [PagerTabsMediator]) rather than smooth-scroll — that passes through every
  * page in between, each flashing past in the cross-fade — and the jump then plays the same motion
  * once, from the side of the tab it came from.
  */
 fun ViewPager2.useSharedAxisTransitions() {
     if (!animationsEnabled) return
+    setTag(R.id.shared_axis_pager, true)
     val travel = 30f * resources.displayMetrics.density
     setPageTransformer { page, position ->
         val offset = abs(position)
-        page.alpha = if (offset >= 1f) 0f else 1f - offset
+        // One page at a time: the old one is gone by the halfway point and the new one fades in
+        // after it, as a tab tap does. A plain cross-fade showed both lists at half strength,
+        // which read as the items being swapped in place rather than a move.
+        page.alpha = (1f - offset * 2f).coerceIn(0f, 1f)
         page.translationX = -position * page.width + position * travel
         page.translationZ = -offset
     }
@@ -64,6 +70,44 @@ fun ViewPager2.useSharedAxisTransitions() {
                 .setInterpolator(FastOutSlowInInterpolator()).start()
         }
     })
+}
+
+/**
+ * Switches to [item] the way a swipe looks on a [useSharedAxisTransitions] pager: the current page
+ * fades out drifting away, then the new one fades in sliding into place. A plain jump can only
+ * fade the new page in, since the old one is already gone by the time the pager reports it.
+ */
+fun ViewPager2.switchTo(item: Int) {
+    // A tap during the previous switch's fade-out lands it first, so no switch is ever dropped.
+    (getTag(R.id.pager_switch_target) as? Int)?.let { pending ->
+        setTag(R.id.pager_switch_target, null)
+        animate().cancel()
+        jumpTo(pending)
+    }
+    if (item == currentItem) {
+        animate().cancel()
+        alpha = 1f
+        translationX = 0f
+        return
+    }
+    if (getTag(R.id.shared_axis_pager) != true || !animationsEnabled || !isShown) {
+        setCurrentItem(item, false)
+        return
+    }
+    val travel = 30f * resources.displayMetrics.density
+    val direction = if (item > currentItem) 1 else -1
+    setTag(R.id.pager_switch_target, item)
+    animate().cancel()
+    animate().alpha(0f).translationX(-direction * travel).setDuration(120)
+        .setInterpolator(FastOutLinearInInterpolator())
+        .withEndAction {
+            setTag(R.id.pager_switch_target, null)
+            jumpTo(item)
+            translationX = direction * travel
+            animate().alpha(1f).translationX(0f).setDuration(200)
+                .setInterpolator(LinearOutSlowInInterpolator()).start()
+        }
+        .start()
 }
 
 /** Moves to [item] without the shared-axis motion: for opening on a page, not switching to one. */

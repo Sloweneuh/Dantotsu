@@ -38,7 +38,7 @@ import android.widget.FrameLayout
 import android.widget.TextView
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
-import com.google.android.material.tabs.TabLayoutMediator
+import ani.dantotsu.util.PagerTabsMediator
 import eu.kanade.domain.source.service.SourcePreferences
 import kotlinx.coroutines.launch
 import uy.kohesive.injekt.Injekt
@@ -50,7 +50,7 @@ class ExtensionsActivity : AppCompatActivity() {
     private var hasUpdates = false
     private lateinit var tabLayout: TabLayout
     private lateinit var viewPager: ViewPager2
-    private var tabLayoutMediator: TabLayoutMediator? = null
+    private var tabLayoutMediator: PagerTabsMediator? = null
     companion object {
         const val EXTRA_OPEN_SOURCE_ID = "open_source_id"
         const val EXTRA_OPEN_SOURCE_TYPE = "open_source_type"
@@ -306,7 +306,7 @@ class ExtensionsActivity : AppCompatActivity() {
         }
 
         tabLayoutMediator?.detach()
-        tabLayoutMediator = TabLayoutMediator(tabLayout, viewPager, true, false) { tab, position ->
+        tabLayoutMediator = PagerTabsMediator(tabLayout, viewPager) { tab, position ->
             tab.text = if (hasUpdates) {
                 when (position) {
                     0 -> "Updates"
