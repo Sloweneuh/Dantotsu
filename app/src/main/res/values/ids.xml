@@ -27,4 +27,7 @@
 
     <!-- Set on a ViewPager2 while ViewPager2.jumpTo moves it, so the shared-axis motion skips it. -->
     <item name="pager_quiet_jump" type="id" />
+
+    <!-- Set on a source TextInputLayout once followSourceIcon has hooked its text. -->
+    <item name="source_icon_follow" type="id" />
 </resources>

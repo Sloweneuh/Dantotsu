@@ -28,6 +28,7 @@ import ani.dantotsu.displayTimer
 import ani.dantotsu.isOnline
 import ani.dantotsu.loadImage
 import ani.dantotsu.media.ExtensionDropdownAdapter
+import ani.dantotsu.media.followSourceIcon
 import ani.dantotsu.media.Media
 import ani.dantotsu.media.MediaDetailsActivity
 import ani.dantotsu.media.MediaNameAdapter
@@ -210,6 +211,7 @@ class AnimeWatchAdapter(
                 sourceIcons
             )
         )
+        binding.mediaSourceNameContainer.followSourceIcon()
         binding.mediaSourceTitle.isSelected = true
         binding.mediaSource.setOnItemClickListener { _, _, i, _ ->
             fragment.onSourceChange(i).apply {
@@ -468,6 +470,7 @@ class AnimeWatchAdapter(
                 sourceIcons
             )
         )
+        _binding?.mediaSourceNameContainer?.followSourceIcon()
     }
 
     // Chips

@@ -21,6 +21,7 @@ import ani.dantotsu.media.Media
 import ani.dantotsu.media.anime.handleProgress
 import ani.dantotsu.openLinkInBrowser
 import ani.dantotsu.media.ExtensionDropdownAdapter
+import ani.dantotsu.media.followSourceIcon
 import ani.dantotsu.parsers.NovelReadSources
 import ani.dantotsu.parsers.novel.lnreader.LNReaderChapter
 import ani.dantotsu.parsers.novel.lnreader.LNReaderPluginManager
@@ -154,6 +155,7 @@ class NovelReadAdapter(
             binding.mediaSource.setAdapter(
                 ExtensionDropdownAdapter(fragment.requireContext(), novelReadSources.names, icons)
             )
+            binding.mediaSourceNameContainer.followSourceIcon()
         }
 
         val downloadIcon = AppCompatResources.getDrawable(

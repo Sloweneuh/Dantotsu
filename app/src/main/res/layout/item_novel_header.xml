@@ -32,6 +32,7 @@
             android:fontFamily="@font/poppins_bold"
             android:freezesText="false"
             android:inputType="none"
+            android:minHeight="48dp"
             android:padding="8dp"
             android:text="@string/read"
             android:textAllCaps="true"
