@@ -34,4 +34,7 @@
 
     <!-- Set on a source TextInputLayout once followSourceIcon has hooked its text. -->
     <item name="source_icon_follow" type="id" />
+
+    <!-- Whether a notification swipe's icon is showing "far enough to go through"; see NotificationSwipeCallback. -->
+    <item name="swipe_armed" type="id" />
 </resources>

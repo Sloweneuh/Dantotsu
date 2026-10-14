@@ -2989,4 +2989,7 @@
     <string name="comick_unmatched_restore">Remettre dans la liste</string>
     <string name="comick_unmatched_none_waiting">Aucun titre en attente d’association.</string>
     <string name="undo">Annuler</string>
+    <string name="notification_marked_read">Marquée comme lue</string>
+    <string name="notification_marked_unread">Marquée comme non lue</string>
+    <string name="notification_deleted">Notification supprimée</string>
 </resources>

@@ -64,6 +64,7 @@ class NotificationFragment : Fragment() {
         }
         binding.notificationRecyclerView.adapter = adapter
         binding.notificationRecyclerView.layoutManager = LinearLayoutManager(context)
+        NotificationSwipeCallback().attachTo(binding.notificationRecyclerView)
         // Fires with the current value on subscribe, so this is the initial load as well as the
         // reload when "show all" is toggled.
         (requireActivity() as NotificationActivity).showAll.observe(viewLifecycleOwner) {

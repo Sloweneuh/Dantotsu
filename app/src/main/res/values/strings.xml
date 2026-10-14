@@ -3114,4 +3114,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="comick_unmatched_restore">Back to the list</string>
     <string name="comick_unmatched_none_waiting">No titles waiting to be matched.</string>
     <string name="undo">Undo</string>
+    <string name="notification_marked_read">Marked as read</string>
+    <string name="notification_marked_unread">Marked as unread</string>
+    <string name="notification_deleted">Notification deleted</string>
 </resources>
