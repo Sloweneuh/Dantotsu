@@ -103,7 +103,7 @@
                 app:boxCornerRadiusTopStart="8dp"
                 app:boxStrokeColor="@color/text_input_layout_stroke_color"
                 app:hintAnimationEnabled="true"
-                app:startIconDrawable="@drawable/ic_round_source_24">
+                app:startIconDrawable="@drawable/ic_extension_24">
 
                 <AutoCompleteTextView
                     android:id="@+id/mediaSource"

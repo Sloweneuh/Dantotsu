@@ -826,7 +826,7 @@ object SettingsRouter {
                 // flashing all of it would wash over the settings the user came to read. The
                 // header identifies the group and is enough to land the eye on it.
                 expanded -> {
-                    target = holder?.b?.sectionHeader
+                    target = holder?.b?.sectionHeader?.root
                     cornerRadiusPx = 0f
                 }
 

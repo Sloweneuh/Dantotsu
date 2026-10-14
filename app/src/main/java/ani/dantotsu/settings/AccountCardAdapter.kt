@@ -168,11 +168,12 @@ class AccountCardAdapter(
 
         // ---- expansion ----
         val open = card.provider in expanded
-        b.accountChevron.animate().cancel()
-        b.accountChevron.rotation = if (open) 180f else 0f
+        styleCard(b, open, animate = false)
+        SectionCard.resetBody(b.accountBodyContainer, b.accountBody)
         bindBody(b, card, open)
 
         b.accountCardHeader.setOnClickListener { toggle(b, card) }
+        SectionCard.pressFeedback(b.accountCardHeader, b.accountCard)
         b.accountAvatarFrame.setOnClickListener {
             if (state is AccountState.SignedIn) onAvatarTap(card.provider) else toggle(b, card)
         }
@@ -189,23 +190,30 @@ class AccountCardAdapter(
         } else {
             expanded.add(card.provider); true
         }
-        b.accountChevron.animate().rotation(if (nowOpen) 180f else 0f).setDuration(200).start()
-        bindBody(b, card, nowOpen)
+        styleCard(b, nowOpen, animate = true)
+        SectionCard.toggleBody(b.accountBodyContainer, b.accountBody, nowOpen) { bindBody(b, card, it) }
+    }
+
+    /** The same fill, open tint and chevron as the other collapsible settings cards; the avatar
+     *  stays as it is rather than taking an icon tile's colours. */
+    private fun styleCard(b: ItemAccountCardBinding, open: Boolean, animate: Boolean) {
+        SectionCard.bind(
+            b.accountCardHeader, tile = null, icon = null, chevron = b.accountChevron,
+            open = open, animate = animate,
+        ) { b.accountCard.setCardBackgroundColor(it) }
     }
 
     private fun bindBody(b: ItemAccountCardBinding, card: AccountCard, open: Boolean) {
         if (!open) {
-            b.accountBody.isVisible = false
-            b.accountBodyDivider.isVisible = false
+            b.accountBodyContainer.isVisible = false
             return
         }
         val rows = rowsFor(card.provider)
         if (b.accountBody.layoutManager == null) {
             b.accountBody.layoutManager = LinearLayoutManager(b.root.context)
         }
-        b.accountBody.adapter = SettingsAdapter(ArrayList(rows))
-        b.accountBody.isVisible = rows.isNotEmpty()
-        b.accountBodyDivider.isVisible = rows.isNotEmpty()
+        b.accountBody.adapter = SettingsAdapter(ArrayList(rows), popIn = false)
+        b.accountBodyContainer.isVisible = rows.isNotEmpty()
     }
 
     /** Matches each status drawable's own baked-in colour (see the discord_status_* vectors). */

@@ -132,19 +132,21 @@ class SettingsSectionAdapter(
     override fun onBindViewHolder(holder: Holder, position: Int) {
         val section = sections[position]
         val b = holder.b
+        val header = b.sectionHeader
 
-        b.sectionIcon.setImageResource(section.icon)
-        b.sectionTitle.text = section.title
+        header.sectionIcon.setImageResource(section.icon)
+        header.sectionTitle.text = section.title
         val summary = section.summary()
-        b.sectionSummary.text = summary
-        b.sectionSummary.isVisible = summary.isNotBlank()
+        header.sectionSummary.text = summary
+        header.sectionSummary.isVisible = summary.isNotBlank()
 
         val open = section.key in expanded
-        b.sectionChevron.animate().cancel()
-        b.sectionChevron.rotation = if (open) 180f else 0f
+        SectionCard.bind(header, open, animate = false) { b.sectionCard.setCardBackgroundColor(it) }
+        SectionCard.resetBody(b.sectionBodyContainer, b.sectionBody)
         bindBody(b, section, open)
 
-        b.sectionHeader.setOnClickListener { toggle(b, section) }
+        header.root.setOnClickListener { toggle(b, section) }
+        SectionCard.pressFeedback(header.root, b.sectionCard)
     }
 
     private fun toggle(b: ItemSettingsSectionBinding, section: SettingsSection) {
@@ -154,23 +156,21 @@ class SettingsSectionAdapter(
             expanded.add(section.key); true
         }
         saveExpanded()
-        b.sectionChevron.animate().rotation(if (nowOpen) 180f else 0f).setDuration(200).start()
-        bindBody(b, section, nowOpen)
+        SectionCard.bind(b.sectionHeader, nowOpen, animate = true) { b.sectionCard.setCardBackgroundColor(it) }
+        SectionCard.toggleBody(b.sectionBodyContainer, b.sectionBody, nowOpen) { bindBody(b, section, it) }
     }
 
     private fun bindBody(b: ItemSettingsSectionBinding, section: SettingsSection, open: Boolean) {
         if (!open) {
-            b.sectionBody.isVisible = false
-            b.sectionBodyDivider.isVisible = false
+            b.sectionBodyContainer.isVisible = false
             return
         }
         val rows = section.rows()
         if (b.sectionBody.layoutManager == null) {
             b.sectionBody.layoutManager = LinearLayoutManager(b.root.context)
         }
-        b.sectionBody.adapter = SettingsAdapter(ArrayList(rows))
-        b.sectionBody.isVisible = rows.isNotEmpty()
-        b.sectionBodyDivider.isVisible = rows.isNotEmpty()
+        b.sectionBody.adapter = SettingsAdapter(ArrayList(rows), popIn = false)
+        b.sectionBodyContainer.isVisible = rows.isNotEmpty()
     }
 
     companion object {

@@ -1,21 +1,21 @@
 package ani.dantotsu.others
 
-import android.animation.ObjectAnimator
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import android.graphics.drawable.GradientDrawable
 import android.view.LayoutInflater
 import android.view.View
 import android.util.AttributeSet
 import android.widget.LinearLayout
 import androidx.core.view.isVisible
-import androidx.core.content.ContextCompat
 import androidx.core.content.withStyledAttributes
 import androidx.core.view.children
 import androidx.core.view.updateLayoutParams
 import ani.dantotsu.R
 import ani.dantotsu.databinding.ItemSettingsSectionHeaderBinding
 import ani.dantotsu.px
+import ani.dantotsu.settings.SectionCard
 import ani.dantotsu.settings.SettingsRouter
 import ani.dantotsu.settings.saving.PrefManager
 
@@ -23,9 +23,9 @@ import ani.dantotsu.settings.saving.PrefManager
  * A collapsible group of settings, styled as a card.
  *
  * The chrome deliberately matches `item_settings_section.xml`, the card
- * [ani.dantotsu.settings.SettingsSectionAdapter] renders — same 22dp radius, surface fill, outline
- * stroke and rotating chevron — because the Player and Reader screens sit beside screens built from
- * that adapter and used to read as a different component entirely.
+ * [ani.dantotsu.settings.SettingsSectionAdapter] renders: same header, radius, fill and motion, all
+ * from [SectionCard], because the Player and Reader screens sit beside screens built from that
+ * adapter and used to read as a different component entirely.
  *
  * The controls inside stay ordinary views. Converting them to settings rows would mean moving some
  * ninety of them, and the subtitle section holds a live preview that re-renders as its colour,
@@ -46,8 +46,14 @@ class Xpandable @JvmOverloads constructor(
     /** Whether the card insets itself from its parent; see the `cardInset` attribute. */
     private var cardInset: Boolean = true
 
-    /** The chevron on a header this view built. Null when the layout supplied its own header. */
-    private var chevron: View? = null
+    /** The header this view built. Null when the layout supplied its own. */
+    private var header: ItemSettingsSectionHeaderBinding? = null
+
+    /** The card's own fill, recoloured as it opens and closes; null for a nested group. */
+    private var fill: GradientDrawable? = null
+
+    /** The height the layout gave this view, handed back after each expand/collapse animation. */
+    private var restingHeight = LayoutParams.WRAP_CONTENT
 
     private var stateScope: String? = null
 
@@ -108,8 +114,8 @@ class Xpandable @JvmOverloads constructor(
         header.sectionSummary.text = summaryText
         header.sectionSummary.isVisible = !summaryText.isNullOrBlank()
         if (iconRes != 0) header.sectionIcon.setImageResource(iconRes)
-        header.sectionIcon.isVisible = iconRes != 0
-        chevron = header.sectionChevron
+        header.sectionIconTile.isVisible = iconRes != 0
+        this.header = header
         addView(header.root, 0)
     }
 
@@ -132,7 +138,8 @@ class Xpandable @JvmOverloads constructor(
 
     override fun onAttachedToWindow() {
         if (!isNested()) {
-            background = ContextCompat.getDrawable(context, R.drawable.bg_settings_section_card)
+            fill = GradientDrawable().apply { cornerRadius = CARD_RADIUS }
+            background = fill
             clipToOutline = true
             if (cardInset) updateLayoutParams<MarginLayoutParams> {
                 topMargin = CARD_GAP
@@ -140,23 +147,22 @@ class Xpandable @JvmOverloads constructor(
                 marginEnd = CARD_INSET
             }
         }
+        restingHeight = layoutParams.height
 
-        val header = getChildAt(0)!!
-        setChevronRotated(expanded, animate = false)
+        val headerView = getChildAt(0)!!
+        styleHeader(expanded, animate = false)
         setBodyPadding(expanded)
 
-        header.setOnClickListener {
-            if (expanded) hideAll() else showAll()
-            setChevronRotated(!expanded, animate = true)
-            if (!expanded) setBodyPadding(true)
-            postDelayed({
-                expanded = !expanded
-                persist()
-            }, 300)
+        headerView.setOnClickListener {
+            expanded = !expanded
+            persist()
+            styleHeader(expanded, animate = true)
+            if (expanded) showAll() else hideAll()
         }
+        if (!isNested()) SectionCard.pressFeedback(headerView, this)
 
         if (!expanded) children.forEach {
-            if (it != header) {
+            if (it != headerView) {
                 it.visibility = GONE
             }
         }
@@ -176,47 +182,47 @@ class Xpandable @JvmOverloads constructor(
         setPadding(0, 0, 0, if (open) CARD_PAD else 0)
     }
 
-    private fun setChevronRotated(open: Boolean, animate: Boolean) {
-        val c = chevron ?: return
-        val target = if (open) 180f else 0f
-        c.animate().cancel()
-        if (animate) c.animate().rotation(target).setDuration(200).start() else c.rotation = target
-    }
-
-    private fun hideAll() {
-        children.forEach {
-            if (it != getChildAt(0)) {
-                ObjectAnimator.ofFloat(it, "scaleY", 1f, 0.5f).setDuration(200).start()
-                ObjectAnimator.ofFloat(it, "translationY", 0f, -32f).setDuration(200).start()
-                ObjectAnimator.ofFloat(it, "alpha", 1f, 0f).setDuration(200).start()
-                it.postDelayed({
-                    it.visibility = GONE
-                }, 300)
-            }
+    /** The header's open or closed look and the card's fill, the same as a section card's. */
+    private fun styleHeader(open: Boolean, animate: Boolean) {
+        val header = header
+        if (header == null) {
+            fill?.setColor(SectionCard.fill(this, open))
+            return
         }
-        // Cleared with the children, not before them, so the card does not jump mid-collapse.
-        postDelayed({ setBodyPadding(false) }, 300)
-        postDelayed({
-            listeners.forEach {
-                it.onRetract()
-            }
-        }, 300)
+        SectionCard.bind(header, open, animate) { fill?.setColor(it) }
     }
 
+    /** Grows to fit the body, which drifts in as it fades up. */
     private fun showAll() {
+        val headerView = getChildAt(0)
+        val from = height
         children.forEach {
-            if (it != getChildAt(0)) {
+            if (it != headerView) {
                 it.visibility = VISIBLE
-                ObjectAnimator.ofFloat(it, "scaleY", 0.5f, 1f).setDuration(200).start()
-                ObjectAnimator.ofFloat(it, "translationY", -32f, 0f).setDuration(200).start()
-                ObjectAnimator.ofFloat(it, "alpha", 0f, 1f).setDuration(200).start()
+                SectionCard.revealContents(it)
             }
         }
-        postDelayed({
-            listeners.forEach {
-                it.onExpand()
+        setBodyPadding(true)
+        SectionCard.animateHeight(this, from, SectionCard.naturalHeight(this), restingHeight) {
+            listeners.forEach { it.onExpand() }
+        }
+    }
+
+    /** Shrinks back to the header, the body fading as the card closes over it. */
+    private fun hideAll() {
+        val headerView = getChildAt(0)
+        children.forEach { if (it != headerView) SectionCard.hideContents(it) }
+        SectionCard.animateHeight(this, height, headerView.height, restingHeight) {
+            children.forEach {
+                if (it != headerView) {
+                    it.visibility = GONE
+                    it.alpha = 1f
+                }
             }
-        }, 300)
+            // Cleared with the children, not before them, so the card does not jump mid-collapse.
+            setBodyPadding(false)
+            listeners.forEach { it.onRetract() }
+        }
     }
 
     /**
@@ -227,7 +233,7 @@ class Xpandable @JvmOverloads constructor(
         if (expanded) return
         expanded = true
         persist()
-        setChevronRotated(true, animate = false)
+        styleHeader(true, animate = false)
         setBodyPadding(true)
         children.forEach {
             if (it != getChildAt(0)) it.visibility = VISIBLE
@@ -249,6 +255,9 @@ class Xpandable @JvmOverloads constructor(
     }
 
     companion object {
+        /** Matches item_settings_section.xml's cardCornerRadius. */
+        private val CARD_RADIUS get() = 24f.px.toFloat()
+
         /** Matches item_settings_section.xml's layout_marginTop. */
         private val CARD_GAP get() = 10f.px
 

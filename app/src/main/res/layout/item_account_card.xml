@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- One provider on the Accounts screen. Collapsed it shows the mark, name, avatar and a
      login/logout control; expanded it reveals that provider's toggles and shortcuts in
-     [accountBody] (a nested SettingsAdapter list). -->
+     [accountBody] (a nested SettingsAdapter list). Fill, chevron and motion come from SectionCard, as
+     for every other collapsible card in settings. -->
 <com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
@@ -9,11 +10,9 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginTop="10dp"
-    app:cardBackgroundColor="?attr/colorSurface"
-    app:cardCornerRadius="22dp"
+    app:cardCornerRadius="24dp"
     app:cardElevation="0dp"
-    app:strokeColor="?attr/colorOutlineVariant"
-    app:strokeWidth="1dp">
+    app:strokeWidth="0dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -170,32 +169,41 @@
 
             <ImageView
                 android:id="@+id/accountChevron"
-                android:layout_width="28dp"
-                android:layout_height="28dp"
-                android:layout_marginStart="2dp"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_marginStart="4dp"
+                android:background="@drawable/bg_settings_section_chevron"
+                android:padding="4dp"
                 app:srcCompat="@drawable/ic_round_arrow_drop_down_24"
                 app:tint="?attr/colorOnSurfaceVariant"
                 tools:ignore="ContentDescription" />
         </LinearLayout>
 
-        <View
-            android:id="@+id/accountBodyDivider"
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginHorizontal="14dp"
-            android:background="?attr/colorOutlineVariant"
-            android:visibility="gone" />
-
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/accountBody"
+        <!-- Divider and rows together, so expanding and collapsing animate them as one. -->
+        <LinearLayout
+            android:id="@+id/accountBodyContainer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginHorizontal="16dp"
-            android:layout_marginTop="0dp"
-            android:layout_marginBottom="10dp"
-            android:nestedScrollingEnabled="false"
-            android:overScrollMode="never"
-            android:visibility="gone"
-            tools:listitem="@layout/item_settings_switch" />
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <View
+                android:id="@+id/accountBodyDivider"
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginHorizontal="18dp"
+                android:alpha="0.5"
+                android:background="?attr/colorOutlineVariant" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/accountBody"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginHorizontal="16dp"
+                android:layout_marginBottom="10dp"
+                android:nestedScrollingEnabled="false"
+                android:overScrollMode="never"
+                tools:listitem="@layout/item_settings_switch" />
+        </LinearLayout>
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

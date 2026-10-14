@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The header Xpandable builds for itself, so a collapsible group on the Player and Reader screens
-     is the same object as a card from SettingsSectionAdapter: icon, title, one-line summary, and a
-     chevron that turns. Deliberately the same metrics as item_settings_section.xml's header. -->
+<!-- The header of every collapsible settings card: the ones SettingsSectionAdapter renders (which
+     include this layout) and the Xpandable groups on the Player and Reader screens (which inflate
+     it). Icon tile, title, one-line summary and a chevron; SectionCard styles the open and closed
+     states and animates between them. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
@@ -12,22 +13,30 @@
     android:clickable="true"
     android:focusable="true"
     android:gravity="center_vertical"
-    android:minHeight="60dp"
-    android:paddingHorizontal="16dp"
+    android:minHeight="68dp"
+    android:paddingHorizontal="14dp"
     android:paddingVertical="12dp">
 
-    <ImageView
-        android:id="@+id/sectionIcon"
-        android:layout_width="24dp"
-        android:layout_height="24dp"
-        app:tint="?attr/colorPrimary"
-        tools:ignore="ContentDescription"
-        tools:srcCompat="@drawable/ic_round_video_settings_24" />
+    <FrameLayout
+        android:id="@+id/sectionIconTile"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:background="@drawable/bg_settings_section_icon">
+
+        <ImageView
+            android:id="@+id/sectionIcon"
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:layout_gravity="center"
+            app:tint="?attr/colorPrimary"
+            tools:ignore="ContentDescription"
+            tools:srcCompat="@drawable/ic_round_notifications_none_24" />
+    </FrameLayout>
 
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
+        android:layout_marginStart="14dp"
         android:layout_weight="1"
         android:orientation="vertical">
 
@@ -39,8 +48,8 @@
             android:fontFamily="@font/poppins_bold"
             android:maxLines="1"
             android:textColor="?attr/colorOnSurface"
-            android:textSize="14sp"
-            tools:text="Video" />
+            android:textSize="15sp"
+            tools:text="AniList" />
 
         <TextView
             android:id="@+id/sectionSummary"
@@ -51,14 +60,16 @@
             android:maxLines="2"
             android:textColor="?attr/colorOnSurfaceVariant"
             android:textSize="12sp"
-            tools:text="Speed and resize mode" />
+            tools:text="Every 2 hrs" />
     </LinearLayout>
 
     <ImageView
         android:id="@+id/sectionChevron"
-        android:layout_width="28dp"
-        android:layout_height="28dp"
-        android:layout_marginStart="2dp"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:layout_marginStart="8dp"
+        android:background="@drawable/bg_settings_section_chevron"
+        android:padding="4dp"
         app:srcCompat="@drawable/ic_round_arrow_drop_down_24"
         app:tint="?attr/colorOnSurfaceVariant"
         tools:ignore="ContentDescription" />

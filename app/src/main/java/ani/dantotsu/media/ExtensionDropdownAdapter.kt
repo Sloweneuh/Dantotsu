@@ -62,11 +62,11 @@ class ExtensionDropdownAdapter(
     }
 }
 
-/** The source the dropdown lists for downloads, whose icon is a themed glyph like the folder. */
+/** The source the dropdown lists for downloads, whose icon is a themed glyph like the default one. */
 private const val DOWNLOADED_SOURCE = "Downloaded"
 
 /**
- * Shows the selected source's icon in place of the generic folder: the extension's own icon, or
+ * Shows the selected source's icon in place of the generic extension glyph: the extension's own icon, or
  * the download glyph for downloads. Follows the field's text, so every way a source gets picked
  * (a tap, the fallback to the next source, a rebind) updates it; call again after replacing the
  * dropdown's adapter, since that changes the icons without changing the text.
@@ -88,7 +88,7 @@ private fun TextInputLayout.showSourceIcon(field: AutoCompleteTextView) {
     )
     when {
         icon == null -> {
-            setStartIconDrawable(R.drawable.ic_round_source_24)
+            setStartIconDrawable(R.drawable.ic_extension_24)
             setStartIconTintList(themedTint)
         }
         name == DOWNLOADED_SOURCE -> {

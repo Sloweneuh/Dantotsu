@@ -18,7 +18,11 @@ import ani.dantotsu.setAnimation
  *  since a card already frames its own body. */
 private val COMPACT_TOP_MARGIN get() = 10f.px
 
-class SettingsAdapter(private val settings: ArrayList<Settings>) :
+class SettingsAdapter(
+    private val settings: ArrayList<Settings>,
+    /** Whether rows pop in as they bind. Off inside a section card, whose opening is the motion. */
+    private val popIn: Boolean = true,
+) :
     RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     inner class SettingsViewHolder(val binding: ItemSettingsBinding) :
         RecyclerView.ViewHolder(binding.root) {
@@ -95,7 +99,7 @@ class SettingsAdapter(private val settings: ArrayList<Settings>) :
             1 -> {
                 val h = holder as SettingsViewHolder
                 val b = h.binding
-                setAnimation(b.root.context, b.root)
+                if (popIn) setAnimation(b.root.context, b.root)
 
                 b.settingsTitle.text = settings.name
                 b.settingsDesc.text = settings.desc
@@ -129,7 +133,7 @@ class SettingsAdapter(private val settings: ArrayList<Settings>) :
 
             2 -> {
                 val b = (holder as SettingsSwitchViewHolder).binding
-                setAnimation(b.root.context, b.root)
+                if (popIn) setAnimation(b.root.context, b.root)
 
                 b.settingsButton.text = settings.name
                 b.settingsDesc.text = settings.desc
@@ -138,6 +142,10 @@ class SettingsAdapter(private val settings: ArrayList<Settings>) :
                         b.root.context, settings.icon
                     )
                 )
+                // Cleared before the state is applied: a recycled holder still carries the previous
+                // row's listener, and setting isChecked would fire it, writing that row's preference
+                // (several of which restart the screen).
+                b.settingsButton.setOnCheckedChangeListener(null)
                 b.settingsButton.isChecked = settings.isChecked
                 b.settingsButton.isEnabled = settings.isEnabled
                 b.settingsButton.setOnCheckedChangeListener { _, isChecked ->
@@ -157,7 +165,7 @@ class SettingsAdapter(private val settings: ArrayList<Settings>) :
             4 -> {
                 val b = (holder as SettingsSliderViewHolder).binding
                 val cfg = settings.slider ?: return
-                setAnimation(b.root.context, b.root)
+                if (popIn) setAnimation(b.root.context, b.root)
 
                 b.settingsTitle.text = settings.name
                 b.settingsDesc.text = settings.desc
@@ -192,7 +200,7 @@ class SettingsAdapter(private val settings: ArrayList<Settings>) :
             5 -> {
                 val b = (holder as SettingsChoiceViewHolder).binding
                 val cfg = settings.choice ?: return
-                setAnimation(b.root.context, b.root)
+                if (popIn) setAnimation(b.root.context, b.root)
 
                 b.settingsTitle.text = settings.name
                 b.settingsDesc.text = settings.desc

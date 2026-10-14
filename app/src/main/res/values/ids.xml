@@ -37,4 +37,8 @@
 
     <!-- Whether a notification swipe's icon is showing "far enough to go through"; see NotificationSwipeCallback. -->
     <item name="swipe_armed" type="id" />
+
+    <!-- A settings card's running colour and height animations; see SectionCard. -->
+    <item name="section_card_anim" type="id" />
+    <item name="section_height_anim" type="id" />
 </resources>

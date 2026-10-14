@@ -145,7 +145,7 @@
             app:boxCornerRadiusTopEnd="8dp"
             app:boxCornerRadiusTopStart="8dp"
             app:hintAnimationEnabled="true"
-            app:startIconDrawable="@drawable/ic_round_source_24">
+            app:startIconDrawable="@drawable/ic_palette">
 
             <AutoCompleteTextView
                 android:id="@+id/themeSwitcher"
