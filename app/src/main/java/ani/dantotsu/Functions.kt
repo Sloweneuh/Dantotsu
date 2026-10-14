@@ -119,6 +119,8 @@ import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.settings.saving.internal.PreferenceKeystore
 import ani.dantotsu.settings.saving.internal.PreferenceKeystore.Companion.generateSalt
 import ani.dantotsu.util.Logger
+import ani.dantotsu.util.ShimmerDrawable
+import ani.dantotsu.util.shineCrossFade
 import com.bumptech.glide.Glide
 import com.bumptech.glide.RequestBuilder
 import com.bumptech.glide.RequestManager
@@ -731,11 +733,13 @@ fun ImageView.loadImage(file: FileUrl?, size: Int = 0) {
     if (file?.url?.isNotEmpty() == true) {
         tryWith {
             if (file.url.startsWith("content://")) {
-                Glide.with(this.context).load(Uri.parse(file.url)).transition(withCrossFade())
+                Glide.with(this.context).load(Uri.parse(file.url))
+                .placeholder(ShimmerDrawable.loading(context)).transition(shineCrossFade)
                     .override(size).into(this)
             } else {
                 val glideUrl = GlideUrl(file.url) { file.headers }
-                Glide.with(this.context).load(glideUrl).transition(withCrossFade()).override(size)
+                Glide.with(this.context).load(glideUrl)
+                .placeholder(ShimmerDrawable.loading(context)).transition(shineCrossFade).override(size)
                     .into(this)
             }
         }
@@ -773,11 +777,13 @@ fun ImageView.loadCoverImage(url: String?, onReady: () -> Unit) {
     tryWith {
         val listener = onReadyListener(onReady)
         if (file.url.startsWith("content://")) {
-            Glide.with(this.context).load(Uri.parse(file.url)).transition(withCrossFade())
+            Glide.with(this.context).load(Uri.parse(file.url))
+                .placeholder(ShimmerDrawable.loading(context)).transition(shineCrossFade)
                 .listener(listener).into(this)
         } else {
             val glideUrl = GlideUrl(file.url) { file.headers }
-            Glide.with(this.context).load(glideUrl).transition(withCrossFade())
+            Glide.with(this.context).load(glideUrl)
+                .placeholder(ShimmerDrawable.loading(context)).transition(shineCrossFade)
                 .listener(listener).into(this)
         }
     }
@@ -801,11 +807,13 @@ fun ImageView.loadCoverImage(file: FileUrl?, onReady: () -> Unit) {
     tryWith {
         val listener = onReadyListener(onReady)
         if (file.url.startsWith("content://")) {
-            Glide.with(this.context).load(Uri.parse(file.url)).transition(withCrossFade())
+            Glide.with(this.context).load(Uri.parse(file.url))
+                .placeholder(ShimmerDrawable.loading(context)).transition(shineCrossFade)
                 .listener(listener).into(this)
         } else {
             val glideUrl = GlideUrl(file.url) { file.headers }
-            Glide.with(this.context).load(glideUrl).transition(withCrossFade())
+            Glide.with(this.context).load(glideUrl)
+                .placeholder(ShimmerDrawable.loading(context)).transition(shineCrossFade)
                 .listener(listener).into(this)
         }
     }
@@ -816,11 +824,13 @@ fun ImageView.loadImage(file: FileUrl?, width: Int = 0, height: Int = 0) {
     if (file?.url?.isNotEmpty() == true) {
         tryWith {
             if (file.url.startsWith("content://")) {
-                Glide.with(this.context).load(Uri.parse(file.url)).transition(withCrossFade())
+                Glide.with(this.context).load(Uri.parse(file.url))
+                .placeholder(ShimmerDrawable.loading(context)).transition(shineCrossFade)
                     .override(width, height).into(this)
             } else {
                 val glideUrl = GlideUrl(file.url) { file.headers }
-                Glide.with(this.context).load(glideUrl).transition(withCrossFade())
+                Glide.with(this.context).load(glideUrl)
+                .placeholder(ShimmerDrawable.loading(context)).transition(shineCrossFade)
                     .override(width, height)
                     .into(this)
             }
