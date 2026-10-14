@@ -6,8 +6,15 @@ import android.animation.ValueAnimator
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.graphics.Canvas
 import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
+import android.graphics.ColorFilter
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.PixelFormat
+import android.graphics.Rect
+import android.graphics.RectF
+import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.os.Handler
 import android.os.Looper
@@ -22,6 +29,7 @@ import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
 import ani.dantotsu.download.DownloadActivity
 import ani.dantotsu.others.Xpandable
+import com.google.android.material.card.MaterialCardView
 import com.google.android.material.color.MaterialColors
 
 /**
@@ -1020,62 +1028,99 @@ object SettingsRouter {
         (value * view.resources.displayMetrics.density).toInt()
 
     /**
-     * Flashes [views] as one continuous highlight. The views are siblings, so a single translucent
-     * rectangle covering their union bounds is drawn on the shared parent's overlay — this avoids
-     * the stacked-alpha seam you'd get from flashing each view's foreground separately.
+     * Flashes [views] as one continuous highlight: a single translucent rectangle over their union,
+     * avoiding the stacked-alpha seam flashing each one separately would leave.
      */
     private fun flashGroup(views: List<View>) {
         val anchor = views.firstOrNull() ?: return
-        val parent = anchor.parent as? ViewGroup ?: run { flashSingle(anchor); return }
-        var left = Int.MAX_VALUE
-        var top = Int.MAX_VALUE
-        var right = Int.MIN_VALUE
-        var bottom = Int.MIN_VALUE
-        views.forEach { v ->
-            if (v.parent === parent) {
-                left = minOf(left, v.left)
-                top = minOf(top, v.top)
-                right = maxOf(right, v.right)
-                bottom = maxOf(bottom, v.bottom)
-            }
-        }
-        if (left == Int.MAX_VALUE) {
-            flashSingle(anchor)
-            return
-        }
-        val color = MaterialColors.getColor(
-            anchor, androidx.appcompat.R.attr.colorPrimary, Color.CYAN
-        )
-        val highlight = ColorDrawable(color).apply { setBounds(left, top, right, bottom) }
-        val overlay = parent.overlay
-        overlay.add(highlight)
-        ValueAnimator.ofInt(0, 110, 0, 110, 0).apply {
-            duration = 1500
-            addUpdateListener { highlight.alpha = it.animatedValue as Int }
-            addListener(object : AnimatorListenerAdapter() {
-                override fun onAnimationEnd(animation: Animator) {
-                    overlay.remove(highlight)
-                }
-            })
-            start()
-        }
+        val attached = views.filter { it.isAttachedToWindow }
+        if (attached.isEmpty()) return
+        val bounds = Rect(Int.MAX_VALUE, Int.MAX_VALUE, Int.MIN_VALUE, Int.MIN_VALUE)
+        attached.forEach { bounds.union(windowRect(it)) }
+        flashOnRoot(anchor, bounds, 0f)
     }
 
     private fun flashSingle(view: View, cornerRadiusPx: Float = 0f) {
-        val root = view.rootView as? ViewGroup
-        if (root == null || !view.isAttachedToWindow) return
-        val anchorLoc = IntArray(2).also { view.getLocationInWindow(it) }
-        val rootLoc = IntArray(2).also { root.getLocationInWindow(it) }
-        val left = anchorLoc[0] - rootLoc[0]
-        val top = anchorLoc[1] - rootLoc[1]
-        val color = MaterialColors.getColor(
-            view, androidx.appcompat.R.attr.colorPrimary, Color.CYAN
-        )
-        val highlight = GradientDrawable().apply {
-            setColor(color)
-            cornerRadius = cornerRadiusPx
-            setBounds(left, top, left + view.width, top + view.height)
+        if (!view.isAttachedToWindow) return
+        flashOnRoot(view, windowRect(view), cornerRadiusPx)
+    }
+
+    /** [view]'s bounds in its window. */
+    private fun windowRect(view: View): Rect {
+        val loc = IntArray(2).also { view.getLocationInWindow(it) }
+        return Rect(loc[0], loc[1], loc[0] + view.width, loc[1] + view.height)
+    }
+
+    /**
+     * The card [view] sits in, if any: a section or account card, or a top-level Player/Reader
+     * group, with its corner radius. A setting inside one is highlighted across the card's whole
+     * width, the same as a row on a plain list, rather than only over the inset its list sits at.
+     */
+    private fun enclosingCard(view: View): Pair<View, Float>? {
+        var v: View? = view
+        var card: Pair<View, Float>? = null
+        while (v != null) {
+            when {
+                v is MaterialCardView -> return v to v.radius
+                // The outermost group is the card; a nested one is a sub-section drawn inside it.
+                v is Xpandable -> card = v to ((v.background as? GradientDrawable)?.cornerRadius ?: 0f)
+            }
+            v = v.parent as? View
         }
+        return card
+    }
+
+    /**
+     * Pulses a highlight over [area] (window coordinates) on the window's root overlay, which sits
+     * above every clip in the nested settings lists. Inside a card it spans the card's width and is
+     * clipped to its rounded corners; elsewhere it is [area] with [cornerRadiusPx] corners.
+     */
+    private fun flashOnRoot(anchor: View, area: Rect, cornerRadiusPx: Float) {
+        val root = anchor.rootView as? ViewGroup ?: return
+        val rootLoc = IntArray(2).also { root.getLocationInWindow(it) }
+        val color = MaterialColors.getColor(anchor, androidx.appcompat.R.attr.colorPrimary, Color.CYAN)
+
+        val card = enclosingCard(anchor)
+        val rect = Rect(area)
+        var clip: RectF? = null
+        var clipRadius = 0f
+        if (card != null) {
+            val cardRect = windowRect(card.first)
+            rect.left = cardRect.left
+            rect.right = cardRect.right
+            clip = RectF(cardRect).apply { offset(-rootLoc[0].toFloat(), -rootLoc[1].toFloat()) }
+            clipRadius = card.second
+        }
+        rect.offset(-rootLoc[0], -rootLoc[1])
+
+        val highlight = object : Drawable() {
+            private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = color }
+            private val shape = Path()
+
+            override fun draw(canvas: Canvas) {
+                canvas.save()
+                clip?.let {
+                    shape.reset()
+                    shape.addRoundRect(it, clipRadius, clipRadius, Path.Direction.CW)
+                    canvas.clipPath(shape)
+                }
+                canvas.drawRoundRect(RectF(bounds), cornerRadiusPx, cornerRadiusPx, paint)
+                canvas.restore()
+            }
+
+            override fun setAlpha(alpha: Int) {
+                paint.alpha = alpha
+                invalidateSelf()
+            }
+
+            override fun setColorFilter(colorFilter: ColorFilter?) {
+                paint.colorFilter = colorFilter
+            }
+
+            @Deprecated("Deprecated in Java")
+            override fun getOpacity() = PixelFormat.TRANSLUCENT
+        }.apply { bounds = rect }
+
         val overlay = root.overlay
         overlay.add(highlight)
         ValueAnimator.ofInt(0, 110, 0, 110, 0).apply {
