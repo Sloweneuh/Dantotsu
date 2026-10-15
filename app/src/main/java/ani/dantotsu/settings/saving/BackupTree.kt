@@ -458,6 +458,7 @@ object BackupTree {
                         BackupItem(PrefName.TrueColors, R.string.true_colors),
                         BackupItem(PrefName.Rotation, R.string.image_rotation),
                         BackupItem(PrefName.Padding, R.string.backup_page_padding),
+                        BackupItem(PrefName.SmartPadding, R.string.smart_spacing),
                         BackupItem(PrefName.WrapImages, R.string.wrap_images),
                     )
                 ),

@@ -164,6 +164,13 @@ class ReaderSettingsActivity : AppCompatActivity() {
         binding.readerSettingsPadding.setOnCheckedChangeListener { _, isChecked ->
             defaultSettings.padding = isChecked
             PrefManager.setVal(PrefName.Padding, isChecked)
+            binding.readerSettingsSmartPadding.isEnabled = isChecked
+        }
+
+        binding.readerSettingsSmartPadding.isChecked = PrefManager.getVal(PrefName.SmartPadding)
+        binding.readerSettingsSmartPadding.isEnabled = defaultSettings.padding
+        binding.readerSettingsSmartPadding.setOnCheckedChangeListener { _, isChecked ->
+            PrefManager.setVal(PrefName.SmartPadding, isChecked)
         }
 
         binding.readerSettingsKeepScreenOn.isChecked = defaultSettings.keepScreenOn

@@ -54,7 +54,7 @@ open class ImageAdapter(
         )
     }
 
-    override suspend fun loadImage(position: Int, parent: View): Boolean {
+    override suspend fun loadImage(position: Int, parent: View, quiet: Boolean): Boolean {
         val page = pageKey(position) ?: return false
         val imageView = parent.findViewById<SubsamplingScaleImageView>(R.id.imgProgImageNoGestures)
             ?: return false
@@ -63,22 +63,35 @@ open class ImageAdapter(
 
         // Claim the view for this page; whatever starts later on the same view supersedes it.
         val load = parent.beginPageLoad(page)
-        imageView.recycle()
-        imageView.visibility = View.GONE
-        errorLayout.visibility = View.GONE
-        progress.visibility = View.VISIBLE
+        if (!quiet) {
+            imageView.recycle()
+            imageView.visibility = View.GONE
+            errorLayout.visibility = View.GONE
+            progress.visibility = View.VISIBLE
+        }
 
-        val bitmap = loadBitmap(position, parent)
+        val decoded = loadBitmap(position, parent)
 
         // A newer load owns the view now — it was recycled onto another page, or reloaded — so
         // this result is stale and the newer one is the image that belongs on screen.
         if (!load.stillOwns(parent)) return false
 
-        if (bitmap == null) {
+        if (decoded == null) {
             failedPages.showError(parent, page, retryPage)
             return false
         }
         failedPages.clearError(parent, page)
+
+        // This page's edges are known now, so its gap can be judged for real before it is sized.
+        if (settings.layout != PAGED && activity.smartSpacing) {
+            judgeStitched(position)
+            if (!load.stillOwns(parent)) return false
+            val (leading, trailing) = pageGaps(position)
+            setPageGaps(parent, settings.direction, leading, trailing)
+        }
+        val bitmap = withStripGaps(
+            activity, pagesAt(position).singleOrNull()?.url?.url, decoded, parent
+        )
 
         val (viewportWidth, viewportHeight) = pageViewport(parent)
         var sWidth = viewportWidth
@@ -122,11 +135,12 @@ open class ImageAdapter(
             ImageViewState(scale, PointF(bitmap.width / 2f, bitmap.height / 2f), 0)
         )
 
-        ObjectAnimator.ofFloat(parent, "alpha", 0f, 1f)
+        if (!quiet) ObjectAnimator.ofFloat(parent, "alpha", 0f, 1f)
             .setDuration((400 * PrefManager.getVal<Float>(PrefName.AnimationSpeed)).toLong())
             .start()
         progress.visibility = View.GONE
         load.loaded = true
+        refreshNextGap(position)
         // The page is on screen, so whatever has been translated for it belongs on top of it.
         activity.applyTranslationOverlay(parent, position)
 

@@ -326,6 +326,7 @@ enum class PrefName(val data: Pref) {
     TrueColors(Pref(Location.Reader, Boolean::class, false)),
     Rotation(Pref(Location.Reader, Boolean::class, true)),
     Padding(Pref(Location.Reader, Boolean::class, true)),
+    SmartPadding(Pref(Location.Reader, Boolean::class, true)),
     HideScrollBar(Pref(Location.Reader, Boolean::class, false)),
     HidePageNumbers(Pref(Location.Reader, Boolean::class, false)),
     HorizontalScrollBar(Pref(Location.Reader, Boolean::class, true)),

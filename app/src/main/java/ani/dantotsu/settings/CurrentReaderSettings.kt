@@ -71,7 +71,9 @@ data class CurrentReaderSettings(
                 layout = Layouts.CONTINUOUS
                 direction = Directions.TOP_TO_BOTTOM
                 dualPageMode = DualPageModes.No
-                padding = false
+                // Smart spacing joins a strip's pieces on its own, and keeps the gap where a
+                // non-Japanese series turns out to be uploaded as pages after all.
+                if (!PrefManager.getVal<Boolean>(PrefName.SmartPadding)) padding = false
             }
         }
     }

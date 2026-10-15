@@ -24,8 +24,12 @@ import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
 import ani.dantotsu.media.manga.mangareader.BaseImageAdapter.Companion.loadBitmap
 import ani.dantotsu.media.manga.mangareader.BaseImageAdapter.Companion.pageViewport
 import ani.dantotsu.media.manga.mangareader.BaseImageAdapter.Companion.renderZoomOf
+import ani.dantotsu.media.manga.mangareader.BaseImageAdapter.Companion.setPageGaps
 import ani.dantotsu.media.manga.mangareader.BaseImageAdapter.Companion.watchZoom
+import ani.dantotsu.media.manga.mangareader.BaseImageAdapter.Companion.withStripGaps
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Adapter for the continuous multi-chapter reader mode.
@@ -105,6 +109,87 @@ class ContinuousChapterAdapter(
 
     /** The page at [position], or null when that position holds a transition or a boundary. */
     private fun imageItemAt(position: Int) = items.getOrNull(position) as? ReaderItem.Image
+
+    private var recycler: RecyclerView? = null
+
+    override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
+        super.onAttachedToRecyclerView(recyclerView)
+        recycler = recyclerView
+    }
+
+    override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
+        super.onDetachedFromRecyclerView(recyclerView)
+        recycler = null
+    }
+
+    /**
+     * The gaps before and after the page at [position], spacing being on. A page right after a
+     * transition or boundary always gets a leading gap so it doesn't sit flush against it.
+     * Without smart spacing every page also keeps a trailing gap. With it, the gap between two
+     * pages sits before the later one and only when [PageEdges] judges the boundary a real one,
+     * and a trailing gap is left only where the next item isn't a page.
+     */
+    private fun pageGaps(position: Int): Pair<Int, Int> {
+        val gap = 16f.px
+        val previous = items.getOrNull(position - 1)
+        val afterDivider = previous is ReaderItem.Transition || previous is ReaderItem.Boundary
+        if (!activity.smartSpacing) return (if (afterDivider) gap else 0) to gap
+        val trailing = if (items.getOrNull(position + 1) is ReaderItem.Image) 0 else gap
+        val current = imageItemAt(position)
+        val leading = when {
+            afterDivider -> gap
+            previous is ReaderItem.Image && current != null -> if (
+                PageEdges.shouldSpace(
+                    PageEdges.get(previous.image.url.url), PageEdges.get(current.image.url.url),
+                    settings.direction, activity.preferJoinedPages
+                ) || PageEdges.breaksFor(current.image.url.url)?.atStart == true
+            ) gap else 0
+            else -> 0
+        }
+        return leading to trailing
+    }
+
+    /**
+     * Has [PageEdges.judgeRun] look for stitched pages in the image at [position] together with
+     * its neighbours, up to the nearest chapter divider. True when what it found changed.
+     */
+    private suspend fun judgeStitched(position: Int): Boolean {
+        if (!activity.smartSpacing) return false
+        val reach = BaseImageAdapter.RUN_REACH
+        val urls = (position - reach..position + reach).map { imageItemAt(it)?.image?.url?.url }
+        return withContext(Dispatchers.Default) { PageEdges.judgeRun(urls, reach) }
+    }
+
+    /**
+     * Judges again the pages on screen, a neighbour having just been profiled: their gaps may
+     * depend on it. A page whose stitched page breaks changed is redrawn in place.
+     */
+    fun reconsiderGaps() {
+        if (!activity.smartSpacing || settings.layout == CurrentReaderSettings.Layouts.PAGED) return
+        val recycler = recycler ?: return
+        for (i in 0 until recycler.childCount) {
+            val view = recycler.getChildAt(i)
+            val position = recycler.getChildAdapterPosition(view)
+            if (imageItemAt(position) == null) continue
+            if ((view.tag as? PageLoad)?.loaded != true) continue
+            activity.lifecycleScope.launch {
+                if (judgeStitched(position)) loadImage(position, view, quiet = true)
+                else {
+                    val (leading, trailing) = pageGaps(position)
+                    setPageGaps(view, settings.direction, leading, trailing)
+                }
+            }
+        }
+    }
+
+    /** Re-judges the gap in front of the page after [position], now that this one's edges are known. */
+    private fun refreshNextGap(position: Int) {
+        if (!activity.smartSpacing || settings.layout == CurrentReaderSettings.Layouts.PAGED) return
+        if (imageItemAt(position + 1) == null) return
+        val next = recycler?.findViewHolderForAdapterPosition(position + 1)?.itemView ?: return
+        val (leading, trailing) = pageGaps(position + 1)
+        setPageGaps(next, settings.direction, leading, trailing)
+    }
 
     /** Tracks which chapter unique numbers have been loaded so we don't duplicate */
     private val loadedChapterUniqueNumbers = mutableSetOf<String>()
@@ -424,18 +509,8 @@ class ContinuousChapterAdapter(
         // crop the bitmap that is still being displayed.
         if (!alreadyShown) {
             if (settings.padding) {
-                // Always keep the trailing-edge spacing between consecutive pages.
-                // If this image is the first page of a chapter and the previous adapter item
-                // is a Transition or Boundary, also add leading-edge padding so there's space
-                // after the transition/boundary.
-                val prevIsDivider = position > 0 && (items.getOrNull(position - 1) is ReaderItem.Transition || items.getOrNull(position - 1) is ReaderItem.Boundary)
-                val leading = if (prevIsDivider && (items.getOrNull(position) as? ReaderItem.Image)?.pageIndex == 0) 16f.px else 0
-                when (settings.direction) {
-                    CurrentReaderSettings.Directions.TOP_TO_BOTTOM -> view.setPadding(0, leading, 0, 16f.px)
-                    CurrentReaderSettings.Directions.LEFT_TO_RIGHT -> view.setPadding(leading, 0, 16f.px, 0)
-                    CurrentReaderSettings.Directions.BOTTOM_TO_TOP -> view.setPadding(0, 16f.px, 0, leading)
-                    CurrentReaderSettings.Directions.RIGHT_TO_LEFT -> view.setPadding(16f.px, 0, leading, 0)
-                }
+                val (leading, trailing) = pageGaps(position)
+                setPageGaps(view, settings.direction, leading, trailing)
             } else {
                 view.setPadding(0, 0, 0, 0)
             }
@@ -479,7 +554,11 @@ class ContinuousChapterAdapter(
         activity.lifecycleScope.launch { loadImage(position, view) }
     }
 
-    suspend fun loadImage(position: Int, parent: View): Boolean {
+    /**
+     * Loads the page at [position] into [parent]. [quiet] redraws a page already on screen in
+     * place — no spinner, no fade — for when only its gaps changed.
+     */
+    suspend fun loadImage(position: Int, parent: View, quiet: Boolean = false): Boolean {
         val item = imageItemAt(position) ?: return false
         val link = item.image.url
         if (link.url.isEmpty()) return false
@@ -490,12 +569,14 @@ class ContinuousChapterAdapter(
 
         // Claim the view for this page; whatever starts later on the same view supersedes it.
         val load = parent.beginPageLoad(item)
-        imageView.recycle()
-        imageView.visibility = View.GONE
-        errorLayout.visibility = View.GONE
-        progress.visibility = View.VISIBLE
+        if (!quiet) {
+            imageView.recycle()
+            imageView.visibility = View.GONE
+            errorLayout.visibility = View.GONE
+            progress.visibility = View.VISIBLE
+        }
 
-        val bitmap: Bitmap? = with(activity) {
+        val decoded: Bitmap? = with(activity) {
             loadBitmap(
                 link, activity.pageTransforms(item.image), MAX_PAGE_HEIGHT,
                 zoom = renderZoomOf(parent)
@@ -506,11 +587,26 @@ class ContinuousChapterAdapter(
         // this result is stale and the newer one is the image that belongs on screen.
         if (!load.stillOwns(parent)) return false
 
-        if (bitmap == null) {
+        if (decoded == null) {
             failedPages.showError(parent, item, retryPage)
             return false
         }
         failedPages.clearError(parent, item)
+
+        // Where the page is now: a chapter prepended during the load shifts every position.
+        var currentPosition = recycler?.getChildAdapterPosition(parent)
+            ?.takeIf { it != RecyclerView.NO_POSITION } ?: position
+
+        // This page's edges are known now, so its gap can be judged for real before it is sized.
+        if (settings.layout != CurrentReaderSettings.Layouts.PAGED && activity.smartSpacing) {
+            judgeStitched(currentPosition)
+            if (!load.stillOwns(parent)) return false
+            currentPosition = recycler?.getChildAdapterPosition(parent)
+                ?.takeIf { it != RecyclerView.NO_POSITION } ?: currentPosition
+            val (leading, trailing) = pageGaps(currentPosition)
+            setPageGaps(parent, settings.direction, leading, trailing)
+        }
+        val bitmap = withStripGaps(activity, link.url, decoded, parent)
 
         // A zoomed re-render hands back a larger bitmap of the same page. The layout below must
         // not grow with it — the page occupies the same slot in the strip either way — so sizing
@@ -566,11 +662,12 @@ class ContinuousChapterAdapter(
             ImageViewState(scale, PointF(bitmap.width / 2f, bitmap.height / 2f), 0)
         )
 
-        ObjectAnimator.ofFloat(parent, "alpha", 0f, 1f)
+        if (!quiet) ObjectAnimator.ofFloat(parent, "alpha", 0f, 1f)
             .setDuration((400 * PrefManager.getVal<Float>(PrefName.AnimationSpeed)).toLong())
             .start()
         progress.visibility = View.GONE
         load.loaded = true
+        refreshNextGap(currentPosition)
         // The page is on screen, so whatever has been translated for it belongs on top of it.
         activity.applyTranslationOverlay(parent, position)
         return true

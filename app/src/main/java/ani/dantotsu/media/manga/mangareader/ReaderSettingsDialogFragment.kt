@@ -59,13 +59,23 @@ class ReaderSettingsDialogFragment : BottomSheetDialogFragment() {
         )
 
         binding.readerPadding.isEnabled = settings.layout.ordinal != 0
+        binding.readerSmartPadding.isEnabled = settings.layout.ordinal != 0 && settings.padding
         fun paddingAvailable(enable: Boolean) {
             binding.readerPadding.isEnabled = enable
+            binding.readerSmartPadding.isEnabled = enable && settings.padding
         }
 
         binding.readerPadding.isChecked = settings.padding
         binding.readerPadding.setOnCheckedChangeListener { _, isChecked ->
             settings.padding = isChecked
+            binding.readerSmartPadding.isEnabled = isChecked
+            activity.applySettings()
+        }
+
+        // A global preference, not a per-series one: it is how gaps are judged, not where they go.
+        binding.readerSmartPadding.isChecked = PrefManager.getVal(PrefName.SmartPadding)
+        binding.readerSmartPadding.setOnCheckedChangeListener { _, isChecked ->
+            PrefManager.setVal(PrefName.SmartPadding, isChecked)
             activity.applySettings()
         }
 

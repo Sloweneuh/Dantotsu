@@ -662,6 +662,8 @@
     <string name="lock_screen_rotation">Lock Screen Rotation</string>
     <string name="layout">Layout</string>
     <string name="spaced_pages">Spaced Pages</string>
+    <string name="smart_spacing">Smart Spacing</string>
+    <string name="smart_spacing_info">Puts gaps between actual pages rather than between images: pieces of a cut-up page or webtoon are joined, and pages stitched together into one long image are separated</string>
     <string name="direction">Direction</string>
 
     <string name="general">General</string>
@@ -2806,6 +2808,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="search_kw_image_rotation">rotate image page</string>
     <string name="search_kw_crop_borders">border trim whitespace crop</string>
     <string name="search_kw_spaced_pages">padding gap pages margin</string>
+    <string name="search_kw_smart_spacing">smart auto padding gap pages strip webtoon cut join</string>
     <string name="search_kw_hide_scroll_bar">scroll bar hidden reader</string>
     <string name="search_kw_hide_page_numbers">page numbers hidden overlay</string>
     <string name="search_kw_horizontal_scroll_bar">horizontal scroll bar reader manga</string>

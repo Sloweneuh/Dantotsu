@@ -56,6 +56,7 @@ abstract class BaseImageAdapter(
         } else {
             chapterImages
         }
+        recycler = recyclerView
         super.onAttachedToRecyclerView(recyclerView)
     }
 
@@ -64,6 +65,78 @@ abstract class BaseImageAdapter(
 
     /** Everything [position] displays — what [PagePrefetcher] must warm to make it instant. */
     open fun pagesAt(position: Int): List<MangaImage> = listOfNotNull(images.getOrNull(position))
+
+    protected var recycler: RecyclerView? = null
+
+    override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
+        super.onDetachedFromRecyclerView(recyclerView)
+        recycler = null
+    }
+
+    /**
+     * The gaps before and after the page at [position] in a scrolling layout with spacing on.
+     * Without smart spacing every page keeps its trailing gap, as it always has. With it, the gap
+     * between two pages sits before the later one and is only there when [PageEdges] says the
+     * boundary is a real one; the last page keeps its trailing gap. A merged dual page is never
+     * judged, there being no single page edge to judge it by.
+     */
+    fun pageGaps(position: Int): Pair<Int, Int> {
+        val gap = 16f.px
+        if (!activity.smartSpacing) return 0 to gap
+        val trailing = if (position >= itemCount - 1) gap else 0
+        if (position <= 0) return 0 to trailing
+        val before = pagesAt(position - 1).singleOrNull()?.url?.url
+        val after = pagesAt(position).singleOrNull()?.url?.url
+        val spaced = before == null || after == null || PageEdges.shouldSpace(
+            PageEdges.get(before), PageEdges.get(after), settings.direction, activity.preferJoinedPages
+        ) || PageEdges.breaksFor(after)?.atStart == true
+        return (if (spaced) gap else 0) to trailing
+    }
+
+    /**
+     * Has [PageEdges.judgeRun] look for stitched pages in the image at [position] together with
+     * its neighbours. True when what it found changed.
+     */
+    suspend fun judgeStitched(position: Int): Boolean {
+        if (!activity.smartSpacing) return false
+        val urls = (position - RUN_REACH..position + RUN_REACH)
+            .map { pagesAt(it).singleOrNull()?.url?.url }
+        return withContext(Dispatchers.Default) { PageEdges.judgeRun(urls, RUN_REACH) }
+    }
+
+    /**
+     * Judges again the pages on screen, a neighbour having just been profiled: their gaps may
+     * depend on it. A page whose stitched page breaks changed is redrawn in place.
+     */
+    fun reconsiderGaps() {
+        if (!activity.smartSpacing || settings.layout == CurrentReaderSettings.Layouts.PAGED) return
+        val recycler = recycler ?: return
+        for (i in 0 until recycler.childCount) {
+            val view = recycler.getChildAt(i)
+            val position = recycler.getChildAdapterPosition(view)
+            if (position == RecyclerView.NO_POSITION) continue
+            if ((view.tag as? PageLoad)?.loaded != true) continue
+            activity.lifecycleScope.launch {
+                if (judgeStitched(position)) loadImage(position, view, quiet = true)
+                else {
+                    val (leading, trailing) = pageGaps(position)
+                    setPageGaps(view, settings.direction, leading, trailing)
+                }
+            }
+        }
+    }
+
+    /**
+     * Re-judges the gap in front of the page after [position], now that this one's edges are
+     * known. Reading forward that page has rarely loaded yet and will judge for itself; this is
+     * for the one that got there first (a jump, or reading backwards).
+     */
+    protected fun refreshNextGap(position: Int) {
+        if (!activity.smartSpacing || settings.layout == CurrentReaderSettings.Layouts.PAGED) return
+        val next = recycler?.findViewHolderForAdapterPosition(position + 1)?.itemView ?: return
+        val (leading, trailing) = pageGaps(position + 1)
+        setPageGaps(next, settings.direction, leading, trailing)
+    }
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
@@ -83,35 +156,10 @@ abstract class BaseImageAdapter(
         val alreadyShown = page != null && view.isShowingPage(page)
         if (settings.layout != CurrentReaderSettings.Layouts.PAGED && !alreadyShown) {
             if (settings.padding) {
-                when (settings.direction) {
-                    CurrentReaderSettings.Directions.TOP_TO_BOTTOM -> view.setPadding(
-                        0,
-                        0,
-                        0,
-                        16f.px
-                    )
-
-                    CurrentReaderSettings.Directions.LEFT_TO_RIGHT -> view.setPadding(
-                        0,
-                        0,
-                        16f.px,
-                        0
-                    )
-
-                    CurrentReaderSettings.Directions.BOTTOM_TO_TOP -> view.setPadding(
-                        0,
-                        16f.px,
-                        0,
-                        0
-                    )
-
-                    CurrentReaderSettings.Directions.RIGHT_TO_LEFT -> view.setPadding(
-                        16f.px,
-                        0,
-                        0,
-                        0
-                    )
-                }
+                val (leading, trailing) = pageGaps(boundPosition)
+                setPageGaps(view, settings.direction, leading, trailing)
+            } else {
+                view.setPadding(0, 0, 0, 0)
             }
             view.updateLayoutParams {
                 if (settings.direction != CurrentReaderSettings.Directions.LEFT_TO_RIGHT && settings.direction != CurrentReaderSettings.Directions.RIGHT_TO_LEFT) {
@@ -188,7 +236,11 @@ abstract class BaseImageAdapter(
     abstract fun isZoomed(): Boolean
     abstract fun setZoom(zoom: Float)
 
-    abstract suspend fun loadImage(position: Int, parent: View): Boolean
+    /**
+     * Loads the page at [position] into [parent]. [quiet] redraws a page already on screen in
+     * place — no spinner, no fade — for when only its gaps changed.
+     */
+    abstract suspend fun loadImage(position: Int, parent: View, quiet: Boolean = false): Boolean
 
     companion object {
         /**
@@ -231,6 +283,59 @@ abstract class BaseImageAdapter(
             }
             view.controller.addOnStateChangeListener(listener)
             view.setTag(R.id.page_zoom_listener, listener)
+        }
+
+        /**
+         * Sets a scrolling page's gap before it ([leading], toward the previous page) and after it
+         * ([trailing]) along [direction]. A page already on screen has been sized to include its
+         * padding, so it grows or shrinks by the change and its image stays the size it was.
+         */
+        fun setPageGaps(
+            view: View,
+            direction: CurrentReaderSettings.Directions,
+            leading: Int,
+            trailing: Int
+        ) {
+            val vertical = direction == CurrentReaderSettings.Directions.TOP_TO_BOTTOM ||
+                    direction == CurrentReaderSettings.Directions.BOTTOM_TO_TOP
+            fun along() = if (vertical) view.paddingTop + view.paddingBottom
+                          else view.paddingLeft + view.paddingRight
+            val before = along()
+            when (direction) {
+                CurrentReaderSettings.Directions.TOP_TO_BOTTOM -> view.setPadding(0, leading, 0, trailing)
+                CurrentReaderSettings.Directions.LEFT_TO_RIGHT -> view.setPadding(leading, 0, trailing, 0)
+                CurrentReaderSettings.Directions.BOTTOM_TO_TOP -> view.setPadding(0, trailing, 0, leading)
+                CurrentReaderSettings.Directions.RIGHT_TO_LEFT -> view.setPadding(trailing, 0, leading, 0)
+            }
+            val delta = along() - before
+            if (delta == 0 || (view.tag as? PageLoad)?.loaded != true) return
+            view.updateLayoutParams {
+                if (vertical && height > 0) height += delta
+                else if (!vertical && width > 0) width += delta
+            }
+        }
+
+        /**
+         * [bitmap] as it should be shown in [parent]: with a gap at each page break when it is a
+         * strip of stitched pages and smart spacing is on (see [PageEdges.withGaps]). Only in a
+         * vertical scrolling layout — the breaks are rows. The gap is the same 16dp as between
+         * separate pages, converted to this bitmap's pixels, so a zoomed render gets it to scale.
+         */
+        fun withStripGaps(
+            activity: MangaReaderActivity,
+            url: String?,
+            bitmap: Bitmap,
+            parent: View
+        ): Bitmap {
+            if (url == null || !activity.smartSpacing) return bitmap
+            val settings = activity.defaultSettings
+            if (settings.layout == CurrentReaderSettings.Layouts.PAGED) return bitmap
+            if (settings.direction != CurrentReaderSettings.Directions.TOP_TO_BOTTOM &&
+                settings.direction != CurrentReaderSettings.Directions.BOTTOM_TO_TOP
+            ) return bitmap
+            val viewportWidth = pageViewport(parent).first.takeIf { it > 0 } ?: return bitmap
+            val gap = (16f.px * bitmap.width / viewportWidth.toFloat()).toInt()
+            return PageEdges.withGaps(url, bitmap, gap)
         }
 
         /** The zoom a page's current bitmap was decoded for; 1 means the plain fitted render. */
@@ -433,6 +538,13 @@ abstract class BaseImageAdapter(
                             .get(),
                         maxW, maxH, viewportW, viewportH
                     )
+                }.also { bitmap ->
+                    // Profiled while it is at hand — the prefetcher's decodes included, so the
+                    // page before is usually known by the time smart spacing needs it. A zoomed
+                    // render is the same page, already profiled at its fitted size.
+                    if (bitmap != null && zoom <= 1f) {
+                        withContext(Dispatchers.Default) { PageEdges.record(link.url, bitmap) }
+                    }
                 }
             }
         }
@@ -575,6 +687,9 @@ abstract class BaseImageAdapter(
             transforms.forEach { it.updateDiskCacheKey(md) }
             return url + "|" + md.digest().joinToString("") { "%02x".format(it) }
         }
+
+        /** Images on either side judged together for stitched pages; see [PageEdges.judgeRun]. */
+        const val RUN_REACH = 4
 
         /** How long a zoom must hold still before the page is decoded again for it. */
         private const val ZOOM_SETTLE_MS = 250L

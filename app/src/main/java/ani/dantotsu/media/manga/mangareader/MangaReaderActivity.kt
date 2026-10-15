@@ -164,6 +164,33 @@ class MangaReaderActivity : AppCompatActivity() {
 
     var defaultSettings = CurrentReaderSettings()
 
+    /** Spacing is on and the gaps are judged page by page rather than put everywhere. */
+    val smartSpacing: Boolean
+        get() = defaultSettings.padding && PrefManager.getVal<Boolean>(PrefName.SmartPadding)
+
+    /**
+     * A series published as a long strip, where a blank cut between two images is a gutter between
+     * panels rather than the margins of two pages. See [PageEdges.shouldSpace].
+     */
+    /**
+     * Re-judges the gaps of the pages on screen shortly after a page is profiled — stitched page
+     * breaks are found across neighbouring images, and those are often prefetched after the page
+     * itself is shown. Coalesced, since the prefetcher profiles several in a row.
+     */
+    private val reconsiderGaps = Runnable {
+        continuousAdapter?.reconsiderGaps() ?: imageAdapter?.reconsiderGaps()
+    }
+
+    private fun watchProfiles() {
+        PageEdges.onProfiled = {
+            binding.root.removeCallbacks(reconsiderGaps)
+            binding.root.postDelayed(reconsiderGaps, 250)
+        }
+    }
+
+    val preferJoinedPages: Boolean
+        get() = media.countryOfOrigin.let { it == "KR" || it == "CN" || it == "TW" }
+
     private lateinit var media: Media
     private lateinit var chapter: MangaChapter
     private lateinit var chapters: MutableMap<String, MangaChapter>
@@ -358,6 +385,8 @@ class MangaReaderActivity : AppCompatActivity() {
         autoscrollTimer?.cancel()
         prefetcher?.cancel()
         prefetcher = null
+        PageEdges.onProfiled = null
+        PageEdges.clear()
         // The reader is the only thing that fills MangaCache, but the cache outlives it: it is an
         // application-scoped singleton budgeted at a quarter of the heap, so left alone it holds that
         // quarter until the process dies and the OOM lands on whatever the user browses next.
@@ -827,6 +856,9 @@ class MangaReaderActivity : AppCompatActivity() {
 
         saveReaderSettings("${media.id}_current_settings", defaultSettings)
         hideSystemBars()
+        // The transforms (crop borders above all) may have changed what the page edges look like.
+        PageEdges.clear()
+        watchProfiles()
 
         // Reset multi-chapter tracking state
         lastTrackedChapterIndex = -1
@@ -2679,12 +2711,38 @@ class MangaReaderActivity : AppCompatActivity() {
     }
 
     /** Puts the stored translation for whatever page [itemView] is showing onto its overlay. */
+    /**
+     * [blocks] moved down past whatever page-break gaps [PageEdges.withGaps] drew above them, when
+     * the page is a strip of stitched pages shown with gaps; [blocks] as they are otherwise.
+     */
+    private fun stripGapShifted(
+        url: String,
+        blocks: List<ani.dantotsu.media.manga.translation.PaintedBlock>,
+        pageWidth: Int,
+        itemView: View,
+    ): List<ani.dantotsu.media.manga.translation.PaintedBlock> {
+        if (!smartSpacing || defaultSettings.layout == CurrentReaderSettings.Layouts.PAGED) return blocks
+        if (defaultSettings.direction != TOP_TO_BOTTOM && defaultSettings.direction != BOTTOM_TO_TOP) {
+            return blocks
+        }
+        val viewportWidth = BaseImageAdapter.pageViewport(itemView).first.takeIf { it > 0 }
+            ?: return blocks
+        val gap = (16f.px * pageWidth / viewportWidth.toFloat()).toInt()
+        return blocks.map { block ->
+            val shift = PageEdges.gapShift(url, block.rect.top, pageWidth, gap)
+            if (shift == 0) block
+            else block.copy(rect = android.graphics.Rect(block.rect).apply { offset(0, shift) })
+        }
+    }
+
     fun applyTranslationOverlay(itemView: View, position: Int) {
         val overlay = itemView.findViewById<TranslationOverlayView>(R.id.imgProgTranslation)
             ?: return
         val image = pagesAtPosition(position).firstOrNull()
         val page = image?.let { TranslatedPages[it.url.url] }
-        if (page == null) overlay.clear() else overlay.setBlocks(page.blocks, page.pageWidth)
+        if (page == null) overlay.clear() else overlay.setBlocks(
+            stripGapShifted(image.url.url, page.blocks, page.pageWidth, itemView), page.pageWidth
+        )
         // A page arriving on screen is the event automatic translation waits for, and this runs for
         // every one of them whether or not it has a translation yet.
         scheduleAutoTranslation()

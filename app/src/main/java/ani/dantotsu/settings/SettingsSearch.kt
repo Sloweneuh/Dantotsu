@@ -461,6 +461,7 @@ object SettingsSearch {
         l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.crop_borders, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.readerSettingsCropBorders, keywordsRes = R.string.search_kw_crop_borders)
 
         l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.spaced_pages, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.readerSettingsPadding, keywordsRes = R.string.search_kw_spaced_pages)
+        l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.smart_spacing, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.readerSettingsSmartPadding, keywordsRes = R.string.search_kw_smart_spacing)
 
         l += SearchableSetting(ReaderSettingsActivity::class.java, R.string.hide_scroll_bar, R.string.manga_and_reader, IC_READER, anchorViewId = R.id.readerSettingsHideScrollBar, keywordsRes = R.string.search_kw_hide_scroll_bar)
 
