@@ -45,9 +45,13 @@ class ShimmerDrawable(private val highlight: Int) : Drawable() {
         if (area.isEmpty) return
         val progress = ((SystemClock.uptimeMillis() - started) % CYCLE_MS).toFloat() / SWEEP_MS
         if (progress <= 1f) {
-            // From fully off the left edge to fully off the right, the band's slant included.
-            val from = area.left - band - area.height() * 0.5f
-            val to = area.right.toFloat()
+            // From fully off the left edge to fully past the bottom-right corner. The gradient runs
+            // along (band, band / 2), so a point sits at (x - shift) + (y - top) / 2 along it and
+            // the band is 1.25 × band long on that axis: it clears the top-left corner once the
+            // shift is that far left of it, and the bottom-right only once the shift has gone
+            // half the height beyond the right edge.
+            val from = area.left - band * 1.25f
+            val to = area.right + area.height() * 0.5f
             shift.setTranslate(from + (to - from) * progress, area.top.toFloat())
             paint.shader.setLocalMatrix(shift)
             canvas.drawRect(area, paint)
