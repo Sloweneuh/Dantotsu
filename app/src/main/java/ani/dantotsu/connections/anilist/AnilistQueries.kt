@@ -632,7 +632,9 @@ class AnilistQueries {
             PrefManager.getVal(PrefName.HomeLayout)
         if (toShow.getOrNull(8) != true) return null
         val query = """{Page1:${status(1)}Page2:${status(2)}}"""
-        val response = executeQuery<Query.HomePageMedia>(query)
+        // Fresh for the same reason as [initHomePage]: a progress update posts an activity, and the
+        // reload it triggers should show it.
+        val response = executeQuery<Query.HomePageMedia>(query, cache = 0)
         val list = mutableListOf<User>()
         val threeDaysAgo = Calendar.getInstance().apply {
             add(Calendar.DAY_OF_MONTH, -3)
@@ -771,8 +773,11 @@ class AnilistQueries {
         }
 
         val query = "{${queries.joinToString(",")}}"
+        // cache = 0: the home screen reloads after every progress or list edit (Refresh.all), and
+        // the client's default 10-minute response cache handed that reload the pre-edit answer.
+        // The instant first paint comes from the stored body ([cachedHomePage]), not this cache.
         val response = executeQuery<Query.HomePageMedia>(
-            query, show = false,
+            query, show = false, cache = 0,
             onRawResponse = { body ->
                 Anilist.userid?.let { MediaListCache.write(MediaListCache.homeKey(it), body) }
             }
