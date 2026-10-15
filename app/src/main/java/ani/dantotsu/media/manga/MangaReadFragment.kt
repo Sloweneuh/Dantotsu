@@ -592,7 +592,11 @@ open class MangaReadFragment : Fragment(), ScanlatorSelectionListener {
     }
 
     fun loadChapters(i: Int, invalidate: Boolean) {
-        lifecycleScope.launch(Dispatchers.IO) { model.loadMangaChapters(media, i, invalidate) }
+        lifecycleScope.launch {
+            // The previous list's missing count is stale the moment a reload starts.
+            if (::headerAdapter.isInitialized) headerAdapter.clearMissingCount()
+            withContext(Dispatchers.IO) { model.loadMangaChapters(media, i, invalidate) }
+        }
     }
 
     fun onIconPressed(viewType: Int, rev: Boolean) {

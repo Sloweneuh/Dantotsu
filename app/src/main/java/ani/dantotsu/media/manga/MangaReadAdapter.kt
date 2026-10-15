@@ -604,6 +604,11 @@ class MangaReadAdapter(
         _binding?.mediaSourceChipGroup?.removeAllViews()
     }
 
+    /** Drops the "N missing" line from the header title while a new chapter list loads. */
+    fun clearMissingCount() {
+        _binding?.sourceTitle?.setText(R.string.chaps)
+    }
+
     fun handleChapters() {
 
         val binding = _binding
@@ -794,6 +799,7 @@ class MangaReadAdapter(
                 binding.sourceNotFound.visibility = View.GONE
                 binding.faqbutton.visibility = View.GONE
                 clearChips()
+                clearMissingCount()
                 binding.sourceProgressBar.visibility = View.VISIBLE
             }
         }
