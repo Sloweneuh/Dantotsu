@@ -1039,8 +1039,20 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                                         media.idMAL
                                 )
                         if (malSyncResult != null && malSyncResult.lastEp != null) {
-                            val lastChapter = malSyncResult.lastEp.total
                             val userProgress = media.userProgress ?: 0
+                            // The unread list/notification (or, failing those, the unread cache)
+                            // already picked the source with the newest chapter across MALSync,
+                            // MangaUpdates and Comick. MALSync only takes over when it reports a
+                            // strictly newer chapter, so its mirror doesn't relabel a chapter that
+                            // came from somewhere else.
+                            val cached = if (passedSource.isNullOrBlank())
+                                ani.dantotsu.notifications.unread.UnreadCache.cachedInfo()[media.id]
+                                    ?.takeIf { it.source.isNotBlank() }
+                            else null
+                            val knownSource = passedSource?.takeIf { it.isNotBlank() } ?: cached?.source
+                            val knownChapter = if (cached != null) cached.lastChapter else passedLastChapter
+                            val malWins = knownSource == null || malSyncResult.lastEp.total > knownChapter
+                            val lastChapter = if (malWins) malSyncResult.lastEp.total else knownChapter
 
                             withContext(Dispatchers.Main) {
                                 // Check if there are unread chapters
@@ -1098,10 +1110,12 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
                                 // to passed source)
                                 val malSource = malSyncResult.source
                                 val sourceToShow =
-                                        if (!malSource.isNullOrBlank()) {
+                                        if (!malWins) {
+                                            knownSource
+                                        } else if (!malSource.isNullOrBlank()) {
                                             malSource
-                                        } else if (!passedSource.isNullOrBlank()) {
-                                            passedSource
+                                        } else if (!knownSource.isNullOrBlank()) {
+                                            knownSource
                                         } else if (hasUnreadChapters) {
                                             // MalSync reports unread but no source - show unknown
                                             getString(R.string.notification_unknown_source)

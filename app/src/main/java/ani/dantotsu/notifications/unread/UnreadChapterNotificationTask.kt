@@ -466,6 +466,7 @@ class UnreadChapterNotificationTask : Task {
             val intent = Intent(context, MediaDetailsActivity::class.java).apply {
                 putExtra("media", media as Serializable)
                 putExtra("source", info.source)
+                putExtra("lastChapter", info.lastChapter)
                 putExtra(NotificationReadState.EXTRA_KEY, readKey)
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             }
