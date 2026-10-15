@@ -1,5 +1,6 @@
 package ani.dantotsu.media.manga
 
+import java.util.Locale
 import android.content.Intent
 import android.text.SpannableStringBuilder
 import android.text.style.RelativeSizeSpan
@@ -559,12 +560,12 @@ class MangaReadAdapter(
                 val startChapter = MediaNameAdapter.findChapterNumber(startChapterKey)
                 val endChapter = MediaNameAdapter.findChapterNumber(endChapterKey)
                 val startChapterString = if (startChapter != null) {
-                    "Ch.%.1f".format(startChapter)
+                    "Ch.%.1f".format(Locale.ROOT, startChapter)
                 } else {
                     media.manga?.chapters?.get(startChapterKey)?.number ?: startChapterKey
                 }
                 val endChapterString = if (endChapter != null) {
-                    "Ch.%.1f".format(endChapter)
+                    "Ch.%.1f".format(Locale.ROOT, endChapter)
                 } else {
                     media.manga?.chapters?.get(endChapterKey)?.number ?: endChapterKey
                 }

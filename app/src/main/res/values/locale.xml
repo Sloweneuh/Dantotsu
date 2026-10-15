@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:keep="@bool/locale_tagged">
+    <!--
+    The default strings are English but carry no language qualifier, so Android doesn't count
+    English among the app's languages: on a device set to "en-GB, fr-FR" it skipped English and
+    picked French, the first listed language the app has resources for. This resource exists in
+    values-en to declare English, and must stay there; its value is never read.
+    -->
+    <bool name="locale_tagged">false</bool>
+</resources>
