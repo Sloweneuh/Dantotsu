@@ -137,6 +137,7 @@ class App : MultiDexApplication() {
         // ContentProvider by this point; this only sets how it behaves. No-op in release builds.
         LeakDetection.install()
         PrefManager.init(this)
+        ani.dantotsu.util.LanguageHelper.applyAppLocales(this)
         // Only names the file; nothing is read from disk until a tracker first asks.
         ani.dantotsu.connections.IdCache.init(this)
         ani.dantotsu.connections.anilist.MediaListCache.init(this)
