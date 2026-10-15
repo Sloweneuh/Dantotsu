@@ -1,5 +1,6 @@
 package ani.dantotsu.media
 
+import android.content.Intent
 import android.os.Bundle
 import android.text.util.Linkify
 import android.view.View
@@ -7,7 +8,9 @@ import android.view.ViewGroup
 import android.view.Window
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.PopupMenu
 import androidx.core.content.ContextCompat
 import androidx.core.text.HtmlCompat
 import androidx.core.view.updateLayoutParams
@@ -15,7 +18,11 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import ani.dantotsu.R
 import ani.dantotsu.connections.anilist.Anilist
+import ani.dantotsu.buildMarkwon
+import ani.dantotsu.connections.TrackerSessions
 import ani.dantotsu.connections.mal.MALQueries
+import ani.dantotsu.connections.mangabaka.MangaBaka
+import ani.dantotsu.connections.mangabaka.MangaBakaStacks
 import ani.dantotsu.connections.malsync.UnreadChapterInfo
 import ani.dantotsu.connections.malsync.UnreleasedEpisodeInfo
 import ani.dantotsu.connections.mangaupdates.MUMedia
@@ -27,6 +34,10 @@ import ani.dantotsu.home.MergedReadingAdapter
 import ani.dantotsu.initActivity
 import ani.dantotsu.others.CustomBottomDialog
 import ani.dantotsu.others.getSerialized
+import ani.dantotsu.openLinkInAppOrBrowser
+import ani.dantotsu.openLinkInBrowser
+import ani.dantotsu.snackString
+import ani.dantotsu.util.materialDialog
 import ani.dantotsu.settings.enableSettingsLongPress
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
@@ -55,6 +66,11 @@ class MediaListViewActivity : AppCompatActivity() {
     private var fromMalStack = false
     private var isStack = false
     private var isMissingSequels = false
+
+    /** Set for a MangaBaka stack; see [loadMangaBakaStack]. */
+    private var mangaBakaStackId: Long? = null
+    private var mangaBakaStack: MangaBakaStacks.StackDetail? = null
+    private var mangaBakaStatus: MangaBakaStacks.StackStatus? = null
 
     /** Timestamp-sorted merge of [mediaList] and [muMediaList]; null unless MU items are present. */
     private var combinedItems: List<Any>? = null
@@ -119,11 +135,18 @@ class MediaListViewActivity : AppCompatActivity() {
         binding.mediaGrid.setOnClickListener { changeView(0, binding.mediaGrid) }
 
         val stackUrl = intent.getStringExtra("stackUrl")
-        isStack = stackUrl != null
+        // A MangaBaka stack comes by id, or as a mangabaka.org/stacks/{id}-{slug} link.
+        mangaBakaStackId = intent.getLongExtra(EXTRA_MANGABAKA_STACK_ID, -1L).takeIf { it > 0 }
+            ?: intent.data?.takeIf { it.pathSegments.firstOrNull() == "stacks" }
+                ?.let { StackResolver.mangaBakaStackId(it.pathSegments.getOrNull(1)) }
+        isStack = stackUrl != null || mangaBakaStackId != null
         isMissingSequels = intent.getBooleanExtra("missingSequels", false)
         // A stack (or a resolved sequel list) from before a rotation is republished through the
         // statics below, so a recreation reuses it instead of running the whole lookup again.
-        if (stackUrl != null && passedMedia == null) {
+        val mbStackId = mangaBakaStackId
+        if (mbStackId != null && passedMedia == null) {
+            loadMangaBakaStack(mbStackId)
+        } else if (stackUrl != null && passedMedia == null) {
             loadStack(stackUrl)
         } else if (isMissingSequels && passedMedia == null) {
             loadMissingSequels()
@@ -138,8 +161,190 @@ class MediaListViewActivity : AppCompatActivity() {
             description = passedDescription
             recommendationSource = passedRecommendationSource
             showContent()
+            // A recreated MangaBaka stack screen still needs the stack itself for its actions.
+            mbStackId?.let { loadMangaBakaMeta(it) }
         }
     }
+
+    /**
+     * [loadStack] for a MangaBaka stack: one request returns the stack with every entry's series and
+     * cross-site ids, which [StackResolver.resolveMangaBaka] turns into media.
+     */
+    private fun loadMangaBakaStack(stackId: Long) {
+        fromMalStack = true
+        description = passedDescription
+        binding.mediaListProgress.visibility = View.VISIBLE
+        binding.mediaListEmpty.visibility = View.GONE
+        binding.listTitle.text = screenTitle
+        showDescriptionButton()
+
+        lifecycleScope.launch {
+            val stack = MangaBakaStacks.getStack(stackId)
+            if (stack == null) {
+                mediaList = mutableListOf()
+                showContent()
+                return@launch
+            }
+            applyMangaBakaStack(stack)
+            val resolved = StackResolver.resolveMangaBaka(stack.entries.orEmpty())
+            mediaList = resolved.media.toMutableList()
+            unreadInfo = resolved.unread
+            unreleasedInfo = null
+            passedMedia = ArrayList(resolved.media)
+            passedUnreadInfo = resolved.unread
+            passedUnreleasedInfo = null
+            binding.mediaListProgress.visibility = View.GONE
+            showContent()
+        }
+    }
+
+    /** Fetches just the stack (not its media), for a recreated screen's title and actions. */
+    private fun loadMangaBakaMeta(stackId: Long) {
+        lifecycleScope.launch {
+            MangaBakaStacks.getStack(stackId)?.let { applyMangaBakaStack(it, keepTitleCount = true) }
+        }
+    }
+
+    private fun applyMangaBakaStack(stack: MangaBakaStacks.StackDetail, keepTitleCount: Boolean = false) {
+        mangaBakaStack = stack
+        screenTitle = stack.title
+        intent.putExtra("title", screenTitle)
+        description = stack.description
+        passedDescription = description
+        if (keepTitleCount) updateTitle() else binding.listTitle.text = screenTitle
+        showDescriptionButton()
+        binding.listStackActions.visibility = View.VISIBLE
+        binding.listStackActions.setOnClickListener { showStackActions(it) }
+        lifecycleScope.launch {
+            TrackerSessions.await()
+            if (MangaBaka.token == null) return@launch
+            // The owner route answers only for the owner, and carries the token an edit needs.
+            if (!stack.isMine || stack.token == null) {
+                MangaBakaStacks.getMyStack(stack.id).getOrNull()?.let { mine ->
+                    if (mangaBakaStack?.id == mine.id) mangaBakaStack = mine
+                }
+            }
+            mangaBakaStatus = MangaBakaStacks.getStatus(listOf(stack.id))[stack.id]
+        }
+    }
+
+    /** Vote/save/follow for anyone logged in; edit, visibility and delete for the stack's owner. */
+    private fun showStackActions(anchor: View) {
+        val stack = mangaBakaStack ?: return
+        val status = mangaBakaStatus
+        val loggedIn = MangaBaka.token != null
+        val popup = PopupMenu(this, anchor)
+        val menu = popup.menu
+        if (loggedIn) {
+            val votes = status?.voteCount ?: stack.voteCount
+            menu.add(0, ACTION_VOTE, 0, getString(R.string.stack_vote_count, votes))
+                .setCheckable(true).isChecked = status?.hasVoted == true
+            menu.add(0, ACTION_SAVE, 1, getString(R.string.stack_save))
+                .setCheckable(true).isChecked = status?.hasSaved == true
+            menu.add(0, ACTION_FOLLOW, 2, getString(R.string.stack_follow))
+                .setCheckable(true).isChecked = status?.hasFollowed == true
+        }
+        if (stack.isMine) {
+            menu.add(1, ACTION_EDIT, 10, getString(R.string.stack_edit))
+            menu.add(1, ACTION_VISIBILITY, 11, getString(R.string.stack_change_visibility))
+            menu.add(1, ACTION_DELETE, 12, getString(R.string.stack_delete))
+        }
+        menu.add(2, ACTION_OPEN, 20, getString(R.string.open_on_mangabaka))
+        menu.add(2, ACTION_SHARE, 21, getString(R.string.share))
+        popup.setOnMenuItemClickListener { item ->
+            val url = stack.canonicalUrl ?: "${MangaBaka.WEB_URL}/stacks/${stack.id}"
+            when (item.itemId) {
+                ACTION_VOTE -> toggleStackStatus(stack.id) { MangaBakaStacks.setVoted(stack.id, status?.hasVoted != true) }
+                ACTION_SAVE -> toggleStackStatus(stack.id) { MangaBakaStacks.setSaved(stack.id, status?.hasSaved != true) }
+                ACTION_FOLLOW -> toggleStackStatus(stack.id) { MangaBakaStacks.setFollowed(stack.id, status?.hasFollowed != true) }
+                ACTION_EDIT -> editLauncher.launch(MangaBakaStackEditActivity.editIntent(this, stack.id))
+                ACTION_VISIBILITY -> pickVisibility(stack)
+                ACTION_DELETE -> confirmDelete(stack)
+                ACTION_OPEN -> openLinkInBrowser(url)
+                ACTION_SHARE -> startActivity(
+                    Intent.createChooser(
+                        Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, url),
+                        stack.title
+                    )
+                )
+            }
+            true
+        }
+        popup.show()
+    }
+
+    private fun toggleStackStatus(
+        stackId: Long,
+        call: suspend () -> MangaBakaStacks.Result<MangaBakaStacks.StackStatus?>,
+    ) {
+        lifecycleScope.launch {
+            when (val result = call()) {
+                is MangaBakaStacks.Result.Ok ->
+                    // Not every toggle route returns the new status; read it back when it doesn't.
+                    mangaBakaStatus = result.value
+                        ?: MangaBakaStacks.getStatus(listOf(stackId))[stackId]
+
+                is MangaBakaStacks.Result.Error -> MangaBakaStackUi.reportError(result)
+            }
+        }
+    }
+
+    private fun pickVisibility(stack: MangaBakaStacks.StackDetail) {
+        val values = MangaBakaStacks.VISIBILITIES
+        val labels = values.map { getString(MangaBakaStackUi.visibilityLabel(it)) }.toTypedArray()
+        materialDialog()
+            .setTitle(R.string.stack_change_visibility)
+            .setSingleChoiceItems(labels, values.indexOf(stack.visibility).coerceAtLeast(0)) { dialog, which ->
+                dialog.dismiss()
+                val picked = values[which]
+                if (picked == stack.visibility) return@setSingleChoiceItems
+                lifecycleScope.launch {
+                    when (val result = MangaBakaStacks.setVisibility(stack.id, picked)) {
+                        is MangaBakaStacks.Result.Ok -> {
+                            mangaBakaStack = mangaBakaStack?.copy(visibility = picked)
+                            snackString(getString(R.string.stack_visibility_changed, labels[which]))
+                        }
+
+                        is MangaBakaStacks.Result.Error -> MangaBakaStackUi.reportError(result)
+                    }
+                }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun confirmDelete(stack: MangaBakaStacks.StackDetail) {
+        materialDialog()
+            .setTitle(R.string.stack_delete)
+            .setMessage(getString(R.string.stack_delete_confirm, stack.title))
+            .setPositiveButton(R.string.delete) { _, _ ->
+                lifecycleScope.launch {
+                    when (val result = MangaBakaStacks.deleteStack(stack.id)) {
+                        is MangaBakaStacks.Result.Ok -> {
+                            snackString(R.string.stack_deleted)
+                            setResult(RESULT_OK)
+                            finish()
+                        }
+
+                        is MangaBakaStacks.Result.Error -> MangaBakaStackUi.reportError(result)
+                    }
+                }
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    /** Reloads the stack after the edit screen saved it. */
+    private val editLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            val id = mangaBakaStackId ?: return@registerForActivityResult
+            if (result.resultCode != RESULT_OK) return@registerForActivityResult
+            setResult(RESULT_OK)
+            passedMedia = null
+            mediaList = mutableListOf()
+            binding.mediaRecyclerView.adapter = null
+            loadMangaBakaStack(id)
+        }
 
     /**
      * Scrapes and resolves a MAL interest stack in place. It's a page scrape, an AniList batch and
@@ -232,16 +437,22 @@ class MediaListViewActivity : AppCompatActivity() {
         binding.listDescription.setOnClickListener {
             val descView = TextView(this).apply {
                 setPadding(32, 16, 32, 16)
-                text = HtmlCompat.fromHtml(description, HtmlCompat.FROM_HTML_MODE_LEGACY)
                 textSize = 14f
                 movementMethod = android.text.method.LinkMovementMethod.getInstance()
             }
-            Linkify.addLinks(descView, Linkify.WEB_URLS)
-            StackListAdapter.interceptLinks(
-                descView,
-                getThemeColor(androidx.appcompat.R.attr.colorPrimary),
-                intent.getBooleanExtra("isAnime", false)
-            )
+            if (mangaBakaStackId != null) {
+                // MangaBaka descriptions are Markdown, not MAL's HTML.
+                buildMarkwon(this, userInputContent = true, linkResolver = { openLinkInAppOrBrowser(it) })
+                    .setMarkdown(descView, description)
+            } else {
+                descView.text = HtmlCompat.fromHtml(description, HtmlCompat.FROM_HTML_MODE_LEGACY)
+                Linkify.addLinks(descView, Linkify.WEB_URLS)
+                StackListAdapter.interceptLinks(
+                    descView,
+                    getThemeColor(androidx.appcompat.R.attr.colorPrimary),
+                    intent.getBooleanExtra("isAnime", false)
+                )
+            }
             CustomBottomDialog.newInstance().apply {
                 setTitleText(screenTitle)
                 addView(descView)
@@ -417,6 +628,18 @@ class MediaListViewActivity : AppCompatActivity() {
     companion object {
         // Shared by all interest stacks, not stored per stack.
         const val SHOW_NOVELS = "stackShowNovels"
+
+        /** A MangaBaka stack id (Long) to load instead of a MAL `stackUrl`. */
+        const val EXTRA_MANGABAKA_STACK_ID = "mangaBakaStackId"
+
+        private const val ACTION_VOTE = 1
+        private const val ACTION_SAVE = 2
+        private const val ACTION_FOLLOW = 3
+        private const val ACTION_EDIT = 10
+        private const val ACTION_VISIBILITY = 11
+        private const val ACTION_DELETE = 12
+        private const val ACTION_OPEN = 20
+        private const val ACTION_SHARE = 21
 
         var passedMedia: ArrayList<Media>? = null
         var passedMuMedia: ArrayList<MUMedia>? = null

@@ -6,7 +6,13 @@ import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
-import ani.dantotsu.connections.mal.MALStack
+import ani.dantotsu.connections.mangabaka.MangaBakaStacks
+import ani.dantotsu.buildMarkwon
+import ani.dantotsu.openLinkInAppOrBrowser
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.lifecycleScope
+import io.noties.markwon.Markwon
+import kotlinx.coroutines.launch
 import ani.dantotsu.databinding.ItemStackLargeBinding
 import ani.dantotsu.loadImage
 import android.text.method.LinkMovementMethod
@@ -28,7 +34,7 @@ import android.widget.TextView
 import ani.dantotsu.media.MediaDetailsActivity
 import com.bumptech.glide.Glide
 
-class StackListAdapter(private val items: List<MALStack>, private val isAnime: Boolean) : RecyclerView.Adapter<StackListAdapter.VH>() {
+class StackListAdapter(private val items: List<InterestStack>, private val isAnime: Boolean) : RecyclerView.Adapter<StackListAdapter.VH>() {
 
     inner class VH(val binding: ItemStackLargeBinding) : RecyclerView.ViewHolder(binding.root) {
         init {
@@ -36,9 +42,7 @@ class StackListAdapter(private val items: List<MALStack>, private val isAnime: B
                 val pos = bindingAdapterPosition
                 if (pos in items.indices) {
                     val item = items[pos]
-                    StackResolver.open(
-                        binding.root.context, item.url, isAnime, item.name, item.description
-                    )
+                    StackResolver.open(binding.root.context, item, isAnime)
                 }
             }
 
@@ -124,21 +128,26 @@ class StackListAdapter(private val items: List<MALStack>, private val isAnime: B
         b.itemCompactBanner.loadImage(item.covers.firstOrNull())
         // title
         b.itemCompactTitle.text = item.name
-        // synopsis / description (show placeholder when blank, parse HTML links and enable scrolling)
-        val rawDesc = item.description
-        if (rawDesc.isNullOrBlank()) {
-            b.itemCompactSynopsis.text = b.root.context.getString(R.string.no_description_available)
+        // synopsis / description (show placeholder when blank, parse links and enable scrolling)
+        val mbStack = item as? MangaBakaStacks.StackSummary
+        if (mbStack != null) {
+            bindMangaBakaDescription(b, mbStack)
         } else {
-            b.itemCompactSynopsis.text = HtmlCompat.fromHtml(rawDesc, HtmlCompat.FROM_HTML_MODE_LEGACY)
+            val rawDesc = item.description
+            if (rawDesc.isNullOrBlank()) {
+                b.itemCompactSynopsis.text = b.root.context.getString(R.string.no_description_available)
+            } else {
+                b.itemCompactSynopsis.text = HtmlCompat.fromHtml(rawDesc, HtmlCompat.FROM_HTML_MODE_LEGACY)
+            }
+            // Apply Linkify for bare URLs that aren't wrapped in <a> tags
+            Linkify.addLinks(b.itemCompactSynopsis, Linkify.WEB_URLS)
+            // Replace URLSpans with custom spans that open in-app when possible
+            interceptLinks(
+                b.itemCompactSynopsis,
+                b.root.context.getThemeColor(androidx.appcompat.R.attr.colorPrimary),
+                isAnime
+            )
         }
-        // Apply Linkify for bare URLs that aren't wrapped in <a> tags
-        Linkify.addLinks(b.itemCompactSynopsis, Linkify.WEB_URLS)
-        // Replace URLSpans with custom spans that open in-app when possible
-        interceptLinks(
-            b.itemCompactSynopsis,
-            b.root.context.getThemeColor(androidx.appcompat.R.attr.colorPrimary),
-            isAnime
-        )
         // Allow inner TextView to handle vertical scroll inside RecyclerView
         b.itemCompactSynopsis.setOnTouchListener { v, ev ->
             v.parent?.requestDisallowInterceptTouchEvent(true)
@@ -148,10 +157,66 @@ class StackListAdapter(private val items: List<MALStack>, private val isAnime: B
         // entries -> user progress large
         b.itemUserProgressLarge.text = item.entries.toString()
         b.itemCompactTotal.text = b.root.context.getString(R.string.stack_entries_suffix)
+        // MangaBaka rows add who made the stack and its votes, and flag drafts and spoiler stacks,
+        // on the entry count's own line so the description keeps the room.
+        val mb = item as? MangaBakaStacks.StackSummary
+        if (mb != null) {
+            val ctx = b.root.context
+            val parts = buildList {
+                add(ctx.getString(R.string.stack_entries_suffix).trim())
+                mb.owner?.name?.takeIf { it.isNotBlank() }?.let { add(ctx.getString(R.string.stack_by_owner, it)) }
+                add(ctx.resources.getQuantityString(R.plurals.stack_votes, mb.voteCount, mb.voteCount))
+                if (mb.visibility == "draft") add(ctx.getString(R.string.stack_visibility_draft))
+                if (mb.visibility == "unlisted") add(ctx.getString(R.string.stack_visibility_unlisted))
+                if (mb.isSpoiler) add(ctx.getString(R.string.stack_spoiler))
+            }
+            b.itemCompactTotal.text = parts.joinToString(" · ")
+            b.itemCompactTotal.maxLines = 1
+            b.itemCompactTotal.ellipsize = android.text.TextUtils.TruncateAt.END
+            // Take the rest of the row so a long line ellipsizes instead of running off the card.
+            (b.itemCompactTotal.layoutParams as? android.widget.LinearLayout.LayoutParams)?.let {
+                it.width = 0
+                it.weight = 1f
+                b.itemCompactTotal.layoutParams = it
+            }
+        }
         b.itemCompactType.visibility = android.view.View.GONE
     }
 
     override fun getItemCount(): Int = items.size
+
+    private var markwon: Markwon? = null
+
+    /**
+     * MangaBaka list rows carry no description, so each one is read from the stack itself the first
+     * time its row is drawn (and cached, see [MangaBakaStacks.getDescription]), then rendered as
+     * the Markdown it is.
+     */
+    private fun bindMangaBakaDescription(b: ItemStackLargeBinding, stack: MangaBakaStacks.StackSummary) {
+        val ctx = b.root.context
+        val known = stack.description ?: MangaBakaStacks.cachedDescription(stack.id)
+        if (known == null) {
+            b.itemCompactSynopsis.text = ""
+            val owner = ctx as? LifecycleOwner ?: return
+            owner.lifecycleScope.launch {
+                MangaBakaStacks.getDescription(stack.id)
+                // Redraw every row of this stack that's still in the list; the holder that asked
+                // may have been recycled for another stack by now.
+                items.forEachIndexed { i, it ->
+                    if (it is MangaBakaStacks.StackSummary && it.id == stack.id) notifyItemChanged(i)
+                }
+            }
+            return
+        }
+        if (known.isBlank()) {
+            b.itemCompactSynopsis.text = ctx.getString(R.string.no_description_available)
+            return
+        }
+        val md = markwon ?: buildMarkwon(ctx, userInputContent = true, linkResolver = { openLinkInAppOrBrowser(it) })
+            .also { markwon = it }
+        md.setMarkdown(b.itemCompactSynopsis, known)
+        b.itemCompactSynopsis.movementMethod = LinkMovementMethod.getInstance()
+    }
 
     companion object {
         private val anilistMediaRegex = Regex("""https://anilist\.co/(anime|manga)/(\d+)""")
@@ -212,6 +277,8 @@ class StackListAdapter(private val items: List<MALStack>, private val isAnime: B
                 StackResolver.open(context, url, isAnime, title = null, description = null)
                 return
             }
+            // MangaBaka stack, series and the other pages the app has screens for.
+            if (ani.dantotsu.openLinkInApp(url)) return
             try {
                 context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
             } catch (_: Exception) {}

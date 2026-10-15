@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="?android:attr/selectableItemBackground"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingHorizontal="8dp"
+    android:paddingVertical="6dp">
+
+    <ImageView
+        android:id="@+id/stackEntryHandle"
+        android:layout_width="32dp"
+        android:layout_height="48dp"
+        android:contentDescription="@string/stack_reorder"
+        android:scaleType="center"
+        app:srcCompat="@drawable/ic_round_drag_indicator_24"
+        app:tint="?attr/colorOnBackground" />
+
+    <TextView
+        android:id="@+id/stackEntryRank"
+        android:layout_width="28dp"
+        android:layout_height="wrap_content"
+        android:alpha="0.66"
+        android:fontFamily="@font/poppins_bold"
+        android:gravity="center"
+        android:textColor="?attr/colorOnBackground"
+        android:textSize="12sp"
+        tools:text="12" />
+
+    <com.google.android.material.imageview.ShapeableImageView
+        android:id="@+id/stackEntryCover"
+        android:layout_width="40dp"
+        android:layout_height="60dp"
+        android:scaleType="centerCrop"
+        app:shapeAppearanceOverlay="@style/roundedImageViewSmall"
+        tools:ignore="ContentDescription" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/stackEntryTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:fontFamily="@font/poppins_semi_bold"
+            android:maxLines="2"
+            android:textColor="?attr/colorOnBackground"
+            android:textSize="14sp"
+            tools:text="Series title" />
+
+        <TextView
+            android:id="@+id/stackEntryNote"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:alpha="0.66"
+            android:ellipsize="end"
+            android:maxLines="2"
+            android:textColor="?attr/colorOnBackground"
+            android:textSize="12sp"
+            tools:text="Why it's here" />
+    </LinearLayout>
+
+    <ImageButton
+        android:id="@+id/stackEntryRemove"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:background="?android:attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/stack_remove_series"
+        app:srcCompat="@drawable/ic_round_delete_24"
+        app:tint="?attr/colorOnBackground" />
+
+</LinearLayout>

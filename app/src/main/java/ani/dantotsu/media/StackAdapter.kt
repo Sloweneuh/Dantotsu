@@ -13,9 +13,8 @@ import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
 import com.bumptech.glide.Glide
-import ani.dantotsu.connections.mal.MALStack
 
-class StackAdapter(private val items: List<MALStack>, private val isAnime: Boolean) : RecyclerView.Adapter<StackAdapter.VH>() {
+class StackAdapter(private val items: List<InterestStack>, private val isAnime: Boolean) : RecyclerView.Adapter<StackAdapter.VH>() {
 
     class VH(view: View) : RecyclerView.ViewHolder(view) {
         val coversContainer: FrameLayout = view.findViewById(R.id.itemStackCoversContainer)
@@ -82,7 +81,7 @@ class StackAdapter(private val items: List<MALStack>, private val isAnime: Boole
 
         // Click: open the internal list view, which resolves the stack's entries itself
         holder.itemView.setOnClickListener {
-            StackResolver.open(ctx, item.url, isAnime, item.name, item.description)
+            StackResolver.open(ctx, item, isAnime)
         }
 
         // Long click: open stack in browser

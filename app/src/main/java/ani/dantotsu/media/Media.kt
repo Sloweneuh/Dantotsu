@@ -105,6 +105,11 @@ data class Media(
 
     /** Set only for MangaUpdates-sourced media; triggers MU progress update instead of Anilist. */
     var muSeriesId: Long? = null,
+    /**
+     * Set only for a MangaBaka stack entry found on neither AniList nor MangaUpdates; [id] is then a
+     * stand-in and the card opens the MangaBaka page instead (see [StackResolver.openMangaBakaOnly]).
+     */
+    var mangaBakaSeriesId: Long? = null,
     var muListId: Int? = null,
     /**
      * Newest known MangaUpdates chapter. Kept separate from [Manga.totalChapters] because

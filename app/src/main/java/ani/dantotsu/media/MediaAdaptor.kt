@@ -680,6 +680,7 @@ class MediaAdaptor(
         if ((mediaList?.size ?: 0) > position && position != -1) {
             val media = mediaList?.get(position)
             if (bitmap != null) MediaSingleton.bitmap = bitmap
+            if (StackResolver.openMangaBakaOnly(activity, media)) return
             val muSeriesId = media?.muSeriesId
             val transition = if (itemCompactImage != null) {
                 ActivityOptionsCompat.makeSceneTransitionAnimation(
@@ -727,6 +728,8 @@ class MediaAdaptor(
     fun longClicked(position: Int): Boolean {
         if ((mediaList?.size ?: 0) > position && position != -1) {
             val media = mediaList?.get(position) ?: return false
+            // A MangaBaka-only stack entry has no AniList list entry to edit.
+            if (media.mangaBakaSeriesId != null && media.muSeriesId == null) return false
             if (activity.supportFragmentManager.findFragmentByTag("list") == null) {
                 MediaListDialogSmallFragment.newInstance(media)
                     .show(activity.supportFragmentManager, "list")

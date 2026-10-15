@@ -242,12 +242,12 @@ data class MALSearchItem(val isAnime: Boolean, val node: MALSearchNode) : java.i
 
 @Serializable
 data class MALStack(
-    val url: String,
-    val covers: List<String> = emptyList(),
-    val name: String,
-    val entries: Int = 0,
-    val description: String? = null
-)
+    override val url: String,
+    override val covers: List<String> = emptyList(),
+    override val name: String,
+    override val entries: Int = 0,
+    override val description: String? = null
+) : ani.dantotsu.media.InterestStack
 
 @Serializable
 data class MALStackEntry(

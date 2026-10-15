@@ -225,7 +225,8 @@ class UnreadChaptersAdapter(
             }
 
             // Handle click to open media details
-            val clickAction = {
+            val clickAction = clickAction@{
+                if (ani.dantotsu.media.StackResolver.openMangaBakaOnly(root.context, media)) return@clickAction
                 val intent = Intent(root.context, ani.dantotsu.media.MediaDetailsActivity::class.java)
                     .putExtra("media", media)
                     .putExtra("source", info.source)
@@ -369,7 +370,8 @@ class UnreadChaptersAdapter(
             }
 
             // Handle click to open media details
-            val clickAction = {
+            val clickAction = clickAction@{
+                if (ani.dantotsu.media.StackResolver.openMangaBakaOnly(root.context, media)) return@clickAction
                 val intent = Intent(root.context, ani.dantotsu.media.MediaDetailsActivity::class.java)
                     .putExtra("media", media)
                     .putExtra("source", info.source)

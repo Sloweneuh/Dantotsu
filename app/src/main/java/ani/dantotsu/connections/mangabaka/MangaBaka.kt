@@ -33,7 +33,10 @@ object MangaBaka {
     private const val AUTHORIZE_URL = "$WEB_URL/auth/oauth2/authorize"
     private const val TOKEN_URL = "$WEB_URL/auth/oauth2/token"
     const val REDIRECT_URI = "dantotsu://mangabaka"
-    private const val SCOPE = "openid profile library.read library.write offline_access"
+    // stack.* drive MangaBaka stacks (see [MangaBakaStacks]); sessions from before they were added
+    // need a fresh login before the `/v2/my/stacks` routes accept them.
+    private const val SCOPE =
+        "openid profile library.read library.write stack.read stack.write offline_access"
 
     // TODO: register a "Dantotsu" OAuth app at mangabaka.org and paste its client id here. Leave the
     //  secret blank for a public (PKCE-only) client; set it for a confidential one.

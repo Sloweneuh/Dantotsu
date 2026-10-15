@@ -105,6 +105,7 @@ import ani.dantotsu.media.ComickMediaActivity
 import ani.dantotsu.media.KitsuMediaActivity
 import ani.dantotsu.media.MalMediaActivity
 import ani.dantotsu.media.MangaBakaMediaActivity
+import ani.dantotsu.media.StackResolver
 import ani.dantotsu.media.Media
 import ani.dantotsu.media.MediaDetailsActivity
 import ani.dantotsu.media.SimklMediaActivity
@@ -1125,10 +1126,16 @@ private fun inAppIntentFor(ctx: Context, uri: Uri): Intent? {
                 )
             else -> null
         }
-        "mangabaka.org" -> if (kind == "series") target.toLongOrNull()?.let {
-            Intent(ctx, MangaBakaMediaActivity::class.java)
-                .putExtra(MangaBakaMediaActivity.EXTRA_SERIES_ID, it)
-        } else null
+        "mangabaka.org" -> when (kind) {
+            "series" -> target.toLongOrNull()?.let {
+                Intent(ctx, MangaBakaMediaActivity::class.java)
+                    .putExtra(MangaBakaMediaActivity.EXTRA_SERIES_ID, it)
+            }
+            "stacks" -> StackResolver.mangaBakaStackId(target)?.let {
+                StackResolver.mangaBakaIntent(ctx, it, title = null, description = null)
+            }
+            else -> null
+        }
         "kitsu.io", "kitsu.app" -> when (kind) {
             "anime", "manga" -> Intent(ctx, KitsuMediaActivity::class.java)
                 .putExtra(KitsuMediaActivity.EXTRA_MEDIA_ID, target)

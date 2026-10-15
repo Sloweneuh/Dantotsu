@@ -70,6 +70,18 @@
                     app:tint="?attr/colorOnBackground"
                     tools:ignore="ContentDescription,ImageContrastCheck" />
 
+                <ImageButton
+                    android:id="@+id/listStackActions"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_gravity="center_vertical"
+                    android:background="?android:attr/selectableItemBackground"
+                    android:contentDescription="@string/stack_actions"
+                    android:visibility="gone"
+                    app:srcCompat="@drawable/ic_round_dots_vertical_24"
+                    app:tint="?attr/colorOnBackground"
+                    tools:ignore="ImageContrastCheck" />
+
                 <ImageView
                     android:id="@+id/mediaList"
                     android:layout_width="wrap_content"

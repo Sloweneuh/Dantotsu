@@ -208,6 +208,9 @@ object MangaBakaMediaRenderer {
         addGenres(activity, scope, isAlive, contentHost, series, onSearch)
         addTags(activity, contentHost, series, onSearch)
         addRecommendations(activity, scope, isAlive, contentHost, seriesId, reco)
+        MangaBakaStackUi.addSeriesStacks(
+            activity, scope, isAlive, contentHost, seriesId, series.displayTitle(), series.cover?.thumbUrl()
+        )
     }
 
     private fun addSynonyms(

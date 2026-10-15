@@ -9,6 +9,7 @@ import ani.dantotsu.connections.anilist.AnilistSearch.SearchType
 import ani.dantotsu.connections.anilist.AnilistSearch.SearchType.Companion.toAnilistString
 import ani.dantotsu.connections.mangaupdates.MangaUpdates
 import ani.dantotsu.media.SearchActivity
+import ani.dantotsu.media.StackListViewActivity
 import ani.dantotsu.others.AppShortcuts
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
@@ -125,6 +126,19 @@ object SearchTiles : TileCatalogue(PrefName.SearchTileOrder) {
                 isAvailable = { PrefManager.getVal(PrefName.MangaBakaInfoEnabled) },
                 unavailableReason = R.string.search_needs_connection_enabled,
             ),
+            // Stacks have no text search, so this tile opens the stack browser itself rather than
+            // a search screen.
+            QuickTile.Action(
+                "mangabaka_stacks", R.string.mangabaka_stacks, R.drawable.ic_round_mangabaka_stacks_24,
+                SearchTileCategory.SERVICES, needsNetwork = true,
+                isAvailable = { PrefManager.getVal(PrefName.MangaBakaInfoEnabled) },
+                unavailableReason = R.string.search_needs_connection_enabled,
+            ) { host ->
+                val activity = host.activity
+                activity.startActivity(StackListViewActivity.mangaBakaIntent(activity))
+                host.dismiss()
+                (activity as? SearchActivity)?.finish()
+            },
             // Kitsu / Simkl search need no login (public / api-key). Off the panel by default —
             // they sit in the shelf until the user drags them on.
             service(
@@ -163,6 +177,6 @@ object SearchTiles : TileCatalogue(PrefName.SearchTileOrder) {
     /** Everything, in the order the buttons used to run: nothing is hidden until the user hides it. */
     override val defaultIds = listOf(
         "anime", "manga", "users", "characters", "staff", "studios",
-        "mangaupdates", "comick", "comick_anime", "mangabaka",
+        "mangaupdates", "comick", "comick_anime", "mangabaka", "mangabaka_stacks",
     )
 }
