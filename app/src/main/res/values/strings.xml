@@ -663,7 +663,7 @@
     <string name="layout">Layout</string>
     <string name="spaced_pages">Spaced Pages</string>
     <string name="smart_spacing">Smart Spacing</string>
-    <string name="smart_spacing_info">Puts gaps between actual pages rather than between images: pieces of a cut-up page or webtoon are joined, and pages stitched together into one long image are separated</string>
+    <string name="smart_spacing_info">Reads chapters by their actual pages rather than their images: pages a source stitched together or cut apart are separated or put back together, in every layout and in the page count, and gaps only go between actual pages</string>
     <string name="direction">Direction</string>
 
     <string name="general">General</string>

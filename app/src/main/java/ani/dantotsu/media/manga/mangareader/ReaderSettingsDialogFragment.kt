@@ -59,16 +59,13 @@ class ReaderSettingsDialogFragment : BottomSheetDialogFragment() {
         )
 
         binding.readerPadding.isEnabled = settings.layout.ordinal != 0
-        binding.readerSmartPadding.isEnabled = settings.layout.ordinal != 0 && settings.padding
         fun paddingAvailable(enable: Boolean) {
             binding.readerPadding.isEnabled = enable
-            binding.readerSmartPadding.isEnabled = enable && settings.padding
         }
 
         binding.readerPadding.isChecked = settings.padding
         binding.readerPadding.setOnCheckedChangeListener { _, isChecked ->
             settings.padding = isChecked
-            binding.readerSmartPadding.isEnabled = isChecked
             activity.applySettings()
         }
 

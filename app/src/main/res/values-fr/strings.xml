@@ -581,7 +581,7 @@
     <string name="layout">Disposition</string>
     <string name="spaced_pages">Pages espacées</string>
     <string name="smart_spacing">Espacement intelligent</string>
-    <string name="smart_spacing_info">Place les espaces entre les vraies pages plutôt qu\'entre les images : les morceaux d\'une page découpée ou d\'un webtoon sont rassemblés, et les pages collées en une seule longue image sont séparées</string>
+    <string name="smart_spacing_info">Lit les chapitres selon leurs vraies pages plutôt que leurs images : les pages collées ou découpées par la source sont séparées ou rassemblées, dans toutes les dispositions et dans le nombre de pages, et les espaces ne sont mis qu\'entre les vraies pages</string>
     <string name="direction">Direction</string>
 
     <string name="general">Général</string>

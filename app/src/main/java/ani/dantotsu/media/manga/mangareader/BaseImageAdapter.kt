@@ -42,29 +42,90 @@ import kotlin.math.sqrt
 
 abstract class BaseImageAdapter(
     val activity: MangaReaderActivity,
-    chapter: MangaChapter
+    chapter: MangaChapter,
+    /**
+     * The chapter's real pages, when they differ from its images (see [ChapterPages]). Each
+     * position is then one real page, drawn from whatever slices of images it is made of.
+     */
+    pageMap: ChapterPageMap? = null,
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     val settings get() = activity.defaultSettings
-    private val chapterImages = chapter.images()
+    protected val chapterImages = chapter.images()
     var images = chapterImages
+    private val chapterPages = pageMap?.pages
+    protected var pages = chapterPages
+
+    /** The images' urls, by chapter image index — what page keys are built from. */
+    private val urls = chapterImages.map { it.url.url }
 
     override fun onAttachedToRecyclerView(recyclerView: RecyclerView) {
-        images = if (settings.layout == CurrentReaderSettings.Layouts.PAGED
-            && settings.direction == CurrentReaderSettings.Directions.BOTTOM_TO_TOP
-        ) {
-            chapterImages.reversed()
-        } else {
-            chapterImages
-        }
+        val reversed = settings.layout == CurrentReaderSettings.Layouts.PAGED
+                && settings.direction == CurrentReaderSettings.Directions.BOTTOM_TO_TOP
+        images = if (reversed) chapterImages.reversed() else chapterImages
+        pages = if (reversed) chapterPages?.reversed() else chapterPages
         recycler = recyclerView
         super.onAttachedToRecyclerView(recyclerView)
     }
 
+    /** The real page at [position], when the adapter goes by real pages. */
+    fun pageAt(position: Int): ChapterPage? = pages?.getOrNull(position)
+
+    /** How many positions there are: real pages if known, images otherwise. */
+    val pageCount get() = pages?.size ?: images.size
+
     /** The page shown at [position], used to tie loads to pages rather than to positions. */
-    open fun pageKey(position: Int): Any? = images.getOrNull(position)
+    open fun pageKey(position: Int): Any? =
+        if (pages != null) pageAt(position) else images.getOrNull(position)
 
     /** Everything [position] displays — what [PagePrefetcher] must warm to make it instant. */
-    open fun pagesAt(position: Int): List<MangaImage> = listOfNotNull(images.getOrNull(position))
+    open fun pagesAt(position: Int): List<MangaImage> =
+        if (pages != null) pageAt(position)?.slices.orEmpty()
+            .mapNotNull { chapterImages.getOrNull(it.image) }.distinct()
+        else listOfNotNull(images.getOrNull(position))
+
+    /**
+     * What the page at [position] is known by to [PageEdges]: its image's url for a plain page, a
+     * key of its own for one drawn from slices. Null for a merged dual page.
+     */
+    open fun pageUrl(position: Int): String? =
+        if (pages != null) pageAt(position)?.key(urls)
+        else pagesAt(position).singleOrNull()?.url?.url
+
+    /**
+     * The images whose translations belong over [position]. A page drawn from slices has none: a
+     * translation is laid out over the whole image it was read from.
+     */
+    open fun translatableAt(position: Int): List<MangaImage> =
+        if (pages != null) listOfNotNull(plainImageAt(position)) else pagesAt(position)
+
+    /** The image of a plain page at [position] — the only kind a translation can be laid over. */
+    fun plainImageAt(position: Int): MangaImage? =
+        if (pages != null) pageAt(position)?.takeIf { it.single }
+            ?.let { chapterImages.getOrNull(it.slices[0].image) }
+        else pagesAt(position).singleOrNull()
+
+    /**
+     * Draws the real [page] from its images, decoded the way a page of this layout is
+     * ([maxHeightOverride], [zoom]). A plain page is just its image.
+     */
+    protected suspend fun composePage(
+        page: ChapterPage,
+        maxHeightOverride: Int?,
+        zoom: Float
+    ): Bitmap? {
+        // A page cut from a strip is decoded with the strip, at the scrolling reader's budget: the
+        // paged one is sized for a single page and would leave a strip's pages a fraction as wide.
+        val budget = if (page.single) maxHeightOverride else ContinuousChapterAdapter.MAX_PAGE_HEIGHT
+        val bitmaps = page.slices.map { slice ->
+            val image = chapterImages.getOrNull(slice.image) ?: return null
+            if (image.url.url.isEmpty()) return null
+            activity.loadBitmap(
+                image.url, activity.pageTransforms(image), budget, zoom, wholeWidth = !page.single
+            ) ?: return null
+        }
+        if (page.single) return bitmaps.first()
+        return withContext(Dispatchers.Default) { ChapterPages.compose(page, bitmaps) }
+    }
 
     protected var recycler: RecyclerView? = null
 
@@ -85,8 +146,13 @@ abstract class BaseImageAdapter(
         if (!activity.smartSpacing) return 0 to gap
         val trailing = if (position >= itemCount - 1) gap else 0
         if (position <= 0) return 0 to trailing
-        val before = pagesAt(position - 1).singleOrNull()?.url?.url
-        val after = pagesAt(position).singleOrNull()?.url?.url
+        val before = pageUrl(position - 1)
+        val after = pageUrl(position)
+        // Going by real pages, the boundaries are known: every one is a page edge, except where a
+        // webtoon's pieces were only split up for size.
+        if (after != null) pageAt(position)?.let {
+            return (if (it.joinedToPrevious) 0 else gap) to trailing
+        }
         val spaced = before == null || after == null || PageEdges.shouldSpace(
             PageEdges.get(before), PageEdges.get(after), settings.direction, activity.preferJoinedPages
         ) || PageEdges.breaksFor(after)?.atStart == true
@@ -98,9 +164,9 @@ abstract class BaseImageAdapter(
      * its neighbours. True when what it found changed.
      */
     suspend fun judgeStitched(position: Int): Boolean {
-        if (!activity.smartSpacing) return false
-        val urls = (position - RUN_REACH..position + RUN_REACH)
-            .map { pagesAt(it).singleOrNull()?.url?.url }
+        // Real pages are already cut where the breaks are.
+        if (!activity.smartSpacing || pages != null) return false
+        val urls = (position - RUN_REACH..position + RUN_REACH).map { pageUrl(it) }
         return withContext(Dispatchers.Default) { PageEdges.judgeRun(urls, RUN_REACH) }
     }
 
@@ -187,7 +253,7 @@ abstract class BaseImageAdapter(
                 }
                 setOnLongClickListener {
                     val pos = holder.bindingAdapterPosition
-                    val image = images.getOrNull(pos) ?: return@setOnLongClickListener false
+                    val image = pagesAt(pos).firstOrNull() ?: return@setOnLongClickListener false
                     activity.onImageLongClicked(pos, image, null) { dialog ->
                         activity.lifecycleScope.launch {
                             loadImage(pos, view)
@@ -395,11 +461,17 @@ abstract class BaseImageAdapter(
             }
         }
 
+        /**
+         * Decodes the page at [link]. [wholeWidth] decodes it to be shown at the viewport's full
+         * width whatever the layout — for an image that is cut into pages rather than shown whole,
+         * which fitted into a paged viewport's height would be a sliver a strip's height wide.
+         */
         suspend fun Context.loadBitmap(
             link: FileUrl,
             transforms: List<BitmapTransformation>,
             maxHeightOverride: Int? = null,
-            zoom: Float = 1f
+            zoom: Float = 1f,
+            wholeWidth: Boolean = false,
         ): Bitmap? {
             return tryWithSuspend {
                 val mangaCache = uy.kohesive.injekt.Injekt.get<MangaCache>()
@@ -419,7 +491,7 @@ abstract class BaseImageAdapter(
                 // must not constrain it. A paged one is fitted whole, and in a landscape window
                 // it is the height that decides how wide it actually lands.
                 val viewportH =
-                    if (reader?.defaultSettings?.layout == CurrentReaderSettings.Layouts.CONTINUOUS) null
+                    if (wholeWidth || reader?.defaultSettings?.layout == CurrentReaderSettings.Layouts.CONTINUOUS) null
                     else decor?.height?.takeIf { it > 0 } ?: dm.heightPixels
                 withContext(Dispatchers.IO) {
                     // Zoomed in: the page is being drawn larger than it was decoded for, so
@@ -441,13 +513,14 @@ abstract class BaseImageAdapter(
                         // is by powers of two, so asking it for the display width directly
                         // undershoots to half of it and the page comes back soft. Let it decode
                         // to the budget and take the last step properly. Same below.
+                        val (overrideW, overrideH) = pixelBudgetOverride(localFile, maxW, maxH)
                         return@withContext downsampleBitmap(
                             Glide.with(this@loadBitmap)
                                 .asBitmap()
                                 .load(localFile.absoluteFile)
                                 .skipMemoryCache(true)
                                 .diskCacheStrategy(DiskCacheStrategy.NONE)
-                                .override(maxW, maxH)
+                                .override(overrideW, overrideH)
                                 .downsample(DownsampleStrategy.AT_MOST)
                                 .let {
                                     if (transforms.isNotEmpty()) it.transform(*transforms.toTypedArray())
@@ -616,6 +689,25 @@ abstract class BaseImageAdapter(
                 viewportHeight.toLong() * sourceWidth / sourceHeight
             ).toInt().coerceAtLeast(1)
         } else viewportWidth
+
+        /**
+         * The size to ask Glide for when decoding [file] within a [maxWidth] × [maxHeight] pixel
+         * budget. Glide fits an override in both dimensions, which on a tall strip is a height cap:
+         * an 800x10000 strip against a 4-screen-tall budget came back at half its width. So the
+         * override is the image's own shape scaled to twice the budget's pixel count — the same
+         * headroom MangaCache's sampling gets — and [downsampleBitmap] takes it the rest of the
+         * way, filtering.
+         */
+        private fun pixelBudgetOverride(file: File, maxWidth: Int, maxHeight: Int): Pair<Int, Int> {
+            val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            android.graphics.BitmapFactory.decodeFile(file.absolutePath, bounds)
+            val width = bounds.outWidth
+            val height = bounds.outHeight
+            if (width <= 0 || height <= 0) return maxWidth to maxHeight
+            val budget = 2.0 * maxWidth * maxHeight
+            val scale = minOf(1.0, sqrt(budget / (width.toDouble() * height)))
+            return (width * scale).toInt().coerceAtLeast(1) to (height * scale).toInt().coerceAtLeast(1)
+        }
 
         /**
          * Brings a decoded page down to the size it will actually be drawn at.

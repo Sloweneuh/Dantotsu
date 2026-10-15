@@ -191,6 +191,144 @@ class MangaReaderActivity : AppCompatActivity() {
     val preferJoinedPages: Boolean
         get() = media.countryOfOrigin.let { it == "KR" || it == "CN" || it == "TW" }
 
+    /**
+     * Pages are what the reader goes by, rather than images: a chapter's images are analysed
+     * ([ChapterPages]) and, where a source stitched or cut its pages, read as the real ones.
+     */
+    private val smartPages: Boolean
+        get() = PrefManager.getVal(PrefName.SmartPadding)
+
+    /** Real pages of the chapters scanned so far, by [chapterKey]. */
+    private val pageMaps = HashMap<String, ChapterPageMap>()
+    /** Scans in flight, by [chapterKey]. */
+    private val pageScans = HashMap<String, kotlinx.coroutines.Job>()
+
+    /** What the scans were made under; a change to it (crop borders) changes every image's edges. */
+    private var analysisKey: String? = null
+
+    private fun chapterKey(c: MangaChapter) = "${media.selected?.sourceIndex}|${c.uniqueNumber()}"
+
+    /** The current chapter's real pages, while the reader goes by them. */
+    private val activePageMap: ChapterPageMap?
+        get() = pageMapOf(chapter)
+
+    /** [c]'s real pages, while the reader goes by them. */
+    private fun pageMapOf(c: MangaChapter): ChapterPageMap? =
+        if (smartPages) pageMaps[chapterKey(c)]?.takeIf { !it.isIdentity } else null
+
+    /**
+     * The page (1-based, as shown) saved progress points at. Progress is kept as an image and how
+     * far down it, so it means the same thing whatever the analysis concludes — and to everything
+     * else that reads it, which only knows images.
+     */
+    private fun savedPage(): Long {
+        if (media.id < 0) return 1L
+        val image = PrefManager.getCustomVal("${media.id}_${chapter.number}", 1L)
+        val map = activePageMap ?: return image
+        val offset = PrefManager.getCustomVal("${media.id}_${chapter.number}_offset", 0f)
+        return map.pageOf((image - 1).toInt(), offset) + 1L
+    }
+
+    /** Saves [page] (1-based, as shown) as the image it starts in and how far down. */
+    private fun savePage(page: Long) {
+        if (media.id < 0) return
+        val start = activePageMap?.startOf((page - 1).toInt())
+        PrefManager.setCustomVal("${media.id}_${chapter.number}", start?.let { it.image + 1L } ?: page)
+        PrefManager.setCustomVal("${media.id}_${chapter.number}_offset", start?.from ?: 0f)
+    }
+
+    /** The image (1-based) [page] (1-based, as shown) starts in. */
+    private fun imageNumberOf(page: Long): Long =
+        activePageMap?.startOf((page - 1).toInt())?.let { it.image + 1L } ?: page
+
+    /**
+     * Works out the current chapter's real pages in the background, unless already known. When
+     * they turn out to differ from its images, the reader is rebuilt on them — once — keeping the
+     * place being read.
+     */
+    private fun startPageScan(target: MangaChapter = chapter) {
+        val key = chapterKey(target)
+        android.util.Log.d("SmartPages", "startPageScan smart=$smartPages multi=$isContinuousMultiChapter images=${target.images().size} known=${pageMaps.containsKey(key)} scanning=${pageScans.containsKey(key)}")
+        if (!smartPages) return
+        val images = target.images()
+        if (images.isEmpty()) return
+        if (pageMaps.containsKey(key) || pageScans.containsKey(key)) return
+        // Single-chapter mode only ever needs the chapter on screen.
+        if (!isContinuousMultiChapter) {
+            pageScans.values.forEach { it.cancel() }
+            pageScans.clear()
+        }
+        pageScans[key] = ChapterPages.scan(this, images, preferJoinedPages) { map ->
+            pageMaps[key] = map
+            pageScans.remove(key)
+            android.util.Log.d("SmartPages", "map ready: current=${key == chapterKey(chapter)} identity=${map.isIdentity} pages=${map.pages.size}/${map.imageCount}")
+            if (map.isIdentity || !smartPages) return@scan
+            if (isContinuousMultiChapter) {
+                applyPageMapInContinuous(target, map)
+            } else if (key == chapterKey(chapter)) {
+                rememberScrollOffset()
+                applySettings()
+            }
+        }
+    }
+
+    /**
+     * Swaps a chapter of the multi-chapter reader over to its real pages. When it is the chapter
+     * being read, the reader stays on the page showing the same part of the same image.
+     */
+    private fun applyPageMapInContinuous(target: MangaChapter, map: ChapterPageMap) {
+        val adapter = continuousAdapter ?: return
+        val reading = target.uniqueNumber() == chapter.uniqueNumber()
+        // Where in the chapter's images the reader is, before the items change under it.
+        val place: Pair<Int, Float>? = if (!reading) null else {
+            val position = if (usingPager) binding.mangaReaderPager.currentItem else {
+                val manager = binding.mangaReaderRecycler.layoutManager as? PreloadLinearLayoutManager
+                manager?.let { mostVisibleItemPosition(binding.mangaReaderRecycler, it) } ?: -1
+            }
+            val item = adapter.items.getOrNull(position) as? ContinuousChapterAdapter.ReaderItem.Image
+            if (item == null || item.page != null) null else {
+                var offset = 0f
+                if (!usingPager) {
+                    binding.mangaReaderRecycler.layoutManager?.findViewByPosition(position)?.let { child ->
+                        val vertical = defaultSettings.direction == TOP_TO_BOTTOM ||
+                                defaultSettings.direction == BOTTOM_TO_TOP
+                        val past = if (vertical) binding.mangaReaderRecycler.paddingTop - child.top
+                        else binding.mangaReaderRecycler.paddingLeft - child.left
+                        val length = if (vertical) child.height else child.width
+                        if (length > 0) offset = (past.toFloat() / length).coerceIn(0f, 0.999f)
+                    }
+                }
+                item.pageIndex to offset
+            }
+        }
+        val start = adapter.applyPageMap(target) ?: return
+        if (place == null) return
+        val target = start + map.pageOf(place.first, place.second)
+        if (usingPager) binding.mangaReaderPager.setCurrentItem(target, false)
+        else (binding.mangaReaderRecycler.layoutManager as? PreloadLinearLayoutManager)
+            ?.scrollToPositionWithOffset(target, 0)
+        savePage(map.pageOf(place.first, place.second) + 1L)
+    }
+
+    /**
+     * Saves how far down its image the reader is, for a switch to real pages to land on the page
+     * being read rather than the top of the image — which may hold several.
+     */
+    private fun rememberScrollOffset() {
+        if (media.id < 0 || defaultSettings.layout == PAGED) return
+        val recycler = binding.mangaReaderRecycler
+        val manager = recycler.layoutManager as? PreloadLinearLayoutManager ?: return
+        val position = mostVisibleItemPosition(recycler, manager).takeIf { it >= 0 } ?: return
+        val child = manager.findViewByPosition(position) ?: return
+        val vertical = manager.orientation == RecyclerView.VERTICAL
+        val past = if (vertical) recycler.paddingTop - child.top else recycler.paddingLeft - child.left
+        val length = if (vertical) child.height else child.width
+        if (length <= 0) return
+        val offset = (past.toFloat() / length).coerceIn(0f, 0.999f)
+        PrefManager.setCustomVal("${media.id}_${chapter.number}", position + 1L)
+        PrefManager.setCustomVal("${media.id}_${chapter.number}_offset", offset)
+    }
+
     private lateinit var media: Media
     private lateinit var chapter: MangaChapter
     private lateinit var chapters: MutableMap<String, MangaChapter>
@@ -600,7 +738,7 @@ class MangaReaderActivity : AppCompatActivity() {
             // mangaCache.clear()
             if (media.id >= 0) PrefManager.setCustomVal(
                 "${media.id}_${chaptersArr[currentChapterIndex]}",
-                currentChapterPage
+                imageNumberOf(currentChapterPage)
             )
             ChapterLoaderDialog.newInstance(chapters[chaptersArr[index]]!!)
                 .show(supportFragmentManager, "dialog")
@@ -680,7 +818,7 @@ class MangaReaderActivity : AppCompatActivity() {
                         cover = media.cover,
                         sourceName = model.mangaReadSources?.names?.getOrNull(media.selected!!.sourceIndex),
                         number = chapter.number,
-                        page = currentChapterPage,
+                        page = imageNumberOf(currentChapterPage),
                         trackProgress = PrefManager.getCustomVal("${media.id}_save_progress", true),
                         muSeriesId = media.muSeriesId,
                         sourceMedia = HandoffPayload.encodeShowResponse(sourceMedia),
@@ -856,8 +994,16 @@ class MangaReaderActivity : AppCompatActivity() {
 
         saveReaderSettings("${media.id}_current_settings", defaultSettings)
         hideSystemBars()
-        // The transforms (crop borders above all) may have changed what the page edges look like.
-        PageEdges.clear()
+        // Crop borders changes what every image's edges look like, and so everything worked out
+        // from them; nothing else here does.
+        val analysis = "${defaultSettings.cropBorders}|${defaultSettings.cropBorderThreshold}"
+        if (analysis != analysisKey) {
+            analysisKey = analysis
+            PageEdges.clear()
+            pageMaps.clear()
+            pageScans.values.forEach { it.cancel() }
+            pageScans.clear()
+        }
         watchProfiles()
 
         // Reset multi-chapter tracking state
@@ -890,7 +1036,8 @@ class MangaReaderActivity : AppCompatActivity() {
 
         binding.mangaReaderPager.unregisterOnPageChangeCallback(pageChangeCallback)
 
-        currentChapterPage = if (media.id >= 0) PrefManager.getCustomVal("${media.id}_${chapter.number}", 1L) else 1L
+        currentChapterPage = savedPage()
+        val pageMap = activePageMap
 
         val chapImages = if (directionPagedBT) {
             chapter.images().reversed()
@@ -900,13 +1047,14 @@ class MangaReaderActivity : AppCompatActivity() {
 
         maxChapterPage = 0
         if (chapImages.isNotEmpty()) {
-            maxChapterPage = chapImages.size.toLong()
-            if (media.id >= 0) PrefManager.setCustomVal("${media.id}_${chapter.number}_max", maxChapterPage)
+            maxChapterPage = pageMap?.pages?.size?.toLong() ?: chapImages.size.toLong()
+            // Images, like the saved page itself; see savedPage.
+            if (media.id >= 0) PrefManager.setCustomVal("${media.id}_${chapter.number}_max", chapImages.size.toLong())
 
-            imageAdapter =
-                dualPage { DualPageAdapter(this, chapter) } ?: ImageAdapter(this, chapter)
+            imageAdapter = dualPage { DualPageAdapter(this, chapter, pageMap) }
+                ?: ImageAdapter(this, chapter, pageMap)
 
-            if (chapImages.size > 1) {
+            if (maxChapterPage > 1) {
                 binding.mangaReaderSlider.apply {
                     visibility = View.VISIBLE
                     valueTo = maxChapterPage.toFloat()
@@ -1053,7 +1201,7 @@ class MangaReaderActivity : AppCompatActivity() {
                                         onImageLongClicked(pos * 2, page.first, nextPage, callback)
                                 } ?: onImageLongClicked(
                                     pos,
-                                    chapImages.getOrNull(pos) ?: return@let false,
+                                    imageAdapter?.pagesAt(pos)?.firstOrNull() ?: return@let false,
                                     null,
                                     callback
                                 )
@@ -1095,7 +1243,8 @@ class MangaReaderActivity : AppCompatActivity() {
                         this@MangaReaderActivity,
                         chapter,
                         currentChapterIndex,
-                        chaptersTitleArr
+                        chaptersTitleArr,
+                        ::pageMapOf,
                     )
                     adapter = continuousAdapter
                 } else {
@@ -1207,7 +1356,8 @@ class MangaReaderActivity : AppCompatActivity() {
                         this@MangaReaderActivity,
                         chapter,
                         currentChapterIndex,
-                        chaptersTitleArr
+                        chaptersTitleArr,
+                        ::pageMapOf,
                     )
                     adapter = continuousAdapter
                 } else {
@@ -1247,6 +1397,7 @@ class MangaReaderActivity : AppCompatActivity() {
                 binding.mangaReaderPager.currentItem += 1
             }
         }
+        startPageScan()
     }
 
     private var onVolumeUp: (() -> Unit)? = null
@@ -1511,7 +1662,7 @@ class MangaReaderActivity : AppCompatActivity() {
         }
         if (currentChapterPage != page) {
             currentChapterPage = page
-            if (media.id >= 0) PrefManager.setCustomVal("${media.id}_${chapter.number}", page)
+            savePage(page)
             binding.mangaReaderPageNumber.text =
                 if (defaultSettings.hidePageNumbers) "" else "${currentChapterPage}/$maxChapterPage"
             if (!sliding) binding.mangaReaderSlider.apply {
@@ -1617,9 +1768,9 @@ class MangaReaderActivity : AppCompatActivity() {
                 chapter = currentChap
                 media.manga!!.selectedChapter = chapter
                 if (media.id >= 0) PrefManager.setCustomVal("${media.id}_current_chp", chapter.number)
-                val newTotalPages = adapter.getPageCountForChapter(visibleChapterIdx)
-                if (newTotalPages > 0 && media.id >= 0) {
-                    PrefManager.setCustomVal("${media.id}_${chapter.number}_max", newTotalPages.toLong())
+                // Images, like the saved page itself; see savedPage.
+                if (media.id >= 0 && chapter.images().isNotEmpty()) {
+                    PrefManager.setCustomVal("${media.id}_${chapter.number}_max", chapter.images().size.toLong())
                 }
                 binding.mangaReaderChapterSelect.setSelection(currentChapterIndex)
                 updateChapterNavigationText()
@@ -1635,7 +1786,7 @@ class MangaReaderActivity : AppCompatActivity() {
             val newPage = pageInChapter.toLong()
             if (currentChapterPage != newPage && newPage > 0) {
                 currentChapterPage = newPage
-                if (media.id >= 0) PrefManager.setCustomVal("${media.id}_${chapter.number}", currentChapterPage)
+                savePage(currentChapterPage)
             }
             binding.mangaReaderPageNumber.text =
                 if (defaultSettings.hidePageNumbers) "" else "$pageInChapter/$totalPages"
@@ -1700,9 +1851,9 @@ class MangaReaderActivity : AppCompatActivity() {
                 chapter = currentChap
                 media.manga!!.selectedChapter = chapter
                 if (media.id >= 0) PrefManager.setCustomVal("${media.id}_current_chp", chapter.number)
-                val newTotalPages = adapter.getPageCountForChapter(visibleChapterIdx)
-                if (newTotalPages > 0 && media.id >= 0) {
-                    PrefManager.setCustomVal("${media.id}_${chapter.number}_max", newTotalPages.toLong())
+                // Images, like the saved page itself; see savedPage.
+                if (media.id >= 0 && chapter.images().isNotEmpty()) {
+                    PrefManager.setCustomVal("${media.id}_${chapter.number}_max", chapter.images().size.toLong())
                 }
                 binding.mangaReaderChapterSelect.setSelection(currentChapterIndex)
                 updateChapterNavigationText()
@@ -1718,7 +1869,7 @@ class MangaReaderActivity : AppCompatActivity() {
             val newPage = pageInChapter.toLong()
             if (currentChapterPage != newPage && newPage > 0) {
                 currentChapterPage = newPage
-                if (media.id >= 0) PrefManager.setCustomVal("${media.id}_${chapter.number}", currentChapterPage)
+                savePage(currentChapterPage)
             }
             binding.mangaReaderPageNumber.text =
                 if (defaultSettings.hidePageNumbers) "" else "$pageInChapter/$totalPages"
@@ -1841,6 +1992,7 @@ class MangaReaderActivity : AppCompatActivity() {
                 scope.launch(Dispatchers.Main) {
                     adapter.appendChapter(nextChapter, nextIdx, missing)
                     multiChapterLoading = false
+                    startPageScan(nextChapter)
                 }
             } else {
                 multiChapterLoading = false
@@ -1861,8 +2013,6 @@ class MangaReaderActivity : AppCompatActivity() {
             if (loaded) {
                 val missing = countMissingChapters(prevIdx, prevIdx + 1)
                 scope.launch(Dispatchers.Main) {
-                    val insertedCount = prevChapter.images().size + 1 // images + transition
-
                     if (defaultSettings.layout != CurrentReaderSettings.Layouts.PAGED) {
                         val layoutManager = binding.mangaReaderRecycler.layoutManager as? PreloadLinearLayoutManager
                         val firstVisiblePos = layoutManager?.findFirstVisibleItemPosition() ?: 0
@@ -1879,12 +2029,12 @@ class MangaReaderActivity : AppCompatActivity() {
                                            else binding.mangaReaderRecycler.paddingLeft
                         val offset = rawEdge - paddingStart
 
-                        adapter.prependChapter(prevChapter, prevIdx, missing)
+                        val insertedCount = adapter.prependChapter(prevChapter, prevIdx, missing)
                         layoutManager?.scrollToPositionWithOffset(firstVisiblePos + insertedCount, offset)
                     } else {
                         // ViewPager2: integer item index, no pixel offset needed
                         val currentItem = binding.mangaReaderPager.currentItem
-                        adapter.prependChapter(prevChapter, prevIdx, missing)
+                        val insertedCount = adapter.prependChapter(prevChapter, prevIdx, missing)
                         binding.mangaReaderPager.setCurrentItem(currentItem + insertedCount, false)
                     }
                     // Every position just moved down by a whole chapter. Automatic translation
@@ -1894,6 +2044,7 @@ class MangaReaderActivity : AppCompatActivity() {
                     // had and re-measures from where things now are.
                     autoAnchor = RecyclerView.NO_POSITION
                     multiChapterLoading = false
+                    startPageScan(prevChapter)
                 }
             } else {
                 multiChapterLoading = false
@@ -2544,7 +2695,7 @@ class MangaReaderActivity : AppCompatActivity() {
     private fun readerPages(): List<MangaImage> =
         when (val adapter = readerAdapter()) {
             is ContinuousChapterAdapter -> adapter.items.mapNotNull {
-                (it as? ContinuousChapterAdapter.ReaderItem.Image)?.image
+                (it as? ContinuousChapterAdapter.ReaderItem.Image)?.takeIf { !it.composed }?.image
             }
 
             is BaseImageAdapter -> adapter.images
@@ -2554,10 +2705,10 @@ class MangaReaderActivity : AppCompatActivity() {
     /** The page or pages one adapter position is showing. */
     private fun pagesAtPosition(position: Int): List<MangaImage> =
         when (val adapter = readerAdapter()) {
-            is BaseImageAdapter -> adapter.pagesAt(position)
+            is BaseImageAdapter -> adapter.translatableAt(position)
             is ContinuousChapterAdapter -> listOfNotNull(
                 (adapter.items.getOrNull(position) as? ContinuousChapterAdapter.ReaderItem.Image)
-                    ?.image,
+                    ?.takeIf { !it.composed }?.image,
             )
 
             else -> emptyList()

@@ -123,10 +123,15 @@ data class ImageData(
      * the memory budget asked for, which is exactly how a 1688px page reached a 644px viewport as
      * a ruined 844px one. Whatever is still oversized after this is brought down by
      * [ani.dantotsu.media.manga.mangareader.BaseImageAdapter]'s downsample, which actually filters.
+     *
+     * The decode may come out at up to twice the budget for the same reason. Sampling only halves,
+     * so an image barely over budget — an 800x10000 strip against a 7.2M-pixel window — used to
+     * lose three quarters of its pixels and be stretched back across the screen at half its width.
+     * Twice the budget is the most this ever holds before that filtering downsample.
      */
     private fun calculateInSampleSize(rawWidth: Int, rawHeight: Int, maxWidth: Int, maxHeight: Int): Int {
         var inSampleSize = 1
-        val maxPixels = maxWidth.toLong() * maxHeight.toLong()
+        val maxPixels = maxWidth.toLong() * maxHeight.toLong() * 2
         while ((rawWidth.toLong() / inSampleSize) * (rawHeight.toLong() / inSampleSize) > maxPixels) {
             inSampleSize *= 2
         }

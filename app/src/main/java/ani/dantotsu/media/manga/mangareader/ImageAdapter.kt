@@ -24,8 +24,9 @@ import kotlinx.coroutines.launch
 
 open class ImageAdapter(
     activity: MangaReaderActivity,
-    chapter: MangaChapter
-) : BaseImageAdapter(activity, chapter) {
+    chapter: MangaChapter,
+    pageMap: ChapterPageMap? = null,
+) : BaseImageAdapter(activity, chapter, pageMap) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ImageViewHolder {
         val binding = ItemImageBinding.inflate(LayoutInflater.from(parent.context), parent, false)
@@ -46,6 +47,7 @@ open class ImageAdapter(
     }
 
     open suspend fun loadBitmap(position: Int, parent: View): Bitmap? {
+        pageAt(position)?.let { return composePage(it, null, renderZoomOf(parent)) }
         val link = images.getOrNull(position)?.url ?: return null
         if (link.url.isEmpty()) return null
 
@@ -89,9 +91,10 @@ open class ImageAdapter(
             val (leading, trailing) = pageGaps(position)
             setPageGaps(parent, settings.direction, leading, trailing)
         }
-        val bitmap = withStripGaps(
-            activity, pagesAt(position).singleOrNull()?.url?.url, decoded, parent
-        )
+        // A page drawn from slices is profiled under its own key, so the gaps either side of it
+        // can be judged like any other page's.
+        pageUrl(position)?.let { if (pageAt(position)?.single == false) PageEdges.record(it, decoded) }
+        val bitmap = withStripGaps(activity, pageUrl(position), decoded, parent)
 
         val (viewportWidth, viewportHeight) = pageViewport(parent)
         var sWidth = viewportWidth
@@ -147,7 +150,7 @@ open class ImageAdapter(
         return true
     }
 
-    override fun getItemCount(): Int = images.size
+    override fun getItemCount(): Int = pageCount
 
     override fun isZoomed(): Boolean {
         val imageView =

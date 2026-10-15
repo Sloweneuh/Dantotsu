@@ -39,7 +39,9 @@ class ContinuousChapterAdapter(
     val activity: MangaReaderActivity,
     initialChapter: MangaChapter,
     private val initialChapterIndex: Int,
-    private val chaptersTitleArr: ArrayList<String>
+    private val chaptersTitleArr: ArrayList<String>,
+    /** A chapter's real pages, once known (see [ChapterPages]); its images are shown until then. */
+    private val pageMapFor: (MangaChapter) -> ChapterPageMap? = { null },
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     companion object {
@@ -80,11 +82,23 @@ class ContinuousChapterAdapter(
      */
     sealed class ReaderItem {
         data class Image(
+            /** The image shown — for a page drawn from slices, the one it starts in. */
             val image: MangaImage,
             val chapterIndex: Int,
             val chapter: MangaChapter,
-            val pageIndex: Int
-        ) : ReaderItem()
+            /** Position in the chapter: an image's, or a real page's once the chapter has them. */
+            val pageIndex: Int,
+            /** The real page shown, when the chapter is read by real pages. */
+            val page: ChapterPage? = null,
+            /** What the item is known by to [PageEdges]; see [ChapterPage.key]. */
+            val key: String = image.url.url,
+        ) : ReaderItem() {
+            /** A page drawn from slices of images rather than one whole image. */
+            val composed get() = page?.single == false
+
+            /** The image a slice of this page comes from. */
+            fun imageOf(slice: PageSlice): MangaImage? = chapter.images().getOrNull(slice.image)
+        }
 
         data class Transition(
             val currentChapterIndex: Int,
@@ -138,11 +152,14 @@ class ContinuousChapterAdapter(
         val current = imageItemAt(position)
         val leading = when {
             afterDivider -> gap
+            // Going by real pages, the boundaries are known: every one is a page edge, except
+            // where a webtoon's pieces were only split up for size.
+            current?.page != null -> if (current.page.joinedToPrevious) 0 else gap
             previous is ReaderItem.Image && current != null -> if (
                 PageEdges.shouldSpace(
-                    PageEdges.get(previous.image.url.url), PageEdges.get(current.image.url.url),
+                    PageEdges.get(previous.key), PageEdges.get(current.key),
                     settings.direction, activity.preferJoinedPages
-                ) || PageEdges.breaksFor(current.image.url.url)?.atStart == true
+                ) || PageEdges.breaksFor(current.key)?.atStart == true
             ) gap else 0
             else -> 0
         }
@@ -154,9 +171,10 @@ class ContinuousChapterAdapter(
      * its neighbours, up to the nearest chapter divider. True when what it found changed.
      */
     private suspend fun judgeStitched(position: Int): Boolean {
-        if (!activity.smartSpacing) return false
+        // Real pages are already cut where the breaks are.
+        if (!activity.smartSpacing || imageItemAt(position)?.page != null) return false
         val reach = BaseImageAdapter.RUN_REACH
-        val urls = (position - reach..position + reach).map { imageItemAt(it)?.image?.url?.url }
+        val urls = (position - reach..position + reach).map { imageItemAt(it)?.key }
         return withContext(Dispatchers.Default) { PageEdges.judgeRun(urls, reach) }
     }
 
@@ -241,8 +259,9 @@ class ContinuousChapterAdapter(
     /**
      * Prepend a chapter's images (and a trailing transition) to the beginning of the item list.
      */
-    fun prependChapter(chapter: MangaChapter, chapterIndex: Int, missingChapters: Int = 0) {
-        if (loadedChapterIndices.contains(chapterIndex) || loadedChapterUniqueNumbers.contains(chapter.uniqueNumber())) return
+    /** Returns how many items were inserted at the top. */
+    fun prependChapter(chapter: MangaChapter, chapterIndex: Int, missingChapters: Int = 0): Int {
+        if (loadedChapterIndices.contains(chapterIndex) || loadedChapterUniqueNumbers.contains(chapter.uniqueNumber())) return 0
 
         val nextChapterIndex = if (items.isNotEmpty()) {
             items.filterIsInstance<ReaderItem.Image>().firstOrNull()?.chapterIndex ?: initialChapterIndex
@@ -254,12 +273,9 @@ class ContinuousChapterAdapter(
         val newItems = mutableListOf<ReaderItem>()
 
         // Add images for the prepended chapter
-        val images = chapter.images()
         loadedChapterIndices.add(chapterIndex)
         loadedChapterUniqueNumbers.add(chapter.uniqueNumber())
-        images.forEachIndexed { pageIdx, img ->
-            newItems.add(ReaderItem.Image(img, chapterIndex, chapter, pageIdx))
-        }
+        newItems.addAll(chapterItems(chapter, chapterIndex))
 
         // Add transition after the prepended chapter
         newItems.add(ReaderItem.Transition(
@@ -273,17 +289,50 @@ class ContinuousChapterAdapter(
         items.addAll(0, newItems)
         notifyItemRangeInserted(0, newItems.size)
         firstLoadedChapterIdx = chapterIndex
+        return newItems.size
     }
 
     private fun appendChapterImages(chapter: MangaChapter, chapterIndex: Int) {
-        val images = chapter.images()
         loadedChapterIndices.add(chapterIndex)
         loadedChapterUniqueNumbers.add(chapter.uniqueNumber())
         val startPos = items.size
-        images.forEachIndexed { pageIdx, img ->
-            items.add(ReaderItem.Image(img, chapterIndex, chapter, pageIdx))
+        val chapterItems = chapterItems(chapter, chapterIndex)
+        items.addAll(chapterItems)
+        notifyItemRangeInserted(startPos, chapterItems.size)
+    }
+
+    /** A chapter's items: its real pages if they are known, its images otherwise. */
+    private fun chapterItems(chapter: MangaChapter, chapterIndex: Int): List<ReaderItem.Image> {
+        val images = chapter.images()
+        val map = pageMapFor(chapter)?.takeIf { it.imageCount == images.size }
+            ?: return images.mapIndexed { i, image -> ReaderItem.Image(image, chapterIndex, chapter, i) }
+        val urls = images.map { it.url.url }
+        return map.pages.mapIndexed { i, page ->
+            ReaderItem.Image(
+                images[page.slices[0].image], chapterIndex, chapter, i, page, page.key(urls)
+            )
         }
-        notifyItemRangeInserted(startPos, images.size)
+    }
+
+    /**
+     * Swaps a loaded chapter's items for its real pages, now that they are known. Returns the
+     * position its items start at, or null when the chapter isn't loaded.
+     */
+    fun applyPageMap(chapter: MangaChapter): Int? {
+        val start = items.indexOfFirst {
+            it is ReaderItem.Image && it.chapter.uniqueNumber() == chapter.uniqueNumber()
+        }.takeIf { it >= 0 } ?: return null
+        var end = start
+        while (end < items.size &&
+            (items[end] as? ReaderItem.Image)?.chapter?.uniqueNumber() == chapter.uniqueNumber()
+        ) end++
+        val chapterIndex = (items[start] as ReaderItem.Image).chapterIndex
+        val replacement = chapterItems(chapter, chapterIndex)
+        repeat(end - start) { items.removeAt(start) }
+        notifyItemRangeRemoved(start, end - start)
+        items.addAll(start, replacement)
+        notifyItemRangeInserted(start, replacement.size)
+        return start
     }
 
     /**
@@ -508,7 +557,8 @@ class ContinuousChapterAdapter(
         // feeds into the height loadImage gave it, so touching either without reloading would
         // crop the bitmap that is still being displayed.
         if (!alreadyShown) {
-            if (settings.padding) {
+            // A paged layout shows one page at a time; there is nothing for a gap to separate.
+            if (settings.padding && settings.layout != CurrentReaderSettings.Layouts.PAGED) {
                 val (leading, trailing) = pageGaps(position)
                 setPageGaps(view, settings.direction, leading, trailing)
             } else {
@@ -554,6 +604,21 @@ class ContinuousChapterAdapter(
         activity.lifecycleScope.launch { loadImage(position, view) }
     }
 
+    /** Draws a real page from the slices of images it is made of. */
+    private suspend fun composePage(item: ReaderItem.Image, zoom: Float): Bitmap? {
+        val page = item.page ?: return null
+        val bitmaps = page.slices.map { slice ->
+            val image = item.imageOf(slice) ?: return null
+            with(activity) {
+                loadBitmap(
+                    image.url, activity.pageTransforms(image), MAX_PAGE_HEIGHT, zoom = zoom,
+                    wholeWidth = true
+                )
+            } ?: return null
+        }
+        return withContext(Dispatchers.Default) { ChapterPages.compose(page, bitmaps) }
+    }
+
     /**
      * Loads the page at [position] into [parent]. [quiet] redraws a page already on screen in
      * place — no spinner, no fade — for when only its gaps changed.
@@ -576,7 +641,9 @@ class ContinuousChapterAdapter(
             progress.visibility = View.VISIBLE
         }
 
-        val decoded: Bitmap? = with(activity) {
+        val decoded: Bitmap? = if (item.composed) {
+            composePage(item, renderZoomOf(parent))
+        } else with(activity) {
             loadBitmap(
                 link, activity.pageTransforms(item.image), MAX_PAGE_HEIGHT,
                 zoom = renderZoomOf(parent)
@@ -606,7 +673,10 @@ class ContinuousChapterAdapter(
             val (leading, trailing) = pageGaps(currentPosition)
             setPageGaps(parent, settings.direction, leading, trailing)
         }
-        val bitmap = withStripGaps(activity, link.url, decoded, parent)
+        // A page drawn from slices is profiled under its own key, so the gaps either side of it
+        // can be judged like any other page's.
+        if (item.composed) PageEdges.record(item.key, decoded)
+        val bitmap = withStripGaps(activity, item.key, decoded, parent)
 
         // A zoomed re-render hands back a larger bitmap of the same page. The layout below must
         // not grow with it — the page occupies the same slot in the strip either way — so sizing

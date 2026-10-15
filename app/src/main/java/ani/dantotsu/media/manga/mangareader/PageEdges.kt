@@ -6,6 +6,7 @@ import android.graphics.Rect
 import ani.dantotsu.settings.CurrentReaderSettings.Directions
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.abs
+import kotlin.math.floor
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
@@ -40,7 +41,8 @@ import kotlin.math.sqrt
  * regularity ([judgeRun]): pages are all one height, so the rows where the picture changes
  * abruptly line up on a fixed period when they are pages, and don't in a webtoon, whose panels
  * come in every size. [withGaps] redraws an image with a gap at each page break inside it, and a
- * break on an image's top edge puts a gap before it.
+ * break on an image's top edge puts a gap before it; [ChapterPages] turns the same breaks into
+ * the chapter's real pages.
  *
  * Profiles are keyed by page url and survive the view, so the page before is usually already
  * known by the time the next one loads; [clear] drops them when the transforms (crop borders)
@@ -49,10 +51,15 @@ import kotlin.math.sqrt
 object PageEdges {
 
     /**
-     * The outermost line's luminance, bucketed; how much it differs from the line just inside it
-     * ([step]); and how much the whole band varies ([deviation]).
+     * The outermost line's luminance, bucketed ([samples]); the line just inside it ([inner]) and
+     * how much the two differ ([step]); and how much the whole band varies ([deviation]).
      */
-    class Edge(val samples: FloatArray, val step: Double, val deviation: Double) {
+    class Edge(
+        val samples: FloatArray,
+        val inner: FloatArray,
+        val step: Double,
+        val deviation: Double,
+    ) {
         val detailed get() = deviation >= DETAILED_DEVIATION
     }
 
@@ -63,18 +70,41 @@ object PageEdges {
         val bottom: Edge,
         val left: Edge,
         val right: Edge,
-        /** jumps[y]: how abruptly row y + 1 differs from row y. What [judgeRun] looks for breaks in. */
+        /** jumps[y]: how abruptly row y + 1 differs from row y. */
         val jumps: FloatArray,
-    )
+        /**
+         * jumps2[y]: the same between row y and row y + 2. A page break that a downscale blended
+         * into an in-between row shows up here at full strength while [jumps] only sees half of it.
+         */
+        val jumps2: FloatArray,
+        /** Each row's mean colour, as r, g, b triples. */
+        val rowColors: FloatArray,
+    ) {
+        val ratio get() = height.toFloat() / width
+    }
 
     /**
      * Where the stitched pages inside one image start, as [judgeRun] last found them: [rows] in
-     * the pixels of a bitmap [width] wide, and whether a page also starts right at its top edge
-     * ([atStart]), which calls for a gap before the image rather than inside it.
+     * the pixels of the profile ([width] × [height]), and whether a page also starts right at its
+     * top edge ([atStart]). [stitched] says the image belongs to a run of stitched pages at all —
+     * in which case an edge with no break on it runs on into the neighbouring image.
      */
-    class Breaks(val width: Int, val rows: IntArray, val atStart: Boolean) {
+    class Breaks(
+        val width: Int,
+        val height: Int,
+        val rows: IntArray,
+        val atStart: Boolean,
+        val stitched: Boolean,
+        /**
+         * [rows] exactly: a page edge that a downscale left in the middle of a row has that row
+         * blending both pages, and [ChapterPages] leaves it out of either.
+         */
+        val positions: FloatArray = FloatArray(rows.size) { rows[it].toFloat() },
+        /** The stitched pages' height, in the profile's rows; 0 when not [stitched]. */
+        val period: Float = 0f,
+    ) {
         fun sameAs(other: Breaks?) = other != null && atStart == other.atStart &&
-                rows.contentEquals(other.rows)
+                stitched == other.stitched && rows.contentEquals(other.rows)
 
         fun scaled(toWidth: Int): List<Int> {
             val scale = toWidth.toFloat() / width
@@ -98,11 +128,18 @@ object PageEdges {
         breaks.clear()
     }
 
-    /** Profiles [bitmap] for [url] unless it already has been. Never throws. */
+    /**
+     * Profiles [bitmap] for [url] unless it already has been at this resolution or better. A
+     * sharper decode replaces a softer one — the paged reader decodes pages smaller than the
+     * scrolling one, and break detection is only as good as the rows it gets. Never throws.
+     */
     fun record(url: String, bitmap: Bitmap) {
-        if (url.isEmpty() || profiles.containsKey(url)) return
+        if (url.isEmpty()) return
+        val known = profiles[url]
+        if (known != null && known.width >= bitmap.width) return
         val profile = profile(bitmap) ?: return
         profiles[url] = profile
+        if (known != null) breaks.remove(url)
         onProfiled?.invoke(url)
     }
 
@@ -122,15 +159,24 @@ object PageEdges {
         val left = edge(transpose(cols, BAND, h), h, BAND)
         bitmap.getPixels(cols, 0, BAND, w - BAND, 0, BAND, h)
         val right = edge(transpose(cols, BAND, h), h, BAND, reverse = true)
-        Profile(w, h, top, bottom, left, right, rowJumps(bitmap))
+        val rows2 = rowJumps(bitmap)
+        Profile(w, h, top, bottom, left, right, rows2.jumps, rows2.jumps2, rows2.colors)
     }.getOrNull()
 
-    /** How much each row differs from the next. Read in bands so a strip is never copied whole. */
-    private fun rowJumps(bitmap: Bitmap): FloatArray {
+    private class Rows(val jumps: FloatArray, val jumps2: FloatArray, val colors: FloatArray)
+
+    /**
+     * How much each row differs from the next and from the one after, and each row's mean
+     * colour. Read in bands.
+     */
+    private fun rowJumps(bitmap: Bitmap): Rows {
         val w = bitmap.width
         val h = bitmap.height
         val jumps = FloatArray(h - 1)
+        val jumps2 = FloatArray(maxOf(0, h - 2))
+        val colors = FloatArray(h * 3)
         val px = IntArray(w * READ_BAND)
+        var older = FloatArray(SAMPLES)
         var previous = FloatArray(SAMPLES)
         var current = FloatArray(SAMPLES)
         var y0 = 0
@@ -140,12 +186,73 @@ object PageEdges {
             for (r in 0 until n) {
                 bucket(px, r * w, w, current)
                 val y = y0 + r
+                var red = 0L
+                var green = 0L
+                var blue = 0L
+                for (i in r * w until (r + 1) * w) {
+                    val c = px[i]
+                    red += (c shr 16) and 0xFF
+                    green += (c shr 8) and 0xFF
+                    blue += c and 0xFF
+                }
+                colors[y * 3] = red.toFloat() / w
+                colors[y * 3 + 1] = green.toFloat() / w
+                colors[y * 3 + 2] = blue.toFloat() / w
                 if (y > 0) jumps[y - 1] = difference(previous, current).toFloat()
-                previous = current.also { current = previous }
+                if (y > 1) jumps2[y - 2] = difference(older, current).toFloat()
+                val recycled = older
+                older = previous
+                previous = current
+                current = recycled
             }
             y0 += n
         }
-        return jumps
+        return Rows(jumps, jumps2, colors)
+    }
+
+    /**
+     * Whether rows either side of [row] of [profile] sit on one and the same strongly coloured
+     * backdrop — a line of text on a credits page, say, rather than two pages meeting. Manga pages
+     * are mostly grey, and two coloured ones that meet are rarely the same colour.
+     */
+    fun sameColouredBackdrop(profile: Profile, row: Int): Boolean {
+        fun band(from: Int, to: Int): FloatArray? {
+            val a = from.coerceIn(0, profile.height)
+            val b = to.coerceIn(0, profile.height)
+            if (b - a < 4) return null
+            val mean = FloatArray(3)
+            for (y in a until b) for (c in 0..2) mean[c] += profile.rowColors[y * 3 + c]
+            for (c in 0..2) mean[c] /= (b - a)
+            return mean
+        }
+        val above = band(row - BACKDROP_BAND, row - 2) ?: return false
+        val below = band(row + 2, row + BACKDROP_BAND) ?: return false
+        fun saturation(c: FloatArray) = c.max() - c.min()
+        if (saturation(above) < BACKDROP_SATURATION || saturation(below) < BACKDROP_SATURATION) return false
+        // Hue rather than colour: the text on the backdrop changes its brightness from one line to
+        // the next (white, then yellow), not what colour it is.
+        val apart = abs(hue(above) - hue(below)).let { minOf(it, 360f - it) }
+        return apart < BACKDROP_HUE
+    }
+
+    /** The hue of an r, g, b colour, in degrees. */
+    private fun hue(c: FloatArray): Float {
+        val hsv = FloatArray(3)
+        android.graphics.Color.RGBToHSV(c[0].toInt(), c[1].toInt(), c[2].toInt(), hsv)
+        return hsv[0]
+    }
+
+    /**
+     * Whether the image at [index] of [urls] could be part of stitched pages at all: a strip, or
+     * joined to a neighbour the way a cut-up picture is. A page with ordinary page edges on both
+     * sides is a page, and searching it for a period would only cost time.
+     */
+    private fun worthJudging(urls: List<String?>, index: Int, self: Profile): Boolean {
+        if (self.ratio > MAX_PAGE_RATIO) return true
+        val before = urls.getOrNull(index - 1)?.let { profiles[it] }
+        val after = urls.getOrNull(index + 1)?.let { profiles[it] }
+        return (before != null && !shouldSpace(before, self, Directions.TOP_TO_BOTTOM, false)) ||
+                (after != null && !shouldSpace(self, after, Directions.TOP_TO_BOTTOM, false))
     }
 
     /**
@@ -161,6 +268,15 @@ object PageEdges {
     fun judgeRun(urls: List<String?>, index: Int): Boolean {
         val url = urls.getOrNull(index) ?: return false
         val self = profiles[url] ?: return false
+        val result = if (!worthJudging(urls, index, self)) {
+            Breaks(self.width, self.height, IntArray(0), atStart = false, stitched = false)
+        } else judge(urls, index, self)
+        val changed = !result.sameAs(breaks[url])
+        breaks[url] = result
+        return changed
+    }
+
+    private fun judge(urls: List<String?>, index: Int, self: Profile): Breaks {
         fun member(i: Int): Profile? = urls.getOrNull(i)?.let { profiles[it] }?.takeIf {
             abs(it.width - self.width) <= self.width * SAME_BREADTH
         }
@@ -173,82 +289,103 @@ object PageEdges {
 
         val total = run.sumOf { it.height }
         val jumps = FloatArray(total - 1)
+        val jumps2 = FloatArray(total - 1)
         var at = 0
         var start = 0
         run.forEachIndexed { i, profile ->
             if (i > 0) {
-                // The seam between two images, measured the same way as the rows inside them.
-                jumps[at - 1] = difference(run[i - 1].bottom.samples, profile.top.samples).toFloat()
+                // The seam, measured the same way as the rows inside the images.
+                val above = run[i - 1].bottom
+                jumps[at - 1] = difference(above.samples, profile.top.samples).toFloat()
+                jumps2[at - 1] = difference(above.samples, profile.top.inner).toFloat()
+                if (at >= 2) jumps2[at - 2] = difference(above.inner, profile.top.samples).toFloat()
             }
             if (first + i == index) start = at
             profile.jumps.copyInto(jumps, at)
+            profile.jumps2.copyInto(jumps2, at)
             at += profile.height
         }
 
-        val found = pageBreaks(jumps, self.width)
-        val local = found?.map { it - start }.orEmpty()
-        val result = Breaks(
-            self.width,
-            local.filter { it > SEAM_TOLERANCE && it < self.height - SEAM_TOLERANCE }.toIntArray(),
-            local.any { abs(it) <= SEAM_TOLERANCE },
+        // A handful of pages either side is plenty to find the period, and keeps the search cheap
+        // however long the run is.
+        val reach = (self.width * MAX_PAGE_RATIO * SEARCH_PAGES).toInt()
+        val from = maxOf(0, start - reach)
+        val to = minOf(jumps.size, start + self.height + reach)
+        val found = pageBreaks(
+            jumps.copyOfRange(from, to), jumps2.copyOfRange(from, to), self.width
         )
-        val changed = !result.sameAs(breaks[url])
-        android.util.Log.d(
-            "SmartSpacing",
-            "judge ${url.takeLast(48)} ${self.width}x${self.height} run=${run.size} rows=$total " +
-                    "found=${found?.size} inside=${result.rows.toList()} atStart=${result.atStart}"
+        val local = found?.positions?.map { it + from - start }.orEmpty()
+        val inside = local.filter { it > SEAM_TOLERANCE && it < self.height - SEAM_TOLERANCE }
+        return Breaks(
+            self.width, self.height,
+            inside.map { it.roundToInt() }.toIntArray(),
+            atStart = local.any { abs(it) <= SEAM_TOLERANCE },
+            stitched = found != null,
+            period = found?.period ?: 0f,
+            positions = inside.toFloatArray(),
         )
-        breaks[url] = result
-        return changed
     }
 
     /**
      * The rows on which pages start in a strip of regular pages stitched together, given how
-     * abruptly each of its rows changes into the next ([jump]); null when it isn't one.
+     * abruptly each of its rows changes into the next ([jump]) and the one after ([jump2]); null
+     * when it isn't one.
      *
      * Within a page the picture changes abruptly at panel borders too, so no single row means
      * anything; what gives pages away is that they are all the same height. Every page height a
-     * manga page could plausibly have at this [width] is tried at every offset, and the one whose
-     * predicted breaks land on abrupt rows most often wins — provided it is right nearly every
-     * time. Measured on real and stitched chapters, scaled and re-encoded the way sites do, every
-     * page break was found; webtoons cropped to random panel heights were never split.
+     * manga page could plausibly have at this [width] is tried — in quarter rows, since a page
+     * scaled down with the image is rarely a whole number of rows tall — anchored on each abrupt
+     * row in turn, and the one whose predicted breaks land on abrupt rows most often wins, provided
+     * it is right nearly every time. Once it is trusted, every break between the first and last it
+     * confirmed counts: a boundary where two blank margins meet is invisible, but it is still a
+     * page boundary. Measured on real chapters, at full size, scaled and re-encoded, and halved,
+     * every page break was found; webtoons cropped to random panel heights were never split.
      */
-    private fun pageBreaks(jump: FloatArray, width: Int): List<Int>? {
-        val minPeriod = (width * MIN_PAGE_RATIO).toInt()
-        val maxPeriod = (width * MAX_PAGE_RATIO).toInt()
-        if (jump.size < minPeriod * MIN_BREAKS) return null
+    private fun pageBreaks(jump: FloatArray, jump2: FloatArray, width: Int): Detected? {
+        val n = jump.size
+        val minPeriod = width * MIN_PAGE_RATIO
+        val maxPeriod = width * MAX_PAGE_RATIO
+        if (n < minPeriod * MIN_BREAKS) return null
 
-        // A break may sit a row or two off a whole multiple of the page height.
-        val near = FloatArray(jump.size) { i ->
-            var m = 0f
-            for (k in maxOf(0, i - BREAK_SLACK)..minOf(jump.size - 1, i + BREAK_SLACK)) {
-                if (jump[k] > m) m = jump[k]
+        val near1 = slackMax(jump)
+        val near2 = slackMax(jump2)
+        val threshold1 = maxOf(percentile(near1), MIN_BREAK_JUMP)
+        val threshold2 = maxOf(percentile(near2), MIN_BREAK_JUMP)
+        val hit = BooleanArray(n) { near1[it] >= threshold1 || near2[it] >= threshold2 }
+        val score = FloatArray(n) { near1[it] / threshold1 + near2[it] / threshold2 }
+
+        // The rows a page break could be on; the right period has its breaks among them, so they
+        // are the only offsets worth trying. All of them: over a long strip the most abrupt rows
+        // are panel borders, and keeping only those would leave no page break to anchor on.
+        val anchors = (EDGE_MARGIN + 1 until n - EDGE_MARGIN)
+            .filter { y ->
+                hit[y] && (maxOf(0, y - BREAK_SLACK)..minOf(n - 1, y + BREAK_SLACK))
+                    .all { score[it] <= score[y] }
             }
-            m
-        }
-        val threshold = maxOf(
-            near.sortedArray()[(near.size * BREAK_PERCENTILE).toInt().coerceAtMost(near.size - 1)],
-            MIN_BREAK_JUMP
-        )
 
         var bestRate = -1f
         var bestMean = 0f
-        var bestPeriod = 0
-        var bestOffset = 0
-        for (period in minPeriod..maxPeriod) {
-            if (near.size < period * MIN_BREAKS) break
-            for (offset in 0 until period) {
+        var bestPeriod = 0f
+        var bestOffset = 0f
+        var period = minPeriod
+        while (period <= maxPeriod && n >= period * MIN_BREAKS) {
+            val tried = HashSet<Int>()
+            for (anchor in anchors) {
+                val offset = anchor - floor(anchor / period) * period
+                if (!tried.add((offset * 2).roundToInt())) continue
                 var teeth = 0
                 var hits = 0
                 var sum = 0f
-                var y = offset
-                while (y < near.size) {
-                    if (y > EDGE_MARGIN && y < near.size - EDGE_MARGIN) {
+                var k = 0
+                while (true) {
+                    val y = (offset + k * period).roundToInt()
+                    if (y >= n) break
+                    if (y > EDGE_MARGIN && y < n - EDGE_MARGIN) {
                         teeth++
-                        if (near[y] >= threshold) hits++
-                        sum += near[y]
+                        if (hit[y]) hits++
+                        sum += score[y]
                     }
-                    y += period
+                    k++
                 }
                 if (teeth < MIN_BREAKS) continue
                 val rate = hits.toFloat() / teeth
@@ -260,25 +397,64 @@ object PageEdges {
                     bestOffset = offset
                 }
             }
+            period += PERIOD_STEP
         }
+        android.util.Log.d("SmartPages", "period search n=$n width=$width best rate=$bestRate period=$bestPeriod anchors=${anchors.size}")
         if (bestRate < MIN_HIT_RATE) return null
 
-        val breaks = mutableListOf<Int>()
-        var y = bestOffset
-        while (y < near.size) {
-            // A miss is a page of another height (credits, a cover) — nothing to separate there.
-            if (y > EDGE_MARGIN && y < near.size - EDGE_MARGIN && near[y] >= threshold) {
-                // The exact row is the most abrupt one near the predicted position.
-                var k = y
-                for (j in maxOf(0, y - BREAK_SLACK)..minOf(jump.size - 1, y + BREAK_SLACK)) {
-                    if (jump[j] > jump[k]) k = j
-                }
-                breaks += k + 1
-            }
-            y += bestPeriod
+        // Teeth as (k, predicted row), k counting periods from the offset.
+        val teeth = generateSequence(0) { it + 1 }
+            .map { it to (bestOffset + it * bestPeriod).roundToInt() }
+            .takeWhile { it.second < n }
+            .filter { it.second > EDGE_MARGIN && it.second < n - EDGE_MARGIN }
+            .toList()
+        val firstHit = teeth.indexOfFirst { hit[it.second] }
+        val lastHit = teeth.indexOfLast { hit[it.second] }
+        if (firstHit < 0) return null
+        val span = teeth.subList(firstHit, lastHit + 1)
+
+        // Where each confirmed break really is: the most abrupt row near its prediction.
+        val observed = span.filter { hit[it.second] }.map { (k, y) ->
+            var best = y
+            for (j in maxOf(0, y - SNAP)..minOf(n - 1, y + SNAP)) if (jump[j] > jump[best]) best = j
+            k.toFloat() to (best + 1).toFloat()
         }
-        return breaks
+        // Stitched pages are all exactly one height, so a line through the breaks places each one
+        // better than its own most abrupt row: where a blank margin meets a blank margin, that row
+        // is where the artwork starts, a few rows off the page edge. The slope is a least-squares
+        // fit; the intercept is the median, which those margin-shifted breaks can't drag along.
+        val (fitPeriod, fitOffset) = if (observed.size >= 3) {
+            val meanK = observed.map { it.first }.average()
+            val meanY = observed.map { it.second }.average()
+            val slope = observed.sumOf { (it.first - meanK) * (it.second - meanY) } /
+                    observed.sumOf { (it.first - meanK) * (it.first - meanK) }
+            val intercept = observed.map { it.second - slope * it.first }.sorted()
+                .let { it[it.size / 2] }
+            slope to intercept
+        } else {
+            bestPeriod.toDouble() to (bestOffset + 1.0)
+        }
+        // Outside the confirmed span a miss is a page of another height (credits, a cover).
+        return Detected(
+            fitPeriod.toFloat(),
+            span.map { (k, _) -> (fitOffset + k * fitPeriod).toFloat().coerceIn(1f, n.toFloat()) }
+        )
     }
+
+    /** Stitched pages found in a strip: their [period] and where each starts, in rows. */
+    private class Detected(val period: Float, val positions: List<Float>)
+
+    /** Each value raised to the largest within [BREAK_SLACK] of it. */
+    private fun slackMax(values: FloatArray) = FloatArray(values.size) { i ->
+        var m = 0f
+        for (k in maxOf(0, i - BREAK_SLACK)..minOf(values.size - 1, i + BREAK_SLACK)) {
+            if (values[k] > m) m = values[k]
+        }
+        m
+    }
+
+    private fun percentile(values: FloatArray): Float =
+        values.sortedArray()[(values.size * BREAK_PERCENTILE).toInt().coerceAtMost(values.size - 1)]
 
     /**
      * [bitmap] — the page [url] was profiled from, or a zoomed render of it — redrawn with a
@@ -366,7 +542,7 @@ object PageEdges {
         }
         val mean = sum / n
         val deviation = sqrt(maxOf(0.0, sumSq / n - mean * mean))
-        return Edge(samples, difference(samples, inside), deviation)
+        return Edge(samples, inside, difference(samples, inside), deviation)
     }
 
     private fun difference(a: FloatArray, b: FloatArray): Double =
@@ -442,8 +618,14 @@ object PageEdges {
     private const val STRIP_RATIO = 2.2f
 
     /** Page height / width range searched for stitched pages; manga pages are ~1.4–1.5. */
-    private const val MIN_PAGE_RATIO = 1.2f
-    private const val MAX_PAGE_RATIO = 1.7f
+    const val MIN_PAGE_RATIO = 1.2f
+    const val MAX_PAGE_RATIO = 1.7f
+
+    /** Page heights are tried in steps this fine, in rows. */
+    private const val PERIOD_STEP = 0.25f
+
+    /** Pages either side of an image searched for the period. */
+    private const val SEARCH_PAGES = 8
 
     /** Neighbours on either side an image is judged together with for stitched pages. */
     private const val RUN_REACH = 4
@@ -454,14 +636,26 @@ object PageEdges {
     /** Share of predicted page breaks that must land on an abrupt row. */
     private const val MIN_HIT_RATE = 0.8f
 
+    /** Rows either side of a break compared for a shared coloured backdrop. */
+    private const val BACKDROP_BAND = 24
+
+    /** Colour spread (max − min channel) from which a band counts as coloured. */
+    private const val BACKDROP_SATURATION = 40f
+
+    /** Hue difference, in degrees, under which two coloured bands are the same backdrop. */
+    private const val BACKDROP_HUE = 30f
+
+    /** Rows either side of a predicted break searched for where it really is. */
+    private const val SNAP = 4
+
     /** Rows a page break may sit off its predicted position. */
     private const val BREAK_SLACK = 2
 
     /**
      * A row counts as abrupt from this percentile of the strip's rows... Page breaks in pages a
-     * site has scaled and re-encoded come out as low as the 93rd.
+     * site has scaled down and re-encoded come out that low.
      */
-    private const val BREAK_PERCENTILE = 0.95
+    private const val BREAK_PERCENTILE = 0.93
 
     /** ...and never below this jump, so a mostly blank strip can't make noise count. */
     private const val MIN_BREAK_JUMP = 20f
