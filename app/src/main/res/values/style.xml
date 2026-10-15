@@ -89,6 +89,55 @@
         <item name="android:layoutDirection">ltr</item>
     </style>
 
+    <!-- Material 3 alert dialogs, in the app's type and colours. Used for every AlertDialog the
+         app builds (see AlertDialogBuilder / materialDialog). MyPopup stays for the plain
+         Dialogs, popup menus and cast dialogs that lean on its window attributes. -->
+    <style name="ThemeOverlay.Dantotsu.Dialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+        <item name="android:fontFamily">@font/poppins_semi_bold</item>
+        <item name="alertDialogStyle">@style/Dantotsu.Dialog</item>
+        <item name="materialAlertDialogTitleTextStyle">@style/Dantotsu.Dialog.Title</item>
+        <item name="materialAlertDialogBodyTextStyle">@style/Dantotsu.Dialog.Body</item>
+        <item name="buttonBarPositiveButtonStyle">@style/Dantotsu.Dialog.Button</item>
+        <item name="buttonBarNegativeButtonStyle">@style/Dantotsu.Dialog.Button</item>
+        <item name="buttonBarNeutralButtonStyle">@style/Dantotsu.Dialog.Button</item>
+        <item name="android:layoutDirection">ltr</item>
+    </style>
+
+    <!-- The stock insets keep 80dp clear above and below, which on a phone is room taken from
+         the content: a tall dialog then has to scroll its buttons. 24dp still reads as floating. -->
+    <style name="Dantotsu.Dialog" parent="MaterialAlertDialog.Material3">
+        <item name="backgroundTint">?attr/colorSurface</item>
+        <item name="backgroundInsetStart">16dp</item>
+        <item name="backgroundInsetEnd">16dp</item>
+        <item name="backgroundInsetTop">24dp</item>
+        <item name="backgroundInsetBottom">24dp</item>
+    </style>
+
+    <style name="Dantotsu.Dialog.Title" parent="MaterialAlertDialog.Material3.Title.Text">
+        <item name="android:fontFamily">@font/poppins_bold</item>
+        <item name="android:textColor">?attr/colorPrimary</item>
+        <item name="android:textSize">20sp</item>
+    </style>
+
+    <style name="Dantotsu.Dialog.Body" parent="MaterialAlertDialog.Material3.Body.Text">
+        <item name="android:fontFamily">@font/poppins</item>
+        <item name="android:textColor">?attr/colorOnSurfaceVariant</item>
+        <item name="android:textSize">14sp</item>
+    </style>
+
+    <!-- Poppins bold runs wide, and at the stock 12dp padding / 8dp spacing / 64dp minimum three
+         buttons no longer fit a phone-width row, so the bar stacks them into a column. Tighter
+         spacing keeps a three-button row on one line. -->
+    <style name="Dantotsu.Dialog.Button" parent="Widget.Material3.Button.TextButton.Dialog">
+        <item name="android:fontFamily">@font/poppins_bold</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:minWidth">48dp</item>
+        <item name="android:paddingLeft">8dp</item>
+        <item name="android:paddingRight">8dp</item>
+        <item name="android:layout_marginLeft">4dp</item>
+        <item name="android:layout_marginStart">4dp</item>
+    </style>
+
     <style name="HeadingText">
         <item name="android:fontFamily">@font/poppins_bold</item>
         <item name="android:textColor">?attr/colorPrimary</item>

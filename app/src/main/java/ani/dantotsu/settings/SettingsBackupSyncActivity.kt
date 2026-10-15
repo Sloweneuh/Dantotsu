@@ -2,7 +2,7 @@ package ani.dantotsu.settings
 
 import android.Manifest
 import android.app.AlarmManager
-import android.app.AlertDialog
+import androidx.appcompat.app.AlertDialog
 import android.content.Context
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
@@ -58,6 +58,7 @@ import ani.dantotsu.toast
 import ani.dantotsu.util.AppNotices
 import ani.dantotsu.util.StoragePermissions
 import ani.dantotsu.util.customAlertDialog
+import ani.dantotsu.util.materialDialog
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -680,8 +681,7 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
         box.setSingleLine()
 
         val dialog =
-            AlertDialog
-                .Builder(this, R.style.MyPopup)
+            materialDialog()
                 .setTitle(getString(R.string.enter_password))
                 .setView(dialogView.root)
                 .setPositiveButton(R.string.ok, null)
@@ -720,7 +720,6 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
 
         dialog.window?.apply {
             setDimAmount(0.8f)
-            attributes.windowAnimations = android.R.style.Animation_Dialog
         }
         dialog.show()
 
@@ -761,7 +760,7 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
             android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
         )
 
-        val dialog = AlertDialog.Builder(this, R.style.MyPopup)
+        val dialog = materialDialog()
             .setTitle(R.string.backup_select_what_msg)
             .setView(dialogBinding.root)
             .setPositiveButton(R.string.button_backup, null)
@@ -784,7 +783,6 @@ class SettingsBackupSyncActivity : AppCompatActivity() {
 
         dialog.window?.apply {
             setDimAmount(0.5f)
-            attributes.windowAnimations = android.R.style.Animation_Dialog
         }
         dialog.show()
 

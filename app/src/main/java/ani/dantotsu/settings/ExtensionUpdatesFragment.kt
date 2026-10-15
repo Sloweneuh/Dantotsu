@@ -20,7 +20,7 @@ import ani.dantotsu.notifications.extension.RefusedExtensionUpdates
 import ani.dantotsu.parsers.novel.NovelExtension
 import ani.dantotsu.snackString
 import ani.dantotsu.util.Logger
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import ani.dantotsu.util.materialDialog
 import eu.kanade.tachiyomi.extension.anime.model.AnimeExtension
 import eu.kanade.tachiyomi.extension.manga.model.MangaExtension
 import kotlinx.coroutines.Dispatchers
@@ -91,7 +91,7 @@ class ExtensionUpdatesFragment : Fragment() {
     }
 
     private fun updateAllExtensions(items: List<UpdateItem>) {
-        MaterialAlertDialogBuilder(requireContext())
+        requireContext().materialDialog()
             .setTitle(getString(R.string.update_all_extensions))
             .setMessage(getString(R.string.update_extensions_count, items.size))
             .setPositiveButton("Update") { _, _ ->

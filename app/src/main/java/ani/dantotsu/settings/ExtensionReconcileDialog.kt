@@ -1,12 +1,12 @@
 package ani.dantotsu.settings
 
 import android.app.Activity
-import android.app.AlertDialog
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
 import ani.dantotsu.connections.sync.ExtensionSync
 import ani.dantotsu.toast
+import ani.dantotsu.util.materialDialog
 
 /**
  * The "your devices have different extensions" chooser.
@@ -30,7 +30,7 @@ fun Activity.showExtensionReconcileDialog(diff: ExtensionSync.Diff) {
         setPadding(0, pad, 0, pad)
     }
 
-    AlertDialog.Builder(this, R.style.MyPopup)
+    materialDialog()
         .setTitle(R.string.sync_extensions)
         .setView(recycler)
         .setPositiveButton(R.string.ext_reconcile_apply) { _, _ ->

@@ -42,7 +42,7 @@ object ManageFiltersDialog {
         val empty = view.findViewById<TextView>(R.id.manageFiltersEmpty)
         val chipGroup = view.findViewById<ChipGroup>(R.id.manageFiltersChipGroup)
 
-        var dialog: android.app.AlertDialog? = null
+        var dialog: androidx.appcompat.app.AlertDialog? = null
 
         fun onEmptied() {
             empty.visibility = View.VISIBLE

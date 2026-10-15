@@ -11,7 +11,7 @@ import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
 import androidx.appcompat.app.AppCompatActivity
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import ani.dantotsu.util.materialDialog
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isInvisible
@@ -279,7 +279,7 @@ class WidgetConfigureActivity : AppCompatActivity(), SimpleDialog.OnDialogResult
     private fun pickStat(index: Int, onPicked: (ProfileStat) -> Unit) {
         val options = ProfileStat.entries
         val labels = options.map { getString(it.labelRes) }.toTypedArray()
-        MaterialAlertDialogBuilder(this)
+        materialDialog()
             .setTitle(R.string.widget_stats_pick)
             .setSingleChoiceItems(labels, options.indexOf(prefs.statSlots[index])) { dialog, which ->
                 onPicked(options[which])

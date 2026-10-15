@@ -55,7 +55,7 @@ fun Activity.showSyncCodeDialog(onChanged: () -> Unit, onClosed: (() -> Unit)? =
     // holding a valid code and seeing none of each other's data.
     binding.syncCodeVariantWarning.text = "⚠ ${getString(R.string.sync_variant_warning)}"
 
-    var dialogRef: android.app.AlertDialog? = null
+    var dialogRef: androidx.appcompat.app.AlertDialog? = null
     customAlertDialog().apply {
         setTitle(R.string.sync_code_title)
         setCustomView(binding.root)
@@ -78,7 +78,7 @@ fun Activity.showSyncCodeDialog(onChanged: () -> Unit, onClosed: (() -> Unit)? =
 }
 
 /** Takes the width a dialog is normally capped at and gives it nearly the whole screen. */
-private fun android.app.AlertDialog.widenToScreen() {
+private fun androidx.appcompat.app.AlertDialog.widenToScreen() {
     runCatching {
         val width = (context.resources.displayMetrics.widthPixels * 0.95f).toInt()
         window?.setLayout(width, android.view.ViewGroup.LayoutParams.WRAP_CONTENT)
@@ -304,7 +304,7 @@ private fun Activity.showSyncLinkedDialog(onClosed: () -> Unit) {
     // whole card reads as cramped; widen it the same way the sync-code dialog does. Resized
     // synchronously right after show(), not from a show listener — see the comment in
     // showSyncCodeDialog for why the listener causes a visible flash at the default width.
-    var dialogRef: android.app.AlertDialog? = null
+    var dialogRef: androidx.appcompat.app.AlertDialog? = null
     customAlertDialog().apply {
         setTitle(R.string.sync_linked)
         setCustomView(binding.root)

@@ -58,6 +58,7 @@ import ani.dantotsu.others.ImageViewDialog
 import ani.dantotsu.others.getSerialized
 import ani.dantotsu.Mapper
 import ani.dantotsu.settings.bindQuickSettings
+import ani.dantotsu.util.materialDialog
 import ani.dantotsu.util.useSharedAxisTransitions
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
@@ -481,7 +482,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         // The Convert button requires knowing the MU list membership, which can load after match
         // detection. Show the popup immediately with the neutral button hidden, then reveal it once
         // we confirm the series is in the user's list (either already known or after a lazy load).
-        val dialog = AlertDialog.Builder(this, R.style.MyPopup)
+        val dialog = materialDialog()
             .setTitle(getString(R.string.switch_to_anilist_title))
             .setMessage(getString(R.string.switch_to_anilist_message))
             .setPositiveButton(android.R.string.ok) { _, _ -> openAniListMedia(anilistId) }
@@ -1018,7 +1019,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
                 linkOptions.add(Triple("Comick", "https://comick.io/comic/$comickSlug", R.drawable.ic_round_comick_24))
             }
 
-            val dialog = androidx.appcompat.app.AlertDialog.Builder(this, R.style.MyPopup).create()
+            val dialog = materialDialog().create()
             val titleView = android.widget.TextView(this).apply {
                 setText(R.string.share)
                 textSize = 20f

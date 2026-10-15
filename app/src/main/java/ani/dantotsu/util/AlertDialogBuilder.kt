@@ -1,14 +1,15 @@
 package ani.dantotsu.util
 
 import android.app.Activity
-import android.app.AlertDialog
 import android.content.Context
 import android.os.Build
 import android.view.WindowInsets
 import android.view.WindowManager
 import android.view.View
 import android.widget.ListAdapter
+import androidx.appcompat.app.AlertDialog
 import ani.dantotsu.R
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 class AlertDialogBuilder(private val context: Context) {
     private var title: String? = null
@@ -176,7 +177,7 @@ class AlertDialogBuilder(private val context: Context) {
     fun show() {
         if (context is Activity && context.isFinishing) return // Ensure context is valid
 
-        val builder = AlertDialog.Builder(context, R.style.MyPopup)
+        val builder = context.materialDialog()
         if (title != null) builder.setTitle(title)
         if (message != null) builder.setMessage(message)
         if (customView != null) builder.setView(customView)
@@ -235,7 +236,6 @@ class AlertDialogBuilder(private val context: Context) {
         }
         dialog.window?.apply {
             setDimAmount(0.5f)
-            attributes.windowAnimations = android.R.style.Animation_Dialog
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 val params = attributes
                 params.flags = params.flags or WindowManager.LayoutParams.FLAG_BLUR_BEHIND
@@ -286,3 +286,7 @@ class AlertDialogBuilder(private val context: Context) {
 fun Context.customAlertDialog(): AlertDialogBuilder {
     return AlertDialogBuilder(this)
 }
+
+/** A bare Material 3 builder in the app's dialog theme, for dialogs that need more than [customAlertDialog]. */
+fun Context.materialDialog(): MaterialAlertDialogBuilder =
+    MaterialAlertDialogBuilder(this, R.style.ThemeOverlay_Dantotsu_Dialog)

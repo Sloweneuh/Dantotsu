@@ -5,39 +5,52 @@
     android:layout_height="wrap_content"
     android:orientation="vertical">
 
-    <!-- What the box under the finger was read as, so a box is judged before it costs a
-         translation.
-
-         Fixed at two lines rather than wrapping to its content. This sits above the page, so every
-         line it gained or lost moved the page under the finger mid-gesture — and it changes on
-         every selection, every read and every result, which is to say constantly while a box is
-         being drawn. -->
-    <TextView
-        android:id="@+id/drawBoxesStatus"
+    <!-- The status line and the override share a row: the checkbox is hidden most of the time,
+         and a row of its own was page height lost to nothing on a phone. -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:ellipsize="end"
-        android:fontFamily="@font/poppins_semi_bold"
-        android:lines="2"
-        android:paddingHorizontal="24dp"
-        android:paddingBottom="8dp"
-        android:textSize="12sp"
-        tools:text="#3 · text read here" />
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="24dp"
+        android:paddingEnd="16dp"
+        android:paddingBottom="8dp">
 
-    <!-- Offered on a drawn box the scoring would otherwise stop: over artwork, or read as
-         something the recognizer does not believe. Held INVISIBLE rather than GONE for the rest of
-         the time, for the same reason the status line above is pinned to two lines — appearing and
-         disappearing would move the page under the finger. -->
-    <com.google.android.material.checkbox.MaterialCheckBox
-        android:id="@+id/drawBoxesTrust"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:fontFamily="@font/poppins_bold"
-        android:paddingHorizontal="24dp"
-        android:paddingBottom="8dp"
-        android:text="@string/mtl_draw_boxes_trust"
-        android:textSize="12sp"
-        android:visibility="invisible" />
+        <!-- What the box under the finger was read as, so a box is judged before it costs a
+             translation.
+
+             Fixed at two lines rather than wrapping to its content. This sits above the page, so
+             every line it gained or lost moved the page under the finger mid-gesture — and it
+             changes on every selection, every read and every result, which is to say constantly
+             while a box is being drawn. -->
+        <TextView
+            android:id="@+id/drawBoxesStatus"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:fontFamily="@font/poppins_semi_bold"
+            android:lines="2"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:textSize="12sp"
+            tools:text="#3 · text read here" />
+
+        <!-- Offered on a drawn box the scoring would otherwise stop: over artwork, or read as
+             something the recognizer does not believe. GONE the rest of the time so the status
+             gets the full width for the hint. Its height is held to the status line's (match_parent,
+             no minimum) so showing it never makes the row taller and moves the page under the
+             finger; only the status text re-wraps inside its fixed two lines. -->
+        <com.google.android.material.checkbox.MaterialCheckBox
+            android:id="@+id/drawBoxesTrust"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:minHeight="0dp"
+            android:layout_marginStart="8dp"
+            android:fontFamily="@font/poppins_bold"
+            android:text="@string/mtl_draw_boxes_trust"
+            android:textSize="12sp"
+            android:visibility="gone" />
+    </LinearLayout>
 
     <ScrollView
         android:layout_width="match_parent"

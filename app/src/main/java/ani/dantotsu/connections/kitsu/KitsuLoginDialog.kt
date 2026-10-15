@@ -10,7 +10,7 @@ import androidx.lifecycle.lifecycleScope
 import ani.dantotsu.R
 import ani.dantotsu.snackString
 import ani.dantotsu.util.Logger
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import ani.dantotsu.util.materialDialog
 import com.google.android.material.textfield.TextInputEditText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -32,7 +32,7 @@ class KitsuLoginDialog : DialogFragment() {
         passwordInput = view.findViewById(R.id.kitsuPassword)
         progressBar = view.findViewById(R.id.kitsuLoginProgress)
 
-        val dialog = MaterialAlertDialogBuilder(requireContext(), R.style.MyPopup)
+        val dialog = requireContext().materialDialog()
             .setTitle(getString(R.string.login_to_kitsu))
             .setView(view)
             .setPositiveButton(getString(R.string.login), null)

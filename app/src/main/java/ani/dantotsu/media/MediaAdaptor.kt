@@ -41,6 +41,7 @@ import ani.dantotsu.setAnimation
 import ani.dantotsu.setSafeOnClickListener
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
+import ani.dantotsu.util.materialDialog
 import com.flaviofaria.kenburnsview.RandomTransitionGenerator
 import java.io.Serializable
 
@@ -398,7 +399,7 @@ class MediaAdaptor(
                                 } catch (e: Exception) {
                                     // fallback to dialog on error
                                     try {
-                                        androidx.appcompat.app.AlertDialog.Builder(activity)
+                                        activity.materialDialog()
                                             .setTitle(activity.getString(R.string.info))
                                             .setMessage(media.malIntro)
                                             .setPositiveButton(android.R.string.ok, null)

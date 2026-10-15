@@ -7,7 +7,7 @@ import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
 import android.content.res.Resources
-import android.app.AlertDialog
+import androidx.appcompat.app.AlertDialog
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.Rect
@@ -2400,7 +2400,7 @@ class MangaReaderActivity : AppCompatActivity() {
                 syncing = true
                 binding.drawBoxesTrust.isChecked = offer && id in trusted
                 syncing = false
-                binding.drawBoxesTrust.visibility = if (offer) View.VISIBLE else View.INVISIBLE
+                binding.drawBoxesTrust.visibility = if (offer) View.VISIBLE else View.GONE
             }
             fun render() {
                 editor.setBoxes(

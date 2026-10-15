@@ -17,6 +17,7 @@ import ani.dantotsu.R
 import ani.dantotsu.getThemeColor
 import ani.dantotsu.snackString
 import ani.dantotsu.util.customAlertDialog
+import ani.dantotsu.util.materialDialog
 import com.google.android.material.chip.Chip
 import com.google.android.material.chip.ChipGroup
 import com.google.android.material.textfield.TextInputEditText
@@ -52,7 +53,7 @@ object SavedFiltersDialog {
         val emptyText = view.findViewById<TextView>(R.id.savedFiltersEmpty)
         val saveCurrentRow = view.findViewById<View>(R.id.savedFiltersSaveCurrent)
 
-        var dialog: android.app.AlertDialog? = null
+        var dialog: androidx.appcompat.app.AlertDialog? = null
 
         val adapter = SavedFiltersAdapter(
             onApply = { name ->
@@ -184,7 +185,7 @@ object SavedFiltersDialog {
             )
         )
 
-        val dlg = AlertDialog.Builder(context, R.style.MyPopup)
+        val dlg = context.materialDialog()
             .setTitle(titleRes)
             .setView(container)
             .setPositiveButton(R.string.save, null)

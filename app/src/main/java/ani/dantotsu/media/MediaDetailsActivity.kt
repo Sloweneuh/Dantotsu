@@ -57,6 +57,7 @@ import ani.dantotsu.media.anime.AnimeWatchFragment
 import ani.dantotsu.media.discover.DiscoverQueueSheet
 import ani.dantotsu.media.discover.DiscoveryQueue
 import ani.dantotsu.media.discover.DiscoverySource
+import ani.dantotsu.util.materialDialog
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import ani.dantotsu.media.comments.CommentsFragment
 import ani.dantotsu.media.manga.MangaReadFragment
@@ -1760,7 +1761,7 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
         }
 
         // Create custom dialog with icons in a row
-        val dialog = androidx.appcompat.app.AlertDialog.Builder(this, R.style.MyPopup).create()
+        val dialog = materialDialog().create()
 
         // Create custom title view with centered text
         val titleView =

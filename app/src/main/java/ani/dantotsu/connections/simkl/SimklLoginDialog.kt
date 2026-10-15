@@ -13,7 +13,7 @@ import ani.dantotsu.openLinkInBrowser
 import ani.dantotsu.snackString
 import ani.dantotsu.tryWithSuspend
 import ani.dantotsu.util.Logger
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import ani.dantotsu.util.materialDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -44,7 +44,7 @@ class SimklLoginDialog : DialogFragment() {
             openLinkInBrowser("${ani.dantotsu.connections.simkl.Simkl.WEB_URL}/pin")
         }
 
-        val dialog = MaterialAlertDialogBuilder(requireContext(), R.style.MyPopup)
+        val dialog = requireContext().materialDialog()
             .setTitle(getString(R.string.simkl_pin_title))
             .setView(view)
             .setNegativeButton(getString(R.string.cancel)) { _, _ -> dismiss() }

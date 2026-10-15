@@ -41,6 +41,7 @@ import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.setSafeOnClickListener
 import ani.dantotsu.stripSpansOnPaste
 import ani.dantotsu.util.Logger
+import ani.dantotsu.util.materialDialog
 import ani.dantotsu.util.whenViewResumed
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -2031,7 +2032,7 @@ class ComickInfoFragment : Fragment() {
                     val synopsis = episode.anime_episode_profiles?.synopsis?.takeIf { it.isNotBlank() }
                     if (synopsis != null) {
                         cb.root.setSafeOnClickListener {
-                            androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                            requireContext().materialDialog()
                                 .setTitle(cb.itemChapterNumber.text)
                                 .setMessage(synopsis)
                                 .setPositiveButton(R.string.close, null)
