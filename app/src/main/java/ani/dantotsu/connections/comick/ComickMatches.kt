@@ -96,6 +96,29 @@ object ComickMatches {
         return Index(pickedBySlug, matchedByHid, matchedBySlug)
     }
 
+    /**
+     * The AniList (else MangaUpdates) page a Comick manga — by HID or slug — is matched to now, or
+     * null when it has none. For notifications posted before the match was made: they stored, and
+     * their tap carries, Comick's own page, and a title the AniList check has since taken over is
+     * never revisited by the Comick check to have it moved.
+     */
+    fun trackerLink(hidOrSlug: String): String? {
+        val target = index().of(hidOrSlug, hidOrSlug) ?: return null
+        target.anilistId?.let { return "https://anilist.co/manga/$it" }
+        target.muSeriesId?.let { return "https://www.mangaupdates.com/series/${it.toString(36)}" }
+        return null
+    }
+
+    /** [trackerLink] for a Comick manga page link; null for any other link. */
+    fun trackerLinkFor(link: String): String? {
+        val uri = runCatching { java.net.URI(link) }.getOrNull() ?: return null
+        val host = uri.host?.lowercase()?.removePrefix("www.") ?: return null
+        if (!host.startsWith("comick.")) return null
+        val segments = uri.path.orEmpty().split('/').filter { it.isNotEmpty() }
+        if (segments.getOrNull(0) != "comic") return null
+        return segments.getOrNull(1)?.let { trackerLink(it) }
+    }
+
     /** Comick ids (HIDs or slugs) to the one AniList id each was matched to — none for several. */
     private fun unambiguous(matches: List<Pair<Int, List<String>>>): Map<String, Target> =
         matches.flatMap { (anilistId, ids) -> ids.map { it to anilistId } }

@@ -190,6 +190,19 @@ class ComickMediaActivity : AppCompatActivity() {
             }
             ?: run { finish(); return }
 
+        // A new-chapter notification posted before its title was matched still points here; open
+        // what it's matched to instead. Only for notification taps — anywhere else, the Comick
+        // page is what was asked for.
+        if (!isAnimeMode && intent.hasExtra(ani.dantotsu.notifications.NotificationReadState.EXTRA_KEY)) {
+            ani.dantotsu.connections.comick.ComickMatches.trackerLink(slug)
+                ?.let { ani.dantotsu.inAppIntentForLink(this, it) }
+                ?.let { redirect ->
+                    startActivity(redirect)
+                    finish()
+                    return
+                }
+        }
+
         val openChapters = intent.getBooleanExtra(EXTRA_OPEN_CHAPTERS, false)
 
         setupBottomBar(openChapters)

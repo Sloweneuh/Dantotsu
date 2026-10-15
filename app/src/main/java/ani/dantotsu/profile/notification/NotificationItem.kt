@@ -528,7 +528,11 @@ class NotificationItem(
                 (binding.notificationTextContainer.layoutParams as ViewGroup.MarginLayoutParams).marginStart = 125.toPx
 
                 binding.notificationBannerImage.setOnClickListener {
-                    if (notification.link != null && ani.dantotsu.openLinkInApp(notification.link)) {
+                    // A Comick title matched since this was stored opens as what it's matched to.
+                    val link = notification.link?.let {
+                        ani.dantotsu.connections.comick.ComickMatches.trackerLinkFor(it) ?: it
+                    }
+                    if (link != null && ani.dantotsu.openLinkInApp(link)) {
                         if (unread) {
                             NotificationReadState.markRead(readKey)
                             setRead()
