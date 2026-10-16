@@ -170,7 +170,21 @@ class HomeFragment : Fragment() {
      * Keyed by the RecyclerView's id, which is unique per row within the layout.
      */
     private fun rowUnchanged(viewId: Int, items: List<Any>): Boolean =
-        rowSignatureUnchanged(viewId, items.map(::rowIdOf))
+        rowSignatureUnchanged(viewId, items.flatMap { listOf(rowIdOf(it), rowStateOf(it)) })
+
+    /**
+     * What a row's card shows of the user's own entry, so a change to it redraws the row. The
+     * entries alone weren't enough: the order comes from the local read history and moves the
+     * moment a chapter is opened, so a reload landing before the progress update drew the new
+     * order with the old progress — and the reload after it, same entries in the same order, was
+     * skipped as unchanged, leaving the old progress on screen.
+     */
+    private fun rowStateOf(item: Any): Long = when (item) {
+        is Media -> listOf(item.userProgress, item.userStatus, item.userScore, item.isFav)
+            .hashCode().toLong()
+        is MUMedia -> listOf(item.userChapter, item.listId).hashCode().toLong()
+        else -> 0L
+    }
 
     private fun rowIdOf(item: Any): Long = when (item) {
         is Media -> item.id.toLong()
@@ -1670,8 +1684,12 @@ class HomeFragment : Fragment() {
         // This is implemented as a class-level method below so it can be triggered by broadcasts.
 
         var running = false
+        // A refresh asked for while one is running. It used to be dropped — the run ends by
+        // posting false over it — so a progress update landing mid-reload never got its reload.
+        var refreshAgain = false
         val live = Refresh.activity.getOrPut(1) { MutableLiveData(true) }
         live.observe(viewLifecycleOwner) { shouldRefresh ->
+            if (running && shouldRefresh) refreshAgain = true
             if (!running && shouldRefresh) {
                 running = true
                 scope.launch {
@@ -1741,9 +1759,10 @@ class HomeFragment : Fragment() {
                         binding.homeHiddenItemsContainer.visibility = View.GONE
                     }
 
-                    live.postValue(false)
                     _binding?.homeRefresh?.isRefreshing = false
                     running = false
+                    live.postValue(refreshAgain)
+                    refreshAgain = false
                 }
             }
         }
