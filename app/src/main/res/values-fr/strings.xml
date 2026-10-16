@@ -926,6 +926,8 @@
     <string name="continue_reading_chapter">Continuer la lecture :\n%1$s</string>
     <string name="episode">"Épisode "</string>
     <string name="episode_num">"Épisode %1$s"</string>
+    <string name="cast_unavailable">La diffusion n\'est pas disponible sur cet appareil</string>
+    <string name="cast_local_unsupported">Impossible de diffuser un épisode téléchargé, la TV ne peut pas accéder aux fichiers de cet appareil</string>
     <string name="mu_status_reading">En cours</string>
     <string name="mu_status_planning">Prévu</string>
     <string name="mu_status_completed">Terminé</string>

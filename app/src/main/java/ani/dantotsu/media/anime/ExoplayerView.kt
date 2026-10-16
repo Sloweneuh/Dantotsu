@@ -629,11 +629,13 @@ class ExoplayerView :
         isCastApiAvailable = GoogleApiAvailability
             .getInstance()
             .isGooglePlayServicesAvailable(this) == ConnectionResult.SUCCESS
-        try {
-            castContext =
-                CastContext.getSharedInstance(this, Executors.newSingleThreadExecutor()).result
-            castPlayer = CastPlayer(castContext!!)
-            castPlayer!!.setSessionAvailabilityListener(this)
+        // The shared CastContext is created asynchronously. Reading the task's result straight
+        // away threw "not yet complete" the first time in every process, which left casting
+        // without a player: the button connected to the TV and nothing ever played on it.
+        if (isCastApiAvailable) try {
+            CastContext.getSharedInstance(this, Executors.newSingleThreadExecutor())
+                .addOnSuccessListener(this) { context -> setUpCastPlayer(context) }
+                .addOnFailureListener(this) { isCastApiAvailable = false }
         } catch (e: Exception) {
             isCastApiAvailable = false
         }
@@ -775,14 +777,15 @@ class ExoplayerView :
             if (isInitialized) {
                 isPlayerPlaying = exoPlayer.isPlaying
                 (exoPlay.drawable as Animatable?)?.start()
-                if (isPlayerPlaying || castPlayer?.isPlaying == true) {
+                val cast = castPlayer?.takeIf { isCasting }
+                if (cast?.playWhenReady ?: isPlayerPlaying) {
                     Glide.with(this).load(R.drawable.anim_play_to_pause).into(exoPlay)
                     exoPlayer.pause()
-                    castPlayer?.pause()
+                    cast?.pause()
                 } else {
-                    if (castPlayer?.isPlaying == false && castPlayer?.currentMediaItem != null) {
+                    if (cast != null) {
                         Glide.with(this).load(R.drawable.anim_pause_to_play).into(exoPlay)
-                        castPlayer?.play()
+                        cast.play()
                     } else if (!isPlayerPlaying) {
                         Glide.with(this).load(R.drawable.anim_pause_to_play).into(exoPlay)
                         exoPlayer.play()
@@ -2360,6 +2363,10 @@ class ExoplayerView :
         exoPlayer.addAnalyticsListener(EventLogger())
         isInitialized = true
 
+        // A new episode or server while casting goes to the TV, not to the phone: the session
+        // only announces itself when it starts, so nothing else would send it there.
+        if (castPlayer?.isCastSessionAvailable == true) startCastPlayer()
+
         if (!hasExtSubtitles && !PrefManager.getVal<Boolean>(PrefName.Subtitles)) {
             onSetTrackGroupOverride(dummyTrack, TRACK_TYPE_TEXT)
         }
@@ -2433,7 +2440,10 @@ class ExoplayerView :
         super.onPause()
         orientationListener?.disable()
         if (isInitialized) {
-            if (castPlayer?.isPlaying == false && !isEnteringPip) {
+            // Leaving the app pauses the phone, never the TV. This used to ask whether the cast
+            // player was stopped, which is null — so never true — on a device without Play
+            // Services, and there the episode went on playing in the background.
+            if (!isCasting && !isEnteringPip) {
                 playerView.player?.pause()
             }
             if (exoPlayer.currentPosition > 5000) {
@@ -2493,8 +2503,9 @@ class ExoplayerView :
     }
 
     override fun onStop() {
-        // Always pause playback when the activity stops unless we're currently in PiP mode
-        if (!isInPictureInPictureMode() && isInitialized) {
+        // Always pause playback when the activity stops unless we're currently in PiP mode — or
+        // casting: the episode is on the TV, and leaving the app shouldn't stop it there.
+        if (!isInPictureInPictureMode() && isInitialized && !isCasting) {
             playerView.player?.pause()
         }
         super.onStop()
@@ -2914,9 +2925,11 @@ class ExoplayerView :
 
     private fun updateAniProgress() {
         val incognito: Boolean = PrefManager.getVal(PrefName.Incognito)
+        // Whichever player has the episode: watched on the TV counts as watched.
+        val position = (castPlayer?.takeIf { isCasting } ?: exoPlayer).currentPosition
         val episodeEnd =
             episodeLength > 0f &&
-            exoPlayer.currentPosition / episodeLength >
+            position / episodeLength >
                     PrefManager.getVal<Float>(
                         PrefName.WatchPercentage,
                     )
@@ -2989,6 +3002,11 @@ class ExoplayerView :
             functionstarted = false
             releasePlayer()
         }
+        // The cast session belongs to the app, not this screen, so it carries on; only this
+        // screen's hold on it goes (the availability listener would otherwise leak the activity).
+        castPlayer?.setSessionAvailabilityListener(null)
+        castPlayer?.release()
+        castPlayer = null
 
         super.onDestroy()
         finishAndRemoveTask()
@@ -2997,11 +3015,12 @@ class ExoplayerView :
     // Cast
     private fun cast() {
         val videoURL = video?.file?.url ?: return
-        val subtitleUrl = if (!hasExtSubtitles) video!!.file.url else subtitle!!.file.url
         val shareVideo = Intent(Intent.ACTION_VIEW)
         shareVideo.setDataAndType(videoURL.toUri(), "video/*")
         shareVideo.setPackage("com.instantbits.cast.webvideo")
-        if (subtitle != null) shareVideo.putExtra("subtitle", subtitleUrl)
+        // The selected external subtitle. This used to send the video's own url as the subtitle
+        // whenever the episode had no external ones but a subtitle was still set.
+        subtitle?.file?.url?.takeIf { hasExtSubtitles }?.let { shareVideo.putExtra("subtitle", it) }
         shareVideo.putExtra(
             "title",
             media.userPreferredName + " : Ep " + episodeTitleArr[currentEpisodeIndex],
@@ -3152,18 +3171,69 @@ class ExoplayerView :
             super.dispatchKeyEvent(event)
         }
 
+    /** The episode is playing on a cast device rather than on the phone. */
+    private val isCasting: Boolean
+        get() = castPlayer != null && ::playerView.isInitialized && playerView.player === castPlayer
+
+    private fun setUpCastPlayer(context: CastContext) {
+        if (isDestroyed || castPlayer != null) return
+        castContext = context
+        castPlayer = CastPlayer(context).apply {
+            setSessionAvailabilityListener(this@ExoplayerView)
+            // Once, here: it used to be added on every session start, so each reconnect stacked
+            // another copy of it.
+            addListener(castListener)
+        }
+        // A session that was already up (casting from the previous episode) carries on with
+        // this one.
+        if (castPlayer?.isCastSessionAvailable == true) onCastSessionAvailable()
+    }
+
+    /**
+     * Sends the current episode to the cast device, from where the phone was. Called when a
+     * session starts, and again for each new episode or server while one is up.
+     */
     private fun startCastPlayer() {
+        val cast = castPlayer ?: return
         if (!isCastApiAvailable) {
-            snackString("Cast API not available")
+            snackString(getString(R.string.cast_unavailable))
             return
         }
-        // make sure mediaItem is initialized and castPlayer is not null
-        if (!this::mediaItem.isInitialized || castPlayer == null) return
-        castPlayer?.setMediaItem(mediaItem)
-        castPlayer?.prepare()
-        playerView.player = castPlayer
+        if (!this::mediaItem.isInitialized || !isInitialized) return
+        val item = mediaItem
+        // A cast device fetches the stream itself: a file on this phone is out of its reach.
+        val scheme = item.localConfiguration?.uri?.scheme?.lowercase()
+        if (scheme != "http" && scheme != "https") {
+            snackString(getString(R.string.cast_local_unsupported))
+            return
+        }
+        val position = exoPlayer.currentPosition.coerceAtLeast(0L)
+        cast.setMediaItem(item.withCastMetadata(), position)
+        cast.playWhenReady = true
+        cast.prepare()
+        playerView.player = cast
+        // Stopped rather than paused, so the phone stops buffering what it isn't showing;
+        // it keeps its media source and only needs preparing again on the way back.
         exoPlayer.stop()
-        castPlayer?.addListener(
+        if (position > 5000) {
+            PrefManager.setCustomVal("${media.id}_${media.anime!!.selectedEpisode}", position)
+        }
+        discordRPC()
+    }
+
+    /** Title and artwork for the cast device's screen and the cast notification. */
+    private fun MediaItem.withCastMetadata(): MediaItem = buildUpon().setMediaMetadata(
+        androidx.media3.common.MediaMetadata.Builder()
+            .setTitle(media.userPreferredName)
+            .setSubtitle(
+                getString(R.string.episode_num, episode.number) +
+                    (episode.title?.takeIf { it.isNotBlank() }?.let { " · $it" } ?: "")
+            )
+            .setArtworkUri((episode.thumb?.url ?: media.cover)?.toUri())
+            .build()
+    ).build()
+
+    private val castListener =
             object : Player.Listener {
                 // if the player is paused changed, we want to update the UI
                 override fun onPlayWhenReadyChanged(
@@ -3191,15 +3261,24 @@ class ExoplayerView :
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
                     discordRPC()
                 }
-            },
-        )
-    }
+            }
 
+    /**
+     * Back on the phone, from where the TV got to. The phone's player still has the episode's
+     * media source — with its separate audio tracks and subtitles, which handing it the bare
+     * media item again (as this used to) dropped — so it is only prepared again and seeked.
+     */
     private fun startExoPlayer() {
-        exoPlayer.setMediaItem(mediaItem)
-        exoPlayer.prepare()
+        val cast = castPlayer
+        val position = cast?.takeIf { playerView.player === it }?.currentPosition ?: -1L
+        if (!::playerView.isInitialized) return
         playerView.player = exoPlayer
-        castPlayer?.stop()
+        if (!isInitialized) return
+        exoPlayer.prepare()
+        if (position > 0) {
+            exoPlayer.seekTo(position)
+            PrefManager.setCustomVal("${media.id}_${media.anime!!.selectedEpisode}", position)
+        }
         // Back on the phone: report its player, not the stopped cast session.
         discordRPC()
     }

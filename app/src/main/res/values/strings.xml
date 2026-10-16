@@ -1144,6 +1144,8 @@
     <string name="continue_reading_chapter">Continue Reading :\n%1$s</string>
     <string name="episode">"Episode "</string>
     <string name="episode_num">"Episode %1$s"</string>
+    <string name="cast_unavailable">Casting isn\'t available on this device</string>
+    <string name="cast_local_unsupported">Downloaded episodes can\'t be cast, the TV can\'t reach files on this device</string>
     <string name="episode_num_short" translatable="false">"Ep. %1$s"</string>
     <string name="chapter_num_short" translatable="false">"Ch. %1$s"</string>
     <string name="volume">Volume</string>
