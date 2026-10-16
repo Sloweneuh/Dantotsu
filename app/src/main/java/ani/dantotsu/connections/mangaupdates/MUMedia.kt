@@ -61,6 +61,14 @@ fun muStatusWord(raw: String?): String? {
         ?: text.takeIf { it.none(Char::isDigit) }
 }
 
+/** The AniList-style country of origin a MangaUpdates series type ("Manhwa", …) stands for. */
+fun muTypeCountry(type: String?): String? = when (type?.trim()?.lowercase()) {
+    "manga", "doujinshi" -> "JP"
+    "manhwa" -> "KR"
+    "manhua" -> "CN"
+    else -> null
+}
+
 /** Converts a [MUMedia] into a minimal [Media] suitable for display and random-pick. */
 fun MUMedia.toMedia(): Media = Media(
     id = muMediaKey(id),

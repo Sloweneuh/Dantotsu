@@ -465,6 +465,9 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
             if (followers > 0) enriched.favourites = followers
         }
         if (enriched.format.isNullOrBlank()) enriched.format = details.type
+        // MangaUpdates has no country, but its type says as much; the reader goes by it to tell
+        // a webtoon from paged manga, and translation to guess the script.
+        if (enriched.countryOfOrigin == null) enriched.countryOfOrigin = muTypeCountry(details.type)
         return enriched
     }
 

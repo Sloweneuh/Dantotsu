@@ -145,7 +145,7 @@ abstract class BaseImageAdapter(
         val gap = 16f.px
         if (!activity.smartSpacing) return 0 to gap
         val trailing = if (position >= itemCount - 1) gap else 0
-        if (position <= 0) return 0 to trailing
+        if (position <= 0 || activity.knownLongStrip) return 0 to trailing
         val before = pageUrl(position - 1)
         val after = pageUrl(position)
         // Going by real pages, the boundaries are known: every one is a page edge, except where a
@@ -165,7 +165,7 @@ abstract class BaseImageAdapter(
      */
     suspend fun judgeStitched(position: Int): Boolean {
         // Real pages are already cut where the breaks are.
-        if (!activity.smartSpacing || pages != null) return false
+        if (!activity.smartSpacing || activity.knownLongStrip || pages != null) return false
         val urls = (position - RUN_REACH..position + RUN_REACH).map { pageUrl(it) }
         return withContext(Dispatchers.Default) { PageEdges.judgeRun(urls, RUN_REACH) }
     }
@@ -393,7 +393,7 @@ abstract class BaseImageAdapter(
             bitmap: Bitmap,
             parent: View
         ): Bitmap {
-            if (url == null || !activity.smartSpacing) return bitmap
+            if (url == null || !activity.smartSpacing || activity.knownLongStrip) return bitmap
             val settings = activity.defaultSettings
             if (settings.layout == CurrentReaderSettings.Layouts.PAGED) return bitmap
             if (settings.direction != CurrentReaderSettings.Directions.TOP_TO_BOTTOM &&

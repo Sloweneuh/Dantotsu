@@ -169,10 +169,6 @@ class MangaReaderActivity : AppCompatActivity() {
         get() = defaultSettings.padding && PrefManager.getVal<Boolean>(PrefName.SmartPadding)
 
     /**
-     * A series published as a long strip, where a blank cut between two images is a gutter between
-     * panels rather than the margins of two pages. See [PageEdges.shouldSpace].
-     */
-    /**
      * Re-judges the gaps of the pages on screen shortly after a page is profiled — stitched page
      * breaks are found across neighbouring images, and those are often prefetched after the page
      * itself is shown. Coalesced, since the prefetcher profiles several in a row.
@@ -188,15 +184,56 @@ class MangaReaderActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * A series likely published as a long strip, where a blank cut between two images is a gutter
+     * between panels rather than the margins of two pages. See [PageEdges.shouldSpace].
+     */
     val preferJoinedPages: Boolean
-        get() = media.countryOfOrigin.let { it == "KR" || it == "CN" || it == "TW" }
+        get() = knownLongStrip || media.countryOfOrigin.let { it == "KR" || it == "CN" || it == "TW" }
+
+    /**
+     * The series is a long strip, so its images are all one strip whatever size the source cut
+     * them to: smart spacing joins every one of them straight away, with nothing to profile or
+     * scan first. Tags are user-added and missing on lesser-known webtoons, so origin and age
+     * count too: Korean series from the webtoon era on, Chinese ones from when manhua went
+     * vertical. Older ones were printed in pages (Priest, The Breaker, Hong Kong manhua), as are
+     * many Taiwanese ones, and those are left to [PageEdges] to judge. An unknown start date is
+     * taken as recent.
+     *
+     * Tags are AniList's (plain or "Name : rank%"), MangaUpdates categories, or an extension's
+     * genres. "Long Strip" means it everywhere, as does an extension's "Webtoon". MangaUpdates'
+     * "Webtoon/Webcomic" also covers Japanese web manga, which are paged, so it only counts for
+     * a series from Korea, China or Taiwan — where it rescues web-born ones older than the cutoff.
+     */
+    val knownLongStrip: Boolean
+        get() {
+            if (!::media.isInitialized) return false
+            val tags = media.tags.map { it.substringBefore(" : ").trim() } +
+                media.tagsInfo?.map { it.name }.orEmpty()
+            if (tags.any { t -> LONG_STRIP_TAGS.any { it.equals(t, ignoreCase = true) } }) return true
+            val origin = media.countryOfOrigin
+            if ((origin == "KR" || origin == "CN" || origin == "TW") &&
+                tags.any { t -> WEBTOON_TAGS.any { it.equals(t, ignoreCase = true) } }
+            ) return true
+            val year = media.startDate?.year ?: Int.MAX_VALUE
+            return when (origin) {
+                "KR" -> year >= 2011
+                "CN" -> year >= 2015
+                else -> false
+            }
+        }
+
+    private val LONG_STRIP_TAGS = listOf("Long Strip", "Webtoon", "Webtoons")
+    private val WEBTOON_TAGS = listOf(
+        "Webtoon/Webcomic", "Black and White Webtoon/Webcomic", "Partially Colored Webtoon"
+    )
 
     /**
      * Pages are what the reader goes by, rather than images: a chapter's images are analysed
      * ([ChapterPages]) and, where a source stitched or cut its pages, read as the real ones.
      */
     private val smartPages: Boolean
-        get() = PrefManager.getVal(PrefName.SmartPadding)
+        get() = PrefManager.getVal<Boolean>(PrefName.SmartPadding) && !knownLongStrip
 
     /** Real pages of the chapters scanned so far, by [chapterKey]. */
     private val pageMaps = HashMap<String, ChapterPageMap>()
@@ -2872,7 +2909,7 @@ class MangaReaderActivity : AppCompatActivity() {
         pageWidth: Int,
         itemView: View,
     ): List<ani.dantotsu.media.manga.translation.PaintedBlock> {
-        if (!smartSpacing || defaultSettings.layout == CurrentReaderSettings.Layouts.PAGED) return blocks
+        if (!smartSpacing || knownLongStrip || defaultSettings.layout == CurrentReaderSettings.Layouts.PAGED) return blocks
         if (defaultSettings.direction != TOP_TO_BOTTOM && defaultSettings.direction != BOTTOM_TO_TOP) {
             return blocks
         }

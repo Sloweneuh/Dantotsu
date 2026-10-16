@@ -152,6 +152,7 @@ class ContinuousChapterAdapter(
         val current = imageItemAt(position)
         val leading = when {
             afterDivider -> gap
+            activity.knownLongStrip -> 0
             // Going by real pages, the boundaries are known: every one is a page edge, except
             // where a webtoon's pieces were only split up for size.
             current?.page != null -> if (current.page.joinedToPrevious) 0 else gap
@@ -172,7 +173,7 @@ class ContinuousChapterAdapter(
      */
     private suspend fun judgeStitched(position: Int): Boolean {
         // Real pages are already cut where the breaks are.
-        if (!activity.smartSpacing || imageItemAt(position)?.page != null) return false
+        if (!activity.smartSpacing || activity.knownLongStrip || imageItemAt(position)?.page != null) return false
         val reach = BaseImageAdapter.RUN_REACH
         val urls = (position - reach..position + reach).map { imageItemAt(it)?.key }
         return withContext(Dispatchers.Default) { PageEdges.judgeRun(urls, reach) }

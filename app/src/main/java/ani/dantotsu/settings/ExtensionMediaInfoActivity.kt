@@ -872,6 +872,8 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
                     chaptersMap[selectedChapter.uniqueNumber()] = selectedChapter
 
                     val title = manga?.title ?: ""
+                    val genres = manga?.genre?.split(',')?.map { it.trim() }
+                        ?.filter { it.isNotEmpty() }.orEmpty()
                     val coverUrl = manga?.thumbnail_url
                     // The entry on the source's own site: there is no saved series record for
                     // media built here, so this is what Discord's media button links to.
@@ -894,7 +896,16 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
                             selectedChapter = selectedChapter,
                         ),
                         selected = Selected(sourceIndex = 0, langIndex = currentLangIndex),
-                    )
+                    ).apply {
+                        // The source's genres are all this media knows about the series; the
+                        // reader reads "Long Strip" / "Webtoon" and the origin off them.
+                        tags = ArrayList(genres)
+                        countryOfOrigin = when {
+                            genres.any { it.equals("Manhwa", true) } -> "KR"
+                            genres.any { it.equals("Manhua", true) } -> "CN"
+                            else -> null
+                        }
+                    }
                 }.getOrNull()
             }
             endProgress()
