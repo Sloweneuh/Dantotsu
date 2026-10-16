@@ -494,15 +494,13 @@ class UnreadChapterNotificationTask : Task {
                 .addAction(markAsReadAction(context, media, info.lastChapter, isAnime))
                 .setAutoCancel(true)
                 .setGroup(Notifications.GROUP_NEW_CHAPTERS)
-            val cover = icons[media.id]
-            if (cover != null) {
-                MediaCoverNotificationStyle.apply(
-                    context, builder, title, chapterText, cover, languageBadge, sourceText,
-                    label = genericLabel, showLabelInExpanded = isGrouped
-                )
-            } else {
-                builder.setStyle(NotificationCompat.BigTextStyle().bigText(plainBodyText))
-            }
+            // A cover that failed to load gets a placeholder rather than the plain text layout,
+            // which stood out as the one unstyled notification in the group.
+            val cover = icons[media.id] ?: MediaCoverNotificationStyle.placeholderCover(context)
+            MediaCoverNotificationStyle.apply(
+                context, builder, title, chapterText, cover, languageBadge, sourceText,
+                label = genericLabel, showLabelInExpanded = isGrouped
+            )
 
             notificationManager.notify(media.id, builder.build())
             notificationManager.notify(Notifications.ID_NEW_CHAPTERS, createGroupSummary(context))

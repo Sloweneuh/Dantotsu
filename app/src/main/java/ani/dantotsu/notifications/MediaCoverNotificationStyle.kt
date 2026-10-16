@@ -90,6 +90,29 @@ object MediaCoverNotificationStyle {
             .setCustomBigContentView(expanded)
     }
 
+    /**
+     * Stands in for a cover that couldn't be fetched, so the notification keeps the cover layout
+     * instead of dropping to the system's plain text one — a single text-only notification among
+     * covered ones reads as broken. A neutral tile with the app's mark, at the covers' proportions.
+     */
+    fun placeholderCover(context: Context): Bitmap {
+        val width = 216
+        val height = (width / COVER_ASPECT_RATIO).toInt()
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        canvas.drawColor(Color.rgb(0x5A, 0x5A, 0x5F))
+        androidx.core.content.ContextCompat.getDrawable(context, R.drawable.notification_icon)
+            ?.mutate()?.let { mark ->
+                val size = width / 2
+                val left = (width - size) / 2
+                val top = (height - size) / 2
+                mark.setBounds(left, top, left + size, top + size)
+                mark.setTint(Color.argb(0xB0, 0xFF, 0xFF, 0xFF))
+                mark.draw(canvas)
+            }
+        return bitmap
+    }
+
     /** Both cover layouts share this id for the (optional) generic label above the title. */
     private fun RemoteViews.setLabel(label: String?) {
         if (label == null) {

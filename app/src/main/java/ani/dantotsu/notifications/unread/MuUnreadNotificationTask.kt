@@ -286,15 +286,12 @@ class MuUnreadNotificationTask : Task {
                 .addAction(markAsReadAction(context, muMedia, latestChapter, notifId))
                 .setAutoCancel(true)
                 .setGroup(Notifications.GROUP_NEW_CHAPTERS)
-            val cover = icons[muMedia.id]
-            if (cover != null) {
-                MediaCoverNotificationStyle.apply(
-                    context, builder, title, chapterText, cover,
-                    sourceText = sourceText, label = genericLabel, showLabelInExpanded = isGrouped
-                )
-            } else {
-                builder.setStyle(NotificationCompat.BigTextStyle().bigText(plainBodyText))
-            }
+            // A cover that failed to load gets a placeholder rather than the plain text layout.
+            val cover = icons[muMedia.id] ?: MediaCoverNotificationStyle.placeholderCover(context)
+            MediaCoverNotificationStyle.apply(
+                context, builder, title, chapterText, cover,
+                sourceText = sourceText, label = genericLabel, showLabelInExpanded = isGrouped
+            )
 
             notificationManager.notify(notifId, builder.build())
             notificationManager.notify(Notifications.ID_NEW_CHAPTERS, createGroupSummary(context))

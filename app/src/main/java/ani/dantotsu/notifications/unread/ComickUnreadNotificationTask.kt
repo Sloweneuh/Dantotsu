@@ -750,15 +750,12 @@ class ComickUnreadNotificationTask : Task {
                 builder.addAction(markAsReadAction(context, item, canWrite))
             }
             builder.addAction(muteAction(context, item))
-            val cover = icons[item.notifId]
-            if (cover != null) {
-                MediaCoverNotificationStyle.apply(
-                    context, builder, title, chapterText, cover,
-                    sourceText = sourceText, label = genericLabel, showLabelInExpanded = isGrouped
-                )
-            } else {
-                builder.setStyle(NotificationCompat.BigTextStyle().bigText(plainBodyText))
-            }
+            // A cover that failed to load gets a placeholder rather than the plain text layout.
+            val cover = icons[item.notifId] ?: MediaCoverNotificationStyle.placeholderCover(context)
+            MediaCoverNotificationStyle.apply(
+                context, builder, title, chapterText, cover,
+                sourceText = sourceText, label = genericLabel, showLabelInExpanded = isGrouped
+            )
 
             notificationManager.notify(item.notifId, builder.build())
             // A repost's summary is already out with the notification it replaces; posting it
