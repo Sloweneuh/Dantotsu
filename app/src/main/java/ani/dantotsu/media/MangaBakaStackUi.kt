@@ -51,8 +51,9 @@ object MangaBakaStackUi {
     /**
      * The "Interest Stacks" section of a MangaBaka series page: a row of the public stacks that
      * include [seriesId], an arrow to the full list, and — when logged in — an "Add to a stack"
-     * button beside it. The
-     * section still shows with no stacks when logged in, so a first stack can be started from it.
+     * button beside it. With no stacks it still shows, saying so in its empty slot like the reviews
+     * section does — and, logged in, with the button to start a first one. Only when MangaBaka
+     * couldn't be reached is there nothing to say, and then it shows only to offer that button.
      */
     fun addSeriesStacks(
         activity: AppCompatActivity,
@@ -75,7 +76,9 @@ object MangaBakaStackUi {
             TrackerSessions.await()
             val loggedIn = MangaBaka.token != null
             val stacks = page?.data.orEmpty()
-            if (!isAlive() || placeholder.childCount > 0 || (stacks.isEmpty() && !loggedIn)) return@launch
+            // A failed fetch isn't "no stacks": say nothing rather than something untrue.
+            val knownEmpty = page != null && stacks.isEmpty()
+            if (!isAlive() || placeholder.childCount > 0 || (stacks.isEmpty() && !loggedIn && !knownEmpty)) return@launch
 
             val bind = ItemTitleRecyclerBinding.inflate(activity.layoutInflater, placeholder, false)
             bind.itemTitle.setText(R.string.interest_stacks)
@@ -89,6 +92,11 @@ object MangaBakaStackUi {
                 }
             } else {
                 bind.itemRecycler.visibility = View.GONE
+                if (knownEmpty) {
+                    bind.itemEmptyIcon.setImageResource(R.drawable.ic_round_mangabaka_stacks_24)
+                    bind.itemEmpty.setText(R.string.stack_none_for_series)
+                    bind.itemEmptyContainer.visibility = View.VISIBLE
+                }
             }
             if (loggedIn) {
                 // Sits beside the arrow, in the row header's own add slot.

@@ -3037,6 +3037,7 @@
     <string name="stack_tab_followed">Suivies</string>
     <string name="stack_new">Nouvelle pile</string>
     <string name="stack_list_empty">Aucune pile ici pour l\'instant</string>
+    <string name="stack_none_for_series">Aucune pile ne contient encore cette série</string>
     <string name="stack_field_title">Titre</string>
     <string name="stack_field_description">Description</string>
     <string name="stack_markdown_hint">Markdown, sans images</string>

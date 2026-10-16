@@ -3161,6 +3161,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="stack_tab_followed">Followed</string>
     <string name="stack_new">New stack</string>
     <string name="stack_list_empty">No stacks here yet</string>
+    <string name="stack_none_for_series">No stacks include this series yet</string>
     <string name="stack_field_title">Title</string>
     <string name="stack_field_description">Description</string>
     <string name="stack_markdown_hint">Markdown, no images</string>
