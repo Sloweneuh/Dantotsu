@@ -2,6 +2,7 @@ package ani.dantotsu.util
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.content.res.ColorStateList
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.MotionEvent
@@ -14,7 +15,9 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
 import ani.dantotsu.databinding.ViewTopBannerBinding
+import ani.dantotsu.settings.SectionCard
 import ani.dantotsu.statusBarHeight
+import com.google.android.material.color.MaterialColors
 import java.lang.ref.WeakReference
 import kotlin.math.abs
 import kotlin.math.max
@@ -150,6 +153,14 @@ object TopBanner {
 
         val binding = ViewTopBannerBinding.inflate(LayoutInflater.from(activity))
         val card = binding.root.apply { tag = TAG }
+        // The open look of a settings card: a wash of primary over the surface, so a notice stands
+        // out from the screen under it, and the icon on a tile tinted to match.
+        card.setCardBackgroundColor(SectionCard.fill(card, open = true))
+        binding.topBannerIconTile.backgroundTintList = ColorStateList.valueOf(
+            MaterialColors.compositeARGBWithAlpha(
+                MaterialColors.getColor(card, androidx.appcompat.R.attr.colorPrimary), 36
+            )
+        )
         binding.topBannerIcon.setImageResource(spec.iconRes)
         binding.topBannerTitle.text = spec.title
         binding.topBannerInfo.isVisible = !spec.subtitle.isNullOrBlank()

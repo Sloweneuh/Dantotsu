@@ -1,73 +1,111 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- An app notice (TopBanner). Drawn like the settings and form cards — the icon on a tinted tile,
+     title over a summary — with the card washed in the theme's primary and lifted, since unlike
+     those it floats over whatever screen it lands on. TopBanner sets the fill and the tile's tint. -->
 <com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/topBannerCard"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    app:cardCornerRadius="16dp"
-    app:cardElevation="8dp">
+    app:cardCornerRadius="24dp"
+    app:cardElevation="6dp"
+    app:strokeColor="?attr/colorOutlineVariant"
+    app:strokeWidth="1dp">
 
-    <LinearLayout
+    <!-- A frame, so the swipe handle floats over the bottom edge instead of taking a row of its
+         own: stacked, it pushed the content above the card's middle. -->
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:padding="12dp">
-
-        <!-- Tinted rather than left to each drawable's own fill: the notice icons are stock Material
-             vectors filled white, which is invisible on this card's surface in a light theme. -->
-        <ImageView
-            android:id="@+id/topBannerIcon"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
-            app:tint="?attr/colorPrimary"
-            tools:ignore="ContentDescription"
-            tools:src="@drawable/ic_round_sync_24" />
+        android:layout_height="wrap_content">
 
         <LinearLayout
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
-            android:layout_weight="1"
-            android:orientation="vertical">
+            android:gravity="center_vertical"
+            android:minHeight="72dp"
+            android:orientation="horizontal"
+            android:paddingStart="14dp"
+            android:paddingTop="12dp"
+            android:paddingEnd="12dp"
+            android:paddingBottom="12dp">
 
-            <TextView
-                android:id="@+id/topBannerTitle"
-                android:layout_width="match_parent"
+            <!-- Tinted rather than left to each drawable's own fill: the notice icons are stock
+                 Material vectors filled white, which is invisible on this card in a light theme. -->
+            <FrameLayout
+                android:id="@+id/topBannerIconTile"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@drawable/bg_settings_section_icon">
+
+                <ImageView
+                    android:id="@+id/topBannerIcon"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="center"
+                    app:tint="?attr/colorPrimary"
+                    tools:ignore="ContentDescription"
+                    tools:src="@drawable/ic_round_sync_24" />
+            </FrameLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/poppins_bold"
-                android:textSize="14sp"
-                tools:text="Settings updated from another device" />
+                android:layout_marginStart="14dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
 
-            <TextView
-                android:id="@+id/topBannerInfo"
-                android:layout_width="match_parent"
+                <TextView
+                    android:id="@+id/topBannerTitle"
+                    android:includeFontPadding="false"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/poppins_bold"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textSize="14sp"
+                    tools:text="Settings updated from another device" />
+
+                <TextView
+                    android:id="@+id/topBannerInfo"
+                    android:includeFontPadding="false"
+                    android:layout_marginTop="2dp"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/poppins"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:textSize="12sp"
+                    tools:text="Reload to see them on this screen" />
+
+            </LinearLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/topBannerAction"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/poppins"
-                android:textSize="12sp"
-                tools:text="Reload to see them on this screen" />
-
+                android:layout_marginStart="8dp"
+                android:fontFamily="@font/poppins_semi_bold"
+                android:letterSpacing="0"
+                android:maxLines="1"
+                android:minWidth="0dp"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                tools:text="Reload" /><!--
+                letterSpacing is zeroed because the Material3 button appearance applies some, and
+                the trailing space it adds after the last glyph isn't counted when the button
+                measures itself — with minWidth at 0 there is no slack left to absorb it, so the
+                final letter gets clipped. -->
         </LinearLayout>
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/topBannerAction"
-            style="@style/Widget.Material3.Button.TextButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:insetLeft="0dp"
-            android:insetRight="0dp"
-            android:maxLines="1"
-            android:minWidth="0dp"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
-            tools:text="Reload"
-            android:letterSpacing="0" /><!--
-            letterSpacing is zeroed because the Material3 text-button appearance applies some, and
-            the trailing space it adds after the last glyph isn't counted when the button measures
-            itself — with minWidth at 0 there is no slack left to absorb it, so the final letter
-            gets clipped. Explicit horizontal padding replaces the room the default insets gave. -->
-
-    </LinearLayout>
+        <!-- The card has no close button — it goes with a flick up or a swipe right — so it shows
+             the handle a draggable sheet would. -->
+        <View
+            android:layout_width="32dp"
+            android:layout_height="4dp"
+            android:layout_gravity="bottom|center_horizontal"
+            android:layout_marginBottom="5dp"
+            android:alpha="0.4"
+            android:background="@drawable/bg_top_banner_handle" />
+    </FrameLayout>
 
 </com.google.android.material.card.MaterialCardView>

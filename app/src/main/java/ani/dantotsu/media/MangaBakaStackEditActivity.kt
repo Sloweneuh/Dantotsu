@@ -30,6 +30,7 @@ import ani.dantotsu.initActivity
 import ani.dantotsu.loadImage
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.px
+import ani.dantotsu.settings.SectionCard
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.snackString
@@ -77,7 +78,7 @@ class MangaBakaStackEditActivity : AppCompatActivity() {
         binding = ActivityMangabakaStackEditBinding.inflate(layoutInflater)
         setContentView(binding.root)
         initActivity(this)
-        binding.stackEditBar.updateLayoutParams<ViewGroup.MarginLayoutParams> { topMargin = statusBarHeight }
+        binding.stackEditBar.root.updateLayoutParams<ViewGroup.MarginLayoutParams> { topMargin = statusBarHeight }
         binding.stackEditRecycler.updatePadding(bottom = navBarHeight + 24f.px)
 
         // Before the header is inflated against the RecyclerView: its layout params come from the
@@ -85,7 +86,11 @@ class MangaBakaStackEditActivity : AppCompatActivity() {
         binding.stackEditRecycler.layoutManager = LinearLayoutManager(this)
         header = ItemStackEditHeaderBinding.inflate(layoutInflater, binding.stackEditRecycler, false)
         stackId = intent.getLongExtra(EXTRA_STACK_ID, -1L).takeIf { it > 0 }
-        binding.stackEditTitle.setText(if (stackId == null) R.string.stack_new else R.string.stack_edit)
+        binding.stackEditBar.formBarTitle.setText(if (stackId == null) R.string.stack_new else R.string.stack_edit)
+        binding.stackEditBar.formBarPrimary.apply {
+            setText(if (stackId == null) R.string.form_action_create else R.string.save)
+            setIconResource(R.drawable.ic_round_check_24)
+        }
 
         setUpChips(rating = "safe", visibility = "draft")
         header.stackEditName.doAfterTextChanged {
@@ -100,8 +105,8 @@ class MangaBakaStackEditActivity : AppCompatActivity() {
         binding.stackEditRecycler.adapter = entriesAdapter
         touchHelper.attachToRecyclerView(binding.stackEditRecycler)
 
-        binding.stackEditBack.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
-        binding.stackEditSave.setOnClickListener { save() }
+        binding.stackEditBar.formBarClose.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
+        binding.stackEditBar.formBarPrimary.setOnClickListener { save() }
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
                 if (!dirty) {
@@ -186,7 +191,9 @@ class MangaBakaStackEditActivity : AppCompatActivity() {
         }
     }
 
-    private fun chip(label: Int, value: String, checked: Boolean) = Chip(this).apply {
+    private fun chip(label: Int, value: String, checked: Boolean) = (layoutInflater.inflate(
+        R.layout.item_form_choice_chip, header.stackEditRatingChips, false
+    ) as Chip).apply {
         setText(label)
         tag = value
         isCheckable = true
@@ -264,7 +271,7 @@ class MangaBakaStackEditActivity : AppCompatActivity() {
 
     private fun setSaving(on: Boolean) {
         saving = on
-        binding.stackEditSave.isEnabled = !on
+        binding.stackEditBar.formBarPrimary.isEnabled = !on
         binding.stackEditProgress.isVisible = on
     }
 
@@ -393,6 +400,8 @@ class MangaBakaStackEditActivity : AppCompatActivity() {
                 return object : RecyclerView.ViewHolder(header.root) {}
             }
             val vh = VH(ItemStackEditEntryBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+            // Filled like the form's sections above, so the list reads as part of the form.
+            vh.b.root.setCardBackgroundColor(SectionCard.fill(vh.b.root, open = false))
             vh.b.stackEntryHandle.setOnTouchListener { _, ev ->
                 if (ev.actionMasked == MotionEvent.ACTION_DOWN) touchHelper.startDrag(vh)
                 false
@@ -432,7 +441,10 @@ class MangaBakaStackEditActivity : AppCompatActivity() {
             val vh = VH(ItemStackEditEntryBinding.inflate(LayoutInflater.from(parent.context), parent, false))
             vh.b.stackEntryHandle.visibility = View.GONE
             vh.b.stackEntryRank.visibility = View.GONE
-            vh.b.stackEntryRemove.setImageResource(R.drawable.ic_add)
+            // Flat in the dialog, which is a surface of its own.
+            vh.b.root.setCardBackgroundColor(android.graphics.Color.TRANSPARENT)
+            vh.b.root.updateLayoutParams<ViewGroup.MarginLayoutParams> { marginStart = 0; marginEnd = 0 }
+            vh.b.stackEntryRemove.setIconResource(R.drawable.ic_add)
             val pick = View.OnClickListener {
                 items.getOrNull(vh.bindingAdapterPosition)?.let(onPick)
             }

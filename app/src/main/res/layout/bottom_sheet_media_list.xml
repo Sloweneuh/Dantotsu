@@ -24,7 +24,9 @@
             android:id="@+id/mediaListLayout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_margin="32dp"
+            android:layout_marginHorizontal="20dp"
+            android:layout_marginTop="32dp"
+            android:layout_marginBottom="24dp"
             android:orientation="vertical"
             android:visibility="invisible"
             tools:visibility="visible">
@@ -39,15 +41,22 @@
                     android:layout_width="0dp"
                     android:layout_height="54dp"
                     android:layout_weight="1"
-                    android:fontFamily="@font/poppins"
+                    android:fontFamily="@font/poppins_bold"
                     android:gravity="center_vertical"
+                    android:textColor="?attr/colorOnSurface"
                     android:paddingStart="16dp"
                     android:paddingEnd="16dp"
                     android:text="@string/list_editor"
-                    android:textSize="20sp"
-                    android:textStyle="bold" />
+                    android:textSize="20sp" />
 
             </LinearLayout>
+
+            <ani.dantotsu.others.FormSection
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                app:icon="@drawable/ic_round_playlist_play_24"
+                app:title="@string/list_editor_progress_group">
 
             <com.google.android.material.textfield.TextInputLayout
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
@@ -74,7 +83,7 @@
                     android:padding="8dp"
                     android:text="@string/watch"
                     android:textAllCaps="true"
-                    android:textColor="?android:attr/textColorSecondary"
+                    android:textColor="?attr/colorOnSurface"
                     android:textSize="14sp"
                     tools:ignore="LabelFor,TextContrastCheck,DuplicateSpeakableTextCheck" />
 
@@ -112,7 +121,7 @@
                         android:inputType="number"
                         android:maxLength="4"
                         android:padding="8dp"
-                        android:textColor="?android:attr/textColorSecondary"
+                        android:textColor="?attr/colorOnSurface"
                         android:textSize="14sp"
                         tools:ignore="LabelFor,TextContrastCheck" />
 
@@ -124,7 +133,7 @@
 
                 <Button
                     android:id="@+id/mediaListVolumeIncrement"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    style="@style/Widget.Material3.Button.TonalButton"
                     android:layout_width="wrap_content"
                     android:layout_height="48dp"
                     android:layout_gravity="center_vertical"
@@ -139,7 +148,6 @@
                     android:text="+1\u0020"
                     android:textSize="16sp"
                     app:cornerRadius="16dp"
-                    app:strokeColor="?attr/colorPrimaryContainer"
                     tools:ignore="HardcodedText" />
 
             </LinearLayout>
@@ -176,7 +184,7 @@
                         android:inputType="number"
                         android:maxLength="4"
                         android:padding="8dp"
-                        android:textColor="?android:attr/textColorSecondary"
+                        android:textColor="?attr/colorOnSurface"
                         android:textSize="14sp"
                         tools:ignore="LabelFor,TextContrastCheck" />
 
@@ -188,7 +196,7 @@
 
                 <Button
                     android:id="@+id/mediaListIncrement"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    style="@style/Widget.Material3.Button.TonalButton"
                     android:layout_width="wrap_content"
                     android:layout_height="48dp"
                     android:layout_marginTop="-2dp"
@@ -203,7 +211,6 @@
                     android:text="+1\u0020"
                     android:textSize="16sp"
                     app:cornerRadius="16dp"
-                    app:strokeColor="?attr/colorPrimaryContainer"
                     tools:ignore="HardcodedText" />
 
             </LinearLayout>
@@ -234,11 +241,20 @@
                     android:fontFamily="@font/poppins_bold"
                     android:inputType="numberDecimal"
                     android:padding="8dp"
-                    android:textColor="?android:attr/textColorSecondary"
+                    android:textColor="?attr/colorOnSurface"
                     android:textSize="14sp"
                     tools:ignore="LabelFor,TextContrastCheck" />
 
             </com.google.android.material.textfield.TextInputLayout>
+
+            </ani.dantotsu.others.FormSection>
+
+            <ani.dantotsu.others.FormSection
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                app:icon="@drawable/ic_round_date_range_24"
+                app:title="@string/list_editor_dates_group">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -251,8 +267,7 @@
                     style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                     android:layout_width="0dp"
                     android:layout_height="56dp"
-                    android:layout_marginTop="16dp"
-                    android:layout_marginEnd="16dp"
+                    android:layout_marginEnd="12dp"
                     android:layout_weight="1"
                     android:hint="@string/started_at"
                     app:boxCornerRadiusBottomEnd="16dp"
@@ -276,7 +291,7 @@
                         android:padding="8dp"
                         android:singleLine="true"
                         android:textAllCaps="true"
-                        android:textColor="?android:attr/textColorSecondary"
+                        android:textColor="?attr/colorOnSurface"
                         android:textSize="14sp"
                         tools:ignore="LabelFor,TextContrastCheck" />
 
@@ -287,8 +302,6 @@
                     style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                     android:layout_width="0dp"
                     android:layout_height="56dp"
-                    android:layout_marginTop="16dp"
-                    android:layout_marginBottom="16dp"
                     android:layout_weight="1"
                     android:hint="@string/completed_at"
                     app:boxCornerRadiusBottomEnd="16dp"
@@ -311,13 +324,14 @@
                         android:padding="8dp"
                         android:singleLine="true"
                         android:textAllCaps="true"
-                        android:textColor="?android:attr/textColorSecondary"
+                        android:textColor="?attr/colorOnSurface"
                         android:textSize="14sp"
                         tools:ignore="LabelFor,TextContrastCheck" />
 
                 </com.google.android.material.textfield.TextInputLayout>
 
             </LinearLayout>
+            </ani.dantotsu.others.FormSection>
 
             <!-- Carded like the collapsible groups on the settings screens: Xpandable builds the
                  icon/title/summary header and the chevron that turns, so the one group in this
@@ -359,7 +373,7 @@
                         android:inputType="number"
                         android:maxLength="4"
                         android:padding="8dp"
-                        android:textColor="?android:attr/textColorSecondary"
+                        android:textColor="?attr/colorOnSurface"
                         android:textSize="14sp"
                         tools:ignore="LabelFor,TextContrastCheck" />
 
@@ -390,7 +404,7 @@
                         android:fontFamily="@font/poppins_bold"
                         android:inputType="textMultiLine"
                         android:padding="8dp"
-                        android:textColor="?android:attr/textColorSecondary"
+                        android:textColor="?attr/colorOnSurface"
                         android:textSize="14sp"
                         tools:ignore="LabelFor,TextContrastCheck" />
 
@@ -451,7 +465,7 @@
 
                 <Button
                     android:id="@+id/mediaListDelete"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    style="@style/Widget.Material3.Button.OutlinedButton.Icon"
                     android:layout_width="128dp"
                     android:layout_height="56dp"
                     android:layout_gravity="center"
@@ -462,11 +476,14 @@
                     android:text="@string/delete"
                     android:textSize="16sp"
                     app:cornerRadius="16dp"
-                    app:strokeColor="?attr/colorPrimaryContainer" />
+                    android:textColor="?attr/colorError"
+                    app:icon="@drawable/ic_round_delete_24"
+                    app:iconTint="?attr/colorError"
+                    app:strokeColor="?attr/colorError" />
 
                 <Button
                     android:id="@+id/mediaListSave"
-                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    style="@style/Widget.Material3.Button.Icon"
                     android:layout_width="0dp"
                     android:layout_height="56dp"
                     android:layout_marginStart="16dp"
@@ -478,7 +495,7 @@
                     android:text="@string/save"
                     android:textSize="16sp"
                     app:cornerRadius="16dp"
-                    app:strokeColor="?attr/colorPrimaryContainer" />
+                    app:icon="@drawable/ic_round_check_24" />
             </LinearLayout>
         </LinearLayout>
 
@@ -487,7 +504,8 @@
             android:layout_height="4dp"
             android:layout_gravity="center_horizontal"
             android:layout_marginTop="14dp"
-            app:cardBackgroundColor="?attr/colorPrimary"
+            android:alpha="0.4"
+            app:cardBackgroundColor="?attr/colorOnSurfaceVariant"
             app:cardCornerRadius="2dp"
             app:cardElevation="0dp">
 

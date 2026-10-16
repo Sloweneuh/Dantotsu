@@ -30,4 +30,11 @@
              card further than every field beside it. -->
         <attr name="cardInset" format="boolean" />
     </declare-styleable>
+
+    <!-- A form's group of fields, carded like the settings sections; see FormSection. -->
+    <declare-styleable name="FormSection">
+        <attr name="title" />
+        <attr name="summary" />
+        <attr name="icon" />
+    </declare-styleable>
 </resources>

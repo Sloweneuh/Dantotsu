@@ -1,10 +1,11 @@
 package ani.dantotsu.media
 
 import android.os.Bundle
+import android.view.View
 import android.view.ViewGroup
-import android.widget.SeekBar
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.updateLayoutParams
+import androidx.core.widget.doAfterTextChanged
 import ani.dantotsu.R
 import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.databinding.ActivityReviewWriteBinding
@@ -32,11 +33,16 @@ class ReviewWriteActivity : AppCompatActivity() {
         setContentView(binding.root)
         AndroidBug5497Workaround.assistActivity(this) {}
 
-        binding.reviewWriteToolbar.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+        binding.reviewWriteToolbar.root.updateLayoutParams<ViewGroup.MarginLayoutParams> {
             topMargin = statusBarHeight
         }
-        binding.reviewMarkdownToolbar.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+        binding.reviewMarkdownToolbar.root.updateLayoutParams<ViewGroup.MarginLayoutParams> {
             bottomMargin += navBarHeight
+        }
+        binding.reviewWriteToolbar.formBarTitle.setText(R.string.review_write_title)
+        binding.reviewWriteToolbar.formBarPrimary.apply {
+            setText(R.string.form_action_post)
+            setIconResource(R.drawable.ic_round_send_24)
         }
 
         mediaId = intent.getIntExtra("mediaId", -1)
@@ -47,25 +53,31 @@ class ReviewWriteActivity : AppCompatActivity() {
         }
 
         updateScoreLabel()
-        binding.reviewScoreSeekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
-                score = progress + 1
-                updateScoreLabel()
-            }
-            override fun onStartTrackingTouch(seekBar: SeekBar) {}
-            override fun onStopTrackingTouch(seekBar: SeekBar) {}
-        })
+        binding.reviewScoreSeekBar.addOnChangeListener { _, value, _ ->
+            score = value.toInt()
+            updateScoreLabel()
+        }
 
-        binding.reviewWriteBack.enableSettingsLongPress()
-        binding.reviewWriteBack.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
+        // How far the body still is from AniList's minimum, as it's written.
+        updateBodyHelper()
+        binding.reviewBodyInput.doAfterTextChanged { updateBodyHelper() }
 
-        binding.reviewSubmitButton.setOnClickListener { submitReview() }
+        binding.reviewWriteToolbar.formBarClose.enableSettingsLongPress()
+        binding.reviewWriteToolbar.formBarClose.setOnClickListener { onBackPressedDispatcher.onBackPressed() }
+
+        binding.reviewWriteToolbar.formBarPrimary.setOnClickListener { submitReview() }
 
         setupMarkdownButtons()
     }
 
     private fun updateScoreLabel() {
-        binding.reviewScoreLabel.text = getString(R.string.review_score_label_value, score)
+        binding.reviewScoreLabel.text = getString(R.string.review_score_value, score)
+    }
+
+    private fun updateBodyHelper() {
+        val missing = MIN_BODY_LENGTH - (binding.reviewBodyInput.text?.trim()?.length ?: 0)
+        binding.reviewBodyLayout.helperText =
+            if (missing > 0) getString(R.string.review_body_remaining, missing) else null
     }
 
     private fun submitReview() {
@@ -77,7 +89,7 @@ class ReviewWriteActivity : AppCompatActivity() {
             toast(getString(R.string.review_summary_too_short))
             return
         }
-        if (body.length < 2200) {
+        if (body.length < MIN_BODY_LENGTH) {
             toast(getString(R.string.review_body_too_short))
             return
         }
@@ -125,16 +137,22 @@ class ReviewWriteActivity : AppCompatActivity() {
             }
         }
 
-        binding.formatBold.setOnClickListener { applyFormat("**") }
-        binding.formatItalic.setOnClickListener { applyFormat("_") }
-        binding.formatSpoiler.setOnClickListener { applyFormat("~!") }
-        binding.formatStrikethrough.setOnClickListener { applyFormat("~~") }
-        binding.formatQuote.setOnClickListener {
+        val bar = binding.reviewMarkdownToolbar
+        // The shared bar carries every format the post composer has; a review wires these.
+        listOf(
+            bar.formatTitle, bar.formatCode, bar.formatListUnordered, bar.formatListOrdered,
+            bar.formatImage, bar.formatYoutube, bar.formatVideo,
+        ).forEach { it.visibility = View.GONE }
+        bar.formatBold.setOnClickListener { applyFormat("**") }
+        bar.formatItalic.setOnClickListener { applyFormat("_") }
+        bar.formatSpoiler.setOnClickListener { applyFormat("~!", "!~") }
+        bar.formatStrikethrough.setOnClickListener { applyFormat("~~") }
+        bar.formatQuote.setOnClickListener {
             val start = bodyInput.selectionStart
             bodyInput.text?.insert(start, "> ")
             bodyInput.setSelection(start + 2)
         }
-        binding.formatLink.setOnClickListener {
+        bar.formatLink.setOnClickListener {
             val start = bodyInput.selectionStart
             val end = bodyInput.selectionEnd
             val text = bodyInput.text ?: return@setOnClickListener
@@ -147,6 +165,11 @@ class ReviewWriteActivity : AppCompatActivity() {
                 bodyInput.setSelection(start + 1)
             }
         }
-        binding.formatCenter.setOnClickListener { applyFormat("~~~") }
+        bar.formatCenter.setOnClickListener { applyFormat("~~~") }
+    }
+
+    companion object {
+        /** AniList's shortest accepted review body. */
+        private const val MIN_BODY_LENGTH = 2200
     }
 }

@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Markdown formatting bar under a composer (posts, replies, messages, reviews): one row of
+     labelled icon buttons that scrolls sideways, on a pill carded like the form above it. A screen
+     that supports fewer formats hides the buttons it doesn't wire up. -->
+<ani.dantotsu.others.FormSection xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginHorizontal="12dp"
+    android:layout_marginBottom="8dp"
+    android:paddingHorizontal="4dp"
+    android:paddingVertical="4dp">
+
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:overScrollMode="never"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/formatBold"
+                style="@style/Widget.Dantotsu.MarkdownButton"
+                android:contentDescription="@string/md_bold"
+                android:tooltipText="@string/md_bold"
+                app:icon="@drawable/format_bold_24" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/formatItalic"
+                style="@style/Widget.Dantotsu.MarkdownButton"
+                android:contentDescription="@string/md_italic"
+                android:tooltipText="@string/md_italic"
+                app:icon="@drawable/format_italic_24" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/formatStrikethrough"
+                style="@style/Widget.Dantotsu.MarkdownButton"
+                android:contentDescription="@string/md_strikethrough"
+                android:tooltipText="@string/md_strikethrough"
+                app:icon="@drawable/format_strikethrough_24" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/formatSpoiler"
+                style="@style/Widget.Dantotsu.MarkdownButton"
+                android:contentDescription="@string/md_spoiler"
+                android:tooltipText="@string/md_spoiler"
+                app:icon="@drawable/format_spoiler_24" />
+
+            <View
+                android:layout_width="1dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center_vertical"
+                android:layout_marginHorizontal="4dp"
+                android:alpha="0.5"
+                android:background="?attr/colorOutlineVariant" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/formatTitle"
+                style="@style/Widget.Dantotsu.MarkdownButton"
+                android:contentDescription="@string/md_heading"
+                android:tooltipText="@string/md_heading"
+                app:icon="@drawable/format_title_24" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/formatQuote"
+                style="@style/Widget.Dantotsu.MarkdownButton"
+                android:contentDescription="@string/md_quote"
+                android:tooltipText="@string/md_quote"
+                app:icon="@drawable/format_quote_24" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/formatCode"
+                style="@style/Widget.Dantotsu.MarkdownButton"
+                android:contentDescription="@string/md_code"
+                android:tooltipText="@string/md_code"
+                app:icon="@drawable/format_code_24" />
+
+            <View
+                android:layout_width="1dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center_vertical"
+                android:layout_marginHorizontal="4dp"
+                android:alpha="0.5"
+                android:background="?attr/colorOutlineVariant" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/formatListUnordered"
+                style="@style/Widget.Dantotsu.MarkdownButton"
+                android:contentDescription="@string/md_list_bulleted"
+                android:tooltipText="@string/md_list_bulleted"
+                app:icon="@drawable/format_list_bulleted_24" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/formatListOrdered"
+                style="@style/Widget.Dantotsu.MarkdownButton"
+                android:contentDescription="@string/md_list_numbered"
+                android:tooltipText="@string/md_list_numbered"
+                app:icon="@drawable/format_list_numbered_24" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/formatCenter"
+                style="@style/Widget.Dantotsu.MarkdownButton"
+                android:contentDescription="@string/md_center"
+                android:tooltipText="@string/md_center"
+                app:icon="@drawable/format_align_center_24" />
+
+            <View
+                android:layout_width="1dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center_vertical"
+                android:layout_marginHorizontal="4dp"
+                android:alpha="0.5"
+                android:background="?attr/colorOutlineVariant" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/formatLink"
+                style="@style/Widget.Dantotsu.MarkdownButton"
+                android:contentDescription="@string/md_link"
+                android:tooltipText="@string/md_link"
+                app:icon="@drawable/format_link_24" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/formatImage"
+                style="@style/Widget.Dantotsu.MarkdownButton"
+                android:contentDescription="@string/md_image"
+                android:tooltipText="@string/md_image"
+                app:icon="@drawable/format_image_24" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/formatYoutube"
+                style="@style/Widget.Dantotsu.MarkdownButton"
+                android:contentDescription="@string/md_youtube"
+                android:tooltipText="@string/md_youtube"
+                app:icon="@drawable/format_youtube_24" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/formatVideo"
+                style="@style/Widget.Dantotsu.MarkdownButton"
+                android:contentDescription="@string/md_video"
+                android:tooltipText="@string/md_video"
+                app:icon="@drawable/format_video_24" />
+        </LinearLayout>
+    </HorizontalScrollView>
+</ani.dantotsu.others.FormSection>

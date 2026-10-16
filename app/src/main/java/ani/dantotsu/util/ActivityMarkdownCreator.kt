@@ -1,9 +1,9 @@
 package ani.dantotsu.util
 
 import android.os.Bundle
+import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
-import android.widget.ImageView
 import android.widget.LinearLayout
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
@@ -63,18 +63,14 @@ class ActivityMarkdownCreator : AppCompatActivity() {
         ThemeManager(this).applyTheme()
         initActivity(this)
         binding = ActivityMarkdownCreatorBinding.inflate(layoutInflater)
-        binding.markdownCreatorToolbar.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+        binding.markdownCreatorToolbar.root.updateLayoutParams<ViewGroup.MarginLayoutParams> {
             topMargin = statusBarHeight
         }
-        binding.markdownOptionsContainer.updateLayoutParams<ViewGroup.MarginLayoutParams> {
+        binding.markdownOptionsContainer.root.updateLayoutParams<ViewGroup.MarginLayoutParams> {
             bottomMargin += navBarHeight
         }
         setContentView(binding.root)
         AndroidBug5497Workaround.assistActivity(this) {}
-
-        val params = binding.createButton.layoutParams as ViewGroup.MarginLayoutParams
-        params.marginEnd = 16 * resources.displayMetrics.density.toInt()
-        binding.createButton.layoutParams = params
 
         if (intent.hasExtra("type")) {
             type = intent.getStringExtra("type")!!
@@ -99,6 +95,19 @@ class ActivityMarkdownCreator : AppCompatActivity() {
                 }
             }
         }
+        val isEdit = editId != -1
+        binding.markdownCreatorToolbar.formBarTitle.setText(
+            when (type) {
+                "replyActivity" -> if (isEdit) R.string.composer_edit_reply else R.string.reply
+                "message" -> if (isEdit) R.string.composer_edit_message else R.string.composer_new_message
+                else -> if (isEdit) R.string.composer_edit_activity else R.string.composer_new_activity
+            }
+        )
+        binding.markdownCreatorToolbar.formBarPrimary.apply {
+            setText(if (isEdit) R.string.save else R.string.form_action_post)
+            setIconResource(if (isEdit) R.drawable.ic_round_check_24 else R.drawable.ic_round_send_24)
+        }
+
         var private = false
         binding.privateCheckbox.setOnCheckedChangeListener { _, isChecked ->
             private = isChecked
@@ -114,12 +123,12 @@ class ActivityMarkdownCreator : AppCompatActivity() {
         }
         previewMarkdown(false)
 
-        binding.markdownCreatorBack.enableSettingsLongPress()
-        binding.markdownCreatorBack.setOnClickListener {
+        binding.markdownCreatorToolbar.formBarClose.enableSettingsLongPress()
+        binding.markdownCreatorToolbar.formBarClose.setOnClickListener {
             onBackPressedDispatcher.onBackPressed()
         }
 
-        binding.createButton.setOnClickListener {
+        binding.markdownCreatorToolbar.formBarPrimary.setOnClickListener {
             if (text.isBlank()) {
                 toast(getString(R.string.cannot_be_empty))
                 return@setOnClickListener
@@ -129,7 +138,6 @@ class ActivityMarkdownCreator : AppCompatActivity() {
                 setMessage(R.string.post_to_anilist_warning)
                 setPosButton(R.string.ok) {
                     launchIO {
-                        val isEdit = editId != -1
                         val success = when (type) {
                             "activity" -> if (isEdit) {
                                 Anilist.mutation.postActivity(text, editId)
@@ -163,14 +171,12 @@ class ActivityMarkdownCreator : AppCompatActivity() {
             }
         }
 
-        binding.previewCheckbox.setOnClickListener {
-            isPreviewMode = !isPreviewMode
+        binding.markdownModeToggle.addOnButtonCheckedListener { _, id, checked ->
+            if (!checked) return@addOnButtonCheckedListener
+            isPreviewMode = id == R.id.markdownModePreview
             previewMarkdown(isPreviewMode)
-            if (isPreviewMode) {
-                toast("Preview enabled")
-            } else {
-                toast("Preview disabled")
-            }
+            // Nothing to format in the preview.
+            binding.markdownOptionsContainer.root.isVisible = !isPreviewMode
         }
         binding.editText.requestFocus()
         setupMarkdownButtons()
@@ -178,7 +184,7 @@ class ActivityMarkdownCreator : AppCompatActivity() {
 
     private fun setupMarkdownButtons() {
         MarkdownFormat.entries.forEach { format ->
-            findViewById<ImageView>(format.imageViewId)?.setOnClickListener {
+            findViewById<View>(format.imageViewId)?.setOnClickListener {
                 applyMarkdownFormat(format)
             }
         }

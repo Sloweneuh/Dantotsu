@@ -21,7 +21,9 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="32dp"
+        android:paddingHorizontal="20dp"
+        android:paddingTop="32dp"
+        android:paddingBottom="24dp"
         android:visibility="invisible"
         tools:visibility="visible">
 
@@ -37,13 +39,20 @@
                 android:layout_marginStart="16dp"
                 android:layout_marginEnd="16dp"
                 android:layout_weight="1"
-                android:fontFamily="@font/poppins"
+                android:fontFamily="@font/poppins_bold"
                 android:gravity="center_vertical"
+                android:textColor="?attr/colorOnSurface"
                 android:text="@string/list_editor"
-                android:textSize="20sp"
-                android:textStyle="bold" />
+                android:textSize="20sp" />
 
         </LinearLayout>
+
+        <ani.dantotsu.others.FormSection
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            app:icon="@drawable/ic_round_playlist_play_24"
+            app:title="@string/list_editor_progress_group">
 
         <com.google.android.material.textfield.TextInputLayout
             style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
@@ -70,7 +79,7 @@
                 android:padding="8dp"
                 android:text="@string/watch"
                 android:textAllCaps="true"
-                android:textColor="?android:attr/textColorSecondary"
+                android:textColor="?attr/colorOnSurface"
                 android:textSize="14sp"
                 tools:ignore="LabelFor,TextContrastCheck,DuplicateSpeakableTextCheck" />
 
@@ -110,7 +119,7 @@
                     android:inputType="number"
                     android:maxLength="4"
                     android:padding="8dp"
-                    android:textColor="?android:attr/textColorSecondary"
+                    android:textColor="?attr/colorOnSurface"
                     android:textSize="14sp"
                     tools:ignore="LabelFor,TextContrastCheck" />
 
@@ -122,7 +131,7 @@
 
             <Button
                 android:id="@+id/mediaListVolumeIncrement"
-                style="@style/Widget.Material3.Button.OutlinedButton"
+                style="@style/Widget.Material3.Button.TonalButton"
                 android:layout_width="wrap_content"
                 android:layout_height="48dp"
                 android:layout_gravity="center_vertical"
@@ -137,7 +146,6 @@
                 android:text="+1\u0020"
                 android:textSize="16sp"
                 app:cornerRadius="16dp"
-                app:strokeColor="?attr/colorPrimaryContainer"
                 tools:ignore="HardcodedText" />
 
         </LinearLayout>
@@ -174,7 +182,7 @@
                     android:inputType="number"
                     android:maxLength="4"
                     android:padding="8dp"
-                    android:textColor="?android:attr/textColorSecondary"
+                    android:textColor="?attr/colorOnSurface"
                     android:textSize="14sp"
                     tools:ignore="LabelFor,TextContrastCheck" />
 
@@ -186,7 +194,7 @@
 
             <Button
                 android:id="@+id/mediaListIncrement"
-                style="@style/Widget.Material3.Button.OutlinedButton"
+                style="@style/Widget.Material3.Button.TonalButton"
                 android:layout_width="wrap_content"
                 android:layout_height="48dp"
                 android:layout_marginTop="-2dp"
@@ -201,7 +209,6 @@
                 android:text="+1\u0020"
                 android:textSize="16sp"
                 app:cornerRadius="16dp"
-                app:strokeColor="?attr/colorPrimaryContainer"
                 tools:ignore="HardcodedText" />
 
         </LinearLayout>
@@ -232,11 +239,13 @@
                 android:fontFamily="@font/poppins_bold"
                 android:inputType="numberDecimal"
                 android:padding="8dp"
-                android:textColor="?android:attr/textColorSecondary"
+                android:textColor="?attr/colorOnSurface"
                 android:textSize="14sp"
                 tools:ignore="LabelFor,TextContrastCheck" />
 
         </com.google.android.material.textfield.TextInputLayout>
+
+        </ani.dantotsu.others.FormSection>
 
         <!-- The same card the full editor puts its extra controls in. These three toggles are the
              ones a quick edit rarely touches, and left inline they made the "small" sheet taller
@@ -287,7 +296,7 @@
 
             <Button
                 android:id="@+id/mediaListDelete"
-                style="@style/Widget.Material3.Button.OutlinedButton"
+                style="@style/Widget.Material3.Button.OutlinedButton.Icon"
                 android:layout_width="128dp"
                 android:layout_height="56dp"
                 android:layout_gravity="center"
@@ -298,11 +307,14 @@
                 android:text="@string/delete"
                 android:textSize="16sp"
                 app:cornerRadius="16dp"
-                app:strokeColor="?attr/colorPrimaryContainer" />
+                android:textColor="?attr/colorError"
+                    app:icon="@drawable/ic_round_delete_24"
+                    app:iconTint="?attr/colorError"
+                    app:strokeColor="?attr/colorError" />
 
             <Button
                 android:id="@+id/mediaListSave"
-                style="@style/Widget.Material3.Button.OutlinedButton"
+                style="@style/Widget.Material3.Button.Icon"
                 android:layout_width="0dp"
                 android:layout_height="56dp"
                 android:layout_marginStart="16dp"
@@ -314,7 +326,7 @@
                 android:text="@string/save"
                 android:textSize="16sp"
                 app:cornerRadius="16dp"
-                app:strokeColor="?attr/colorPrimaryContainer" />
+                app:icon="@drawable/ic_round_check_24" />
         </LinearLayout>
     </LinearLayout>
 
@@ -323,7 +335,8 @@
         android:layout_height="4dp"
         android:layout_gravity="center_horizontal"
         android:layout_marginTop="14dp"
-        app:cardBackgroundColor="?attr/colorPrimary"
+        android:alpha="0.4"
+            app:cardBackgroundColor="?attr/colorOnSurfaceVariant"
         app:cardCornerRadius="2dp"
         app:cardElevation="0dp">
 

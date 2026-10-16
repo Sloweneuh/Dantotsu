@@ -173,7 +173,7 @@
 
 
     <!--
-      One box of a segmented code field — the sync code's groups of four, the handoff sharing code's
+      One box of a segmented code field â€” the sync code's groups of four, the handoff sharing code's
       single characters. Deliberately carries no maxLength: a pasted code arrives in whichever box
       has focus and CodeEntry redistributes it from there, and a length filter would truncate it
       before anything could.
@@ -210,4 +210,45 @@
     </style>
 
     <style name="ThemeOverlay_Dantotsu_MediaRouter" parent="ThemeOverlay.AppCompat" />
+
+    <!-- Create/edit forms (stacks, reviews, posts), inside FormSection cards. -->
+
+    <!-- A text field on a form: outlined, with the rounder corners the cards around it use. -->
+    <style name="Widget.Dantotsu.FormField" parent="Widget.Material3.TextInputLayout.OutlinedBox">
+        <item name="boxCornerRadiusTopStart">16dp</item>
+        <item name="boxCornerRadiusTopEnd">16dp</item>
+        <item name="boxCornerRadiusBottomStart">16dp</item>
+        <item name="boxCornerRadiusBottomEnd">16dp</item>
+    </style>
+
+    <!-- The name over a group of choices (chips, a slider). -->
+    <style name="Dantotsu.FormLabel" parent="">
+        <item name="android:layout_marginBottom">2dp</item>
+        <item name="android:fontFamily">@font/poppins_semi_bold</item>
+        <item name="android:textColor">?attr/colorOnSurface</item>
+        <item name="android:textSize">13sp</item>
+    </style>
+
+    <!-- Small print under a field or group. -->
+    <style name="Dantotsu.FormHint" parent="">
+        <item name="android:layout_marginTop">4dp</item>
+        <item name="android:fontFamily">@font/poppins</item>
+        <item name="android:textColor">?attr/colorOnSurfaceVariant</item>
+        <item name="android:textSize">12sp</item>
+    </style>
+
+    <!-- One format on a composer's Markdown bar. -->
+    <style name="Widget.Dantotsu.MarkdownButton" parent="Widget.Material3.Button.IconButton">
+        <item name="android:layout_width">44dp</item>
+        <item name="android:layout_height">44dp</item>
+        <item name="iconTint">?attr/colorOnSurface</item>
+    </style>
+
+    <!-- An on/off option, one per row. -->
+    <style name="Dantotsu.FormSwitch" parent="">
+        <item name="android:minHeight">48dp</item>
+        <item name="android:fontFamily">@font/poppins_semi_bold</item>
+        <item name="android:textColor">?attr/colorOnSurface</item>
+        <item name="android:textSize">14sp</item>
+    </style>
 </resources>

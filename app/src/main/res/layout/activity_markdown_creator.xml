@@ -1,290 +1,122 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Writing a post, a reply or a message: the bar, a Write/Preview switch (and Private, for a new
+     message), the text on a card that fills the screen, and the Markdown bar under it. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="?attr/colorSurface"
     android:fitsSystemWindows="false"
-    android:orientation="vertical"
-    app:layout_behavior="@string/appbar_scrolling_view_behavior">
+    android:orientation="vertical">
+
+    <include
+        android:id="@+id/markdownCreatorToolbar"
+        layout="@layout/layout_form_top_bar" />
 
     <LinearLayout
-        android:id="@+id/markdownCreatorToolbar"
         android:layout_width="match_parent"
-        android:layout_height="48dp"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
         android:orientation="horizontal"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        android:paddingHorizontal="16dp"
+        android:paddingBottom="8dp">
 
-        <ImageView
-            android:id="@+id/markdownCreatorBack"
+        <com.google.android.material.button.MaterialButtonToggleGroup
+            android:id="@+id/markdownModeToggle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="start|center_vertical"
-            android:layout_marginStart="12dp"
-            android:src="@drawable/ic_round_arrow_back_ios_new_24"
-            app:tint="?attr/colorOnBackground"
-            tools:ignore="ContentDescription" />
+            app:checkedButton="@id/markdownModeWrite"
+            app:selectionRequired="true"
+            app:singleSelection="true">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/markdownModeWrite"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/poppins_semi_bold"
+                android:text="@string/composer_write"
+                app:icon="@drawable/ic_round_edit_24" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/markdownModePreview"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/poppins_semi_bold"
+                android:text="@string/preview"
+                app:icon="@drawable/ic_round_remove_red_eye_24" />
+        </com.google.android.material.button.MaterialButtonToggleGroup>
 
         <Space
             android:layout_width="0dp"
-            android:layout_height="match_parent"
+            android:layout_height="0dp"
             android:layout_weight="1" />
 
-        <CheckBox
+        <com.google.android.material.chip.Chip
             android:id="@+id/privateCheckbox"
+            style="@style/Widget.Material3.Chip.Filter"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="end|center_vertical"
-            android:layout_marginEnd="8dp"
-            android:visibility="gone"
-            android:contentDescription="@string/preview"
             android:fontFamily="@font/poppins_semi_bold"
             android:text="@string/private_mode"
-            tools:ignore="ContentDescription" />
-
-        <CheckBox
-            android:id="@+id/previewCheckbox"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="end|center_vertical"
-            android:layout_marginEnd="8dp"
-            android:contentDescription="@string/preview"
-            android:fontFamily="@font/poppins_semi_bold"
-            android:text="@string/preview"
-            tools:ignore="ContentDescription" />
-
-        <ImageButton
-            android:id="@+id/createButton"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
-            android:layout_gravity="center"
-            android:layout_marginEnd="12dp"
-            android:background="@drawable/ic_round_send_24"
-            tools:ignore="ContentDescription"
+            android:visibility="gone"
+            app:chipIcon="@drawable/ic_round_lock_24"
+            app:chipIconVisible="true"
             tools:visibility="visible" />
     </LinearLayout>
 
-    <ScrollView
+    <ani.dantotsu.others.FormSection
         android:layout_width="match_parent"
         android:layout_height="0dp"
+        android:layout_marginHorizontal="12dp"
+        android:layout_marginBottom="8dp"
         android:layout_weight="1"
-        android:fillViewport="true">
+        android:paddingHorizontal="4dp"
+        android:paddingVertical="4dp">
 
-        <LinearLayout
+        <ScrollView
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="16dp">
+            android:layout_height="match_parent"
+            android:fillViewport="true">
 
-            <EditText
-                android:id="@+id/editText"
+            <FrameLayout
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:fontFamily="@font/poppins_semi_bold"
-                android:gravity="top|start"
-                android:hint="@string/reply_hint"
-                android:inputType="textMultiLine"
-                android:nestedScrollingEnabled="true"
-                android:padding="16dp"
-                android:textColor="?attr/colorOnBackground"
-                android:textIsSelectable="true"
-                android:textSize="18sp"
-                tools:ignore="LabelFor" />
+                android:layout_height="wrap_content">
 
-            <TextView
-                android:id="@+id/markdownPreview"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:fontFamily="@font/poppins_semi_bold"
-                android:gravity="top|start"
-                android:hint="@string/reply_hint"
-                android:nestedScrollingEnabled="true"
-                android:padding="16dp"
-                android:textColor="?attr/colorOnBackground"
-                android:textIsSelectable="true"
-                android:textSize="18sp"
-                android:visibility="gone"
-                tools:ignore="LabelFor" />
-        </LinearLayout>
-    </ScrollView>
+                <EditText
+                    android:id="@+id/editText"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:background="@null"
+                    android:fontFamily="@font/poppins"
+                    android:gravity="top|start"
+                    android:hint="@string/reply_hint"
+                    android:inputType="textMultiLine|textCapSentences"
+                    android:padding="14dp"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textColorHint="?attr/colorOnSurfaceVariant"
+                    android:textIsSelectable="true"
+                    android:textSize="16sp"
+                    tools:ignore="Autofill,LabelFor" />
 
-    <LinearLayout
+                <TextView
+                    android:id="@+id/markdownPreview"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="@font/poppins"
+                    android:padding="14dp"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textIsSelectable="true"
+                    android:textSize="16sp"
+                    android:visibility="gone" />
+            </FrameLayout>
+        </ScrollView>
+    </ani.dantotsu.others.FormSection>
+
+    <include
         android:id="@+id/markdownOptionsContainer"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end"
-        android:layout_marginHorizontal="13dp"
-        android:orientation="vertical"
-        android:padding="8dp"
-        android:windowSoftInputMode="adjustResize">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
-
-            <ImageView
-                android:id="@+id/formatBold"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
-                android:layout_weight="1"
-                android:padding="6dp"
-                android:src="@drawable/format_bold_24"
-                app:tint="?attr/colorOnBackground"
-                tools:ignore="ContentDescription" />
-
-            <ImageView
-                android:id="@+id/formatItalic"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
-                android:layout_weight="1"
-                android:padding="6dp"
-                android:src="@drawable/format_italic_24"
-                app:tint="?attr/colorOnBackground"
-                tools:ignore="ContentDescription" />
-
-            <ImageView
-                android:id="@+id/formatStrikethrough"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
-                android:layout_weight="1"
-                android:padding="6dp"
-                android:src="@drawable/format_strikethrough_24"
-                app:tint="?attr/colorOnBackground"
-                tools:ignore="ContentDescription" />
-
-            <ImageView
-                android:id="@+id/formatSpoiler"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
-                android:layout_weight="1"
-                android:padding="6dp"
-                android:src="@drawable/format_spoiler_24"
-                app:tint="?attr/colorOnBackground"
-                tools:ignore="ContentDescription" />
-
-            <ImageView
-                android:id="@+id/formatLink"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
-                android:layout_weight="1"
-                android:padding="6dp"
-                android:src="@drawable/format_link_24"
-                app:tint="?attr/colorOnBackground"
-                tools:ignore="ContentDescription" />
-
-            <ImageView
-                android:id="@+id/formatImage"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
-                android:layout_weight="1"
-                android:padding="6dp"
-                android:src="@drawable/format_image_24"
-                app:tint="?attr/colorOnBackground"
-                tools:ignore="ContentDescription" />
-
-            <ImageView
-                android:id="@+id/formatYoutube"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:padding="6dp"
-                android:src="@drawable/format_youtube_24"
-                app:tint="?attr/colorOnBackground"
-                tools:ignore="ContentDescription" />
-
-
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
-
-            <ImageView
-                android:id="@+id/formatListOrdered"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
-                android:layout_weight="1"
-                android:padding="6dp"
-                android:src="@drawable/format_list_numbered_24"
-                app:tint="?attr/colorOnBackground"
-                tools:ignore="ContentDescription" />
-
-            <ImageView
-                android:id="@+id/formatListUnordered"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
-                android:layout_weight="1"
-                android:padding="6dp"
-                android:src="@drawable/format_list_bulleted_24"
-                app:tint="?attr/colorOnBackground"
-                tools:ignore="ContentDescription" />
-
-            <ImageView
-                android:id="@+id/formatTitle"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
-                android:layout_weight="1"
-                android:padding="6dp"
-                android:src="@drawable/format_title_24"
-                app:tint="?attr/colorOnBackground"
-                tools:ignore="ContentDescription" />
-
-            <ImageView
-                android:id="@+id/formatCenter"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
-                android:layout_weight="1"
-                android:padding="6dp"
-                android:src="@drawable/format_align_center_24"
-                app:tint="?attr/colorOnBackground"
-                tools:ignore="ContentDescription" />
-
-            <ImageView
-                android:id="@+id/formatQuote"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
-                android:layout_weight="1"
-                android:padding="6dp"
-                android:src="@drawable/format_quote_24"
-                app:tint="?attr/colorOnBackground"
-                tools:ignore="ContentDescription" />
-
-            <ImageView
-                android:id="@+id/formatCode"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginEnd="8dp"
-                android:layout_weight="1"
-                android:padding="6dp"
-                android:src="@drawable/format_code_24"
-                app:tint="?attr/colorOnBackground"
-                tools:ignore="ContentDescription" />
-
-            <ImageView
-                android:id="@+id/formatVideo"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:padding="6dp"
-                android:src="@drawable/format_video_24"
-                app:tint="?attr/colorOnBackground"
-                tools:ignore="ContentDescription" />
-        </LinearLayout>
-    </LinearLayout>
+        layout="@layout/layout_markdown_toolbar" />
 
 </LinearLayout>

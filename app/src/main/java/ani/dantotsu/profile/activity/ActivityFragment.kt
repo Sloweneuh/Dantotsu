@@ -85,6 +85,7 @@ class ActivityFragment : Fragment() {
             RecyclerView.OnScrollListener() {
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
                 super.onScrolled(recyclerView, dx, dy)
+                (activity as? FeedActivity)?.onFeedScrolled(dy)
                 if (shouldLoadMore()) {
                     lifecycleScope.launch {
                         binding.feedRefresh.isVisible = true
