@@ -82,6 +82,7 @@ import androidx.media3.common.Tracks
 import androidx.media3.common.text.CueGroup
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.cache.CacheDataSink
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.extractor.DefaultExtractorsFactory
@@ -280,8 +281,20 @@ class ExoplayerView :
         var initialized = false
         lateinit var media: Media
 
-        private const val DEFAULT_MIN_BUFFER_MS = 600000
-        private const val DEFAULT_MAX_BUFFER_MS = 600000
+        private const val DEFAULT_MIN_BUFFER_MS = 900000
+        private const val DEFAULT_MAX_BUFFER_MS = 900000
+
+        /**
+         * Memory the buffer may fill, which is what actually bounds it: ExoPlayer stops loading at
+         * whichever of the duration and this comes first, and its own default (~138 MB, back
+         * buffer included) is only about four minutes of a 1080p stream. Half the heap — buffered
+         * media lives in the Java heap, and largeHeap makes that 512 MB on most devices — leaves
+         * the rest of the app plenty, the pixels of cached images being native memory.
+         */
+        private val TARGET_BUFFER_BYTES: Int
+            get() = (Runtime.getRuntime().maxMemory() / 2)
+                .coerceIn(64L * 1024 * 1024, 384L * 1024 * 1024).toInt()
+        private const val BACK_BUFFER_MS = 60_000
         private const val BUFFER_FOR_PLAYBACK_MS = 2500
         private const val BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS = 5000
         private const val PIP_SEEK_INCREMENT_MS = 10_000L
@@ -1940,11 +1953,16 @@ class ExoplayerView :
                 }
             }
         val defaultDataSourceFactory = DefaultDataSource.Factory(this, httpDataSourceFactory)
+        // What streams in is written to the disk cache too, so seeking back past the in-memory
+        // back buffer, rewatching, and re-cutting a clip read it from disk instead of downloading
+        // it again. A cache that fails (disk full, a corrupt span) is bypassed, not fatal.
+        val videoCache = VideoCache.getInstance(this)
         cacheFactory =
             CacheDataSource.Factory().apply {
-                setCache(VideoCache.getInstance(this@ExoplayerView))
+                setCache(videoCache)
                 setUpstreamDataSourceFactory(defaultDataSourceFactory)
-                setCacheWriteDataSinkFactory(null)
+                setCacheWriteDataSinkFactory(CacheDataSink.Factory().setCache(videoCache))
+                setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
             }
 
         // Set up libass for ASS/SSA subtitle rendering.
@@ -2178,13 +2196,17 @@ class ExoplayerView :
         val loadControl =
             DefaultLoadControl
                 .Builder()
-                .setBackBuffer(1000 * 60 * 2, true)
+                // A minute behind is plenty for the usual skip back; further than that comes
+                // from the disk cache, and every byte kept here is one less buffered ahead.
+                .setBackBuffer(BACK_BUFFER_MS, true)
                 .setBufferDurationsMs(
                     DEFAULT_MIN_BUFFER_MS,
                     DEFAULT_MAX_BUFFER_MS,
                     BUFFER_FOR_PLAYBACK_MS,
                     BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS,
-                ).build()
+                )
+                .setTargetBufferBytes(TARGET_BUFFER_BYTES)
+                .build()
 
         hideSystemBars()
 
