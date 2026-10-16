@@ -15,6 +15,8 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.animation.AccelerateDecelerateInterpolator
+import android.view.animation.DecelerateInterpolator
+import android.view.animation.OvershootInterpolator
 import android.widget.ImageView
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.app.ActivityOptionsCompat
@@ -29,6 +31,7 @@ import ani.dantotsu.R
 import ani.dantotsu.blurImage
 import ani.dantotsu.connections.anilist.api.isHiatusStatus
 import ani.dantotsu.connections.anilist.api.isReleasingStatus
+import ani.dantotsu.connections.anilist.api.mediaStatusOf
 import ani.dantotsu.connections.mangaupdates.isMuNovelType
 import ani.dantotsu.currActivity
 import ani.dantotsu.isOnline
@@ -37,7 +40,7 @@ import ani.dantotsu.databinding.ItemMediaLargeBinding
 import ani.dantotsu.databinding.ItemMediaPageBinding
 import ani.dantotsu.databinding.ItemMediaPageSmallBinding
 import ani.dantotsu.loadImage
-import ani.dantotsu.setAnimation
+import ani.dantotsu.mediaCoverTransitionName
 import ani.dantotsu.setSafeOnClickListener
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
@@ -127,10 +130,12 @@ class MediaAdaptor(
         when (type) {
             0 -> {
                 val b = (holder as MediaViewHolder).binding
-                setAnimation(activity, b.root)
+                animateEntrance(b.root, position)
                 val media = mediaList?.getOrNull(position)
                 if (media != null) {
                     b.itemCompactImage.loadImage(media.cover)
+                    // Its own name, so the cover flies back to this row and not the first one.
+                    ViewCompat.setTransitionName(b.itemCompactImage, mediaCoverTransitionName(media.id))
                     run {
                         val isReleasing = isReleasingStatus(media.status)
                         val isHiatus = isHiatusStatus(media.status)
@@ -216,10 +221,11 @@ class MediaAdaptor(
 
             1 -> {
                 val b = (holder as MediaLargeViewHolder).binding
-                setAnimation(activity, b.root)
+                animateEntrance(b.root, position, rise = true)
                 val media = mediaList?.get(position)
                 if (media != null) {
                     b.itemCompactImage.loadImage(media.cover)
+                    ViewCompat.setTransitionName(b.itemCompactImage, mediaCoverTransitionName(media.id))
                     blurImage(b.itemCompactBanner, media.banner ?: media.cover)
                     run {
                         val isReleasing = isReleasingStatus(media.status)
@@ -244,7 +250,10 @@ class MediaAdaptor(
                         (if (media.userScore != 0) R.drawable.item_user_score else R.drawable.item_score)
                     )
                     // mirror score badge tint on other top badges when available
-                    b.itemCompactStatus.text = media.status ?: ""
+                    // AniList media hold the translated label already; MangaUpdates ones and old
+                    // downloads can hold a raw token ("RELEASING"), which is read back and labelled.
+                    b.itemCompactStatus.text =
+                        mediaStatusOf(media.status)?.toString() ?: media.status ?: ""
                     b.itemCompactStatus.visibility = if (!b.itemCompactStatus.text.isNullOrBlank()) View.VISIBLE else View.GONE
                     // Synopsis preview (stripped from HTML) and user progress
                     try {
@@ -532,7 +541,10 @@ class MediaAdaptor(
                             b.itemCompactGenres.text = genres
                         }
                     }
-                    b.itemCompactStatus.text = media.status ?: ""
+                    // AniList media hold the translated label already; MangaUpdates ones and old
+                    // downloads can hold a raw token ("RELEASING"), which is read back and labelled.
+                    b.itemCompactStatus.text =
+                        mediaStatusOf(media.status)?.toString() ?: media.status ?: ""
                     if (media.anime != null) {
                         b.itemTotal.text = " " + if ((media.anime.totalEpisodes
                                 ?: 0) != 1
@@ -608,10 +620,56 @@ class MediaAdaptor(
         }
     }
 
+    /**
+     * The highest position that has played its entrance. Each item comes in once, the first time
+     * it's shown; scrolling back to it, or a refresh rebinding it, leaves it where it is. It used to
+     * scale up from nothing on every bind, so a row popped its covers again each time it scrolled.
+     */
+    private var enteredUpTo = -1
+
+    /**
+     * Fades [view] in from slightly smaller (and, with [rise], from a little below) the first time
+     * [position] is shown. Settles rather than overshoots: a list of covers bouncing in reads as
+     * busy where one that eases in reads as loaded.
+     */
+    private fun animateEntrance(view: View, position: Int, rise: Boolean = false) {
+        view.animate().cancel()
+        view.clearAnimation()
+        resetEntrance(view)
+        if (position <= enteredUpTo) return
+        enteredUpTo = position
+        if (!PrefManager.getVal<Boolean>(PrefName.LayoutAnimations)) return
+        val speed = PrefManager.getVal<Float>(PrefName.AnimationSpeed)
+        view.alpha = 0f
+        view.scaleX = ENTRANCE_SCALE
+        view.scaleY = ENTRANCE_SCALE
+        if (rise) view.translationY = 16f * view.resources.displayMetrics.density
+        view.animate()
+            .alpha(1f).scaleX(1f).scaleY(1f).translationY(0f)
+            .setDuration((ENTRANCE_MS * speed).toLong())
+            .setInterpolator(DecelerateInterpolator(1.8f))
+            .start()
+    }
+
+    private fun resetEntrance(view: View) {
+        view.alpha = 1f
+        view.scaleX = 1f
+        view.scaleY = 1f
+        view.translationY = 0f
+    }
+
+    /** A holder going back to the pool mid-entrance would come out of it half faded. */
+    override fun onViewRecycled(holder: RecyclerView.ViewHolder) {
+        super.onViewRecycled(holder)
+        holder.itemView.animate().cancel()
+        resetEntrance(holder.itemView)
+    }
+
     inner class MediaViewHolder(val binding: ItemMediaCompactBinding) :
         RecyclerView.ViewHolder(binding.root) {
         init {
             if (matchParent) itemView.updateLayoutParams { width = -1 }
+            binding.withPressFeedback()
             itemView.setSafeOnClickListener {
                 clicked(
                     bindingAdapterPosition,
@@ -626,6 +684,7 @@ class MediaAdaptor(
     inner class MediaLargeViewHolder(val binding: ItemMediaLargeBinding) :
         RecyclerView.ViewHolder(binding.root) {
         init {
+            binding.withPressFeedback()
             itemView.setSafeOnClickListener {
                 clicked(
                     bindingAdapterPosition,
@@ -682,6 +741,8 @@ class MediaAdaptor(
             if (bitmap != null) MediaSingleton.bitmap = bitmap
             if (StackResolver.openMangaBakaOnly(activity, media)) return
             val muSeriesId = media?.muSeriesId
+            // The tapped cover's name, which the page takes for its own cover so the two pair up.
+            val coverName = itemCompactImage?.let { ViewCompat.getTransitionName(it) }
             val transition = if (itemCompactImage != null) {
                 ActivityOptionsCompat.makeSceneTransitionAnimation(
                     activity,
@@ -705,7 +766,8 @@ class MediaAdaptor(
                 ContextCompat.startActivity(
                     activity,
                     Intent(activity, ani.dantotsu.connections.mangaupdates.MUMediaDetailsActivity::class.java)
-                        .putExtra("muMedia", muMedia as Serializable),
+                        .putExtra("muMedia", muMedia as Serializable)
+                        .putExtra("transitionName", coverName),
                     transition
                 )
             } else {
@@ -717,7 +779,8 @@ class MediaAdaptor(
                     activity,
                     Intent(activity, MediaDetailsActivity::class.java)
                         .putExtra("media", media as Serializable)
-                        .putExtra("download", offline),
+                        .putExtra("download", offline)
+                        .putExtra("transitionName", coverName),
                     transition
                 )
             }
@@ -781,6 +844,10 @@ class MediaAdaptor(
     }
 
     private companion object {
+        /** An item's entrance: how long, at animation speed 1, and how small it starts. */
+        private const val ENTRANCE_MS = 260L
+        private const val ENTRANCE_SCALE = 0.9f
+
         /**
          * Shared by every adapter so the work survives switching tabs or screens, and bounded by
          * least-recent use so a long library does not keep every description it has ever drawn.

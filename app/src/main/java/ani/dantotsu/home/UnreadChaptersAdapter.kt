@@ -40,6 +40,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import ani.dantotsu.media.withPressFeedback
+import ani.dantotsu.mediaCoverTransitionName
 
 class UnreadChaptersAdapter(
     initialItems: List<Any>,  // List<Media | MUMedia | ComickUnreadEntry>
@@ -98,14 +100,14 @@ class UnreadChaptersAdapter(
                     LayoutInflater.from(parent.context),
                     parent,
                     false
-                )
+                ).withPressFeedback()
             )
             1 -> LargeViewHolder(
                 ItemMediaLargeBinding.inflate(
                     LayoutInflater.from(parent.context),
                     parent,
                     false
-                )
+                ).withPressFeedback()
             )
             else -> throw IllegalArgumentException("Invalid view type")
         }
@@ -152,6 +154,8 @@ class UnreadChaptersAdapter(
         binding.apply {
             // Load cover image
             itemCompactImage.loadImage(media.cover)
+            // Its own name, so the cover flies back to this row and not the first one.
+            ViewCompat.setTransitionName(itemCompactImage, mediaCoverTransitionName(media.id))
 
             // Set title
             itemCompactTitle.text = media.userPreferredName
@@ -231,6 +235,7 @@ class UnreadChaptersAdapter(
                     .putExtra("media", media)
                     .putExtra("source", info.source)
                     .putExtra("lastChapter", info.lastChapter)
+                intent.putExtra("transitionName", ViewCompat.getTransitionName(itemCompactImage))
                 val activity = (root.context as? androidx.fragment.app.FragmentActivity)
                 val options = if (activity != null) {
                     ActivityOptionsCompat.makeSceneTransitionAnimation(
@@ -263,6 +268,8 @@ class UnreadChaptersAdapter(
         binding.apply {
             // Load cover and banner images
             itemCompactImage.loadImage(media.cover)
+            // Its own name, so the cover flies back to this row and not the first one.
+            ViewCompat.setTransitionName(itemCompactImage, mediaCoverTransitionName(media.id))
             blurImage(itemCompactBanner, media.banner ?: media.cover)
 
             // Set title
@@ -376,6 +383,7 @@ class UnreadChaptersAdapter(
                     .putExtra("media", media)
                     .putExtra("source", info.source)
                     .putExtra("lastChapter", info.lastChapter)
+                intent.putExtra("transitionName", ViewCompat.getTransitionName(itemCompactImage))
                 val activity = (root.context as? androidx.fragment.app.FragmentActivity)
                 val options = if (activity != null) {
                     ActivityOptionsCompat.makeSceneTransitionAnimation(
@@ -414,6 +422,8 @@ class UnreadChaptersAdapter(
     private fun bindMuCompactView(binding: ItemUnreadChapterBinding, item: MUMedia) {
         binding.apply {
             itemCompactImage.loadImage(item.coverUrl ?: MUDetailsCache.get(item.id)?.coverUrl)
+            // Its own name, so the cover flies back to this row and not the first one.
+            ViewCompat.setTransitionName(itemCompactImage, mediaCoverTransitionName(item.id))
             itemCompactTitle.text = item.title ?: ""
 
             val malSync = malSyncInfoFor(item)
@@ -460,6 +470,7 @@ class UnreadChaptersAdapter(
             val clickAction = {
                 val intent = Intent(root.context, MUMediaDetailsActivity::class.java)
                     .putExtra("muMedia", item as Serializable)
+                intent.putExtra("transitionName", ViewCompat.getTransitionName(itemCompactImage))
                 val activity = (root.context as? FragmentActivity)
                 val options = if (activity != null) {
                     ActivityOptionsCompat.makeSceneTransitionAnimation(
@@ -490,6 +501,8 @@ class UnreadChaptersAdapter(
             val cached = MUDetailsCache.get(item.id)
             val coverUrl = item.coverUrl ?: cached?.coverUrl
             itemCompactImage.loadImage(coverUrl)
+            // Its own name, so the cover flies back to this row and not the first one.
+            ViewCompat.setTransitionName(itemCompactImage, mediaCoverTransitionName(item.id))
             blurImage(itemCompactBanner, coverUrl)
             itemCompactTitle.text = item.title ?: ""
             // Same dot an AniList row gets; the status rides along with the series record
@@ -554,6 +567,7 @@ class UnreadChaptersAdapter(
             val clickAction = {
                 val intent = Intent(root.context, MUMediaDetailsActivity::class.java)
                     .putExtra("muMedia", item as Serializable)
+                intent.putExtra("transitionName", ViewCompat.getTransitionName(itemCompactImage))
                 val activity = (root.context as? FragmentActivity)
                 val options = if (activity != null) {
                     ActivityOptionsCompat.makeSceneTransitionAnimation(

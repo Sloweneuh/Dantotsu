@@ -3198,6 +3198,8 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="form_action_add">Add</string>
     <string name="list_editor_progress_group">Progress</string>
     <string name="list_editor_dates_group">Dates</string>
+    <!-- Capitalised like the editor's other field labels (STATUS, PROGRESS, SCORE). -->
+    <string name="list_editor_volume">VOLUME</string>
     <string name="review_write_title">Write a review</string>
     <string name="review_section_summary">Summary</string>
     <string name="review_section_summary_desc">Your take in short, 20 to 2200 characters</string>

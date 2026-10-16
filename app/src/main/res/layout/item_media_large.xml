@@ -41,9 +41,9 @@
                 android:id="@+id/itemCompactCard"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:translationZ="8dp"
+                android:translationZ="2dp"
                 app:cardCornerRadius="16dp"
-                app:cardElevation="4dp">
+                app:cardElevation="3dp">
 
                 <com.google.android.material.imageview.ShapeableImageView
                     android:id="@+id/itemCompactImage"
@@ -160,7 +160,7 @@
                 android:layout_height="16dp"
                 android:layout_gravity="bottom"
                 android:alpha="0.8"
-                android:translationZ="8dp"
+                android:translationZ="2dp"
                 app:cardCornerRadius="8dp"
                 app:cardElevation="4dp">
 
@@ -216,7 +216,10 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:alpha="0.66"
-                    android:textSize="12sp"
+                    android:fontFamily="@font/poppins_semi_bold"
+                    android:letterSpacing="0.03"
+                    android:textAllCaps="true"
+                    android:textSize="11sp"
                     tools:text="RELEASING" />
 
                 <ImageButton
@@ -225,7 +228,7 @@
                     android:layout_height="36dp"
                     android:layout_marginStart="8dp"
                     android:backgroundTint="?attr/colorPrimaryVariant"
-                    android:contentDescription="Info"
+                    android:contentDescription="@string/info"
                     android:scaleType="center"
                     android:visibility="gone"
                     app:srcCompat="@drawable/ic_round_info_24"
@@ -318,9 +321,10 @@
                     android:paddingEnd="4dp"
                     android:singleLine="true"
                     android:textAlignment="textEnd"
+                    android:fontFamily="@font/poppins_semi_bold"
+                    android:letterSpacing="0.03"
                     android:textAllCaps="true"
-                    android:textSize="12sp"
-                    android:textStyle="italic"
+                    android:textSize="11sp"
                     android:transitionName="mediaTitle"
                     tools:ignore="TextContrastCheck"
                     tools:text="Relation  " />

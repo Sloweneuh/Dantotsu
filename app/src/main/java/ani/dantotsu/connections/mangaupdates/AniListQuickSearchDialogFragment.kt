@@ -39,6 +39,7 @@ import kotlinx.coroutines.withContext
 import java.util.Locale
 import androidx.recyclerview.widget.RecyclerView
 import android.content.Intent
+import ani.dantotsu.media.withPressFeedback
 
 class AniListQuickSearchDialogFragment : BottomSheetDialogFragment() {
 
@@ -332,7 +333,7 @@ class AniListQuickSearchDialogFragment : BottomSheetDialogFragment() {
         inner class VH(val b: ItemMediaCompactBinding) : RecyclerView.ViewHolder(b.root)
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
-            return VH(ItemMediaCompactBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+            return VH(ItemMediaCompactBinding.inflate(LayoutInflater.from(parent.context), parent, false).withPressFeedback())
         }
 
         override fun onBindViewHolder(holder: VH, position: Int) {

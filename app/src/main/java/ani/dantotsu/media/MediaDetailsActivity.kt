@@ -186,6 +186,7 @@ class MediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedLi
             "AniList setContentView done, extra transitionName=${intent.getStringExtra("transitionName")}, " +
                 "coverTransitionNameBefore=${ViewCompat.getTransitionName(binding.mediaCoverImage)}, t=${System.currentTimeMillis()}"
         )
+        useCoverTransition()
         intent.getStringExtra("transitionName")?.let {
             ViewCompat.setTransitionName(binding.mediaCoverImage, it)
         }

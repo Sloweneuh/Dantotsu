@@ -95,6 +95,7 @@ import java.io.Serializable
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import ani.dantotsu.media.useCoverTransition
 
 class ExtensionMediaInfoActivity : AppCompatActivity() {
 
@@ -180,6 +181,7 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
         // Match the transition name to the exact list row that was tapped. Every row shares the
         // same static XML transitionName, so without this, the return trip's name-based lookup
         // in the calling window can land on any other view still carrying it.
+        useCoverTransition()
         intent.getStringExtra("transitionName")?.let {
             ViewCompat.setTransitionName(binding.extensionInfoCover, it)
         }

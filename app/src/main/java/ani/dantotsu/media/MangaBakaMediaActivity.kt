@@ -89,6 +89,7 @@ class MangaBakaMediaActivity : AppCompatActivity() {
         // Match the transition name to the exact search result that was tapped. Every row
         // shares the same static XML transitionName, so without this, the return trip's
         // name-based lookup in the calling window can land on any other view still carrying it.
+        useCoverTransition()
         intent.getStringExtra("transitionName")?.let {
             ViewCompat.setTransitionName(binding.mangaBakaMediaCover, it)
         }

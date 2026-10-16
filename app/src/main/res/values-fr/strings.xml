@@ -3074,6 +3074,7 @@
     <string name="form_action_add">Ajouter</string>
     <string name="list_editor_progress_group">Progression</string>
     <string name="list_editor_dates_group">Dates</string>
+    <string name="list_editor_volume">VOLUME</string>
     <string name="review_write_title">Écrire une critique</string>
     <string name="review_section_summary">Résumé</string>
     <string name="review_section_summary_desc">Votre avis en bref, de 20 à 2200 caractères</string>

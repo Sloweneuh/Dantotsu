@@ -38,6 +38,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import java.io.Serializable
+import ani.dantotsu.media.withPressFeedback
 
 /**
  * A single adapter that renders both [Media] (Anilist) and [MUMedia] items in one merged
@@ -113,9 +114,9 @@ class MergedReadingAdapter(
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         if (viewType == 1) {
-            return VHLarge(ItemMediaLargeBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+            return VHLarge(ItemMediaLargeBinding.inflate(LayoutInflater.from(parent.context), parent, false).withPressFeedback())
         } else {
-            val vh = VH(ItemMediaCompactBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+            val vh = VH(ItemMediaCompactBinding.inflate(LayoutInflater.from(parent.context), parent, false).withPressFeedback())
             if (matchParent) {
                 try {
                     val lp = vh.itemView.layoutParams ?: ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)

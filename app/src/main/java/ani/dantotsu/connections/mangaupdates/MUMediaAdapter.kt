@@ -23,6 +23,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import java.io.Serializable
+import ani.dantotsu.media.withPressFeedback
+import ani.dantotsu.mediaCoverTransitionName
 
 class MUMediaAdapter(
     private val items: List<MUMedia>,
@@ -43,11 +45,11 @@ class MUMediaAdapter(
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         return when (viewType) {
             1 -> LargeViewHolder(
-                ItemMediaLargeBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+                ItemMediaLargeBinding.inflate(LayoutInflater.from(parent.context), parent, false).withPressFeedback()
             )
             else -> {
                 val vh = CompactViewHolder(
-                    ItemMediaCompactBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+                    ItemMediaCompactBinding.inflate(LayoutInflater.from(parent.context), parent, false).withPressFeedback()
                 )
                 if (matchParent) {
                     try {
@@ -101,6 +103,8 @@ class MUMediaAdapter(
         val coverUrl = item.coverUrl ?: MUDetailsCache.get(item.id)?.coverUrl
         if (coverUrl != null) b.itemCompactImage.loadImage(coverUrl)
         else b.itemCompactImage.setImageResource(0)
+        // Its own name, so the cover flies back to this row and not the first one.
+        ViewCompat.setTransitionName(b.itemCompactImage, mediaCoverTransitionName(item.id))
         b.itemCompactTitle.text = item.title ?: ""
         // The same ongoing/hiatus dot an AniList row gets. MangaUpdates' list endpoint does not
         // carry a publication status, so it comes from the series record [MUDetailsCache] fetches
@@ -136,6 +140,7 @@ class MUMediaAdapter(
         b.root.setOnClickListener {
             val intent = Intent(it.context, MUMediaDetailsActivity::class.java)
             intent.putExtra("muMedia", item as Serializable)
+            intent.putExtra("transitionName", ViewCompat.getTransitionName(b.itemCompactImage))
             val activity = it.context as? androidx.fragment.app.FragmentActivity
             val options = if (activity != null) {
                 ActivityOptionsCompat.makeSceneTransitionAnimation(
@@ -162,6 +167,8 @@ class MUMediaAdapter(
         val coverUrl = item.coverUrl ?: detail?.coverUrl
         if (coverUrl != null) {
             b.itemCompactImage.loadImage(coverUrl)
+            // Its own name, so the cover flies back to this row and not the first one.
+            ViewCompat.setTransitionName(b.itemCompactImage, mediaCoverTransitionName(item.id))
             b.itemCompactBanner.loadImage(coverUrl)
         } else {
             b.itemCompactImage.setImageResource(0)
@@ -221,6 +228,7 @@ class MUMediaAdapter(
         b.itemContainer.setOnClickListener {
             val intent = Intent(it.context, MUMediaDetailsActivity::class.java)
             intent.putExtra("muMedia", item as Serializable)
+            intent.putExtra("transitionName", ViewCompat.getTransitionName(b.itemCompactImage))
             val activity = it.context as? androidx.fragment.app.FragmentActivity
             val options = if (activity != null) {
                 ActivityOptionsCompat.makeSceneTransitionAnimation(

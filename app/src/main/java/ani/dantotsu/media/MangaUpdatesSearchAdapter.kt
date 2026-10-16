@@ -21,7 +21,7 @@ class MangaUpdatesSearchAdapter(
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val binding =
-                ItemMediaCompactBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+                ItemMediaCompactBinding.inflate(LayoutInflater.from(parent.context), parent, false).withPressFeedback()
         return ViewHolder(binding)
     }
 

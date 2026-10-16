@@ -37,7 +37,7 @@ class ComickListComicAdapter(
     override fun getItemCount() = items.size
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder =
-        ViewHolder(ItemMediaCompactBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+        ViewHolder(ItemMediaCompactBinding.inflate(LayoutInflater.from(parent.context), parent, false).withPressFeedback())
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val comic = items[position]

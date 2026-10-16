@@ -41,10 +41,10 @@ class KitsuSearchAdapter(
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
         return when (viewType) {
             1 -> LargeViewHolder(
-                ItemMediaLargeBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+                ItemMediaLargeBinding.inflate(LayoutInflater.from(parent.context), parent, false).withPressFeedback()
             )
             else -> CompactViewHolder(
-                ItemMediaCompactBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+                ItemMediaCompactBinding.inflate(LayoutInflater.from(parent.context), parent, false).withPressFeedback()
             )
         }
     }

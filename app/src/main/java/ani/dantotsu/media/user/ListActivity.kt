@@ -17,6 +17,7 @@ import androidx.appcompat.widget.PopupMenu
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.DrawableCompat
 import androidx.core.view.isVisible
+import ani.dantotsu.media.awaitListForReturn
 import androidx.core.view.updateLayoutParams
 import androidx.core.widget.addTextChangedListener
 import androidx.lifecycle.MutableLiveData
@@ -48,6 +49,20 @@ import java.util.Locale
 private const val KEY_SEARCH_OPEN = "searchOpen"
 
 class ListActivity : AppCompatActivity() {
+    /**
+     * Coming back into view — from a media page, among others. The list may have rebuilt its rows
+     * while it was hidden (the MangaUpdates entries landing swap it to the merged adapter), so a
+     * cover flying back waits until the new rows exist, or it finds none and doesn't play.
+     *
+     * Here rather than in onActivityReenter: that is only called when the returning page sets a
+     * result, which the media pages don't, so it never ran. A restart always happens, and before
+     * the return transition picks its target.
+     */
+    override fun onRestart() {
+        super.onRestart()
+        awaitListForReturn()
+    }
+
     private lateinit var binding: ActivityListBinding
     private val scope = lifecycleScope
     private var selectedTabIdx = 0

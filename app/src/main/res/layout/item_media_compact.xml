@@ -22,9 +22,9 @@
             android:id="@+id/itemCompactCard"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:translationZ="8dp"
+            android:translationZ="2dp"
             app:cardCornerRadius="16dp"
-            app:cardElevation="4dp">
+            app:cardElevation="3dp">
 
             <com.google.android.material.imageview.ShapeableImageView
                 android:id="@+id/itemCompactImage"
@@ -103,7 +103,7 @@
             android:layout_width="16dp"
             android:layout_height="16dp"
             android:layout_gravity="bottom"
-            android:translationZ="8dp"
+            android:translationZ="2dp"
             app:cardCornerRadius="8dp"
             app:cardElevation="4dp">
 
@@ -127,7 +127,10 @@
             android:id="@+id/itemCompactTitle"
             android:layout_width="108dp"
             android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
             android:ellipsize="end"
+            android:fontFamily="@font/poppins_semi_bold"
+            android:textColor="?attr/colorOnBackground"
             android:lineSpacingExtra="-4dp"
             android:maxLines="2"
             android:textSize="14dp"
@@ -187,9 +190,10 @@
                 android:paddingStart="4dp"
                 android:paddingEnd="4dp"
                 android:singleLine="true"
+                android:fontFamily="@font/poppins_semi_bold"
+                android:letterSpacing="0.03"
                 android:textAllCaps="true"
-                android:textSize="12sp"
-                android:textStyle="italic"
+                android:textSize="11sp"
                 android:transitionName="mediaTitle"
                 tools:ignore="TextContrastCheck"
                 tools:text="Relation" />

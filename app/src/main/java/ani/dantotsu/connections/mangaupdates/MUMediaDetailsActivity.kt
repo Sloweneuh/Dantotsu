@@ -85,6 +85,7 @@ import kotlinx.coroutines.CoroutineScope
 import nl.joery.animatedbottombar.AnimatedBottomBar
 import kotlin.math.abs
 import java.util.Locale
+import ani.dantotsu.media.useCoverTransition
 
 
 class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChangedListener {
@@ -605,6 +606,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
             "MU setContentView done, extra transitionName=${intent.getStringExtra("transitionName")}, " +
                 "coverTransitionNameBefore=${ViewCompat.getTransitionName(binding.mediaCoverImage)}, t=${System.currentTimeMillis()}"
         )
+        useCoverTransition()
         intent.getStringExtra("transitionName")?.let {
             ViewCompat.setTransitionName(binding.mediaCoverImage, it)
         }

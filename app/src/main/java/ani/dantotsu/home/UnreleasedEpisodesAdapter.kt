@@ -19,6 +19,8 @@ import ani.dantotsu.media.Media
 import android.text.method.LinkMovementMethod
 import android.text.util.Linkify
 import ani.dantotsu.setSafeOnClickListener
+import ani.dantotsu.media.withPressFeedback
+import ani.dantotsu.mediaCoverTransitionName
 
 class UnreleasedEpisodesAdapter(
     private val mediaList: List<Media>,
@@ -41,14 +43,14 @@ class UnreleasedEpisodesAdapter(
                     LayoutInflater.from(parent.context),
                     parent,
                     false
-                )
+                ).withPressFeedback()
             )
             1 -> LargeViewHolder(
                 ItemMediaLargeBinding.inflate(
                     LayoutInflater.from(parent.context),
                     parent,
                     false
-                )
+                ).withPressFeedback()
             )
             else -> throw IllegalArgumentException("Invalid view type")
         }
@@ -69,6 +71,8 @@ class UnreleasedEpisodesAdapter(
         binding.apply {
             // Load cover image
             itemCompactImage.loadImage(media.cover)
+            // Its own name, so the cover flies back to this row and not the first one.
+            ViewCompat.setTransitionName(itemCompactImage, mediaCoverTransitionName(media.id))
 
             // Set title
             itemCompactTitle.text = media.userPreferredName
@@ -136,6 +140,7 @@ class UnreleasedEpisodesAdapter(
             val clickAction = {
                 val intent = Intent(root.context, ani.dantotsu.media.MediaDetailsActivity::class.java)
                     .putExtra("media", media)
+                intent.putExtra("transitionName", ViewCompat.getTransitionName(itemCompactImage))
                 val activity = (root.context as? androidx.fragment.app.FragmentActivity)
                 val options = if (activity != null) {
                     ActivityOptionsCompat.makeSceneTransitionAnimation(
@@ -168,6 +173,8 @@ class UnreleasedEpisodesAdapter(
         binding.apply {
             // Load cover and banner images
             itemCompactImage.loadImage(media.cover)
+            // Its own name, so the cover flies back to this row and not the first one.
+            ViewCompat.setTransitionName(itemCompactImage, mediaCoverTransitionName(media.id))
             blurImage(itemCompactBanner, media.banner ?: media.cover)
 
             // Set title
@@ -281,6 +288,7 @@ class UnreleasedEpisodesAdapter(
             val clickAction = {
                 val intent = Intent(root.context, ani.dantotsu.media.MediaDetailsActivity::class.java)
                     .putExtra("media", media)
+                intent.putExtra("transitionName", ViewCompat.getTransitionName(itemCompactImage))
                 val activity = (root.context as? androidx.fragment.app.FragmentActivity)
                 val options = if (activity != null) {
                     ActivityOptionsCompat.makeSceneTransitionAnimation(

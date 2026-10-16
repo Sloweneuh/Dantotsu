@@ -33,7 +33,7 @@ class SimklMediaCardAdapter(
     inner class Holder(val binding: ItemMediaCompactBinding) : RecyclerView.ViewHolder(binding.root)
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder =
-        Holder(ItemMediaCompactBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+        Holder(ItemMediaCompactBinding.inflate(LayoutInflater.from(parent.context), parent, false).withPressFeedback())
 
     override fun onBindViewHolder(holder: Holder, position: Int) {
         val card = cards[position]
