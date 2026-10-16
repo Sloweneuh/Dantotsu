@@ -493,6 +493,10 @@ abstract class BaseImageAdapter(
                 val viewportH =
                     if (wholeWidth || reader?.defaultSettings?.layout == CurrentReaderSettings.Layouts.CONTINUOUS) null
                     else decor?.height?.takeIf { it > 0 } ?: dm.heightPixels
+                // The image's own width, before any of the scaling below. Smart spacing groups
+                // stitched images by it: decoded, every image comes out at the reader's width, and
+                // two sizes of stitched page (1125 and 1225 wide, say) would read as one.
+                var sourceWidth: Int? = null
                 withContext(Dispatchers.IO) {
                     // Zoomed in: the page is being drawn larger than it was decoded for, so
                     // re-read it from the bytes at the size actually on screen. Straight from the
@@ -509,6 +513,7 @@ abstract class BaseImageAdapter(
 
                     val localFile = File(link.url)
                     if (localFile.exists()) {
+                        sourceWidth = imageWidthOf(localFile)
                         // Downsampled here rather than through Glide's own override: its sampling
                         // is by powers of two, so asking it for the display width directly
                         // undershoots to half of it and the page comes back soft. Let it decode
@@ -533,22 +538,23 @@ abstract class BaseImageAdapter(
                     }
 
                     if (link.url.startsWith("content://")) {
-                        return@withContext downsampleBitmap(
-                            Glide.with(this@loadBitmap)
-                                .asBitmap()
-                                .load(Uri.parse(link.url))
-                                .skipMemoryCache(true)
-                                .diskCacheStrategy(DiskCacheStrategy.NONE)
-                                .override(maxW, maxH)
-                                .downsample(DownsampleStrategy.AT_MOST)
-                                .let {
-                                    if (transforms.isNotEmpty()) it.transform(*transforms.toTypedArray())
-                                    else it
-                                }
-                                .submit()
-                                .get(),
-                            maxW, maxH, viewportW, viewportH
-                        )
+                        // Glide's decode, before the step down to the viewport: within the memory
+                        // budget, that is the image's own size.
+                        val decoded = Glide.with(this@loadBitmap)
+                            .asBitmap()
+                            .load(Uri.parse(link.url))
+                            .skipMemoryCache(true)
+                            .diskCacheStrategy(DiskCacheStrategy.NONE)
+                            .override(maxW, maxH)
+                            .downsample(DownsampleStrategy.AT_MOST)
+                            .let {
+                                if (transforms.isNotEmpty()) it.transform(*transforms.toTypedArray())
+                                else it
+                            }
+                            .submit()
+                            .get()
+                        sourceWidth = decoded.width
+                        return@withContext downsampleBitmap(decoded, maxW, maxH, viewportW, viewportH)
                     }
 
                     // For extension sources: check bitmap cache before any network work
@@ -570,6 +576,7 @@ abstract class BaseImageAdapter(
                                 imageData.page, imageData.source, maxW, maxH, cacheKey = link.url
                             )
                                 ?: return@withContext null
+                        sourceWidth = rawBitmap.width
 
                         // Downsample before transforms so we never hold a full-res bitmap in memory.
                         val downsampledBitmap = downsampleBitmap(rawBitmap, maxW, maxH, viewportW, viewportH)
@@ -597,26 +604,25 @@ abstract class BaseImageAdapter(
                     }
 
                     // Fallback to standard Glide for plain remote URLs
-                    return@withContext downsampleBitmap(
-                        Glide.with(this@loadBitmap)
-                            .asBitmap()
-                            .load(GlideUrl(link.url) { link.headers })
-                            .override(maxW, maxH)
-                            .downsample(DownsampleStrategy.AT_MOST)
-                            .let {
-                                if (transforms.isNotEmpty()) it.transform(*transforms.toTypedArray())
-                                else it
-                            }
-                            .submit()
-                            .get(),
-                        maxW, maxH, viewportW, viewportH
-                    )
+                    val decoded = Glide.with(this@loadBitmap)
+                        .asBitmap()
+                        .load(GlideUrl(link.url) { link.headers })
+                        .override(maxW, maxH)
+                        .downsample(DownsampleStrategy.AT_MOST)
+                        .let {
+                            if (transforms.isNotEmpty()) it.transform(*transforms.toTypedArray())
+                            else it
+                        }
+                        .submit()
+                        .get()
+                    sourceWidth = decoded.width
+                    return@withContext downsampleBitmap(decoded, maxW, maxH, viewportW, viewportH)
                 }.also { bitmap ->
                     // Profiled while it is at hand — the prefetcher's decodes included, so the
                     // page before is usually known by the time smart spacing needs it. A zoomed
                     // render is the same page, already profiled at its fitted size.
                     if (bitmap != null && zoom <= 1f) {
-                        withContext(Dispatchers.Default) { PageEdges.record(link.url, bitmap) }
+                        withContext(Dispatchers.Default) { PageEdges.record(link.url, bitmap, sourceWidth) }
                     }
                 }
             }
@@ -698,6 +704,13 @@ abstract class BaseImageAdapter(
          * headroom MangaCache's sampling gets — and [downsampleBitmap] takes it the rest of the
          * way, filtering.
          */
+        /** [file]'s width as stored, read from its header without decoding it; null if unreadable. */
+        private fun imageWidthOf(file: File): Int? {
+            val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            android.graphics.BitmapFactory.decodeFile(file.absolutePath, bounds)
+            return bounds.outWidth.takeIf { it > 0 }
+        }
+
         private fun pixelBudgetOverride(file: File, maxWidth: Int, maxHeight: Int): Pair<Int, Int> {
             val bounds = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
             android.graphics.BitmapFactory.decodeFile(file.absolutePath, bounds)

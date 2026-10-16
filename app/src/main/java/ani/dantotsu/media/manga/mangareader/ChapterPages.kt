@@ -92,6 +92,11 @@ object ChapterPages {
     fun build(urls: List<String>, preferJoin: Boolean): ChapterPageMap? {
         val profiles = urls.map { PageEdges.get(it) ?: return null }
         urls.indices.forEach { PageEdges.judgeRun(urls, it) }
+        // Again for the images nothing was found in: one too short to search alone can be divided
+        // into whole pages, but only once the chapter's other runs are known to be pages.
+        urls.indices.forEach {
+            if (PageEdges.breaksFor(urls[it])?.stitched != true) PageEdges.judgeRun(urls, it)
+        }
         val breaks = urls.map { PageEdges.breaksFor(it) ?: return null }
         urls.forEachIndexed { i, u ->
             val p = profiles[i]; val b = breaks[i]
@@ -129,12 +134,15 @@ object ChapterPages {
             } else {
                 val previous = profiles[i - 1]
                 val sameRun = breaks[i].stitched && breaks[i - 1].stitched &&
-                        abs(previous.width - profile.width) <= profile.width * 0.02f
+                        abs(previous.sourceWidth - profile.sourceWidth) <= profile.sourceWidth * 0.02f
                 when {
                     // A stitched page break right on the seam.
                     breaks[i].atStart -> { close(); joined = false }
                     // Stitched pages run on across a seam with no break on it.
                     sameRun -> Unit
+                    // Stitched pages of two different widths: never one page. Without this the
+                    // two strips read as one picture cut apart, and joined without a gap.
+                    breaks[i].stitched && breaks[i - 1].stitched -> { close(); joined = false }
                     PageEdges.shouldSpace(previous, profile, Directions.TOP_TO_BOTTOM, preferJoin) -> {
                         close(); joined = false
                     }
@@ -144,12 +152,20 @@ object ChapterPages {
             }
             // A stitched page is a whole page tall, and a chapter doesn't start mid-page: a break that
             // would leave less than most of a page above it is something else that happened to line
-            // up — a line of large text on a credits page, say.
+            // up — a line of large text on a credits page, say. Unless the two sides are a colour
+            // page and a greyscale one: a chapter's colour cover is stitched above its first page,
+            // shorter than the pages after it, and was merged into that page.
             val pageHeight = breaks[i].period / profile.width
             for (c in cuts.indices) {
                 val (from, to) = cuts[c]
                 val piece = (to - from) * profile.ratio
-                if (c > 0 && height >= pageHeight * MIN_PAGE_SHARE) {
+                val colourChange = c > 0 && PageEdges.colourChanges(
+                    profile,
+                    (cuts[c - 1].first * profile.height).toInt(),
+                    (from * profile.height).toInt(),
+                    (to * profile.height).toInt(),
+                )
+                if (c > 0 && (height >= pageHeight * MIN_PAGE_SHARE || colourChange)) {
                     close(); joined = false
                     slices += PageSlice(i, from, to)
                 } else if (c > 0) {
