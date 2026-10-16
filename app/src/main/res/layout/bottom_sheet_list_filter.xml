@@ -17,94 +17,107 @@
             android:layout_marginBottom="-5dp"
             android:orientation="vertical">
 
-            <LinearLayout
+            <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="17dp"
-                android:layout_marginBottom="10dp"
-                android:orientation="horizontal">
+                    android:layout_marginTop="17dp"
+                    android:layout_marginBottom="10dp">
 
-                <ImageButton
-                    android:id="@+id/resetListFilter"
-                    android:layout_width="30dp"
-                    android:layout_height="30dp"
-                    android:layout_gravity="start|center_vertical"
-                    android:layout_marginStart="17dp"
-                    android:background="@null"
-                    android:contentDescription="@string/reset_filters"
-                    android:rotation="180"
-                    android:scaleType="fitCenter"
-                    android:src="@drawable/ic_round_reset_star_24"
-                    app:tint="?attr/colorPrimary" />
-
-                <ImageButton
-                    android:id="@+id/savedFiltersButton"
-                    android:layout_width="30dp"
-                    android:layout_height="30dp"
-                    android:layout_gravity="center_vertical"
-                    android:layout_marginStart="15dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="@string/saved_filters"
-                    android:scaleType="fitCenter"
-                    android:src="@drawable/ic_round_bookmarks_24"
-                    app:tint="?attr/colorPrimary" />
-
-                <FrameLayout
-                    android:layout_width="30dp"
-                    android:layout_height="30dp"
-                    android:layout_gravity="center_vertical"
-                    android:layout_marginStart="8dp">
-
-                    <ImageButton
-                        android:id="@+id/manageFiltersButton"
-                        android:layout_width="30dp"
-                        android:layout_height="30dp"
-                        android:background="?attr/selectableItemBackgroundBorderless"
-                        android:contentDescription="@string/manage_filters"
-                        android:scaleType="fitCenter"
-                        android:src="@drawable/format_list_bulleted_24"
-                        android:visibility="gone"
-                        app:tint="?attr/colorPrimary"
-                        tools:visibility="visible" />
-
-                    <TextView
-                        android:id="@+id/manageFiltersCount"
-                        android:layout_width="14dp"
-                        android:layout_height="14dp"
-                        android:layout_gravity="top|end"
-                        android:background="@drawable/notification_circle"
-                        android:fontFamily="@font/poppins_semi_bold"
-                        android:gravity="center"
-                        android:textColor="#F3F3F3"
-                        android:textSize="8sp"
-                        android:visibility="gone"
-                        tools:text="3"
-                        tools:visibility="visible" />
-                </FrameLayout>
-
-                <TextView
-                    android:layout_width="0dp"
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="-2dp"
-                    android:layout_weight="1"
-                    android:fontFamily="@font/poppins_semi_bold"
-                    android:text="@string/filter"
-                    android:textAlignment="center"
-                    android:textSize="23sp" />
+                    android:orientation="horizontal">
+    
+                    <ImageButton
+                        android:id="@+id/resetListFilter"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:padding="8dp"
+                        android:layout_gravity="start|center_vertical"
+                        android:layout_marginStart="17dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/reset_filters"
+                        android:rotation="180"
+                        android:scaleType="centerInside"
+                        android:src="@drawable/ic_round_reset_star_24"
+                        app:tint="?attr/colorPrimary" />
+    
+                    <ImageButton
+                        android:id="@+id/savedFiltersButton"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:padding="8dp"
+                        android:layout_gravity="center_vertical"
+                        android:layout_marginStart="15dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/saved_filters"
+                        android:scaleType="centerInside"
+                        android:src="@drawable/ic_round_bookmarks_24"
+                        app:tint="?attr/colorPrimary" />
+    
+                    <FrameLayout
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:layout_gravity="center_vertical"
+                        android:layout_marginStart="8dp">
+    
+                        <ImageButton
+                            android:id="@+id/manageFiltersButton"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                        android:padding="8dp"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:contentDescription="@string/manage_filters"
+                            android:scaleType="centerInside"
+                            android:src="@drawable/format_list_bulleted_24"
+                            android:visibility="gone"
+                            app:tint="?attr/colorPrimary"
+                            tools:visibility="visible" />
+    
+                        <TextView
+                            android:id="@+id/manageFiltersCount"
+                            android:layout_width="14dp"
+                            android:layout_height="14dp"
+                            android:layout_gravity="top|end"
+                            android:background="@drawable/notification_circle"
+                            android:fontFamily="@font/poppins_semi_bold"
+                            android:gravity="center"
+                            android:textColor="#F3F3F3"
+                            android:textSize="8sp"
+                            android:visibility="gone"
+                            tools:text="3"
+                            tools:visibility="visible" />
+                    </FrameLayout>
+    
+                    <Space
+                        android:layout_width="0dp"
+                        android:layout_height="1dp"
+                        android:layout_weight="1" />
+    
+                    <TextView
+                        android:id="@+id/countryFilter"
+                        android:layout_width="35dp"
+                        android:layout_height="35dp"
+                        android:layout_gravity="end|center_vertical"
+                        android:layout_marginStart="40dp"
+                        android:layout_marginEnd="17dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/country_filter"
+                        android:gravity="center"
+                        android:text="&#x1F310;"
+                        android:textSize="26sp" />
+                </LinearLayout>
 
                 <TextView
-                    android:id="@+id/countryFilter"
-                    android:layout_width="35dp"
-                    android:layout_height="35dp"
-                    android:layout_gravity="end|center_vertical"
-                    android:layout_marginStart="40dp"
-                    android:layout_marginEnd="17dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="@string/country_filter"
-                    android:gravity="center"
-                    android:text="&#x1F310;"
-                    android:textSize="26sp" />
-            </LinearLayout>
+                    android:layout_gravity="center"
+                    android:includeFontPadding="false"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/poppins_bold"
+                        android:text="@string/filter"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="20sp" />
+            </FrameLayout>
 
             <com.google.android.material.tabs.TabLayout
                 android:id="@+id/listFilterProviderTabs"
@@ -157,7 +170,7 @@
                         android:padding="8dp"
                         android:singleLine="true"
                         android:textAllCaps="true"
-                        android:textColor="?android:attr/textColorSecondary"
+                        android:textColor="?attr/colorOnSurface"
                         android:textSize="14sp"
                         tools:ignore="LabelFor,TextContrastCheck,DuplicateSpeakableTextCheck" />
                 </com.google.android.material.textfield.TextInputLayout>
@@ -188,7 +201,7 @@
                         android:padding="8dp"
                         android:singleLine="true"
                         android:textAllCaps="true"
-                        android:textColor="?android:attr/textColorSecondary"
+                        android:textColor="?attr/colorOnSurface"
                         android:textSize="14sp"
                         tools:ignore="LabelFor,TextContrastCheck,DuplicateSpeakableTextCheck" />
                 </com.google.android.material.textfield.TextInputLayout>
@@ -227,7 +240,7 @@
                         android:padding="8dp"
                         android:singleLine="true"
                         android:textAllCaps="true"
-                        android:textColor="?android:attr/textColorSecondary"
+                        android:textColor="?attr/colorOnSurface"
                         android:textSize="14sp"
                         tools:ignore="LabelFor,TextContrastCheck,DuplicateSpeakableTextCheck" />
                 </com.google.android.material.textfield.TextInputLayout>
@@ -259,7 +272,7 @@
                         android:padding="8dp"
                         android:singleLine="true"
                         android:textAllCaps="true"
-                        android:textColor="?android:attr/textColorSecondary"
+                        android:textColor="?attr/colorOnSurface"
                         android:textSize="14sp"
                         tools:ignore="LabelFor,TextContrastCheck,DuplicateSpeakableTextCheck" />
                 </com.google.android.material.textfield.TextInputLayout>
@@ -279,7 +292,8 @@
                     android:layout_height="wrap_content"
                     android:fontFamily="@font/poppins_bold"
                     android:text="@string/score_range"
-                    android:textSize="16sp" />
+                    android:textColor="?attr/colorOnSurface"
+                    android:textSize="15sp" />
 
                 <com.google.android.material.slider.RangeSlider
                     android:id="@+id/listFilterScoreRange"
@@ -304,7 +318,8 @@
                     android:layout_height="wrap_content"
                     android:fontFamily="@font/poppins_bold"
                     android:text="@string/year_range"
-                    android:textSize="16sp" />
+                    android:textColor="?attr/colorOnSurface"
+                    android:textSize="15sp" />
 
                 <com.google.android.material.slider.RangeSlider
                     android:id="@+id/listFilterYearRange"
@@ -329,14 +344,16 @@
                     android:layout_weight="1"
                     android:fontFamily="@font/poppins_bold"
                     android:text="@string/genres"
-                    android:textSize="16sp" />
+                    android:textColor="?attr/colorOnSurface"
+                    android:textSize="15sp" />
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginEnd="10dp"
                     android:fontFamily="@font/poppins_semi_bold"
-                    android:text="@string/grid" />
+                    android:text="@string/grid"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
 
                 <com.google.android.material.materialswitch.MaterialSwitch
                     android:id="@+id/listFilterGenresGrid"
@@ -344,12 +361,12 @@
                     android:layout_height="wrap_content" />
             </LinearLayout>
 
-            <androidx.recyclerview.widget.RecyclerView
+            <ani.dantotsu.FadingEdgeRecyclerView
                 android:id="@+id/listFilterGenres"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:clipToPadding="false"
-                android:fadingEdge="horizontal"
+                android:requiresFadingEdge="horizontal"
                 android:orientation="horizontal"
                 android:paddingStart="16dp"
                 android:paddingTop="4dp"
@@ -379,7 +396,8 @@
                         android:layout_marginEnd="8dp"
                         android:fontFamily="@font/poppins_bold"
                         android:text="@string/tags"
-                        android:textSize="16sp" />
+                        android:textColor="?attr/colorOnSurface"
+                    android:textSize="15sp" />
 
                     <ImageButton
                         android:id="@+id/listFilterSearchTagsAnilist"
@@ -441,7 +459,8 @@
                         android:layout_height="wrap_content"
                         android:layout_marginEnd="10dp"
                         android:fontFamily="@font/poppins_semi_bold"
-                        android:text="@string/adult_tags" />
+                        android:text="@string/adult_tags"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
 
                     <com.google.android.material.materialswitch.MaterialSwitch
                         android:id="@+id/listFilterTagsAdult"
@@ -461,7 +480,8 @@
                         android:layout_height="wrap_content"
                         android:layout_marginEnd="10dp"
                         android:fontFamily="@font/poppins_semi_bold"
-                        android:text="@string/grid" />
+                        android:text="@string/grid"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
 
                     <com.google.android.material.materialswitch.MaterialSwitch
                         android:id="@+id/listFilterTagsGrid"
@@ -470,7 +490,8 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <androidx.recyclerview.widget.RecyclerView
+            <ani.dantotsu.FadingEdgeRecyclerView
+                android:requiresFadingEdge="horizontal"
                 android:id="@+id/listFilterTags"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -501,7 +522,8 @@
                     android:layout_weight="1"
                     android:fontFamily="@font/poppins_bold"
                     android:text="@string/filter_english_licenced"
-                    android:textSize="16sp" />
+                    android:textColor="?attr/colorOnSurface"
+                    android:textSize="15sp" />
 
                 <com.google.android.material.materialswitch.MaterialSwitch
                     android:id="@+id/listFilterEnglishLicenced"
@@ -513,7 +535,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="1dp"
                 android:layout_marginTop="16dp"
-                android:background="?android:attr/listDivider" />
+                android:alpha="0.5"
+                android:background="?attr/colorOutlineVariant" />
 
             </LinearLayout>
 
@@ -555,7 +578,7 @@
                             android:inputType="none"
                             android:padding="8dp"
                             android:singleLine="true"
-                            android:textColor="?android:attr/textColorSecondary"
+                            android:textColor="?attr/colorOnSurface"
                             android:textSize="14sp"
                             tools:ignore="LabelFor,TextContrastCheck,DuplicateSpeakableTextCheck" />
                     </com.google.android.material.textfield.TextInputLayout>
@@ -584,7 +607,7 @@
                             android:inputType="none"
                             android:padding="8dp"
                             android:singleLine="true"
-                            android:textColor="?android:attr/textColorSecondary"
+                            android:textColor="?attr/colorOnSurface"
                             android:textSize="14sp"
                             tools:ignore="LabelFor,TextContrastCheck,DuplicateSpeakableTextCheck" />
                     </com.google.android.material.textfield.TextInputLayout>
@@ -621,7 +644,7 @@
                             android:inputType="none"
                             android:padding="8dp"
                             android:singleLine="true"
-                            android:textColor="?android:attr/textColorSecondary"
+                            android:textColor="?attr/colorOnSurface"
                             android:textSize="14sp"
                             tools:ignore="LabelFor,TextContrastCheck,DuplicateSpeakableTextCheck" />
                     </com.google.android.material.textfield.TextInputLayout>
@@ -636,9 +659,11 @@
                     android:layout_marginEnd="32dp"
                     android:fontFamily="@font/poppins_bold"
                     android:text="@string/mu_filter_status_filters"
-                    android:textSize="16sp" />
+                    android:textColor="?attr/colorOnSurface"
+                    android:textSize="15sp" />
 
-                <androidx.recyclerview.widget.RecyclerView
+                <ani.dantotsu.FadingEdgeRecyclerView
+                android:requiresFadingEdge="horizontal"
                     android:id="@+id/listMuFilterStatusRecycler"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -664,14 +689,16 @@
                         android:layout_weight="1"
                         android:fontFamily="@font/poppins_bold"
                         android:text="@string/genres"
-                        android:textSize="16sp" />
+                        android:textColor="?attr/colorOnSurface"
+                    android:textSize="15sp" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginEnd="10dp"
                         android:fontFamily="@font/poppins_semi_bold"
-                        android:text="@string/grid" />
+                        android:text="@string/grid"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
 
                     <com.google.android.material.materialswitch.MaterialSwitch
                         android:id="@+id/listMuFilterGenresGrid"
@@ -679,12 +706,12 @@
                         android:layout_height="wrap_content" />
                 </LinearLayout>
 
-                <androidx.recyclerview.widget.RecyclerView
+                <ani.dantotsu.FadingEdgeRecyclerView
                     android:id="@+id/listMuFilterGenresRecycler"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:clipToPadding="false"
-                    android:fadingEdge="horizontal"
+                    android:requiresFadingEdge="horizontal"
                     android:orientation="horizontal"
                     android:paddingStart="16dp"
                     android:paddingTop="4dp"
@@ -706,7 +733,8 @@
                         android:layout_height="wrap_content"
                         android:fontFamily="@font/poppins_bold"
                         android:text="@string/mu_filter_categories"
-                        android:textSize="16sp" />
+                        android:textColor="?attr/colorOnSurface"
+                    android:textSize="15sp" />
 
                     <ani.dantotsu.others.MaterialProgressBar
                         android:id="@+id/listMuFilterCategoryProgress"
@@ -749,7 +777,8 @@
                     </com.google.android.material.textfield.TextInputLayout>
                 </LinearLayout>
 
-                <androidx.recyclerview.widget.RecyclerView
+                <ani.dantotsu.FadingEdgeRecyclerView
+                android:requiresFadingEdge="horizontal"
                     android:id="@+id/listMuFilterCategoryResultsRecycler"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -765,7 +794,8 @@
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
                     android:layout_marginTop="16dp"
-                    android:background="?android:attr/listDivider" />
+                    android:alpha="0.5"
+                android:background="?attr/colorOutlineVariant" />
             </LinearLayout>
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
@@ -788,14 +818,14 @@
             android:insetBottom="0dp"
             android:padding="8dp"
             android:text="@string/cancel"
-            android:textSize="16sp"
+                    android:textSize="15sp"
             app:cornerRadius="16dp"
-            app:strokeColor="?attr/colorPrimaryContainer"
+            app:strokeColor="?attr/colorOutline"
             tools:ignore="SpeakableTextPresentCheck" />
 
         <Button
             android:id="@+id/listFilterApply"
-            style="@style/Widget.Material3.Button.OutlinedButton"
+            style="@style/Widget.Material3.Button"
             android:layout_width="0dp"
             android:layout_height="56dp"
             android:layout_margin="8dp"
@@ -805,9 +835,8 @@
             android:insetBottom="0dp"
             android:padding="8dp"
             android:text="@string/apply"
-            android:textSize="16sp"
+                    android:textSize="15sp"
             app:cornerRadius="16dp"
-            app:strokeColor="?attr/colorPrimaryContainer"
             tools:ignore="SpeakableTextPresentCheck" />
     </LinearLayout>
 </FrameLayout>

@@ -23,18 +23,16 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
                 android:layout_marginTop="32dp"
-                app:cardBackgroundColor="@color/nav_bg_inv"
+                app:cardBackgroundColor="@android:color/transparent"
                 app:cardCornerRadius="16dp"
                 app:cardElevation="0dp">
 
-                <ImageButton
+                <ani.dantotsu.others.ChoiceIconButton
                     android:id="@+id/readerSettingsBack"
                     android:layout_width="64dp"
                     android:layout_height="64dp"
-                    android:background="@color/nav_bg_inv"
                     android:padding="16dp"
                     app:srcCompat="@drawable/ic_round_arrow_back_ios_new_24"
-                    app:tint="?attr/colorOnBackground"
                     tools:ignore="ContentDescription,SpeakableTextPresentCheck" />
             </androidx.cardview.widget.CardView>
 
@@ -180,55 +178,49 @@
                     <androidx.cardview.widget.CardView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        app:cardBackgroundColor="@color/nav_bg_inv"
+                        app:cardBackgroundColor="@android:color/transparent"
                         app:cardCornerRadius="16dp"
                         app:cardElevation="0dp">
 
-                        <ImageButton
+                        <ani.dantotsu.others.ChoiceIconButton
                             android:id="@+id/readerSettingsPaged"
                             android:layout_width="48dp"
                             android:layout_height="48dp"
                             android:alpha="0.33"
-                            android:background="?android:attr/selectableItemBackground"
                             android:scaleX="-1"
                             android:src="@drawable/ic_round_amp_stories_24"
-                            app:tint="?attr/colorOnBackground"
                             tools:ignore="ContentDescription,SpeakableTextPresentCheck,ImageContrastCheck" />
                     </androidx.cardview.widget.CardView>
 
                     <androidx.cardview.widget.CardView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        app:cardBackgroundColor="@color/nav_bg_inv"
+                        app:cardBackgroundColor="@android:color/transparent"
                         app:cardCornerRadius="16dp"
                         app:cardElevation="0dp">
 
-                        <ImageButton
+                        <ani.dantotsu.others.ChoiceIconButton
                             android:id="@+id/readerSettingsContinuousPaged"
                             android:layout_width="48dp"
                             android:layout_height="48dp"
                             android:alpha="0.33"
-                            android:background="?android:attr/selectableItemBackground"
                             android:src="@drawable/ic_round_view_array_24"
-                            app:tint="?attr/colorOnBackground"
                             tools:ignore="ContentDescription,SpeakableTextPresentCheck,ImageContrastCheck,DuplicateSpeakableTextCheck" />
                     </androidx.cardview.widget.CardView>
 
                     <androidx.cardview.widget.CardView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        app:cardBackgroundColor="@color/nav_bg_inv"
+                        app:cardBackgroundColor="@android:color/transparent"
                         app:cardCornerRadius="16dp"
                         app:cardElevation="0dp">
 
-                        <ImageButton
+                        <ani.dantotsu.others.ChoiceIconButton
                             android:id="@+id/readerSettingsContinuous"
                             android:layout_width="48dp"
                             android:layout_height="48dp"
                             android:alpha="0.33"
-                            android:background="?android:attr/selectableItemBackground"
                             android:src="@drawable/ic_round_view_column_24"
-                            app:tint="?attr/colorOnBackground"
                             tools:ignore="ContentDescription,SpeakableTextPresentCheck,ImageContrastCheck" />
                     </androidx.cardview.widget.CardView>
 
@@ -267,22 +259,73 @@
                             tools:text="Top to Bottom" />
                     </LinearLayout>
 
+                    <!-- One button per direction, in Directions order, each arrow pointing the way the pages go. -->
                     <androidx.cardview.widget.CardView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        app:cardBackgroundColor="@color/nav_bg_inv"
+                        app:cardBackgroundColor="@android:color/transparent"
                         app:cardCornerRadius="16dp"
                         app:cardElevation="0dp">
 
-                        <ImageButton
-                            android:id="@+id/readerSettingsDirection"
+                        <ani.dantotsu.others.ChoiceIconButton
+                            android:id="@+id/readerSettingsDirectionTtb"
                             android:layout_width="48dp"
                             android:layout_height="48dp"
-                            android:background="?android:attr/selectableItemBackground"
+                            android:alpha="0.33"
+                            android:rotation="180"
+                            android:src="@drawable/ic_round_swipe_up_alt_24"
+                            tools:ignore="SpeakableTextPresentCheck,ImageContrastCheck" />
+                    </androidx.cardview.widget.CardView>
+
+                    <androidx.cardview.widget.CardView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        app:cardBackgroundColor="@android:color/transparent"
+                        app:cardCornerRadius="16dp"
+                        app:cardElevation="0dp">
+
+                        <ani.dantotsu.others.ChoiceIconButton
+                            android:id="@+id/readerSettingsDirectionRtl"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:alpha="0.33"
+                            android:rotation="270"
+                            android:src="@drawable/ic_round_swipe_up_alt_24"
+                            tools:ignore="SpeakableTextPresentCheck,ImageContrastCheck" />
+                    </androidx.cardview.widget.CardView>
+
+                    <androidx.cardview.widget.CardView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        app:cardBackgroundColor="@android:color/transparent"
+                        app:cardCornerRadius="16dp"
+                        app:cardElevation="0dp">
+
+                        <ani.dantotsu.others.ChoiceIconButton
+                            android:id="@+id/readerSettingsDirectionBtt"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:alpha="0.33"
                             android:rotation="0"
                             android:src="@drawable/ic_round_swipe_up_alt_24"
-                            app:tint="?attr/colorOnBackground"
-                            tools:ignore="ContentDescription,SpeakableTextPresentCheck,ImageContrastCheck" />
+                            tools:ignore="SpeakableTextPresentCheck,ImageContrastCheck" />
+                    </androidx.cardview.widget.CardView>
+
+                    <androidx.cardview.widget.CardView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        app:cardBackgroundColor="@android:color/transparent"
+                        app:cardCornerRadius="16dp"
+                        app:cardElevation="0dp">
+
+                        <ani.dantotsu.others.ChoiceIconButton
+                            android:id="@+id/readerSettingsDirectionLtr"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:alpha="0.33"
+                            android:rotation="90"
+                            android:src="@drawable/ic_round_swipe_up_alt_24"
+                            tools:ignore="SpeakableTextPresentCheck,ImageContrastCheck" />
                     </androidx.cardview.widget.CardView>
 
                 </LinearLayout>
@@ -323,55 +366,49 @@
                     <androidx.cardview.widget.CardView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        app:cardBackgroundColor="@color/nav_bg_inv"
+                        app:cardBackgroundColor="@android:color/transparent"
                         app:cardCornerRadius="16dp"
                         app:cardElevation="0dp">
 
-                        <ImageButton
+                        <ani.dantotsu.others.ChoiceIconButton
                             android:id="@+id/readerSettingsDualNo"
                             android:layout_width="48dp"
                             android:layout_height="48dp"
                             android:alpha="0.33"
-                            android:background="?android:attr/selectableItemBackground"
                             android:scaleX="-1"
                             android:src="@drawable/ic_round_close_24"
-                            app:tint="?attr/colorOnBackground"
                             tools:ignore="ContentDescription,SpeakableTextPresentCheck,ImageContrastCheck" />
                     </androidx.cardview.widget.CardView>
 
                     <androidx.cardview.widget.CardView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        app:cardBackgroundColor="@color/nav_bg_inv"
+                        app:cardBackgroundColor="@android:color/transparent"
                         app:cardCornerRadius="16dp"
                         app:cardElevation="0dp">
 
-                        <ImageButton
+                        <ani.dantotsu.others.ChoiceIconButton
                             android:id="@+id/readerSettingsDualAuto"
                             android:layout_width="48dp"
                             android:layout_height="48dp"
                             android:alpha="0.33"
-                            android:background="?android:attr/selectableItemBackground"
                             android:src="@drawable/ic_round_screen_rotation_24"
-                            app:tint="?attr/colorOnBackground"
                             tools:ignore="ContentDescription,SpeakableTextPresentCheck,ImageContrastCheck,DuplicateSpeakableTextCheck" />
                     </androidx.cardview.widget.CardView>
 
                     <androidx.cardview.widget.CardView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        app:cardBackgroundColor="@color/nav_bg_inv"
+                        app:cardBackgroundColor="@android:color/transparent"
                         app:cardCornerRadius="16dp"
                         app:cardElevation="0dp">
 
-                        <ImageButton
+                        <ani.dantotsu.others.ChoiceIconButton
                             android:id="@+id/readerSettingsDualForce"
                             android:layout_width="48dp"
                             android:layout_height="48dp"
                             android:alpha="0.33"
-                            android:background="?android:attr/selectableItemBackground"
                             android:src="@drawable/ic_round_menu_book_24"
-                            app:tint="?attr/colorOnBackground"
                             tools:ignore="ContentDescription,SpeakableTextPresentCheck,ImageContrastCheck" />
                     </androidx.cardview.widget.CardView>
 
@@ -780,18 +817,16 @@
                     <androidx.cardview.widget.CardView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        app:cardBackgroundColor="@color/nav_bg_inv"
+                        app:cardBackgroundColor="@android:color/transparent"
                         app:cardCornerRadius="16dp"
                         app:cardElevation="0dp">
 
-                        <ImageButton
+                        <ani.dantotsu.others.ChoiceIconButton
                             android:id="@+id/readerSettingsDecrementPreloadAmount"
                             android:layout_width="48dp"
                             android:layout_height="48dp"
-                            android:background="?android:attr/selectableItemBackground"
                             android:scaleX="-1"
                             android:src="@drawable/ic_minus"
-                            app:tint="?attr/colorOnBackground"
                             tools:ignore="ContentDescription,SpeakableTextPresentCheck,ImageContrastCheck" />
                     </androidx.cardview.widget.CardView>
 
@@ -814,18 +849,16 @@
                     <androidx.cardview.widget.CardView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        app:cardBackgroundColor="@color/nav_bg_inv"
+                        app:cardBackgroundColor="@android:color/transparent"
                         app:cardCornerRadius="16dp"
                         app:cardElevation="0dp">
 
-                        <ImageButton
+                        <ani.dantotsu.others.ChoiceIconButton
                             android:id="@+id/readerSettingsIncrementPreloadAmount"
                             android:layout_width="48dp"
                             android:layout_height="48dp"
-                            android:background="?android:attr/selectableItemBackground"
                             android:scaleX="-1"
                             android:src="@drawable/ic_add"
-                            app:tint="?attr/colorOnBackground"
                             tools:ignore="ContentDescription,SpeakableTextPresentCheck,ImageContrastCheck" />
                     </androidx.cardview.widget.CardView>
                 </LinearLayout>
@@ -1247,37 +1280,33 @@
                     <androidx.cardview.widget.CardView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        app:cardBackgroundColor="@color/nav_bg_inv"
+                        app:cardBackgroundColor="@android:color/transparent"
                         app:cardCornerRadius="16dp"
                         app:cardElevation="0dp">
 
-                        <ImageButton
+                        <ani.dantotsu.others.ChoiceIconButton
                             android:id="@+id/LNpaged"
                             android:layout_width="48dp"
                             android:layout_height="48dp"
                             android:alpha="0.33"
-                            android:background="?android:attr/selectableItemBackground"
                             android:scaleX="-1"
                             android:src="@drawable/ic_round_amp_stories_24"
-                            app:tint="?attr/colorOnBackground"
                             tools:ignore="ContentDescription,SpeakableTextPresentCheck,ImageContrastCheck" />
                     </androidx.cardview.widget.CardView>
 
                     <androidx.cardview.widget.CardView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        app:cardBackgroundColor="@color/nav_bg_inv"
+                        app:cardBackgroundColor="@android:color/transparent"
                         app:cardCornerRadius="16dp"
                         app:cardElevation="0dp">
 
-                        <ImageButton
+                        <ani.dantotsu.others.ChoiceIconButton
                             android:id="@+id/LNcontinuous"
                             android:layout_width="48dp"
                             android:layout_height="48dp"
                             android:alpha="0.33"
-                            android:background="?android:attr/selectableItemBackground"
                             android:src="@drawable/ic_round_view_column_24"
-                            app:tint="?attr/colorOnBackground"
                             tools:ignore="ContentDescription,SpeakableTextPresentCheck,ImageContrastCheck" />
                     </androidx.cardview.widget.CardView>
 
@@ -1319,55 +1348,49 @@
                     <androidx.cardview.widget.CardView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        app:cardBackgroundColor="@color/nav_bg_inv"
+                        app:cardBackgroundColor="@android:color/transparent"
                         app:cardCornerRadius="16dp"
                         app:cardElevation="0dp">
 
-                        <ImageButton
+                        <ani.dantotsu.others.ChoiceIconButton
                             android:id="@+id/LNdualNo"
                             android:layout_width="48dp"
                             android:layout_height="48dp"
                             android:alpha="0.33"
-                            android:background="?android:attr/selectableItemBackground"
                             android:scaleX="-1"
                             android:src="@drawable/ic_round_close_24"
-                            app:tint="?attr/colorOnBackground"
                             tools:ignore="ContentDescription,SpeakableTextPresentCheck,ImageContrastCheck" />
                     </androidx.cardview.widget.CardView>
 
                     <androidx.cardview.widget.CardView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        app:cardBackgroundColor="@color/nav_bg_inv"
+                        app:cardBackgroundColor="@android:color/transparent"
                         app:cardCornerRadius="16dp"
                         app:cardElevation="0dp">
 
-                        <ImageButton
+                        <ani.dantotsu.others.ChoiceIconButton
                             android:id="@+id/LNdualAuto"
                             android:layout_width="48dp"
                             android:layout_height="48dp"
                             android:alpha="0.33"
-                            android:background="?android:attr/selectableItemBackground"
                             android:src="@drawable/ic_round_screen_rotation_24"
-                            app:tint="?attr/colorOnBackground"
                             tools:ignore="ContentDescription,SpeakableTextPresentCheck,ImageContrastCheck,DuplicateSpeakableTextCheck" />
                     </androidx.cardview.widget.CardView>
 
                     <androidx.cardview.widget.CardView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        app:cardBackgroundColor="@color/nav_bg_inv"
+                        app:cardBackgroundColor="@android:color/transparent"
                         app:cardCornerRadius="16dp"
                         app:cardElevation="0dp">
 
-                        <ImageButton
+                        <ani.dantotsu.others.ChoiceIconButton
                             android:id="@+id/LNdualForce"
                             android:layout_width="48dp"
                             android:layout_height="48dp"
                             android:alpha="0.33"
-                            android:background="?android:attr/selectableItemBackground"
                             android:src="@drawable/ic_round_menu_book_24"
-                            app:tint="?attr/colorOnBackground"
                             tools:ignore="ContentDescription,SpeakableTextPresentCheck,ImageContrastCheck" />
                     </androidx.cardview.widget.CardView>
 
@@ -1396,18 +1419,16 @@
                     <androidx.cardview.widget.CardView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        app:cardBackgroundColor="@color/nav_bg_inv"
+                        app:cardBackgroundColor="@android:color/transparent"
                         app:cardCornerRadius="16dp"
                         app:cardElevation="0dp">
 
-                        <ImageButton
+                        <ani.dantotsu.others.ChoiceIconButton
                             android:id="@+id/LNdecrementLineHeight"
                             android:layout_width="48dp"
                             android:layout_height="48dp"
-                            android:background="?android:attr/selectableItemBackground"
                             android:scaleX="-1"
                             android:src="@drawable/ic_minus"
-                            app:tint="?attr/colorOnBackground"
                             tools:ignore="ContentDescription,SpeakableTextPresentCheck,ImageContrastCheck" />
                     </androidx.cardview.widget.CardView>
 
@@ -1431,18 +1452,16 @@
                     <androidx.cardview.widget.CardView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        app:cardBackgroundColor="@color/nav_bg_inv"
+                        app:cardBackgroundColor="@android:color/transparent"
                         app:cardCornerRadius="16dp"
                         app:cardElevation="0dp">
 
-                        <ImageButton
+                        <ani.dantotsu.others.ChoiceIconButton
                             android:id="@+id/LNincrementLineHeight"
                             android:layout_width="48dp"
                             android:layout_height="48dp"
-                            android:background="?android:attr/selectableItemBackground"
                             android:scaleX="-1"
                             android:src="@drawable/ic_add"
-                            app:tint="?attr/colorOnBackground"
                             tools:ignore="ContentDescription,SpeakableTextPresentCheck,ImageContrastCheck" />
                     </androidx.cardview.widget.CardView>
                 </LinearLayout>
@@ -1470,18 +1489,16 @@
                     <androidx.cardview.widget.CardView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        app:cardBackgroundColor="@color/nav_bg_inv"
+                        app:cardBackgroundColor="@android:color/transparent"
                         app:cardCornerRadius="16dp"
                         app:cardElevation="0dp">
 
-                        <ImageButton
+                        <ani.dantotsu.others.ChoiceIconButton
                             android:id="@+id/LNdecrementMargin"
                             android:layout_width="48dp"
                             android:layout_height="48dp"
-                            android:background="?android:attr/selectableItemBackground"
                             android:scaleX="-1"
                             android:src="@drawable/ic_minus"
-                            app:tint="?attr/colorOnBackground"
                             tools:ignore="ContentDescription,SpeakableTextPresentCheck,ImageContrastCheck" />
                     </androidx.cardview.widget.CardView>
 
@@ -1504,18 +1521,16 @@
                     <androidx.cardview.widget.CardView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        app:cardBackgroundColor="@color/nav_bg_inv"
+                        app:cardBackgroundColor="@android:color/transparent"
                         app:cardCornerRadius="16dp"
                         app:cardElevation="0dp">
 
-                        <ImageButton
+                        <ani.dantotsu.others.ChoiceIconButton
                             android:id="@+id/LNincrementMargin"
                             android:layout_width="48dp"
                             android:layout_height="48dp"
-                            android:background="?android:attr/selectableItemBackground"
                             android:scaleX="-1"
                             android:src="@drawable/ic_add"
-                            app:tint="?attr/colorOnBackground"
                             tools:ignore="ContentDescription,SpeakableTextPresentCheck,ImageContrastCheck" />
                     </androidx.cardview.widget.CardView>
                 </LinearLayout>
@@ -1543,18 +1558,16 @@
                     <androidx.cardview.widget.CardView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        app:cardBackgroundColor="@color/nav_bg_inv"
+                        app:cardBackgroundColor="@android:color/transparent"
                         app:cardCornerRadius="16dp"
                         app:cardElevation="0dp">
 
-                        <ImageButton
+                        <ani.dantotsu.others.ChoiceIconButton
                             android:id="@+id/LNdecrementMaxInlineSize"
                             android:layout_width="48dp"
                             android:layout_height="48dp"
-                            android:background="?android:attr/selectableItemBackground"
                             android:scaleX="-1"
                             android:src="@drawable/ic_minus"
-                            app:tint="?attr/colorOnBackground"
                             tools:ignore="ContentDescription,SpeakableTextPresentCheck,ImageContrastCheck" />
                     </androidx.cardview.widget.CardView>
 
@@ -1577,18 +1590,16 @@
                     <androidx.cardview.widget.CardView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        app:cardBackgroundColor="@color/nav_bg_inv"
+                        app:cardBackgroundColor="@android:color/transparent"
                         app:cardCornerRadius="16dp"
                         app:cardElevation="0dp">
 
-                        <ImageButton
+                        <ani.dantotsu.others.ChoiceIconButton
                             android:id="@+id/LNincrementMaxInlineSize"
                             android:layout_width="48dp"
                             android:layout_height="48dp"
-                            android:background="?android:attr/selectableItemBackground"
                             android:scaleX="-1"
                             android:src="@drawable/ic_add"
-                            app:tint="?attr/colorOnBackground"
                             tools:ignore="ContentDescription,SpeakableTextPresentCheck,ImageContrastCheck" />
                     </androidx.cardview.widget.CardView>
                 </LinearLayout>
@@ -1627,18 +1638,16 @@
                     <androidx.cardview.widget.CardView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        app:cardBackgroundColor="@color/nav_bg_inv"
+                        app:cardBackgroundColor="@android:color/transparent"
                         app:cardCornerRadius="16dp"
                         app:cardElevation="0dp">
 
-                        <ImageButton
+                        <ani.dantotsu.others.ChoiceIconButton
                             android:id="@+id/LNdecrementMaxBlockSize"
                             android:layout_width="48dp"
                             android:layout_height="48dp"
-                            android:background="?android:attr/selectableItemBackground"
                             android:scaleX="-1"
                             android:src="@drawable/ic_minus"
-                            app:tint="?attr/colorOnBackground"
                             tools:ignore="ContentDescription,SpeakableTextPresentCheck,ImageContrastCheck" />
                     </androidx.cardview.widget.CardView>
 
@@ -1661,18 +1670,16 @@
                     <androidx.cardview.widget.CardView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        app:cardBackgroundColor="@color/nav_bg_inv"
+                        app:cardBackgroundColor="@android:color/transparent"
                         app:cardCornerRadius="16dp"
                         app:cardElevation="0dp">
 
-                        <ImageButton
+                        <ani.dantotsu.others.ChoiceIconButton
                             android:id="@+id/LNincrementMaxBlockSize"
                             android:layout_width="48dp"
                             android:layout_height="48dp"
-                            android:background="?android:attr/selectableItemBackground"
                             android:scaleX="-1"
                             android:src="@drawable/ic_add"
-                            app:tint="?attr/colorOnBackground"
                             tools:ignore="ContentDescription,SpeakableTextPresentCheck,ImageContrastCheck" />
                     </androidx.cardview.widget.CardView>
                 </LinearLayout>

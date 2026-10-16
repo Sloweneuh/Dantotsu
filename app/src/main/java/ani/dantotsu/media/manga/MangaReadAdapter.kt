@@ -343,7 +343,7 @@ class MangaReadAdapter(
 
                 // Grids
                 mediaSourceGrid.visibility = View.GONE
-                var selected = when (style) {
+                var selected: ImageButton = when (style) {
                     0 -> mediaSourceList
                     1 -> mediaSourceCompact
                     else -> mediaSourceList

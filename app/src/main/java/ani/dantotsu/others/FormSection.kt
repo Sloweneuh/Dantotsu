@@ -67,6 +67,22 @@ class FormSection @JvmOverloads constructor(
         addView(header.root, 0)
     }
 
+    /**
+     * An untitled card whose contents have all gone (or are empty, like a device list nothing was
+     * found for) takes no room, rather than drawing an empty pill — the handoff sheet's nearby
+     * devices card, where nearby sharing isn't available. Measured each time, so it comes back as
+     * soon as anything in it shows again: a child changing visibility re-measures its parent.
+     */
+    override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+        super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+        if (titleText != null) return
+        val empty = (0 until childCount).all { i ->
+            val child = getChildAt(i)
+            child.visibility == GONE || child.measuredHeight == 0
+        }
+        if (empty) setMeasuredDimension(measuredWidth, 0)
+    }
+
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         // The closed look of a section card: primary-washed tile, primary icon.

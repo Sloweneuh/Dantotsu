@@ -40,16 +40,24 @@ class ReaderSettingsDialogFragment : BottomSheetDialogFragment() {
             binding.readerOverscroll.visibility = View.GONE
         }
 
-        binding.readerDirectionText.text =
-            resources.getStringArray(R.array.manga_directions)[settings.direction.ordinal]
-        binding.readerDirection.rotation = 90f * (settings.direction.ordinal)
-        binding.readerDirection.setOnClickListener {
-            settings.direction =
-                Directions[settings.direction.ordinal + 1] ?: Directions.TOP_TO_BOTTOM
-            binding.readerDirectionText.text =
-                resources.getStringArray(R.array.manga_directions)[settings.direction.ordinal]
-            binding.readerDirection.rotation = 90f * (settings.direction.ordinal)
-            activity.applySettings()
+        // One button per direction, in Directions order — picked directly rather than cycled to.
+        val directionNames = resources.getStringArray(R.array.manga_directions)
+        val directions = listOf(
+            binding.readerDirectionTtb,
+            binding.readerDirectionRtl,
+            binding.readerDirectionBtt,
+            binding.readerDirectionLtr,
+        )
+        binding.readerDirectionText.text = directionNames[settings.direction.ordinal]
+        directions.forEachIndexed { index, button ->
+            button.contentDescription = directionNames[index]
+            button.alpha = if (index == settings.direction.ordinal) 1f else 0.33f
+            button.setOnClickListener {
+                settings.direction = Directions[index] ?: Directions.TOP_TO_BOTTOM
+                directions.forEachIndexed { i, b -> b.alpha = if (i == index) 1f else 0.33f }
+                binding.readerDirectionText.text = directionNames[index]
+                activity.applySettings()
+            }
         }
 
         val list = listOf(

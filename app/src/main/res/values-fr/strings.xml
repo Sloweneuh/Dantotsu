@@ -3075,6 +3075,15 @@
     <string name="form_action_add">Ajouter</string>
     <string name="list_editor_progress_group">Progression</string>
     <string name="list_editor_dates_group">Dates</string>
+    <string name="reader_section_display">Affichage</string>
+    <string name="reader_section_controls">Commandes</string>
+    <string name="reader_section_text">Texte</string>
+    <string name="novel_line_height">Hauteur de ligne</string>
+    <string name="novel_margin">Marge</string>
+    <string name="novel_max_inline_size">Taille en ligne maximale</string>
+    <string name="novel_max_inline_size_desc">Largeur de colonne maximale (écriture horizontale) ou hauteur (écriture verticale)</string>
+    <string name="novel_max_block_size">Taille de bloc maximale</string>
+    <string name="novel_max_block_size_desc">Hauteur maximale (écriture horizontale) ou largeur (écriture verticale)</string>
     <string name="list_editor_volume">VOLUME</string>
     <string name="review_write_title">Écrire une critique</string>
     <string name="review_section_summary">Résumé</string>

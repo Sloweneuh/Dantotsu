@@ -100,17 +100,25 @@ class ReaderSettingsActivity : AppCompatActivity() {
             }
         }
 
-        binding.readerSettingsDirectionText.text =
-            resources.getStringArray(R.array.manga_directions)[defaultSettings.direction.ordinal]
-        binding.readerSettingsDirection.rotation = 90f * (defaultSettings.direction.ordinal)
-        binding.readerSettingsDirection.setOnClickListener {
-            defaultSettings.direction =
-                CurrentReaderSettings.Directions[defaultSettings.direction.ordinal + 1]
+        // One button per direction, in Directions order — picked directly rather than cycled to.
+        val directionNames = resources.getStringArray(R.array.manga_directions)
+        val directions = listOf(
+            binding.readerSettingsDirectionTtb,
+            binding.readerSettingsDirectionRtl,
+            binding.readerSettingsDirectionBtt,
+            binding.readerSettingsDirectionLtr,
+        )
+        binding.readerSettingsDirectionText.text = directionNames[defaultSettings.direction.ordinal]
+        directions.forEachIndexed { index, button ->
+            button.contentDescription = directionNames[index]
+            button.alpha = if (index == defaultSettings.direction.ordinal) 1f else 0.33f
+            button.setOnClickListener {
+                defaultSettings.direction = CurrentReaderSettings.Directions[index]
                     ?: CurrentReaderSettings.Directions.TOP_TO_BOTTOM
-            binding.readerSettingsDirectionText.text =
-                resources.getStringArray(R.array.manga_directions)[defaultSettings.direction.ordinal]
-            binding.readerSettingsDirection.rotation = 90f * (defaultSettings.direction.ordinal)
-            PrefManager.setVal(PrefName.Direction, defaultSettings.direction.ordinal)
+                directions.forEachIndexed { i, b -> b.alpha = if (i == index) 1f else 0.33f }
+                binding.readerSettingsDirectionText.text = directionNames[index]
+                PrefManager.setVal(PrefName.Direction, defaultSettings.direction.ordinal)
+            }
         }
 
         val dualList = listOf(

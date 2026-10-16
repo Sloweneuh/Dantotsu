@@ -3199,6 +3199,15 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="form_action_add">Add</string>
     <string name="list_editor_progress_group">Progress</string>
     <string name="list_editor_dates_group">Dates</string>
+    <string name="reader_section_display">Display</string>
+    <string name="reader_section_controls">Controls</string>
+    <string name="reader_section_text">Text</string>
+    <string name="novel_line_height">Line height</string>
+    <string name="novel_margin">Margin</string>
+    <string name="novel_max_inline_size">Maximum inline size</string>
+    <string name="novel_max_inline_size_desc">Maximum column width (horizontal writing) or height (vertical writing)</string>
+    <string name="novel_max_block_size">Maximum block size</string>
+    <string name="novel_max_block_size_desc">Maximum height (horizontal writing) or width (vertical writing)</string>
     <!-- Capitalised like the editor's other field labels (STATUS, PROGRESS, SCORE). -->
     <string name="list_editor_volume">VOLUME</string>
     <string name="review_write_title">Write a review</string>

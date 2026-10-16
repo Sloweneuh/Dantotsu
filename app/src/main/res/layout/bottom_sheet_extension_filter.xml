@@ -21,76 +21,90 @@
             android:paddingEnd="24dp"
             android:paddingBottom="16dp">
 
-            <LinearLayout
+            <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="17dp"
-                android:layout_marginBottom="10dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
+                    android:layout_marginTop="17dp"
+                    android:layout_marginBottom="10dp">
 
-                <ImageButton
-                    android:id="@+id/extensionFilterReset"
-                    android:layout_width="30dp"
-                    android:layout_height="30dp"
-                    android:background="@null"
-                    android:contentDescription="@string/reset"
-                    android:rotation="180"
-                    android:scaleType="fitCenter"
-                    android:src="@drawable/ic_round_reset_star_24"
-                    app:tint="?attr/colorPrimary" />
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+    
+                    <ImageButton
+                        android:id="@+id/extensionFilterReset"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:padding="8dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/reset"
+                        android:rotation="180"
+                        android:scaleType="centerInside"
+                        android:src="@drawable/ic_round_reset_star_24"
+                        app:tint="?attr/colorPrimary" />
+    
+                    <Space
+                        android:layout_width="0dp"
+                        android:layout_height="1dp"
+                        android:layout_weight="1" />
+    
+                    <FrameLayout
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:layout_marginEnd="8dp">
+    
+                        <ImageButton
+                            android:id="@+id/manageFiltersButton"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                        android:padding="8dp"
+                            android:background="?attr/selectableItemBackgroundBorderless"
+                            android:contentDescription="@string/manage_filters"
+                            android:scaleType="centerInside"
+                            android:src="@drawable/format_list_bulleted_24"
+                            android:visibility="gone"
+                            app:tint="?attr/colorPrimary"
+                            tools:visibility="visible" />
+    
+                        <TextView
+                            android:id="@+id/manageFiltersCount"
+                            android:layout_width="14dp"
+                            android:layout_height="14dp"
+                            android:layout_gravity="top|end"
+                            android:background="@drawable/notification_circle"
+                            android:fontFamily="@font/poppins_semi_bold"
+                            android:gravity="center"
+                            android:textColor="#F3F3F3"
+                            android:textSize="8sp"
+                            android:visibility="gone"
+                            tools:text="3"
+                            tools:visibility="visible" />
+                    </FrameLayout>
+    
+                    <ImageButton
+                        android:id="@+id/savedFiltersButton"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:padding="8dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:contentDescription="@string/saved_filters"
+                        android:scaleType="centerInside"
+                        android:src="@drawable/ic_round_bookmarks_24"
+                        app:tint="?attr/colorPrimary" />
+                </LinearLayout>
 
                 <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:fontFamily="@font/poppins_semi_bold"
-                    android:text="@string/filter"
-                    android:textAlignment="center"
-                    android:textSize="23sp" />
-
-                <FrameLayout
-                    android:layout_width="30dp"
-                    android:layout_height="30dp"
-                    android:layout_marginEnd="8dp">
-
-                    <ImageButton
-                        android:id="@+id/manageFiltersButton"
-                        android:layout_width="30dp"
-                        android:layout_height="30dp"
-                        android:background="?attr/selectableItemBackgroundBorderless"
-                        android:contentDescription="@string/manage_filters"
-                        android:scaleType="fitCenter"
-                        android:src="@drawable/format_list_bulleted_24"
-                        android:visibility="gone"
-                        app:tint="?attr/colorPrimary"
-                        tools:visibility="visible" />
-
-                    <TextView
-                        android:id="@+id/manageFiltersCount"
-                        android:layout_width="14dp"
-                        android:layout_height="14dp"
-                        android:layout_gravity="top|end"
-                        android:background="@drawable/notification_circle"
-                        android:fontFamily="@font/poppins_semi_bold"
-                        android:gravity="center"
-                        android:textColor="#F3F3F3"
-                        android:textSize="8sp"
-                        android:visibility="gone"
-                        tools:text="3"
-                        tools:visibility="visible" />
-                </FrameLayout>
-
-                <ImageButton
-                    android:id="@+id/savedFiltersButton"
-                    android:layout_width="30dp"
-                    android:layout_height="30dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="@string/saved_filters"
-                    android:scaleType="fitCenter"
-                    android:src="@drawable/ic_round_bookmarks_24"
-                    app:tint="?attr/colorPrimary" />
-            </LinearLayout>
+                    android:layout_gravity="center"
+                    android:includeFontPadding="false"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="@font/poppins_bold"
+                        android:text="@string/filter"
+                        android:textColor="?attr/colorOnSurface"
+                        android:textSize="20sp" />
+            </FrameLayout>
 
             <View
                 android:layout_width="match_parent"
