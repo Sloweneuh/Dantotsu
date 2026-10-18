@@ -380,31 +380,31 @@ object SettingsSearch {
 
         l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.resize_mode_button, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.playerResizeMode, keywordsRes = R.string.search_kw_resize_mode_button)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.subtitle_toggle, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.subSwitch, keywordsRes = R.string.search_kw_subtitle_toggle)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.subtitle_toggle, R.string.anime_and_player, IC_PLAYER, rowTitleRes = R.string.sub_show, keywordsRes = R.string.search_kw_subtitle_toggle)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.primary_sub_color_select, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.videoSubColorPrimary, keywordsRes = R.string.search_kw_primary_sub_color_select)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.primary_sub_color_select, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.subtitleStyleGrid, keywordsRes = R.string.search_kw_primary_sub_color_select)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.secondary_sub_color_select, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.videoSubColorSecondary, keywordsRes = R.string.search_kw_secondary_sub_color_select)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.secondary_sub_color_select, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.subtitleStyleGrid, keywordsRes = R.string.search_kw_secondary_sub_color_select)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.secondary_sub_outline_type_select, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.videoSubOutline, keywordsRes = R.string.search_kw_secondary_sub_outline_type_select)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.secondary_sub_outline_type_select, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.subtitleStyleGrid, keywordsRes = R.string.search_kw_secondary_sub_outline_type_select)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.sub_background_color_select, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.videoSubColorBackground, keywordsRes = R.string.search_kw_sub_background_color_select)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.sub_background_color_select, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.subtitleStyleGrid, keywordsRes = R.string.search_kw_sub_background_color_select)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.sub_window_color_select, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.videoSubColorWindow, keywordsRes = R.string.search_kw_sub_window_color_select)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.sub_window_color_select, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.subtitleStyleGrid, keywordsRes = R.string.search_kw_sub_window_color_select)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.sub_alpha, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.videoSubAlphaButton, keywordsRes = R.string.search_kw_sub_alpha)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.sub_alpha, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.subtitleStyleGrid, keywordsRes = R.string.search_kw_sub_alpha)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.textview_sub, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.subTextSwitch, keywordsRes = R.string.search_kw_textview_sub)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.textview_sub, R.string.anime_and_player, IC_PLAYER, rowTitleRes = R.string.sub_renderer, keywordsRes = R.string.search_kw_textview_sub)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.textview_sub_stroke, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.videoSubStrokeButton, keywordsRes = R.string.search_kw_textview_sub_stroke)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.textview_sub_stroke, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.subtitleStyleGrid, keywordsRes = R.string.search_kw_textview_sub_stroke)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.textview_sub_bottom_margin, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.videoSubBottomMarginButton, keywordsRes = R.string.search_kw_textview_sub_bottom_margin)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.textview_sub_bottom_margin, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.subtitleStyleGrid, keywordsRes = R.string.search_kw_textview_sub_bottom_margin)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.sub_font_select, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.videoSubFont, keywordsRes = R.string.search_kw_sub_font_select)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.sub_font_select, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.subtitleStyleGrid, keywordsRes = R.string.search_kw_sub_font_select)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.subtitle_font_size, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.subtitle_font_size_text, keywordsRes = R.string.search_kw_subtitle_font_size)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.subtitle_font_size, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.subtitleStyleGrid, keywordsRes = R.string.search_kw_subtitle_font_size)
 
-        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.subtitle_langauge, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.videoSubLanguage, keywordsRes = R.string.search_kw_subtitle_langauge)
+        l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.subtitle_langauge, R.string.anime_and_player, IC_PLAYER, rowTitleRes = R.string.sub_language, keywordsRes = R.string.search_kw_subtitle_langauge)
 
         l += SearchableSetting(PlayerSettingsActivity::class.java, R.string.always_load_time_stamps, R.string.anime_and_player, IC_PLAYER, anchorViewId = R.id.playerSettingsTimeStamps, keywordsRes = R.string.search_kw_always_load_time_stamps)
 
@@ -955,6 +955,8 @@ object SettingsRouter {
             return
         }
         if (pos < 0) return // The row isn't in this list.
+        // A list inside a collapsed group has no rows laid out to find.
+        expandSections(recycler)
         val target = recycler.layoutManager?.findViewByPosition(pos)
             ?: recycler.findViewHolderForAdapterPosition(pos)?.itemView
         if (target != null) {

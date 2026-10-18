@@ -89,7 +89,7 @@
                 android:id="@+id/settingsRecyclerView"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginHorizontal="8dp"
+                android:layout_marginHorizontal="16dp"
                 android:layout_marginBottom="8dp"
                 android:nestedScrollingEnabled="false"
                 android:requiresFadingEdge="vertical"
@@ -187,393 +187,177 @@
                 app:icon="@drawable/ic_round_subtitles_24">
 
 
-                <ani.dantotsu.others.Xpandable
-                    android:id="@+id/subtitleTest"
+                <!-- A stand-in video frame with the subtitle drawn by the player's own text
+                     renderer, always on show rather than tucked into a collapsible of its own:
+                     every row below changes it as it's set. -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/subtitlePreviewCard"
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical">
+                    android:layout_height="176dp"
+                    android:layout_marginHorizontal="16dp"
+                    android:layout_marginTop="4dp"
+                    android:layout_marginBottom="8dp"
+                    app:cardCornerRadius="20dp"
+                    app:cardElevation="0dp"
+                    app:strokeWidth="0dp">
 
-                    <TextView
+                    <FrameLayout
+                        android:id="@+id/subtitlePreviewFrame"
                         android:layout_width="match_parent"
-                        android:layout_height="64dp"
-                        android:fontFamily="@font/poppins_bold"
-                        android:gravity="center_vertical"
-                        android:paddingHorizontal="32dp"
-                        android:text="@string/sub_text_example"
-                        android:textColor="?attr/colorSecondary"
-                        app:drawableEndCompat="@drawable/ic_round_arrow_drop_down_24"
-                        tools:ignore="TextContrastCheck" />
-
-                    <LinearLayout
-                        android:id="@+id/subtitleTestWindow"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical">
+                        android:layout_height="match_parent"
+                        android:background="@drawable/bg_subtitle_preview">
 
                         <TextView
-                            android:id="@+id/subtitleTestText"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_gravity="center"
-                            android:gravity="center"
-                            android:paddingHorizontal="32dp"
-                            android:text="@string/sub_text_example" />
-                    </LinearLayout>
-
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="8dp" />
-                </ani.dantotsu.others.Xpandable>
-
-                <com.google.android.material.materialswitch.MaterialSwitch
-                    android:id="@+id/subSwitch"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="8dp"
-                    android:checked="true"
-                    android:drawableStart="@drawable/ic_round_subtitles_24"
-                    android:drawablePadding="16dp"
-                    android:elegantTextHeight="false"
-                    android:fontFamily="@font/poppins_bold"
-                    android:minHeight="64dp"
-                    android:paddingHorizontal="32dp"
-                    android:text="@string/subtitle_toggle"
-                    android:textAlignment="viewStart"
-                    android:textColor="@color/bg_opp"
-                    app:cornerRadius="0dp"
-                    app:drawableTint="?attr/colorPrimary"
-                    app:showText="false"
-                    app:thumbTint="@color/button_switch_track" />
-
-                <Button
-                    android:id="@+id/videoSubColorPrimary"
-                    style="@style/Widget.Material3.Button.TextButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="64dp"
-                    android:layout_marginBottom="8dp"
-                    android:fontFamily="@font/poppins_bold"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
-                    android:paddingHorizontal="32dp"
-                    android:text="@string/primary_sub_color_select"
-                    android:textAlignment="viewStart"
-                    android:textAllCaps="false"
-                    android:textColor="@color/bg_opp"
-                    app:cornerRadius="0dp"
-                    app:icon="@drawable/ic_round_color_24"
-                    app:iconPadding="16dp"
-                    app:iconSize="24dp" />
-
-                <Button
-                    android:id="@+id/videoSubColorSecondary"
-                    style="@style/Widget.Material3.Button.TextButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="64dp"
-                    android:layout_marginBottom="8dp"
-                    android:fontFamily="@font/poppins_bold"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
-                    android:paddingHorizontal="32dp"
-                    android:text="@string/secondary_sub_color_select"
-                    android:textAlignment="viewStart"
-                    android:textAllCaps="false"
-                    android:textColor="@color/bg_opp"
-                    app:cornerRadius="0dp"
-                    app:icon="@drawable/ic_round_color_24"
-                    app:iconPadding="16dp"
-                    app:iconSize="24dp" />
-
-                <Button
-                    android:id="@+id/videoSubOutline"
-                    style="@style/Widget.Material3.Button.TextButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="64dp"
-                    android:layout_marginBottom="8dp"
-                    android:fontFamily="@font/poppins_bold"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
-                    android:paddingHorizontal="32dp"
-                    android:text="@string/secondary_sub_outline_type_select"
-                    android:textAlignment="viewStart"
-                    android:textAllCaps="false"
-                    android:textColor="@color/bg_opp"
-                    app:cornerRadius="0dp"
-                    app:icon="@drawable/ic_round_color_24"
-                    app:iconPadding="16dp"
-                    app:iconSize="24dp" />
-
-                <Button
-                    android:id="@+id/videoSubColorBackground"
-                    style="@style/Widget.Material3.Button.TextButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="64dp"
-                    android:layout_marginBottom="8dp"
-                    android:fontFamily="@font/poppins_bold"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
-                    android:paddingHorizontal="32dp"
-                    android:text="@string/sub_background_color_select"
-                    android:textAlignment="viewStart"
-                    android:textAllCaps="false"
-                    android:textColor="@color/bg_opp"
-                    app:cornerRadius="0dp"
-                    app:icon="@drawable/ic_round_color_24"
-                    app:iconPadding="16dp"
-                    app:iconSize="24dp" />
-
-                <Button
-                    android:id="@+id/videoSubColorWindow"
-                    style="@style/Widget.Material3.Button.TextButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="64dp"
-                    android:layout_marginBottom="8dp"
-                    android:fontFamily="@font/poppins_bold"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
-                    android:paddingHorizontal="32dp"
-                    android:text="@string/sub_window_color_select"
-                    android:textAlignment="viewStart"
-                    android:textAllCaps="false"
-                    android:textColor="@color/bg_opp"
-                    app:cornerRadius="0dp"
-                    app:icon="@drawable/ic_round_color_24"
-                    app:iconPadding="16dp"
-                    app:iconSize="24dp" />
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="-8dp"
-                    android:layout_marginBottom="8dp"
-                    android:alpha="0.58"
-                    android:fontFamily="@font/poppins_family"
-                    android:paddingHorizontal="32dp"
-                    android:text="@string/sub_window_color_info"
-                    android:textSize="14sp" />
-
-                <Button
-                    android:id="@+id/videoSubAlphaButton"
-                    style="@style/Widget.Material3.Button.TextButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="64dp"
-                    android:layout_marginBottom="8dp"
-                    android:clickable="false"
-                    android:fontFamily="@font/poppins_bold"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
-                    android:paddingHorizontal="32dp"
-                    android:text="@string/sub_alpha"
-                    android:textAlignment="viewStart"
-                    android:textAllCaps="false"
-                    android:textColor="@color/bg_opp"
-                    app:cornerRadius="0dp"
-                    app:icon="@drawable/ic_round_color_24"
-                    app:iconPadding="16dp"
-                    app:iconSize="24dp" />
-
-                <com.google.android.material.slider.Slider
-                    android:id="@+id/videoSubAlpha"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginHorizontal="32dp"
-                    android:stepSize="0.1"
-                    android:valueFrom="0"
-                    android:valueTo="1">
-
-                </com.google.android.material.slider.Slider>
-
-                <com.google.android.material.materialswitch.MaterialSwitch
-                    android:id="@+id/subTextSwitch"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="8dp"
-                    android:checked="true"
-                    android:drawableStart="@drawable/ic_round_subtitles_24"
-                    android:drawablePadding="16dp"
-                    android:elegantTextHeight="false"
-                    android:fontFamily="@font/poppins_bold"
-                    android:minHeight="64dp"
-                    android:paddingHorizontal="32dp"
-                    android:text="@string/textview_sub"
-                    android:textAlignment="viewStart"
-                    android:textColor="@color/bg_opp"
-                    app:cornerRadius="0dp"
-                    app:drawableTint="?attr/colorPrimary"
-                    app:showText="false"
-                    app:thumbTint="@color/button_switch_track" />
-
-                <Button
-                    android:id="@+id/videoSubStrokeButton"
-                    style="@style/Widget.Material3.Button.TextButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="64dp"
-                    android:layout_marginBottom="8dp"
-                    android:clickable="false"
-                    android:fontFamily="@font/poppins_bold"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
-                    android:paddingHorizontal="32dp"
-                    android:text="@string/textview_sub_stroke"
-                    android:textAlignment="viewStart"
-                    android:textAllCaps="false"
-                    android:textColor="@color/bg_opp"
-                    app:cornerRadius="0dp"
-                    app:icon="@drawable/ic_round_color_24"
-                    app:iconPadding="16dp"
-                    app:iconSize="24dp" />
-
-                <com.google.android.material.slider.Slider
-                    android:id="@+id/videoSubStroke"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginHorizontal="32dp"
-                    android:valueFrom="0"
-                    android:stepSize="1.0"
-                    android:valueTo="30">
-
-                </com.google.android.material.slider.Slider>
-
-                <Button
-                    android:id="@+id/videoSubBottomMarginButton"
-                    style="@style/Widget.Material3.Button.TextButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="64dp"
-                    android:layout_marginBottom="8dp"
-                    android:clickable="false"
-                    android:fontFamily="@font/poppins_bold"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
-                    android:paddingHorizontal="32dp"
-                    android:text="@string/textview_sub_bottom_margin"
-                    android:textAlignment="viewStart"
-                    android:textAllCaps="false"
-                    android:textColor="@color/bg_opp"
-                    app:cornerRadius="0dp"
-                    app:icon="@drawable/ic_round_color_24"
-                    app:iconPadding="16dp"
-                    app:iconSize="24dp" />
-
-                <com.google.android.material.slider.Slider
-                    android:id="@+id/videoSubBottomMargin"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginHorizontal="32dp"
-                    android:valueFrom="0"
-                    android:stepSize="1.0"
-                    android:valueTo="50">
-
-                </com.google.android.material.slider.Slider>
-
-                <Button
-                    android:id="@+id/videoSubFont"
-                    style="@style/Widget.Material3.Button.TextButton"
-                    android:layout_width="match_parent"
-                    android:layout_height="64dp"
-                    android:layout_marginBottom="8dp"
-                    android:fontFamily="@font/poppins_bold"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
-                    android:paddingHorizontal="32dp"
-                    android:text="@string/sub_font_select"
-                    android:textAlignment="viewStart"
-                    android:textAllCaps="false"
-                    android:textColor="@color/bg_opp"
-                    app:cornerRadius="0dp"
-                    app:icon="@drawable/ic_round_format_text_24"
-                    app:iconPadding="16dp"
-                    app:iconSize="24dp" />
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="64dp"
-                    android:layout_gravity="center_vertical"
-                    android:layout_marginHorizontal="32dp"
-                    android:layout_marginBottom="8dp"
-                    android:gravity="center"
-                    android:orientation="horizontal">
-
-                    <TextView
-                        android:id="@+id/subtitle_font_size_text"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_gravity="center"
-                        android:layout_weight="1"
-                        android:drawablePadding="16dp"
-                        android:fontFamily="@font/poppins_bold"
-                        android:text="@string/subtitle_font_size"
-                        app:drawableStartCompat="@drawable/ic_round_font_size_24"
-                        app:drawableTint="?attr/colorPrimary" />
-
-                    <com.google.android.material.card.MaterialCardView
-                        android:id="@+id/subtitle_font_size_card"
-                        android:layout_width="wrap_content"
-                        android:layout_height="48dp"
-                        android:layout_gravity="center"
-                        android:layout_margin="8dp"
-                        app:cardBackgroundColor="@color/nav_bg_inv"
-                        app:cardCornerRadius="16dp"
-                        app:rippleColor="#54FFFFFF">
+                            android:layout_gravity="top|start"
+                            android:layout_margin="12dp"
+                            android:background="@drawable/bg_text_scrim"
+                            android:fontFamily="@font/poppins_bold"
+                            android:paddingHorizontal="10dp"
+                            android:paddingVertical="2dp"
+                            android:text="@string/sub_preview_label"
+                            android:textColor="#FFFFFFFF"
+                            android:textSize="11sp" />
 
                         <LinearLayout
-                            android:layout_width="wrap_content"
+                            android:id="@+id/subtitlePreviewWindow"
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:gravity="center"
-                            android:orientation="horizontal"
-                            android:padding="8dp"
-                            tools:ignore="UseCompoundDrawables">
+                            android:layout_gravity="bottom"
+                            android:layout_marginBottom="14dp"
+                            android:gravity="center_horizontal"
+                            android:orientation="vertical"
+                            android:paddingHorizontal="16dp"
+                            android:paddingVertical="4dp">
 
-                            <EditText
-                                android:id="@+id/subtitleFontSize"
+                            <ani.dantotsu.others.Xubtitle
+                                android:id="@+id/subtitlePreviewText"
                                 android:layout_width="wrap_content"
-                                android:layout_height="match_parent"
-                                android:background="@android:color/transparent"
-                                android:fontFamily="@font/poppins_bold"
-                                android:importantForAutofill="no"
-                                android:inputType="number"
-                                android:maxLength="3"
-                                android:minWidth="48dp"
-                                android:padding="4dp"
-                                android:text="20"
-                                android:textAlignment="center"
-                                android:textColor="?attr/colorSecondary"
-                                android:textSize="14sp"
-                                tools:ignore="HardcodedText,LabelFor,TouchTargetSizeCheck" />
-
+                                android:layout_height="wrap_content"
+                                android:gravity="center"
+                                android:text="@string/sub_preview_text" />
                         </LinearLayout>
+                    </FrameLayout>
+                </com.google.android.material.card.MaterialCardView>
 
-                    </com.google.android.material.card.MaterialCardView>
-
-                </LinearLayout>
-
-               <Button
-                    android:id="@+id/videoSubLanguage"
-                    style="@style/Widget.Material3.Button.TextButton"
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/subtitleSettingsRecycler"
                     android:layout_width="match_parent"
-                    android:layout_height="64dp"
-                    android:layout_marginBottom="8dp"
-                    android:fontFamily="@font/poppins_bold"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
-                    android:paddingHorizontal="32dp"
-                    android:text="@string/subtitle_langauge"
-                    android:textAlignment="viewStart"
-                    android:textAllCaps="false"
-                    android:textColor="@color/bg_opp"
-                    app:cornerRadius="0dp"
-                    app:icon="@drawable/ic_round_subtitles_24"
-                    app:iconPadding="16dp"
-                    app:iconSize="24dp" />
+                    android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="16dp"
+                    android:nestedScrollingEnabled="false"
+                    app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                    tools:itemCount="6"
+                    tools:listitem="@layout/item_settings" />
 
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="-8dp"
-                    android:layout_marginBottom="8dp"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="4dp"
+                    android:fontFamily="@font/poppins_bold"
+                    android:letterSpacing="0.08"
+                    android:paddingHorizontal="16dp"
+                    android:text="@string/sub_group_style"
+                    android:textAllCaps="true"
+                    android:textColor="?attr/colorPrimary"
+                    android:textSize="11sp" />
+
+                <!-- The style options as tiles, each showing its value; see SubtitleStyleTileAdapter. -->
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/subtitleStyleGrid"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="12dp"
+                    android:nestedScrollingEnabled="false"
+                    android:overScrollMode="never"
+                    tools:itemCount="10"
+                    tools:listitem="@layout/item_subtitle_style_tile" />
+
+                <!-- Opens under the grid for the tapped tile, so the preview stays in view while
+                     a value is adjusted: a slider, or a row of choices. -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/subtitleStyleEditor"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginHorizontal="16dp"
+                    android:layout_marginTop="4dp"
+                    android:visibility="gone"
+                    app:cardCornerRadius="18dp"
+                    app:cardElevation="0dp"
+                    app:strokeWidth="0dp"
+                    tools:visibility="visible">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:paddingHorizontal="16dp"
+                        android:paddingVertical="12dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:id="@+id/subtitleEditorTitle"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:fontFamily="@font/poppins_bold"
+                                android:textSize="14sp"
+                                tools:text="Size" />
+
+                            <TextView
+                                android:id="@+id/subtitleEditorValue"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:fontFamily="@font/poppins_bold"
+                                android:textColor="?attr/colorPrimary"
+                                android:textSize="14sp"
+                                tools:text="20 sp" />
+                        </LinearLayout>
+
+                        <com.google.android.material.slider.Slider
+                            android:id="@+id/subtitleEditorSlider"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:valueFrom="0"
+                            android:valueTo="1"
+                            app:labelBehavior="gone" />
+
+                        <HorizontalScrollView
+                            android:id="@+id/subtitleEditorChipsScroll"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:scrollbars="none">
+
+                            <com.google.android.material.chip.ChipGroup
+                                android:id="@+id/subtitleEditorChips"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                app:selectionRequired="true"
+                                app:singleLine="true"
+                                app:singleSelection="true" />
+                        </HorizontalScrollView>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:layout_marginBottom="12dp"
                     android:alpha="0.58"
                     android:fontFamily="@font/poppins_family"
-                    android:paddingHorizontal="32dp"
-                    android:text="@string/sub_color_info"
-                    android:textSize="14sp" />
+                    android:paddingHorizontal="16dp"
+                    android:text="@string/sub_soft_only"
+                    android:textSize="13sp" />
 
             </ani.dantotsu.others.Xpandable>
 

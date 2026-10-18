@@ -169,6 +169,9 @@ class SettingsAdapter(
 
                 b.settingsTitle.text = settings.name
                 b.settingsDesc.text = settings.desc
+                // A slider whose reading says it all (a size, a percentage) has no description;
+                // left showing, the empty line pushed the slider away from its title.
+                b.settingsDesc.visibility = if (settings.desc.isEmpty()) View.GONE else View.VISIBLE
                 b.settingsIcon.setImageDrawable(
                     ContextCompat.getDrawable(b.root.context, settings.icon)
                 )

@@ -125,12 +125,14 @@ constructor(
         this.effectColor = color
         this.outlineThickness = outlineThickness
         currentEffect = Effect.OUTLINE
+        invalidate()
     }
 
     // Too hard for me to figure it out
     fun applyShineEffect(color: Int) {
         this.effectColor = color
         currentEffect = Effect.SHINE
+        invalidate()
     }
 
     fun applyDropShadow(
@@ -140,5 +142,12 @@ constructor(
         this.effectColor = color
         this.outlineThickness = outlineThickness
         currentEffect = Effect.DROP_SHADOW
+        invalidate()
+    }
+
+    /** Back to plain text, for the "None" outline style; the effects above have no way out. */
+    fun clearEffect() {
+        currentEffect = Effect.NONE
+        invalidate()
     }
 }

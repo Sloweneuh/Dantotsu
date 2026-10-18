@@ -3124,4 +3124,38 @@
     <string name="stack_spoilers_include">Avec spoilers</string>
     <string name="stack_spoilers_exclude">Sans spoilers</string>
     <string name="stack_spoilers_only">Spoilers uniquement</string>
+
+    <!-- Subtitle settings (Anime & Player) -->
+    <string name="sub_preview_label">Aperçu</string>
+    <string name="sub_preview_text">Voici à quoi ressembleront vos sous-titres</string>
+    <string name="sub_group_general">Général</string>
+    <string name="sub_group_text">Texte</string>
+    <string name="sub_group_outline">Contour</string>
+    <string name="sub_group_background">Arrière-plan</string>
+    <string name="sub_group_position">Position</string>
+    <string name="sub_show">Afficher les sous-titres</string>
+    <string name="sub_show_desc">Activer les sous-titres au lancement d\'un épisode</string>
+    <string name="sub_language">Langue préférée</string>
+    <string name="sub_renderer">Rendu en texte</string>
+    <string name="sub_renderer_desc">Dessine les sous-titres en texte de l\'application, nécessaire pour l\'épaisseur du contour et la position. Expérimental</string>
+    <string name="sub_font">Police</string>
+    <string name="sub_size">Taille</string>
+    <string name="sub_text_color">Couleur du texte</string>
+    <string name="sub_outline_style">Style du contour</string>
+    <string name="sub_outline_color">Couleur du contour</string>
+    <string name="sub_outline_thickness">Épaisseur du contour</string>
+    <string name="sub_needs_renderer">Nécessite le rendu en texte</string>
+    <string name="sub_background_color">Derrière le texte</string>
+    <string name="sub_window_color">Autour du texte</string>
+    <string name="sub_window_desc">Remplit la zone des sous-titres de part et d\'autre des lignes</string>
+    <string name="sub_opacity">Opacité</string>
+    <string name="sub_bottom">Distance du bas</string>
+    <string name="sub_color_transparent">Transparent</string>
+    <string name="sub_outline_outline">Contour</string>
+    <string name="sub_outline_shine">Éclat</string>
+    <string name="sub_outline_shadow">Ombre portée</string>
+    <string name="sub_outline_none">Aucun</string>
+    <string name="sub_soft_only">Ces réglages ne modifient que les sous-titres séparés. Les sous-titres incrustés dans la vidéo ne peuvent pas être changés.</string>
+    <string name="sub_size_value">%1$d sp</string>
+    <string name="sub_group_style">Style</string>
 </resources>

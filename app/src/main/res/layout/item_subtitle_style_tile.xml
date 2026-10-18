@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+    One subtitle style option in the Anime & Player settings grid: what it is and what it's set to,
+    at a glance. Tapping it opens its editor under the grid (or the colour picker for a colour).
+
+    Label and value get two lines each: on one, a long font name or "Distance from bottom" was cut
+    off at larger text sizes. The grid sizes a row's tiles to its tallest, so rows stay even.
+-->
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/subtitleTileCard"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="4dp"
+    android:clickable="true"
+    android:focusable="true"
+    app:cardCornerRadius="18dp"
+    app:cardElevation="0dp"
+    app:strokeWidth="0dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="14dp"
+        android:paddingVertical="12dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:id="@+id/subtitleTileIcon"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                app:tint="?attr/colorPrimary"
+                tools:ignore="ContentDescription"
+                tools:srcCompat="@drawable/ic_round_format_text_24" />
+
+            <Space
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <ImageView
+                android:id="@+id/subtitleTileSwatch"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:visibility="gone"
+                tools:ignore="ContentDescription"
+                tools:visibility="visible" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/subtitleTileLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:alpha="0.7"
+            android:ellipsize="end"
+            android:fontFamily="@font/poppins_family"
+            android:maxLines="2"
+            android:textSize="12sp"
+            tools:text="Font" />
+
+        <TextView
+            android:id="@+id/subtitleTileValue"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:fontFamily="@font/poppins_bold"
+            android:maxLines="2"
+            android:textSize="14sp"
+            tools:text="Poppins Semi Bold" />
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

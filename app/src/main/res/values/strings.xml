@@ -3249,4 +3249,38 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="stack_spoilers_include">With spoilers</string>
     <string name="stack_spoilers_exclude">No spoilers</string>
     <string name="stack_spoilers_only">Only spoilers</string>
+
+    <!-- Subtitle settings (Anime & Player) -->
+    <string name="sub_preview_label">Preview</string>
+    <string name="sub_preview_text">This is how your subtitles will look</string>
+    <string name="sub_group_general">General</string>
+    <string name="sub_group_text">Text</string>
+    <string name="sub_group_outline">Outline</string>
+    <string name="sub_group_background">Background</string>
+    <string name="sub_group_position">Position</string>
+    <string name="sub_show">Show subtitles</string>
+    <string name="sub_show_desc">Turn subtitles on when an episode starts</string>
+    <string name="sub_language">Preferred language</string>
+    <string name="sub_renderer">Text-based rendering</string>
+    <string name="sub_renderer_desc">Draws subtitles as app text, which outline thickness and position need. Experimental</string>
+    <string name="sub_font">Font</string>
+    <string name="sub_size">Size</string>
+    <string name="sub_text_color">Text colour</string>
+    <string name="sub_outline_style">Outline style</string>
+    <string name="sub_outline_color">Outline colour</string>
+    <string name="sub_outline_thickness">Outline thickness</string>
+    <string name="sub_needs_renderer">Needs text-based rendering</string>
+    <string name="sub_background_color">Behind the text</string>
+    <string name="sub_window_color">Around the text</string>
+    <string name="sub_window_desc">Fills the subtitle area on either side of the lines</string>
+    <string name="sub_opacity">Opacity</string>
+    <string name="sub_bottom">Distance from bottom</string>
+    <string name="sub_color_transparent">Transparent</string>
+    <string name="sub_outline_outline">Outline</string>
+    <string name="sub_outline_shine">Shine</string>
+    <string name="sub_outline_shadow">Drop shadow</string>
+    <string name="sub_outline_none">None</string>
+    <string name="sub_soft_only">These only restyle soft subtitles. Subtitles burned into the video can\'t be changed.</string>
+    <string name="sub_size_value">%1$d sp</string>
+    <string name="sub_group_style">Style</string>
 </resources>

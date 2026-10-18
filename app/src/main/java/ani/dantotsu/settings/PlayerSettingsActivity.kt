@@ -1,5 +1,13 @@
 package ani.dantotsu.settings
 
+import androidx.core.view.isVisible
+import com.google.android.material.chip.Chip
+import androidx.recyclerview.widget.GridLayoutManager
+import ani.dantotsu.getThemeColor
+import androidx.core.view.marginBottom
+import androidx.core.view.doOnLayout
+import android.graphics.drawable.GradientDrawable
+import android.graphics.Color
 import android.content.res.Resources
 import android.os.Build
 import android.os.Bundle
@@ -64,7 +72,7 @@ class PlayerSettingsActivity :
         ThemeManager(this).applyTheme()
         binding = ActivityPlayerSettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        SettingsRouter.handleHighlight(this, binding.settingsRecyclerView)
+        SettingsRouter.handleHighlight(this, binding.settingsRecyclerView, binding.subtitleSettingsRecycler)
         bindLibraryRows()
         // Every group has now read the relaunch marker; consume it so one restart restores once.
         Xpandable.consumeRelaunch(Xpandable.SCOPE_PLAYER)
@@ -316,271 +324,7 @@ class PlayerSettingsActivity :
             }
         }
 
-        fun toggleSubOptions(isChecked: Boolean) {
-            arrayOf(
-                binding.videoSubColorPrimary,
-                binding.videoSubColorSecondary,
-                binding.videoSubOutline,
-                binding.videoSubColorBackground,
-                binding.videoSubAlphaButton,
-                binding.videoSubColorWindow,
-                binding.videoSubFont,
-                binding.videoSubAlpha,
-                binding.videoSubStroke,
-                binding.subtitleFontSizeText,
-                binding.subtitleFontSize,
-                binding.videoSubLanguage,
-                binding.subTextSwitch,
-            ).forEach {
-                it.isEnabled = isChecked
-                it.alpha =
-                    when (isChecked) {
-                        true -> 1f
-                        false -> 0.5f
-                    }
-            }
-        }
-
-        fun toggleExpSubOptions(isChecked: Boolean) {
-            arrayOf(
-                binding.videoSubStrokeButton,
-                binding.videoSubStroke,
-                binding.videoSubBottomMarginButton,
-                binding.videoSubBottomMargin,
-            ).forEach {
-                it.isEnabled = isChecked
-                it.alpha =
-                    when (isChecked) {
-                        true -> 1f
-                        false -> 0.5f
-                    }
-            }
-        }
-
-        binding.subSwitch.isChecked = PrefManager.getVal(PrefName.Subtitles)
-        binding.subSwitch.setOnCheckedChangeListener { _, isChecked ->
-            PrefManager.setVal(PrefName.Subtitles, isChecked)
-            toggleSubOptions(isChecked)
-            toggleExpSubOptions(binding.subTextSwitch.isChecked && isChecked)
-        }
-        toggleSubOptions(binding.subSwitch.isChecked)
-
-        binding.subTextSwitch.isChecked = PrefManager.getVal(PrefName.TextviewSubtitles)
-        binding.subTextSwitch.setOnCheckedChangeListener { _, isChecked ->
-            PrefManager.setVal(PrefName.TextviewSubtitles, isChecked)
-            toggleExpSubOptions(isChecked)
-        }
-        toggleExpSubOptions(binding.subTextSwitch.isChecked)
-
-        val subLanguages =
-            arrayOf(
-                "Albanian",
-                "Arabic",
-                "Bosnian",
-                "Bulgarian",
-                "Chinese",
-                "Croatian",
-                "Czech",
-                "Danish",
-                "Dutch",
-                "English",
-                "Estonian",
-                "Finnish",
-                "French",
-                "Georgian",
-                "German",
-                "Greek",
-                "Hebrew",
-                "Hindi",
-                "Indonesian",
-                "Irish",
-                "Italian",
-                "Japanese",
-                "Korean",
-                "Lithuanian",
-                "Luxembourgish",
-                "Macedonian",
-                "Mongolian",
-                "Norwegian",
-                "Polish",
-                "Portuguese",
-                "Punjabi",
-                "Romanian",
-                "Russian",
-                "Serbian",
-                "Slovak",
-                "Slovenian",
-                "Spanish",
-                "Turkish",
-                "Ukrainian",
-                "Urdu",
-                "Vietnamese",
-            )
-        binding.videoSubLanguage.setOnClickListener {
-            choiceBottomSheet(
-                getString(R.string.subtitle_langauge),
-                subLanguages.toList(),
-                PrefManager.getVal(PrefName.SubLanguage),
-            ) { count ->
-                PrefManager.setVal(PrefName.SubLanguage, count)
-            }
-        }
-
-        binding.videoSubColorPrimary.setOnClickListener {
-            val color = PrefManager.getVal<Int>(PrefName.PrimaryColor)
-            val title = getString(R.string.primary_sub_color)
-            showColorPicker(
-                color,
-                title,
-                object : ColorPickerCallback {
-                    override fun onColorSelected(color: Int) {
-                        PrefManager.setVal(PrefName.PrimaryColor, color)
-                        updateSubPreview()
-                    }
-                },
-            )
-        }
-
-        binding.videoSubColorSecondary.setOnClickListener {
-            val color = PrefManager.getVal<Int>(PrefName.SecondaryColor)
-            val title = getString(R.string.outline_sub_color)
-            showColorPicker(
-                color,
-                title,
-                object : ColorPickerCallback {
-                    override fun onColorSelected(color: Int) {
-                        PrefManager.setVal(PrefName.SecondaryColor, color)
-                        updateSubPreview()
-                    }
-                },
-            )
-        }
-
-        val typesOutline = arrayOf("Outline", "Shine", "Drop Shadow", "None")
-        binding.videoSubOutline.setOnClickListener {
-            customAlertDialog().apply {
-                setTitle(getString(R.string.outline_type))
-                singleChoiceItems(
-                    typesOutline,
-                    PrefManager.getVal(PrefName.Outline),
-                ) { count ->
-                    PrefManager.setVal(PrefName.Outline, count)
-                    updateSubPreview()
-                }
-                show()
-            }
-        }
-
-        binding.videoSubColorBackground.setOnClickListener {
-            val color = PrefManager.getVal<Int>(PrefName.SubBackground)
-            val title = getString(R.string.sub_background_color_select)
-            showColorPicker(
-                color,
-                title,
-                object : ColorPickerCallback {
-                    override fun onColorSelected(color: Int) {
-                        PrefManager.setVal(PrefName.SubBackground, color)
-                        updateSubPreview()
-                    }
-                },
-            )
-        }
-
-        binding.videoSubColorWindow.setOnClickListener {
-            val color = PrefManager.getVal<Int>(PrefName.SubWindow)
-            val title = getString(R.string.sub_window_color_select)
-            showColorPicker(
-                color,
-                title,
-                object : ColorPickerCallback {
-                    override fun onColorSelected(color: Int) {
-                        PrefManager.setVal(PrefName.SubWindow, color)
-                        updateSubPreview()
-                    }
-                },
-            )
-        }
-
-        binding.videoSubAlpha.value = PrefManager.getVal(PrefName.SubAlpha)
-        binding.videoSubAlpha.addOnChangeListener(
-            OnChangeListener { _, value, fromUser ->
-                if (fromUser) {
-                    PrefManager.setVal(PrefName.SubAlpha, value)
-                    updateSubPreview()
-                }
-            },
-        )
-
-        binding.videoSubStroke.value = PrefManager.getVal(PrefName.SubStroke)
-        binding.videoSubStroke.addOnChangeListener(
-            OnChangeListener { _, value, fromUser ->
-                if (fromUser) {
-                    PrefManager.setVal(PrefName.SubStroke, value)
-                    updateSubPreview()
-                }
-            },
-        )
-
-        binding.videoSubBottomMargin.value = PrefManager.getVal(PrefName.SubBottomMargin)
-        binding.videoSubBottomMargin.addOnChangeListener(
-            OnChangeListener { _, value, fromUser ->
-                if (fromUser) {
-                    PrefManager.setVal(PrefName.SubBottomMargin, value)
-                    updateSubPreview()
-                }
-            },
-        )
-
-        val fonts =
-            arrayOf(
-                "Poppins Semi Bold",
-                "Poppins Bold",
-                "Poppins",
-                "Poppins Thin",
-                "Century Gothic",
-                "Levenim MT Bold",
-                "Blocky",
-            )
-        binding.videoSubFont.setOnClickListener {
-            customAlertDialog().apply {
-                setTitle(getString(R.string.subtitle_font))
-                singleChoiceItems(
-                    fonts,
-                    PrefManager.getVal(PrefName.Font),
-                ) { count ->
-                    PrefManager.setVal(PrefName.Font, count)
-                    updateSubPreview()
-                }
-                show()
-            }
-        }
-        binding.subtitleFontSize.setText(PrefManager.getVal<Int>(PrefName.FontSize).toString())
-        binding.subtitleFontSize.setOnEditorActionListener { _, actionId, _ ->
-            if (actionId == EditorInfo.IME_ACTION_DONE) {
-                binding.subtitleFontSize.clearFocus()
-            }
-            false
-        }
-        binding.subtitleFontSize.addTextChangedListener {
-            val size =
-                binding.subtitleFontSize.text
-                    .toString()
-                    .toIntOrNull()
-            if (size != null) {
-                PrefManager.setVal(PrefName.FontSize, size)
-                updateSubPreview()
-            }
-        }
-        binding.subtitleTest.addOnChangeListener(
-            object : Xpandable.OnChangeListener {
-                override fun onExpand() {
-                    updateSubPreview()
-                }
-
-                override fun onRetract() {}
-            },
-        )
-        updateSubPreview()
+        bindSubtitleSection()
     }
 
     private fun showColorPicker(
@@ -613,31 +357,394 @@ class PlayerSettingsActivity :
         return false
     }
 
-    private fun updateSubPreview() {
-        binding.subtitleTestWindow.run {
-            alpha = PrefManager.getVal(PrefName.SubAlpha)
-            setBackgroundColor(PrefManager.getVal(PrefName.SubWindow))
+    // -----------------------------------------------------------------------------------------
+    // Subtitles
+    // -----------------------------------------------------------------------------------------
+
+    private val subtitleRows = ArrayList<Settings>()
+    private lateinit var subtitleAdapter: SettingsAdapter
+    private lateinit var styleTiles: SubtitleStyleTileAdapter
+
+    private val subtitleLanguages = listOf(
+        "Albanian", "Arabic", "Bosnian", "Bulgarian", "Chinese", "Croatian", "Czech", "Danish",
+        "Dutch", "English", "Estonian", "Finnish", "French", "Georgian", "German", "Greek",
+        "Hebrew", "Hindi", "Indonesian", "Irish", "Italian", "Japanese", "Korean", "Lithuanian",
+        "Luxembourgish", "Macedonian", "Mongolian", "Norwegian", "Polish", "Portuguese", "Punjabi",
+        "Romanian", "Russian", "Serbian", "Slovak", "Slovenian", "Spanish", "Turkish", "Ukrainian",
+        "Urdu", "Vietnamese",
+    )
+
+    private val subtitleFonts = listOf(
+        "Poppins Semi Bold", "Poppins Bold", "Poppins", "Poppins Thin", "Century Gothic",
+        "Levenim MT Bold", "Blocky",
+    )
+
+    private val subtitleFontFaces = listOf(
+        R.font.poppins_semi_bold, R.font.poppins_bold, R.font.poppins, R.font.poppins_thin,
+        R.font.century_gothic_regular, R.font.levenim_mt_bold, R.font.blocky,
+    )
+
+    private fun outlineStyles() = listOf(
+        getString(R.string.sub_outline_outline),
+        getString(R.string.sub_outline_shine),
+        getString(R.string.sub_outline_shadow),
+        getString(R.string.sub_outline_none),
+    )
+
+    /** A slider tile's range, how it reads and writes its preference, and how it shows a value. */
+    private class SliderSpec(
+        val from: Float,
+        val to: Float,
+        val step: Float,
+        val read: () -> Float,
+        val write: (Float) -> Unit,
+        val format: (Float) -> String,
+    )
+
+    private val sliderSpecs: Map<String, SliderSpec> by lazy {
+        mapOf(
+            TILE_SIZE to SliderSpec(
+                SUB_SIZE_MIN, SUB_SIZE_MAX, 1f,
+                read = { PrefManager.getVal<Int>(PrefName.FontSize).toFloat() },
+                write = { PrefManager.setVal(PrefName.FontSize, it.roundToInt()) },
+                format = { getString(R.string.sub_size_value, it.roundToInt()) },
+            ),
+            TILE_THICKNESS to SliderSpec(
+                0f, 30f, 1f,
+                read = { PrefManager.getVal(PrefName.SubStroke) },
+                write = { PrefManager.setVal(PrefName.SubStroke, it) },
+                format = { it.roundToInt().toString() },
+            ),
+            TILE_OPACITY to SliderSpec(
+                0f, 1f, 0.1f,
+                read = { PrefManager.getVal(PrefName.SubAlpha) },
+                write = { PrefManager.setVal(PrefName.SubAlpha, it) },
+                format = { "${(it * 100).roundToInt()}%" },
+            ),
+            // The player lifts the text by value/50 of the screen's height.
+            TILE_POSITION to SliderSpec(
+                0f, 50f, 1f,
+                read = { PrefManager.getVal(PrefName.SubBottomMargin) },
+                write = { PrefManager.setVal(PrefName.SubBottomMargin, it) },
+                format = { "${(it * 2).roundToInt()}%" },
+            ),
+        )
+    }
+
+    /**
+     * The subtitle group: a live preview, the few rows that switch subtitles on and decide how
+     * they're drawn, and the look itself as a grid of tiles.
+     *
+     * The look used to be ten rows, one after the other — a long scroll during which the preview
+     * went off the top of the screen. As tiles, each shows what it's set to, so the whole style
+     * reads at a glance beside the preview, and a tap opens its editor right under the grid rather
+     * than away from it: a slider for the amounts, a row of choices for the font (each written in
+     * its own face) and the outline style, the colour picker for a colour.
+     */
+    private fun bindSubtitleSection() {
+        subtitleAdapter = SettingsAdapter(subtitleRows, popIn = false)
+        binding.subtitleSettingsRecycler.adapter = subtitleAdapter
+        styleTiles = SubtitleStyleTileAdapter(::onStyleTileTapped)
+        binding.subtitleStyleGrid.layoutManager = GridLayoutManager(this, 2)
+        binding.subtitleStyleGrid.adapter = styleTiles
+        binding.subtitleStyleEditor.setCardBackgroundColor(
+            SectionCard.fill(binding.subtitleStyleEditor, open = true)
+        )
+        refreshSubtitleRows()
+        // The position preview works in the frame's own height, known once it's laid out.
+        binding.subtitlePreviewFrame.doOnLayout { updateSubtitlePreview() }
+    }
+
+    /** Rebuilds the rows and tiles from the preferences, after a switch, dialog or chip changed one. */
+    private fun refreshSubtitleRows() {
+        subtitleRows.clear()
+        subtitleRows.addAll(buildSubtitleRows())
+        @Suppress("NotifyDataSetChanged") // Enabled states change across the rows at once.
+        subtitleAdapter.notifyDataSetChanged()
+        styleTiles.submit(buildStyleTiles())
+        // An editor whose setting just became unavailable (subtitles switched off, say) closes.
+        val open = styleTiles.selectedId
+        if (open != null && styleTiles.tiles.none { it.id == open && it.enabled }) closeStyleEditor()
+        updateSubtitlePreview()
+    }
+
+    private fun buildSubtitleRows(): List<Settings> {
+        val on = PrefManager.getVal<Boolean>(PrefName.Subtitles)
+        return listOf(
+            Settings(
+                type = 2,
+                name = getString(R.string.sub_show),
+                desc = getString(R.string.sub_show_desc),
+                icon = R.drawable.ic_round_subtitles_24,
+                compact = true,
+                isChecked = on,
+                switch = { checked, _ ->
+                    PrefManager.setVal(PrefName.Subtitles, checked)
+                    binding.subtitleSettingsRecycler.post { refreshSubtitleRows() }
+                },
+            ),
+            Settings(
+                type = 1,
+                name = getString(R.string.sub_language),
+                desc = subtitleLanguages.getOrElse(PrefManager.getVal(PrefName.SubLanguage)) { "" },
+                icon = R.drawable.ic_round_translate_24,
+                compact = true,
+                isEnabled = on,
+                onClick = {
+                    choiceBottomSheet(
+                        getString(R.string.sub_language),
+                        subtitleLanguages,
+                        PrefManager.getVal(PrefName.SubLanguage),
+                    ) { index ->
+                        PrefManager.setVal(PrefName.SubLanguage, index)
+                        refreshSubtitleRows()
+                    }
+                },
+            ),
+            Settings(
+                type = 2,
+                name = getString(R.string.sub_renderer),
+                desc = getString(R.string.sub_renderer_desc),
+                icon = R.drawable.ic_round_short_text_24,
+                compact = true,
+                isEnabled = on,
+                isChecked = PrefManager.getVal(PrefName.TextviewSubtitles),
+                switch = { checked, _ ->
+                    PrefManager.setVal(PrefName.TextviewSubtitles, checked)
+                    binding.subtitleSettingsRecycler.post { refreshSubtitleRows() }
+                },
+            ),
+        )
+    }
+
+    private fun buildStyleTiles(): List<SubtitleStyleTile> {
+        val on = PrefManager.getVal<Boolean>(PrefName.Subtitles)
+        // Thickness and position only mean something to the text renderer.
+        val textRenderer = on && PrefManager.getVal<Boolean>(PrefName.TextviewSubtitles)
+        fun slider(id: String, icon: Int, label: Int, enabled: Boolean = on): SubtitleStyleTile {
+            val spec = sliderSpecs.getValue(id)
+            return SubtitleStyleTile(
+                id, icon, getString(label), spec.format(snap(spec, spec.read())),
+                SubtitleTileEditor.SLIDER, enabled,
+            )
         }
+        fun color(id: String, icon: Int, label: Int, pref: PrefName): SubtitleStyleTile {
+            val value = PrefManager.getVal<Int>(pref)
+            return SubtitleStyleTile(
+                id, icon, getString(label), colorLabel(value),
+                SubtitleTileEditor.COLOR, on, colorSwatch(value),
+            )
+        }
+        return listOf(
+            SubtitleStyleTile(
+                TILE_FONT, R.drawable.ic_round_format_text_24, getString(R.string.sub_font),
+                subtitleFonts.getOrElse(PrefManager.getVal(PrefName.Font)) { subtitleFonts[0] },
+                SubtitleTileEditor.CHOICE, on,
+            ),
+            slider(TILE_SIZE, R.drawable.ic_round_font_size_24, R.string.sub_size),
+            color(TILE_TEXT_COLOR, R.drawable.ic_round_color_24, R.string.sub_text_color, PrefName.PrimaryColor),
+            SubtitleStyleTile(
+                TILE_OUTLINE_STYLE, R.drawable.format_title_24, getString(R.string.sub_outline_style),
+                outlineStyles().getOrElse(PrefManager.getVal(PrefName.Outline)) { outlineStyles()[0] },
+                SubtitleTileEditor.CHOICE, on,
+            ),
+            color(TILE_OUTLINE_COLOR, R.drawable.ic_round_color_picker_24, R.string.sub_outline_color, PrefName.SecondaryColor),
+            slider(TILE_THICKNESS, R.drawable.ic_format_line_spacing_24, R.string.sub_outline_thickness, textRenderer),
+            color(TILE_BEHIND, R.drawable.ic_palette, R.string.sub_background_color, PrefName.SubBackground),
+            color(TILE_AROUND, R.drawable.format_video_24, R.string.sub_window_color, PrefName.SubWindow),
+            slider(TILE_OPACITY, R.drawable.blur_on, R.string.sub_opacity),
+            slider(TILE_POSITION, R.drawable.ic_round_swipe_vertical_24, R.string.sub_bottom, textRenderer),
+        )
+    }
 
-        binding.subtitleTestText.run {
-            textSize = PrefManager.getVal<Int>(PrefName.FontSize).toSP
-            typeface =
-                when (PrefManager.getVal<Int>(PrefName.Font)) {
-                    0 -> ResourcesCompat.getFont(this.context, R.font.poppins_semi_bold)
-                    1 -> ResourcesCompat.getFont(this.context, R.font.poppins_bold)
-                    2 -> ResourcesCompat.getFont(this.context, R.font.poppins)
-                    3 -> ResourcesCompat.getFont(this.context, R.font.poppins_thin)
-                    4 -> ResourcesCompat.getFont(this.context, R.font.century_gothic_regular)
-                    5 -> ResourcesCompat.getFont(this.context, R.font.levenim_mt_bold)
-                    6 -> ResourcesCompat.getFont(this.context, R.font.blocky)
-                    else -> ResourcesCompat.getFont(this.context, R.font.poppins_semi_bold)
+    private fun onStyleTileTapped(tile: SubtitleStyleTile) {
+        when (tile.editor) {
+            SubtitleTileEditor.COLOR -> {
+                closeStyleEditor()
+                val pref = when (tile.id) {
+                    TILE_TEXT_COLOR -> PrefName.PrimaryColor
+                    TILE_OUTLINE_COLOR -> PrefName.SecondaryColor
+                    TILE_BEHIND -> PrefName.SubBackground
+                    else -> PrefName.SubWindow
                 }
+                showColorPicker(
+                    PrefManager.getVal(pref),
+                    tile.label,
+                    object : ColorPickerCallback {
+                        override fun onColorSelected(color: Int) {
+                            PrefManager.setVal(pref, color)
+                            refreshSubtitleRows()
+                        }
+                    },
+                )
+            }
 
-            setTextColor(PrefManager.getVal<Int>(PrefName.PrimaryColor))
-
-            setBackgroundColor(PrefManager.getVal<Int>(PrefName.SubBackground))
+            else -> {
+                // Tapping the open tile again puts its editor away.
+                if (styleTiles.selectedId == tile.id) {
+                    closeStyleEditor()
+                    return
+                }
+                val editor = binding.subtitleStyleEditor
+                val wasOpen = editor.isVisible
+                val fill = { configureStyleEditor(tile) }
+                if (wasOpen) SectionCard.animateHeightChange(editor, fill) else fill()
+                styleTiles.select(tile.id)
+                SectionCard.setExpanded(editor, true)
+            }
         }
     }
+
+    private fun configureStyleEditor(tile: SubtitleStyleTile) {
+        binding.subtitleEditorTitle.text = tile.label
+        val slider = binding.subtitleEditorSlider
+        val chipsScroll = binding.subtitleEditorChipsScroll
+        val spec = sliderSpecs[tile.id]
+        if (spec != null) {
+            chipsScroll.visibility = View.GONE
+            slider.visibility = View.VISIBLE
+            slider.clearOnChangeListeners()
+            slider.valueFrom = spec.from
+            slider.valueTo = spec.to
+            slider.stepSize = spec.step
+            slider.value = snap(spec, spec.read())
+            binding.subtitleEditorValue.text = spec.format(slider.value)
+            slider.addOnChangeListener { _, value, fromUser ->
+                binding.subtitleEditorValue.text = spec.format(value)
+                if (!fromUser) return@addOnChangeListener
+                spec.write(value)
+                styleTiles.tiles.firstOrNull { it.id == tile.id }?.let {
+                    styleTiles.update(it.copy(value = spec.format(value)))
+                }
+                updateSubtitlePreview()
+            }
+            return
+        }
+        slider.visibility = View.GONE
+        chipsScroll.visibility = View.VISIBLE
+        binding.subtitleEditorValue.text = ""
+        when (tile.id) {
+            TILE_FONT -> fillChoices(subtitleFonts, PrefManager.getVal(PrefName.Font), subtitleFontFaces) {
+                PrefManager.setVal(PrefName.Font, it)
+            }
+            TILE_OUTLINE_STYLE -> fillChoices(outlineStyles(), PrefManager.getVal(PrefName.Outline)) {
+                PrefManager.setVal(PrefName.Outline, it)
+            }
+        }
+    }
+
+    /**
+     * The choice editor's chips, [selected] checked. With [faces], each chip is written in the font
+     * it picks, so the choice can be made by eye rather than by name.
+     */
+    private fun fillChoices(
+        options: List<String>,
+        selected: Int,
+        faces: List<Int>? = null,
+        onSelect: (Int) -> Unit,
+    ) {
+        val group = binding.subtitleEditorChips
+        group.setOnCheckedStateChangeListener(null)
+        group.removeAllViews()
+        options.forEachIndexed { index, label ->
+            val chip = Chip(this).apply {
+                id = View.generateViewId()
+                text = label
+                isCheckable = true
+                isChecked = index == selected
+                faces?.getOrNull(index)?.let { typeface = ResourcesCompat.getFont(context, it) }
+            }
+            group.addView(chip)
+            if (index == selected) {
+                chip.post { binding.subtitleEditorChipsScroll.smoothScrollTo(chip.left - chip.width / 2, 0) }
+            }
+        }
+        group.setOnCheckedStateChangeListener { _, checkedIds ->
+            val index = (0 until group.childCount).firstOrNull { group.getChildAt(it).id == checkedIds.firstOrNull() }
+                ?: return@setOnCheckedStateChangeListener
+            onSelect(index)
+            styleTiles.submit(buildStyleTiles())
+            updateSubtitlePreview()
+        }
+    }
+
+    private fun closeStyleEditor() {
+        if (!::styleTiles.isInitialized) return
+        styleTiles.select(null)
+        SectionCard.setExpanded(binding.subtitleStyleEditor, false)
+    }
+
+    /** [value] on the slider's own steps and inside its range, as Slider insists. */
+    private fun snap(spec: SliderSpec, value: Float): Float {
+        val steps = ((value - spec.from) / spec.step).roundToInt()
+        return (spec.from + steps * spec.step).coerceIn(spec.from, spec.to)
+    }
+
+    private fun colorLabel(color: Int): String =
+        if (Color.alpha(color) == 0) getString(R.string.sub_color_transparent)
+        else String.format("#%06X", color and 0xFFFFFF)
+
+    /** A filled dot ringed in the outline colour, so white and transparent still read as a dot. */
+    private fun colorSwatch(color: Int) = GradientDrawable().apply {
+        shape = GradientDrawable.OVAL
+        val size = (18 * resources.displayMetrics.density).roundToInt()
+        setSize(size, size)
+        setColor(color)
+        setStroke(
+            (1.5f * resources.displayMetrics.density).roundToInt(),
+            getThemeColor(com.google.android.material.R.attr.colorOutline),
+        )
+    }
+
+    /**
+     * Draws the preview the way the player draws text subtitles (see ExoplayerView), so what is set
+     * here is what shows. Outline thickness and position only apply with text-based rendering; the
+     * player's other renderer uses its own thin outline and fixed position, and so does the preview
+     * when that one is in use.
+     */
+    private fun updateSubtitlePreview() {
+        val text = binding.subtitlePreviewText
+        val window = binding.subtitlePreviewWindow
+        val textRenderer = PrefManager.getVal<Boolean>(PrefName.TextviewSubtitles)
+        val outlineColor = PrefManager.getVal<Int>(PrefName.SecondaryColor)
+        val fontSize = PrefManager.getVal<Int>(PrefName.FontSize).toFloat()
+
+        window.setBackgroundColor(PrefManager.getVal(PrefName.SubWindow))
+        window.alpha = if (PrefManager.getVal(PrefName.Subtitles)) PrefManager.getVal(PrefName.SubAlpha) else 0.15f
+
+        text.typeface = subtitleTypeface()
+        text.setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSize)
+        text.setTextColor(PrefManager.getVal<Int>(PrefName.PrimaryColor))
+        text.setBackgroundColor(PrefManager.getVal(PrefName.SubBackground))
+        val stroke = if (textRenderer) PrefManager.getVal<Float>(PrefName.SubStroke)
+        else text.textSize * DEFAULT_OUTLINE_RATIO
+        when (PrefManager.getVal<Int>(PrefName.Outline)) {
+            0 -> text.applyOutline(outlineColor, stroke)
+            1 -> text.applyShineEffect(outlineColor)
+            2 -> text.applyDropShadow(outlineColor, stroke)
+            3 -> text.clearEffect()
+            else -> text.applyOutline(outlineColor, stroke)
+        }
+
+        // Same proportion of the frame as the player lifts it on screen, held inside the frame.
+        val frame = binding.subtitlePreviewFrame
+        val room = (frame.height - window.height - window.marginBottom).coerceAtLeast(0)
+        val lift = if (textRenderer) PrefManager.getVal<Float>(PrefName.SubBottomMargin) / 50f * frame.height else 0f
+        window.translationY = -lift.coerceAtMost(room.toFloat())
+    }
+
+    private fun subtitleTypeface() = ResourcesCompat.getFont(
+        this,
+        when (PrefManager.getVal<Int>(PrefName.Font)) {
+            1 -> R.font.poppins_bold
+            2 -> R.font.poppins
+            3 -> R.font.poppins_thin
+            4 -> R.font.century_gothic_regular
+            5 -> R.font.levenim_mt_bold
+            6 -> R.font.blocky
+            else -> R.font.poppins_semi_bold
+        },
+    )
 
     /**
      * What used to be the Anime screen.
@@ -708,3 +815,20 @@ class PlayerSettingsActivity :
             LinearLayoutManager(this, LinearLayoutManager.VERTICAL, false)
     }
 }
+
+private const val TILE_FONT = "font"
+private const val TILE_SIZE = "size"
+private const val TILE_TEXT_COLOR = "text_color"
+private const val TILE_OUTLINE_STYLE = "outline_style"
+private const val TILE_OUTLINE_COLOR = "outline_color"
+private const val TILE_THICKNESS = "thickness"
+private const val TILE_BEHIND = "behind"
+private const val TILE_AROUND = "around"
+private const val TILE_OPACITY = "opacity"
+private const val TILE_POSITION = "position"
+
+private const val SUB_SIZE_MIN = 8f
+private const val SUB_SIZE_MAX = 64f
+
+/** What the player's non-text renderer outline roughly comes to, as a share of the text size. */
+private const val DEFAULT_OUTLINE_RATIO = 0.08f

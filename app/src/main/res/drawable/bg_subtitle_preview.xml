@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+    Stands in for a video frame behind the subtitle preview: a dusky scene, lighter at the top and
+    near-black at the bottom where subtitles sit, so light and dark subtitle colours can both be
+    judged against something like what they will actually be read on.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="270"
+                android:centerColor="#FF2B3440"
+                android:endColor="#FF0E1115"
+                android:startColor="#FF5A6B7C" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:centerX="0.75"
+                android:centerY="0.2"
+                android:endColor="#00FFC48A"
+                android:gradientRadius="220dp"
+                android:startColor="#55FFC48A"
+                android:type="radial" />
+        </shape>
+    </item>
+</layer-list>
