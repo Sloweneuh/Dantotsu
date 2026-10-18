@@ -470,7 +470,7 @@
     <string name="home_screen_desc">Contenu de l\'accueil, onglets et point de notification</string>
     <string name="animations_desc">Mouvement des bannières et des mises en page</string>
     <string name="system_bars">Barres système</string>
-    <string name="system_bars_desc">Barre d\'état et barre de navigation</string>
+    <string name="system_bars_desc">Choisir où afficher les barres d\'état et de navigation</string>
     <string name="blur_desc">Flou des bannières et sa qualité</string>
     <string name="home_layout_show_desc">Choisissez les sections affichées sur l\'accueil, et leur ordre</string>
     <string name="home_stats_select_desc">Les deux chiffres affichés en haut de l\'accueil</string>
@@ -484,7 +484,7 @@
     <string name="blur_banners_desc">Flouter les images de bannière derrière le contenu</string>
     <string name="blur_radius_desc">Intensité du flou</string>
     <string name="blur_sampling_desc">Plus élevé : plus rapide, mais plus grossier</string>
-    <string name="ui_show_system_bars_desc">Garder les barres d\'état et de navigation visibles</string>
+    <string name="ui_show_system_bars_desc">Désactiver pour afficher les pages des médias en plein écran. Balayez depuis le bord supérieur ou inférieur pour faire réapparaître les barres un instant.</string>
     <string name="hide_notification_dot_desc">Masquer le compteur sur votre avatar. La feuille de paramètres l\'affiche toujours.</string>
     <string name="about">À propos</string>
     <string name="devs">Développeurs/Contributeurs</string>
@@ -1449,7 +1449,7 @@
     <string name="seek_time_info">Durée en secondes pour l\'avance rapide et le retour rapide.</string>
     <string name="skip_time_info">Régler sur 0 cache le bouton Passer.</string>
     <string name="always_minimize_info">Nécessite l\'activation du PiP, fait se comporter le lecteur comme celui de Youtube mais en mieux.\nCache également le bouton PiP.</string>
-    <string name="immersive_mode_info">Nécessite le redémarrage de l\'application pour s\'appliquer totalement.</string>
+    <string name="immersive_mode_info">Masque la barre d\'état sur tous les écrans pour que le contenu atteigne le bord supérieur. La barre de navigation reste visible. S\'applique entièrement après le redémarrage de l\'application.</string>
     <string name="selected_title_language">Langue des titres sélectionnée</string>
     <string name="selected_staff_language">Langue du personnel sélectionnée</string>
     <string name="selected_merge_time">Temps de fusion d\'activité</string>
@@ -2166,7 +2166,7 @@
     <string name="not_licensed">Non licencié</string>
     <string name="filter_year">Année : %1$d</string>
     <string name="filter_year_range">Années : %1$s</string>
-    <string name="ui_show_system_bars">Montrer les barres du système (menus)</string>
+    <string name="ui_show_system_bars">Afficher les barres système sur les pages des médias</string>
     <string name="search_equivalents_confirm_title">Rechercher des équivalents sur Anilist</string>
     <string name="discord_dantotsu_mode">Mode Dantotsu</string>
     <string name="discord_anilist_mode">Mode AniList</string>
@@ -2605,7 +2605,7 @@
     <string name="search_kw_force_download">forcer écraser remplacer téléchargement télécharger tirer récupérer cloud nuage restaurer</string>
     <string name="search_kw_cloud_wipe">supprimer effacer retirer vider cloud nuage données confidentialité compte réinitialiser</string>
     <string name="search_kw_immersive_mode">plein écran</string>
-    <string name="search_kw_ui_show_system_bars">statut navigation barre</string>
+    <string name="search_kw_ui_show_system_bars">état statut navigation barre page média plein écran immersif</string>
     <string name="search_kw_hide_notification_dot">rouge point pastille badge</string>
     <string name="search_kw_home_layout_show">accueil sections visible disposition</string>
     <string name="search_kw_home_stats_select">accueil stats statistiques note épisodes nombre compteur</string>

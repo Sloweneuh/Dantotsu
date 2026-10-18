@@ -467,7 +467,7 @@
     <string name="home_screen_desc">What Home shows, which tabs exist and the notification dot</string>
     <string name="animations_desc">Banner and layout motion</string>
     <string name="system_bars">System bars</string>
-    <string name="system_bars_desc">Status bar and navigation bar</string>
+    <string name="system_bars_desc">Choose where the status and navigation bars are shown</string>
     <string name="blur_desc">Banner blur and its quality</string>
     <!-- These rows were switches in the old UI Settings layout, which had nowhere to put a
          description. They are list rows now, so each one gets the line it always wanted. -->
@@ -483,7 +483,7 @@
     <string name="blur_banners_desc">Blur banner images behind content</string>
     <string name="blur_radius_desc">How strong the blur is</string>
     <string name="blur_sampling_desc">Higher is faster but coarser</string>
-    <string name="ui_show_system_bars_desc">Keep the status and navigation bars visible</string>
+    <string name="ui_show_system_bars_desc">Turn off to show media pages full screen. Swipe in from the top or bottom edge to bring the bars back for a moment.</string>
     <string name="hide_notification_dot_desc">Hide the unread count on your avatar. The settings sheet always shows it.</string>
     <string name="about">About</string>
     <string name="devs">Developers/Helpers</string>
@@ -587,10 +587,10 @@
 
     <string name="app">App</string>
     <string name="immersive_mode">Hide Status Bar</string>
-    <string name="immersive_mode_info">Requires App restart to fully apply.</string>
+    <string name="immersive_mode_info">Hides the status bar on every screen so content reaches the top edge. The navigation bar stays. Fully applies after restarting the app.</string>
     <string name="home_layout_show">Edit Home Sections</string>
     <string name="home_layout_show_and_order">Show, hide and reorder Home sections</string>
-        <string name="ui_show_system_bars">Show system bars (UI)</string>
+        <string name="ui_show_system_bars">Show system bars on media pages</string>
     <string name="search_equivalents_confirm_title">Search for AniList equivalents</string>
     <string name="search_equivalents_confirm_text">This will try to find AniList equivalents for every MangaUpdates entry in this list. This may take a while. Continue?</string>
     <string name="proceed">Proceed</string>
@@ -2748,7 +2748,7 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="search_kw_force_download">force overwrite download pull cloud replace restore</string>
     <string name="search_kw_cloud_wipe">delete wipe erase remove clear cloud data privacy account reset</string>
     <string name="search_kw_immersive_mode">fullscreen</string>
-    <string name="search_kw_ui_show_system_bars">status navigation bar</string>
+    <string name="search_kw_ui_show_system_bars">status navigation bar media page full screen immersive</string>
     <string name="search_kw_hide_notification_dot">red dot badge</string>
     <string name="search_kw_home_layout_show">home sections visible layout</string>
     <string name="search_kw_home_stats_select">home stats score episodes count</string>
