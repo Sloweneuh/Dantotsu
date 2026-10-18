@@ -33,6 +33,22 @@ class ListViewModel : ViewModel() {
 
     private val lists = MutableLiveData<MutableMap<String, ArrayList<Media>>>()
     private val unfilteredLists = MutableLiveData<MutableMap<String, ArrayList<Media>>>()
+
+    /**
+     * Synchronous backing store for [unfilteredLists], for the same reason as [rawMuData].
+     *
+     * Search and filtering used to read `unfilteredLists.value`, which a background postValue only
+     * updates on a later main-thread turn. A search run in that gap worked from the set before it —
+     * the one without favourites, or none at all — so a keystroke could take the Favourites tab
+     * away again, or post nothing.
+     */
+    @Volatile
+    private var rawLists: MutableMap<String, ArrayList<Media>>? = null
+
+    private fun setUnfiltered(res: MutableMap<String, ArrayList<Media>>) {
+        rawLists = res
+        unfilteredLists.postValue(res)
+    }
     val currentFilters = MutableLiveData<ListFilters>(ListFilters())
     /** Written on the main thread by [searchLists], read by the debounced search coroutine. */
     @Volatile
@@ -66,6 +82,16 @@ class ListViewModel : ViewModel() {
             // without this they would accumulate for as long as the screen is open.
             searchKeys.clear()
 
+            // Favourites are their own query, answered after the lists. Without the ones already
+            // shown, every reload — and anything that edits an entry triggers one — took the
+            // Favourites tab away for a request's length and put it back: two tab rebuilds, the
+            // tab's list rebuilt from scratch, and anyone reading it bounced to another tab.
+            // The old ones stay up until the fresh ones replace them.
+            val previousFavs = rawLists?.get("Favourites")
+            fun withFavs(map: MutableMap<String, ArrayList<Media>>) =
+                if (previousFavs == null || map.containsKey("Favourites")) map
+                else map.toMutableMap().apply { put("Favourites", previousFavs) }
+
             // Put last time's answer up straight away, then ask again anyway.
             //
             // The request behind this screen takes the better part of two seconds, almost all of it
@@ -75,27 +101,15 @@ class ListViewModel : ViewModel() {
             // wins, so this can only change how soon there is something to look at, never what is
             // eventually shown. See [ani.dantotsu.connections.anilist.MediaListCache].
             Anilist.query.cachedMediaLists(anime, userId, sortOrder)?.let { cached ->
-                publishLists(cached)
+                publishLists(withFavs(cached))
             }
 
-            val res = Anilist.query.getMediaLists(anime, userId, sortOrder)
-            unfilteredLists.postValue(res)
+            val res = withFavs(Anilist.query.getMediaLists(anime, userId, sortOrder))
             val filters = currentFilters.value
 
             // Post immediately — favourites and MU data arrive asynchronously below
-            if (currentSearchQuery.isNotEmpty()) {
-                performSearch(currentSearchQuery, filters, res)
-            } else {
-                if (filters != null && !filters.isEmpty()) {
-                    val filteredLists = res.mapValues { entry ->
-                        entry.value.filter { media ->
-                            matchesFilters(media, filters)
-                        }.let { ArrayList(it) }
-                    }.toMutableMap()
-                    lists.postValue(filteredLists)
-                } else {
-                    lists.postValue(res)
-                }
+            publishLists(res)
+            if (currentSearchQuery.isEmpty()) {
                 filteredMuLists.postValue(
                     if (filters != null && !filters.isEmpty()) {
                         applyMuFilters(rawMuData ?: emptyMap(), filters, query = null)
@@ -116,18 +130,7 @@ class ListViewModel : ViewModel() {
                     }
                     val updated = res.toMutableMap()
                     updated["Favourites"] = favs
-                    unfilteredLists.postValue(updated)
-                    val search = currentSearchQuery
-                    val activeFilters = currentFilters.value
-                    if (search.isNotEmpty()) {
-                        performSearch(search, activeFilters, updated)
-                    } else if (activeFilters != null && !activeFilters.isEmpty()) {
-                        lists.postValue(updated.mapValues { entry ->
-                            ArrayList(entry.value.filter { matchesFilters(it, activeFilters) })
-                        }.toMutableMap())
-                    } else {
-                        lists.postValue(updated)
-                    }
+                    publishLists(updated)
                 }
             }
 
@@ -160,10 +163,11 @@ class ListViewModel : ViewModel() {
      * than the fresh one that replaces it a moment later.
      */
     private fun publishLists(res: MutableMap<String, ArrayList<Media>>) {
-        unfilteredLists.postValue(res)
+        setUnfiltered(res)
         val filters = currentFilters.value
-        if (currentSearchQuery.isNotEmpty()) {
-            performSearch(currentSearchQuery, filters, res)
+        val query = currentSearchQuery
+        if (query.isNotEmpty()) {
+            performSearch(query, filters, res)
             return
         }
         if (filters != null && !filters.isEmpty()) {
@@ -191,7 +195,7 @@ class ListViewModel : ViewModel() {
             val sorted = sortDownloadedMedia(media, sortOrder)
             val res: MutableMap<String, ArrayList<Media>> =
                 linkedMapOf("All" to ArrayList(sorted))
-            unfilteredLists.postValue(res)
+            setUnfiltered(res)
 
             val filters = currentFilters.value
             if (currentSearchQuery.isNotEmpty()) {
@@ -230,11 +234,11 @@ class ListViewModel : ViewModel() {
         }.toMutableMap()
         lists.postValue(reversed)
 
-        val currentUnfiltered = unfilteredLists.value ?: return
+        val currentUnfiltered = rawLists ?: return
         val reversedUnfiltered = currentUnfiltered.mapValues { (_, list) ->
             ArrayList(list.reversed())
         }.toMutableMap()
-        unfilteredLists.postValue(reversedUnfiltered)
+        setUnfiltered(reversedUnfiltered)
 
         // Reverse MU lists too when sorted by updatedAt
         if (activeSortOrder?.startsWith("updatedAt") == true) {
@@ -269,12 +273,12 @@ class ListViewModel : ViewModel() {
 
         // No active search, just apply filters
         if (filters.isEmpty()) {
-            lists.postValue(unfilteredLists.value)
+            rawLists?.let { lists.postValue(it) }
             filteredMuLists.postValue(rawMuData ?: emptyMap())
             return
         }
 
-        val currentLists = unfilteredLists.value ?: return
+        val currentLists = rawLists ?: return
         val hideAniListForMu = filters.hasMuFilters() && !filters.hasAnilistOnlyFilters()
 
         // Anilist items: hidden entirely when only MU filters are active.
@@ -503,7 +507,7 @@ class ListViewModel : ViewModel() {
             // When search is cleared, reapply current filters if they exist
             if (filters != null && !filters.isEmpty()) {
                 // Don't call applyFilters here to avoid resetting currentSearchQuery
-                val currentLists = unfilteredLists.value ?: return
+                val currentLists = rawLists ?: return
                 val hideAniListForMu = filters.hasMuFilters() && !filters.hasAnilistOnlyFilters()
                 val filteredLists = if (hideAniListForMu) {
                     currentLists.mapValues { ArrayList<Media>() }.toMutableMap()
@@ -516,7 +520,7 @@ class ListViewModel : ViewModel() {
                 }
                 lists.postValue(filteredLists)
             } else {
-                lists.postValue(unfilteredLists.value)
+                rawLists?.let { lists.postValue(it) }
             }
             return
         }
@@ -541,13 +545,13 @@ class ListViewModel : ViewModel() {
 
         // Suppress all AniList results when only MU filters are active.
         if (filters?.hasMuFilters() == true && !filters.hasAnilistOnlyFilters()) {
-            val currentLists = unfilteredLists.value ?: return
+            val currentLists = rawLists ?: return
             lists.postValue(currentLists.mapValues { ArrayList<Media>() }.toMutableMap())
             return
         }
 
         // Determine which list to search: if filters are active, search filtered list; otherwise search all
-        val sourceLists = baseLists ?: unfilteredLists.value
+        val sourceLists = baseLists ?: rawLists
         val baseList = if (filters != null && !filters.isEmpty()) {
             // Apply filters first to get the filtered list, then search within that
             sourceLists?.mapValues { entry ->
@@ -565,6 +569,10 @@ class ListViewModel : ViewModel() {
                 .let { ArrayList(it) }
         }.toMutableMap()
 
+        // Passes run on different threads (the debounced search, a reload, favourites landing),
+        // and the pass is not cancellable once started. One that finished after the query moved
+        // on would put an older query's results up under the newer one's text.
+        if (query != currentSearchQuery) return
         lists.postValue(filteredLists)
     }
 
@@ -697,7 +705,7 @@ class ListViewModel : ViewModel() {
         if (filters != null && !filters.isEmpty()) {
             applyFilters(filters)
         } else {
-            lists.postValue(unfilteredLists.value)
+            rawLists?.let { lists.postValue(it) }
         }
     }
 

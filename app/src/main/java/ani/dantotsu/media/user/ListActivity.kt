@@ -2,6 +2,8 @@ package ani.dantotsu.media.user
 
 import ani.dantotsu.util.hideEmptyState
 import ani.dantotsu.util.showNoResults
+import ani.dantotsu.util.cancelSwitch
+import ani.dantotsu.util.jumpTo
 import ani.dantotsu.util.useSharedAxisTransitions
 import android.os.Bundle
 import android.text.SpannableString
@@ -190,6 +192,11 @@ class ListActivity : AppCompatActivity() {
             }
             dialog.show(supportFragmentManager, "missing_sequels_confirm")
         }
+        // Once. This used to run on every tab rebuild — each search keystroke that changed which
+        // tabs had results, each reload pass — and every call registers another page-change
+        // callback and layout listener, none ever removed. After a while of typing, a single page
+        // change played the jump motion dozens of times over, from as many stale starting points.
+        binding.listViewPager.useSharedAxisTransitions()
         binding.listTabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab?) {
                 // Ignore spurious tab-0 selections that fire when TabLayoutMediator attaches
@@ -743,6 +750,11 @@ class ListActivity : AppCompatActivity() {
         }
         lastTabSignature = tabSignature
 
+        // A tab tapped just before this update is still fading out; its index is about to go
+        // stale, so it is taken over here and its tab sought by key below instead.
+        val switchingToKey = binding.listViewPager.cancelSwitch()
+            ?.let { binding.listTabLayout.getTabAt(it)?.tag as? String }
+
         // Capture the currently visible tab base BEFORE we reset the adapter. When the
         // adapter is replaced and TabLayoutMediator attaches it may immediately select
         // the first tab and trigger our OnTabSelected listener, overwriting
@@ -778,7 +790,6 @@ class ListActivity : AppCompatActivity() {
             )
         }
 
-        binding.listViewPager.useSharedAxisTransitions()
         tabMediator = PagerTabsMediator(binding.listTabLayout, binding.listViewPager) { tab, position ->
             when {
                 muTabPosition >= 0 && position == muTabPosition -> {
@@ -822,7 +833,8 @@ class ListActivity : AppCompatActivity() {
         // otherwise fall back to matching text.
         var finalTab = savedTab
         var matchFound = false
-        val matchKey = preservedTabKeyDuringSearch ?: prevTabText?.let { it.replace(Regex(" \\(.+\\)$"), "") }
+        val matchKey = switchingToKey ?: preservedTabKeyDuringSearch
+            ?: prevTabText?.let { it.replace(Regex(" \\(.+\\)$"), "") }
         if (matchKey != null) {
             for (i in 0 until totalSize) {
                 val tab = binding.listTabLayout.getTabAt(i)
@@ -853,8 +865,16 @@ class ListActivity : AppCompatActivity() {
         if (!matchFound && preservedTabKeyDuringSearch != null) {
             finalTab = 0
         }
+        // Quietly, and still inside the rebuild guard. A data update isn't the user changing tabs:
+        // it shouldn't play the switch motion, and the tab listener shouldn't record it — in a
+        // search that would overwrite the preserved tab with the fallback, so the user's own tab
+        // was forgotten the first time a keystroke left it without results. Recorded here instead,
+        // which also covers the case where the pager was already on finalTab and nothing fired.
+        binding.listViewPager.jumpTo(finalTab)
         isRebuildingTabs = false
-        binding.listViewPager.setCurrentItem(finalTab, false)
+        selectedTabIdx = finalTab
+        selectedTabBase = binding.listTabLayout.getTabAt(finalTab)?.text?.toString()
+            ?.replace(Regex(" \\(.+\\)$"), "")
     }
 
     private fun updateSortIcon(anime: Boolean) {

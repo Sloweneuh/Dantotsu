@@ -110,6 +110,21 @@ fun ViewPager2.switchTo(item: Int) {
         .start()
 }
 
+/**
+ * Abandons a [switchTo] still fading out, putting the pager back in view, and returns the page it
+ * was heading for. For a caller about to reshape the pages, after which that index may name a
+ * different page: left running, the switch would land on it — or be cancelled by the reshape's own
+ * page change, dropping its end action and leaving its target tag behind to hijack the next tap.
+ */
+fun ViewPager2.cancelSwitch(): Int? {
+    val pending = getTag(R.id.pager_switch_target) as? Int ?: return null
+    setTag(R.id.pager_switch_target, null)
+    animate().cancel()
+    alpha = 1f
+    translationX = 0f
+    return pending
+}
+
 /** Moves to [item] without the shared-axis motion: for opening on a page, not switching to one. */
 fun ViewPager2.jumpTo(item: Int) {
     setTag(R.id.pager_quiet_jump, true)

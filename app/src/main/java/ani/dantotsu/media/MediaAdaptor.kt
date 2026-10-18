@@ -22,6 +22,7 @@ import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.app.ActivityOptionsCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
+import androidx.core.view.children
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
 import androidx.fragment.app.FragmentActivity
@@ -631,25 +632,37 @@ class MediaAdaptor(
      * Fades [view] in from slightly smaller (and, with [rise], from a little below) the first time
      * [position] is shown. Settles rather than overshoots: a list of covers bouncing in reads as
      * busy where one that eases in reads as loaded.
+     *
+     * Plays on the row's children, never on the row itself. The row's root belongs to
+     * RecyclerView's item animator, which drives it through the same ViewPropertyAnimator: an
+     * entrance there was cancelled by every move, leaving the row at whatever alpha it had reached
+     * (often none — present and counted in the tab, but blank), and cancelling at bind time cut
+     * short the item animator's own fade-out of a removed row, which then tried to recycle that row
+     * in the middle of a layout pass and crashed.
      */
     private fun animateEntrance(view: View, position: Int, rise: Boolean = false) {
-        view.animate().cancel()
-        view.clearAnimation()
-        resetEntrance(view)
+        val parts = entranceParts(view)
+        parts.forEach { it.animate().cancel(); resetEntrance(it) }
         if (position <= enteredUpTo) return
         enteredUpTo = position
         if (!PrefManager.getVal<Boolean>(PrefName.LayoutAnimations)) return
         val speed = PrefManager.getVal<Float>(PrefName.AnimationSpeed)
-        view.alpha = 0f
-        view.scaleX = ENTRANCE_SCALE
-        view.scaleY = ENTRANCE_SCALE
-        if (rise) view.translationY = 16f * view.resources.displayMetrics.density
-        view.animate()
-            .alpha(1f).scaleX(1f).scaleY(1f).translationY(0f)
-            .setDuration((ENTRANCE_MS * speed).toLong())
-            .setInterpolator(DecelerateInterpolator(1.8f))
-            .start()
+        val rideUp = if (rise) 16f * view.resources.displayMetrics.density else 0f
+        parts.forEach { part ->
+            part.alpha = 0f
+            part.scaleX = ENTRANCE_SCALE
+            part.scaleY = ENTRANCE_SCALE
+            part.translationY = rideUp
+            part.animate()
+                .alpha(1f).scaleX(1f).scaleY(1f).translationY(0f)
+                .setDuration((ENTRANCE_MS * speed).toLong())
+                .setInterpolator(DecelerateInterpolator(1.8f))
+                .start()
+        }
     }
+
+    private fun entranceParts(view: View): List<View> =
+        (view as? ViewGroup)?.children?.toList().orEmpty()
 
     private fun resetEntrance(view: View) {
         view.alpha = 1f
@@ -661,8 +674,7 @@ class MediaAdaptor(
     /** A holder going back to the pool mid-entrance would come out of it half faded. */
     override fun onViewRecycled(holder: RecyclerView.ViewHolder) {
         super.onViewRecycled(holder)
-        holder.itemView.animate().cancel()
-        resetEntrance(holder.itemView)
+        entranceParts(holder.itemView).forEach { it.animate().cancel(); resetEntrance(it) }
     }
 
     inner class MediaViewHolder(val binding: ItemMediaCompactBinding) :
