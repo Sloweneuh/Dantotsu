@@ -9,16 +9,11 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        android:paddingTop="8dp">
 
-            <View
-                android:layout_width="32dp"
-                android:layout_height="4dp"
-                android:layout_gravity="center_horizontal"
-                android:layout_marginTop="14dp"
-                android:alpha="0.4"
-                android:background="@drawable/bg_top_banner_handle" />
-
+            <!-- No drag handle: the sheet is always shown at its content height and can't be
+                 resized, so a handle would advertise a gesture that doesn't exist. -->
             <LinearLayout
                 android:id="@+id/settingsAccountRow"
                 android:layout_width="match_parent"

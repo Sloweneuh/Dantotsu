@@ -1,11 +1,33 @@
 package ani.dantotsu.settings.quicktiles
 
+import android.animation.ArgbEvaluator
+import android.animation.ValueAnimator
+import android.content.res.ColorStateList
+import android.view.View
+import android.view.ViewGroup
+import androidx.core.animation.doOnEnd
+import androidx.core.view.children
+import androidx.core.view.doOnPreDraw
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
+import androidx.interpolator.view.animation.FastOutLinearInInterpolator
+import androidx.interpolator.view.animation.FastOutSlowInInterpolator
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
+import ani.dantotsu.databinding.ItemQuickTileBinding
 import ani.dantotsu.databinding.ViewTilePanelBinding
+import ani.dantotsu.settings.saving.PrefManager
+import ani.dantotsu.settings.saving.PrefName
+import ani.dantotsu.util.animationsEnabled
+import kotlin.math.abs
+
+/** The swap between the tile pages and the editor, at animation speed 1. */
+private const val EDIT_SWAP_MS = 300L
+
+/** How much longer the swap takes per dp the panel's height travels, and the most it takes. */
+private const val HEIGHT_MS_PER_DP = 0.3f
+private const val HEIGHT_MAX_MS = 450f
 
 /**
  * Drives one tile panel: its pages, its editor, and the switch between them.
@@ -61,6 +83,7 @@ class TilePanelController(
         val pages = TileCatalogue.paginate(
             catalogue.placed(), QUICK_TILE_COLUMNS, QUICK_TILE_ROWS,
         )
+        this.pages = pages
         val adapter = QuickTilePagerAdapter(host, pages, offline) { setEditing(true) }
         binding.quickTilesPager.adapter = adapter
         binding.quickTilesPager.updateLayoutParams {
@@ -70,15 +93,345 @@ class TilePanelController(
         binding.quickTilesIndicator.attachTo(binding.quickTilesPager, pages.size)
     }
 
+    /** What the pager is showing, page by page; read to match its tiles up with the editor's. */
+    private var pages: List<List<PlacedTile>> = emptyList()
+
+    /** The live editor and its outline, while there is one. */
+    private var editorAdapter: QuickTileEditAdapter? = null
+    private var arrangementBorder: QuickTileArrangementBorder? = null
+
+    /** True while the pages and the editor are trading places; taps on edit/done wait for it. */
+    private var swapping = false
+
+    /**
+     * Swaps the pages for the editor, or back, keeping the tiles that are on screen on both sides.
+     *
+     * A tile on the page being left that also shows on the side arriving — every tile of the current
+     * page, going into the editor; the tiles of the page returned to, coming out — never goes away:
+     * it slides, resizes and recolours from where it was to where it lands. Only what has no
+     * counterpart fades: the other tiles and the shelves, the editor's toolbar and reset button, the
+     * footer. Fading the whole panel out and back in made a tile that hadn't changed blink out and
+     * reappear a few dozen pixels away.
+     *
+     * The panel's height moves under all of it, from the first frame and only as far as the sheet
+     * visibly changes (see [visibleHeightCap]). It was once animated from above the sheet with a
+     * TransitionManager, which flickered — overlays pinned to the screen while the sheet resized,
+     * and the sheet's bounds animated against BottomSheetBehavior; only this panel's own views move
+     * here, and the sheet, wrapping its content, follows by itself.
+     */
     private fun setEditing(value: Boolean) {
+        if (value == editing || swapping) return
+        val frame = binding.quickTilesPager.parent as ViewGroup
+        if (!animationsEnabled || !frame.isLaidOut) {
+            // A footer faded out by an animated swap keeps its alpha while hidden.
+            footerViews().forEach { it.alpha = 1f }
+            prepare(value)
+            show(value)
+            return
+        }
+        swapping = true
+        val speed = PrefManager.getVal<Float>(PrefName.AnimationSpeed)
+        val incoming = if (value) binding.quickTilesEditContainer else binding.quickTilesPager
+
+        // Where each tile on screen is now, before anything changes.
+        val leaving = shownTiles()
+        val snaps = leaving.mapValues { (_, view) -> TileSnap.of(view, frame) }
+
+        prepare(value)
+        incoming.measure(
+            View.MeasureSpec.makeMeasureSpec(
+                frame.width - frame.paddingLeft - frame.paddingRight, View.MeasureSpec.EXACTLY,
+            ),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+        )
+        val fullTo = frame.paddingTop + frame.paddingBottom + incoming.measuredHeight
+        // Only the part of the change that shows is animated. The editor with its shelves runs past
+        // the screen, the sheet tops out at full height and the rest scrolls — so most of a full
+        // collapse happened out of sight, and the sheet edge only began to move at the very end.
+        // Past [cap] the sheet is at its tallest; anything beyond it is changed in one step, unseen.
+        val cap = visibleHeightCap(frame)
+        val from = frame.height.coerceAtMost(cap)
+        val to = fullTo.coerceAtMost(cap)
+        val travelDp = abs(to - from) / frame.resources.displayMetrics.density
+        val totalMs = ((EDIT_SWAP_MS + travelDp * HEIGHT_MS_PER_DP)
+            .coerceAtMost(HEIGHT_MAX_MS) * speed).toLong()
+        // One clock for all of it. The height runs the whole length and ends with the carried-over
+        // tiles, on the same ease, so the sheet edge and the tiles settle on the same frame: the
+        // space neither closes after the tiles are home nor finishes early and cuts off a row still
+        // on its way back up from where the editor had it.
+        val outMs = (totalMs * 0.35f).toLong()
+        val inMs = totalMs - outMs
+        frame.updateLayoutParams { height = from }
+        ValueAnimator.ofInt(from, to).apply {
+            duration = totalMs
+            interpolator = FastOutSlowInInterpolator()
+            addUpdateListener { anim ->
+                frame.updateLayoutParams { height = anim.animatedValue as Int }
+            }
+            doOnEnd {
+                frame.updateLayoutParams { height = ViewGroup.LayoutParams.WRAP_CONTENT }
+            }
+            start()
+        }
+
+        // What carries over: everything on the page being left goes into the editor; coming out,
+        // the tiles of the page the pager is about to show.
+        val staying: Set<String> = if (value) snaps.keys else
+            pages.getOrNull(binding.quickTilesPager.currentItem).orEmpty()
+                .map { it.tile.id }.toSet()
+        val fading = buildList {
+            addAll(footerViews().filter { it.isVisible })
+            if (!value) {
+                addAll(editorChrome())
+                leaving.forEach { (id, view) -> if (id !in staying) add(view) }
+                addAll(editorRows().filter { row -> leaving.values.none { it === row } })
+            }
+        }
+        fading.forEach {
+            it.animate().alpha(0f).setDuration(outMs)
+                .setInterpolator(FastOutLinearInInterpolator()).start()
+        }
+        if (!value) fadeBorder(to = 0f, ms = outMs)
+
+        ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = outMs
+            doOnEnd {
+                if (!frame.isAttachedToWindow) {
+                    swapping = false
+                    return@doOnEnd
+                }
+                show(value)
+                // Hidden now; put them back so the next visit doesn't start with invisible views.
+                fading.forEach { it.animate().cancel(); it.alpha = 1f }
+                frame.doOnPreDraw { arrive(value, snaps, frame, inMs) }
+            }
+            start()
+        }
+    }
+
+    /**
+     * The incoming side's first frame: carried-over tiles start where they were and travel home,
+     * everything else fades up. Runs before that frame is drawn, so nothing shows in between.
+     */
+    private fun arrive(value: Boolean, snaps: Map<String, TileSnap>, frame: View, inMs: Long) {
+        val arriving = shownTiles()
+        val fadeIn = mutableListOf<View>()
+        val unclipped = mutableMapOf<ViewGroup, Pair<Boolean, Boolean>>()
+        arriving.forEach { (id, view) ->
+            val snap = snaps[id]
+            if (snap != null) {
+                unclipUpTo(view, frame, unclipped)
+                snap.morphInto(view, frame, inMs)
+            } else {
+                fadeIn += view
+            }
+        }
+        if (value) {
+            fadeIn += editorChrome()
+            fadeIn += editorRows().filter { row -> arriving.values.none { it === row } }
+            fadeBorder(from = 0f, to = 1f, ms = inMs)
+        } else {
+            fadeIn += footerViews().filter { it.isVisible }
+        }
+        fadeIn.distinct().forEach {
+            it.animate().cancel()
+            it.alpha = 0f
+            it.animate().alpha(1f).setDuration(inMs)
+                .setInterpolator(FastOutSlowInInterpolator()).start()
+        }
+        ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = inMs
+            doOnEnd {
+                unclipped.forEach { (group, clip) ->
+                    group.clipChildren = clip.first
+                    group.clipToPadding = clip.second
+                }
+                swapping = false
+            }
+            start()
+        }
+    }
+
+    /** Where a tile sat, relative to the panel, and what it looked like. */
+    private class TileSnap(
+        val x: Float, val y: Float, val w: Int, val h: Int,
+        val background: Int?, val icon: Int?, val text: Int, val alpha: Float,
+    ) {
+        /**
+         * Starts [view] — the same tile on the other side — looking like this snapshot, then
+         * animates it to how it really is.
+         *
+         * Positions are taken against the panel rather than the window: the sheet moves while the
+         * height changes, and window coordinates captured before the swap would be off by however
+         * far it had travelled, putting a jump into the very tiles meant to stay put.
+         */
+        fun morphInto(view: View, frame: View, ms: Long) {
+            val (x1, y1) = positionIn(view, frame)
+            view.pivotX = 0f
+            view.pivotY = 0f
+            view.translationX = x - x1
+            view.translationY = y - y1
+            view.scaleX = if (view.width > 0) w.toFloat() / view.width else 1f
+            view.scaleY = if (view.height > 0) h.toFloat() / view.height else 1f
+            view.animate().translationX(0f).translationY(0f).scaleX(1f).scaleY(1f)
+                .setDuration(ms).setInterpolator(FastOutSlowInInterpolator()).start()
+
+            // A lit toggle on the pages is plain in the editor, a greyed tile is not greyed
+            // there: blended rather than switched, or the tile would flash as it changed sides.
+            val tile = ItemQuickTileBinding.bind(view)
+            val toBackground = tile.quickTileRoot.backgroundTintList?.defaultColor
+            val toIcon = tile.quickTileIcon.imageTintList?.defaultColor
+            val toText = tile.quickTileLabel.currentTextColor
+            val toAlpha = tile.quickTileRoot.alpha
+            val argb = ArgbEvaluator()
+            ValueAnimator.ofFloat(0f, 1f).apply {
+                duration = ms
+                interpolator = FastOutSlowInInterpolator()
+                addUpdateListener { anim ->
+                    val f = anim.animatedValue as Float
+                    if (background != null && toBackground != null) {
+                        tile.quickTileRoot.backgroundTintList = ColorStateList.valueOf(
+                            argb.evaluate(f, background, toBackground) as Int
+                        )
+                    }
+                    if (icon != null && toIcon != null) {
+                        tile.quickTileIcon.imageTintList = ColorStateList.valueOf(
+                            argb.evaluate(f, icon, toIcon) as Int
+                        )
+                    }
+                    val textColor = argb.evaluate(f, text, toText) as Int
+                    tile.quickTileLabel.setTextColor(textColor)
+                    tile.quickTileState.setTextColor(textColor)
+                    tile.quickTileRoot.alpha = alpha + (toAlpha - alpha) * f
+                }
+                start()
+            }
+        }
+
+        companion object {
+            fun of(view: View, frame: View): TileSnap {
+                val (x, y) = positionIn(view, frame)
+                val tile = ItemQuickTileBinding.bind(view)
+                return TileSnap(
+                    x, y, view.width, view.height,
+                    tile.quickTileRoot.backgroundTintList?.defaultColor,
+                    tile.quickTileIcon.imageTintList?.defaultColor,
+                    tile.quickTileLabel.currentTextColor,
+                    tile.quickTileRoot.alpha,
+                )
+            }
+
+            /** [view]'s laid-out top-left in [frame]'s coordinates, ignoring any running animation. */
+            fun positionIn(view: View, frame: View): Pair<Float, Float> {
+                val a = IntArray(2).also(view::getLocationInWindow)
+                val b = IntArray(2).also(frame::getLocationInWindow)
+                return (a[0] - b[0] - view.translationX) to (a[1] - b[1] - view.translationY)
+            }
+        }
+    }
+
+    /**
+     * The tiles on screen right now, by tile id: the current page's while the pages show, the
+     * arrangement's (not the shelf's) while the editor does.
+     */
+    private fun shownTiles(): Map<String, View> {
+        if (editing) {
+            val editor = editorAdapter ?: return emptyMap()
+            val list = binding.quickTilesEditor
+            return list.children.mapNotNull { view ->
+                val position = list.getChildAdapterPosition(view)
+                if (position !in 0 until editor.placedCount()) return@mapNotNull null
+                editor.placedTiles().getOrNull(position)?.let { it.tile.id to view }
+            }.toMap()
+        }
+        val pager = binding.quickTilesPager
+        val page = pages.getOrNull(pager.currentItem) ?: return emptyMap()
+        val holder = (pager.getChildAt(0) as? RecyclerView)
+            ?.findViewHolderForAdapterPosition(pager.currentItem)
+            as? QuickTilePagerAdapter.PageHolder ?: return emptyMap()
+        val grid = holder.binding.quickTilePageRecycler
+        return grid.children.mapNotNull { view ->
+            page.getOrNull(grid.getChildAdapterPosition(view))?.let { it.tile.id to view }
+        }.toMap()
+    }
+
+    /**
+     * Lets [view] draw outside its parents, up to and including [frame], while it travels.
+     *
+     * A carried-over tile starts from where it was on the other side, which can be outside the
+     * containers it now lives in: in the editor the arrangement sits a toolbar's height lower than
+     * the pages do, so coming back the last row started below the pager's bottom edge and was cut
+     * off until it had climbed back inside. Each group's previous settings go into [saved] so they
+     * can be put back once the move ends.
+     */
+    private fun unclipUpTo(view: View, frame: View, saved: MutableMap<ViewGroup, Pair<Boolean, Boolean>>) {
+        var parent = view.parent as? ViewGroup
+        while (parent != null) {
+            if (parent !in saved) {
+                saved[parent] = parent.clipChildren to parent.clipToPadding
+                parent.clipChildren = false
+                parent.clipToPadding = false
+            }
+            if (parent === frame) break
+            parent = parent.parent as? ViewGroup
+        }
+    }
+
+    /** Every row of the editor's list: arrangement, shelf headers and shelf tiles. */
+    private fun editorRows(): List<View> = binding.quickTilesEditor.children.toList()
+
+    /** The editor's own controls around its list: the toolbar row and the reset button. */
+    private fun editorChrome(): List<View> =
+        binding.quickTilesEditContainer.children.filter { it !== binding.quickTilesEditor }.toList()
+
+    /** Fades the outline round the arrangement, which the list draws rather than a view. */
+    private fun fadeBorder(from: Float? = null, to: Float, ms: Long) {
+        val border = arrangementBorder ?: return
+        ValueAnimator.ofFloat(from ?: border.alpha, to).apply {
+            duration = ms
+            addUpdateListener {
+                border.alpha = it.animatedValue as Float
+                binding.quickTilesEditor.invalidate()
+            }
+            start()
+        }
+    }
+
+    /**
+     * The tallest [frame] can be with every pixel of it changing what's on screen: the height at
+     * which the sheet reaches the top of its window. Beyond it the sheet stays put and the extra
+     * only adds to what the sheet's scroll view hides.
+     */
+    private fun visibleHeightCap(frame: View): Int {
+        val scroll = binding.root as? ViewGroup ?: return Int.MAX_VALUE
+        val content = scroll.getChildAt(0) ?: return Int.MAX_VALUE
+        val sheet = scroll.parent as? View ?: return Int.MAX_VALUE
+        val window = sheet.parent as? View ?: return Int.MAX_VALUE
+        // How far the content already runs past the sheet, or how much room the sheet still has
+        // to grow; only one of the two is ever non-zero.
+        val overflow = (content.height + scroll.paddingTop + scroll.paddingBottom - scroll.height)
+            .coerceAtLeast(0)
+        val room = (window.height - sheet.height).coerceAtLeast(0)
+        return frame.height - overflow + room
+    }
+
+    private fun footerViews() =
+        listOf(binding.quickTilesEdit, binding.quickTilesIndicator, binding.quickTilesVersion)
+
+    /** Swaps which side is showing. Whatever is coming in has already been built by [prepare]. */
+    private fun show(value: Boolean) {
         editing = value
-        detachEditor()
         updateFooterVisibility()
         binding.quickTilesPager.isVisible = !value
         binding.quickTilesIndicator.isVisible =
             !value && (binding.quickTilesPager.adapter?.itemCount ?: 0) > 1
         binding.quickTilesEdit.isVisible = !value
         binding.quickTilesEditContainer.isVisible = value
+    }
+
+    /** Builds the side about to come in, out of sight, so it can be measured before the swap. */
+    private fun prepare(value: Boolean) {
+        detachEditor()
         if (!value) {
             // Re-paginate: sizes and membership may both have changed under the editor.
             showPages()
@@ -113,7 +466,10 @@ class TilePanelController(
         while (binding.quickTilesEditor.itemDecorationCount > 0) {
             binding.quickTilesEditor.removeItemDecorationAt(0)
         }
-        binding.quickTilesEditor.addItemDecoration(QuickTileArrangementBorder(editor))
+        editorAdapter = editor
+        arrangementBorder = QuickTileArrangementBorder(editor).also {
+            binding.quickTilesEditor.addItemDecoration(it)
+        }
         // Before the drag helper: the first listener to claim a gesture keeps it, and a touch on
         // the resize handle must not turn into a reorder drag.
         editTouchListener = editor.handleTouchListener().also {
