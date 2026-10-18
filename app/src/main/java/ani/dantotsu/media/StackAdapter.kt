@@ -7,12 +7,9 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.FrameLayout
-import android.util.TypedValue
-import android.view.Gravity
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
-import com.bumptech.glide.Glide
 
 class StackAdapter(private val items: List<InterestStack>, private val isAnime: Boolean) : RecyclerView.Adapter<StackAdapter.VH>() {
 
@@ -32,49 +29,7 @@ class StackAdapter(private val items: List<InterestStack>, private val isAnime: 
     override fun onBindViewHolder(holder: VH, position: Int) {
         val item = items[position]
         val ctx = holder.itemView.context
-        // Populate stacked covers (up to 3) in container, newer covers on top
-        val container = holder.coversContainer
-        container.removeAllViews()
-        val covers = item.covers
-        val count = covers.size.coerceAtMost(3)
-        val offsetDp = 12f
-        val dm = ctx.resources.displayMetrics
-        // Determine base width/height for compact container (fallback to 102dp/154dp)
-        val baseW = if (container.width > 0) container.width else TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 102f, dm).toInt()
-        val baseH = if (container.height > 0) container.height else TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 154f, dm).toInt()
-
-        // Add from bottom (right) to top (left) so cover[0] becomes top/left
-        for (i in count - 1 downTo 0) {
-            val img = ImageView(ctx)
-            val offsetPx = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, offsetDp, dm).toInt()
-            // width reduces for top images so topmost shows left and underlying ones peek on the right
-            val widthForIndex = baseW - ((count - 1 - i) * offsetPx)
-            val lp = FrameLayout.LayoutParams(widthForIndex, baseH)
-            lp.marginStart = i * offsetPx
-            img.layoutParams = lp
-            img.scaleType = ImageView.ScaleType.CENTER_CROP
-            img.elevation = (count - i).toFloat()
-            val url = covers.getOrNull(i)
-            if (!url.isNullOrEmpty()) Glide.with(ctx).load(url).centerCrop().into(img) else img.setImageResource(R.drawable.ic_round_collections_bookmark_24)
-            container.addView(img)
-
-            // If this is the topmost cover (i == 0), add a right-edge shadow overlay positioned at the top cover's right edge
-            if (i == 0) {
-                val overlay = View(ctx)
-                val ovWidth = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 12f, dm).toInt()
-                val ovLp = FrameLayout.LayoutParams(ovWidth, baseH)
-                // position overlay so it straddles the right edge of the top cover (half over the top, half over the one beneath)
-                val overlayMargin = i * offsetPx + (widthForIndex - ovWidth / 2)
-                ovLp.marginStart = overlayMargin
-                overlay.layoutParams = ovLp
-                overlay.setBackgroundResource(R.drawable.stack_right_shadow)
-                // ensure shadow sits beneath the top cover: set elevation just below the top image's elevation
-                overlay.elevation = kotlin.math.max(0f, (count - i - 1).toFloat())
-                overlay.isClickable = false
-                container.addView(overlay)
-                // do not bring to front; keep shadow under top cover
-            }
-        }
+        StackCoverCollage.bind(holder.coversContainer, item.covers, item.entries)
         holder.title.text = item.name
         holder.userProgress.text = item.entries.toString()
         holder.total?.text = ctx.getString(R.string.stack_entries_suffix)

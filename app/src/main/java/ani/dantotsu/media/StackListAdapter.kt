@@ -15,10 +15,8 @@ import androidx.lifecycle.lifecycleScope
 import io.noties.markwon.Markwon
 import kotlinx.coroutines.launch
 import ani.dantotsu.databinding.ItemStackLargeBinding
-import ani.dantotsu.loadImage
 import android.text.method.LinkMovementMethod
 import android.text.util.Linkify
-import android.util.Log
 import ani.dantotsu.getThemeColor
 import androidx.core.text.HtmlCompat
 import android.content.Context
@@ -27,13 +25,11 @@ import android.text.TextPaint
 import android.text.style.ClickableSpan
 import android.text.style.ForegroundColorSpan
 import android.text.style.URLSpan
-import android.util.TypedValue
 import android.view.MotionEvent
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.TextView
 import ani.dantotsu.media.MediaDetailsActivity
-import com.bumptech.glide.Glide
 
 class StackListAdapter(private val items: List<InterestStack>, private val isAnime: Boolean) : RecyclerView.Adapter<StackListAdapter.VH>() {
 
@@ -70,61 +66,8 @@ class StackListAdapter(private val items: List<InterestStack>, private val isAni
     override fun onBindViewHolder(holder: VH, position: Int) {
         val item = items[position]
         val b = holder.binding
-        // Populate stacked covers in container and set banner
-        // prefer generated binding property when possible
-        val container = (try {
-            b::class.java.getMethod("getItemStackCoversContainer").invoke(b) as? android.widget.FrameLayout
-        } catch (e: Exception) {
-            null
-        }) ?: b.root.findViewById<android.widget.FrameLayout>(R.id.itemStackCoversContainer)
-        container?.removeAllViews()
-        val covers = item.covers
-        Log.d("StackListAdapter", "onBind position=$position covers=${covers.size} containerFound=${container!=null}")
-        val count = covers.size.coerceAtMost(3)
-        val offsetDp = 12f
-        val dm = b.root.context.resources.displayMetrics
-        // Determine base width/height for large container (fallback to 108dp/160dp)
-        val baseW = if (container != null && container.width > 0) container.width else TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 108f, dm).toInt()
-        val baseH = if (container != null && container.height > 0) container.height else TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 160f, dm).toInt()
-
-        // Add from bottom (right) to top (left) so cover[0] becomes top/left
-        for (i in count - 1 downTo 0) {
-            val offsetPx = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_DIP, offsetDp, dm).toInt()
-            val widthForIndex = baseW - ((count - 1 - i) * offsetPx)
-            val lp = android.widget.FrameLayout.LayoutParams(widthForIndex, baseH)
-            lp.marginStart = i * offsetPx
-
-            // compute image elevation value so we can place the shadow just beneath the top image
-            val imgElevation = (count - i + 20).toFloat()
-
-            // If this is the topmost cover (i == 0), add a right-edge shadow overlay BEFORE adding the top image
-            if (i == 0) {
-                val overlay = android.view.View(b.root.context)
-                val ovWidth = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_DIP, 12f, dm).toInt()
-                val ovLp = android.widget.FrameLayout.LayoutParams(ovWidth, baseH)
-                // position overlay so it straddles the right edge of the top cover (half over the top, half over the one beneath)
-                val overlayMargin = i * offsetPx + (widthForIndex - ovWidth / 2)
-                ovLp.marginStart = overlayMargin
-                overlay.layoutParams = ovLp
-                overlay.setBackgroundResource(R.drawable.stack_right_shadow)
-                // set overlay elevation just below the top image elevation
-                overlay.elevation = kotlin.math.max(0f, imgElevation - 1f)
-                overlay.isClickable = false
-                container?.addView(overlay)
-            }
-
-            val img = android.widget.ImageView(b.root.context)
-            img.layoutParams = lp
-            img.scaleType = android.widget.ImageView.ScaleType.CENTER_CROP
-            // ensure cover images render above the placeholder/background
-            img.elevation = imgElevation
-            val url = covers.getOrNull(i)
-            if (!url.isNullOrEmpty()) Glide.with(b.root.context).load(url).centerCrop().into(img) else img.setImageResource(R.drawable.ic_round_collections_bookmark_24)
-            container?.addView(img)
-            Log.d("StackListAdapter", "added cover i=$i url=$url widthForIndex=$widthForIndex lpStart=${lp.marginStart}")
-            // bring the cover image to front to ensure visibility in this CardView layout
-            img.bringToFront()
-        }
+        val container = b.root.findViewById<android.widget.FrameLayout>(R.id.itemStackCoversContainer)
+        if (container != null) StackCoverCollage.bind(container, item.covers, item.entries)
         // banner still uses first cover
         blurImage(b.itemCompactBanner, item.covers.firstOrNull())
         // title
