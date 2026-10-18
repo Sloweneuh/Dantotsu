@@ -1,5 +1,6 @@
 package ani.dantotsu.media.anime
 
+import ani.dantotsu.settings.SectionCard
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -457,10 +458,12 @@ class EpisodeAdapter(
                 true
             }
             binding.itemEpisodeDesc.setOnClickListener {
-                if (binding.itemEpisodeDesc.maxLines == 3)
-                    binding.itemEpisodeDesc.maxLines = 100
-                else
-                    binding.itemEpisodeDesc.maxLines = 3
+                SectionCard.animateHeightChange(binding.itemEpisodeDesc) {
+                    if (binding.itemEpisodeDesc.maxLines == 3)
+                        binding.itemEpisodeDesc.maxLines = 100
+                    else
+                        binding.itemEpisodeDesc.maxLines = 3
+                }
             }
 
             binding.itemEpisodeBrowser.setOnClickListener {

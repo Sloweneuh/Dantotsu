@@ -1,5 +1,7 @@
 package ani.dantotsu.media
 
+import android.widget.ImageView
+import android.content.res.ColorStateList
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.Application
@@ -209,6 +211,51 @@ private fun pressFeedback(itemView: View, target: View, scale: Float) {
 }
 
 /**
+ * The tint an icon had on the page it flew from, handed to the page it lands on so the colour
+ * blends over the flight instead of switching the moment it sets off.
+ *
+ * A row icon on the main settings page is primary-tinted; the same icon in a page's header is
+ * on-background. Going out, the launching row records its tint ([forward]) and the page blends its
+ * header icon from it. Coming back the page blends that same icon into the row's tint itself: it is
+ * the one seen on the way home, the row icon staying hidden until it lands.
+ */
+object SharedIconTint {
+    @Volatile
+    var forward: Int? = null
+
+    fun takeForward(): Int? = forward.also { forward = null }
+}
+
+/** Blends [icon]'s tint from [from] to [to] over a cover flight's length. */
+fun blendTint(icon: ImageView, from: Int, to: ColorStateList?) {
+    val target = to?.defaultColor ?: run {
+        icon.imageTintList = to
+        return
+    }
+    if (!PrefManager.getVal<Boolean>(PrefName.LayoutAnimations)) {
+        icon.imageTintList = to
+        return
+    }
+    val argb = android.animation.ArgbEvaluator()
+    android.animation.ValueAnimator.ofFloat(0f, 1f).apply {
+        duration = coverFlightMs()
+        interpolator = PathInterpolator(0.2f, 0f, 0f, 1f)
+        addUpdateListener {
+            icon.imageTintList = ColorStateList.valueOf(argb.evaluate(it.animatedFraction, from, target) as Int)
+        }
+        addListener(object : android.animation.AnimatorListenerAdapter() {
+            override fun onAnimationEnd(animation: android.animation.Animator) {
+                icon.imageTintList = to
+            }
+        })
+    }.start()
+}
+
+/** How long a cover flight takes at the current animation speed. */
+fun coverFlightMs(): Long =
+    (COVER_TRANSITION_MS * PrefManager.getVal<Float>(PrefName.AnimationSpeed)).toLong()
+
+/**
  * Keeps a cover's badges with the cover through its flight to a media page and back.
  *
  * Only the cover image travels; its badges are separate views and used to stay behind in the
@@ -224,6 +271,51 @@ private fun pressFeedback(itemView: View, target: View, scale: Float) {
 object CoverBadgeTransitions : Application.ActivityLifecycleCallbacks {
     /** Badges hidden for a cover that's away, per host activity, with the alpha to restore. */
     private val away = WeakHashMap<Activity, MutableMap<View, Float>>()
+
+    /**
+     * Activities that went behind another one, so the next shared-element start they see is a
+     * flight coming home. Told apart this way rather than by a flag set as a flight leaves: the
+     * framework calls the same start on the way out too, right after capturing the flight, which
+     * used up such a flag before the return — the lift then happened too early and the return's
+     * tint blend never ran, the row icon only taking its colour once it had landed.
+     */
+    private val returning = WeakHashMap<Activity, Boolean>()
+
+    /** Counts each activity's stops, so a clear scheduled for one visit can't undo a later one. */
+    private val stops = WeakHashMap<Activity, Int>()
+
+    /**
+     * Lets a returning shared element fly above the views around it, until it lands.
+     *
+     * Going out, the framework draws the flying view in an overlay above everything. Coming back
+     * it doesn't: the view being landed on is animated where it lives, so it stayed clipped to its
+     * list's bounds and faded by the list's edge — passing "behind" the search bar and header on
+     * the way to its row. Clipping and fading edges are switched off from the view up to the
+     * window's content for the flight; the returned function puts them back.
+     */
+    private fun liftOutOfClipping(activity: Activity, view: View): () -> Unit {
+        val content = activity.findViewById<View>(android.R.id.content)
+        val undo = mutableListOf<() -> Unit>()
+        var parent = view.parent as? ViewGroup
+        while (parent != null) {
+            val group = parent
+            val clip = group.clipChildren to group.clipToPadding
+            group.clipChildren = false
+            group.clipToPadding = false
+            val fading = group.isVerticalFadingEdgeEnabled to group.isHorizontalFadingEdgeEnabled
+            group.isVerticalFadingEdgeEnabled = false
+            group.isHorizontalFadingEdgeEnabled = false
+            undo += {
+                group.clipChildren = clip.first
+                group.clipToPadding = clip.second
+                group.isVerticalFadingEdgeEnabled = fading.first
+                group.isHorizontalFadingEdgeEnabled = fading.second
+            }
+            if (group === content) break
+            parent = group.parent as? ViewGroup
+        }
+        return { undo.forEach { it() } }
+    }
 
     override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {
         activity.setExitSharedElementCallback(object : SharedElementCallback() {
@@ -248,16 +340,18 @@ object CoverBadgeTransitions : Application.ActivityLifecycleCallbacks {
                 sharedElements: MutableList<View>?,
                 sharedElementSnapshots: MutableList<View>?,
             ) {
-                if (away[activity].isNullOrEmpty()) return
+                if (returning.remove(activity) != true) return
+                val elements = sharedElements.orEmpty()
+                val lifted = mutableListOf<() -> Unit>()
+                elements.forEach { lifted += liftOutOfClipping(activity, it) }
                 activity.window.sharedElementReenterTransition?.addListener(
                     object : TransitionListenerAdapter() {
-                        override fun onTransitionEnd(transition: Transition) {
-                            transition.removeListener(this)
-                            restore(activity)
-                        }
+                        override fun onTransitionEnd(transition: Transition) = landed(transition)
+                        override fun onTransitionCancel(transition: Transition) = landed(transition)
 
-                        override fun onTransitionCancel(transition: Transition) {
+                        private fun landed(transition: Transition) {
                             transition.removeListener(this)
+                            lifted.forEach { it() }
                             restore(activity)
                         }
                     }
@@ -266,13 +360,29 @@ object CoverBadgeTransitions : Application.ActivityLifecycleCallbacks {
         })
     }
 
+    override fun onActivityStopped(activity: Activity) {
+        stops[activity] = (stops[activity] ?: 0) + 1
+        returning[activity] = true
+    }
+
     override fun onActivityResumed(activity: Activity) {
+        // A return's start arrives within the first frames back. Stopped for any other reason —
+        // the app sent to the background — the flag would otherwise outlive the visit and mark the
+        // next launch's start as a return. Only this visit's flag is cleared: a page opened within
+        // the delay stops this activity again, and an unguarded clear then wiped the flag that stop
+        // had just set, so the return went unrecognised and its tint never blended in flight.
+        val visit = stops[activity]
+        activity.window.decorView.postDelayed({
+            if (stops[activity] == visit) returning.remove(activity)
+        }, FALLBACK_RESTORE_MS)
         if (away[activity].isNullOrEmpty()) return
         activity.window.decorView.postDelayed({ restore(activity) }, FALLBACK_RESTORE_MS)
     }
 
     override fun onActivityDestroyed(activity: Activity) {
         away.remove(activity)
+        stops.remove(activity)
+        returning.remove(activity)
     }
 
     /** Fades out the badges of the list item [cover] belongs to, if it belongs to one. */
@@ -313,7 +423,6 @@ object CoverBadgeTransitions : Application.ActivityLifecycleCallbacks {
 
     override fun onActivityStarted(activity: Activity) {}
     override fun onActivityPaused(activity: Activity) {}
-    override fun onActivityStopped(activity: Activity) {}
     override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {}
 
     private const val BADGE_FADE_MS = 120L

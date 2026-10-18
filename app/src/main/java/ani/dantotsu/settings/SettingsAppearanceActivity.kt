@@ -104,7 +104,9 @@ class SettingsAppearanceActivity : AppCompatActivity(), SimpleDialog.OnDialogRes
                 finishAndRemoveTask()
                 reload = false
             } else {
-                finish()
+                // After the transition, not straight away: a plain finish skipped the return
+                // transition, so the header icon never flew back to its row.
+                finishAfterTransition()
             }
         }
         binding.appearanceSettingsBack.setOnClickListener {

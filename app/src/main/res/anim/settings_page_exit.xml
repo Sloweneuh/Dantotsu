@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+    Shared-axis X, forward: the page being left drifts the other way and fades out before the new
+    one has fully arrived, so the two are never both readable at once.
+-->
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:interpolator="@android:interpolator/fast_out_slow_in"
+    android:shareInterpolator="true">
+    <translate
+        android:duration="300"
+        android:fromXDelta="0"
+        android:toXDelta="-8%" />
+    <alpha
+        android:duration="90"
+        android:fromAlpha="1"
+        android:toAlpha="0" />
+</set>

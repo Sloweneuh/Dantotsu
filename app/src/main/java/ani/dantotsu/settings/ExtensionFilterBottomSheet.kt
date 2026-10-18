@@ -287,9 +287,13 @@ class ExtensionFilterBottomSheet : BottomSheetDialogFragment() {
         content.visibility = View.GONE
         header.filterSectionArrow.rotation = 0f
 
+        // Tracked here rather than read off the content's visibility: a closing section stays
+        // visible while it shrinks, and a tap during that must count as reopening it.
+        var sectionOpen = false
         header.root.setOnClickListener {
-            val expanded = content.visibility == View.VISIBLE
-            content.visibility = if (expanded) View.GONE else View.VISIBLE
+            val expanded = sectionOpen
+            sectionOpen = !sectionOpen
+            SectionCard.setExpanded(content, sectionOpen)
             header.filterSectionArrow.animate()
                 .rotation(if (expanded) 0f else 180f)
                 .setDuration(180)
@@ -310,7 +314,7 @@ class ExtensionFilterBottomSheet : BottomSheetDialogFragment() {
         if (searchable) {
             header.filterSectionSearch.setOnClickListener {
                 val isVisible = header.filterSectionSearchLayout.visibility == View.VISIBLE
-                header.filterSectionSearchLayout.visibility = if (isVisible) View.GONE else View.VISIBLE
+                SectionCard.setExpanded(header.filterSectionSearchLayout, !isVisible)
                 header.filterSectionSearch.setImageResource(
                     if (isVisible) ani.dantotsu.R.drawable.ic_round_search_24
                     else ani.dantotsu.R.drawable.ic_round_search_off_24

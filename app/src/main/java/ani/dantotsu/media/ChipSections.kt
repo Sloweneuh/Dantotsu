@@ -1,5 +1,6 @@
 package ani.dantotsu.media
 
+import ani.dantotsu.settings.SectionCard
 import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
@@ -58,7 +59,8 @@ object ChipSections {
 
         chevron.setOnClickListener {
             isExpanded = !isExpanded
-            apply()
+            // The row eases between one line and all of them instead of jumping.
+            SectionCard.animateHeightChange(scroll) { apply() }
         }
     }
 

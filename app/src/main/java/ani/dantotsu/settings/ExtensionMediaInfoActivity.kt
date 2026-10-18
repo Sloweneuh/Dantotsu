@@ -504,9 +504,11 @@ class ExtensionMediaInfoActivity : AppCompatActivity() {
                 if (synopsisExpanded) null else android.text.TextUtils.TruncateAt.END
             binding.extensionInfoSynopsis.setOnClickListener {
                 synopsisExpanded = !synopsisExpanded
-                binding.extensionInfoSynopsis.maxLines = if (synopsisExpanded) Int.MAX_VALUE else 4
-                binding.extensionInfoSynopsis.ellipsize =
-                    if (synopsisExpanded) null else android.text.TextUtils.TruncateAt.END
+                SectionCard.animateHeightChange(binding.extensionInfoSynopsis) {
+                    binding.extensionInfoSynopsis.maxLines = if (synopsisExpanded) Int.MAX_VALUE else 4
+                    binding.extensionInfoSynopsis.ellipsize =
+                        if (synopsisExpanded) null else android.text.TextUtils.TruncateAt.END
+                }
             }
         }
 

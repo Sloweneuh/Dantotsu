@@ -149,7 +149,7 @@ class ListSyncCompareActivity : AppCompatActivity() {
         // spinner in their place.
         var loading = true
 
-        fun applyState() {
+        fun applyState(animateList: Boolean = false) {
             val count = adapter.itemCount
             val empty = count == 0
             sb.sectionProgress.visibility = if (loading) View.VISIBLE else View.GONE
@@ -158,9 +158,15 @@ class ListSyncCompareActivity : AppCompatActivity() {
             sb.sectionChevron.visibility = if (loading || empty) View.INVISIBLE else View.VISIBLE
             sb.sectionSyncAll.visibility = if (loading || empty) View.GONE else View.VISIBLE
             sb.sectionEmpty.visibility = if (!loading && empty) View.VISIBLE else View.GONE
-            sb.sectionDiffList.visibility =
-                if (!loading && !empty && expanded) View.VISIBLE else View.GONE
-            sb.sectionChevron.rotation = if (expanded) 180f else 0f
+            val showList = !loading && !empty && expanded
+            if (animateList) {
+                SectionCard.setExpanded(sb.sectionDiffList, showList)
+                sb.sectionChevron.animate().rotation(if (expanded) 180f else 0f)
+                    .setDuration(220).start()
+            } else {
+                sb.sectionDiffList.visibility = if (showList) View.VISIBLE else View.GONE
+                sb.sectionChevron.rotation = if (expanded) 180f else 0f
+            }
             sb.sectionHeader.isClickable = !loading && !empty
         }
 
@@ -186,7 +192,7 @@ class ListSyncCompareActivity : AppCompatActivity() {
         sb.sectionHeader.setOnClickListener {
             if (adapter.itemCount == 0) return@setOnClickListener
             expanded = !expanded
-            applyState()
+            applyState(animateList = true)
         }
 
         sb.sectionSyncAll.setOnClickListener {

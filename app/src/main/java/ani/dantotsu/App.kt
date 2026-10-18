@@ -186,6 +186,8 @@ class App : MultiDexApplication() {
         registerActivityLifecycleCallbacks(mFTActivityLifecycleCallbacks)
         // Keeps media covers' badges with the cover through its shared-element flight.
         registerActivityLifecycleCallbacks(ani.dantotsu.media.CoverBadgeTransitions)
+        // Settings pages move on a shared X axis between each other.
+        registerActivityLifecycleCallbacks(ani.dantotsu.settings.SettingsPageTransitions)
         runCatching { ani.dantotsu.notifications.NotificationReadState.migrateLegacyCounter() }
 
         // Check both the hardcoded constant and user preference

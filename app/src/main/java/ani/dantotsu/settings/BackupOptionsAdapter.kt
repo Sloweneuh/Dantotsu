@@ -1,5 +1,7 @@
 package ani.dantotsu.settings
 
+import android.view.View
+import androidx.recyclerview.widget.DiffUtil
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
@@ -95,18 +97,44 @@ class BackupOptionsAdapter(
         rows = newRows
     }
 
-    private fun toggleCategoryExpand(catId: String) {
-        if (catId in expandedCategories) expandedCategories.remove(catId)
-        else expandedCategories.add(catId)
-        rebuildRows()
-        notifyDataSetChanged()
+    private fun toggleCategoryExpand(catId: String, chevron: View) {
+        val open = expandedCategories.add(catId) || !expandedCategories.remove(catId)
+        turnChevron(chevron, open)
+        rebuildRowsAnimated()
     }
 
-    private fun toggleSubCategoryExpand(subId: String) {
-        if (subId in expandedSubCategories) expandedSubCategories.remove(subId)
-        else expandedSubCategories.add(subId)
+    private fun toggleSubCategoryExpand(subId: String, chevron: View) {
+        val open = expandedSubCategories.add(subId) || !expandedSubCategories.remove(subId)
+        turnChevron(chevron, open)
+        rebuildRowsAnimated()
+    }
+
+    private fun turnChevron(chevron: View, open: Boolean) {
+        chevron.animate().rotation(if (open) 0f else -90f).setDuration(220).start()
+    }
+
+    /**
+     * Rebuilds the rows and tells the list exactly which ones came or went, so the item animator
+     * slides the opened group's rows in (or the closed one's out) instead of the whole list
+     * redrawing in its new shape in one frame. The header itself is unchanged and not rebound,
+     * which is why its chevron is turned by hand.
+     */
+    private fun rebuildRowsAnimated() {
+        val old = rows
         rebuildRows()
-        notifyDataSetChanged()
+        val new = rows
+        DiffUtil.calculateDiff(object : DiffUtil.Callback() {
+            override fun getOldListSize() = old.size
+            override fun getNewListSize() = new.size
+            override fun areItemsTheSame(o: Int, n: Int) = rowKey(old[o]) == rowKey(new[n])
+            override fun areContentsTheSame(o: Int, n: Int) = old[o] == new[n]
+        }).dispatchUpdatesTo(this)
+    }
+
+    private fun rowKey(row: Row): String = when (row) {
+        is Row.CategoryRow -> "c:${row.category.id}"
+        is Row.SubCategoryRow -> "s:${row.category.id}/${row.subCategory.id}"
+        is Row.ItemRow -> "i:${row.subCategory.id}/${row.item.id}"
     }
 
     private fun categoryItems(cat: BackupCategory): List<BackupItem> =
@@ -201,7 +229,9 @@ class BackupOptionsAdapter(
             val expanded = cat.id in expandedCategories
             b.backupCategoryChevron.rotation = if (expanded) 0f else -90f
 
-            b.backupCategoryRow.setOnClickListener { toggleCategoryExpand(cat.id) }
+            b.backupCategoryRow.setOnClickListener {
+                toggleCategoryExpand(cat.id, b.backupCategoryChevron)
+            }
             b.backupCategoryCheckbox.setOnTouchListener { _, event ->
                 if (event.actionMasked == android.view.MotionEvent.ACTION_UP) {
                     toggleCategory(cat)
@@ -226,7 +256,9 @@ class BackupOptionsAdapter(
             val expanded = sub.id in expandedSubCategories
             b.backupSubCategoryChevron.rotation = if (expanded) 0f else -90f
 
-            b.backupSubCategoryRow.setOnClickListener { toggleSubCategoryExpand(sub.id) }
+            b.backupSubCategoryRow.setOnClickListener {
+                toggleSubCategoryExpand(sub.id, b.backupSubCategoryChevron)
+            }
             b.backupSubCategoryCheckbox.setOnTouchListener { _, event ->
                 if (event.actionMasked == android.view.MotionEvent.ACTION_UP) {
                     toggleSubCategory(sub)

@@ -1,5 +1,6 @@
 package ani.dantotsu.media
 
+import ani.dantotsu.settings.SectionCard
 import android.content.Intent
 import android.net.Uri
 import android.view.LayoutInflater
@@ -73,7 +74,9 @@ class ComickListComicAdapter(
         // onClick on title so regular taps aren't swallowed by the long-click listener
         b.itemCompactTitle.setSafeOnClickListener { onItemClick(comic) }
         b.itemCompactTitle.setOnLongClickListener {
-            b.itemCompactTitle.maxLines = if (b.itemCompactTitle.maxLines == 2) Int.MAX_VALUE else 2
+            SectionCard.animateHeightChange(b.itemCompactTitle) {
+                b.itemCompactTitle.maxLines = if (b.itemCompactTitle.maxLines == 2) Int.MAX_VALUE else 2
+            }
             true
         }
 

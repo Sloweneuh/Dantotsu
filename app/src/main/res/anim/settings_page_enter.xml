@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+    Shared-axis X, forward: the settings page being opened drifts in from the right as it fades in.
+    It travels a little rather than the full width, so the move reads as going deeper into the same
+    place, not as a different screen sliding over this one.
+-->
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:interpolator="@android:interpolator/fast_out_slow_in"
+    android:shareInterpolator="true">
+    <translate
+        android:duration="300"
+        android:fromXDelta="8%"
+        android:toXDelta="0" />
+    <alpha
+        android:duration="210"
+        android:startOffset="90"
+        android:fromAlpha="0"
+        android:toAlpha="1" />
+</set>

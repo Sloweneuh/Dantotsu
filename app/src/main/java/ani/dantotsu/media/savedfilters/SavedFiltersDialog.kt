@@ -1,5 +1,6 @@
 package ani.dantotsu.media.savedfilters
 
+import ani.dantotsu.settings.SectionCard
 import android.app.Dialog
 import android.content.Context
 import android.content.res.ColorStateList
@@ -248,6 +249,7 @@ object SavedFiltersDialog {
                 entry.chips.size,
             )
             val isExpanded = expanded.contains(entry.name)
+            SectionCard.resetPanel(holder.expanded)
             holder.expanded.visibility = if (isExpanded) View.VISIBLE else View.GONE
             holder.chevron.rotation = if (isExpanded) 180f else 0f
             if (isExpanded) populateChips(holder.chipGroup, entry.chips, resolveChipIcon)
@@ -257,7 +259,11 @@ object SavedFiltersDialog {
             holder.chevron.setOnClickListener {
                 val nowExpanded = !expanded.contains(entry.name)
                 if (nowExpanded) expanded += entry.name else expanded -= entry.name
-                notifyItemChanged(holder.bindingAdapterPosition)
+                // Opened in place rather than by rebinding the row, which snapped it open.
+                holder.chevron.animate().rotation(if (nowExpanded) 180f else 0f)
+                    .setDuration(220).start()
+                if (nowExpanded) populateChips(holder.chipGroup, entry.chips, resolveChipIcon)
+                SectionCard.setExpanded(holder.expanded, nowExpanded)
             }
             holder.edit.setOnClickListener { onRename(entry.name) }
             holder.delete.setOnClickListener { onDelete(entry.name) }

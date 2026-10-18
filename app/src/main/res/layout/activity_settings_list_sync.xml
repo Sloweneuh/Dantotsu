@@ -49,10 +49,13 @@
                 android:textSize="28sp" />
 
             <ImageView
-                android:layout_width="96dp"
-                android:layout_height="96dp"
-                android:layout_marginBottom="20dp"
-                android:padding="24dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginStart="24dp"
+                android:layout_marginTop="24dp"
+                android:layout_marginEnd="24dp"
+                android:layout_marginBottom="44dp"
+                android:transitionName="settingsPageIcon"
                 app:srcCompat="@drawable/ic_round_compare_arrows_24"
                 app:tint="?attr/colorOnBackground"
                 tools:ignore="ContentDescription" />

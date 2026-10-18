@@ -199,9 +199,80 @@ object SectionCard {
         }
     }
 
+    /**
+     * Shows or hides [view] by easing its height open or shut, its contents fading with it: the
+     * motion of a card's body, for the collapsible panels that aren't cards (filter sections, list
+     * rows with a detail panel). Opening a panel that's mid-close picks up from where it got to.
+     * [onHidden] runs once a closing panel is gone.
+     */
+    fun setExpanded(view: View, open: Boolean, onHidden: () -> Unit = {}) {
+        val closing = view.getTag(R.id.section_collapsing) == true
+        if (!animationsEnabled || !view.isAttachedToWindow) {
+            view.setTag(R.id.section_collapsing, null)
+            (view.getTag(R.id.section_height_anim) as? Animator)?.cancel()
+            view.animate().cancel()
+            view.alpha = 1f
+            view.translationY = 0f
+            view.updateLayoutParams { height = ViewGroup.LayoutParams.WRAP_CONTENT }
+            view.isVisible = open
+            if (!open) onHidden()
+            return
+        }
+        if (open) {
+            if (view.isVisible && !closing) return
+            val from = if (view.isVisible) view.height else 0
+            view.setTag(R.id.section_collapsing, null)
+            view.animate().cancel()
+            view.isVisible = true
+            animateHeight(view, from, naturalHeight(view))
+            revealContents(view)
+        } else {
+            if (!view.isVisible || closing) return
+            view.setTag(R.id.section_collapsing, true)
+            hideContents(view)
+            animateHeight(view, view.height, 0) {
+                view.setTag(R.id.section_collapsing, null)
+                view.isVisible = false
+                view.alpha = 1f
+                onHidden()
+            }
+        }
+    }
+
+    /**
+     * Drops whatever [setExpanded] left mid-flight on a panel whose row is being rebound, so a
+     * recycled row never inherits another row's half-open height or fade.
+     */
+    fun resetPanel(view: View) {
+        (view.getTag(R.id.section_height_anim) as? Animator)?.cancel()
+        view.setTag(R.id.section_collapsing, null)
+        view.animate().cancel()
+        view.alpha = 1f
+        view.translationY = 0f
+        view.updateLayoutParams { height = ViewGroup.LayoutParams.WRAP_CONTENT }
+    }
+
+    /**
+     * Runs [change] — anything that alters [view]'s natural height, such as a text's line limit or
+     * a chip row wrapping — and eases [view] from the height it had to the one it now wants, rather
+     * than letting it jump and shove everything below it.
+     */
+    fun animateHeightChange(view: View, change: () -> Unit) {
+        val from = view.height
+        change()
+        if (!animationsEnabled || !view.isLaidOut || from == 0) return
+        animateHeight(view, from, naturalHeight(view))
+    }
+
     /** [view]'s height laid out at its width (its parent's, if it has none yet) with no height limit. */
     fun naturalHeight(view: View): Int {
-        val width = view.width.takeIf { it > 0 } ?: (view.parent as? View)?.width ?: 0
+        // A hidden view has no width of its own; it will get its parent's, inside the parent's
+        // padding and its own margins. Measured any wider, wrapped text comes out too short.
+        val width = view.width.takeIf { it > 0 } ?: (view.parent as? View)?.let { parent ->
+            val margins = (view.layoutParams as? ViewGroup.MarginLayoutParams)
+                ?.let { it.marginStart + it.marginEnd } ?: 0
+            parent.width - parent.paddingLeft - parent.paddingRight - margins
+        } ?: 0
         view.measure(
             View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
             View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)

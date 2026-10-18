@@ -86,7 +86,7 @@ object SearchTiles : TileCatalogue(PrefName.SearchTileOrder) {
             intent.putExtra("search", true)
         }
 
-        ContextCompat.startActivity(activity, intent, null)
+        host.launch(intent)
         host.dismiss()
         source?.finish()
     }
@@ -135,7 +135,7 @@ object SearchTiles : TileCatalogue(PrefName.SearchTileOrder) {
                 unavailableReason = R.string.search_needs_connection_enabled,
             ) { host ->
                 val activity = host.activity
-                activity.startActivity(StackListViewActivity.mangaBakaIntent(activity))
+                host.launch(StackListViewActivity.mangaBakaIntent(activity))
                 host.dismiss()
                 (activity as? SearchActivity)?.finish()
             },

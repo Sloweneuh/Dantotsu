@@ -1,5 +1,8 @@
 package ani.dantotsu.settings.quicktiles
 
+import ani.dantotsu.util.animationsEnabled
+import androidx.core.app.ActivityOptionsCompat
+import android.view.View
 import android.content.Intent
 import android.graphics.drawable.Drawable
 import androidx.annotation.DrawableRes
@@ -162,12 +165,32 @@ class QuickTileHost(
     val dismiss: () -> Unit,
     /** Offline mode has to unwind to a page that exists offline, which only the sheet knows. */
     val setOfflineMode: (Boolean) -> Unit,
-)
+) {
+    /** The tile last tapped, set by the panel just before it runs that tile. */
+    var origin: View? = null
+
+    /**
+     * Opens [intent] growing out of the tile that was tapped, so the page reads as that tile
+     * opening up rather than as something unrelated appearing over the panel. Falls back to a
+     * plain launch when there is no tile on screen to grow from, or animations are off.
+     */
+    fun launch(intent: Intent) {
+        val from = origin?.takeIf { it.isAttachedToWindow && it.width > 0 && it.height > 0 }
+        if (from == null || !animationsEnabled) {
+            activity.startActivity(intent)
+            return
+        }
+        // Launch options win over a page's own window animation, so a settings page opened from
+        // here grows out of the tile instead of sliding in.
+        val options = ActivityOptionsCompat.makeScaleUpAnimation(from, 0, 0, from.width, from.height)
+        activity.startActivity(intent, options.toBundle())
+    }
+}
 
 object QuickTiles : TileCatalogue(PrefName.QuickTileOrder) {
 
     private fun QuickTileHost.open(target: Class<*>) {
-        ContextCompat.startActivity(activity, Intent(activity, target), null)
+        launch(Intent(activity, target))
         dismiss()
     }
 
@@ -306,7 +329,7 @@ object QuickTiles : TileCatalogue(PrefName.QuickTileOrder) {
             isAvailable = { MangaBaka.token != null },
             unavailableReason = R.string.quick_tile_needs_mangabaka,
         ) { host ->
-            host.activity.startActivity(DiscoverActivity.intent(host.activity, MangaBakaDiscovery))
+            host.launch(DiscoverActivity.intent(host.activity, MangaBakaDiscovery))
             host.dismiss()
         },
         QuickTile.Action(
@@ -316,7 +339,7 @@ object QuickTiles : TileCatalogue(PrefName.QuickTileOrder) {
             isAvailable = { Anilist.token != null },
             unavailableReason = R.string.quick_tile_needs_anilist,
         ) { host ->
-            host.activity.startActivity(DiscoverActivity.intent(host.activity, AniListAnimeDiscovery))
+            host.launch(DiscoverActivity.intent(host.activity, AniListAnimeDiscovery))
             host.dismiss()
         },
         QuickTile.Action(
@@ -372,7 +395,7 @@ object QuickTiles : TileCatalogue(PrefName.QuickTileOrder) {
         } else {
             intent.putExtra("userId", Anilist.userid).putExtra("username", Anilist.username)
         }
-        ContextCompat.startActivity(activity, intent, null)
+        launch(intent)
         dismiss()
     }
 

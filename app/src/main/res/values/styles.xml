@@ -206,4 +206,15 @@
         <item name="android:maxLines">2</item>
         <item name="android:textSize">11sp</item>
     </style>
+
+    <!-- Settings pages on a shared X axis when opened without a scene transition; see
+         SettingsPageTransitions. For opening, the system reads both animations from the page
+         being opened; for closing, from the page being closed. -->
+    <style name="SettingsPageWindowAnimation">
+        <item name="android:activityOpenEnterAnimation">@anim/settings_page_enter</item>
+        <item name="android:activityOpenExitAnimation">@anim/settings_page_exit</item>
+        <item name="android:activityCloseEnterAnimation">@anim/settings_page_pop_enter</item>
+        <item name="android:activityCloseExitAnimation">@anim/settings_page_pop_exit</item>
+    </style>
+
 </resources>

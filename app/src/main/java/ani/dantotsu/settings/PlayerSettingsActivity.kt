@@ -72,7 +72,8 @@ class PlayerSettingsActivity :
         initActivity(this)
 
         onBackPressedDispatcher.addCallback(this) {
-            finish()
+            // Not a plain finish, which skipped the return transition and its icon flight.
+            finishAfterTransition()
         }
 
         try {

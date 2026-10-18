@@ -1,5 +1,9 @@
 package ani.dantotsu.settings
 
+import ani.dantotsu.media.SharedIconTint
+import ani.dantotsu.util.animationsEnabled
+import ani.dantotsu.databinding.ItemSettingsBinding
+import androidx.core.app.ActivityOptionsCompat
 import android.content.Intent
 import android.graphics.drawable.Animatable
 import android.os.Build.BRAND
@@ -95,7 +99,7 @@ class SettingsActivity : AppCompatActivity() {
                             desc = getString(R.string.accounts_and_sync_desc),
                             icon = R.drawable.ic_round_manage_accounts_24,
                             onClick = {
-                                startActivity(Intent(context, SettingsAccountActivity::class.java))
+                                openPage(it, SettingsAccountActivity::class.java)
                             },
                             isActivity = true
                         ) else null
@@ -106,7 +110,7 @@ class SettingsActivity : AppCompatActivity() {
                         desc = getString(R.string.appearance_desc),
                         icon = R.drawable.ic_palette,
                         onClick = {
-                            startActivity(Intent(context, SettingsAppearanceActivity::class.java))
+                            openPage(it, SettingsAppearanceActivity::class.java)
                         },
                         isActivity = true
                     ),
@@ -116,7 +120,7 @@ class SettingsActivity : AppCompatActivity() {
                         desc = getString(R.string.general_desc),
                         icon = R.drawable.ic_round_settings_24,
                         onClick = {
-                            startActivity(Intent(context, SettingsGeneralActivity::class.java))
+                            openPage(it, SettingsGeneralActivity::class.java)
                         },
                         isActivity = true
                     ),
@@ -126,7 +130,7 @@ class SettingsActivity : AppCompatActivity() {
                         desc = getString(R.string.anime_and_player_desc),
                         icon = R.drawable.ic_round_movie_filter_24,
                         onClick = {
-                            startActivity(Intent(context, PlayerSettingsActivity::class.java))
+                            openPage(it, PlayerSettingsActivity::class.java)
                         },
                         isActivity = true
                     ),
@@ -136,7 +140,7 @@ class SettingsActivity : AppCompatActivity() {
                         desc = getString(R.string.manga_and_reader_desc),
                         icon = R.drawable.ic_round_import_contacts_24,
                         onClick = {
-                            startActivity(Intent(context, ReaderSettingsActivity::class.java))
+                            openPage(it, ReaderSettingsActivity::class.java)
                         },
                         isActivity = true
                     ),
@@ -146,7 +150,7 @@ class SettingsActivity : AppCompatActivity() {
                         desc = getString(R.string.sources_and_downloads_desc),
                         icon = R.drawable.ic_extension,
                         onClick = {
-                            startActivity(Intent(context, SettingsSourcesActivity::class.java))
+                            openPage(it, SettingsSourcesActivity::class.java)
                         },
                         isActivity = true
                     ),
@@ -156,7 +160,7 @@ class SettingsActivity : AppCompatActivity() {
                         desc = getString(R.string.notifications_desc),
                         icon = R.drawable.ic_round_notifications_none_24,
                         onClick = {
-                            startActivity(Intent(context, SettingsNotificationActivity::class.java))
+                            openPage(it, SettingsNotificationActivity::class.java)
                         },
                         isActivity = true
                     ),
@@ -166,7 +170,7 @@ class SettingsActivity : AppCompatActivity() {
                         desc = getString(R.string.about_desc),
                         icon = R.drawable.ic_round_info_24,
                         onClick = {
-                            startActivity(Intent(context, SettingsAboutActivity::class.java))
+                            openPage(it, SettingsAboutActivity::class.java)
                         },
                         isActivity = true
                     ),
@@ -197,7 +201,7 @@ class SettingsActivity : AppCompatActivity() {
                             desc = "Debug: compare current UI with proposed changes",
                             icon = R.drawable.ic_round_bug_report_24,
                             onClick = {
-                                startActivity(Intent(context, DesignLabActivity::class.java))
+                                openPage(it, DesignLabActivity::class.java)
                             },
                             isActivity = true
                         ) else null
@@ -300,5 +304,32 @@ class SettingsActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         ThemeManager(this).applyTheme()
+    }
+
+    /** The row icon last given [SettingsPageTransitions.ICON_TRANSITION]; see [openPage]. */
+    private var namedIcon: View? = null
+
+    /**
+     * Opens a settings page with [row]'s icon carried into the page's header icon, the way a media
+     * cover flies into its page, while the rest of the page moves on the shared axis (see
+     * [SettingsPageTransitions]). Only the tapped row's icon holds the transition name at a time:
+     * two views sharing it would leave the return flight free to land on the wrong row.
+     */
+    private fun openPage(row: ItemSettingsBinding, page: Class<*>) {
+        val intent = Intent(this, page)
+        val icon = row.settingsIcon
+        if (!animationsEnabled || !icon.isAttachedToWindow) {
+            startActivity(intent)
+            return
+        }
+        namedIcon?.transitionName = null
+        icon.transitionName = SettingsPageTransitions.ICON_TRANSITION
+        namedIcon = icon
+        // The page's header icon blends from this row's tint as it lands; see SharedIconTint.
+        SharedIconTint.forward = icon.imageTintList?.defaultColor
+        val options = ActivityOptionsCompat.makeSceneTransitionAnimation(
+            this, icon, SettingsPageTransitions.ICON_TRANSITION,
+        )
+        startActivity(intent, options.toBundle())
     }
 }

@@ -1,5 +1,6 @@
 package ani.dantotsu.media
 
+import ani.dantotsu.settings.SectionCard
 import ani.dantotsu.blurImage
 import android.content.Intent
 import android.net.Uri
@@ -104,14 +105,16 @@ class KitsuSearchAdapter(
         b.root.setSafeOnClickListener { onItemClick(item, b.itemCompactImage) }
         b.itemCompactTitle.setSafeOnClickListener { b.root.performClick() }
         b.itemCompactTitle.setOnLongClickListener {
-            if (b.itemCompactTitle.isSingleLine) {
-                b.itemCompactTitle.isSingleLine = false
-                b.itemCompactTitle.ellipsize = null
-                b.itemCompactTitle.maxLines = Int.MAX_VALUE
-            } else {
-                b.itemCompactTitle.isSingleLine = true
-                b.itemCompactTitle.ellipsize = TextUtils.TruncateAt.MARQUEE
-                b.itemCompactTitle.isSelected = true
+            SectionCard.animateHeightChange(b.itemCompactTitle) {
+                if (b.itemCompactTitle.isSingleLine) {
+                    b.itemCompactTitle.isSingleLine = false
+                    b.itemCompactTitle.ellipsize = null
+                    b.itemCompactTitle.maxLines = Int.MAX_VALUE
+                } else {
+                    b.itemCompactTitle.isSingleLine = true
+                    b.itemCompactTitle.ellipsize = TextUtils.TruncateAt.MARQUEE
+                    b.itemCompactTitle.isSelected = true
+                }
             }
             true
         }

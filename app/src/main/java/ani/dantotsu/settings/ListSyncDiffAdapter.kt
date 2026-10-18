@@ -102,6 +102,7 @@ class ListSyncDiffAdapter(
         val isExpanded = expandable && entry in expanded
         b.diffChevron.visibility = if (expandable) View.VISIBLE else View.GONE
         b.diffChevron.rotation = if (isExpanded) 180f else 0f
+        SectionCard.resetPanel(b.diffDetail)
         b.diffDetail.visibility = if (isExpanded) View.VISIBLE else View.GONE
         if (isExpanded) bindDetail(holder, entry) else {
             b.diffDetailSource.removeAllViews()
@@ -114,7 +115,14 @@ class ListSyncDiffAdapter(
             if (pos == RecyclerView.NO_POSITION) return@setOnClickListener
             val e = items[pos]
             if (!expanded.remove(e)) expanded.add(e)
-            notifyItemChanged(pos)
+            // Opened in place rather than by rebinding the row, which snapped it to its new height.
+            val open = e in expanded
+            b.diffChevron.animate().rotation(if (open) 180f else 0f).setDuration(220).start()
+            if (open) bindDetail(holder, e)
+            SectionCard.setExpanded(b.diffDetail, open) {
+                b.diffDetailSource.removeAllViews()
+                b.diffDetailDest.removeAllViews()
+            }
         }
 
         val inFlight = entry in syncing

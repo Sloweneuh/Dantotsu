@@ -1,5 +1,6 @@
 package ani.dantotsu.media
 
+import ani.dantotsu.settings.SectionCard
 import android.content.Intent
 import android.net.Uri
 import android.text.TextUtils
@@ -44,16 +45,18 @@ class MangaUpdatesSearchAdapter(
 
             // Title long tap: toggle between marquee scrolling and full title display
             itemCompactTitle.setOnLongClickListener {
-                if (itemCompactTitle.isSingleLine) {
-                    // Switch to full title display
-                    itemCompactTitle.isSingleLine = false
-                    itemCompactTitle.ellipsize = null
-                    itemCompactTitle.maxLines = Int.MAX_VALUE
-                } else {
-                    // Switch back to marquee scrolling
-                    itemCompactTitle.isSingleLine = true
-                    itemCompactTitle.ellipsize = TextUtils.TruncateAt.MARQUEE
-                    itemCompactTitle.isSelected = true
+                SectionCard.animateHeightChange(itemCompactTitle) {
+                    if (itemCompactTitle.isSingleLine) {
+                        // Switch to full title display
+                        itemCompactTitle.isSingleLine = false
+                        itemCompactTitle.ellipsize = null
+                        itemCompactTitle.maxLines = Int.MAX_VALUE
+                    } else {
+                        // Switch back to marquee scrolling
+                        itemCompactTitle.isSingleLine = true
+                        itemCompactTitle.ellipsize = TextUtils.TruncateAt.MARQUEE
+                        itemCompactTitle.isSelected = true
+                    }
                 }
                 true
             }

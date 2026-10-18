@@ -385,6 +385,8 @@ fun ViewGroup.setBaseline(navBar: AnimatedBottomBar, overlayView: View) {
 
 fun Activity.reloadActivity() {
     Refresh.all()
+    // Keeps the restart a cross-fade rather than a settings page-to-page slide.
+    ani.dantotsu.settings.SettingsPageTransitions.beforeReload(this)
     finish()
     startActivity(Intent(this, this::class.java))
     overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
@@ -392,6 +394,7 @@ fun Activity.reloadActivity() {
 }
 
 fun Activity.restartApp() {
+    ani.dantotsu.settings.SettingsPageTransitions.beforeReload(this)
     val mainIntent = Intent.makeRestartActivityTask(
         packageManager.getLaunchIntentForPackage(this.packageName)!!.component
     )

@@ -1,5 +1,6 @@
 package ani.dantotsu.download.manage
 
+import android.view.View
 import android.annotation.SuppressLint
 import android.view.LayoutInflater
 import android.view.ViewGroup
@@ -59,12 +60,21 @@ class DownloadManagementAdapter(
         }
     }
 
-    private fun toggle(group: DownloadMediaGroup) {
+    /**
+     * Opens or closes [group] at [position]: its child rows are inserted or removed as a block
+     * right under it, so the item animator slides them in or out rather than the list redrawing
+     * in its new shape all at once. The header row itself is left alone (and its chevron turned
+     * by hand), so nothing about it flickers.
+     */
+    private fun toggle(group: DownloadMediaGroup, position: Int, chevron: View) {
         val key = keyOf(group)
-        if (key in expanded) expanded.remove(key) else expanded.add(key)
+        val open = expanded.add(key) || !expanded.remove(key)
         rebuild(currentGroups)
-        @SuppressLint("NotifyDataSetChanged")
-        notifyDataSetChanged()
+        chevron.animate().rotation(if (open) -90f else 90f).setDuration(220).start()
+        val count = group.children.size
+        if (position == RecyclerView.NO_POSITION || count == 0) return
+        if (open) notifyItemRangeInserted(position + 1, count)
+        else notifyItemRangeRemoved(position + 1, count)
     }
 
     override fun getItemCount() = rows.size
@@ -111,7 +121,7 @@ class DownloadManagementAdapter(
             b.itemMediaCover.loadImage(group.coverUri?.toString())
             b.itemMediaCover.setOnClickListener { onOpenMedia(group) }
             b.itemMediaExpand.rotation = if (keyOf(group) in expanded) -90f else 90f
-            b.root.setOnClickListener { toggle(group) }
+            b.root.setOnClickListener { toggle(group, bindingAdapterPosition, b.itemMediaExpand) }
             b.itemMediaDelete.setOnClickListener { onDeleteMedia(group) }
             b.itemMediaOpenFolder.setOnClickListener { onOpenMediaFolder(group) }
         }

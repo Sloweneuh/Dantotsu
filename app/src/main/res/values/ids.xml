@@ -41,4 +41,6 @@
     <!-- A settings card's running colour and height animations; see SectionCard. -->
     <item name="section_card_anim" type="id" />
     <item name="section_height_anim" type="id" />
+    <item name="section_collapsing" type="id" />
+    <item name="quick_tile_relight" type="id" />
 </resources>

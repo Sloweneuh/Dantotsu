@@ -1,5 +1,7 @@
 package ani.dantotsu.settings.quicktiles
 
+import android.animation.ArgbEvaluator
+import android.animation.ValueAnimator
 import android.content.res.ColorStateList
 import android.view.Gravity
 import android.view.HapticFeedbackConstants
@@ -7,6 +9,7 @@ import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
+import androidx.interpolator.view.animation.FastOutSlowInInterpolator
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
@@ -17,6 +20,7 @@ import ani.dantotsu.databinding.ItemQuickTilePageBinding
 import ani.dantotsu.getThemeColor
 import ani.dantotsu.loadImage
 import ani.dantotsu.settings.saving.PrefManager
+import ani.dantotsu.util.animationsEnabled
 
 const val QUICK_TILE_COLUMNS = 4
 const val QUICK_TILE_ROWS = 4
@@ -38,6 +42,8 @@ internal fun ItemQuickTileBinding.paintQuickTile(
     val tile = placed.tile
     val context = root.context
     val large = placed.size == TileSize.LARGE
+    // A relight still blending would paint over whatever this view is about to show.
+    (quickTileRoot.getTag(R.id.quick_tile_relight) as? android.animation.Animator)?.cancel()
 
     // A live resize drag writes an explicit pixel width here, and LayoutParams belong to the view
     // rather than the tile in it. Left alone, the next tile recycled into this view inherits that
@@ -105,6 +111,46 @@ internal fun ItemQuickTileBinding.paintQuickTile(
 }
 
 /**
+ * Repaints a tile that was just switched on or off, blending into its new colours instead of
+ * swapping them in one frame: lighting up, the tile fills with the primary colour as a switch's
+ * track does; going off, it drains back to the surface tone. The label's "On"/"Off" changes with
+ * the repaint.
+ */
+internal fun ItemQuickTileBinding.relight(host: QuickTileHost, placed: PlacedTile, dimmed: Boolean) {
+    val fromBackground = quickTileRoot.backgroundTintList?.defaultColor
+    val fromIcon = quickTileIcon.imageTintList?.defaultColor
+    val fromText = quickTileLabel.currentTextColor
+    paintQuickTile(host, placed, editing = false, dimmed = dimmed)
+    if (!animationsEnabled) return
+    val toBackground = quickTileRoot.backgroundTintList?.defaultColor
+    val toIcon = quickTileIcon.imageTintList?.defaultColor
+    val toText = quickTileLabel.currentTextColor
+    val argb = ArgbEvaluator()
+    ValueAnimator.ofFloat(0f, 1f).apply {
+        duration = RELIGHT_MS
+        interpolator = FastOutSlowInInterpolator()
+        addUpdateListener {
+            val f = it.animatedFraction
+            if (fromBackground != null && toBackground != null) {
+                quickTileRoot.backgroundTintList =
+                    ColorStateList.valueOf(argb.evaluate(f, fromBackground, toBackground) as Int)
+            }
+            // An extension's artwork carries no tint on either side and is left alone.
+            if (fromIcon != null && toIcon != null) {
+                quickTileIcon.imageTintList =
+                    ColorStateList.valueOf(argb.evaluate(f, fromIcon, toIcon) as Int)
+            }
+            val text = argb.evaluate(f, fromText, toText) as Int
+            quickTileLabel.setTextColor(text)
+            quickTileState.setTextColor(text)
+        }
+        quickTileRoot.setTag(R.id.quick_tile_relight, this)
+    }.start()
+}
+
+private const val RELIGHT_MS = 240L
+
+/**
  * An extension's launcher icon is artwork rather than a 24dp glyph, so it needs the room to read
  * as one — especially on a small tile, where it is the only thing in the box.
  */
@@ -129,7 +175,7 @@ private fun activateTile(host: QuickTileHost, tile: QuickTile, relight: () -> Un
     when (tile) {
         is QuickTile.Action -> tile.onClick(host)
         is QuickTile.Extension -> {
-            host.activity.startActivity(
+            host.launch(
                 android.content.Intent(
                     host.activity, ani.dantotsu.settings.ExtensionBrowseActivity::class.java
                 )
@@ -185,7 +231,13 @@ class QuickTileGridAdapter(
         holder.binding.paintQuickTile(host, placed, editing = false, dimmed = !usable)
         holder.binding.quickTileRoot.isClickable = usable
         holder.binding.quickTileRoot.setOnClickListener {
-            if (usable) activateTile(host, placed.tile) { notifyItemChanged(position) }
+            if (usable) {
+                // Launches from here start from this tile; see QuickTileHost.launch.
+                host.origin = holder.binding.quickTileRoot
+                activateTile(host, placed.tile) {
+                    holder.binding.relight(host, placed, dimmed = false)
+                }
+            }
         }
         holder.binding.quickTileRoot.setOnLongClickListener { view ->
             view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
