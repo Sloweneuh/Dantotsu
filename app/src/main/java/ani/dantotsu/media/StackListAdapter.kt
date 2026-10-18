@@ -1,5 +1,6 @@
 package ani.dantotsu.media
 
+import ani.dantotsu.blurImage
 import android.content.Intent
 import android.net.Uri
 import android.view.LayoutInflater
@@ -125,7 +126,7 @@ class StackListAdapter(private val items: List<InterestStack>, private val isAni
             img.bringToFront()
         }
         // banner still uses first cover
-        b.itemCompactBanner.loadImage(item.covers.firstOrNull())
+        blurImage(b.itemCompactBanner, item.covers.firstOrNull())
         // title
         b.itemCompactTitle.text = item.name
         // synopsis / description (show placeholder when blank, parse links and enable scrolling)

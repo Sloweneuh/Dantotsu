@@ -1,5 +1,6 @@
 package ani.dantotsu.media
 
+import ani.dantotsu.blurImage
 import android.content.Intent
 import android.net.Uri
 import android.text.TextUtils
@@ -102,7 +103,7 @@ class MangaBakaSearchAdapter(
     private fun bindLarge(b: ItemMediaLargeBinding, series: MangaBakaApi.Series) {
         loadCover(b.itemCompactImage, series)
         ViewCompat.setTransitionName(b.itemCompactImage, mediaCoverTransitionName(series.id))
-        loadCover(b.itemCompactBanner, series)
+        blurImage(b.itemCompactBanner, series.cover?.thumbUrl())
 
         b.itemCompactTitle.text = series.displayTitle()
         b.itemCompactTitle.maxLines = 3

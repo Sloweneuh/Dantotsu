@@ -1,5 +1,6 @@
 package ani.dantotsu.connections.mangaupdates
 
+import ani.dantotsu.blurImage
 import android.content.Intent
 import android.content.res.ColorStateList
 import android.graphics.Color
@@ -169,10 +170,11 @@ class MUMediaAdapter(
             b.itemCompactImage.loadImage(coverUrl)
             // Its own name, so the cover flies back to this row and not the first one.
             ViewCompat.setTransitionName(b.itemCompactImage, mediaCoverTransitionName(item.id))
-            b.itemCompactBanner.loadImage(coverUrl)
         } else {
             b.itemCompactImage.setImageResource(0)
         }
+        // Outside the branch: with no cover yet, a recycled row must not keep the last one's.
+        blurImage(b.itemCompactBanner, coverUrl)
 
         b.itemCompactTitle.text = item.title ?: ""
         b.itemCompactTitle.maxLines = 3

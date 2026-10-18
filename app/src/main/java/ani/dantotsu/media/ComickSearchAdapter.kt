@@ -1,5 +1,6 @@
 package ani.dantotsu.media
 
+import ani.dantotsu.blurImage
 import android.content.Intent
 import android.net.Uri
 import android.text.TextUtils
@@ -126,7 +127,7 @@ class ComickSearchAdapter(
     private fun bindLarge(b: ItemMediaLargeBinding, comic: ComickComic) {
         loadCover(b.itemCompactImage, comic)
         ViewCompat.setTransitionName(b.itemCompactImage, mediaCoverTransitionName(comic.slug))
-        loadCover(b.itemCompactBanner, comic)
+        blurImage(b.itemCompactBanner, comickCoverUrl(comic))
 
         b.itemCompactTitle.text = comic.displayTitle()
         b.itemCompactTitle.maxLines = 3

@@ -1,5 +1,6 @@
 package ani.dantotsu.media
 
+import ani.dantotsu.blurImage
 import android.content.Intent
 import android.net.Uri
 import android.text.TextUtils
@@ -95,7 +96,7 @@ class SimklSearchAdapter(
     private fun bindLarge(b: ItemMediaLargeBinding, media: SimklApi.SimklMedia) {
         loadImage(b.itemCompactImage, media)
         ViewCompat.setTransitionName(b.itemCompactImage, mediaCoverTransitionName(media.simklId))
-        loadImage(b.itemCompactBanner, media)
+        blurImage(b.itemCompactBanner, SimklApi.posterUrl(media.poster))
 
         b.itemCompactTitle.text = title(media)
         b.itemCompactTitle.maxLines = 3

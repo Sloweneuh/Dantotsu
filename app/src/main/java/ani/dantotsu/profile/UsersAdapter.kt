@@ -1,5 +1,6 @@
 package ani.dantotsu.profile
 
+import ani.dantotsu.blurImage
 import android.content.Intent
 import android.view.LayoutInflater
 import android.view.ViewGroup
@@ -56,7 +57,7 @@ class UsersAdapter(private val user: MutableList<User>, private val grid: Boolea
         } else {
             val b = holder.binding as ItemFollowerBinding
             b.profileUserAvatar.loadImage(user.pfp)
-            b.profileBannerImage.loadImage(user.banner ?: user.pfp)
+            blurImage(b.profileBannerImage, user.banner ?: user.pfp)
             b.profileUserName.text = user.name
         }
     }

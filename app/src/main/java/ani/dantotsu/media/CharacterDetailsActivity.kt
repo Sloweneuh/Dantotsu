@@ -1,5 +1,6 @@
 package ani.dantotsu.media
 
+import ani.dantotsu.blurImage
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
@@ -90,7 +91,7 @@ class CharacterDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChang
 
         character = intent.getSerialized("character") ?: return
         binding.characterTitle.text = character.name
-        banner.loadImage(character.banner)
+        blurImage(banner, character.banner)
         binding.characterCoverImage.loadImage(character.image)
         binding.characterCoverImage.setOnLongClickListener {
             ImageViewDialog.newInstance(

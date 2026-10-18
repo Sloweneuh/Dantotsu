@@ -1,5 +1,6 @@
 package ani.dantotsu.media
 
+import ani.dantotsu.blurImage
 import android.content.Intent
 import android.net.Uri
 import android.text.TextUtils
@@ -123,7 +124,7 @@ class MalSearchAdapter(
     private fun bindLarge(b: ItemMediaLargeBinding, item: MALSearchItem) {
         loadImage(b.itemCompactImage, poster(item))
         ViewCompat.setTransitionName(b.itemCompactImage, mediaCoverTransitionName(item.node.id))
-        loadImage(b.itemCompactBanner, poster(item))
+        blurImage(b.itemCompactBanner, poster(item))
 
         b.itemCompactTitle.text = item.node.title
         b.itemCompactTitle.maxLines = 3

@@ -1,5 +1,6 @@
 package ani.dantotsu.media
 
+import ani.dantotsu.blurImage
 import android.content.Intent
 import android.net.Uri
 import android.text.TextUtils
@@ -122,7 +123,7 @@ class KitsuSearchAdapter(
     private fun bindLarge(b: ItemMediaLargeBinding, item: KitsuApi.Item) {
         loadImage(b.itemCompactImage, poster(item))
         ViewCompat.setTransitionName(b.itemCompactImage, mediaCoverTransitionName(item.id))
-        loadImage(b.itemCompactBanner, cover(item))
+        blurImage(b.itemCompactBanner, cover(item))
 
         b.itemCompactTitle.text = title(item)
         b.itemCompactTitle.maxLines = 3
