@@ -184,6 +184,8 @@ class App : MultiDexApplication() {
             DynamicColors.applyToActivitiesIfAvailable(this)
         }
         registerActivityLifecycleCallbacks(mFTActivityLifecycleCallbacks)
+        // Keeps media covers' badges with the cover through its shared-element flight.
+        registerActivityLifecycleCallbacks(ani.dantotsu.media.CoverBadgeTransitions)
         runCatching { ani.dantotsu.notifications.NotificationReadState.migrateLegacyCounter() }
 
         // Check both the hardcoded constant and user preference
