@@ -4,6 +4,7 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.net.Uri
 import androidx.browser.customtabs.CustomTabsIntent
+import ani.dantotsu.Mapper
 import ani.dantotsu.R
 import ani.dantotsu.client
 import ani.dantotsu.connections.comments.CommentsAPI
@@ -331,86 +332,17 @@ object Anilist {
         force: Boolean = false,
         useToken: Boolean = true,
         show: Boolean = false,
+        /** 0 = don't answer from [AnilistQueryCache]'s stored responses; anything else = do. */
         cache: Int? = null,
         /** Handed the raw response body before it is deserialised, for callers that cache it. */
         noinline onRawResponse: ((String) -> Unit)? = null
     ): T? {
         return try {
             if (show) Logger.log("Anilist Query: $query")
-            // AniList is refusing traffic and told us so; sending anyway would only add to what it
-            // is trying to shed. The banner AnilistApiStatus raised is already explaining why.
-            if (AnilistApiStatus.isPaused()) {
-                throw Exception(AnilistApiStatus.pausedMessage())
-            }
-            // Serving out a rate limit. The badge is already counting it down, so this only has to
-            // keep the request from being sent — a toast per blocked query was a burst of identical
-            // popups saying a number that changed while they were on screen.
-            if (AnilistRateLimit.isLimited()) {
-                throw Exception(AnilistRateLimit.waitMessage())
-            }
-            val data = mapOf(
-                "query" to query,
-                "variables" to variables
-            )
-            val headers = mutableMapOf(
-                "Content-Type" to "application/json; charset=utf-8",
-                "Accept" to "application/json"
-            )
-
-            if (token != null || force) {
-                if (token != null && useToken) headers["Authorization"] = "Bearer $token"
-
-                val json = client.post(
-                    "https://graphql.anilist.co/",
-                    headers,
-                    data = data,
-                    cacheTime = cache ?: 10
-                )
-                val remaining = json.headers["X-RateLimit-Remaining"]?.toIntOrNull() ?: -1
-                val reset = json.headers["X-RateLimit-Reset"]?.toLongOrNull()
-                Logger.log("Remaining requests: $remaining")
-                if (json.code == 429) {
-                    AnilistRateLimit.limit(json.headers["Retry-After"]?.toIntOrNull(), reset)
-                    throw Exception(AnilistRateLimit.waitMessage())
-                }
-                // AniList counts every response down, so a window can be served out *before*
-                // spending a request on being refused: at zero remaining the next call is a 429 by
-                // definition. Only acted on when the reset time came with it — guessing how long to
-                // sit out a limit that may not even be reached is worse than finding out.
-                if (remaining == 0 && reset != null) {
-                    AnilistRateLimit.limit(null, reset)
-                }
-
-                // Maintenance, an IP block or a plain outage: pauses further queries and puts a
-                // banner up, so the rest of the screen's requests stop here instead of each
-                // discovering the same dead API on its own.
-                AnilistApiStatus.check(json.code, json.text)?.let { outage ->
-                    throw Exception(outage)
-                }
-
-                if (json.code == 403 || json.code == 400) {
-                    val obj = try {
-                        JSONObject(json.text)
-                    } catch (_: Exception) {
-                        null
-                    }
-                    val message = obj?.optJSONArray("errors")?.let { errors ->
-                        if (errors.length() > 0) errors.getJSONObject(0)
-                            .getString("message") else "Forbidden (error ${json.code})"
-                    } ?: "Forbidden (error ${json.code})"
-
-                    if (message.contains("Invalid token")) {
-                        if (!show) snackString("Anilist token expired, please login again")
-                    } else {
-                        if (!show) snackString("Error fetching Anilist data: $message")
-                    }
-
-                    throw Exception(message)
-                }
-
-                onRawResponse?.invoke(json.text)
-                json.parsed()
-            } else null
+            val text = fetchQuery(query, variables, force, useToken, show, cache != 0)
+                ?: return null
+            onRawResponse?.invoke(text)
+            Mapper.parse(text, T::class)
         } catch (e: Exception) {
             // Don't show error for cancellation - it's normal when navigating or closing
             if (e is java.util.concurrent.CancellationException || e.message?.contains("Job was cancelled") == true) {
@@ -420,6 +352,111 @@ object Anilist {
                 Logger.log("Anilist Query Error: ${e.message}")
             }
             null
+        }
+    }
+
+    /**
+     * The response body for a query, from [AnilistQueryCache] where it can be, otherwise sent under
+     * [AnilistPacer]. Null when there is no token to send it with. Mutations always go out and clear
+     * the cache behind them.
+     */
+    @PublishedApi
+    internal suspend fun fetchQuery(
+        query: String,
+        variables: String,
+        force: Boolean,
+        useToken: Boolean,
+        show: Boolean,
+        reuse: Boolean
+    ): String? {
+        val token = token
+        if (token == null && !force) return null
+        val auth = token?.takeIf { useToken }
+        if (query.trimStart().startsWith("mutation")) {
+            try {
+                return sendQuery(query, variables, auth, show)
+            } finally {
+                AnilistQueryCache.clear()
+            }
+        }
+        return AnilistQueryCache.get(AnilistQueryCache.key(query, variables, auth), reuse) {
+            sendQuery(query, variables, auth, show)
+        }
+    }
+
+    private suspend fun sendQuery(query: String, variables: String, auth: String?, show: Boolean): String {
+        checkNotRefusing()
+        AnilistPacer.acquire()
+        // Re-checked after the pacer: a 429 or an outage may have landed while this one was queued.
+        checkNotRefusing()
+
+        val headers = mutableMapOf(
+            "Content-Type" to "application/json; charset=utf-8",
+            "Accept" to "application/json"
+        )
+        if (auth != null) headers["Authorization"] = "Bearer $auth"
+
+        val json = client.post(
+            "https://graphql.anilist.co/",
+            headers,
+            data = mapOf("query" to query, "variables" to variables)
+        )
+        val remaining = json.headers["X-RateLimit-Remaining"]?.toIntOrNull() ?: -1
+        val reset = json.headers["X-RateLimit-Reset"]?.toLongOrNull()
+        AnilistPacer.record(json.headers["X-RateLimit-Limit"]?.toIntOrNull(), remaining)
+        Logger.log("Remaining requests: $remaining")
+        if (json.code == 429) {
+            AnilistRateLimit.limit(json.headers["Retry-After"]?.toIntOrNull(), reset)
+            throw Exception(AnilistRateLimit.waitMessage())
+        }
+        // AniList counts every response down, so a window can be served out *before*
+        // spending a request on being refused: at zero remaining the next call is a 429 by
+        // definition. Only acted on when the reset time came with it — guessing how long to
+        // sit out a limit that may not even be reached is worse than finding out.
+        if (remaining == 0 && reset != null) {
+            AnilistRateLimit.limit(null, reset)
+        }
+
+        // Maintenance, an IP block or a plain outage: pauses further queries and puts a
+        // banner up, so the rest of the screen's requests stop here instead of each
+        // discovering the same dead API on its own.
+        AnilistApiStatus.check(json.code, json.text)?.let { outage ->
+            throw Exception(outage)
+        }
+
+        if (json.code == 403 || json.code == 400) {
+            val obj = try {
+                JSONObject(json.text)
+            } catch (_: Exception) {
+                null
+            }
+            val message = obj?.optJSONArray("errors")?.let { errors ->
+                if (errors.length() > 0) errors.getJSONObject(0)
+                    .getString("message") else "Forbidden (error ${json.code})"
+            } ?: "Forbidden (error ${json.code})"
+
+            if (message.contains("Invalid token")) {
+                if (!show) snackString("Anilist token expired, please login again")
+            } else {
+                if (!show) snackString("Error fetching Anilist data: $message")
+            }
+
+            throw Exception(message)
+        }
+        return json.text
+    }
+
+    private fun checkNotRefusing() {
+        // AniList is refusing traffic and told us so; sending anyway would only add to what it
+        // is trying to shed. The banner AnilistApiStatus raised is already explaining why.
+        if (AnilistApiStatus.isPaused()) {
+            throw Exception(AnilistApiStatus.pausedMessage())
+        }
+        // Serving out a rate limit. The badge is already counting it down, so this only has to
+        // keep the request from being sent — a toast per blocked query was a burst of identical
+        // popups saying a number that changed while they were on screen.
+        if (AnilistRateLimit.isLimited()) {
+            throw Exception(AnilistRateLimit.waitMessage())
         }
     }
 }
