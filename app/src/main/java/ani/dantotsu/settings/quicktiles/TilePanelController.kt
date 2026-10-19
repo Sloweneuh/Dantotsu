@@ -6,6 +6,8 @@ import android.content.res.ColorStateList
 import android.view.View
 import android.view.ViewGroup
 import androidx.core.animation.doOnEnd
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.children
 import androidx.core.view.doOnPreDraw
 import androidx.core.view.isVisible
@@ -152,6 +154,7 @@ class TilePanelController(
         val cap = visibleHeightCap(frame)
         val from = frame.height.coerceAtMost(cap)
         val to = fullTo.coerceAtMost(cap)
+        debugTraceSwap(frame, value, "cap=$cap from=$from to=$to fullTo=$fullTo")
         val travelDp = abs(to - from) / frame.resources.displayMetrics.density
         val totalMs = ((EDIT_SWAP_MS + travelDp * HEIGHT_MS_PER_DP)
             .coerceAtMost(HEIGHT_MAX_MS) * speed).toLong()
@@ -162,7 +165,7 @@ class TilePanelController(
         val outMs = (totalMs * 0.35f).toLong()
         val inMs = totalMs - outMs
         frame.updateLayoutParams { height = from }
-        ValueAnimator.ofInt(from, to).apply {
+        val heightAnim = ValueAnimator.ofInt(from, to).apply {
             duration = totalMs
             interpolator = FastOutSlowInInterpolator()
             addUpdateListener { anim ->
@@ -203,7 +206,9 @@ class TilePanelController(
                 show(value)
                 // Hidden now; put them back so the next visit doesn't start with invisible views.
                 fading.forEach { it.animate().cancel(); it.alpha = 1f }
-                frame.doOnPreDraw { arrive(value, snaps, frame, inMs) }
+                frame.doOnPreDraw {
+                    arrive(value, snaps, frame, inMs, heightAnim.takeIf { from != to })
+                }
             }
             start()
         }
@@ -212,16 +217,29 @@ class TilePanelController(
     /**
      * The incoming side's first frame: carried-over tiles start where they were and travel home,
      * everything else fades up. Runs before that frame is drawn, so nothing shows in between.
+     *
+     * While the panel's height is still moving ([heightAnim]), the tiles cover what is left of their
+     * way in step with what is left of the height, not on a clock of their own. By the time they
+     * start, the height has done most of its travel on its fast-out ease, so on their own clock the
+     * sheet edge came to rest with the tiles still well short of home: they visibly slid down under
+     * a sheet that had already stopped.
      */
-    private fun arrive(value: Boolean, snaps: Map<String, TileSnap>, frame: View, inMs: Long) {
+    private fun arrive(
+        value: Boolean,
+        snaps: Map<String, TileSnap>,
+        frame: View,
+        inMs: Long,
+        heightAnim: ValueAnimator?,
+    ) {
         val arriving = shownTiles()
         val fadeIn = mutableListOf<View>()
         val unclipped = mutableMapOf<ViewGroup, Pair<Boolean, Boolean>>()
+        val morphs = mutableListOf<(Float) -> Unit>()
         arriving.forEach { (id, view) ->
             val snap = snaps[id]
             if (snap != null) {
                 unclipUpTo(view, frame, unclipped)
-                snap.morphInto(view, frame, inMs)
+                morphs += snap.morphInto(view, frame)
             } else {
                 fadeIn += view
             }
@@ -239,9 +257,21 @@ class TilePanelController(
             it.animate().alpha(1f).setDuration(inMs)
                 .setInterpolator(FastOutSlowInInterpolator()).start()
         }
+        val heightStart = heightAnim?.takeIf { it.isRunning }?.animatedFraction
         ValueAnimator.ofFloat(0f, 1f).apply {
             duration = inMs
+            interpolator = FastOutSlowInInterpolator()
+            addUpdateListener { anim ->
+                val f = if (heightAnim != null && heightStart != null && heightStart < 1f) {
+                    if (heightAnim.isRunning) {
+                        ((heightAnim.animatedFraction - heightStart) / (1f - heightStart))
+                            .coerceIn(0f, 1f)
+                    } else 1f
+                } else anim.animatedValue as Float
+                morphs.forEach { it(f) }
+            }
             doOnEnd {
+                morphs.forEach { it(1f) }
                 unclipped.forEach { (group, clip) ->
                     group.clipChildren = clip.first
                     group.clipToPadding = clip.second
@@ -258,23 +288,22 @@ class TilePanelController(
         val background: Int?, val icon: Int?, val text: Int, val alpha: Float,
     ) {
         /**
-         * Starts [view] — the same tile on the other side — looking like this snapshot, then
-         * animates it to how it really is.
+         * Starts [view] — the same tile on the other side — looking like this snapshot, and returns
+         * the step that takes it from there (0) to how it really is (1).
          *
          * Positions are taken against the panel rather than the window: the sheet moves while the
          * height changes, and window coordinates captured before the swap would be off by however
          * far it had travelled, putting a jump into the very tiles meant to stay put.
          */
-        fun morphInto(view: View, frame: View, ms: Long) {
+        fun morphInto(view: View, frame: View): (Float) -> Unit {
             val (x1, y1) = positionIn(view, frame)
+            view.animate().cancel()
             view.pivotX = 0f
             view.pivotY = 0f
-            view.translationX = x - x1
-            view.translationY = y - y1
-            view.scaleX = if (view.width > 0) w.toFloat() / view.width else 1f
-            view.scaleY = if (view.height > 0) h.toFloat() / view.height else 1f
-            view.animate().translationX(0f).translationY(0f).scaleX(1f).scaleY(1f)
-                .setDuration(ms).setInterpolator(FastOutSlowInInterpolator()).start()
+            val dx = x - x1
+            val dy = y - y1
+            val sx = if (view.width > 0) w.toFloat() / view.width else 1f
+            val sy = if (view.height > 0) h.toFloat() / view.height else 1f
 
             // A lit toggle on the pages is plain in the editor, a greyed tile is not greyed
             // there: blended rather than switched, or the tile would flash as it changed sides.
@@ -284,28 +313,29 @@ class TilePanelController(
             val toText = tile.quickTileLabel.currentTextColor
             val toAlpha = tile.quickTileRoot.alpha
             val argb = ArgbEvaluator()
-            ValueAnimator.ofFloat(0f, 1f).apply {
-                duration = ms
-                interpolator = FastOutSlowInInterpolator()
-                addUpdateListener { anim ->
-                    val f = anim.animatedValue as Float
-                    if (background != null && toBackground != null) {
-                        tile.quickTileRoot.backgroundTintList = ColorStateList.valueOf(
-                            argb.evaluate(f, background, toBackground) as Int
-                        )
-                    }
-                    if (icon != null && toIcon != null) {
-                        tile.quickTileIcon.imageTintList = ColorStateList.valueOf(
-                            argb.evaluate(f, icon, toIcon) as Int
-                        )
-                    }
-                    val textColor = argb.evaluate(f, text, toText) as Int
-                    tile.quickTileLabel.setTextColor(textColor)
-                    tile.quickTileState.setTextColor(textColor)
-                    tile.quickTileRoot.alpha = alpha + (toAlpha - alpha) * f
+            val step = { f: Float ->
+                val r = 1f - f
+                view.translationX = dx * r
+                view.translationY = dy * r
+                view.scaleX = sx + (1f - sx) * f
+                view.scaleY = sy + (1f - sy) * f
+                if (background != null && toBackground != null) {
+                    tile.quickTileRoot.backgroundTintList = ColorStateList.valueOf(
+                        argb.evaluate(f, background, toBackground) as Int
+                    )
                 }
-                start()
+                if (icon != null && toIcon != null) {
+                    tile.quickTileIcon.imageTintList = ColorStateList.valueOf(
+                        argb.evaluate(f, icon, toIcon) as Int
+                    )
+                }
+                val textColor = argb.evaluate(f, text, toText) as Int
+                tile.quickTileLabel.setTextColor(textColor)
+                tile.quickTileState.setTextColor(textColor)
+                tile.quickTileRoot.alpha = alpha + (toAlpha - alpha) * f
             }
+            step(0f)
+            return step
         }
 
         companion object {
@@ -411,8 +441,50 @@ class TilePanelController(
         // to grow; only one of the two is ever non-zero.
         val overflow = (content.height + scroll.paddingTop + scroll.paddingBottom - scroll.height)
             .coerceAtLeast(0)
-        val room = (window.height - sheet.height).coerceAtLeast(0)
+        // Edge to edge, the sheet pads itself below the status bar once it reaches the top, so it
+        // tops out that much lower than the window's edge. Without this the last stretch of the
+        // height ran on unseen after the sheet had stopped, and the tiles still easing home on the
+        // same clock looked pushed down only once it had settled.
+        val loc = IntArray(2).also(window::getLocationOnScreen)
+        // The camera cutout counts as much as the status bar: with the status bar hidden it is all
+        // the sheet pads for, and it is what WSA, with neither, never showed.
+        val topInset = ViewCompat.getRootWindowInsets(sheet)?.getInsets(
+            WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+        )?.top ?: 0
+        ViewCompat.getRootWindowInsets(sheet)?.let {
+            android.util.Log.d("TileSwap", "insets bars=${it.getInsets(WindowInsetsCompat.Type.systemBars()).top} cutout=${it.getInsets(WindowInsetsCompat.Type.displayCutout()).top} barsIgnoringVis=${it.getInsetsIgnoringVisibility(WindowInsetsCompat.Type.systemBars()).top}")
+        }
+        val padding = ((topInset - loc[1]).coerceAtLeast(0) - sheet.paddingTop).coerceAtLeast(0)
+        val room = (window.height - sheet.height - padding).coerceAtLeast(0)
+        android.util.Log.d("TileSwap", "capCalc winY=${loc[1]} topInset=$topInset sheetPadT=${sheet.paddingTop} padding=$padding room=$room overflow=$overflow frameH=${frame.height}")
         return frame.height - overflow + room
+    }
+
+    // TEMP: per-frame geometry of the swap.
+    private fun debugTraceSwap(frame: View, value: Boolean, info: String) {
+        android.util.Log.d("TileSwap", "start edit=$value $info")
+        val scroll = binding.root as? ViewGroup
+        val sheet = scroll?.parent as? View
+        val toolbar = binding.quickTilesEditContainer.getChildAt(0)
+        val start = System.currentTimeMillis()
+        val loc = IntArray(2)
+        fun y(v: View?): Int { if (v == null) return -1; v.getLocationInWindow(loc); return loc[1] }
+        val listener = object : android.view.ViewTreeObserver.OnPreDrawListener {
+            override fun onPreDraw(): Boolean {
+                val t = System.currentTimeMillis() - start
+                val firstTile = if (editing) binding.quickTilesEditor.getChildAt(0) else null
+                android.util.Log.d(
+                    "TileSwap",
+                    "edit=$value t=$t frameH=${frame.height} frameY=${y(frame)} " +
+                        "sheetY=${y(sheet)} sheetH=${sheet?.height} sheetPadT=${sheet?.paddingTop} " +
+                        "toolbarY=${y(toolbar)} toolbarA=${toolbar?.alpha} " +
+                        "tile0Y=${y(firstTile)} tile0TY=${firstTile?.translationY}"
+                )
+                if (t > 1500) frame.viewTreeObserver.removeOnPreDrawListener(this)
+                return true
+            }
+        }
+        frame.viewTreeObserver.addOnPreDrawListener(listener)
     }
 
     private fun footerViews() =
