@@ -121,6 +121,44 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
     private var malSyncChapter: Int? = null
     private var malSyncSource: String? = null
 
+    /**
+     * The newest chapter the other unread sources know of, and where it is: whatever the unread
+     * row or notification picked (passed in, else read back from the unread caches) and Comick's
+     * own latest chapter once its entry is found. Without these the page showed MangaUpdates' count
+     * alone for series MALSync can't link, even when the row it was opened from said otherwise.
+     * Live MALSync only takes over when it's strictly newer — see [progress].
+     */
+    private var knownChapter: Int? = null
+    private var knownSource: String? = null
+
+    private fun offerKnownChapter(chapter: Int?, source: String?) {
+        if (chapter == null || chapter <= (knownChapter ?: 0)) return
+        knownChapter = chapter
+        knownSource = source
+    }
+
+    /** Seeds [knownChapter] from the intent, then from the MangaUpdates and Comick unread caches. */
+    private fun loadKnownChapter() {
+        val passed = intent.getIntExtra("lastChapter", -1)
+        if (passed > 0) offerKnownChapter(passed, intent.getStringExtra("source"))
+        try {
+            ani.dantotsu.notifications.unread.UnreadCache.cachedMuInfo()[muMediaKey(muMedia.id)]
+                ?.let { offerKnownChapter(it.lastChapter, it.source) }
+            ani.dantotsu.notifications.unread.UnreadCache.cachedComick()
+                .firstOrNull { it.muMedia?.id == muMedia.id }
+                ?.let { offerKnownChapter(it.latestChapter, it.source) }
+        } catch (_: Exception) {
+        }
+    }
+
+    /** Comick's latest chapter for the series, once its Comick entry has been found. */
+    private fun offerComickChapter(comic: ComickComic?) {
+        val last = comic?.last_chapter?.toInt() ?: return
+        val before = knownChapter
+        offerKnownChapter(last, "Comick")
+        if (knownChapter != before) progress()
+    }
+
     private var muUserEntryDeferred: kotlinx.coroutines.Deferred<Unit>? = null
     private var detectedAniListId: Int? = null
 
@@ -179,7 +217,10 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
             // latest_chapter from MU is the newest released chapter, not the series total.
             // Only show it when it is >= user progress (i.e. there are still chapters to read).
             val progress = currentChapter ?: 0
-            val latest = MalSyncMu.latestChapter(muMedia.latestChapter, malSyncChapter)
+            val latest = MalSyncMu.latestChapter(
+                MalSyncMu.latestChapter(muMedia.latestChapter, malSyncChapter),
+                knownChapter,
+            )
             if (latest != null && latest >= progress) {
                 bold { color(white) { append("$latest") } }
                 append(" / ")
@@ -189,8 +230,13 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
         binding.mediaTotal.visibility = View.VISIBLE
 
         // The source line only earns its space while there is something unread to read there.
-        val unread = (malSyncChapter ?: 0) > (currentChapter ?: 0)
-        val source = malSyncSource?.takeIf { it.isNotBlank() && unread }
+        // MALSync only relabels the chapter when it is strictly newer than what the unread row or
+        // Comick already found, as on the AniList page.
+        val malWins = (malSyncChapter ?: 0) > (knownChapter ?: 0)
+        val bestChapter = if (malWins) malSyncChapter else knownChapter
+        val bestSource = if (malWins) malSyncSource else knownSource
+        val unread = (bestChapter ?: 0) > (currentChapter ?: 0)
+        val source = bestSource?.takeIf { it.isNotBlank() && unread }
         binding.mediaUnreadSource?.isVisible = source != null
         if (source != null) {
             binding.mediaUnreadSource?.text =
@@ -936,6 +982,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
 
         // Progress state tracked locally so we can optimistically update UI
         currentChapter = muMedia.userChapter
+        if (muMedia.listId != 2) loadKnownChapter() // Completed: nothing to chase, as for MALSync
         progress()
 
         // When muMedia came from a search result, user list data (listId/userChapter) is absent.
@@ -1002,6 +1049,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
                 val anilistId = comickComic?.links?.al?.toIntOrNull()
                 withContext(Dispatchers.Main) {
                     detectedComickComic = comickComic
+                    offerComickChapter(comickComic)
                     updateAniListButtonState(anilistId)
                     if (anilistId != null) suggestSwitchToAniList(anilistId)
                 }
@@ -1129,6 +1177,7 @@ class MUMediaDetailsActivity : AppCompatActivity(), AppBarLayout.OnOffsetChanged
                 try {
                     val comickData = withContext(Dispatchers.IO) { ComickApi.getComicDetails(slug) }
                     detectedComickComic = comickData?.comic
+                    offerComickChapter(comickData?.comic)
                     val anilistId = comickData?.comic?.links?.al?.toIntOrNull()
                     if (detectedAniListId == null) {
                         updateAniListButtonState(anilistId)

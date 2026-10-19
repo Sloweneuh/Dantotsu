@@ -470,6 +470,9 @@ class UnreadChaptersAdapter(
             val clickAction = {
                 val intent = Intent(root.context, MUMediaDetailsActivity::class.java)
                     .putExtra("muMedia", item as Serializable)
+                malSync?.let {
+                    intent.putExtra("source", it.source).putExtra("lastChapter", it.lastChapter)
+                }
                 intent.putExtra("transitionName", ViewCompat.getTransitionName(itemCompactImage))
                 val activity = (root.context as? FragmentActivity)
                 val options = if (activity != null) {
@@ -567,6 +570,9 @@ class UnreadChaptersAdapter(
             val clickAction = {
                 val intent = Intent(root.context, MUMediaDetailsActivity::class.java)
                     .putExtra("muMedia", item as Serializable)
+                malSync?.let {
+                    intent.putExtra("source", it.source).putExtra("lastChapter", it.lastChapter)
+                }
                 intent.putExtra("transitionName", ViewCompat.getTransitionName(itemCompactImage))
                 val activity = (root.context as? FragmentActivity)
                 val options = if (activity != null) {

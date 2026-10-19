@@ -259,6 +259,8 @@ class MuUnreadNotificationTask : Task {
             val readKey = NotificationReadState.chapterKey(notifId, latestChapter)
             val intent = Intent(context, MUMediaDetailsActivity::class.java).apply {
                 putExtra("muMedia", muMedia)
+                putExtra("lastChapter", latestChapter)
+                source?.let { putExtra("source", it) }
                 putExtra(NotificationReadState.EXTRA_KEY, readKey)
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             }
