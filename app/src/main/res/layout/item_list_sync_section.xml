@@ -1,170 +1,176 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- One comparison on the Compare lists screen, as a collapsible card like the Accounts screen's.
+     Collapsed: the tracker's mark, its name, where the comparison stands and how many entries
+     differ. Expanded: per-status counts on both sides, Sync all, and the differing entries. Fill,
+     chevron and motion come from SectionCard. -->
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/sectionCard"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginTop="24dp"
-    android:orientation="vertical">
+    android:layout_marginTop="10dp"
+    app:cardCornerRadius="24dp"
+    app:cardElevation="0dp"
+    app:strokeWidth="0dp">
 
     <LinearLayout
-        android:id="@+id/sectionHeader"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="?attr/selectableItemBackground"
-        android:clickable="true"
-        android:focusable="true"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:paddingVertical="8dp">
+        android:orientation="vertical">
 
-        <ImageView
-            android:id="@+id/sectionChevron"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            app:srcCompat="@drawable/ic_round_arrow_drop_down_24"
-            app:tint="?attr/colorOnBackground"
-            tools:ignore="ContentDescription" />
-
-        <ImageView
-            android:id="@+id/sectionIcon"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:layout_marginStart="8dp"
-            app:tint="?attr/colorPrimary"
-            tools:ignore="ContentDescription"
-            tools:srcCompat="@drawable/ic_myanimelist" />
-
-        <TextView
-            android:id="@+id/sectionLabel"
-            android:layout_width="0dp"
+        <LinearLayout
+            android:id="@+id/sectionHeader"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:layout_weight="1"
-            android:fontFamily="@font/poppins_bold"
-            android:textColor="?attr/colorOnBackground"
-            android:textSize="18sp"
-            tools:text="Anime" />
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="11dp">
 
-        <ani.dantotsu.others.MaterialProgressBar
-            android:id="@+id/sectionProgress"
-            style="?android:attr/progressBarStyleSmall"
-            android:layout_width="20dp"
-            android:layout_height="20dp"
-            android:layout_marginHorizontal="8dp"
-            android:indeterminate="true"
-            android:indeterminateTint="?attr/colorPrimary"
+            <FrameLayout
+                android:id="@+id/sectionIconTile"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="@drawable/bg_settings_section_icon">
+
+                <ImageView
+                    android:id="@+id/sectionIcon"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_gravity="center"
+                    app:tint="?attr/colorPrimary"
+                    tools:ignore="ContentDescription"
+                    tools:srcCompat="@drawable/ic_myanimelist" />
+            </FrameLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="14dp"
+                android:layout_marginEnd="6dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/sectionLabel"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:fontFamily="@font/poppins_bold"
+                    android:maxLines="1"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textSize="15sp"
+                    tools:text="MyAnimeList · Anime" />
+
+                <TextView
+                    android:id="@+id/sectionSubtitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:alpha="0.66"
+                    android:ellipsize="end"
+                    android:fontFamily="@font/poppins_semi_bold"
+                    android:maxLines="1"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:textSize="12sp"
+                    tools:text="12 differences" />
+            </LinearLayout>
+
+            <ani.dantotsu.others.MaterialProgressBar
+                android:id="@+id/sectionProgress"
+                style="?android:attr/progressBarStyleSmall"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_marginHorizontal="6dp"
+                android:indeterminate="true"
+                android:indeterminateTint="?attr/colorPrimary"
+                android:visibility="gone"
+                tools:visibility="visible" />
+
+            <ani.dantotsu.others.InkCenteredTextView
+                android:id="@+id/sectionCount"
+                android:layout_width="wrap_content"
+                android:layout_height="24dp"
+                android:layout_marginHorizontal="4dp"
+                android:background="@drawable/bg_list_sync_count"
+                android:fontFamily="@font/poppins_bold"
+                android:includeFontPadding="false"
+                android:maxLines="1"
+                android:minWidth="24dp"
+                android:paddingHorizontal="8dp"
+                android:textColor="?attr/colorOnPrimary"
+                android:textSize="12sp"
+                tools:text="12" />
+
+            <ImageView
+                android:id="@+id/sectionChevron"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_marginStart="4dp"
+                android:background="@drawable/bg_settings_section_chevron"
+                android:padding="4dp"
+                app:srcCompat="@drawable/ic_round_arrow_drop_down_24"
+                app:tint="?attr/colorOnSurfaceVariant"
+                tools:ignore="ContentDescription" />
+        </LinearLayout>
+
+        <!-- Everything below the header, so expanding and collapsing animate it as one. -->
+        <LinearLayout
+            android:id="@+id/sectionBody"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
             android:visibility="gone"
-            tools:visibility="visible" />
+            tools:visibility="visible">
 
-        <TextView
-            android:id="@+id/sectionCount"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginHorizontal="8dp"
-            android:fontFamily="@font/poppins_bold"
-            android:textColor="?attr/colorPrimary"
-            android:textSize="16sp"
-            tools:text="12" />
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginHorizontal="18dp"
+                android:alpha="0.5"
+                android:background="?attr/colorOutlineVariant" />
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/sectionSyncAll"
-            style="@style/Widget.Material3.Button.TonalButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:insetTop="0dp"
-            android:insetBottom="0dp"
-            android:minWidth="48dp"
-            android:paddingHorizontal="14dp"
-            android:text=""
-            android:contentDescription="@string/sync_all"
-            app:cornerRadius="8dp"
-            app:icon="@drawable/ic_round_sync_24"
-            app:iconGravity="textStart"
-            app:iconPadding="0dp" />
-    </LinearLayout>
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:baselineAligned="false"
-        android:orientation="horizontal">
-
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical">
-
+            <!-- Status · source count · tracker count, one row each; filled in by the activity. -->
             <LinearLayout
-                android:id="@+id/statsSourceIcons"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:minHeight="24dp"
-                android:orientation="horizontal" />
-
-            <TextView
-                android:id="@+id/statsSource"
+                android:id="@+id/sectionStats"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:fontFamily="@font/poppins_semi_bold"
-                android:lineSpacingExtra="2dp"
-                android:textColor="?attr/colorOnSurfaceVariant"
-                android:textSize="12sp"
-                tools:text="Total 312\nCurrent 40" />
-        </LinearLayout>
+                android:layout_marginHorizontal="18dp"
+                android:layout_marginTop="12dp"
+                android:orientation="vertical" />
 
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical">
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/sectionSyncAll"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:layout_marginHorizontal="12dp"
+                android:layout_marginTop="12dp"
+                android:fontFamily="@font/poppins_bold"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:text="@string/sync_all"
+                android:textAllCaps="false"
+                android:textSize="13sp"
+                app:cornerRadius="22dp"
+                app:icon="@drawable/ic_round_sync_24"
+                app:iconGravity="textStart"
+                app:iconSize="18dp" />
 
-            <LinearLayout
-                android:id="@+id/statsDestIcons"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:minHeight="24dp"
-                android:orientation="horizontal" />
-
-            <TextView
-                android:id="@+id/statsDest"
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/sectionDiffList"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginHorizontal="8dp"
                 android:layout_marginTop="4dp"
-                android:fontFamily="@font/poppins_semi_bold"
-                android:lineSpacingExtra="2dp"
-                android:textColor="?attr/colorOnSurfaceVariant"
-                android:textSize="12sp"
-                tools:text="Total 305\nCurrent 38" />
+                android:layout_marginBottom="8dp"
+                android:nestedScrollingEnabled="false"
+                android:overScrollMode="never"
+                tools:itemCount="2"
+                tools:listitem="@layout/item_list_sync_diff" />
         </LinearLayout>
     </LinearLayout>
-
-    <TextView
-        android:id="@+id/sectionEmpty"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:alpha="0.66"
-        android:fontFamily="@font/poppins_semi_bold"
-        android:text="@string/list_sync_up_to_date"
-        android:textColor="?attr/colorOnSurfaceVariant"
-        android:textSize="14sp"
-        android:visibility="gone"
-        tools:visibility="visible" />
-
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/sectionDiffList"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:nestedScrollingEnabled="false"
-        android:visibility="gone"
-        tools:itemCount="2"
-        tools:listitem="@layout/item_list_sync_diff"
-        tools:visibility="visible" />
-</LinearLayout>
+</com.google.android.material.card.MaterialCardView>

@@ -3,13 +3,15 @@ package ani.dantotsu.settings
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.ColorStateList
+import android.graphics.Typeface
+import android.text.SpannableStringBuilder
+import android.text.style.ForegroundColorSpan
+import android.text.style.StrikethroughSpan
+import android.text.style.StyleSpan
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageView
-import android.widget.LinearLayout
-import android.widget.TextView
-import androidx.core.widget.ImageViewCompat
+import androidx.core.text.inSpans
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
 import ani.dantotsu.connections.sync.ListCompare
@@ -17,6 +19,7 @@ import ani.dantotsu.databinding.ItemListSyncDiffBinding
 import ani.dantotsu.getThemeColor
 import ani.dantotsu.loadImage
 import com.google.android.material.R as MaterialR
+import com.google.android.material.color.MaterialColors
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -24,10 +27,9 @@ import java.util.Collections
 import java.util.IdentityHashMap
 
 /**
- * Renders the out-of-date media of one comparison subsection: cover, title, a one-line summary of the
- * field differences, and a per-row Sync/Remove button. Tapping a row expands a two-column detail
- * (source vs destination) showing every tracked field, with the differing rows highlighted on the
- * destination side. [onSync] is invoked with the entry and its adapter position; the caller performs
+ * Renders the out-of-date media of one comparison subsection: cover, title, each differing field as
+ * old → new, and a per-row Sync/Remove button. Tapping a row expands a [CompareTable] of every
+ * tracked field on both sides, with the differing rows highlighted. [onSync] is invoked with the entry and its adapter position; the caller performs
  * the sync and calls [removeAt] on success.
  *
  * Some rows arrive without a title and/or cover — MangaBaka deletions and anything sourced from
@@ -85,14 +87,21 @@ class ListSyncDiffAdapter(
         if (entry.delete) {
             val trackerName = context.getString(trackerNameRes(entry.tracker))
             b.diffChanges.text = context.getString(R.string.list_diff_only_on, trackerName)
+            b.diffChanges.setTextColor(context.getThemeColor(androidx.appcompat.R.attr.colorError))
             b.diffSync.setIconResource(R.drawable.ic_round_delete_24)
             b.diffSync.contentDescription = context.getString(R.string.remove)
+            b.diffSync.backgroundTintList = ColorStateList.valueOf(
+                context.getThemeColor(MaterialR.attr.colorErrorContainer)
+            )
+            b.diffSync.iconTint = ColorStateList.valueOf(
+                context.getThemeColor(MaterialR.attr.colorOnErrorContainer)
+            )
         } else {
-            b.diffChanges.text = entry.diffs.joinToString("\n") { d ->
-                "${label(context, d.field, entry.isAnime)}: ${d.from} → ${d.to}"
-            }
+            b.diffChanges.text = changesText(context, entry)
+            b.diffChanges.setTextColor(context.getThemeColor(MaterialR.attr.colorOnSurfaceVariant))
             b.diffSync.setIconResource(R.drawable.ic_round_sync_24)
             b.diffSync.contentDescription = context.getString(R.string.sync)
+            CompareTable.tintAccentButton(b.diffSync)
         }
 
         bindTitleAndCover(holder, entry, position)
@@ -104,10 +113,7 @@ class ListSyncDiffAdapter(
         b.diffChevron.rotation = if (isExpanded) 180f else 0f
         SectionCard.resetPanel(b.diffDetail)
         b.diffDetail.visibility = if (isExpanded) View.VISIBLE else View.GONE
-        if (isExpanded) bindDetail(holder, entry) else {
-            b.diffDetailSource.removeAllViews()
-            b.diffDetailDest.removeAllViews()
-        }
+        if (isExpanded) bindDetail(holder, entry) else b.diffDetail.removeAllViews()
         b.diffHeader.isClickable = expandable
         b.diffHeader.setOnClickListener {
             if (!expandable) return@setOnClickListener
@@ -119,10 +125,7 @@ class ListSyncDiffAdapter(
             val open = e in expanded
             b.diffChevron.animate().rotation(if (open) 180f else 0f).setDuration(220).start()
             if (open) bindDetail(holder, e)
-            SectionCard.setExpanded(b.diffDetail, open) {
-                b.diffDetailSource.removeAllViews()
-                b.diffDetailDest.removeAllViews()
-            }
+            SectionCard.setExpanded(b.diffDetail, open) { b.diffDetail.removeAllViews() }
         }
 
         val inFlight = entry in syncing
@@ -134,23 +137,42 @@ class ListSyncDiffAdapter(
         }
     }
 
-    /** Fills the two detail columns: source (target) values on the left, destination on the right. */
+    /**
+     * What changes, one field a line: the field, the tracker's value struck through, and the value
+     * it will take in the accent colour, so the new value is what the eye lands on.
+     */
+    private fun changesText(ctx: Context, entry: ListCompare.DiffEntry): CharSequence {
+        val muted = ctx.getThemeColor(MaterialR.attr.colorOnSurfaceVariant)
+        val faded = MaterialColors.compositeARGBWithAlpha(muted, 150)
+        val accent = ctx.getThemeColor(androidx.appcompat.R.attr.colorPrimary)
+        val out = SpannableStringBuilder()
+        entry.diffs.forEachIndexed { i, d ->
+            if (i > 0) out.append('\n')
+            out.append(label(ctx, d.field, entry.isAnime)).append("  ")
+            out.inSpans(ForegroundColorSpan(faded), StrikethroughSpan()) { append(d.from) }
+            out.inSpans(ForegroundColorSpan(faded)) { append("  →  ") }
+            out.inSpans(ForegroundColorSpan(accent), StyleSpan(Typeface.BOLD)) { append(d.to) }
+        }
+        return out
+    }
+
+    /** The field-by-field table: the source list's value, then the tracker's, differing rows marked. */
     private fun bindDetail(holder: Holder, entry: ListCompare.DiffEntry) {
         val ctx = holder.binding.root.context
-        val src = holder.binding.diffDetailSource
-        val dst = holder.binding.diffDetailDest
-        src.removeAllViews()
-        dst.removeAllViews()
-        src.addView(iconHeader(ctx, sourceIcon(entry)))
-        dst.addView(iconHeader(ctx, destIcon(entry)))
         val notSet = ctx.getString(R.string.list_diff_not_set)
-        for (row in entry.detail) {
-            val label = label(ctx, row.field, entry.isAnime)
-            src.addView(lineView(ctx, "$label: ${row.source ?: notSet}", highlight = false))
-            val destText = if (row.differs) "$label: ${row.dest ?: notSet} → ${row.source ?: notSet}"
-            else "$label: ${row.dest ?: notSet}"
-            dst.addView(lineView(ctx, destText, highlight = row.differs))
-        }
+        CompareTable.fill(
+            holder.binding.diffDetail,
+            sourceIcons = listOf(sourceIcon(entry)),
+            destIcons = listOf(destIcon(entry)),
+            rows = entry.detail.map { row ->
+                CompareTable.Row(
+                    label = label(ctx, row.field, entry.isAnime),
+                    source = row.source ?: notSet,
+                    dest = row.dest ?: notSet,
+                    differs = row.differs,
+                )
+            },
+        )
     }
 
     /** Which source this row is pushing from — MangaUpdates entries are the ones carrying a MU id. */
@@ -172,38 +194,6 @@ class ListSyncDiffAdapter(
         ListCompare.Tracker.MANGABAKA -> R.string.mangabaka
         ListCompare.Tracker.COMICK -> R.string.comick
     }
-
-    private fun iconHeader(ctx: Context, iconRes: Int): ImageView {
-        val size = dp(ctx, 18)
-        return ImageView(ctx).apply {
-            layoutParams = LinearLayout.LayoutParams(size, size).apply { bottomMargin = dp(ctx, 6) }
-            setImageResource(iconRes)
-            ImageViewCompat.setImageTintList(
-                this, ColorStateList.valueOf(ctx.getThemeColor(androidx.appcompat.R.attr.colorPrimary))
-            )
-        }
-    }
-
-    private fun lineView(ctx: Context, text: String, highlight: Boolean): TextView =
-        TextView(ctx).apply {
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply { topMargin = dp(ctx, 3) }
-            textSize = 12f
-            this.text = text
-            if (highlight) {
-                setBackgroundResource(R.drawable.bg_list_sync_diff_highlight)
-                val h = dp(ctx, 6)
-                val v = dp(ctx, 4)
-                setPadding(h, v, h, v)
-                setTextColor(ctx.getThemeColor(MaterialR.attr.colorOnPrimaryContainer))
-            } else {
-                setTextColor(ctx.getThemeColor(MaterialR.attr.colorOnSurfaceVariant))
-            }
-        }
-
-    private fun dp(ctx: Context, value: Int): Int =
-        (value * ctx.resources.displayMetrics.density).toInt()
 
     /**
      * Shows the title/cover, looking up whatever the row didn't arrive with. MangaBaka deletion rows

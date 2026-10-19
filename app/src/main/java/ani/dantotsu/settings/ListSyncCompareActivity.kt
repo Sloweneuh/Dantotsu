@@ -1,14 +1,11 @@
 package ani.dantotsu.settings
 
-import android.content.res.ColorStateList
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageView
-import android.widget.LinearLayout
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
-import androidx.core.widget.ImageViewCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import ani.dantotsu.R
@@ -16,7 +13,6 @@ import ani.dantotsu.connections.anilist.Anilist
 import ani.dantotsu.connections.sync.ListCompare
 import ani.dantotsu.databinding.ActivityListSyncCompareBinding
 import ani.dantotsu.databinding.ItemListSyncSectionBinding
-import ani.dantotsu.getThemeColor
 import ani.dantotsu.initActivity
 import ani.dantotsu.navBarHeight
 import ani.dantotsu.snackString
@@ -133,41 +129,52 @@ class ListSyncCompareActivity : AppCompatActivity() {
         val sb = ItemListSyncSectionBinding.inflate(layoutInflater, binding.compareSections, false)
         sb.sectionLabel.text = sectionTitle
         sb.sectionIcon.setImageResource(headerIcon)
-        setStatsIcons(sb.statsSourceIcons, sourceIcons)
-        setStatsIcons(sb.statsDestIcons, listOf(headerIcon))
-        // Dest totals are updated in place as entries sync (see [ListCompare.applied]), so the header
-        // stays accurate without re-running the comparison. Null until the lists have been fetched.
+        // Both sides' per-status counts. Dest totals are updated in place as entries sync (see
+        // [ListCompare.applied]), so the table stays accurate without re-running the comparison.
+        // Null until the lists have been fetched.
+        var sourceStats: ListCompare.SideStats? = null
         var destStats: ListCompare.SideStats? = null
-        fun refreshStats() { sb.statsDest.text = destStats?.let { statsText(it) } ?: "" }
-        refreshStats()
+        fun refreshStats() {
+            val source = sourceStats
+            val dest = destStats
+            if (source == null || dest == null) {
+                sb.sectionStats.removeAllViews()
+                return
+            }
+            CompareTable.fill(sb.sectionStats, sourceIcons, listOf(headerIcon), statsRows(source, dest))
+        }
 
         val items = mutableListOf<ListCompare.DiffEntry>()
         lateinit var adapter: ListSyncDiffAdapter
-        // The changes list is collapsed by default; the count sits in the header.
+        // Collapsed by default; the count sits in the header.
         var expanded = false
-        // Until the diffs land there's no count, nothing to expand and nothing to sync — just the
+        // Until the diffs land there's no count, nothing to open and nothing to sync — just the
         // spinner in their place.
         var loading = true
+        var failed = false
 
-        fun applyState(animateList: Boolean = false) {
+        fun styleCard(animate: Boolean) = SectionCard.bind(
+            sb.sectionHeader, sb.sectionIconTile, sb.sectionIcon, sb.sectionChevron,
+            open = expanded, animate = animate,
+        ) { sb.sectionCard.setCardBackgroundColor(it) }
+
+        fun applyState() {
             val count = adapter.itemCount
             val empty = count == 0
-            sb.sectionProgress.visibility = if (loading) View.VISIBLE else View.GONE
+            sb.sectionProgress.isVisible = loading
             sb.sectionCount.text = count.toString()
-            sb.sectionCount.visibility = if (loading || empty) View.GONE else View.VISIBLE
-            sb.sectionChevron.visibility = if (loading || empty) View.INVISIBLE else View.VISIBLE
-            sb.sectionSyncAll.visibility = if (loading || empty) View.GONE else View.VISIBLE
-            sb.sectionEmpty.visibility = if (!loading && empty) View.VISIBLE else View.GONE
-            val showList = !loading && !empty && expanded
-            if (animateList) {
-                SectionCard.setExpanded(sb.sectionDiffList, showList)
-                sb.sectionChevron.animate().rotation(if (expanded) 180f else 0f)
-                    .setDuration(220).start()
-            } else {
-                sb.sectionDiffList.visibility = if (showList) View.VISIBLE else View.GONE
-                sb.sectionChevron.rotation = if (expanded) 180f else 0f
+            sb.sectionCount.isVisible = !loading && !empty
+            sb.sectionSubtitle.text = when {
+                loading -> getString(R.string.list_compare_comparing)
+                failed -> getString(R.string.list_compare_failed)
+                empty -> getString(R.string.list_sync_up_to_date)
+                else -> resources.getQuantityString(R.plurals.list_compare_differences, count, count)
             }
-            sb.sectionHeader.isClickable = !loading && !empty
+            sb.sectionSyncAll.isVisible = !empty
+            // Open once there's something to show: the counts, even with nothing left to sync.
+            val openable = !loading && destStats != null
+            sb.sectionChevron.visibility = if (openable) View.VISIBLE else View.INVISIBLE
+            sb.sectionHeader.isClickable = openable
         }
 
         adapter = ListSyncDiffAdapter(items, lifecycleScope) { entry, position ->
@@ -190,10 +197,14 @@ class ListSyncCompareActivity : AppCompatActivity() {
         sb.sectionDiffList.isNestedScrollingEnabled = false
 
         sb.sectionHeader.setOnClickListener {
-            if (adapter.itemCount == 0) return@setOnClickListener
+            if (loading || destStats == null) return@setOnClickListener
             expanded = !expanded
-            applyState(animateList = true)
+            styleCard(animate = true)
+            SectionCard.toggleBody(sb.sectionBody, sb.sectionDiffList, expanded) {
+                sb.sectionBody.isVisible = it
+            }
         }
+        SectionCard.pressFeedback(sb.sectionHeader, sb.sectionCard)
 
         sb.sectionSyncAll.setOnClickListener {
             val entries = items.toList()
@@ -219,19 +230,22 @@ class ListSyncCompareActivity : AppCompatActivity() {
             }
         }
 
+        CompareTable.tintAccentButton(sb.sectionSyncAll)
+        styleCard(animate = false)
         applyState()
         binding.compareSections.addView(sb.root)
 
         return SectionHandle(
             onStats = { stats ->
-                sb.statsSource.text = statsText(stats.source)
+                sourceStats = stats.source
                 destStats = stats.dest
                 refreshStats()
+                applyState()
             },
             onResult = { result ->
                 // Same totals onStats already published; re-applied so the finished result is the
-                // one the header reflects.
-                sb.statsSource.text = statsText(result.source)
+                // one the table reflects.
+                sourceStats = result.source
                 destStats = result.dest
                 refreshStats()
                 adapter.replaceAll(result.diffs)
@@ -241,35 +255,36 @@ class ListSyncCompareActivity : AppCompatActivity() {
             onError = {
                 // Stop this card spinning and say so; the other sections carry on.
                 loading = false
+                failed = true
                 applyState()
-                sb.sectionEmpty.text = getString(R.string.list_compare_failed)
-                sb.sectionEmpty.visibility = View.VISIBLE
             },
         )
     }
 
-    /** Populates a stats column's icon row with the given service icons, tinted to the theme accent. */
-    private fun setStatsIcons(container: LinearLayout, icons: List<Int>) {
-        container.removeAllViews()
-        val size = (20 * resources.displayMetrics.density).toInt()
-        val gap = (6 * resources.displayMetrics.density).toInt()
-        val tint = ColorStateList.valueOf(getThemeColor(androidx.appcompat.R.attr.colorPrimary))
-        for (res in icons) {
-            val icon = ImageView(this)
-            icon.layoutParams = LinearLayout.LayoutParams(size, size).apply { marginEnd = gap }
-            icon.setImageResource(res)
-            ImageViewCompat.setImageTintList(icon, tint)
-            container.addView(icon)
-        }
-    }
-
-    private fun statsText(stats: ListCompare.SideStats): String {
-        val builder = StringBuilder(getString(R.string.list_sync_total, stats.total))
+    /**
+     * The per-status table: a total, then every status either side has entries in, with the rows
+     * whose counts disagree marked.
+     */
+    private fun statsRows(
+        source: ListCompare.SideStats,
+        dest: ListCompare.SideStats,
+    ): List<CompareTable.Row> {
+        val rows = mutableListOf(
+            CompareTable.Row(
+                getString(R.string.list_sync_total_label),
+                source.total.toString(), dest.total.toString(),
+                differs = source.total != dest.total, strong = true, band = false,
+            )
+        )
         for (status in ListCompare.STATUS_ORDER) {
-            val count = stats.perStatus[status] ?: 0
-            if (count > 0) builder.append('\n').append(statusLabel(status)).append(' ').append(count)
+            val a = source.perStatus[status] ?: 0
+            val b = dest.perStatus[status] ?: 0
+            if (a == 0 && b == 0) continue
+            rows += CompareTable.Row(
+                statusLabel(status), a.toString(), b.toString(), differs = a != b, band = false,
+            )
         }
-        return builder.toString()
+        return rows
     }
 
     private fun statusLabel(canonical: String): String =

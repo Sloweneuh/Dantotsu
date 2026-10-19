@@ -767,6 +767,13 @@
     <string name="list_sync_total">Total %1$d</string>
     <string name="list_sync_up_to_date">La liste est à jour</string>
     <string name="list_compare_failed">Impossible de charger cette comparaison</string>
+    <string name="list_compare_comparing">Comparaison…</string>
+    <string name="list_sync_total_label">Total</string>
+    <plurals name="list_compare_differences">
+        <item quantity="one">%1$d différence</item>
+        <item quantity="many">%1$d différences</item>
+        <item quantity="other">%1$d différences</item>
+    </plurals>
     <string name="list_compare_login_anilist">Connectez-vous à AniList pour comparer vos listes</string>
     <string name="list_compare_login_trackers">Connectez-vous à MyAnimeList, Kitsu, Simkl, MangaBaka ou Comick pour comparer les listes</string>
     <string name="list_diff_status">Statut</string>

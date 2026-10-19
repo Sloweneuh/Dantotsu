@@ -154,7 +154,6 @@ class TilePanelController(
         val cap = visibleHeightCap(frame)
         val from = frame.height.coerceAtMost(cap)
         val to = fullTo.coerceAtMost(cap)
-        debugTraceSwap(frame, value, "cap=$cap from=$from to=$to fullTo=$fullTo")
         val travelDp = abs(to - from) / frame.resources.displayMetrics.density
         val totalMs = ((EDIT_SWAP_MS + travelDp * HEIGHT_MS_PER_DP)
             .coerceAtMost(HEIGHT_MAX_MS) * speed).toLong()
@@ -451,40 +450,9 @@ class TilePanelController(
         val topInset = ViewCompat.getRootWindowInsets(sheet)?.getInsets(
             WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
         )?.top ?: 0
-        ViewCompat.getRootWindowInsets(sheet)?.let {
-            android.util.Log.d("TileSwap", "insets bars=${it.getInsets(WindowInsetsCompat.Type.systemBars()).top} cutout=${it.getInsets(WindowInsetsCompat.Type.displayCutout()).top} barsIgnoringVis=${it.getInsetsIgnoringVisibility(WindowInsetsCompat.Type.systemBars()).top}")
-        }
         val padding = ((topInset - loc[1]).coerceAtLeast(0) - sheet.paddingTop).coerceAtLeast(0)
         val room = (window.height - sheet.height - padding).coerceAtLeast(0)
-        android.util.Log.d("TileSwap", "capCalc winY=${loc[1]} topInset=$topInset sheetPadT=${sheet.paddingTop} padding=$padding room=$room overflow=$overflow frameH=${frame.height}")
         return frame.height - overflow + room
-    }
-
-    // TEMP: per-frame geometry of the swap.
-    private fun debugTraceSwap(frame: View, value: Boolean, info: String) {
-        android.util.Log.d("TileSwap", "start edit=$value $info")
-        val scroll = binding.root as? ViewGroup
-        val sheet = scroll?.parent as? View
-        val toolbar = binding.quickTilesEditContainer.getChildAt(0)
-        val start = System.currentTimeMillis()
-        val loc = IntArray(2)
-        fun y(v: View?): Int { if (v == null) return -1; v.getLocationInWindow(loc); return loc[1] }
-        val listener = object : android.view.ViewTreeObserver.OnPreDrawListener {
-            override fun onPreDraw(): Boolean {
-                val t = System.currentTimeMillis() - start
-                val firstTile = if (editing) binding.quickTilesEditor.getChildAt(0) else null
-                android.util.Log.d(
-                    "TileSwap",
-                    "edit=$value t=$t frameH=${frame.height} frameY=${y(frame)} " +
-                        "sheetY=${y(sheet)} sheetH=${sheet?.height} sheetPadT=${sheet?.paddingTop} " +
-                        "toolbarY=${y(toolbar)} toolbarA=${toolbar?.alpha} " +
-                        "tile0Y=${y(firstTile)} tile0TY=${firstTile?.translationY}"
-                )
-                if (t > 1500) frame.viewTreeObserver.removeOnPreDrawListener(this)
-                return true
-            }
-        }
-        frame.viewTreeObserver.addOnPreDrawListener(listener)
     }
 
     private fun footerViews() =
