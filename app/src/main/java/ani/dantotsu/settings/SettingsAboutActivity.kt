@@ -1,6 +1,5 @@
 package ani.dantotsu.settings
 
-import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
@@ -58,7 +57,9 @@ class SettingsAboutActivity : AppCompatActivity() {
                         desc = getString(R.string.faq_desc),
                         icon = R.drawable.ic_round_quiz_24,
                         onClick = {
-                            startActivity(Intent(context, FAQActivity::class.java))
+                            SettingsPageTransitions.open(
+                                this@SettingsAboutActivity, it, FAQActivity::class.java
+                            )
                         },
                         isActivity = true
                     ),

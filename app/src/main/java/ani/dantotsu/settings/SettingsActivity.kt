@@ -1,9 +1,6 @@
 package ani.dantotsu.settings
 
-import ani.dantotsu.media.SharedIconTint
-import ani.dantotsu.util.animationsEnabled
 import ani.dantotsu.databinding.ItemSettingsBinding
-import androidx.core.app.ActivityOptionsCompat
 import android.content.Intent
 import android.graphics.drawable.Animatable
 import android.os.Build.BRAND
@@ -306,30 +303,7 @@ class SettingsActivity : AppCompatActivity() {
         ThemeManager(this).applyTheme()
     }
 
-    /** The row icon last given [SettingsPageTransitions.ICON_TRANSITION]; see [openPage]. */
-    private var namedIcon: View? = null
-
-    /**
-     * Opens a settings page with [row]'s icon carried into the page's header icon, the way a media
-     * cover flies into its page, while the rest of the page moves on the shared axis (see
-     * [SettingsPageTransitions]). Only the tapped row's icon holds the transition name at a time:
-     * two views sharing it would leave the return flight free to land on the wrong row.
-     */
-    private fun openPage(row: ItemSettingsBinding, page: Class<*>) {
-        val intent = Intent(this, page)
-        val icon = row.settingsIcon
-        if (!animationsEnabled || !icon.isAttachedToWindow) {
-            startActivity(intent)
-            return
-        }
-        namedIcon?.transitionName = null
-        icon.transitionName = SettingsPageTransitions.ICON_TRANSITION
-        namedIcon = icon
-        // The page's header icon blends from this row's tint as it lands; see SharedIconTint.
-        SharedIconTint.forward = icon.imageTintList?.defaultColor
-        val options = ActivityOptionsCompat.makeSceneTransitionAnimation(
-            this, icon, SettingsPageTransitions.ICON_TRANSITION,
-        )
-        startActivity(intent, options.toBundle())
-    }
+    /** Opens a settings page with [row]'s icon flying into its header; see [SettingsPageTransitions.open]. */
+    private fun openPage(row: ItemSettingsBinding, page: Class<*>) =
+        SettingsPageTransitions.open(this, row, page)
 }

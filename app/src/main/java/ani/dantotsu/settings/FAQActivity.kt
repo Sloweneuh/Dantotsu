@@ -117,7 +117,7 @@ class FAQActivity : AppCompatActivity() {
 
         initActivity(this)
 
-        binding.devsTitle2.setOnClickListener {
+        binding.faqBack.setOnClickListener {
             onBackPressedDispatcher.onBackPressed()
         }
 

@@ -120,9 +120,31 @@ class SettingsSectionAdapter(
     }
 
     /** Re-reads the summary of every collapsed card. Cheap, and the only way a card that was
-     *  changed from inside another one (the MangaUpdates interval follows MALSync's) catches up. */
-    @SuppressWarnings("NotifyDataSetChanged")
-    fun refreshSummaries() = notifyDataSetChanged()
+     *  changed from inside another one (the MangaUpdates interval follows MALSync's) catches up.
+     *  An open card's rows are rebuilt only if they changed (see [REFRESH]). */
+    fun refreshSummaries() = notifyItemRangeChanged(0, sections.size, REFRESH)
+
+    /** Row titles each open body was last built with, by section key; see [refreshHeader]. */
+    private val builtRows = HashMap<String, List<String>>()
+
+    override fun onBindViewHolder(holder: Holder, position: Int, payloads: MutableList<Any>) {
+        if (REFRESH in payloads) refreshHeader(holder, sections[position])
+        else super.onBindViewHolder(holder, position, payloads)
+    }
+
+    /**
+     * A refresh that leaves the rows alone unless they changed. Rebuilding them every time threw
+     * away the row a page had just been opened from, so coming back, that page's icon had no row
+     * icon left to fly home to.
+     */
+    private fun refreshHeader(holder: Holder, section: SettingsSection) {
+        val b = holder.b
+        val summary = section.summary()
+        b.sectionHeader.sectionSummary.text = summary
+        b.sectionHeader.sectionSummary.isVisible = summary.isNotBlank()
+        val open = section.key in expanded
+        if (open && builtRows[section.key] != section.rows().map { it.name }) bindBody(b, section, true)
+    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder =
         Holder(ItemSettingsSectionBinding.inflate(LayoutInflater.from(parent.context), parent, false))
@@ -166,6 +188,7 @@ class SettingsSectionAdapter(
             return
         }
         val rows = section.rows()
+        builtRows[section.key] = rows.map { it.name }
         if (b.sectionBody.layoutManager == null) {
             b.sectionBody.layoutManager = LinearLayoutManager(b.root.context)
         }
@@ -177,6 +200,9 @@ class SettingsSectionAdapter(
         private const val EXPANDED_PREF_PREFIX = "settings_expanded_"
         private const val RELAUNCH_PREF_PREFIX = "settings_relaunch_"
         private const val SEPARATOR = ","
+
+        /** Payload for [refreshSummaries]: headers only, rows kept if unchanged. */
+        private const val REFRESH = "refresh"
 
         /** Section state keys, so a screen and its stored expansion set can't drift apart. */
         const val STATE_NOTIFICATIONS = "notifications"

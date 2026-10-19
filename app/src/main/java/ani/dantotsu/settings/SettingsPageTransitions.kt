@@ -9,7 +9,10 @@ import android.content.res.ColorStateList
 import android.app.SharedElementCallback
 import android.app.Activity
 import android.app.Application
+import android.content.Intent
 import android.os.Build
+import androidx.core.app.ActivityOptionsCompat
+import ani.dantotsu.databinding.ItemSettingsBinding
 import android.os.Bundle
 import android.transition.Transition
 import ani.dantotsu.R
@@ -26,8 +29,8 @@ import com.google.android.material.transition.platform.MaterialSharedAxis
  * one level deeper into the same place, and back out of it.
  *
  * Two routes, depending on how a page is opened:
- *  - from a row on the main settings page, with that row's icon carried into the page's header
- *    icon the way a media cover flies into its page ([SettingsActivity.openPage]). That is a scene
+ *  - from a settings row — on the main page or one level down — with that row's icon carried into
+ *    the page's header icon the way a media cover flies into its page ([open]). That is a scene
  *    transition, so the shared axis runs as the windows' content transitions, set up here;
  *  - from anywhere else, as a plain launch. The window animation style set here covers that, and
  *    a quick tile's grow-from-tile launch still wins over it, since launch options take precedence.
@@ -66,6 +69,35 @@ object SettingsPageTransitions : Application.ActivityLifecycleCallbacks {
         ComickUnmatchedActivity::class.java,
         DesignLabActivity::class.java,
     )
+
+    /** Per page, the row icon last given [ICON_TRANSITION]; see [open]. */
+    private val namedIcons = WeakHashMap<Activity, View>()
+
+    /**
+     * Opens [intent] (a settings page) from [from] with [icon] — the tapped row's — carried into the
+     * page's header icon, the way a media cover flies into its page, while the rest moves on the
+     * shared axis. Pages one level down use it too, so going deeper reads the same at every level.
+     * Only the tapped row's icon holds the transition name at a time: two views sharing it would
+     * leave the return flight free to land on the wrong row. Falls back to a plain launch (the
+     * window style's slide) with animations off or no icon on screen.
+     */
+    fun open(from: Activity, icon: View?, intent: Intent) {
+        if (!animationsEnabled || icon == null || !icon.isAttachedToWindow) {
+            from.startActivity(intent)
+            return
+        }
+        namedIcons[from]?.transitionName = null
+        icon.transitionName = ICON_TRANSITION
+        namedIcons[from] = icon
+        // The page's header icon blends from this row's tint as it lands; see SharedIconTint.
+        SharedIconTint.forward = (icon as? ImageView)?.imageTintList?.defaultColor
+        val options = ActivityOptionsCompat.makeSceneTransitionAnimation(from, icon, ICON_TRANSITION)
+        from.startActivity(intent, options.toBundle())
+    }
+
+    /** [open] for a settings row: its icon flies into [page]'s header. */
+    fun open(from: Activity, row: ItemSettingsBinding, page: Class<*>) =
+        open(from, row.settingsIcon, Intent(from, page))
 
     /** Set while a page restarts itself: its reopening doesn't slide. */
     @Volatile
@@ -111,7 +143,7 @@ object SettingsPageTransitions : Application.ActivityLifecycleCallbacks {
         window.allowEnterTransitionOverlap = true
         window.allowReturnTransitionOverlap = true
         activity.useCoverTransition()
-        activity.setEnterSharedElementCallback(HeaderIconTint())
+        activity.setEnterSharedElementCallback(HeaderIconTint(activity))
     }
 
     /**
@@ -127,10 +159,39 @@ object SettingsPageTransitions : Application.ActivityLifecycleCallbacks {
      * finishing yet during a return (it finishes once the transition has played), so that can't
      * tell them apart.
      */
-    private class HeaderIconTint : SharedElementCallback() {
+    private class HeaderIconTint(activity: Activity) : SharedElementCallback() {
+        private val page = java.lang.ref.WeakReference(activity)
         private val own = WeakHashMap<ImageView, ColorStateList?>()
         private var arrived = false
         private var rowTint: Int? = null
+
+        /**
+         * The page's own header icon is what flies, never one of its rows. A row icon keeps the
+         * shared name after [open] flew it into a deeper page — it needs it for that page's return —
+         * so by the time this page is left there are two views by that name, and the lookup was free
+         * to pick the row: backing out of Comick unmatched and then out of List sync flew the Comick
+         * row's icon home instead of List sync's.
+         */
+        override fun onMapSharedElements(
+            names: MutableList<String>?,
+            sharedElements: MutableMap<String, View>?,
+        ) {
+            val activity = page.get() ?: return
+            val row = namedIcons[activity] ?: return
+            if (sharedElements?.get(ICON_TRANSITION) !== row) return
+            val header = findNamed(activity.window.decorView, exclude = row) ?: return
+            sharedElements[ICON_TRANSITION] = header
+        }
+
+        private fun findNamed(view: View, exclude: View): View? {
+            if (view !== exclude && view.transitionName == ICON_TRANSITION && view.isShown) return view
+            if (view is android.view.ViewGroup) {
+                for (i in 0 until view.childCount) {
+                    findNamed(view.getChildAt(i), exclude)?.let { return it }
+                }
+            }
+            return null
+        }
 
         override fun onSharedElementStart(
             sharedElementNames: MutableList<String>?,

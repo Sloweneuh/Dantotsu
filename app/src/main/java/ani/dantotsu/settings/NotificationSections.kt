@@ -226,7 +226,7 @@ fun AppCompatActivity.malSyncRows(onChanged: () -> Unit): List<Settings> {
                 icon = R.drawable.ic_malsync,
                 compact = true,
                 onClick = {
-                    startActivity(android.content.Intent(context, SettingsAccountActivity::class.java))
+                    SettingsPageTransitions.open(this, it, SettingsAccountActivity::class.java)
                 }
             )
         )

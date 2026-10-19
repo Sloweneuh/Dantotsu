@@ -154,9 +154,14 @@ class SettingsAccountActivity : AppCompatActivity() {
 
     // ---- cross-provider tools (below the cards) ----
 
-    /** Cross-provider tools that don't belong to any single card. */
+    /**
+     * Cross-provider tools that don't belong to any single card. Rows pop in only the first time:
+     * rebuilt on coming back from one of the pages they open, they would replay it from nothing
+     * just as that page's icon flies home, and the icon landed on a row icon still scaled to a dot.
+     */
     private fun buildBottomRows() {
-        binding.settingsRecyclerView.adapter = SettingsAdapter(ArrayList(bottomRows()))
+        val first = binding.settingsRecyclerView.adapter == null
+        binding.settingsRecyclerView.adapter = SettingsAdapter(ArrayList(bottomRows()), popIn = first)
     }
 
     private fun bottomRows(): List<Settings> = listOf(
@@ -167,7 +172,7 @@ class SettingsAccountActivity : AppCompatActivity() {
             icon = R.drawable.ic_round_compare_arrows_24,
             isActivity = true,
             onClick = {
-                startActivity(Intent(this, SettingsListSyncActivity::class.java))
+                SettingsPageTransitions.open(this, it, SettingsListSyncActivity::class.java)
             },
         ),
         Settings(
@@ -191,7 +196,7 @@ class SettingsAccountActivity : AppCompatActivity() {
             isActivity = true,
             anchorKey = "backup_sync",
             onClick = {
-                startActivity(Intent(this, SettingsBackupSyncActivity::class.java))
+                SettingsPageTransitions.open(this, it, SettingsBackupSyncActivity::class.java)
             },
         ),
         // Lives here rather than on the Comick card: it also governs MangaBaka, so a shared
@@ -360,7 +365,9 @@ class SettingsAccountActivity : AppCompatActivity() {
                 compact = true,
                 anchorKey = "comickNotifications",
                 onClick = {
-                    startActivity(notificationSettingsIntent(this, NotificationSection.COMICK))
+                    SettingsPageTransitions.open(
+                        this, it.settingsIcon, notificationSettingsIntent(this, NotificationSection.COMICK)
+                    )
                 },
             ),
         )
@@ -394,10 +401,12 @@ class SettingsAccountActivity : AppCompatActivity() {
                 isActivity = true,
                 compact = true,
                 anchorKey = "anilistSettings",
-                onClick = {
+                onClick = { row ->
                     lifecycleScope.launch {
                         Anilist.query.getUserData()
-                        startActivity(Intent(this@SettingsAccountActivity, AnilistSettingsActivity::class.java))
+                        SettingsPageTransitions.open(
+                            this@SettingsAccountActivity, row, AnilistSettingsActivity::class.java
+                        )
                     }
                 },
             ),
@@ -410,7 +419,9 @@ class SettingsAccountActivity : AppCompatActivity() {
                 compact = true,
                 anchorKey = "notifications",
                 onClick = {
-                    startActivity(notificationSettingsIntent(this, NotificationSection.ANILIST))
+                    SettingsPageTransitions.open(
+                        this, it.settingsIcon, notificationSettingsIntent(this, NotificationSection.ANILIST)
+                    )
                 },
             ),
         )
@@ -463,7 +474,7 @@ class SettingsAccountActivity : AppCompatActivity() {
                 compact = true,
                 anchorKey = "muMapping",
                 onClick = {
-                    startActivity(Intent(this, MUCustomListMappingActivity::class.java))
+                    SettingsPageTransitions.open(this, it, MUCustomListMappingActivity::class.java)
                 },
             ),
             header(R.string.account_group_notifications),
@@ -477,7 +488,9 @@ class SettingsAccountActivity : AppCompatActivity() {
                 compact = true,
                 anchorKey = "notifications",
                 onClick = {
-                    startActivity(notificationSettingsIntent(this, NotificationSection.MANGAUPDATES))
+                    SettingsPageTransitions.open(
+                        this, it.settingsIcon, notificationSettingsIntent(this, NotificationSection.MANGAUPDATES)
+                    )
                 },
             ),
         )
@@ -588,7 +601,9 @@ class SettingsAccountActivity : AppCompatActivity() {
             compact = true,
             anchorKey = "notifications",
             onClick = {
-                startActivity(notificationSettingsIntent(this, NotificationSection.MALSYNC))
+                SettingsPageTransitions.open(
+                    this, it.settingsIcon, notificationSettingsIntent(this, NotificationSection.MALSYNC)
+                )
             },
         ),
     )

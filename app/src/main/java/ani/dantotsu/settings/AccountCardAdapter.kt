@@ -56,6 +56,10 @@ class AccountCardAdapter(
 
     @SuppressWarnings("NotifyDataSetChanged")
     fun submit(list: List<AccountCard>) {
+        // Nothing to redraw. Rebinding anyway rebuilt every open card's rows on each return to the
+        // screen, throwing away the row a page had been opened from just as that page's icon was
+        // flying home to it.
+        if (list == items) return
         items.clear()
         items.addAll(list)
         notifyDataSetChanged()

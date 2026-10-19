@@ -37,7 +37,9 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal">
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            tools:ignore="UseCompoundDrawables">
 
             <TextView
                 android:layout_width="0dp"
@@ -47,6 +49,16 @@
                 android:fontFamily="@font/poppins_bold"
                 android:text="@string/mu_custom_list_mapping"
                 android:textSize="28sp" />
+
+            <!-- Where the Accounts row's icon lands; see SettingsPageTransitions. -->
+            <ImageView
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginStart="24dp"
+                android:transitionName="settingsPageIcon"
+                app:srcCompat="@drawable/view_list_24"
+                app:tint="?attr/colorOnBackground"
+                tools:ignore="ContentDescription" />
 
         </LinearLayout>
 

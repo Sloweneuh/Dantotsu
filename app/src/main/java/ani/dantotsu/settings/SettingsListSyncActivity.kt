@@ -1,7 +1,6 @@
 package ani.dantotsu.settings
 
 import ani.dantotsu.connections.comick.Comick
-import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
@@ -105,7 +104,7 @@ class SettingsListSyncActivity : AppCompatActivity() {
                 desc = getString(R.string.compare_lists_desc),
                 icon = R.drawable.ic_round_compare_arrows_24,
                 onClick = {
-                    startActivity(Intent(this, ListSyncCompareActivity::class.java))
+                    SettingsPageTransitions.open(this, it, ListSyncCompareActivity::class.java)
                 },
                 isActivity = true,
                 isVisible = MAL.token != null || Kitsu.token != null ||
@@ -117,7 +116,7 @@ class SettingsListSyncActivity : AppCompatActivity() {
                 desc = getString(R.string.comick_unmatched_desc),
                 icon = R.drawable.ic_round_comick_24,
                 onClick = {
-                    startActivity(Intent(this, ComickUnmatchedActivity::class.java))
+                    SettingsPageTransitions.open(this, it, ComickUnmatchedActivity::class.java)
                 },
                 isActivity = true,
                 isVisible = Comick.token != null,
