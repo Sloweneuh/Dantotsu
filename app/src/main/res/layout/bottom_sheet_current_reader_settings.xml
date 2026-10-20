@@ -71,54 +71,60 @@
                         tools:text="Continuous" />
                 </LinearLayout>
 
-                <androidx.cardview.widget.CardView
+                <com.google.android.material.button.MaterialButtonToggleGroup
+                    style="@style/Widget.Material3Expressive.MaterialButtonGroup.Connected"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    app:cardBackgroundColor="@android:color/transparent"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="0dp">
+                    android:layout_gravity="center_vertical"
+                    app:selectionRequired="true"
+                    app:singleSelection="true">
 
-                    <ani.dantotsu.others.ChoiceIconButton
+                    <ani.dantotsu.others.ChoiceToggleButton
                         android:id="@+id/readerPaged"
-                        android:layout_width="48dp"
+                        style="@style/Widget.Material3Expressive.Button.TonalButton"
+                        android:layout_width="52dp"
                         android:layout_height="48dp"
                         android:alpha="0.33"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:minWidth="0dp"
+                        android:padding="0dp"
                         android:scaleX="-1"
-                        android:src="@drawable/ic_round_amp_stories_24"
-                        tools:ignore="ContentDescription,SpeakableTextPresentCheck,ImageContrastCheck" />
-                </androidx.cardview.widget.CardView>
+                        app:icon="@drawable/ic_round_amp_stories_24"
+                        app:iconGravity="textStart"
+                        app:iconPadding="0dp"
+                        tools:ignore="ContentDescription,SpeakableTextPresentCheck" />
 
-                <androidx.cardview.widget.CardView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    app:cardBackgroundColor="@android:color/transparent"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="0dp">
-
-                    <ani.dantotsu.others.ChoiceIconButton
+                    <ani.dantotsu.others.ChoiceToggleButton
                         android:id="@+id/readerContinuousPaged"
-                        android:layout_width="48dp"
+                        style="@style/Widget.Material3Expressive.Button.TonalButton"
+                        android:layout_width="52dp"
                         android:layout_height="48dp"
                         android:alpha="0.33"
-                        android:src="@drawable/ic_round_view_array_24"
-                        tools:ignore="ContentDescription,SpeakableTextPresentCheck,ImageContrastCheck,DuplicateSpeakableTextCheck" />
-                </androidx.cardview.widget.CardView>
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:minWidth="0dp"
+                        android:padding="0dp"
+                        app:icon="@drawable/ic_round_view_array_24"
+                        app:iconGravity="textStart"
+                        app:iconPadding="0dp"
+                        tools:ignore="ContentDescription,SpeakableTextPresentCheck" />
 
-                <androidx.cardview.widget.CardView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    app:cardBackgroundColor="@android:color/transparent"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="0dp">
-
-                    <ani.dantotsu.others.ChoiceIconButton
+                    <ani.dantotsu.others.ChoiceToggleButton
                         android:id="@+id/readerContinuous"
-                        android:layout_width="48dp"
+                        style="@style/Widget.Material3Expressive.Button.TonalButton"
+                        android:layout_width="52dp"
                         android:layout_height="48dp"
                         android:alpha="0.33"
-                        android:src="@drawable/ic_round_view_column_24"
-                        tools:ignore="ContentDescription,SpeakableTextPresentCheck,ImageContrastCheck" />
-                </androidx.cardview.widget.CardView>
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:minWidth="0dp"
+                        android:padding="0dp"
+                        app:icon="@drawable/ic_round_view_column_24"
+                        app:iconGravity="textStart"
+                        app:iconPadding="0dp"
+                        tools:ignore="ContentDescription,SpeakableTextPresentCheck" />
+                </com.google.android.material.button.MaterialButtonToggleGroup>
 
             </LinearLayout>
 
@@ -153,73 +159,77 @@
                 </LinearLayout>
 
                 <!-- One button per direction, in Directions order, each arrow pointing the way the pages go. -->
-                <androidx.cardview.widget.CardView
+                <com.google.android.material.button.MaterialButtonToggleGroup
+                    style="@style/Widget.Material3Expressive.MaterialButtonGroup.Connected"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    app:cardBackgroundColor="@android:color/transparent"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="0dp">
+                    android:layout_gravity="center_vertical"
+                    app:selectionRequired="true"
+                    app:singleSelection="true">
 
-                    <ani.dantotsu.others.ChoiceIconButton
+                    <ani.dantotsu.others.ChoiceToggleButton
                         android:id="@+id/readerDirectionTtb"
-                        android:layout_width="48dp"
+                        style="@style/Widget.Material3Expressive.Button.TonalButton"
+                        android:layout_width="52dp"
                         android:layout_height="48dp"
                         android:alpha="0.33"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:minWidth="0dp"
+                        android:padding="0dp"
                         android:rotation="180"
-                        android:src="@drawable/ic_round_swipe_up_alt_24"
-                        tools:ignore="SpeakableTextPresentCheck,ImageContrastCheck" />
-                </androidx.cardview.widget.CardView>
+                        app:icon="@drawable/ic_round_swipe_up_alt_24"
+                        app:iconGravity="textStart"
+                        app:iconPadding="0dp"
+                        tools:ignore="ContentDescription,SpeakableTextPresentCheck" />
 
-                <androidx.cardview.widget.CardView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    app:cardBackgroundColor="@android:color/transparent"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="0dp">
-
-                    <ani.dantotsu.others.ChoiceIconButton
+                    <ani.dantotsu.others.ChoiceToggleButton
                         android:id="@+id/readerDirectionRtl"
-                        android:layout_width="48dp"
+                        style="@style/Widget.Material3Expressive.Button.TonalButton"
+                        android:layout_width="52dp"
                         android:layout_height="48dp"
                         android:alpha="0.33"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:minWidth="0dp"
+                        android:padding="0dp"
                         android:rotation="270"
-                        android:src="@drawable/ic_round_swipe_up_alt_24"
-                        tools:ignore="SpeakableTextPresentCheck,ImageContrastCheck" />
-                </androidx.cardview.widget.CardView>
+                        app:icon="@drawable/ic_round_swipe_up_alt_24"
+                        app:iconGravity="textStart"
+                        app:iconPadding="0dp"
+                        tools:ignore="ContentDescription,SpeakableTextPresentCheck" />
 
-                <androidx.cardview.widget.CardView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    app:cardBackgroundColor="@android:color/transparent"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="0dp">
-
-                    <ani.dantotsu.others.ChoiceIconButton
+                    <ani.dantotsu.others.ChoiceToggleButton
                         android:id="@+id/readerDirectionBtt"
-                        android:layout_width="48dp"
+                        style="@style/Widget.Material3Expressive.Button.TonalButton"
+                        android:layout_width="52dp"
                         android:layout_height="48dp"
                         android:alpha="0.33"
-                        android:rotation="0"
-                        android:src="@drawable/ic_round_swipe_up_alt_24"
-                        tools:ignore="SpeakableTextPresentCheck,ImageContrastCheck" />
-                </androidx.cardview.widget.CardView>
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:minWidth="0dp"
+                        android:padding="0dp"
+                        app:icon="@drawable/ic_round_swipe_up_alt_24"
+                        app:iconGravity="textStart"
+                        app:iconPadding="0dp"
+                        tools:ignore="ContentDescription,SpeakableTextPresentCheck" />
 
-                <androidx.cardview.widget.CardView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    app:cardBackgroundColor="@android:color/transparent"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="0dp">
-
-                    <ani.dantotsu.others.ChoiceIconButton
+                    <ani.dantotsu.others.ChoiceToggleButton
                         android:id="@+id/readerDirectionLtr"
-                        android:layout_width="48dp"
+                        style="@style/Widget.Material3Expressive.Button.TonalButton"
+                        android:layout_width="52dp"
                         android:layout_height="48dp"
                         android:alpha="0.33"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:minWidth="0dp"
+                        android:padding="0dp"
                         android:rotation="90"
-                        android:src="@drawable/ic_round_swipe_up_alt_24"
-                        tools:ignore="SpeakableTextPresentCheck,ImageContrastCheck" />
-                </androidx.cardview.widget.CardView>
+                        app:icon="@drawable/ic_round_swipe_up_alt_24"
+                        app:iconGravity="textStart"
+                        app:iconPadding="0dp"
+                        tools:ignore="ContentDescription,SpeakableTextPresentCheck" />
+                </com.google.android.material.button.MaterialButtonToggleGroup>
 
             </LinearLayout>
 
@@ -255,54 +265,60 @@
                         tools:text="Force" />
                 </LinearLayout>
 
-                <androidx.cardview.widget.CardView
+                <com.google.android.material.button.MaterialButtonToggleGroup
+                    style="@style/Widget.Material3Expressive.MaterialButtonGroup.Connected"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    app:cardBackgroundColor="@android:color/transparent"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="0dp">
+                    android:layout_gravity="center_vertical"
+                    app:selectionRequired="true"
+                    app:singleSelection="true">
 
-                    <ani.dantotsu.others.ChoiceIconButton
+                    <ani.dantotsu.others.ChoiceToggleButton
                         android:id="@+id/readerDualNo"
-                        android:layout_width="48dp"
+                        style="@style/Widget.Material3Expressive.Button.TonalButton"
+                        android:layout_width="52dp"
                         android:layout_height="48dp"
                         android:alpha="0.33"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:minWidth="0dp"
+                        android:padding="0dp"
                         android:scaleX="-1"
-                        android:src="@drawable/ic_round_close_24"
-                        tools:ignore="ContentDescription,SpeakableTextPresentCheck,ImageContrastCheck" />
-                </androidx.cardview.widget.CardView>
+                        app:icon="@drawable/ic_round_close_24"
+                        app:iconGravity="textStart"
+                        app:iconPadding="0dp"
+                        tools:ignore="ContentDescription,SpeakableTextPresentCheck" />
 
-                <androidx.cardview.widget.CardView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    app:cardBackgroundColor="@android:color/transparent"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="0dp">
-
-                    <ani.dantotsu.others.ChoiceIconButton
+                    <ani.dantotsu.others.ChoiceToggleButton
                         android:id="@+id/readerDualAuto"
-                        android:layout_width="48dp"
+                        style="@style/Widget.Material3Expressive.Button.TonalButton"
+                        android:layout_width="52dp"
                         android:layout_height="48dp"
                         android:alpha="0.33"
-                        android:src="@drawable/ic_round_screen_rotation_24"
-                        tools:ignore="ContentDescription,SpeakableTextPresentCheck,ImageContrastCheck,DuplicateSpeakableTextCheck" />
-                </androidx.cardview.widget.CardView>
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:minWidth="0dp"
+                        android:padding="0dp"
+                        app:icon="@drawable/ic_round_screen_rotation_24"
+                        app:iconGravity="textStart"
+                        app:iconPadding="0dp"
+                        tools:ignore="ContentDescription,SpeakableTextPresentCheck" />
 
-                <androidx.cardview.widget.CardView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    app:cardBackgroundColor="@android:color/transparent"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="0dp">
-
-                    <ani.dantotsu.others.ChoiceIconButton
+                    <ani.dantotsu.others.ChoiceToggleButton
                         android:id="@+id/readerDualForce"
-                        android:layout_width="48dp"
+                        style="@style/Widget.Material3Expressive.Button.TonalButton"
+                        android:layout_width="52dp"
                         android:layout_height="48dp"
                         android:alpha="0.33"
-                        android:src="@drawable/ic_round_menu_book_24"
-                        tools:ignore="ContentDescription,SpeakableTextPresentCheck,ImageContrastCheck" />
-                </androidx.cardview.widget.CardView>
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:minWidth="0dp"
+                        android:padding="0dp"
+                        app:icon="@drawable/ic_round_menu_book_24"
+                        app:iconGravity="textStart"
+                        app:iconPadding="0dp"
+                        tools:ignore="ContentDescription,SpeakableTextPresentCheck" />
+                </com.google.android.material.button.MaterialButtonToggleGroup>
 
             </LinearLayout>
 

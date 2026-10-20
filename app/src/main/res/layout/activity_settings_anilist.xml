@@ -183,7 +183,7 @@
             <ani.dantotsu.FadingEdgeRecyclerView
                 android:id="@+id/settingsRecyclerView1"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
+                android:layout_height="wrap_content"
                 android:layout_marginBottom="14dp"
                 android:layout_marginHorizontal="32dp"
                 android:nestedScrollingEnabled="false"
@@ -382,7 +382,7 @@
         <ani.dantotsu.FadingEdgeRecyclerView
             android:id="@+id/settingsRecyclerView2"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
+            android:layout_height="wrap_content"
             android:layout_marginHorizontal="32dp"
             android:nestedScrollingEnabled="false"
             android:requiresFadingEdge="vertical"

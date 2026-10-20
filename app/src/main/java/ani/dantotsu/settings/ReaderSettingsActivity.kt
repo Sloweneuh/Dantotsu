@@ -3,16 +3,14 @@ package ani.dantotsu.settings
 import android.content.Intent
 import android.os.Bundle
 import android.text.util.Linkify
-import android.view.View
 import android.view.ViewGroup
-import android.widget.AdapterView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
 import androidx.lifecycle.lifecycleScope
-import ani.dantotsu.NoPaddingArrayAdapter
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
 import ani.dantotsu.restartApp
 import ani.dantotsu.databinding.ActivityReaderSettingsBinding
@@ -45,7 +43,11 @@ class ReaderSettingsActivity : AppCompatActivity() {
         ThemeManager(this).applyTheme()
         binding = ActivityReaderSettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        SettingsRouter.handleHighlight(this, binding.settingsRecyclerView)
+        SettingsRouter.handleHighlight(
+            this, binding.settingsRecyclerView, binding.readerMangaTopRows, binding.readerMangaRows,
+            binding.readerMtlRows, binding.readerNovelRows, binding.readerGeneralRows,
+            binding.readerProgressRows,
+        )
         bindLibraryRows()
         Xpandable.consumeRelaunch(Xpandable.SCOPE_READER)
 
@@ -59,487 +61,389 @@ class ReaderSettingsActivity : AppCompatActivity() {
             onBackPressedDispatcher.onBackPressed()
         }
 
-        //Manga Settings
-        binding.readerSettingsSourceName.isChecked = PrefManager.getVal(PrefName.ShowSource)
-        binding.readerSettingsSourceName.setOnCheckedChangeListener { _, isChecked ->
-            PrefManager.setVal(PrefName.ShowSource, isChecked)
-        }
-
-        binding.readerSettingsSystemBars.isChecked = PrefManager.getVal(PrefName.ShowSystemBars)
-        binding.readerSettingsSystemBars.setOnCheckedChangeListener { _, isChecked ->
-            PrefManager.setVal(PrefName.ShowSystemBars, isChecked)
-        }
-        //Default Manga
-        binding.readerSettingsAutoWebToon.isChecked = PrefManager.getVal(PrefName.AutoDetectWebtoon)
-        binding.readerSettingsAutoWebToon.setOnCheckedChangeListener { _, isChecked ->
-            PrefManager.setVal(PrefName.AutoDetectWebtoon, isChecked)
-        }
-
-
-        val layoutList = listOf(
-            binding.readerSettingsPaged,
-            binding.readerSettingsContinuousPaged,
-            binding.readerSettingsContinuous
-        )
-
-        binding.readerSettingsLayoutText.text =
-            resources.getStringArray(R.array.manga_layouts)[defaultSettings.layout.ordinal]
-        var selectedLayout = layoutList[defaultSettings.layout.ordinal]
-        selectedLayout.alpha = 1f
-
-        layoutList.forEachIndexed { index, imageButton ->
-            imageButton.setOnClickListener {
-                selectedLayout.alpha = 0.33f
-                selectedLayout = imageButton
-                selectedLayout.alpha = 1f
-                defaultSettings.layout =
-                    CurrentReaderSettings.Layouts[index] ?: CurrentReaderSettings.Layouts.CONTINUOUS
-                binding.readerSettingsLayoutText.text =
-                    resources.getStringArray(R.array.manga_layouts)[defaultSettings.layout.ordinal]
-                PrefManager.setVal(PrefName.LayoutReader, defaultSettings.layout.ordinal)
-            }
-        }
-
-        // One button per direction, in Directions order — picked directly rather than cycled to.
-        val directionNames = resources.getStringArray(R.array.manga_directions)
-        val directions = listOf(
-            binding.readerSettingsDirectionTtb,
-            binding.readerSettingsDirectionRtl,
-            binding.readerSettingsDirectionBtt,
-            binding.readerSettingsDirectionLtr,
-        )
-        binding.readerSettingsDirectionText.text = directionNames[defaultSettings.direction.ordinal]
-        directions.forEachIndexed { index, button ->
-            button.contentDescription = directionNames[index]
-            button.alpha = if (index == defaultSettings.direction.ordinal) 1f else 0.33f
-            button.setOnClickListener {
-                defaultSettings.direction = CurrentReaderSettings.Directions[index]
-                    ?: CurrentReaderSettings.Directions.TOP_TO_BOTTOM
-                directions.forEachIndexed { i, b -> b.alpha = if (i == index) 1f else 0.33f }
-                binding.readerSettingsDirectionText.text = directionNames[index]
-                PrefManager.setVal(PrefName.Direction, defaultSettings.direction.ordinal)
-            }
-        }
-
-        val dualList = listOf(
-            binding.readerSettingsDualNo,
-            binding.readerSettingsDualAuto,
-            binding.readerSettingsDualForce
-        )
-
-        binding.readerSettingsDualPageText.text = defaultSettings.dualPageMode.toString()
-        var selectedDual = dualList[defaultSettings.dualPageMode.ordinal]
-        selectedDual.alpha = 1f
-
-        dualList.forEachIndexed { index, imageButton ->
-            imageButton.setOnClickListener {
-                selectedDual.alpha = 0.33f
-                selectedDual = imageButton
-                selectedDual.alpha = 1f
-                defaultSettings.dualPageMode = CurrentReaderSettings.DualPageModes[index]
-                    ?: CurrentReaderSettings.DualPageModes.Automatic
-                binding.readerSettingsDualPageText.text = defaultSettings.dualPageMode.toString()
-                PrefManager.setVal(
-                    PrefName.DualPageModeReader,
-                    defaultSettings.dualPageMode.ordinal
-                )
-            }
-        }
-        binding.readerSettingsTrueColors.isChecked = defaultSettings.trueColors
-        binding.readerSettingsTrueColors.setOnCheckedChangeListener { _, isChecked ->
-            defaultSettings.trueColors = isChecked
-            PrefManager.setVal(PrefName.TrueColors, isChecked)
-        }
-
-        binding.readerSettingsCropBorders.isChecked = defaultSettings.cropBorders
-        binding.readerSettingsCropBorders.setOnCheckedChangeListener { _, isChecked ->
-            defaultSettings.cropBorders = isChecked
-            PrefManager.setVal(PrefName.CropBorders, isChecked)
-        }
-
-        binding.readerSettingsImageRotation.isChecked = defaultSettings.rotation
-        binding.readerSettingsImageRotation.setOnCheckedChangeListener { _, isChecked ->
-            defaultSettings.rotation = isChecked
-            PrefManager.setVal(PrefName.Rotation, isChecked)
-        }
-
-        binding.readerSettingsHorizontalScrollBar.isChecked = defaultSettings.horizontalScrollBar
-        binding.readerSettingsHorizontalScrollBar.setOnCheckedChangeListener { _, isChecked ->
-            defaultSettings.horizontalScrollBar = isChecked
-            PrefManager.setVal(PrefName.HorizontalScrollBar, isChecked)
-        }
-        binding.readerSettingsPadding.isChecked = defaultSettings.padding
-        binding.readerSettingsPadding.setOnCheckedChangeListener { _, isChecked ->
-            defaultSettings.padding = isChecked
-            PrefManager.setVal(PrefName.Padding, isChecked)
-        }
-
-        binding.readerSettingsSmartPadding.isChecked = PrefManager.getVal(PrefName.SmartPadding)
-        binding.readerSettingsSmartPadding.setOnCheckedChangeListener { _, isChecked ->
-            PrefManager.setVal(PrefName.SmartPadding, isChecked)
-        }
-
-        binding.readerSettingsKeepScreenOn.isChecked = defaultSettings.keepScreenOn
-        binding.readerSettingsKeepScreenOn.setOnCheckedChangeListener { _, isChecked ->
-            defaultSettings.keepScreenOn = isChecked
-            PrefManager.setVal(PrefName.KeepScreenOn, isChecked)
-        }
-
-        binding.readerSettingsLockRotation.isChecked = defaultSettings.lockRotation
-        binding.readerSettingsLockRotation.setOnCheckedChangeListener { _, isChecked ->
-            defaultSettings.lockRotation = isChecked
-            PrefManager.setVal(PrefName.LockRotation, isChecked)
-        }
-
-        binding.readerSettingsHideScrollBar.isChecked = defaultSettings.hideScrollBar
-        binding.readerSettingsHideScrollBar.setOnCheckedChangeListener { _, isChecked ->
-            defaultSettings.hideScrollBar = isChecked
-            PrefManager.setVal(PrefName.HideScrollBar, isChecked)
-        }
-
-        binding.readerSettingsHidePageNumbers.isChecked = defaultSettings.hidePageNumbers
-        binding.readerSettingsHidePageNumbers.setOnCheckedChangeListener { _, isChecked ->
-            defaultSettings.hidePageNumbers = isChecked
-            PrefManager.setVal(PrefName.HidePageNumbers, isChecked)
-        }
-
-        binding.readerSettingsOverscroll.isChecked = defaultSettings.overScrollMode
-        binding.readerSettingsOverscroll.setOnCheckedChangeListener { _, isChecked ->
-            defaultSettings.overScrollMode = isChecked
-            PrefManager.setVal(PrefName.OverScrollMode, isChecked)
-        }
-
-        binding.readerSettingsVolumeButton.isChecked = defaultSettings.volumeButtons
-        binding.readerSettingsVolumeButton.setOnCheckedChangeListener { _, isChecked ->
-            defaultSettings.volumeButtons = isChecked
-            PrefManager.setVal(PrefName.VolumeButtonsReader, isChecked)
-        }
-
-        binding.readerSettingsWrapImages.isChecked = defaultSettings.wrapImages
-        binding.readerSettingsWrapImages.setOnCheckedChangeListener { _, isChecked ->
-            defaultSettings.wrapImages = isChecked
-            PrefManager.setVal(PrefName.WrapImages, isChecked)
-        }
-
-        binding.readerSettingsLongClickImage.isChecked = defaultSettings.longClickImage
-        binding.readerSettingsLongClickImage.setOnCheckedChangeListener { _, isChecked ->
-            defaultSettings.longClickImage = isChecked
-            PrefManager.setVal(PrefName.LongClickImage, isChecked)
-        }
-
-        binding.readerSettingsPreloadAmount.setText(defaultSettings.preloadAmount.toString())
-        binding.readerSettingsPreloadAmount.setOnFocusChangeListener { _, hasFocus ->
-            if (!hasFocus) {
-                val value = (binding.readerSettingsPreloadAmount.text.toString().toIntOrNull()
-                    ?: defaultSettings.preloadAmount).coerceIn(4, 20)
-                defaultSettings.preloadAmount = value
-                binding.readerSettingsPreloadAmount.setText(value.toString())
-                PrefManager.setVal(PrefName.PreloadAmount, value)
-            }
-        }
-
-        binding.readerSettingsIncrementPreloadAmount.setOnClickListener {
-            val value = (defaultSettings.preloadAmount + 1).coerceIn(4, 20)
-            defaultSettings.preloadAmount = value
-            binding.readerSettingsPreloadAmount.setText(value.toString())
-            PrefManager.setVal(PrefName.PreloadAmount, value)
-        }
-
-        binding.readerSettingsDecrementPreloadAmount.setOnClickListener {
-            val value = (defaultSettings.preloadAmount - 1).coerceIn(4, 20)
-            defaultSettings.preloadAmount = value
-            binding.readerSettingsPreloadAmount.setText(value.toString())
-            PrefManager.setVal(PrefName.PreloadAmount, value)
-        }
-
-        // Autoscroll speed (clamp stored preference to slider bounds)
-        run {
-            val pref = PrefManager.getVal<Float>(PrefName.AutoScrollSpeed)
-            val from = binding.readerSettingsAutoscrollSpeed.valueFrom
-            val to = binding.readerSettingsAutoscrollSpeed.valueTo
-            val clamped = when {
-                pref < from -> from
-                pref > to -> to
-                else -> pref
-            }
-            binding.readerSettingsAutoscrollSpeed.value = clamped
-        }
-        binding.readerSettingsAutoscrollEnabled.isChecked = PrefManager.getVal(PrefName.AutoScrollEnabled)
-        binding.readerSettingsAutoscrollEnabled.setOnCheckedChangeListener { _, isChecked ->
-            PrefManager.setVal(PrefName.AutoScrollEnabled, isChecked)
-        }
-        binding.readerSettingsAutoscrollSpeed.addOnChangeListener { _, value, _ ->
-            PrefManager.setVal(PrefName.AutoScrollSpeed, value)
-        }
-
-        binding.readerSettingsContinuousMultiChapter.isChecked = PrefManager.getVal(PrefName.ContinuousMultiChapter)
-        binding.readerSettingsContinuousMultiChapter.setOnCheckedChangeListener { _, isChecked ->
-            PrefManager.setVal(PrefName.ContinuousMultiChapter, isChecked)
-        }
-
-        //LN settings
-        // The same picker the reader's own sheet shows, minus whatever theme the open book adds —
-        // there is no book here. Without it, a default set in the reader had no counterpart in
-        // settings, which is the one control the two screens did not share.
-        val themeNames = NovelReaderActivity.THEME_NAMES
-        binding.LNthemeSelect.adapter =
-            NoPaddingArrayAdapter(this, R.layout.item_dropdown, themeNames)
-        binding.LNthemeSelect.setSelection(
-            themeNames.indexOfFirst { it.equals(defaultSettingsLN.currentThemeName, true) }
-                .coerceAtLeast(0),
-            false
-        )
-        binding.LNthemeSelect.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(p: AdapterView<*>?, v: View?, position: Int, id: Long) {
-                // Fires once for the selection set above; re-applying then would overwrite a saved
-                // theme with whatever the list happened to start on.
-                if (themeNames[position] == defaultSettingsLN.currentThemeName) return
-                defaultSettingsLN.currentThemeName = themeNames[position]
-                PrefManager.setVal(PrefName.CurrentThemeName, themeNames[position])
-            }
-
-            override fun onNothingSelected(p: AdapterView<*>?) {}
-        }
-
-        val layoutListLN = listOf(
-            binding.LNpaged,
-            binding.LNcontinuous
-        )
-
-        binding.LNlayoutText.text = defaultSettingsLN.layout.string
-        var selectedLN = layoutListLN[defaultSettingsLN.layout.ordinal]
-        selectedLN.alpha = 1f
-
-        layoutListLN.forEachIndexed { index, imageButton ->
-            imageButton.setOnClickListener {
-                selectedLN.alpha = 0.33f
-                selectedLN = imageButton
-                selectedLN.alpha = 1f
-                defaultSettingsLN.layout = CurrentNovelReaderSettings.Layouts[index]
-                    ?: CurrentNovelReaderSettings.Layouts.PAGED
-                binding.LNlayoutText.text = defaultSettingsLN.layout.string
-                PrefManager.setVal(PrefName.LayoutNovel, defaultSettingsLN.layout.ordinal)
-            }
-        }
-
-        val dualListLN = listOf(
-            binding.LNdualNo,
-            binding.LNdualAuto,
-            binding.LNdualForce
-        )
-
-        binding.LNdualPageText.text = defaultSettingsLN.dualPageMode.toString()
-        var selectedDualLN = dualListLN[defaultSettingsLN.dualPageMode.ordinal]
-        selectedDualLN.alpha = 1f
-
-        dualListLN.forEachIndexed { index, imageButton ->
-            imageButton.setOnClickListener {
-                selectedDualLN.alpha = 0.33f
-                selectedDualLN = imageButton
-                selectedDualLN.alpha = 1f
-                defaultSettingsLN.dualPageMode = CurrentReaderSettings.DualPageModes[index]
-                    ?: CurrentReaderSettings.DualPageModes.Automatic
-                binding.LNdualPageText.text = defaultSettingsLN.dualPageMode.toString()
-                PrefManager.setVal(
-                    PrefName.DualPageModeNovel,
-                    defaultSettingsLN.dualPageMode.ordinal
-                )
-            }
-        }
-
-        binding.LNlineHeight.setText(defaultSettingsLN.lineHeight.toString())
-        binding.LNlineHeight.setOnFocusChangeListener { _, hasFocus ->
-            if (!hasFocus) {
-                val value = binding.LNlineHeight.text.toString().toFloatOrNull() ?: 1.4f
-                defaultSettingsLN.lineHeight = value
-                binding.LNlineHeight.setText(value.toString())
-                PrefManager.setVal(PrefName.LineHeight, value)
-            }
-        }
-
-        binding.LNincrementLineHeight.setOnClickListener {
-            val value = binding.LNlineHeight.text.toString().toFloatOrNull() ?: 1.4f
-            defaultSettingsLN.lineHeight = value + 0.1f
-            binding.LNlineHeight.setText(defaultSettingsLN.lineHeight.toString())
-            PrefManager.setVal(PrefName.LineHeight, defaultSettingsLN.lineHeight)
-        }
-
-        binding.LNdecrementLineHeight.setOnClickListener {
-            val value = binding.LNlineHeight.text.toString().toFloatOrNull() ?: 1.4f
-            defaultSettingsLN.lineHeight = value - 0.1f
-            binding.LNlineHeight.setText(defaultSettingsLN.lineHeight.toString())
-            PrefManager.setVal(PrefName.LineHeight, defaultSettingsLN.lineHeight)
-        }
-
-        binding.LNmargin.setText(defaultSettingsLN.margin.toString())
-        binding.LNmargin.setOnFocusChangeListener { _, hasFocus ->
-            if (!hasFocus) {
-                val value = binding.LNmargin.text.toString().toFloatOrNull() ?: 0.06f
-                defaultSettingsLN.margin = value
-                binding.LNmargin.setText(value.toString())
-                PrefManager.setVal(PrefName.Margin, value)
-            }
-        }
-
-        binding.LNincrementMargin.setOnClickListener {
-            val value = binding.LNmargin.text.toString().toFloatOrNull() ?: 0.06f
-            defaultSettingsLN.margin = value + 0.01f
-            binding.LNmargin.setText(defaultSettingsLN.margin.toString())
-            PrefManager.setVal(PrefName.Margin, defaultSettingsLN.margin)
-        }
-
-        binding.LNdecrementMargin.setOnClickListener {
-            val value = binding.LNmargin.text.toString().toFloatOrNull() ?: 0.06f
-            defaultSettingsLN.margin = value - 0.01f
-            binding.LNmargin.setText(defaultSettingsLN.margin.toString())
-            PrefManager.setVal(PrefName.Margin, defaultSettingsLN.margin)
-        }
-
-        binding.LNmaxInlineSize.setText(defaultSettingsLN.maxInlineSize.toString())
-        binding.LNmaxInlineSize.setOnFocusChangeListener { _, hasFocus ->
-            if (!hasFocus) {
-                val value = binding.LNmaxInlineSize.text.toString().toIntOrNull() ?: 720
-                defaultSettingsLN.maxInlineSize = value
-                binding.LNmaxInlineSize.setText(value.toString())
-                PrefManager.setVal(PrefName.MaxInlineSize, value)
-            }
-        }
-
-        binding.LNincrementMaxInlineSize.setOnClickListener {
-            val value = binding.LNmaxInlineSize.text.toString().toIntOrNull() ?: 720
-            defaultSettingsLN.maxInlineSize = value + 10
-            binding.LNmaxInlineSize.setText(defaultSettingsLN.maxInlineSize.toString())
-            PrefManager.setVal(PrefName.MaxInlineSize, defaultSettingsLN.maxInlineSize)
-        }
-
-        binding.LNdecrementMaxInlineSize.setOnClickListener {
-            val value = binding.LNmaxInlineSize.text.toString().toIntOrNull() ?: 720
-            defaultSettingsLN.maxInlineSize = value - 10
-            binding.LNmaxInlineSize.setText(defaultSettingsLN.maxInlineSize.toString())
-            PrefManager.setVal(PrefName.MaxInlineSize, defaultSettingsLN.maxInlineSize)
-        }
-
-        binding.LNmaxBlockSize.setText(defaultSettingsLN.maxBlockSize.toString())
-        binding.LNmaxBlockSize.setOnFocusChangeListener { _, hasFocus ->
-            if (!hasFocus) {
-                val value = binding.LNmaxBlockSize.text.toString().toIntOrNull() ?: 720
-                defaultSettingsLN.maxBlockSize = value
-                binding.LNmaxBlockSize.setText(value.toString())
-                PrefManager.setVal(PrefName.MaxBlockSize, value)
-            }
-        }
-        binding.LNincrementMaxBlockSize.setOnClickListener {
-            val value = binding.LNmaxBlockSize.text.toString().toIntOrNull() ?: 720
-            defaultSettingsLN.maxBlockSize = value + 10
-            binding.LNmaxBlockSize.setText(defaultSettingsLN.maxBlockSize.toString())
-            PrefManager.setVal(PrefName.MaxBlockSize, defaultSettingsLN.maxBlockSize)
-        }
-
-        binding.LNdecrementMaxBlockSize.setOnClickListener {
-            val value = binding.LNmaxBlockSize.text.toString().toIntOrNull() ?: 720
-            defaultSettingsLN.maxBlockSize = value - 10
-            binding.LNmaxBlockSize.setText(defaultSettingsLN.maxBlockSize.toString())
-            PrefManager.setVal(PrefName.MaxBlockSize, defaultSettingsLN.maxBlockSize)
-        }
-
-        binding.LNjustify.isChecked = defaultSettingsLN.justify
-        binding.LNjustify.setOnCheckedChangeListener { _, isChecked ->
-            defaultSettingsLN.justify = isChecked
-            PrefManager.setVal(PrefName.Justify, isChecked)
-        }
-
-        binding.LNhyphenation.isChecked = defaultSettingsLN.hyphenation
-        binding.LNhyphenation.setOnCheckedChangeListener { _, isChecked ->
-            defaultSettingsLN.hyphenation = isChecked
-            PrefManager.setVal(PrefName.Hyphenation, isChecked)
-        }
-
-        binding.LNuseDarkTheme.isChecked = defaultSettingsLN.useDarkTheme
-        binding.LNuseDarkTheme.setOnCheckedChangeListener { _, isChecked ->
-            defaultSettingsLN.useDarkTheme = isChecked
-            PrefManager.setVal(PrefName.UseDarkThemeNovel, isChecked)
-        }
-
-        binding.LNuseOledTheme.isChecked = defaultSettingsLN.useOledTheme
-        binding.LNuseOledTheme.setOnCheckedChangeListener { _, isChecked ->
-            defaultSettingsLN.useOledTheme = isChecked
-            PrefManager.setVal(PrefName.UseOledThemeNovel, isChecked)
-        }
-
-        binding.LNlockRotation.isChecked = defaultSettingsLN.lockRotation
-        binding.LNlockRotation.setOnCheckedChangeListener { _, isChecked ->
-            defaultSettingsLN.lockRotation = isChecked
-            PrefManager.setVal(PrefName.LockRotationNovel, isChecked)
-        }
-
-        binding.LNhidePageNumbers.isChecked = defaultSettingsLN.hidePageNumbers
-        binding.LNhidePageNumbers.setOnCheckedChangeListener { _, isChecked ->
-            defaultSettingsLN.hidePageNumbers = isChecked
-            PrefManager.setVal(PrefName.HidePageNumbersNovel, isChecked)
-        }
-
-        binding.LNkeepScreenOn.isChecked = defaultSettingsLN.keepScreenOn
-        binding.LNkeepScreenOn.setOnCheckedChangeListener { _, isChecked ->
-            defaultSettingsLN.keepScreenOn = isChecked
-            PrefManager.setVal(PrefName.KeepScreenOnNovel, isChecked)
-        }
-
-        binding.LNvolumeButton.isChecked = defaultSettingsLN.volumeButtons
-        binding.LNvolumeButton.setOnCheckedChangeListener { _, isChecked ->
-            defaultSettingsLN.volumeButtons = isChecked
-            PrefManager.setVal(PrefName.VolumeButtonsNovel, isChecked)
-        }
-
+        // The on/off settings of every group, as standard rows; see bindRows.
+        bindRows()
         // OCR & MTL; delete with ani.dantotsu.spike
-        binding.readerSettingsOcrCalibration.setOnClickListener {
-            startActivity(Intent(this, MangaOcrSpikeActivity::class.java))
-        }
-        binding.readerSettingsMtlEnabled.isChecked = PrefManager.getVal(PrefName.OcrTranslateEnabled)
-        binding.readerSettingsMtlEnabled.setOnCheckedChangeListener { _, on ->
-            PrefManager.setVal(PrefName.OcrTranslateEnabled, on)
-        }
-        binding.readerSettingsNovelMtlEnabled.isChecked =
-            PrefManager.getVal(PrefName.NovelTranslateEnabled)
-        binding.readerSettingsNovelMtlEnabled.setOnCheckedChangeListener { _, on ->
-            PrefManager.setVal(PrefName.NovelTranslateEnabled, on)
-        }
-        bindMtlChoices()
-        bindOcrKey(
-            TranslationEngine.GEMINI,
-            binding.readerSettingsGeminiKey,
-            binding.readerSettingsGeminiKeyState,
-        )
-        bindOcrKey(
-            TranslationEngine.OPENROUTER,
-            binding.readerSettingsOpenRouterKey,
-            binding.readerSettingsOpenRouterKeyState,
+        refreshMtlRows()
+    }
+
+    /**
+     * Every group's on/off settings as standard settings rows — icon, title, description and switch
+     * in one row, as on the Player page — in the lists each group holds between its own controls.
+     * Each row reads and writes the same preference, and the same [defaultSettings] /
+     * [defaultSettingsLN] field, its hand-built switch did.
+     */
+    private fun bindRows() {
+        fun row(
+            name: Int,
+            icon: Int,
+            checked: Boolean,
+            desc: Int? = null,
+            enabled: Boolean = true,
+            onChange: (Boolean) -> Unit,
+        ) = Settings(
+            type = 2,
+            name = getString(name),
+            desc = desc?.let { getString(it) } ?: "",
+            icon = icon,
+            isChecked = checked,
+            isEnabled = enabled,
+            switch = { isChecked, _ -> onChange(isChecked) },
         )
 
-        binding.LNtextToSpeech.setOnClickListener {
-            NovelTtsSettingsBottomSheet.newInstance()
-                .show(supportFragmentManager, NovelTtsSettingsBottomSheet.TAG)
+        fun stepper(name: Int, icon: Int, desc: Int?, config: StepperConfig) = Settings(
+            type = 6,
+            name = getString(name),
+            desc = desc?.let { getString(it) } ?: "",
+            icon = icon,
+            stepper = config,
+        )
+
+        fun choice(
+            name: Int,
+            icon: Int,
+            desc: String,
+            options: List<ChoiceOption>,
+            selected: Int,
+            onSelect: (Int) -> Unit,
+        ) = Settings(
+            type = 5,
+            name = getString(name),
+            desc = desc,
+            icon = icon,
+            choice = ChoiceConfig(options, selected, onSelect),
+        )
+
+        /** Dual page's three modes, in DualPageModes order. */
+        fun dualOptions() = CurrentReaderSettings.DualPageModes.entries.map { mode ->
+            ChoiceOption(
+                when (mode) {
+                    CurrentReaderSettings.DualPageModes.No -> R.drawable.ic_round_close_24
+                    CurrentReaderSettings.DualPageModes.Automatic -> R.drawable.ic_round_screen_rotation_24
+                    CurrentReaderSettings.DualPageModes.Force -> R.drawable.ic_round_menu_book_24
+                },
+                mode.toString(),
+                flipHorizontally = mode == CurrentReaderSettings.DualPageModes.No,
+            )
         }
 
-        //Update Progress
-        binding.readerSettingsAskUpdateProgress.isChecked =
-            PrefManager.getVal(PrefName.AskIndividualReader)
-        binding.readerSettingsAskUpdateProgress.setOnCheckedChangeListener { _, isChecked ->
-            PrefManager.setVal(PrefName.AskIndividualReader, isChecked)
-            binding.readerSettingsAskChapterZero.isEnabled = !isChecked
+        /**
+         * A list whose rows show values that change from inside it (a choice's current option under
+         * its title): [build] is handed the refresh that rebuilds it, to call after a change.
+         */
+        fun bindRebuilt(list: RecyclerView, build: (refresh: () -> Unit) -> List<Settings>) {
+            val rows = ArrayList<Settings>()
+            val adapter = SettingsAdapter(rows, popIn = false)
+            lateinit var refresh: () -> Unit
+            refresh = {
+                rows.clear()
+                rows.addAll(build(refresh))
+                @Suppress("NotifyDataSetChanged") // A value and its description change together.
+                adapter.notifyDataSetChanged()
+            }
+            list.adapter = adapter
+            refresh()
         }
-        binding.readerSettingsAskChapterZero.isChecked =
-            PrefManager.getVal(PrefName.ChapterZeroReader)
-        binding.readerSettingsAskChapterZero.isEnabled =
-            !PrefManager.getVal<Boolean>(PrefName.AskIndividualReader)
-        binding.readerSettingsAskChapterZero.setOnCheckedChangeListener { _, isChecked ->
-            PrefManager.setVal(PrefName.ChapterZeroReader, isChecked)
+
+        fun bind(list: RecyclerView, rows: List<Settings>) {
+            list.adapter = SettingsAdapter(ArrayList(rows), popIn = false)
         }
-        binding.readerSettingsAskUpdateHentai.isChecked =
-            PrefManager.getVal(PrefName.UpdateForHReader)
-        binding.readerSettingsAskUpdateHentai.setOnCheckedChangeListener { _, isChecked ->
-            PrefManager.setVal(PrefName.UpdateForHReader, isChecked)
-            if (isChecked) snackString(getString(R.string.very_bold))
+
+        bindRebuilt(binding.readerMangaTopRows) { refresh ->
+            val layouts = resources.getStringArray(R.array.manga_layouts)
+            val directions = resources.getStringArray(R.array.manga_directions)
+            listOf(
+                row(R.string.auto_detect_webtoon, R.drawable.ic_round_auto_awesome_24,
+                    PrefManager.getVal(PrefName.AutoDetectWebtoon), R.string.auto_detect_webtoon_info) {
+                    PrefManager.setVal(PrefName.AutoDetectWebtoon, it)
+                },
+                choice(R.string.layout, R.drawable.ic_round_view_array_24,
+                    layouts[defaultSettings.layout.ordinal],
+                    listOf(
+                        ChoiceOption(R.drawable.ic_round_amp_stories_24, layouts[0], flipHorizontally = true),
+                        ChoiceOption(R.drawable.ic_round_view_array_24, layouts[1]),
+                        ChoiceOption(R.drawable.ic_round_view_column_24, layouts[2]),
+                    ),
+                    defaultSettings.layout.ordinal,
+                ) { i ->
+                    defaultSettings.layout =
+                        CurrentReaderSettings.Layouts[i] ?: CurrentReaderSettings.Layouts.CONTINUOUS
+                    PrefManager.setVal(PrefName.LayoutReader, defaultSettings.layout.ordinal)
+                    refresh()
+                },
+                // One arrow turned four ways, in Directions order — picked directly, not cycled to.
+                choice(R.string.direction, R.drawable.ic_round_swipe_vertical_24,
+                    directions[defaultSettings.direction.ordinal],
+                    listOf(180f, 270f, 0f, 90f).mapIndexed { i, degrees ->
+                        ChoiceOption(R.drawable.ic_round_swipe_up_alt_24, directions[i], rotation = degrees)
+                    },
+                    defaultSettings.direction.ordinal,
+                ) { i ->
+                    defaultSettings.direction = CurrentReaderSettings.Directions[i]
+                        ?: CurrentReaderSettings.Directions.TOP_TO_BOTTOM
+                    PrefManager.setVal(PrefName.Direction, defaultSettings.direction.ordinal)
+                    refresh()
+                },
+                choice(R.string.dual_page, R.drawable.ic_round_import_contacts_24,
+                    "${defaultSettings.dualPageMode}\n${getString(R.string.dual_page_info)}",
+                    dualOptions(),
+                    defaultSettings.dualPageMode.ordinal,
+                ) { i ->
+                    defaultSettings.dualPageMode = CurrentReaderSettings.DualPageModes[i]
+                        ?: CurrentReaderSettings.DualPageModes.Automatic
+                    PrefManager.setVal(PrefName.DualPageModeReader, defaultSettings.dualPageMode.ordinal)
+                    refresh()
+                },
+            )
         }
+
+        // Clamped to the slider's range: a stored speed from an older range can't sit off its ends.
+        val autoscrollSpeed = PrefManager.getVal<Float>(PrefName.AutoScrollSpeed).coerceIn(0.5f, 10f)
+        bind(binding.readerMangaRows, listOf(
+            row(R.string.over_scroll, R.drawable.ic_round_swipe_vertical_24, defaultSettings.overScrollMode) {
+                defaultSettings.overScrollMode = it
+                PrefManager.setVal(PrefName.OverScrollMode, it)
+            },
+            row(R.string.true_colors, R.drawable.ic_round_high_quality_24, defaultSettings.trueColors,
+                R.string.true_colors_info) {
+                defaultSettings.trueColors = it
+                PrefManager.setVal(PrefName.TrueColors, it)
+            },
+            row(R.string.image_rotation, R.drawable.ic_round_screen_rotation_alt_24, defaultSettings.rotation) {
+                defaultSettings.rotation = it
+                PrefManager.setVal(PrefName.Rotation, it)
+            },
+            row(R.string.crop_borders, R.drawable.ic_round_auto_awesome_24, defaultSettings.cropBorders) {
+                defaultSettings.cropBorders = it
+                PrefManager.setVal(PrefName.CropBorders, it)
+            },
+            row(R.string.spaced_pages, R.drawable.ic_round_space_bar_24, defaultSettings.padding) {
+                defaultSettings.padding = it
+                PrefManager.setVal(PrefName.Padding, it)
+            },
+            row(R.string.smart_spacing, R.drawable.ic_round_auto_awesome_24,
+                PrefManager.getVal(PrefName.SmartPadding), R.string.smart_spacing_info) {
+                PrefManager.setVal(PrefName.SmartPadding, it)
+            },
+            row(R.string.hide_scroll_bar, R.drawable.ic_round_no_scroll_bar, defaultSettings.hideScrollBar) {
+                defaultSettings.hideScrollBar = it
+                PrefManager.setVal(PrefName.HideScrollBar, it)
+            },
+            row(R.string.hide_page_numbers, R.drawable.ic_page_numbering, defaultSettings.hidePageNumbers) {
+                defaultSettings.hidePageNumbers = it
+                PrefManager.setVal(PrefName.HidePageNumbers, it)
+            },
+            row(R.string.horizontal_scroll_bar, R.drawable.ic_round_straighten_24,
+                defaultSettings.horizontalScrollBar) {
+                defaultSettings.horizontalScrollBar = it
+                PrefManager.setVal(PrefName.HorizontalScrollBar, it)
+            },
+            row(R.string.keep_screen_on, R.drawable.ic_baseline_screen_lock_portrait_24,
+                defaultSettings.keepScreenOn) {
+                defaultSettings.keepScreenOn = it
+                PrefManager.setVal(PrefName.KeepScreenOn, it)
+            },
+            row(R.string.lock_screen_rotation, R.drawable.ic_round_screen_rotation_24,
+                defaultSettings.lockRotation) {
+                defaultSettings.lockRotation = it
+                PrefManager.setVal(PrefName.LockRotation, it)
+            },
+            row(R.string.autoscroll, R.drawable.ic_round_play_arrow_24,
+                PrefManager.getVal(PrefName.AutoScrollEnabled)) {
+                PrefManager.setVal(PrefName.AutoScrollEnabled, it)
+            },
+            Settings(
+                type = 4,
+                name = getString(R.string.autoscroll_speed),
+                desc = "",
+                icon = R.drawable.ic_round_slow_motion_video_24,
+                slider = SliderConfig(
+                    from = 0.5f,
+                    to = 10f,
+                    stepSize = 0.5f,
+                    value = autoscrollSpeed,
+                    onChange = { PrefManager.setVal(PrefName.AutoScrollSpeed, it) },
+                    format = { "%.1f".format(it) },
+                ),
+            ),
+            row(R.string.volume_buttons, R.drawable.ic_round_touch_app_24, defaultSettings.volumeButtons) {
+                defaultSettings.volumeButtons = it
+                PrefManager.setVal(PrefName.VolumeButtonsReader, it)
+            },
+            row(R.string.wrap_images, R.drawable.ic_round_fullscreen_24, defaultSettings.wrapImages,
+                R.string.wrap_images_info) {
+                defaultSettings.wrapImages = it
+                PrefManager.setVal(PrefName.WrapImages, it)
+            },
+            row(R.string.image_long_clicking, R.drawable.ic_round_touch_app_24,
+                defaultSettings.longClickImage) {
+                defaultSettings.longClickImage = it
+                PrefManager.setVal(PrefName.LongClickImage, it)
+            },
+            stepper(R.string.preload_amount, R.drawable.ic_round_art_track_24, R.string.preload_amount_info,
+                StepperConfig(defaultSettings.preloadAmount.toFloat(), step = 1f, min = 4f, max = 20f) {
+                    defaultSettings.preloadAmount = it.toInt()
+                    PrefManager.setVal(PrefName.PreloadAmount, it.toInt())
+                }),
+        ))
+
+        binding.readerMtlRows.adapter = SettingsAdapter(mtlRows, popIn = false)
+
+        bindRebuilt(binding.readerNovelRows) { refresh -> listOf(
+            // The same themes the reader's own sheet offers, minus whatever theme the open book adds
+            // — there is no book here.
+            Settings(
+                type = 1,
+                name = getString(R.string.theme),
+                desc = defaultSettingsLN.currentThemeName,
+                icon = R.drawable.ic_palette,
+                onClick = {
+                    val names = NovelReaderActivity.THEME_NAMES.toTypedArray()
+                    val current = names.indexOfFirst { it.equals(defaultSettingsLN.currentThemeName, true) }
+                    customAlertDialog().apply {
+                        setTitle(R.string.theme)
+                        singleChoiceItems(names, current.coerceAtLeast(0)) { i ->
+                            defaultSettingsLN.currentThemeName = names[i]
+                            PrefManager.setVal(PrefName.CurrentThemeName, names[i])
+                            refresh()
+                        }
+                        show()
+                    }
+                },
+            ),
+            choice(R.string.layout, R.drawable.ic_round_view_array_24, defaultSettingsLN.layout.string,
+                listOf(
+                    ChoiceOption(R.drawable.ic_round_amp_stories_24,
+                        CurrentNovelReaderSettings.Layouts.PAGED.string, flipHorizontally = true),
+                    ChoiceOption(R.drawable.ic_round_view_column_24,
+                        CurrentNovelReaderSettings.Layouts.SCROLLED.string),
+                ),
+                defaultSettingsLN.layout.ordinal,
+            ) { i ->
+                defaultSettingsLN.layout =
+                    CurrentNovelReaderSettings.Layouts[i] ?: CurrentNovelReaderSettings.Layouts.PAGED
+                PrefManager.setVal(PrefName.LayoutNovel, defaultSettingsLN.layout.ordinal)
+                refresh()
+            },
+            choice(R.string.dual_page, R.drawable.ic_round_import_contacts_24,
+                defaultSettingsLN.dualPageMode.toString(),
+                dualOptions(),
+                defaultSettingsLN.dualPageMode.ordinal,
+            ) { i ->
+                defaultSettingsLN.dualPageMode = CurrentReaderSettings.DualPageModes[i]
+                    ?: CurrentReaderSettings.DualPageModes.Automatic
+                PrefManager.setVal(PrefName.DualPageModeNovel, defaultSettingsLN.dualPageMode.ordinal)
+                refresh()
+            },
+            stepper(R.string.novel_line_height, R.drawable.ic_format_line_spacing_24, null,
+                StepperConfig(defaultSettingsLN.lineHeight, step = 0.1f, decimals = 1) {
+                    defaultSettingsLN.lineHeight = it
+                    PrefManager.setVal(PrefName.LineHeight, it)
+                }),
+            stepper(R.string.novel_margin, R.drawable.ic_margin_24, null,
+                StepperConfig(defaultSettingsLN.margin, step = 0.01f, decimals = 2) {
+                    defaultSettingsLN.margin = it
+                    PrefManager.setVal(PrefName.Margin, it)
+                }),
+            stepper(R.string.novel_max_inline_size, R.drawable.ic_width_24, R.string.novel_max_inline_size_desc,
+                StepperConfig(defaultSettingsLN.maxInlineSize.toFloat(), step = 10f) {
+                    defaultSettingsLN.maxInlineSize = it.toInt()
+                    PrefManager.setVal(PrefName.MaxInlineSize, it.toInt())
+                }),
+            stepper(R.string.novel_max_block_size, R.drawable.ic_height_24, R.string.novel_max_block_size_desc,
+                StepperConfig(defaultSettingsLN.maxBlockSize.toFloat(), step = 10f) {
+                    defaultSettingsLN.maxBlockSize = it.toInt()
+                    PrefManager.setVal(PrefName.MaxBlockSize, it.toInt())
+                }),
+            row(R.string.justify_text, R.drawable.format_align_center_24, defaultSettingsLN.justify) {
+                defaultSettingsLN.justify = it
+                PrefManager.setVal(PrefName.Justify, it)
+            },
+            row(R.string.hyphenation, R.drawable.ic_round_format_text_24, defaultSettingsLN.hyphenation) {
+                defaultSettingsLN.hyphenation = it
+                PrefManager.setVal(PrefName.Hyphenation, it)
+            },
+            row(R.string.use_dark_theme, R.drawable.ic_round_brightness_4_24, defaultSettingsLN.useDarkTheme) {
+                defaultSettingsLN.useDarkTheme = it
+                PrefManager.setVal(PrefName.UseDarkThemeNovel, it)
+            },
+            row(R.string.use_oled_theme, R.drawable.ic_round_brightness_4_24, defaultSettingsLN.useOledTheme) {
+                defaultSettingsLN.useOledTheme = it
+                PrefManager.setVal(PrefName.UseOledThemeNovel, it)
+            },
+            row(R.string.lock_screen_rotation, R.drawable.ic_round_screen_rotation_24,
+                defaultSettingsLN.lockRotation) {
+                defaultSettingsLN.lockRotation = it
+                PrefManager.setVal(PrefName.LockRotationNovel, it)
+            },
+            row(R.string.hide_page_numbers, R.drawable.ic_page_numbering, defaultSettingsLN.hidePageNumbers) {
+                defaultSettingsLN.hidePageNumbers = it
+                PrefManager.setVal(PrefName.HidePageNumbersNovel, it)
+            },
+            row(R.string.keep_screen_on, R.drawable.ic_baseline_screen_lock_portrait_24,
+                defaultSettingsLN.keepScreenOn) {
+                defaultSettingsLN.keepScreenOn = it
+                PrefManager.setVal(PrefName.KeepScreenOnNovel, it)
+            },
+            row(R.string.volume_buttons, R.drawable.ic_round_touch_app_24, defaultSettingsLN.volumeButtons) {
+                defaultSettingsLN.volumeButtons = it
+                PrefManager.setVal(PrefName.VolumeButtonsNovel, it)
+            },
+            Settings(
+                type = 1,
+                name = getString(R.string.novel_tts),
+                desc = getString(R.string.novel_tts_desc),
+                icon = R.drawable.ic_round_headphones_24,
+                onClick = {
+                    NovelTtsSettingsBottomSheet.newInstance()
+                        .show(supportFragmentManager, NovelTtsSettingsBottomSheet.TAG)
+                },
+            ),
+        ) }
+
+        bind(binding.readerGeneralRows, listOf(
+            row(R.string.source_info, R.drawable.ic_round_info_24, PrefManager.getVal(PrefName.ShowSource)) {
+                PrefManager.setVal(PrefName.ShowSource, it)
+            },
+            row(R.string.continuous_multi_chapter, R.drawable.ic_round_view_column_24,
+                PrefManager.getVal(PrefName.ContinuousMultiChapter), R.string.continuous_multi_chapter_desc) {
+                PrefManager.setVal(PrefName.ContinuousMultiChapter, it)
+            },
+            row(R.string.show_system_bars, R.drawable.ic_round_smart_button_24,
+                PrefManager.getVal(PrefName.ShowSystemBars)) {
+                PrefManager.setVal(PrefName.ShowSystemBars, it)
+            },
+        ))
+
+        // Asking on every chapter makes the chapter-zero question moot, so that row is greyed out
+        // while it's on: rebuilt whole, like the Player page's subtitle rows.
+        val progressRows = ArrayList<Settings>()
+        val progressAdapter = SettingsAdapter(progressRows, popIn = false)
+        fun buildProgressRows(): List<Settings> {
+            val askEach = PrefManager.getVal<Boolean>(PrefName.AskIndividualReader)
+            return listOf(
+                row(R.string.ask_update_progress_manga, R.drawable.ic_anilist, askEach,
+                    R.string.ask_update_progress_info_chap) {
+                    PrefManager.setVal(PrefName.AskIndividualReader, it)
+                    progressRows.clear()
+                    progressRows.addAll(buildProgressRows())
+                    @Suppress("NotifyDataSetChanged") // The enabled state changes across the rows.
+                    progressAdapter.notifyDataSetChanged()
+                },
+                row(R.string.ask_update_progress_chapter_zero, R.drawable.ic_round_assist_walker_24,
+                    PrefManager.getVal(PrefName.ChapterZeroReader), R.string.ask_update_progress_info_zero,
+                    enabled = !askEach) {
+                    PrefManager.setVal(PrefName.ChapterZeroReader, it)
+                },
+                row(R.string.ask_update_progress_hentai_manga, R.drawable.ic_round_auto_awesome_24,
+                    PrefManager.getVal(PrefName.UpdateForHReader)) {
+                    PrefManager.setVal(PrefName.UpdateForHReader, it)
+                    if (it) snackString(getString(R.string.very_bold))
+                },
+            )
+        }
+        progressRows.addAll(buildProgressRows())
+        binding.readerProgressRows.adapter = progressAdapter
     }
 
 
@@ -592,49 +496,80 @@ class ReaderSettingsActivity : AppCompatActivity() {
     // OCR & MTL keys; delete with ani.dantotsu.spike
     // -----------------------------------------------------------------------------------------
 
-    /**
-     * Engine, model, target language and source script.
-     *
-     * These live here rather than in the calibration screen because they are what the *reader*
-     * translates with; that screen tunes detection thresholds, and a control it owned would be
-     * configuring one page's experiment rather than the feature.
-     */
-    private fun bindMtlChoices() {
-        // These are the defaults a manga starts from; each manga then keeps its own copy in its
-        // reader settings, edited from the reader's sheet. Re-read on every refresh rather than
-        // held, so a picker always starts from what was last saved.
-        fun current() = MtlSettings.fromPrefs()
-        fun refresh() {
-            val settings = current()
-            binding.readerSettingsMtlEngineState.text = MtlChoices.engineLabel(settings)
-            binding.readerSettingsMtlModelState.text = MtlChoices.modelLabel(this, settings)
-            binding.readerSettingsMtlTargetState.text = MtlChoices.targetLabel(settings)
-            binding.readerSettingsMtlScriptState.text = MtlChoices.scriptLabel(this, settings)
-            binding.readerSettingsMtlModel.isVisible = settings.engine.needsKey
-        }
-        fun save(settings: MtlSettings) {
-            settings.saveToPrefs()
-            refresh()
-        }
-        refresh()
+    /** The OCR & MTL group's rows, rebuilt by [refreshMtlRows] whenever a choice or key changes. */
+    private val mtlRows = ArrayList<Settings>()
 
-        binding.readerSettingsMtlEngine.setOnClickListener {
-            MtlChoices.pickEngine(this, current(), ::save)
+    /**
+     * The OCR & MTL group as standard rows: the detection test, the two translate switches, then
+     * engine, model, target language and source script, and each provider's key — every picker row
+     * showing its current value as its description.
+     *
+     * The choices live here rather than in the calibration screen because they are what the *reader*
+     * translates with; that screen tunes detection thresholds. They are the defaults a manga starts
+     * from; each manga then keeps its own copy, edited from the reader's sheet. Re-read on every
+     * rebuild rather than held, so a picker always starts from what was last saved.
+     */
+    private fun refreshMtlRows() {
+        val settings = MtlSettings.fromPrefs()
+        fun save(changed: MtlSettings) {
+            changed.saveToPrefs()
+            refreshMtlRows()
         }
-        binding.readerSettingsMtlModel.setOnClickListener {
-            MtlChoices.pickModel(this, lifecycleScope, current(), ::save)
-        }
-        binding.readerSettingsMtlTarget.setOnClickListener {
-            MtlChoices.pickTarget(this, current(), ::save)
-        }
-        binding.readerSettingsMtlScript.setOnClickListener {
-            MtlChoices.pickScript(this, current(), onChanged = ::save)
-        }
+        fun pick(name: Int, icon: Int, value: String, visible: Boolean = true, onClick: () -> Unit) =
+            Settings(
+                type = 1, name = getString(name), desc = value, icon = icon,
+                isVisible = visible, onClick = { onClick() },
+            )
+        mtlRows.clear()
+        mtlRows.addAll(listOf(
+            Settings(
+                type = 1,
+                name = getString(R.string.ocr_spike),
+                desc = getString(R.string.ocr_spike_desc),
+                icon = R.drawable.ic_round_science_24,
+                onClick = { startActivity(Intent(this, MangaOcrSpikeActivity::class.java)) },
+            ),
+            Settings(
+                type = 2,
+                name = getString(R.string.mtl_enable),
+                desc = getString(R.string.mtl_enable_desc),
+                icon = R.drawable.ic_round_translate_24,
+                isChecked = PrefManager.getVal(PrefName.OcrTranslateEnabled),
+                switch = { on, _ -> PrefManager.setVal(PrefName.OcrTranslateEnabled, on) },
+            ),
+            Settings(
+                type = 2,
+                name = getString(R.string.mtl_novel),
+                desc = getString(R.string.mtl_novel_desc),
+                icon = R.drawable.ic_round_translate_24,
+                isChecked = PrefManager.getVal(PrefName.NovelTranslateEnabled),
+                switch = { on, _ -> PrefManager.setVal(PrefName.NovelTranslateEnabled, on) },
+            ),
+            pick(R.string.ocr_spike_engine, R.drawable.ic_round_translate_24,
+                MtlChoices.engineLabel(settings)) {
+                MtlChoices.pickEngine(this, MtlSettings.fromPrefs(), ::save)
+            },
+            pick(R.string.ocr_spike_model, R.drawable.ic_round_tune_24,
+                MtlChoices.modelLabel(this, settings), visible = settings.engine.needsKey) {
+                MtlChoices.pickModel(this, lifecycleScope, MtlSettings.fromPrefs(), ::save)
+            },
+            pick(R.string.ocr_spike_target_language, R.drawable.ic_round_language_24,
+                MtlChoices.targetLabel(settings)) {
+                MtlChoices.pickTarget(this, MtlSettings.fromPrefs(), ::save)
+            },
+            pick(R.string.ocr_source_script, R.drawable.ic_round_format_text_24,
+                MtlChoices.scriptLabel(this, settings)) {
+                MtlChoices.pickScript(this, MtlSettings.fromPrefs(), onChanged = ::save)
+            },
+            keyRow(TranslationEngine.GEMINI, R.string.ocr_key_gemini),
+            keyRow(TranslationEngine.OPENROUTER, R.string.ocr_key_openrouter),
+        ))
+        @Suppress("NotifyDataSetChanged") // Values, and the model row's visibility, change at once.
+        binding.readerMtlRows.adapter?.notifyDataSetChanged()
     }
 
-
     /**
-     * Wires one provider's key row.
+     * One provider's key row.
      *
      * A key is write-once: entered, checked against the provider, and from then on only removable.
      * There is no editing step because there is nothing to edit — a key is opaque, so "changing"
@@ -642,30 +577,31 @@ class ReaderSettingsActivity : AppCompatActivity() {
      * instead would put the existing secret back on screen for no gain, and invite a half-edited
      * key being saved without ever being checked.
      */
-    private fun bindOcrKey(engine: TranslationEngine, row: View, state: TextView) {
-        fun refresh() {
-            val stored = engine.storedKey()
-            state.setText(if (stored.isBlank()) R.string.ocr_key_not_set else R.string.ocr_key_set)
-        }
-        refresh()
-
-        row.setOnClickListener {
-            if (engine.storedKey().isNotBlank()) {
-                customAlertDialog().apply {
-                    setTitle(R.string.ocr_key_remove_title)
-                    setMessage(getString(R.string.ocr_key_remove_message, engine.label))
-                    setPosButton(R.string.remove) {
-                        engine.keyPref?.let { PrefManager.removeVal(it) }
-                        refresh()
-                        snackString(getString(R.string.ocr_key_removed))
+    private fun keyRow(engine: TranslationEngine, name: Int): Settings {
+        val stored = engine.storedKey().isNotBlank()
+        return Settings(
+            type = 1,
+            name = getString(name),
+            desc = getString(if (stored) R.string.ocr_key_set else R.string.ocr_key_not_set),
+            icon = R.drawable.vpn_key_24,
+            onClick = {
+                if (engine.storedKey().isNotBlank()) {
+                    customAlertDialog().apply {
+                        setTitle(R.string.ocr_key_remove_title)
+                        setMessage(getString(R.string.ocr_key_remove_message, engine.label))
+                        setPosButton(R.string.remove) {
+                            engine.keyPref?.let { PrefManager.removeVal(it) }
+                            refreshMtlRows()
+                            snackString(getString(R.string.ocr_key_removed))
+                        }
+                        setNegButton(R.string.cancel)
+                        show()
                     }
-                    setNegButton(R.string.cancel)
-                    show()
+                } else {
+                    promptForOcrKey(engine, ::refreshMtlRows)
                 }
-            } else {
-                promptForOcrKey(engine, ::refresh)
-            }
-        }
+            },
+        )
     }
 
     private fun promptForOcrKey(engine: TranslationEngine, onSaved: () -> Unit) {

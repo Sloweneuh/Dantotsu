@@ -7,12 +7,15 @@ import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.databinding.ItemSettingsBinding
 import ani.dantotsu.databinding.ItemSettingsChoiceBinding
+import ani.dantotsu.databinding.ItemSettingsStepperBinding
 import ani.dantotsu.databinding.ItemSettingsChoiceButtonBinding
 import ani.dantotsu.databinding.ItemSettingsHeaderBinding
 import ani.dantotsu.databinding.ItemSettingsSliderBinding
 import ani.dantotsu.databinding.ItemSettingsSwitchBinding
 import ani.dantotsu.px
 import ani.dantotsu.setAnimation
+import kotlin.math.pow
+import kotlin.math.roundToInt
 
 /** Row spacing used by [Settings.compact] rows — tighter than the 24dp a full settings screen uses,
  *  since a card already frames its own body. */
@@ -39,6 +42,9 @@ class SettingsAdapter(
         RecyclerView.ViewHolder(binding.root)
 
     inner class SettingsSliderViewHolder(val binding: ItemSettingsSliderBinding) :
+        RecyclerView.ViewHolder(binding.root)
+
+    inner class SettingsStepperViewHolder(val binding: ItemSettingsStepperBinding) :
         RecyclerView.ViewHolder(binding.root)
 
     inner class SettingsChoiceViewHolder(val binding: ItemSettingsChoiceBinding) :
@@ -73,6 +79,12 @@ class SettingsAdapter(
 
             5 -> SettingsChoiceViewHolder(
                 ItemSettingsChoiceBinding.inflate(
+                    LayoutInflater.from(parent.context), parent, false
+                )
+            )
+
+            6 -> SettingsStepperViewHolder(
+                ItemSettingsStepperBinding.inflate(
                     LayoutInflater.from(parent.context), parent, false
                 )
             )
@@ -137,6 +149,8 @@ class SettingsAdapter(
 
                 b.settingsButton.text = settings.name
                 b.settingsDesc.text = settings.desc
+                // A switch whose title says it all has no second line, rather than an empty one.
+                b.settingsDesc.visibility = if (settings.desc.isEmpty()) View.GONE else View.VISIBLE
                 b.settingsIcon.setImageDrawable(
                     ContextCompat.getDrawable(
                         b.root.context, settings.icon
@@ -200,6 +214,58 @@ class SettingsAdapter(
                 }
             }
 
+            6 -> {
+                val b = (holder as SettingsStepperViewHolder).binding
+                val cfg = settings.stepper ?: return
+                if (popIn) setAnimation(b.root.context, b.root)
+
+                b.settingsTitle.text = settings.name
+                b.settingsDesc.text = settings.desc
+                b.settingsDesc.visibility = if (settings.desc.isEmpty()) View.GONE else View.VISIBLE
+                b.settingsIcon.setImageDrawable(
+                    ContextCompat.getDrawable(b.root.context, settings.icon)
+                )
+
+                // Held here rather than read back from the field: a recycled holder's field may still
+                // show the previous row's number when its old listeners fire.
+                var value = cfg.value
+                fun format(v: Float) =
+                    if (cfg.decimals == 0) v.roundToInt().toString() else "%.${cfg.decimals}f".format(v)
+                fun clamp(v: Float): Float {
+                    var r = v
+                    cfg.min?.let { r = maxOf(r, it) }
+                    cfg.max?.let { r = minOf(r, it) }
+                    val scale = 10f.pow(cfg.decimals)
+                    return (r * scale).roundToInt() / scale
+                }
+                fun commit(v: Float) {
+                    val next = clamp(v)
+                    b.settingsValue.setText(format(next))
+                    if (next != value) {
+                        value = next
+                        cfg.onChange(next)
+                    }
+                }
+
+                b.settingsValue.onFocusChangeListener = null
+                b.settingsValue.setOnEditorActionListener(null)
+                b.settingsValue.setText(format(value))
+                b.settingsDecrement.setOnClickListener { commit(value - cfg.step) }
+                b.settingsIncrement.setOnClickListener { commit(value + cfg.step) }
+                // A typed number is taken when the field is left or Done is pressed; one that doesn't
+                // parse puts the last good value back.
+                b.settingsValue.setOnFocusChangeListener { _, focused ->
+                    if (!focused) commit(b.settingsValue.text.toString().toFloatOrNull() ?: value)
+                }
+                b.settingsValue.setOnEditorActionListener { v, _, _ ->
+                    commit(b.settingsValue.text.toString().toFloatOrNull() ?: value)
+                    v.clearFocus()
+                    false
+                }
+                listOf(b.settingsDecrement, b.settingsIncrement, b.settingsValue)
+                    .forEach { it.isEnabled = settings.isEnabled }
+            }
+
             5 -> {
                 val b = (holder as SettingsChoiceViewHolder).binding
                 val cfg = settings.choice ?: return
@@ -207,6 +273,7 @@ class SettingsAdapter(
 
                 b.settingsTitle.text = settings.name
                 b.settingsDesc.text = settings.desc
+                b.settingsDesc.visibility = if (settings.desc.isEmpty()) View.GONE else View.VISIBLE
                 b.settingsIcon.setImageDrawable(
                     ContextCompat.getDrawable(b.root.context, settings.icon)
                 )
@@ -218,30 +285,22 @@ class SettingsAdapter(
                 val inflater = LayoutInflater.from(b.root.context)
                 cfg.options.forEachIndexed { index, option ->
                     if (!option.visible) return@forEachIndexed
-                    val itemBinding = ItemSettingsChoiceButtonBinding.inflate(
+                    val segment = ItemSettingsChoiceButtonBinding.inflate(
                         inflater, b.settingsChoices, false
-                    )
-                    itemBinding.choiceButton.apply {
-                        setImageDrawable(ContextCompat.getDrawable(b.root.context, option.icon))
+                    ).choiceButton
+                    segment.apply {
+                        icon = ContextCompat.getDrawable(b.root.context, option.icon)
+                        turnIcon(option.flipHorizontally, option.rotation)
                         contentDescription = option.label
-                        scaleX = if (option.flipHorizontally) -1f else 1f
+                        // The segment reads alpha as its checked state; see ChoiceToggleButton.
                         alpha = if (index == cfg.selected) 1f else 0.33f
                         isEnabled = settings.isEnabled
                         setOnClickListener {
                             if (!settings.isEnabled) return@setOnClickListener
-                            // Repaint the whole group so the previous selection dims, without
-                            // waiting for a rebind the caller may not trigger.
-                            var shown = 0
-                            cfg.options.forEachIndexed { i, o ->
-                                if (!o.visible) return@forEachIndexed
-                                (b.settingsChoices.getChildAt(shown) as? ViewGroup)
-                                    ?.getChildAt(0)?.alpha = if (i == index) 1f else 0.33f
-                                shown++
-                            }
                             cfg.onSelect(index)
                         }
                     }
-                    b.settingsChoices.addView(itemBinding.root)
+                    b.settingsChoices.addView(segment)
                 }
             }
         }

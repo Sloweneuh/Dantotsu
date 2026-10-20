@@ -349,7 +349,7 @@ class AnimeWatchAdapter(
 
                 // Grids
                 mediaSourceGrid.visibility = View.GONE
-                var selected: ImageButton = when (style) {
+                var selected: View = when (style) {
                     0 -> mediaSourceList
                     1 -> mediaSourceCompact
                     else -> mediaSourceList
@@ -360,19 +360,19 @@ class AnimeWatchAdapter(
                     else -> mediaSourceList
                 }
                 selected.alpha = 1f
-                fun selected(it: ImageButton) {
+                fun selected(it: View) {
                     selected.alpha = 0.33f
                     selected = it
                     selected.alpha = 1f
                 }
                 mediaSourceList.setOnClickListener {
-                    selected(it as ImageButton)
+                    selected(it)
                     style = 0
                     layoutText.setText(R.string.list)
                     run = true
                 }
                 mediaSourceCompact.setOnClickListener {
-                    selected(it as ImageButton)
+                    selected(it)
                     style = 1
                     layoutText.setText(R.string.compact)
                     run = true

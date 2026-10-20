@@ -22,6 +22,24 @@ data class SliderConfig(
 )
 
 /**
+ * A number stepped with − and + beside its title, for a `type = 6` row; the number can also be typed.
+ *
+ * @param step what − and + change it by.
+ * @param min / [max] clamp it, typed or stepped; null leaves that end open.
+ * @param decimals digits shown after the point (and what a stepped value is rounded to), so 0.1
+ *                 steps don't show float residue like 1.5000001.
+ * @param onChange called with the new value whenever it changes.
+ */
+data class StepperConfig(
+    val value: Float,
+    val step: Float,
+    val min: Float? = null,
+    val max: Float? = null,
+    val decimals: Int = 0,
+    val onChange: (Float) -> Unit,
+)
+
+/**
  * One button in a `type = 5` row.
  *
  * @param flipHorizontally mirrors the icon, for a glyph that reads the wrong way round in place
@@ -32,6 +50,8 @@ data class ChoiceOption(
     val label: String,
     val visible: Boolean = true,
     val flipHorizontally: Boolean = false,
+    /** Turns the icon, for options drawn as one glyph pointing several ways (reading directions). */
+    val rotation: Float = 0f,
 )
 
 /**
@@ -60,6 +80,8 @@ data class Settings(
     val slider: SliderConfig? = null,
     /** Required by `type = 5`, ignored otherwise. */
     val choice: ChoiceConfig? = null,
+    /** Required by `type = 6`, ignored otherwise. */
+    val stepper: StepperConfig? = null,
     val isVisible: Boolean = true,
     val isActivity: Boolean = false,
     var isChecked: Boolean = false,
