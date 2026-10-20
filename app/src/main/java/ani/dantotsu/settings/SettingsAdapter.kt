@@ -5,6 +5,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
+import ani.dantotsu.R
 import ani.dantotsu.databinding.ItemSettingsBinding
 import ani.dantotsu.databinding.ItemSettingsChoiceBinding
 import ani.dantotsu.databinding.ItemSettingsStepperBinding
@@ -102,8 +103,17 @@ class SettingsAdapter(
         holder.itemView.visibility = if (settings.isVisible) View.VISIBLE else View.GONE
         holder.itemView.layoutParams = holder.itemView.layoutParams?.apply {
             height = if (settings.isVisible) ViewGroup.LayoutParams.WRAP_CONTENT else 0
-            if (settings.compact && this is ViewGroup.MarginLayoutParams) {
-                topMargin = COMPACT_TOP_MARGIN
+            if (this is ViewGroup.MarginLayoutParams) {
+                // The row's own top margin, as inflated, kept so a recycled holder gets it back.
+                val inflated = holder.itemView.getTag(R.id.settings_row_top_margin) as? Int
+                    ?: topMargin.also { holder.itemView.setTag(R.id.settings_row_top_margin, it) }
+                // A hidden row takes no room at all: zero height alone left its margin behind,
+                // a gap in the list wherever a row was hidden.
+                topMargin = when {
+                    !settings.isVisible -> 0
+                    settings.compact -> COMPACT_TOP_MARGIN
+                    else -> inflated
+                }
             }
         }
         holder.itemView.alpha = if (settings.isEnabled) 1f else 0.5f

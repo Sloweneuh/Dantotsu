@@ -2,7 +2,6 @@ package ani.dantotsu.media.manga.mangareader
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.content.res.Resources
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
@@ -10,6 +9,12 @@ import android.view.ViewConfiguration
 import android.widget.FrameLayout
 import kotlin.math.abs
 
+/**
+ * Turns a drag past the start or end of the reader into a chapter change. Which end a drag starts
+ * at, and how far it must go, are measured against this view's own size rather than the display's:
+ * in a resizable window (WSA) or split-screen the display is far larger than the reader, and a drag
+ * sized to it could need more distance than the window has.
+ */
 class Swipy @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null
 ) : FrameLayout(context, attrs) {
@@ -50,7 +55,7 @@ class Swipy @JvmOverloads constructor(
             if (vertical) {
                 verticalPos = when {
                     !it.canScrollVertically(1) && !it.canScrollVertically(-1) -> {
-                        if (initialDown > (Resources.getSystem().displayMetrics.heightPixels / 2))
+                        if (initialDown > (height / 2))
                             VerticalPosition.Bottom
                         else
                             VerticalPosition.Top
@@ -63,7 +68,7 @@ class Swipy @JvmOverloads constructor(
             } else {
                 horizontalPos = when {
                     !it.canScrollHorizontally(1) && !it.canScrollHorizontally(-1) -> {
-                        if (initialDown > (Resources.getSystem().displayMetrics.widthPixels / 2))
+                        if (initialDown > (width / 2))
                             HorizontalPosition.Right
                         else
                             HorizontalPosition.Left
@@ -175,13 +180,13 @@ class Swipy @JvmOverloads constructor(
         val overscroll = abs((pos - initialMotion) * DRAG_RATE)
         parent.requestDisallowInterceptTouchEvent(true)
         if (vertical) {
-            val totalDragDistance = Resources.getSystem().displayMetrics.heightPixels / dragDivider
+            val totalDragDistance = height / dragDivider
             if (verticalPos == VerticalPosition.Top)
                 topBeingSwiped.invoke(overscroll * 2 / totalDragDistance)
             else
                 bottomBeingSwiped.invoke(overscroll * 2 / totalDragDistance)
         } else {
-            val totalDragDistance = Resources.getSystem().displayMetrics.widthPixels / dragDivider
+            val totalDragDistance = width / dragDivider
             if (horizontalPos == HorizontalPosition.Left)
                 leftBeingSwiped.invoke(overscroll / totalDragDistance)
             else
@@ -201,7 +206,7 @@ class Swipy @JvmOverloads constructor(
 
     private fun finishSpinner(overscrollDistance: Float) {
         if (vertical) {
-            val totalDragDistance = Resources.getSystem().displayMetrics.heightPixels / dragDivider
+            val totalDragDistance = height / dragDivider
             val swipeDistance = abs(overscrollDistance - initialMotion)
             if (swipeDistance > totalDragDistance) {
                 if (verticalPos == VerticalPosition.Top)
@@ -210,7 +215,7 @@ class Swipy @JvmOverloads constructor(
                     onBottomSwiped.invoke()
             }
         } else {
-            val totalDragDistance = Resources.getSystem().displayMetrics.widthPixels / dragDivider
+            val totalDragDistance = width / dragDivider
             val swipeDistance = abs(overscrollDistance - initialMotion)
             if (swipeDistance > totalDragDistance) {
                 if (horizontalPos == HorizontalPosition.Left)

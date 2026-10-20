@@ -56,7 +56,9 @@ class ControlRowLayout @JvmOverloads constructor(
         } else {
             max(text.measuredHeight, icon.measuredHeight) + belowGap + control.measuredHeight
         }
-        setMeasuredDimension(width, content + paddingTop + paddingBottom)
+        // A height the parent fixes wins — notably the 0 a settings list gives a row it hides, which
+        // this row used to ignore, leaving a full row's worth of empty space where it was.
+        setMeasuredDimension(width, resolveSize(content + paddingTop + paddingBottom, heightMeasureSpec))
     }
 
     /**

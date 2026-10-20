@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.content.res.Configuration
-import android.content.res.Resources
 import androidx.appcompat.app.AlertDialog
 import android.graphics.Bitmap
 import android.graphics.Color
@@ -1509,9 +1508,13 @@ class MangaReaderActivity : AppCompatActivity() {
         if (!sliding) {
             if (event != null && defaultSettings.layout == PAGED) {
                 if (event.action != MotionEvent.ACTION_UP) return
-                val x = event.rawX.toInt()
-                val y = event.rawY.toInt()
-                val screenWidth = Resources.getSystem().displayMetrics.widthPixels
+                // Measured against the reader, not the display: in a resizable window (WSA) or
+                // split-screen the display is bigger than the reader and sits elsewhere, so screen
+                // coordinates and the display's width put the turn zones in the wrong place.
+                val origin = IntArray(2).also(binding.root::getLocationOnScreen)
+                val x = event.rawX.toInt() - origin[0]
+                val y = event.rawY.toInt() - origin[1]
+                val screenWidth = binding.root.width
                 //if in the 1st 1/5th of the screen width, left and lower than 1/5th of the screen height, left
                 if (screenWidth / 5 in x + 1..<y) {
                     pressLocation = if (defaultSettings.direction == RIGHT_TO_LEFT) {

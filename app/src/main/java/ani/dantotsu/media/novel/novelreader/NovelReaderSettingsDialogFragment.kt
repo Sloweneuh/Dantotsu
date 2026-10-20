@@ -4,18 +4,25 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.AdapterView
 import ani.dantotsu.BottomSheetDialogFragment
-import ani.dantotsu.NoPaddingArrayAdapter
 import ani.dantotsu.R
 import ani.dantotsu.databinding.BottomSheetCurrentNovelReaderSettingsBinding
 import ani.dantotsu.settings.CurrentNovelReaderSettings
 import ani.dantotsu.settings.CurrentReaderSettings
+import ani.dantotsu.settings.Settings
+import ani.dantotsu.settings.SettingsRows
+import ani.dantotsu.settings.StepperConfig
+import ani.dantotsu.util.customAlertDialog
 
+/**
+ * The novel reader's settings sheet: this book's reader settings, applied as they change.
+ *
+ * Built from the same standard rows as the Reader settings page (see [SettingsRows]), so a setting
+ * looks the same in the sheet as in settings.
+ */
 class NovelReaderSettingsDialogFragment : BottomSheetDialogFragment() {
     private var _binding: BottomSheetCurrentNovelReaderSettingsBinding? = null
     private val binding get() = _binding!!
-
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -26,229 +33,114 @@ class NovelReaderSettingsDialogFragment : BottomSheetDialogFragment() {
         return binding.root
     }
 
-
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         val activity = requireActivity() as NovelReaderActivity
         val settings = activity.defaultSettings
-        val themeLabels = activity.themes.map { it.name }
-        binding.themeSelect.adapter =
-            NoPaddingArrayAdapter(activity, R.layout.item_dropdown, themeLabels)
-        // A name from another book that this one does not offer would give -1, which a Spinner
-        // reads as "nothing selected" and then silently replaces with the first entry.
-        val selectedTheme = themeLabels
-            .indexOfFirst { it.equals(settings.currentThemeName, ignoreCase = true) }
-            .coerceAtLeast(0)
-        binding.themeSelect.setSelection(selectedTheme, false)
-        binding.themeSelect.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(
-                parent: AdapterView<*>?,
-                view: View?,
-                position: Int,
-                id: Long
-            ) {
-                // Fires once for the selection set above; re-applying then would overwrite a saved
-                // theme with whatever the list happened to start on.
-                if (themeLabels[position] == settings.currentThemeName) return
-                settings.currentThemeName = themeLabels[position]
+        val ctx = requireContext()
+
+        fun switch(name: Int, icon: Int, checked: Boolean, onChange: (Boolean) -> Unit) =
+            SettingsRows.switch(ctx, name, icon, checked) {
+                onChange(it)
                 activity.applySettings()
             }
-
-            override fun onNothingSelected(parent: AdapterView<*>?) {}
-        }
-        binding.useOledTheme.isChecked = settings.useOledTheme
-        binding.useOledTheme.setOnCheckedChangeListener { _, isChecked ->
-            settings.useOledTheme = isChecked
-            activity.applySettings()
-        }
-        val layoutList = listOf(
-            binding.paged,
-            binding.continuous
-        )
-
-        binding.layoutText.text = settings.layout.string
-        var selected = layoutList[settings.layout.ordinal]
-        selected.alpha = 1f
-
-        layoutList.forEachIndexed { index, imageButton ->
-            imageButton.setOnClickListener {
-                selected.alpha = 0.33f
-                selected = imageButton
-                selected.alpha = 1f
-                settings.layout = CurrentNovelReaderSettings.Layouts[index]
-                    ?: CurrentNovelReaderSettings.Layouts.PAGED
-                binding.layoutText.text = settings.layout.string
+        fun stepper(name: Int, icon: Int, desc: Int?, value: Float, step: Float, decimals: Int,
+                    onChange: (Float) -> Unit) =
+            SettingsRows.stepper(ctx, name, icon, desc, StepperConfig(value, step, decimals = decimals) {
+                onChange(it)
                 activity.applySettings()
-            }
+            })
+
+        SettingsRows.bindRebuilt(binding.novelLayoutRows) { refresh ->
+            listOf(
+                // This book's themes: the reader's own plus any the open book adds.
+                Settings(
+                    type = 1,
+                    name = getString(R.string.theme),
+                    desc = settings.currentThemeName,
+                    icon = R.drawable.ic_palette,
+                    onClick = {
+                        val names = activity.themes.map { it.name }.toTypedArray()
+                        // A name from another book that this one does not offer matches nothing;
+                        // the first theme is then the one shown as picked.
+                        val current = names.indexOfFirst { it.equals(settings.currentThemeName, true) }
+                        ctx.customAlertDialog().apply {
+                            setTitle(R.string.theme)
+                            singleChoiceItems(names, current.coerceAtLeast(0)) { i ->
+                                settings.currentThemeName = names[i]
+                                activity.applySettings()
+                                refresh()
+                            }
+                            show()
+                        }
+                    },
+                ),
+                SettingsRows.choice(ctx, R.string.layout, R.drawable.ic_round_view_array_24,
+                    settings.layout.string, SettingsRows.novelLayoutOptions(), settings.layout.ordinal) { i ->
+                    settings.layout = CurrentNovelReaderSettings.Layouts[i]
+                        ?: CurrentNovelReaderSettings.Layouts.PAGED
+                    activity.applySettings()
+                    refresh()
+                },
+                SettingsRows.choice(ctx, R.string.dual_page, R.drawable.ic_round_import_contacts_24,
+                    settings.dualPageMode.toString(), SettingsRows.dualOptions(),
+                    settings.dualPageMode.ordinal) { i ->
+                    settings.dualPageMode = CurrentReaderSettings.DualPageModes[i]
+                        ?: CurrentReaderSettings.DualPageModes.Automatic
+                    activity.applySettings()
+                    refresh()
+                },
+            )
         }
 
-        val dualList = listOf(
-            binding.dualNo,
-            binding.dualAuto,
-            binding.dualForce
-        )
-
-        binding.dualPageText.text = settings.dualPageMode.toString()
-        var selectedDual = dualList[settings.dualPageMode.ordinal]
-        selectedDual.alpha = 1f
-
-        dualList.forEachIndexed { index, imageButton ->
-            imageButton.setOnClickListener {
-                selectedDual.alpha = 0.33f
-                selectedDual = imageButton
-                selectedDual.alpha = 1f
-                settings.dualPageMode = CurrentReaderSettings.DualPageModes[index]
-                    ?: CurrentReaderSettings.DualPageModes.Automatic
-                binding.dualPageText.text = settings.dualPageMode.toString()
-                activity.applySettings()
-            }
+        SettingsRows.bindRebuilt(binding.novelTextRows) {
+            listOf(
+                stepper(R.string.novel_line_height, R.drawable.ic_format_line_spacing_24, null,
+                    settings.lineHeight, 0.1f, 1) { settings.lineHeight = it },
+                stepper(R.string.novel_margin, R.drawable.ic_margin_24, null,
+                    settings.margin, 0.01f, 2) { settings.margin = it },
+                stepper(R.string.novel_max_inline_size, R.drawable.ic_width_24, R.string.novel_max_inline_size_desc,
+                    settings.maxInlineSize.toFloat(), 10f, 0) { settings.maxInlineSize = it.toInt() },
+                stepper(R.string.novel_max_block_size, R.drawable.ic_height_24, R.string.novel_max_block_size_desc,
+                    settings.maxBlockSize.toFloat(), 10f, 0) { settings.maxBlockSize = it.toInt() },
+                switch(R.string.justify_text, R.drawable.format_align_center_24, settings.justify) {
+                    settings.justify = it
+                },
+                switch(R.string.hyphenation, R.drawable.ic_round_format_text_24, settings.hyphenation) {
+                    settings.hyphenation = it
+                },
+            )
         }
 
-        binding.lineHeight.setText(settings.lineHeight.toString())
-        binding.lineHeight.setOnFocusChangeListener { _, hasFocus ->
-            if (!hasFocus) {
-                val value = binding.lineHeight.text.toString().toFloatOrNull() ?: 1.4f
-                settings.lineHeight = value
-                binding.lineHeight.setText(value.toString())
-                activity.applySettings()
-            }
+        SettingsRows.bindRebuilt(binding.novelDisplayRows) {
+            listOf(
+                switch(R.string.use_dark_theme, R.drawable.ic_round_brightness_4_24, settings.useDarkTheme) {
+                    settings.useDarkTheme = it
+                },
+                switch(R.string.use_oled_theme, R.drawable.ic_round_brightness_4_24, settings.useOledTheme) {
+                    settings.useOledTheme = it
+                },
+            )
         }
 
-        binding.incrementLineHeight.setOnClickListener {
-            val value = binding.lineHeight.text.toString().toFloatOrNull() ?: 1.4f
-            settings.lineHeight = value + 0.1f
-            binding.lineHeight.setText(settings.lineHeight.toString())
-            activity.applySettings()
-        }
-
-        binding.decrementLineHeight.setOnClickListener {
-            val value = binding.lineHeight.text.toString().toFloatOrNull() ?: 1.4f
-            settings.lineHeight = value - 0.1f
-            binding.lineHeight.setText(settings.lineHeight.toString())
-            activity.applySettings()
-        }
-
-        binding.margin.setText(settings.margin.toString())
-        binding.margin.setOnFocusChangeListener { _, hasFocus ->
-            if (!hasFocus) {
-                val value = binding.margin.text.toString().toFloatOrNull() ?: 0.06f
-                settings.margin = value
-                binding.margin.setText(value.toString())
-                activity.applySettings()
-            }
-        }
-
-        binding.incrementMargin.setOnClickListener {
-            val value = binding.margin.text.toString().toFloatOrNull() ?: 0.06f
-            settings.margin = value + 0.01f
-            binding.margin.setText(settings.margin.toString())
-            activity.applySettings()
-        }
-
-        binding.decrementMargin.setOnClickListener {
-            val value = binding.margin.text.toString().toFloatOrNull() ?: 0.06f
-            settings.margin = value - 0.01f
-            binding.margin.setText(settings.margin.toString())
-            activity.applySettings()
-        }
-
-        binding.maxInlineSize.setText(settings.maxInlineSize.toString())
-        binding.maxInlineSize.setOnFocusChangeListener { _, hasFocus ->
-            if (!hasFocus) {
-                val value = binding.maxInlineSize.text.toString().toIntOrNull() ?: 720
-                settings.maxInlineSize = value
-                binding.maxInlineSize.setText(value.toString())
-                activity.applySettings()
-            }
-        }
-
-        binding.incrementMaxInlineSize.setOnClickListener {
-            val value = binding.maxInlineSize.text.toString().toIntOrNull() ?: 720
-            settings.maxInlineSize = value + 10
-            binding.maxInlineSize.setText(settings.maxInlineSize.toString())
-            activity.applySettings()
-        }
-
-        binding.decrementMaxInlineSize.setOnClickListener {
-            val value = binding.maxInlineSize.text.toString().toIntOrNull() ?: 720
-            settings.maxInlineSize = value - 10
-            binding.maxInlineSize.setText(settings.maxInlineSize.toString())
-            activity.applySettings()
-        }
-
-        binding.maxBlockSize.setText(settings.maxBlockSize.toString())
-        binding.maxBlockSize.setOnFocusChangeListener { _, hasFocus ->
-            if (!hasFocus) {
-                val value = binding.maxBlockSize.text.toString().toIntOrNull() ?: 720
-                settings.maxBlockSize = value
-                binding.maxBlockSize.setText(value.toString())
-                activity.applySettings()
-            }
-
-        }
-        binding.incrementMaxBlockSize.setOnClickListener {
-            val value = binding.maxBlockSize.text.toString().toIntOrNull() ?: 720
-            settings.maxBlockSize = value + 10
-            binding.maxBlockSize.setText(settings.maxBlockSize.toString())
-            activity.applySettings()
-        }
-
-        binding.decrementMaxBlockSize.setOnClickListener {
-            val value = binding.maxBlockSize.text.toString().toIntOrNull() ?: 720
-            settings.maxBlockSize = value - 10
-            binding.maxBlockSize.setText(settings.maxBlockSize.toString())
-            activity.applySettings()
-        }
-
-        binding.justify.isChecked = settings.justify
-        binding.justify.setOnCheckedChangeListener { _, isChecked ->
-            settings.justify = isChecked
-            activity.applySettings()
-        }
-
-        binding.hyphenation.isChecked = settings.hyphenation
-        binding.hyphenation.setOnCheckedChangeListener { _, isChecked ->
-            settings.hyphenation = isChecked
-            activity.applySettings()
-        }
-
-        binding.useDarkTheme.isChecked = settings.useDarkTheme
-        binding.useDarkTheme.setOnCheckedChangeListener { _, isChecked ->
-            settings.useDarkTheme = isChecked
-            activity.applySettings()
-        }
-
-        binding.lockRotation.isChecked = settings.lockRotation
-        binding.lockRotation.setOnCheckedChangeListener { _, isChecked ->
-            settings.lockRotation = isChecked
-            activity.applySettings()
-        }
-
-        binding.hidePageNumbers.isChecked = settings.hidePageNumbers
-        binding.hidePageNumbers.setOnCheckedChangeListener { _, isChecked ->
-            settings.hidePageNumbers = isChecked
-            activity.applySettings()
-        }
-
-        binding.keepScreenOn.isChecked = settings.keepScreenOn
-        binding.keepScreenOn.setOnCheckedChangeListener { _, isChecked ->
-            settings.keepScreenOn = isChecked
-            activity.applySettings()
-        }
-
-        binding.volumeButton.isChecked = settings.volumeButtons
-        binding.volumeButton.setOnCheckedChangeListener { _, isChecked ->
-            settings.volumeButtons = isChecked
-            activity.applySettings()
+        SettingsRows.bindRebuilt(binding.novelControlsRows) {
+            listOf(
+                switch(R.string.lock_screen_rotation, R.drawable.ic_round_screen_rotation_24,
+                    settings.lockRotation) { settings.lockRotation = it },
+                switch(R.string.hide_page_numbers, R.drawable.ic_page_numbering,
+                    settings.hidePageNumbers) { settings.hidePageNumbers = it },
+                switch(R.string.keep_screen_on, R.drawable.ic_baseline_screen_lock_portrait_24,
+                    settings.keepScreenOn) { settings.keepScreenOn = it },
+                switch(R.string.volume_buttons, R.drawable.ic_round_touch_app_24,
+                    settings.volumeButtons) { settings.volumeButtons = it },
+            )
         }
     }
-
 
     override fun onDestroy() {
         _binding = null
         super.onDestroy()
     }
-
 
     companion object {
         fun newInstance() = NovelReaderSettingsDialogFragment()

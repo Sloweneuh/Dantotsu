@@ -74,6 +74,7 @@ class ReaderSettingsActivity : AppCompatActivity() {
      * [defaultSettingsLN] field, its hand-built switch did.
      */
     private fun bindRows() {
+        // The shared row builders (see SettingsRows), so this page and the reader sheets match.
         fun row(
             name: Int,
             icon: Int,
@@ -81,23 +82,10 @@ class ReaderSettingsActivity : AppCompatActivity() {
             desc: Int? = null,
             enabled: Boolean = true,
             onChange: (Boolean) -> Unit,
-        ) = Settings(
-            type = 2,
-            name = getString(name),
-            desc = desc?.let { getString(it) } ?: "",
-            icon = icon,
-            isChecked = checked,
-            isEnabled = enabled,
-            switch = { isChecked, _ -> onChange(isChecked) },
-        )
+        ) = SettingsRows.switch(this, name, icon, checked, desc, enabled, onChange = onChange)
 
-        fun stepper(name: Int, icon: Int, desc: Int?, config: StepperConfig) = Settings(
-            type = 6,
-            name = getString(name),
-            desc = desc?.let { getString(it) } ?: "",
-            icon = icon,
-            stepper = config,
-        )
+        fun stepper(name: Int, icon: Int, desc: Int?, config: StepperConfig) =
+            SettingsRows.stepper(this, name, icon, desc, config)
 
         fun choice(
             name: Int,
@@ -106,44 +94,12 @@ class ReaderSettingsActivity : AppCompatActivity() {
             options: List<ChoiceOption>,
             selected: Int,
             onSelect: (Int) -> Unit,
-        ) = Settings(
-            type = 5,
-            name = getString(name),
-            desc = desc,
-            icon = icon,
-            choice = ChoiceConfig(options, selected, onSelect),
-        )
+        ) = SettingsRows.choice(this, name, icon, desc, options, selected, onSelect = onSelect)
 
-        /** Dual page's three modes, in DualPageModes order. */
-        fun dualOptions() = CurrentReaderSettings.DualPageModes.entries.map { mode ->
-            ChoiceOption(
-                when (mode) {
-                    CurrentReaderSettings.DualPageModes.No -> R.drawable.ic_round_close_24
-                    CurrentReaderSettings.DualPageModes.Automatic -> R.drawable.ic_round_screen_rotation_24
-                    CurrentReaderSettings.DualPageModes.Force -> R.drawable.ic_round_menu_book_24
-                },
-                mode.toString(),
-                flipHorizontally = mode == CurrentReaderSettings.DualPageModes.No,
-            )
-        }
+        fun dualOptions() = SettingsRows.dualOptions()
 
-        /**
-         * A list whose rows show values that change from inside it (a choice's current option under
-         * its title): [build] is handed the refresh that rebuilds it, to call after a change.
-         */
-        fun bindRebuilt(list: RecyclerView, build: (refresh: () -> Unit) -> List<Settings>) {
-            val rows = ArrayList<Settings>()
-            val adapter = SettingsAdapter(rows, popIn = false)
-            lateinit var refresh: () -> Unit
-            refresh = {
-                rows.clear()
-                rows.addAll(build(refresh))
-                @Suppress("NotifyDataSetChanged") // A value and its description change together.
-                adapter.notifyDataSetChanged()
-            }
-            list.adapter = adapter
-            refresh()
-        }
+        fun bindRebuilt(list: RecyclerView, build: (refresh: () -> Unit) -> List<Settings>) =
+            SettingsRows.bindRebuilt(list, build)
 
         fun bind(list: RecyclerView, rows: List<Settings>) {
             list.adapter = SettingsAdapter(ArrayList(rows), popIn = false)
@@ -159,11 +115,7 @@ class ReaderSettingsActivity : AppCompatActivity() {
                 },
                 choice(R.string.layout, R.drawable.ic_round_view_array_24,
                     layouts[defaultSettings.layout.ordinal],
-                    listOf(
-                        ChoiceOption(R.drawable.ic_round_amp_stories_24, layouts[0], flipHorizontally = true),
-                        ChoiceOption(R.drawable.ic_round_view_array_24, layouts[1]),
-                        ChoiceOption(R.drawable.ic_round_view_column_24, layouts[2]),
-                    ),
+                    SettingsRows.mangaLayoutOptions(this),
                     defaultSettings.layout.ordinal,
                 ) { i ->
                     defaultSettings.layout =
@@ -174,9 +126,7 @@ class ReaderSettingsActivity : AppCompatActivity() {
                 // One arrow turned four ways, in Directions order — picked directly, not cycled to.
                 choice(R.string.direction, R.drawable.ic_round_swipe_vertical_24,
                     directions[defaultSettings.direction.ordinal],
-                    listOf(180f, 270f, 0f, 90f).mapIndexed { i, degrees ->
-                        ChoiceOption(R.drawable.ic_round_swipe_up_alt_24, directions[i], rotation = degrees)
-                    },
+                    SettingsRows.directionOptions(this),
                     defaultSettings.direction.ordinal,
                 ) { i ->
                     defaultSettings.direction = CurrentReaderSettings.Directions[i]
@@ -312,12 +262,7 @@ class ReaderSettingsActivity : AppCompatActivity() {
                 },
             ),
             choice(R.string.layout, R.drawable.ic_round_view_array_24, defaultSettingsLN.layout.string,
-                listOf(
-                    ChoiceOption(R.drawable.ic_round_amp_stories_24,
-                        CurrentNovelReaderSettings.Layouts.PAGED.string, flipHorizontally = true),
-                    ChoiceOption(R.drawable.ic_round_view_column_24,
-                        CurrentNovelReaderSettings.Layouts.SCROLLED.string),
-                ),
+                SettingsRows.novelLayoutOptions(),
                 defaultSettingsLN.layout.ordinal,
             ) { i ->
                 defaultSettingsLN.layout =

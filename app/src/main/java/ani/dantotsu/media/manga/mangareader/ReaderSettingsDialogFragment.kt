@@ -8,12 +8,20 @@ import ani.dantotsu.BottomSheetDialogFragment
 import ani.dantotsu.R
 import ani.dantotsu.databinding.BottomSheetCurrentReaderSettingsBinding
 import ani.dantotsu.settings.CurrentReaderSettings
+import ani.dantotsu.settings.CurrentReaderSettings.Directions
+import ani.dantotsu.settings.CurrentReaderSettings.Layouts
+import ani.dantotsu.settings.SettingsRows
+import ani.dantotsu.settings.SliderConfig
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
-import ani.dantotsu.settings.CurrentReaderSettings.Directions
-import android.widget.Toast
-import com.google.android.material.slider.Slider
 
+/**
+ * The manga reader's settings sheet: this series' reader settings, applied as they change.
+ *
+ * Built from the same standard rows as the Reader settings page (see [SettingsRows]), so a setting
+ * looks the same in the sheet as in settings. Rows that depend on another (spaced pages and
+ * autoscroll on the layout) are rebuilt when it changes.
+ */
 class ReaderSettingsDialogFragment : BottomSheetDialogFragment() {
     private var _binding: BottomSheetCurrentReaderSettingsBinding? = null
     private val binding get() = _binding!!
@@ -31,218 +39,120 @@ class ReaderSettingsDialogFragment : BottomSheetDialogFragment() {
         super.onViewCreated(view, savedInstanceState)
         val activity = requireActivity() as MangaReaderActivity
         val settings = activity.defaultSettings
+        val ctx = requireContext()
+        // Dual page and overscroll don't apply across a multi-chapter strip.
         val isMultiChapter = PrefManager.getVal<Boolean>(PrefName.ContinuousMultiChapter)
 
-        // Hide irrelevant settings in multi-chapter mode
-        if (isMultiChapter) {
-            binding.readerDualPageContainer.visibility = View.GONE
-            binding.readerDualPageInfo.visibility = View.GONE
-            binding.readerOverscroll.visibility = View.GONE
-        }
-
-        // One button per direction, in Directions order — picked directly rather than cycled to.
-        val directionNames = resources.getStringArray(R.array.manga_directions)
-        val directions = listOf(
-            binding.readerDirectionTtb,
-            binding.readerDirectionRtl,
-            binding.readerDirectionBtt,
-            binding.readerDirectionLtr,
-        )
-        binding.readerDirectionText.text = directionNames[settings.direction.ordinal]
-        directions.forEachIndexed { index, button ->
-            button.contentDescription = directionNames[index]
-            button.alpha = if (index == settings.direction.ordinal) 1f else 0.33f
-            button.setOnClickListener {
-                settings.direction = Directions[index] ?: Directions.TOP_TO_BOTTOM
-                directions.forEachIndexed { i, b -> b.alpha = if (i == index) 1f else 0.33f }
-                binding.readerDirectionText.text = directionNames[index]
+        val refreshers = mutableListOf<() -> Unit>()
+        fun refreshAll() = refreshers.forEach { it() }
+        fun bind(list: androidx.recyclerview.widget.RecyclerView, build: () -> List<ani.dantotsu.settings.Settings>) =
+            SettingsRows.bindRebuilt(list) { refresh ->
+                if (refresh !in refreshers) refreshers += refresh
+                build()
+            }
+        fun switch(name: Int, icon: Int, checked: Boolean, desc: Int? = null, enabled: Boolean = true,
+                   visible: Boolean = true, onChange: (Boolean) -> Unit) =
+            SettingsRows.switch(ctx, name, icon, checked, desc, enabled, visible) {
+                onChange(it)
                 activity.applySettings()
             }
+
+        bind(binding.readerLayoutRows) {
+            val layouts = resources.getStringArray(R.array.manga_layouts)
+            val directions = resources.getStringArray(R.array.manga_directions)
+            listOf(
+                SettingsRows.choice(ctx, R.string.layout, R.drawable.ic_round_view_array_24,
+                    layouts[settings.layout.ordinal], SettingsRows.mangaLayoutOptions(ctx),
+                    settings.layout.ordinal) { i ->
+                    settings.layout = Layouts[i] ?: Layouts.CONTINUOUS
+                    activity.applySettings()
+                    // Autoscroll only runs on the continuous layout.
+                    if (settings.layout != Layouts.CONTINUOUS) {
+                        PrefManager.setVal(PrefName.AutoScrollEnabled, false)
+                        activity.stopAutoscroll()
+                    }
+                    refreshAll()
+                },
+                SettingsRows.choice(ctx, R.string.direction, R.drawable.ic_round_swipe_vertical_24,
+                    directions[settings.direction.ordinal], SettingsRows.directionOptions(ctx),
+                    settings.direction.ordinal) { i ->
+                    settings.direction = Directions[i] ?: Directions.TOP_TO_BOTTOM
+                    activity.applySettings()
+                    refreshAll()
+                },
+                SettingsRows.choice(ctx, R.string.dual_page, R.drawable.ic_round_import_contacts_24,
+                    "${settings.dualPageMode}\n${getString(R.string.dual_page_info)}",
+                    SettingsRows.dualOptions(), settings.dualPageMode.ordinal,
+                    visible = !isMultiChapter) { i ->
+                    settings.dualPageMode = CurrentReaderSettings.DualPageModes[i]
+                        ?: CurrentReaderSettings.DualPageModes.Automatic
+                    activity.applySettings()
+                    refreshAll()
+                },
+            )
         }
 
-        val list = listOf(
-            binding.readerPaged,
-            binding.readerContinuousPaged,
-            binding.readerContinuous
-        )
-
-        binding.readerPadding.isEnabled = settings.layout.ordinal != 0
-        fun paddingAvailable(enable: Boolean) {
-            binding.readerPadding.isEnabled = enable
+        bind(binding.readerDisplayRows) {
+            listOf(
+                switch(R.string.over_scroll, R.drawable.ic_round_swipe_vertical_24, settings.overScrollMode,
+                    visible = !isMultiChapter) { settings.overScrollMode = it },
+                switch(R.string.true_colors, R.drawable.ic_round_high_quality_24, settings.trueColors,
+                    R.string.true_colors_info) { settings.trueColors = it },
+                switch(R.string.image_rotation, R.drawable.ic_round_screen_rotation_alt_24,
+                    settings.rotation) { settings.rotation = it },
+                switch(R.string.crop_borders, R.drawable.ic_round_auto_awesome_24,
+                    settings.cropBorders) { settings.cropBorders = it },
+                // Pages have no gaps to space in the paged layout.
+                switch(R.string.spaced_pages, R.drawable.ic_round_space_bar_24, settings.padding,
+                    enabled = settings.layout != Layouts.PAGED) { settings.padding = it },
+                // A global preference, not a per-series one: it is how gaps are judged, not where they go.
+                switch(R.string.smart_spacing, R.drawable.ic_round_auto_awesome_24,
+                    PrefManager.getVal(PrefName.SmartPadding), R.string.smart_spacing_info) {
+                    PrefManager.setVal(PrefName.SmartPadding, it)
+                },
+                switch(R.string.hide_scroll_bar, R.drawable.ic_round_no_scroll_bar,
+                    settings.hideScrollBar) { settings.hideScrollBar = it },
+                switch(R.string.hide_page_numbers, R.drawable.ic_page_numbering,
+                    settings.hidePageNumbers) { settings.hidePageNumbers = it },
+                switch(R.string.horizontal_scroll_bar, R.drawable.ic_round_straighten_24,
+                    settings.horizontalScrollBar) { settings.horizontalScrollBar = it },
+            )
         }
 
-        binding.readerPadding.isChecked = settings.padding
-        binding.readerPadding.setOnCheckedChangeListener { _, isChecked ->
-            settings.padding = isChecked
-            activity.applySettings()
+        bind(binding.readerControlsRows) {
+            val continuous = settings.layout == Layouts.CONTINUOUS
+            listOf(
+                switch(R.string.keep_screen_on, R.drawable.ic_baseline_screen_lock_portrait_24,
+                    settings.keepScreenOn) { settings.keepScreenOn = it },
+                switch(R.string.lock_screen_rotation, R.drawable.ic_round_screen_rotation_24,
+                    settings.lockRotation) { settings.lockRotation = it },
+                switch(R.string.volume_buttons, R.drawable.ic_round_touch_app_24,
+                    settings.volumeButtons) { settings.volumeButtons = it },
+                switch(R.string.wrap_images, R.drawable.ic_round_fullscreen_24, settings.wrapImages,
+                    R.string.wrap_images_info) { settings.wrapImages = it },
+                switch(R.string.image_long_clicking, R.drawable.ic_round_touch_app_24,
+                    settings.longClickImage) { settings.longClickImage = it },
+                // Autoscroll only runs on the continuous layout, so it is greyed out on the others.
+                SettingsRows.switch(ctx, R.string.autoscroll, R.drawable.ic_round_play_arrow_24,
+                    continuous && PrefManager.getVal<Boolean>(PrefName.AutoScrollEnabled),
+                    R.string.autoscroll_only_continuous.takeIf { !continuous }, enabled = continuous) { on ->
+                    PrefManager.setVal(PrefName.AutoScrollEnabled, on)
+                    if (on) activity.startAutoscroll() else activity.stopAutoscroll()
+                },
+                SettingsRows.slider(ctx, R.string.autoscroll_speed, R.drawable.ic_round_slow_motion_video_24,
+                    SliderConfig(
+                        from = 0.5f,
+                        to = 10f,
+                        stepSize = 0.5f,
+                        value = PrefManager.getVal<Float>(PrefName.AutoScrollSpeed).coerceIn(0.5f, 10f),
+                        onChange = {
+                            PrefManager.setVal(PrefName.AutoScrollSpeed, it)
+                            activity.updateAutoscrollSpeed(it)
+                        },
+                        format = { "%.1f".format(it) },
+                    )),
+            )
         }
-
-        // A global preference, not a per-series one: it is how gaps are judged, not where they go.
-        binding.readerSmartPadding.isChecked = PrefManager.getVal(PrefName.SmartPadding)
-        binding.readerSmartPadding.setOnCheckedChangeListener { _, isChecked ->
-            PrefManager.setVal(PrefName.SmartPadding, isChecked)
-            activity.applySettings()
-        }
-
-        binding.readerCropBorders.isChecked = settings.cropBorders
-        binding.readerCropBorders.setOnCheckedChangeListener { _, isChecked ->
-            settings.cropBorders = isChecked
-            activity.applySettings()
-        }
-
-        binding.readerLayoutText.text =
-            resources.getStringArray(R.array.manga_layouts)[settings.layout.ordinal]
-        var selected = list[settings.layout.ordinal]
-        selected.alpha = 1f
-
-        list.forEachIndexed { index, imageButton ->
-            imageButton.setOnClickListener {
-                selected.alpha = 0.33f
-                selected = imageButton
-                selected.alpha = 1f
-                settings.layout =
-                    CurrentReaderSettings.Layouts[index] ?: CurrentReaderSettings.Layouts.CONTINUOUS
-                binding.readerLayoutText.text =
-                    resources.getStringArray(R.array.manga_layouts)[settings.layout.ordinal]
-                activity.applySettings()
-                paddingAvailable(settings.layout.ordinal != 0)
-                // only allow autoscroll when using continuous layout
-                val autoscrollAllowed = settings.layout == CurrentReaderSettings.Layouts.CONTINUOUS
-                binding.readerAutoscrollEnabled.isEnabled = autoscrollAllowed
-                if (!autoscrollAllowed) {
-                    // disable autoscroll preference and stop any active autoscroll
-                    PrefManager.setVal(PrefName.AutoScrollEnabled, false)
-                    binding.readerAutoscrollEnabled.isChecked = false
-                    activity.stopAutoscroll()
-                }
-            }
-        }
-
-        val dualList = listOf(
-            binding.readerDualNo,
-            binding.readerDualAuto,
-            binding.readerDualForce
-        )
-
-        binding.readerDualPageText.text = settings.dualPageMode.toString()
-        var selectedDual = dualList[settings.dualPageMode.ordinal]
-        selectedDual.alpha = 1f
-
-        dualList.forEachIndexed { index, imageButton ->
-            imageButton.setOnClickListener {
-                selectedDual.alpha = 0.33f
-                selectedDual = imageButton
-                selectedDual.alpha = 1f
-                settings.dualPageMode = CurrentReaderSettings.DualPageModes[index]
-                    ?: CurrentReaderSettings.DualPageModes.Automatic
-                binding.readerDualPageText.text = settings.dualPageMode.toString()
-                activity.applySettings()
-            }
-        }
-        binding.readerTrueColors.isChecked = settings.trueColors
-        binding.readerTrueColors.setOnCheckedChangeListener { _, isChecked ->
-            settings.trueColors = isChecked
-            activity.applySettings()
-        }
-
-        binding.readerImageRotation.isChecked = settings.rotation
-        binding.readerImageRotation.setOnCheckedChangeListener { _, isChecked ->
-            settings.rotation = isChecked
-            activity.applySettings()
-        }
-
-        binding.readerHorizontalScrollBar.isChecked = settings.horizontalScrollBar
-        binding.readerHorizontalScrollBar.setOnCheckedChangeListener { _, isChecked ->
-            settings.horizontalScrollBar = isChecked
-            activity.applySettings()
-        }
-
-        binding.readerKeepScreenOn.isChecked = settings.keepScreenOn
-        binding.readerKeepScreenOn.setOnCheckedChangeListener { _, isChecked ->
-            settings.keepScreenOn = isChecked
-            activity.applySettings()
-        }
-
-        binding.readerLockRotation.isChecked = settings.lockRotation
-        binding.readerLockRotation.setOnCheckedChangeListener { _, isChecked ->
-            settings.lockRotation = isChecked
-            activity.applySettings()
-        }
-
-        binding.readerHideScrollBar.isChecked = settings.hideScrollBar
-        binding.readerHideScrollBar.setOnCheckedChangeListener { _, isChecked ->
-            settings.hideScrollBar = isChecked
-            activity.applySettings()
-        }
-
-        binding.readerHidePageNumbers.isChecked = settings.hidePageNumbers
-        binding.readerHidePageNumbers.setOnCheckedChangeListener { _, isChecked ->
-            settings.hidePageNumbers = isChecked
-            activity.applySettings()
-        }
-
-        binding.readerOverscroll.isChecked = settings.overScrollMode
-        binding.readerOverscroll.setOnCheckedChangeListener { _, isChecked ->
-            settings.overScrollMode = isChecked
-            activity.applySettings()
-        }
-
-        binding.readerVolumeButton.isChecked = settings.volumeButtons
-        binding.readerVolumeButton.setOnCheckedChangeListener { _, isChecked ->
-            settings.volumeButtons = isChecked
-            activity.applySettings()
-        }
-
-        binding.readerWrapImage.isChecked = settings.wrapImages
-        binding.readerWrapImage.setOnCheckedChangeListener { _, isChecked ->
-            settings.wrapImages = isChecked
-            activity.applySettings()
-        }
-
-        binding.readerLongClickImage.isChecked = settings.longClickImage
-        binding.readerLongClickImage.setOnCheckedChangeListener { _, isChecked ->
-            settings.longClickImage = isChecked
-            activity.applySettings()
-        }
-
-        // Autoscroll enabled - only valid for Continuous layout
-        binding.readerAutoscrollEnabled.isChecked = PrefManager.getVal(PrefName.AutoScrollEnabled)
-        binding.readerAutoscrollEnabled.isEnabled = settings.layout == CurrentReaderSettings.Layouts.CONTINUOUS
-        binding.readerAutoscrollEnabled.setOnCheckedChangeListener { _, isChecked ->
-            if (isChecked) {
-                if (settings.layout == CurrentReaderSettings.Layouts.CONTINUOUS) {
-                    PrefManager.setVal(PrefName.AutoScrollEnabled, true)
-                    activity.startAutoscroll()
-                } else {
-                    // Prevent enabling autoscroll for non-continuous layouts
-                    Toast.makeText(requireContext(), R.string.autoscroll_only_continuous, Toast.LENGTH_SHORT).show()
-                    binding.readerAutoscrollEnabled.isChecked = false
-                    PrefManager.setVal(PrefName.AutoScrollEnabled, false)
-                }
-            } else {
-                PrefManager.setVal(PrefName.AutoScrollEnabled, false)
-                activity.stopAutoscroll()
-            }
-        }
-
-        // Autoscroll speed (clamp stored preference to slider bounds)
-        run {
-            val pref = PrefManager.getVal<Float>(PrefName.AutoScrollSpeed)
-            val from = binding.readerAutoscrollSpeed.valueFrom
-            val to = binding.readerAutoscrollSpeed.valueTo
-            val clamped = when {
-                pref < from -> from
-                pref > to -> to
-                else -> pref
-            }
-            binding.readerAutoscrollSpeed.value = clamped
-        }
-        binding.readerAutoscrollSpeed.addOnChangeListener(object : Slider.OnChangeListener {
-            override fun onValueChange(slider: Slider, value: Float, fromUser: Boolean) {
-                PrefManager.setVal(PrefName.AutoScrollSpeed, value)
-                activity.updateAutoscrollSpeed(value)
-            }
-        })
     }
 
     override fun onDestroy() {
