@@ -40,6 +40,7 @@ object PrefManager {
             context.getSharedPreferences(Location.AnimeDownloads.location, Context.MODE_PRIVATE)
         protectedPreferences =
             context.getSharedPreferences(Location.Protected.location, Context.MODE_PRIVATE)
+        ResumePositions.init(context)
         Compat.importOldPrefs(context)
         // TEMPORARY INSTRUMENTATION — grep DantotsuPerf. How big the Irrelevant file actually is,
         // and what it costs to have it resident: SharedPreferences parses the whole XML on first
@@ -229,6 +230,7 @@ object PrefManager {
     @Suppress("UNCHECKED_CAST")
     fun <T> setCustomVal(key: String, value: T?) {
         //for custom force irrelevant
+        if (value != null) ResumePositions.touched(key)
         when (value) {
             is Boolean -> irrelevantPreferences!!.edit().putBoolean(key, value as Boolean).apply()
             is Int -> irrelevantPreferences!!.edit().putInt(key, value as Int).apply()
@@ -243,6 +245,9 @@ object PrefManager {
             }
         }
     }
+
+    /** The Irrelevant file itself, for [ResumePositions]' sweep. */
+    internal fun irrelevantPrefs(): SharedPreferences? = irrelevantPreferences
 
     fun removeCustomVal(key: String) {
         //for custom force irrelevant
@@ -326,6 +331,7 @@ object PrefManager {
     @Suppress("UNCHECKED_CAST")
     fun applyCustomVals(sets: Map<String, Any> = emptyMap(), removes: Set<String> = emptySet()) {
         if (sets.isEmpty() && removes.isEmpty()) return
+        sets.keys.forEach(ResumePositions::touched)
         with(irrelevantPreferences!!.edit()) {
             removes.forEach { remove(it) }
             sets.forEach { (key, value) ->

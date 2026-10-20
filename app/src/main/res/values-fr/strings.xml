@@ -1827,6 +1827,9 @@
     <string name="novel_tts_sleep_timer">Minuteur de veille</string>
     <string name="novel_tts_sleep_off">Désactivé</string>
     <string name="novel_tts_sleep_minutes">%1$d minutes</string>
+    <string name="player_sleep_end_of_episode">Fin de l\'épisode</string>
+    <string name="player_sleep_left">Minuteur de veille · encore %1$d min</string>
+    <string name="player_sleep_paused">Minuteur de veille : lecture en pause</string>
     <string name="novel_tts_voice_female">Voix féminine</string>
     <string name="novel_tts_voice_male">Voix masculine</string>
     <string name="novel_tts_quality_high">haute qualité</string>
@@ -3124,6 +3127,12 @@
     <string name="reader_section_text">Texte</string>
     <string name="novel_text_size">Taille du texte</string>
     <string name="novel_text_size_desc">Pourcentage de la taille du texte du livre</string>
+    <string name="novel_font">Police</string>
+    <string name="novel_font_book">Celle du livre</string>
+    <string name="novel_font_serif">Avec empattements</string>
+    <string name="novel_font_sans">Sans empattements</string>
+    <string name="novel_font_condensed">Condensée</string>
+    <string name="novel_font_mono">Chasse fixe</string>
     <string name="novel_line_height">Hauteur de ligne</string>
     <string name="novel_margin">Marge</string>
     <string name="novel_max_inline_size">Taille en ligne maximale</string>

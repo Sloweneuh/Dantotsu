@@ -1793,6 +1793,9 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="novel_tts_sleep_timer">Sleep timer</string>
     <string name="novel_tts_sleep_off">Off</string>
     <string name="novel_tts_sleep_minutes">%1$d minutes</string>
+    <string name="player_sleep_end_of_episode">End of episode</string>
+    <string name="player_sleep_left">Sleep timer · %1$d min left</string>
+    <string name="player_sleep_paused">Sleep timer: playback paused</string>
     <string name="novel_tts_voice_female">Female</string>
     <string name="novel_tts_voice_male">Male</string>
     <string name="novel_tts_quality_high">high quality</string>
@@ -3247,6 +3250,12 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="reader_section_text">Text</string>
     <string name="novel_text_size">Text size</string>
     <string name="novel_text_size_desc">Percentage of the book\'s own text size</string>
+    <string name="novel_font">Font</string>
+    <string name="novel_font_book">Book\'s own</string>
+    <string name="novel_font_serif">Serif</string>
+    <string name="novel_font_sans">Sans serif</string>
+    <string name="novel_font_condensed">Condensed</string>
+    <string name="novel_font_mono">Monospace</string>
     <string name="novel_line_height">Line height</string>
     <string name="novel_margin">Margin</string>
     <string name="novel_max_inline_size">Maximum inline size</string>

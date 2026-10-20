@@ -93,8 +93,13 @@ class NovelReaderSettingsDialogFragment : BottomSheetDialogFragment() {
             )
         }
 
-        SettingsRows.bindRebuilt(binding.novelTextRows) {
+        SettingsRows.bindRebuilt(binding.novelTextRows) { refresh ->
             listOf(
+                SettingsRows.novelFontRow(ctx, settings.effectiveFont) { font ->
+                    settings.font = font
+                    activity.applySettings()
+                    refresh()
+                },
                 SettingsRows.stepper(ctx, R.string.novel_text_size, R.drawable.ic_round_format_text_24,
                     R.string.novel_text_size_desc,
                     StepperConfig(settings.effectiveTextSize.toFloat(), step = 10f, min = 50f, max = 300f) {

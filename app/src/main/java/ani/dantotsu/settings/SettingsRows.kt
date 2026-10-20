@@ -6,6 +6,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
 import ani.dantotsu.media.manga.mangareader.TapZoneEditorActivity
+import ani.dantotsu.media.novel.novelreader.NovelFonts
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.util.customAlertDialog
@@ -157,6 +158,22 @@ object SettingsRows {
             },
         )
     }
+
+    /** The novel reader's typeface ([NovelFonts] index [current]), picked from a list. */
+    fun novelFontRow(context: Context, current: Int, onSelect: (Int) -> Unit) = Settings(
+        type = 1,
+        name = context.getString(R.string.novel_font),
+        desc = context.getString(NovelFonts.name(current)),
+        icon = R.drawable.ic_round_font_size_24,
+        onClick = {
+            val names = NovelFonts.names.map { context.getString(it) }.toTypedArray()
+            context.customAlertDialog().apply {
+                setTitle(R.string.novel_font)
+                singleChoiceItems(names, (current - 1).coerceIn(0, names.size - 1)) { i -> onSelect(i + 1) }
+                show()
+            }
+        },
+    )
 
     /**
      * Fills [list] with rows whose values change from inside it (a choice's current option under

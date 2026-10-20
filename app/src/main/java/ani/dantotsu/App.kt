@@ -233,7 +233,10 @@ class App : MultiDexApplication() {
         // Off the main thread deliberately: it reads the whole preferences map, which on a device
         // that has synced its lists is large enough that doing so is exactly the cost being
         // reclaimed. One-shot, and a no-op once it has run.
-        scope.launch { PrefManager.pruneStaleCustomVals() }
+        scope.launch {
+            PrefManager.pruneStaleCustomVals()
+            ani.dantotsu.settings.saving.ResumePositions.prune()
+        }
         // Cheap and idempotent: puts the extension auto-update worker on its schedule, or takes it
         // off when the preference is off. Safe to run every launch — the unique work is UPDATEd, so
         // an unchanged request keeps the countdown it is already on.

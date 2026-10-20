@@ -464,6 +464,15 @@
                             tools:ignore="ContentDescription,SpeakableTextPresentCheck" />
 
                         <ImageButton
+                            android:id="@+id/exo_sleep_timer"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:backgroundTint="#00FFFFFF"
+                            android:contentDescription="@string/novel_tts_sleep_timer"
+                            android:src="@drawable/ic_round_alarm_24"
+                            app:tint="#fff" />
+
+                        <ImageButton
                             android:id="@+id/exo_lock"
                             android:layout_width="48dp"
                             android:layout_height="48dp"

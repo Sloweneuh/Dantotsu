@@ -12,6 +12,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.BroadcastReceiver
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.drawable.Icon
 import android.content.pm.ActivityInfo
@@ -176,6 +177,7 @@ import com.google.android.gms.cast.framework.CastButtonFactory
 import com.google.android.gms.cast.framework.CastContext
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
+import com.google.android.material.color.MaterialColors
 import com.google.android.material.slider.Slider
 import com.lagradost.nicehttp.ignoreAllSSLErrors
 import io.github.peerless2012.ass.media.AssHandler
@@ -349,6 +351,13 @@ class ExoplayerView :
     private var currentWindow = 0
     private var playbackPosition: Long = 0
     private var episodeLength: Float = 0f
+
+    /**
+     * Whether the episode on screen has actually played, here or on a cast device. Progress is only
+     * sent for one that has: a stream that never starts still reports a position — the saved one
+     * it was asked to resume at — and the first episode counts as "started" on opening alone.
+     */
+    private var playedThisEpisode = false
     private var isFullscreen: Int = 0
     private var isInitialized = false
     private var isPlayerPlaying = true
@@ -1378,6 +1387,7 @@ class ExoplayerView :
                 val prev = episodeArr[currentEpisodeIndex]
                 isTimeStampsLoaded = false
                 episodeLength = 0f
+                playedThisEpisode = false
                 media.anime!!.selectedEpisode = episodeArr[index]
                 model.setMedia(media)
                 model.epChanged.postValue(false)
@@ -1691,6 +1701,54 @@ class ExoplayerView :
                     curSpeed = i
                     playbackParameters = PlaybackParameters(speed)
                     exoPlayer.playbackParameters = playbackParameters
+                    hideSystemBars()
+                }
+                setOnCancelListener { hideSystemBars() }
+                show()
+            }
+        }
+
+        // Sleep timer: a set time, or the end of the episode playing. The button shows in the
+        // accent colour while one is set.
+        val sleepButton = playerView.findViewById<ImageButton>(R.id.exo_sleep_timer)
+        sleepTimer = PlayerSleepTimer(
+            onExpire = {
+                exoPlayer.pause()
+                playerView.showController()
+                snackString(getString(R.string.player_sleep_paused))
+            },
+            onChange = {
+                sleepButton.imageTintList = ColorStateList.valueOf(
+                    if (sleepTimer?.isActive == true) {
+                        MaterialColors.getColor(sleepButton, androidx.appcompat.R.attr.colorPrimary)
+                    } else {
+                        Color.WHITE
+                    }
+                )
+            },
+        )
+        sleepButton.setOnClickListener {
+            val timer = sleepTimer ?: return@setOnClickListener
+            val minutes = listOf(15, 30, 45, 60, 90)
+            val names = (listOf(getString(R.string.novel_tts_sleep_off),
+                getString(R.string.player_sleep_end_of_episode)) +
+                minutes.map { getString(R.string.novel_tts_sleep_minutes, it) }).toTypedArray()
+            // A countdown shows as the first choice at least as long as what is left.
+            val current = when {
+                timer.endOfEpisode -> 1
+                timer.minutesLeft > 0 -> 2 + minutes.indexOfFirst { it >= timer.minutesLeft }
+                    .let { if (it < 0) minutes.lastIndex else it }
+                else -> 0
+            }
+            customAlertDialog().apply {
+                if (timer.minutesLeft > 0) setTitle(getString(R.string.player_sleep_left, timer.minutesLeft))
+                else setTitle(R.string.novel_tts_sleep_timer)
+                singleChoiceItems(names, current) { i ->
+                    when (i) {
+                        0 -> timer.cancel()
+                        1 -> timer.setEndOfEpisode()
+                        else -> timer.setMinutes(minutes[i - 2])
+                    }
                     hideSystemBars()
                 }
                 setOnCancelListener { hideSystemBars() }
@@ -2596,6 +2654,7 @@ class ExoplayerView :
     }
 
     override fun onIsPlayingChanged(isPlaying: Boolean) {
+        if (isPlaying) playedThisEpisode = true
         if (!isBuffering) {
             isPlayerPlaying = isPlaying
             playerView.keepScreenOn = isPlaying
@@ -2959,6 +3018,7 @@ class ExoplayerView :
     }
 
     private var isBuffering = true
+    private var sleepTimer: PlayerSleepTimer? = null
 
     override fun onPlaybackStateChanged(playbackState: Int) {
         if (playbackState == ExoPlayer.STATE_READY) {
@@ -2969,6 +3029,11 @@ class ExoplayerView :
             }
         }
         isBuffering = playbackState == Player.STATE_BUFFERING
+        // A sleep timer set for the end of this episode stops here, before autoplay moves on.
+        if (playbackState == Player.STATE_ENDED && sleepTimer?.onEpisodeEnded() == true) {
+            super.onPlaybackStateChanged(playbackState)
+            return
+        }
         if (playbackState == Player.STATE_ENDED && PrefManager.getVal(PrefName.AutoPlay)) {
             if (interacted) {
                 exoNext.performClick()
@@ -2980,6 +3045,7 @@ class ExoplayerView :
     }
 
     private fun updateAniProgress() {
+        if (!playedThisEpisode) return
         val incognito: Boolean = PrefManager.getVal(PrefName.Incognito)
         // Whichever player has the episode: watched on the TV counts as watched.
         val position = (castPlayer?.takeIf { isCasting } ?: exoPlayer).currentPosition
@@ -3043,6 +3109,8 @@ class ExoplayerView :
     }
 
     override fun onDestroy() {
+        sleepTimer?.cancel()
+        sleepTimer = null
         unregisterReceiver(pipActionReceiver)
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
 
@@ -3315,6 +3383,7 @@ class ExoplayerView :
                 // The phone's own player reports nothing while casting, so presence follows
                 // the cast session's playback instead.
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
+                    if (isPlaying) playedThisEpisode = true
                     discordRPC()
                 }
             }

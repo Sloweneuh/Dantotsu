@@ -451,6 +451,39 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
      * styles not winning, and neither is something this can check. The class is kept only as the
      * handle for finding what to put out again.
      */
+    /**
+     * The chosen typeface, added to the styles the ebook library gives each chapter. The library
+     * has no font setting and rewrites its styles whenever it lays out a chapter or changes its
+     * appearance, so the renderer's setStyles is wrapped once to append the font rule to whatever
+     * it is given — marked, so a rule already there is replaced rather than stacked. Run just
+     * before the appearance is set, which passes the chapter on screen its styles through it.
+     */
+    private fun applyFont() {
+        val family = NovelFonts.css(defaultSettings.effectiveFont)
+        // Only ever one of NovelFonts' own family lists, so nothing to escape.
+        val rule = if (family == null) "" else
+            "html, body, body *:not(pre):not(code):not(kbd):not(samp) { font-family: $family !important; }"
+        val script = """
+            (function (rule) {
+              try {
+                var r = view && view.renderer;
+                if (!r || !r.setStyles) return;
+                var MARK = '/*dantotsu-font*/';
+                window.dantotsuFontRule = rule;
+                if (!r.dantotsuFontWrapped) {
+                  var original = r.setStyles.bind(r);
+                  r.setStyles = function (styles) {
+                    var add = function (css) { return String(css || '').split(MARK)[0] + MARK + window.dantotsuFontRule; };
+                    return original(Array.isArray(styles) ? [styles[0], add(styles[1])] : add(styles));
+                  };
+                  r.dantotsuFontWrapped = true;
+                }
+              } catch (e) {}
+            })('$rule');
+        """.trimIndent()
+        tryWith { binding.bookReader.evaluateJavascript(script, null) }
+    }
+
     private fun highlightSentence(marker: Int?) {
         if (!loaded) return
         // An integer, so it cannot carry anything that needs escaping into the selector.
@@ -1478,6 +1511,8 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
         currentTheme?.justify = defaultSettings.justify
         currentTheme?.hyphenate = defaultSettings.hyphenation
 
+        // Before the appearance: it is setting the appearance that hands the chapter its styles.
+        applyFont()
         currentTheme?.let { binding.bookReader.setAppearance(it) }
         // The ebook library has no text size of its own; the web view's text zoom scales every
         // chapter's text, whatever units the book sets its fonts in.

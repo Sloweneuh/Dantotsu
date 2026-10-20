@@ -31,14 +31,20 @@ data class CurrentNovelReaderSettings(
      * saved before it existed (deserialising skips defaults) — read it through [effectiveTextSize].
      */
     var textSize: Int = PrefManager.getVal(PrefName.NovelTextSize),
+    /** The typeface, as an index into NovelFonts; 0 in settings saved before it existed. */
+    var font: Int = PrefManager.getVal(PrefName.NovelFont),
 ) : Serializable {
 
     /** [textSize], with the global default standing in for a book saved before it existed. */
     val effectiveTextSize: Int
         get() = textSize.takeIf { it > 0 } ?: PrefManager.getVal(PrefName.NovelTextSize)
 
+    /** [font], with the global default standing in for a book saved before it existed. */
+    val effectiveFont: Int
+        get() = font.takeIf { it > 0 } ?: PrefManager.getVal(PrefName.NovelFont)
+
     companion object {
-        // Pinned to the value the class had before textSize was added, so every book's saved
+        // Pinned to the value the class had before textSize and font were added, so every book's saved
         // settings still load: Java computes one from the fields otherwise, and any new field would
         // make all of them fail to read and fall back to the defaults.
         private const val serialVersionUID = 4612653471301037023L

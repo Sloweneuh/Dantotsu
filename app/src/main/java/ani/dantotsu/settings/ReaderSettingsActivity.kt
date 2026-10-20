@@ -286,7 +286,12 @@ class ReaderSettingsActivity : AppCompatActivity() {
             },
         ) }
 
-        bind(binding.readerNovelTextRows, listOf(
+        bindRebuilt(binding.readerNovelTextRows) { refresh -> listOf(
+            SettingsRows.novelFontRow(this, defaultSettingsLN.effectiveFont) { font ->
+                defaultSettingsLN.font = font
+                PrefManager.setVal(PrefName.NovelFont, font)
+                refresh()
+            },
             stepper(R.string.novel_text_size, R.drawable.ic_round_format_text_24, R.string.novel_text_size_desc,
                 StepperConfig(defaultSettingsLN.effectiveTextSize.toFloat(), step = 10f, min = 50f, max = 300f) {
                     defaultSettingsLN.textSize = it.toInt()
@@ -320,7 +325,7 @@ class ReaderSettingsActivity : AppCompatActivity() {
                 defaultSettingsLN.hyphenation = it
                 PrefManager.setVal(PrefName.Hyphenation, it)
             },
-        ))
+        ) }
 
         bind(binding.readerNovelDisplayRows, listOf(
             row(R.string.use_dark_theme, R.drawable.ic_round_brightness_4_24, defaultSettingsLN.useDarkTheme) {
