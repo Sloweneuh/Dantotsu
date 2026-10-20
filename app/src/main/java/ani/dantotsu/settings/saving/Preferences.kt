@@ -316,6 +316,13 @@ enum class PrefName(val data: Pref) {
     ShowSource(Pref(Location.Reader, Boolean::class, true)),
     ShowSystemBars(Pref(Location.Reader, Boolean::class, false)),
     AutoDetectWebtoon(Pref(Location.Reader, Boolean::class, true)),
+    // Manga page filters and tap zones: global, about the room rather than the series.
+    ReaderDim(Pref(Location.Reader, Float::class, 0f)),
+    ReaderWarmth(Pref(Location.Reader, Float::class, 0f)),
+    ReaderGreyscale(Pref(Location.Reader, Boolean::class, false)),
+    ReaderInvert(Pref(Location.Reader, Boolean::class, false)),
+    ReaderTapZones(Pref(Location.Reader, Int::class, 0)),
+    ReaderTapZonesInverted(Pref(Location.Reader, Boolean::class, false)),
     AskIndividualReader(Pref(Location.Reader, Boolean::class, true)),
     ChapterZeroReader(Pref(Location.Reader, Boolean::class, true)),
     UpdateForHReader(Pref(Location.Reader, Boolean::class, false)),

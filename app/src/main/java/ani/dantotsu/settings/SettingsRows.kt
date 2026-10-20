@@ -4,6 +4,10 @@ import android.content.Context
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
+import ani.dantotsu.settings.saving.PrefManager
+import ani.dantotsu.settings.saving.PrefName
+import ani.dantotsu.util.customAlertDialog
+import kotlin.math.roundToInt
 
 /**
  * Builders for the standard settings rows the reader screens share: the Reader settings page and
@@ -58,16 +62,86 @@ object SettingsRows {
         stepper = config,
     )
 
-    /** A slider row; [format] renders the value beside the title. */
-    fun slider(context: Context, name: Int, icon: Int, config: SliderConfig, enabled: Boolean = true) =
-        Settings(
-            type = 4,
-            name = context.getString(name),
-            desc = "",
-            icon = icon,
-            isEnabled = enabled,
-            slider = config,
+    /** A slider row; [SliderConfig.format] renders the value beside the title. */
+    fun slider(
+        context: Context,
+        name: Int,
+        icon: Int,
+        config: SliderConfig,
+        enabled: Boolean = true,
+        desc: Int? = null,
+    ) = Settings(
+        type = 4,
+        name = context.getString(name),
+        desc = desc?.let { context.getString(it) } ?: "",
+        icon = icon,
+        isEnabled = enabled,
+        slider = config,
+    )
+
+    /**
+     * The manga page filters — dimmer, warm tint, greyscale, invert — as rows. They are global
+     * preferences; [onChange] runs after each is saved (the reader's sheet re-applies them live).
+     */
+    fun pageFilterRows(context: Context, onChange: () -> Unit): List<Settings> {
+        fun percent(v: Float) = "${(v * 100).roundToInt()}%"
+        return listOf(
+            slider(context, R.string.reader_dim, R.drawable.ic_round_brightness_medium_24, SliderConfig(
+                from = 0f, to = 0.8f, stepSize = 0.05f,
+                value = PrefManager.getVal<Float>(PrefName.ReaderDim).coerceIn(0f, 0.8f),
+                onChange = { PrefManager.setVal(PrefName.ReaderDim, it); onChange() },
+                format = ::percent,
+            ), desc = R.string.reader_dim_desc),
+            slider(context, R.string.reader_warmth, R.drawable.ic_round_brightness_high_24, SliderConfig(
+                from = 0f, to = 1f, stepSize = 0.05f,
+                value = PrefManager.getVal<Float>(PrefName.ReaderWarmth).coerceIn(0f, 1f),
+                onChange = { PrefManager.setVal(PrefName.ReaderWarmth, it); onChange() },
+                format = ::percent,
+            ), desc = R.string.reader_warmth_desc),
+            switch(context, R.string.reader_greyscale, R.drawable.ic_palette,
+                PrefManager.getVal(PrefName.ReaderGreyscale)) {
+                PrefManager.setVal(PrefName.ReaderGreyscale, it); onChange()
+            },
+            switch(context, R.string.reader_invert, R.drawable.ic_round_brightness_4_24,
+                PrefManager.getVal(PrefName.ReaderInvert), R.string.reader_invert_desc) {
+                PrefManager.setVal(PrefName.ReaderInvert, it); onChange()
+            },
         )
+    }
+
+    /**
+     * Where a tap turns the page in the paged layout, and whether the sides are swapped. Global
+     * preferences, read at each tap; [refresh] rebuilds the list so the chosen layout shows.
+     */
+    fun tapZoneRows(context: Context, refresh: () -> Unit): List<Settings> {
+        val names = listOf(
+            R.string.reader_tap_zones_edges, R.string.reader_tap_zones_thirds,
+            R.string.reader_tap_zones_l, R.string.reader_tap_zones_off,
+        ).map { context.getString(it) }.toTypedArray()
+        val current = PrefManager.getVal<Int>(PrefName.ReaderTapZones).coerceIn(0, names.size - 1)
+        return listOf(
+            Settings(
+                type = 1,
+                name = context.getString(R.string.reader_tap_zones),
+                desc = context.getString(R.string.reader_tap_zones_paged_only, names[current]),
+                icon = R.drawable.ic_round_grid_view_24,
+                onClick = {
+                    context.customAlertDialog().apply {
+                        setTitle(R.string.reader_tap_zones)
+                        singleChoiceItems(names, current) { i ->
+                            PrefManager.setVal(PrefName.ReaderTapZones, i)
+                            refresh()
+                        }
+                        show()
+                    }
+                },
+            ),
+            switch(context, R.string.reader_tap_zones_invert, R.drawable.ic_round_touch_app_24,
+                PrefManager.getVal(PrefName.ReaderTapZonesInverted), enabled = current != 3) {
+                PrefManager.setVal(PrefName.ReaderTapZonesInverted, it)
+            },
+        )
+    }
 
     /**
      * Fills [list] with rows whose values change from inside it (a choice's current option under

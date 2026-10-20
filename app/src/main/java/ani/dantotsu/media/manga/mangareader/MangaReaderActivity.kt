@@ -9,6 +9,9 @@ import android.content.res.Configuration
 import androidx.appcompat.app.AlertDialog
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
+import android.graphics.Paint
 import android.graphics.Rect
 import android.os.Build
 import android.os.Bundle
@@ -1029,6 +1032,7 @@ class MangaReaderActivity : AppCompatActivity() {
     fun applySettings() {
 
         saveReaderSettings("${media.id}_current_settings", defaultSettings)
+        applyPageFilters()
         hideSystemBars()
         // Crop borders changes what every image's edges look like, and so everything worked out
         // from them; nothing else here does.
@@ -1503,6 +1507,83 @@ class MangaReaderActivity : AppCompatActivity() {
         LEFT, RIGHT, CENTER
     }
 
+    /**
+     * Which side of the screen a tap at ([x], [y]) in a [w] × [h] reader counts as for turning pages,
+     * by the chosen tap-zone layout (ReaderTapZones):
+     *  - 0 Edges: the left and right fifths, below a top strip the width of a fifth (the original).
+     *  - 1 Thirds: the left and right thirds; the middle third opens the menu.
+     *  - 2 L-shape: a 3 × 3 grid — the top row and the middle row's left cell go back, the bottom
+     *    row and the middle row's right cell go forward, the centre opens the menu.
+     *  - 3 Off: every tap opens the menu.
+     * Inverted (ReaderTapZonesInverted) swaps the two sides.
+     */
+    private fun tapZoneSide(x: Int, y: Int, w: Int, h: Int): PressPos {
+        if (w <= 0 || h <= 0) return PressPos.CENTER
+        val side = when (PrefManager.getVal<Int>(PrefName.ReaderTapZones)) {
+            1 -> when {
+                x < w / 3 -> PressPos.LEFT
+                x > w - w / 3 -> PressPos.RIGHT
+                else -> PressPos.CENTER
+            }
+            2 -> when {
+                y < h / 3 -> PressPos.LEFT
+                y > h - h / 3 -> PressPos.RIGHT
+                x < w / 3 -> PressPos.LEFT
+                x > w - w / 3 -> PressPos.RIGHT
+                else -> PressPos.CENTER
+            }
+            3 -> PressPos.CENTER
+            else -> when {
+                y <= w / 5 -> PressPos.CENTER
+                x < w / 5 -> PressPos.LEFT
+                x > w - w / 5 -> PressPos.RIGHT
+                else -> PressPos.CENTER
+            }
+        }
+        if (!PrefManager.getVal<Boolean>(PrefName.ReaderTapZonesInverted)) return side
+        return when (side) {
+            PressPos.LEFT -> PressPos.RIGHT
+            PressPos.RIGHT -> PressPos.LEFT
+            PressPos.CENTER -> PressPos.CENTER
+        }
+    }
+
+    /**
+     * The page filters (global, see ReaderDim / ReaderWarmth / ReaderGreyscale / ReaderInvert): the
+     * dimmer and warm tint as overlays above the pages, greyscale and invert as a colour matrix on
+     * the pages' own layer — the controls and indicators over them keep their colours.
+     */
+    fun applyPageFilters() {
+        val dim = PrefManager.getVal<Float>(PrefName.ReaderDim).coerceIn(0f, 0.8f)
+        binding.mangaReaderDim.alpha = dim
+        binding.mangaReaderDim.isVisible = dim > 0f
+        val warmth = PrefManager.getVal<Float>(PrefName.ReaderWarmth).coerceIn(0f, 1f)
+        // A third at most: past that the tint drowns the page rather than warming it.
+        binding.mangaReaderWarmth.alpha = warmth * 0.35f
+        binding.mangaReaderWarmth.isVisible = warmth > 0f
+
+        val greyscale = PrefManager.getVal<Boolean>(PrefName.ReaderGreyscale)
+        val invert = PrefManager.getVal<Boolean>(PrefName.ReaderInvert)
+        val pages = binding.mangaReaderSwipy
+        if (!greyscale && !invert) {
+            pages.setLayerType(View.LAYER_TYPE_NONE, null)
+            return
+        }
+        val matrix = ColorMatrix()
+        if (greyscale) matrix.setSaturation(0f)
+        if (invert) matrix.postConcat(
+            ColorMatrix(floatArrayOf(
+                -1f, 0f, 0f, 0f, 255f,
+                0f, -1f, 0f, 0f, 255f,
+                0f, 0f, -1f, 0f, 255f,
+                0f, 0f, 0f, 1f, 0f,
+            ))
+        )
+        pages.setLayerType(View.LAYER_TYPE_HARDWARE, Paint().apply {
+            colorFilter = ColorMatrixColorFilter(matrix)
+        })
+    }
+
     fun handleController(shouldShow: Boolean? = null, event: MotionEvent? = null) {
         var pressLocation = PressPos.CENTER
         if (!sliding) {
@@ -1514,22 +1595,13 @@ class MangaReaderActivity : AppCompatActivity() {
                 val origin = IntArray(2).also(binding.root::getLocationOnScreen)
                 val x = event.rawX.toInt() - origin[0]
                 val y = event.rawY.toInt() - origin[1]
-                val screenWidth = binding.root.width
-                //if in the 1st 1/5th of the screen width, left and lower than 1/5th of the screen height, left
-                if (screenWidth / 5 in x + 1..<y) {
-                    pressLocation = if (defaultSettings.direction == RIGHT_TO_LEFT) {
-                        PressPos.RIGHT
-                    } else {
-                        PressPos.LEFT
-                    }
-                }
-                //if in the last 1/5th of the screen width, right and lower than 1/5th of the screen height, right
-                else if (x > screenWidth - screenWidth / 5 && y > screenWidth / 5) {
-                    pressLocation = if (defaultSettings.direction == RIGHT_TO_LEFT) {
-                        PressPos.LEFT
-                    } else {
-                        PressPos.RIGHT
-                    }
+                val side = tapZoneSide(x, y, binding.root.width, binding.root.height)
+                // Screen sides become directions: a right-to-left book turns forward on the left.
+                val rtl = defaultSettings.direction == RIGHT_TO_LEFT
+                pressLocation = when (side) {
+                    PressPos.LEFT -> if (rtl) PressPos.RIGHT else PressPos.LEFT
+                    PressPos.RIGHT -> if (rtl) PressPos.LEFT else PressPos.RIGHT
+                    PressPos.CENTER -> PressPos.CENTER
                 }
             }
 

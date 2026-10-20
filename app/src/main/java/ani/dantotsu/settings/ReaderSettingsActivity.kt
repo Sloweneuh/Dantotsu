@@ -144,7 +144,8 @@ class ReaderSettingsActivity : AppCompatActivity() {
                     PrefManager.setVal(PrefName.DualPageModeReader, defaultSettings.dualPageMode.ordinal)
                     refresh()
                 },
-            )
+            ) + SettingsRows.tapZoneRows(this) { refresh() } +
+                SettingsRows.pageFilterRows(this) {}
         }
 
         // Clamped to the slider's range: a stored speed from an older range can't sit off its ends.

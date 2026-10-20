@@ -38,6 +38,25 @@
         </com.alexvasilkov.gestures.views.GestureFrameLayout>
     </ani.dantotsu.media.manga.mangareader.Swipy>
 
+    <!-- Page filters (see MangaReaderActivity.applyPageFilters): a warm tint and a dimmer laid over
+         the pages only, under the swipe indicators and controls. Not clickable, so touches pass
+         straight through to the pages. -->
+    <View
+        android:id="@+id/mangaReaderWarmth"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#FFB45A00"
+        android:importantForAccessibility="no"
+        android:visibility="gone" />
+
+    <View
+        android:id="@+id/mangaReaderDim"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@android:color/black"
+        android:importantForAccessibility="no"
+        android:visibility="gone" />
+
     <FrameLayout
         android:id="@+id/BottomSwipeContainer"
         android:layout_width="match_parent"

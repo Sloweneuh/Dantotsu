@@ -116,7 +116,7 @@ class ReaderSettingsDialogFragment : BottomSheetDialogFragment() {
                     settings.hidePageNumbers) { settings.hidePageNumbers = it },
                 switch(R.string.horizontal_scroll_bar, R.drawable.ic_round_straighten_24,
                     settings.horizontalScrollBar) { settings.horizontalScrollBar = it },
-            )
+            ) + SettingsRows.pageFilterRows(ctx) { activity.applyPageFilters() }
         }
 
         bind(binding.readerControlsRows) {
@@ -151,7 +151,7 @@ class ReaderSettingsDialogFragment : BottomSheetDialogFragment() {
                         },
                         format = { "%.1f".format(it) },
                     )),
-            )
+            ) + SettingsRows.tapZoneRows(ctx) { refreshAll() }
         }
     }
 
