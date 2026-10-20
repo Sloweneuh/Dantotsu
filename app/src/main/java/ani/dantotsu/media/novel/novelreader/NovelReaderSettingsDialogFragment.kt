@@ -95,6 +95,12 @@ class NovelReaderSettingsDialogFragment : BottomSheetDialogFragment() {
 
         SettingsRows.bindRebuilt(binding.novelTextRows) {
             listOf(
+                SettingsRows.stepper(ctx, R.string.novel_text_size, R.drawable.ic_round_format_text_24,
+                    R.string.novel_text_size_desc,
+                    StepperConfig(settings.effectiveTextSize.toFloat(), step = 10f, min = 50f, max = 300f) {
+                        settings.textSize = it.toInt()
+                        activity.applySettings()
+                    }),
                 stepper(R.string.novel_line_height, R.drawable.ic_format_line_spacing_24, null,
                     settings.lineHeight, 0.1f, 1) { settings.lineHeight = it },
                 stepper(R.string.novel_margin, R.drawable.ic_margin_24, null,

@@ -3213,6 +3213,8 @@ Non quae tempore quo provident laudantium qui illo dolor vel quia dolor et exerc
     <string name="reader_section_display">Display</string>
     <string name="reader_section_controls">Controls</string>
     <string name="reader_section_text">Text</string>
+    <string name="novel_text_size">Text size</string>
+    <string name="novel_text_size_desc">Percentage of the book\'s own text size</string>
     <string name="novel_line_height">Line height</string>
     <string name="novel_margin">Margin</string>
     <string name="novel_max_inline_size">Maximum inline size</string>

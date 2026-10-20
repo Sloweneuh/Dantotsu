@@ -25,8 +25,24 @@ data class CurrentNovelReaderSettings(
     var keepScreenOn: Boolean = PrefManager.getVal(PrefName.KeepScreenOnNovel),
     var volumeButtons: Boolean = PrefManager.getVal(PrefName.VolumeButtonsNovel),
     var lockRotation: Boolean = PrefManager.getVal(PrefName.LockRotationNovel),
-    var hidePageNumbers: Boolean = PrefManager.getVal(PrefName.HidePageNumbersNovel)
+    var hidePageNumbers: Boolean = PrefManager.getVal(PrefName.HidePageNumbersNovel),
+    /**
+     * Text size as a percentage of the book's own, applied as the reader's text zoom. 0 in settings
+     * saved before it existed (deserialising skips defaults) — read it through [effectiveTextSize].
+     */
+    var textSize: Int = PrefManager.getVal(PrefName.NovelTextSize),
 ) : Serializable {
+
+    /** [textSize], with the global default standing in for a book saved before it existed. */
+    val effectiveTextSize: Int
+        get() = textSize.takeIf { it > 0 } ?: PrefManager.getVal(PrefName.NovelTextSize)
+
+    companion object {
+        // Pinned to the value the class had before textSize was added, so every book's saved
+        // settings still load: Java computes one from the fields otherwise, and any new field would
+        // make all of them fail to read and fall back to the defaults.
+        private const val serialVersionUID = 4612653471301037023L
+    }
 
     enum class Layouts(val string: String) {
         PAGED("Paged"),

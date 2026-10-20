@@ -3090,6 +3090,8 @@
     <string name="reader_section_display">Affichage</string>
     <string name="reader_section_controls">Commandes</string>
     <string name="reader_section_text">Texte</string>
+    <string name="novel_text_size">Taille du texte</string>
+    <string name="novel_text_size_desc">Pourcentage de la taille du texte du livre</string>
     <string name="novel_line_height">Hauteur de ligne</string>
     <string name="novel_margin">Marge</string>
     <string name="novel_max_inline_size">Taille en ligne maximale</string>

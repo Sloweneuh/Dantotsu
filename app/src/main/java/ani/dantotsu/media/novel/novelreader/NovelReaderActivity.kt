@@ -1479,6 +1479,9 @@ class NovelReaderActivity : AppCompatActivity(), EbookReaderEventListener {
         currentTheme?.hyphenate = defaultSettings.hyphenation
 
         currentTheme?.let { binding.bookReader.setAppearance(it) }
+        // The ebook library has no text size of its own; the web view's text zoom scales every
+        // chapter's text, whatever units the book sets its fonts in.
+        binding.bookReader.settings.textZoom = defaultSettings.effectiveTextSize
 
         if (defaultSettings.keepScreenOn) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
