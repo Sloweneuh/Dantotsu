@@ -281,6 +281,9 @@ class ExoplayerView :
         var initialized = false
         lateinit var media: Media
 
+        /** How far a swipe across the whole player width seeks. */
+        private const val SWIPE_SEEK_FULL_WIDTH_MS = 120_000f
+
         private const val DEFAULT_MIN_BUFFER_MS = 900000
         private const val DEFAULT_MAX_BUFFER_MS = 900000
 
@@ -1209,11 +1212,60 @@ class ExoplayerView :
                 }
             }
 
+            // Swipe to seek: a sideways drag on either side previews a seek in the same pill the
+            // 2x label uses, and seeks when the finger lifts. A full-width swipe is two minutes.
+            var swipeSeekFrom: Long? = null
+            var swipeSeekDx = 0f
+            fun clock(ms: Long): String {
+                val s = ms / 1000
+                return if (s >= 3600) "%d:%02d:%02d".format(s / 3600, s / 60 % 60, s % 60)
+                else "%d:%02d".format(s / 60, s % 60)
+            }
+            fun swipeSeekTarget(): Long {
+                val from = swipeSeekFrom ?: return 0L
+                val width = playerView.width.takeIf { it > 0 } ?: return from
+                val offset = (swipeSeekDx / width * SWIPE_SEEK_FULL_WIDTH_MS).toLong()
+                val duration = exoPlayer.duration.takeIf { it > 0 } ?: Long.MAX_VALUE
+                return (from + offset).coerceIn(0L, duration)
+            }
+            fun swipeSeek(distanceX: Float) {
+                if (locked || !isInitialized || isFastForwarding || !PrefManager.getVal<Boolean>(PrefName.Gestures)) return
+                if (swipeSeekFrom == null) {
+                    swipeSeekFrom = exoPlayer.currentPosition
+                    swipeSeekDx = 0f
+                }
+                // distanceX is the last position minus the new one: a drag to the right is negative.
+                swipeSeekDx -= distanceX
+                val target = swipeSeekTarget()
+                val delta = target - (swipeSeekFrom ?: target)
+                val sign = if (delta < 0) "−" else "+"
+                fastForward.text = "$sign${clock(kotlin.math.abs(delta))} · ${clock(target)}"
+                fastForward.visibility = View.VISIBLE
+            }
+            fun finishSwipeSeek(commit: Boolean) {
+                if (swipeSeekFrom == null) return
+                if (commit) exoPlayer.seekTo(swipeSeekTarget())
+                swipeSeekFrom = null
+                fastForward.visibility = View.GONE
+            }
+            // A touch that ends any way but a lift (cancelled by a system gesture, say) must still
+            // drop the 2x speed and a half-made seek, or playback stays fast.
+            fun endTouch(event: MotionEvent) {
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_UP -> { stopFastForward(); finishSwipeSeek(commit = true) }
+                    MotionEvent.ACTION_CANCEL -> { stopFastForward(); finishSwipeSeek(commit = false) }
+                }
+            }
+
             // FastRewind (Left Panel)
             val fastRewindDetector =
                 GestureDetector(
                     this,
                     object : GesturesListener() {
+                        override val lockScrollAxis = true
+
+                        override fun onScrollXClick(y: Float) = swipeSeek(y)
+
                         override fun onLongClick(event: MotionEvent) {
                             if (PrefManager.getVal(PrefName.FastForward)) fastForward()
                         }
@@ -1240,7 +1292,7 @@ class ExoplayerView :
             rewindArea.isClickable = true
             rewindArea.setOnTouchListener { v, event ->
                 fastRewindDetector.onTouchEvent(event)
-                if (event.action == MotionEvent.ACTION_UP) stopFastForward()
+                endTouch(event)
                 v.performClick()
                 true
             }
@@ -1250,6 +1302,10 @@ class ExoplayerView :
                 GestureDetector(
                     this,
                     object : GesturesListener() {
+                        override val lockScrollAxis = true
+
+                        override fun onScrollXClick(y: Float) = swipeSeek(y)
+
                         override fun onLongClick(event: MotionEvent) {
                             if (PrefManager.getVal(PrefName.FastForward)) fastForward()
                         }
@@ -1276,7 +1332,7 @@ class ExoplayerView :
             forwardArea.isClickable = true
             forwardArea.setOnTouchListener { v, event ->
                 fastForwardDetector.onTouchEvent(event)
-                if (event.action == MotionEvent.ACTION_UP) stopFastForward()
+                endTouch(event)
                 v.performClick()
                 true
             }

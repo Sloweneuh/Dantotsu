@@ -169,6 +169,7 @@ import java.util.TimerTask
 import kotlin.collections.set
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
+import kotlin.math.abs
 import kotlin.math.log2
 import kotlin.math.max
 import kotlin.math.min
@@ -888,6 +889,20 @@ abstract class GesturesListener : GestureDetector.SimpleOnGestureListener() {
     private var timer: Timer? = null //at class level;
     private val delay: Long = 200
 
+    /**
+     * Set to have a drag drive one axis only, picked by the way it first moves. Off, every drag
+     * reports both axes at once — a sideways swipe on the player nudged brightness or volume too.
+     */
+    open val lockScrollAxis: Boolean = false
+    private var scrollAxis = Axis.NONE
+
+    private enum class Axis { NONE, X, Y }
+
+    override fun onDown(e: MotionEvent): Boolean {
+        scrollAxis = Axis.NONE
+        return super.onDown(e)
+    }
+
     override fun onSingleTapUp(e: MotionEvent): Boolean {
         processSingleClickEvent(e)
         return super.onSingleTapUp(e)
@@ -909,8 +924,21 @@ abstract class GesturesListener : GestureDetector.SimpleOnGestureListener() {
         distanceX: Float,
         distanceY: Float
     ): Boolean {
-        onScrollYClick(distanceY)
-        onScrollXClick(distanceX)
+        if (!lockScrollAxis) {
+            onScrollYClick(distanceY)
+            onScrollXClick(distanceX)
+        } else {
+            // Decided on the drag's first movement past the touch slop, and kept until the finger
+            // lifts (onDown resets it), so a swipe that drifts doesn't switch what it controls.
+            if (scrollAxis == Axis.NONE && e1 != null) {
+                scrollAxis = if (abs(e2.x - e1.x) > abs(e2.y - e1.y)) Axis.X else Axis.Y
+            }
+            when (scrollAxis) {
+                Axis.X -> onScrollXClick(distanceX)
+                Axis.Y -> onScrollYClick(distanceY)
+                Axis.NONE -> Unit
+            }
+        }
         return super.onScroll(e1, e2, distanceX, distanceY)
     }
 
