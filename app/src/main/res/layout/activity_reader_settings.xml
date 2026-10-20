@@ -112,27 +112,63 @@
                 app:summary="@string/manga_reader_group_desc"
                 app:icon="@drawable/ic_round_import_contacts_24">
 
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/readerMangaTopRows"
+                <!-- Sub-sections, as in the reader's own settings sheet. -->
+                <ani.dantotsu.others.Xpandable
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginHorizontal="16dp"
-                    android:nestedScrollingEnabled="false"
-                    android:overScrollMode="never"
-                    app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-                    tools:itemCount="3"
-                    tools:listitem="@layout/item_settings_switch" />
+                    android:orientation="vertical"
+                    app:icon="@drawable/ic_round_view_array_24"
+                    app:title="@string/layout">
 
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/readerMangaRows"
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/readerMangaLayoutRows"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginHorizontal="16dp"
+                        android:nestedScrollingEnabled="false"
+                        android:overScrollMode="never"
+                        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                        tools:itemCount="3"
+                        tools:listitem="@layout/item_settings_switch" />
+                </ani.dantotsu.others.Xpandable>
+
+                <ani.dantotsu.others.Xpandable
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginHorizontal="16dp"
-                    android:nestedScrollingEnabled="false"
-                    android:overScrollMode="never"
-                    app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-                    tools:itemCount="3"
-                    tools:listitem="@layout/item_settings_switch" />
+                    android:orientation="vertical"
+                    app:icon="@drawable/ic_round_high_quality_24"
+                    app:title="@string/reader_section_display">
+
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/readerMangaDisplayRows"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginHorizontal="16dp"
+                        android:nestedScrollingEnabled="false"
+                        android:overScrollMode="never"
+                        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                        tools:itemCount="3"
+                        tools:listitem="@layout/item_settings_switch" />
+                </ani.dantotsu.others.Xpandable>
+
+                <ani.dantotsu.others.Xpandable
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    app:icon="@drawable/ic_round_touch_app_24"
+                    app:title="@string/reader_section_controls">
+
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/readerMangaControlsRows"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginHorizontal="16dp"
+                        android:nestedScrollingEnabled="false"
+                        android:overScrollMode="never"
+                        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                        tools:itemCount="3"
+                        tools:listitem="@layout/item_settings_switch" />
+                </ani.dantotsu.others.Xpandable>
 
             </ani.dantotsu.others.Xpandable>
 
@@ -170,16 +206,82 @@
                 app:summary="@string/novel_reader_group_desc"
                 app:icon="@drawable/ic_round_menu_book_24">
 
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/readerNovelRows"
+                <!-- Sub-sections, as in the reader's own settings sheet. -->
+                <ani.dantotsu.others.Xpandable
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginHorizontal="16dp"
-                    android:nestedScrollingEnabled="false"
-                    android:overScrollMode="never"
-                    app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-                    tools:itemCount="3"
-                    tools:listitem="@layout/item_settings_switch" />
+                    android:orientation="vertical"
+                    app:icon="@drawable/ic_round_view_array_24"
+                    app:title="@string/layout">
+
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/readerNovelLayoutRows"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginHorizontal="16dp"
+                        android:nestedScrollingEnabled="false"
+                        android:overScrollMode="never"
+                        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                        tools:itemCount="3"
+                        tools:listitem="@layout/item_settings_switch" />
+                </ani.dantotsu.others.Xpandable>
+
+                <ani.dantotsu.others.Xpandable
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    app:icon="@drawable/ic_round_format_text_24"
+                    app:title="@string/reader_section_text">
+
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/readerNovelTextRows"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginHorizontal="16dp"
+                        android:nestedScrollingEnabled="false"
+                        android:overScrollMode="never"
+                        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                        tools:itemCount="3"
+                        tools:listitem="@layout/item_settings_switch" />
+                </ani.dantotsu.others.Xpandable>
+
+                <ani.dantotsu.others.Xpandable
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    app:icon="@drawable/ic_round_high_quality_24"
+                    app:title="@string/reader_section_display">
+
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/readerNovelDisplayRows"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginHorizontal="16dp"
+                        android:nestedScrollingEnabled="false"
+                        android:overScrollMode="never"
+                        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                        tools:itemCount="3"
+                        tools:listitem="@layout/item_settings_switch" />
+                </ani.dantotsu.others.Xpandable>
+
+                <ani.dantotsu.others.Xpandable
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    app:icon="@drawable/ic_round_touch_app_24"
+                    app:title="@string/reader_section_controls">
+
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/readerNovelControlsRows"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginHorizontal="16dp"
+                        android:nestedScrollingEnabled="false"
+                        android:overScrollMode="never"
+                        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                        tools:itemCount="3"
+                        tools:listitem="@layout/item_settings_switch" />
+                </ani.dantotsu.others.Xpandable>
 
             </ani.dantotsu.others.Xpandable>
 

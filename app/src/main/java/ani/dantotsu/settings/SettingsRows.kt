@@ -1,9 +1,11 @@
 package ani.dantotsu.settings
 
 import android.content.Context
+import android.content.Intent
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import ani.dantotsu.R
+import ani.dantotsu.media.manga.mangareader.TapZoneEditorActivity
 import ani.dantotsu.settings.saving.PrefManager
 import ani.dantotsu.settings.saving.PrefName
 import ani.dantotsu.util.customAlertDialog
@@ -117,6 +119,7 @@ object SettingsRows {
         val names = listOf(
             R.string.reader_tap_zones_edges, R.string.reader_tap_zones_thirds,
             R.string.reader_tap_zones_l, R.string.reader_tap_zones_off,
+            R.string.reader_tap_zones_custom,
         ).map { context.getString(it) }.toTypedArray()
         val current = PrefManager.getVal<Int>(PrefName.ReaderTapZones).coerceIn(0, names.size - 1)
         return listOf(
@@ -134,6 +137,18 @@ object SettingsRows {
                         }
                         show()
                     }
+                },
+            ),
+            // Only while the custom layout is the one in use: editing zones nothing reads would
+            // look like it should change something.
+            Settings(
+                type = 1,
+                name = context.getString(R.string.reader_tap_zones_edit),
+                desc = context.getString(R.string.reader_tap_zones_edit_desc),
+                icon = R.drawable.ic_round_grid_view_24,
+                isVisible = current == 4,
+                onClick = {
+                    context.startActivity(Intent(context, TapZoneEditorActivity::class.java))
                 },
             ),
             switch(context, R.string.reader_tap_zones_invert, R.drawable.ic_round_touch_app_24,

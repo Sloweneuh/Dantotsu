@@ -1515,6 +1515,8 @@ class MangaReaderActivity : AppCompatActivity() {
      *  - 2 L-shape: a 3 × 3 grid — the top row and the middle row's left cell go back, the bottom
      *    row and the middle row's right cell go forward, the centre opens the menu.
      *  - 3 Off: every tap opens the menu.
+     *  - 4 Custom: the user's own boxes (ReaderCustomTapZones; see TapZones and
+     *    TapZoneEditorActivity), as back and forward rather than sides, whatever the direction.
      * Inverted (ReaderTapZonesInverted) swaps the two sides.
      */
     private fun tapZoneSide(x: Int, y: Int, w: Int, h: Int): PressPos {
@@ -1533,6 +1535,16 @@ class MangaReaderActivity : AppCompatActivity() {
                 else -> PressPos.CENTER
             }
             3 -> PressPos.CENTER
+            4 -> when (
+                TapZones.zoneAt(
+                    TapZones.parse(PrefManager.getVal(PrefName.ReaderCustomTapZones)),
+                    x.toFloat() / w, y.toFloat() / h,
+                )
+            ) {
+                TapZones.Zone.BACK -> PressPos.LEFT
+                TapZones.Zone.FORWARD -> PressPos.RIGHT
+                TapZones.Zone.MENU, null -> PressPos.CENTER
+            }
             else -> when {
                 y <= w / 5 -> PressPos.CENTER
                 x < w / 5 -> PressPos.LEFT
@@ -1597,7 +1609,9 @@ class MangaReaderActivity : AppCompatActivity() {
                 val y = event.rawY.toInt() - origin[1]
                 val side = tapZoneSide(x, y, binding.root.width, binding.root.height)
                 // Screen sides become directions: a right-to-left book turns forward on the left.
-                val rtl = defaultSettings.direction == RIGHT_TO_LEFT
+                // Custom zones are already directions — a box marked Back always goes back.
+                val rtl = defaultSettings.direction == RIGHT_TO_LEFT &&
+                    PrefManager.getVal<Int>(PrefName.ReaderTapZones) != 4
                 pressLocation = when (side) {
                     PressPos.LEFT -> if (rtl) PressPos.RIGHT else PressPos.LEFT
                     PressPos.RIGHT -> if (rtl) PressPos.LEFT else PressPos.RIGHT

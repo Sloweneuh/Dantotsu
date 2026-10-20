@@ -323,6 +323,8 @@ enum class PrefName(val data: Pref) {
     ReaderInvert(Pref(Location.Reader, Boolean::class, false)),
     ReaderTapZones(Pref(Location.Reader, Int::class, 0)),
     ReaderTapZonesInverted(Pref(Location.Reader, Boolean::class, false)),
+    // The custom layout's boxes; see TapZones. Starts as the Edges layout.
+    ReaderCustomTapZones(Pref(Location.Reader, String::class, ani.dantotsu.media.manga.mangareader.TapZones.DEFAULT)),
     AskIndividualReader(Pref(Location.Reader, Boolean::class, true)),
     ChapterZeroReader(Pref(Location.Reader, Boolean::class, true)),
     UpdateForHReader(Pref(Location.Reader, Boolean::class, false)),

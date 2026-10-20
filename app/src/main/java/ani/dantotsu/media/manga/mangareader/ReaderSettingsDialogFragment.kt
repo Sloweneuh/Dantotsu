@@ -89,19 +89,6 @@ class ReaderSettingsDialogFragment : BottomSheetDialogFragment() {
                     activity.applySettings()
                     refreshAll()
                 },
-            )
-        }
-
-        bind(binding.readerDisplayRows) {
-            listOf(
-                switch(R.string.over_scroll, R.drawable.ic_round_swipe_vertical_24, settings.overScrollMode,
-                    visible = !isMultiChapter) { settings.overScrollMode = it },
-                switch(R.string.true_colors, R.drawable.ic_round_high_quality_24, settings.trueColors,
-                    R.string.true_colors_info) { settings.trueColors = it },
-                switch(R.string.image_rotation, R.drawable.ic_round_screen_rotation_alt_24,
-                    settings.rotation) { settings.rotation = it },
-                switch(R.string.crop_borders, R.drawable.ic_round_auto_awesome_24,
-                    settings.cropBorders) { settings.cropBorders = it },
                 // Pages have no gaps to space in the paged layout.
                 switch(R.string.spaced_pages, R.drawable.ic_round_space_bar_24, settings.padding,
                     enabled = settings.layout != Layouts.PAGED) { settings.padding = it },
@@ -110,28 +97,43 @@ class ReaderSettingsDialogFragment : BottomSheetDialogFragment() {
                     PrefManager.getVal(PrefName.SmartPadding), R.string.smart_spacing_info) {
                     PrefManager.setVal(PrefName.SmartPadding, it)
                 },
-                switch(R.string.hide_scroll_bar, R.drawable.ic_round_no_scroll_bar,
-                    settings.hideScrollBar) { settings.hideScrollBar = it },
-                switch(R.string.hide_page_numbers, R.drawable.ic_page_numbering,
-                    settings.hidePageNumbers) { settings.hidePageNumbers = it },
-                switch(R.string.horizontal_scroll_bar, R.drawable.ic_round_straighten_24,
-                    settings.horizontalScrollBar) { settings.horizontalScrollBar = it },
-            ) + SettingsRows.pageFilterRows(ctx) { activity.applyPageFilters() }
+                switch(R.string.wrap_images, R.drawable.ic_round_fullscreen_24, settings.wrapImages,
+                    R.string.wrap_images_info) { settings.wrapImages = it },
+            )
         }
 
-        bind(binding.readerControlsRows) {
-            val continuous = settings.layout == Layouts.CONTINUOUS
+        // What is shown, and how the screen behaves.
+        bind(binding.readerDisplayRows) {
             listOf(
+                switch(R.string.true_colors, R.drawable.ic_round_high_quality_24, settings.trueColors,
+                    R.string.true_colors_info) { settings.trueColors = it },
+                switch(R.string.image_rotation, R.drawable.ic_round_screen_rotation_alt_24,
+                    settings.rotation) { settings.rotation = it },
+                switch(R.string.crop_borders, R.drawable.ic_round_auto_awesome_24,
+                    settings.cropBorders) { settings.cropBorders = it },
+                switch(R.string.hide_scroll_bar, R.drawable.ic_round_no_scroll_bar,
+                    settings.hideScrollBar) { settings.hideScrollBar = it },
+                switch(R.string.horizontal_scroll_bar, R.drawable.ic_round_straighten_24,
+                    settings.horizontalScrollBar) { settings.horizontalScrollBar = it },
+                switch(R.string.hide_page_numbers, R.drawable.ic_page_numbering,
+                    settings.hidePageNumbers) { settings.hidePageNumbers = it },
                 switch(R.string.keep_screen_on, R.drawable.ic_baseline_screen_lock_portrait_24,
                     settings.keepScreenOn) { settings.keepScreenOn = it },
                 switch(R.string.lock_screen_rotation, R.drawable.ic_round_screen_rotation_24,
                     settings.lockRotation) { settings.lockRotation = it },
+            ) + SettingsRows.pageFilterRows(ctx) { activity.applyPageFilters() }
+        }
+
+        // What taps, keys, presses and scrolling do.
+        bind(binding.readerControlsRows) {
+            val continuous = settings.layout == Layouts.CONTINUOUS
+            SettingsRows.tapZoneRows(ctx) { refreshAll() } + listOf(
                 switch(R.string.volume_buttons, R.drawable.ic_round_touch_app_24,
                     settings.volumeButtons) { settings.volumeButtons = it },
-                switch(R.string.wrap_images, R.drawable.ic_round_fullscreen_24, settings.wrapImages,
-                    R.string.wrap_images_info) { settings.wrapImages = it },
                 switch(R.string.image_long_clicking, R.drawable.ic_round_touch_app_24,
                     settings.longClickImage) { settings.longClickImage = it },
+                switch(R.string.over_scroll, R.drawable.ic_round_swipe_vertical_24, settings.overScrollMode,
+                    visible = !isMultiChapter) { settings.overScrollMode = it },
                 // Autoscroll only runs on the continuous layout, so it is greyed out on the others.
                 SettingsRows.switch(ctx, R.string.autoscroll, R.drawable.ic_round_play_arrow_24,
                     continuous && PrefManager.getVal<Boolean>(PrefName.AutoScrollEnabled),
@@ -151,7 +153,7 @@ class ReaderSettingsDialogFragment : BottomSheetDialogFragment() {
                         },
                         format = { "%.1f".format(it) },
                     )),
-            ) + SettingsRows.tapZoneRows(ctx) { refreshAll() }
+            )
         }
     }
 

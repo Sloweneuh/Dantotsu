@@ -231,6 +231,7 @@
         <activity android:name=".settings.MUCustomListMappingActivity"/>
         <activity android:name=".settings.PlayerSettingsActivity" />
         <activity android:name=".settings.ReaderSettingsActivity" />
+        <activity android:name=".media.manga.mangareader.TapZoneEditorActivity" />
         <activity android:name=".settings.FAQActivity" />
         <activity android:name=".settings.ComickUnmatchedActivity" />
         <!-- Debug-only screen (FirebaseTestActivity finishes itself outside debug builds); exported

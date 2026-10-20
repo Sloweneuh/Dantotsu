@@ -44,9 +44,10 @@ class ReaderSettingsActivity : AppCompatActivity() {
         binding = ActivityReaderSettingsBinding.inflate(layoutInflater)
         setContentView(binding.root)
         SettingsRouter.handleHighlight(
-            this, binding.settingsRecyclerView, binding.readerMangaTopRows, binding.readerMangaRows,
-            binding.readerMtlRows, binding.readerNovelRows, binding.readerGeneralRows,
-            binding.readerProgressRows,
+            this, binding.settingsRecyclerView, binding.readerMangaLayoutRows,
+            binding.readerMangaDisplayRows, binding.readerMangaControlsRows, binding.readerMtlRows,
+            binding.readerNovelLayoutRows, binding.readerNovelTextRows, binding.readerNovelDisplayRows,
+            binding.readerNovelControlsRows, binding.readerGeneralRows, binding.readerProgressRows,
         )
         bindLibraryRows()
         Xpandable.consumeRelaunch(Xpandable.SCOPE_READER)
@@ -105,7 +106,7 @@ class ReaderSettingsActivity : AppCompatActivity() {
             list.adapter = SettingsAdapter(ArrayList(rows), popIn = false)
         }
 
-        bindRebuilt(binding.readerMangaTopRows) { refresh ->
+        bindRebuilt(binding.readerMangaLayoutRows) { refresh ->
             val layouts = resources.getStringArray(R.array.manga_layouts)
             val directions = resources.getStringArray(R.array.manga_directions)
             listOf(
@@ -144,17 +145,25 @@ class ReaderSettingsActivity : AppCompatActivity() {
                     PrefManager.setVal(PrefName.DualPageModeReader, defaultSettings.dualPageMode.ordinal)
                     refresh()
                 },
-            ) + SettingsRows.tapZoneRows(this) { refresh() } +
-                SettingsRows.pageFilterRows(this) {}
+                row(R.string.spaced_pages, R.drawable.ic_round_space_bar_24, defaultSettings.padding) {
+                    defaultSettings.padding = it
+                    PrefManager.setVal(PrefName.Padding, it)
+                },
+                row(R.string.smart_spacing, R.drawable.ic_round_auto_awesome_24,
+                    PrefManager.getVal(PrefName.SmartPadding), R.string.smart_spacing_info) {
+                    PrefManager.setVal(PrefName.SmartPadding, it)
+                },
+                row(R.string.wrap_images, R.drawable.ic_round_fullscreen_24, defaultSettings.wrapImages,
+                    R.string.wrap_images_info) {
+                    defaultSettings.wrapImages = it
+                    PrefManager.setVal(PrefName.WrapImages, it)
+                },
+            )
         }
 
         // Clamped to the slider's range: a stored speed from an older range can't sit off its ends.
         val autoscrollSpeed = PrefManager.getVal<Float>(PrefName.AutoScrollSpeed).coerceIn(0.5f, 10f)
-        bind(binding.readerMangaRows, listOf(
-            row(R.string.over_scroll, R.drawable.ic_round_swipe_vertical_24, defaultSettings.overScrollMode) {
-                defaultSettings.overScrollMode = it
-                PrefManager.setVal(PrefName.OverScrollMode, it)
-            },
+        bind(binding.readerMangaDisplayRows, listOf(
             row(R.string.true_colors, R.drawable.ic_round_high_quality_24, defaultSettings.trueColors,
                 R.string.true_colors_info) {
                 defaultSettings.trueColors = it
@@ -167,14 +176,6 @@ class ReaderSettingsActivity : AppCompatActivity() {
             row(R.string.crop_borders, R.drawable.ic_round_auto_awesome_24, defaultSettings.cropBorders) {
                 defaultSettings.cropBorders = it
                 PrefManager.setVal(PrefName.CropBorders, it)
-            },
-            row(R.string.spaced_pages, R.drawable.ic_round_space_bar_24, defaultSettings.padding) {
-                defaultSettings.padding = it
-                PrefManager.setVal(PrefName.Padding, it)
-            },
-            row(R.string.smart_spacing, R.drawable.ic_round_auto_awesome_24,
-                PrefManager.getVal(PrefName.SmartPadding), R.string.smart_spacing_info) {
-                PrefManager.setVal(PrefName.SmartPadding, it)
             },
             row(R.string.hide_scroll_bar, R.drawable.ic_round_no_scroll_bar, defaultSettings.hideScrollBar) {
                 defaultSettings.hideScrollBar = it
@@ -199,6 +200,27 @@ class ReaderSettingsActivity : AppCompatActivity() {
                 defaultSettings.lockRotation = it
                 PrefManager.setVal(PrefName.LockRotation, it)
             },
+            stepper(R.string.preload_amount, R.drawable.ic_round_art_track_24, R.string.preload_amount_info,
+                StepperConfig(defaultSettings.preloadAmount.toFloat(), step = 1f, min = 4f, max = 20f) {
+                    defaultSettings.preloadAmount = it.toInt()
+                    PrefManager.setVal(PrefName.PreloadAmount, it.toInt())
+                }),
+        ) + SettingsRows.pageFilterRows(this) {})
+
+        bindRebuilt(binding.readerMangaControlsRows) { refresh -> SettingsRows.tapZoneRows(this) { refresh() } + listOf(
+            row(R.string.volume_buttons, R.drawable.ic_round_touch_app_24, defaultSettings.volumeButtons) {
+                defaultSettings.volumeButtons = it
+                PrefManager.setVal(PrefName.VolumeButtonsReader, it)
+            },
+            row(R.string.image_long_clicking, R.drawable.ic_round_touch_app_24,
+                defaultSettings.longClickImage) {
+                defaultSettings.longClickImage = it
+                PrefManager.setVal(PrefName.LongClickImage, it)
+            },
+            row(R.string.over_scroll, R.drawable.ic_round_swipe_vertical_24, defaultSettings.overScrollMode) {
+                defaultSettings.overScrollMode = it
+                PrefManager.setVal(PrefName.OverScrollMode, it)
+            },
             row(R.string.autoscroll, R.drawable.ic_round_play_arrow_24,
                 PrefManager.getVal(PrefName.AutoScrollEnabled)) {
                 PrefManager.setVal(PrefName.AutoScrollEnabled, it)
@@ -217,30 +239,11 @@ class ReaderSettingsActivity : AppCompatActivity() {
                     format = { "%.1f".format(it) },
                 ),
             ),
-            row(R.string.volume_buttons, R.drawable.ic_round_touch_app_24, defaultSettings.volumeButtons) {
-                defaultSettings.volumeButtons = it
-                PrefManager.setVal(PrefName.VolumeButtonsReader, it)
-            },
-            row(R.string.wrap_images, R.drawable.ic_round_fullscreen_24, defaultSettings.wrapImages,
-                R.string.wrap_images_info) {
-                defaultSettings.wrapImages = it
-                PrefManager.setVal(PrefName.WrapImages, it)
-            },
-            row(R.string.image_long_clicking, R.drawable.ic_round_touch_app_24,
-                defaultSettings.longClickImage) {
-                defaultSettings.longClickImage = it
-                PrefManager.setVal(PrefName.LongClickImage, it)
-            },
-            stepper(R.string.preload_amount, R.drawable.ic_round_art_track_24, R.string.preload_amount_info,
-                StepperConfig(defaultSettings.preloadAmount.toFloat(), step = 1f, min = 4f, max = 20f) {
-                    defaultSettings.preloadAmount = it.toInt()
-                    PrefManager.setVal(PrefName.PreloadAmount, it.toInt())
-                }),
-        ))
+        ) }
 
         binding.readerMtlRows.adapter = SettingsAdapter(mtlRows, popIn = false)
 
-        bindRebuilt(binding.readerNovelRows) { refresh -> listOf(
+        bindRebuilt(binding.readerNovelLayoutRows) { refresh -> listOf(
             // The same themes the reader's own sheet offers, minus whatever theme the open book adds
             // — there is no book here.
             Settings(
@@ -281,6 +284,9 @@ class ReaderSettingsActivity : AppCompatActivity() {
                 PrefManager.setVal(PrefName.DualPageModeNovel, defaultSettingsLN.dualPageMode.ordinal)
                 refresh()
             },
+        ) }
+
+        bind(binding.readerNovelTextRows, listOf(
             stepper(R.string.novel_text_size, R.drawable.ic_round_format_text_24, R.string.novel_text_size_desc,
                 StepperConfig(defaultSettingsLN.effectiveTextSize.toFloat(), step = 10f, min = 50f, max = 300f) {
                     defaultSettingsLN.textSize = it.toInt()
@@ -314,6 +320,9 @@ class ReaderSettingsActivity : AppCompatActivity() {
                 defaultSettingsLN.hyphenation = it
                 PrefManager.setVal(PrefName.Hyphenation, it)
             },
+        ))
+
+        bind(binding.readerNovelDisplayRows, listOf(
             row(R.string.use_dark_theme, R.drawable.ic_round_brightness_4_24, defaultSettingsLN.useDarkTheme) {
                 defaultSettingsLN.useDarkTheme = it
                 PrefManager.setVal(PrefName.UseDarkThemeNovel, it)
@@ -321,11 +330,6 @@ class ReaderSettingsActivity : AppCompatActivity() {
             row(R.string.use_oled_theme, R.drawable.ic_round_brightness_4_24, defaultSettingsLN.useOledTheme) {
                 defaultSettingsLN.useOledTheme = it
                 PrefManager.setVal(PrefName.UseOledThemeNovel, it)
-            },
-            row(R.string.lock_screen_rotation, R.drawable.ic_round_screen_rotation_24,
-                defaultSettingsLN.lockRotation) {
-                defaultSettingsLN.lockRotation = it
-                PrefManager.setVal(PrefName.LockRotationNovel, it)
             },
             row(R.string.hide_page_numbers, R.drawable.ic_page_numbering, defaultSettingsLN.hidePageNumbers) {
                 defaultSettingsLN.hidePageNumbers = it
@@ -336,6 +340,14 @@ class ReaderSettingsActivity : AppCompatActivity() {
                 defaultSettingsLN.keepScreenOn = it
                 PrefManager.setVal(PrefName.KeepScreenOnNovel, it)
             },
+            row(R.string.lock_screen_rotation, R.drawable.ic_round_screen_rotation_24,
+                defaultSettingsLN.lockRotation) {
+                defaultSettingsLN.lockRotation = it
+                PrefManager.setVal(PrefName.LockRotationNovel, it)
+            },
+        ))
+
+        bind(binding.readerNovelControlsRows, listOf(
             row(R.string.volume_buttons, R.drawable.ic_round_touch_app_24, defaultSettingsLN.volumeButtons) {
                 defaultSettingsLN.volumeButtons = it
                 PrefManager.setVal(PrefName.VolumeButtonsNovel, it)
@@ -350,7 +362,7 @@ class ReaderSettingsActivity : AppCompatActivity() {
                         .show(supportFragmentManager, NovelTtsSettingsBottomSheet.TAG)
                 },
             ),
-        ) }
+        ))
 
         bind(binding.readerGeneralRows, listOf(
             row(R.string.source_info, R.drawable.ic_round_info_24, PrefManager.getVal(PrefName.ShowSource)) {

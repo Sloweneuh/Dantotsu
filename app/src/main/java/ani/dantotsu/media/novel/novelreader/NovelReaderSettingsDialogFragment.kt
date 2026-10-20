@@ -126,17 +126,17 @@ class NovelReaderSettingsDialogFragment : BottomSheetDialogFragment() {
                 switch(R.string.use_oled_theme, R.drawable.ic_round_brightness_4_24, settings.useOledTheme) {
                     settings.useOledTheme = it
                 },
+                switch(R.string.hide_page_numbers, R.drawable.ic_page_numbering,
+                    settings.hidePageNumbers) { settings.hidePageNumbers = it },
+                switch(R.string.keep_screen_on, R.drawable.ic_baseline_screen_lock_portrait_24,
+                    settings.keepScreenOn) { settings.keepScreenOn = it },
+                switch(R.string.lock_screen_rotation, R.drawable.ic_round_screen_rotation_24,
+                    settings.lockRotation) { settings.lockRotation = it },
             )
         }
 
         SettingsRows.bindRebuilt(binding.novelControlsRows) {
             listOf(
-                switch(R.string.lock_screen_rotation, R.drawable.ic_round_screen_rotation_24,
-                    settings.lockRotation) { settings.lockRotation = it },
-                switch(R.string.hide_page_numbers, R.drawable.ic_page_numbering,
-                    settings.hidePageNumbers) { settings.hidePageNumbers = it },
-                switch(R.string.keep_screen_on, R.drawable.ic_baseline_screen_lock_portrait_24,
-                    settings.keepScreenOn) { settings.keepScreenOn = it },
                 switch(R.string.volume_buttons, R.drawable.ic_round_touch_app_24,
                     settings.volumeButtons) { settings.volumeButtons = it },
             )

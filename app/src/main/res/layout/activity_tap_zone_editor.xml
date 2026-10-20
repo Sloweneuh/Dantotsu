@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The custom tap-zone editor: a mock page filling the screen, the zones over it, a hint at the
+     top and the tools floating at the bottom. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/tapZoneRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000">
+
+    <ani.dantotsu.media.manga.mangareader.FakeMangaPageView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <ani.dantotsu.media.manga.mangareader.TapZoneBoxesView
+        android:id="@+id/tapZoneBoxes"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <TextView
+        android:id="@+id/tapZoneHint"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|center_horizontal"
+        android:layout_margin="16dp"
+        android:background="@drawable/bg_tap_zone_hint"
+        android:gravity="center"
+        android:maxWidth="420dp"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="10dp"
+        android:text="@string/reader_tap_zones_editor_hint"
+        android:textColor="#FFFFFFFF"
+        android:textSize="13sp" />
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/tapZoneBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_margin="16dp"
+        app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
+        app:cardCornerRadius="32dp"
+        app:cardElevation="6dp"
+        app:strokeWidth="0dp">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="8dp">
+
+            <Button
+                android:id="@+id/tapZonePresets"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="@string/reader_tap_zones_presets"
+                app:icon="@drawable/ic_round_grid_view_24" />
+
+            <Button
+                android:id="@+id/tapZoneAdd"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="@string/reader_tap_zones_add"
+                app:icon="@drawable/ic_round_add_24" />
+
+            <Button
+                android:id="@+id/tapZoneFlip"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="@string/reader_tap_zones_flip"
+                android:enabled="false"
+                app:icon="@drawable/ic_round_compare_arrows_24" />
+
+            <Button
+                android:id="@+id/tapZoneDelete"
+                style="@style/Widget.Material3.Button.IconButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="@string/reader_tap_zones_delete"
+                android:enabled="false"
+                app:icon="@drawable/ic_round_delete_24" />
+
+            <Button
+                android:id="@+id/tapZoneSave"
+                style="@style/Widget.Material3.Button.IconButton.Filled"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:contentDescription="@string/save"
+                app:icon="@drawable/ic_round_check_24" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+</FrameLayout>
